@@ -17,6 +17,7 @@ const only = (process.argv.find(a => a.startsWith('--only=')) || '').split('=')[
 
 /* Phiên đăng nhập mock + dữ liệu demo phong phú để screenshot có trạng thái thật */
 const SESSION = {
+  account: 'ngocanh.study@gmail.com',
   user: { name: 'Ngọc Ánh', email: 'ngocanh.study@gmail.com', verified: true, interests: ['ielts', 'toeic'] },
   unlockedTestIds: ['vpet-b1-01'],
   unlockedFamilyIds: ['ielts'],

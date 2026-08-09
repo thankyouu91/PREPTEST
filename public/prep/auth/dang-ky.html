@@ -179,15 +179,14 @@
     btn.disabled = true;
     btn.innerHTML = PREP.icon('loader', 'w-5 h-5 animate-spin-slow') + 'Đang tạo tài khoản';
     setTimeout(() => {                                   // giả lập gọi API
-      // Demo trạng thái lỗi server: dùng email bắt đầu bằng "test-loi@"
-      if (/^test-loi@/i.test(email)) {
+      const interests = PREP.qsa('[data-fam][aria-pressed="true"]').map(b => b.getAttribute('data-fam'));
+      const res = PrepAuth.register({ name, email, password: pass.value, interests });
+      if (!res.ok) {                                     // vd: email đã tồn tại
         btn.disabled = false; btn.textContent = 'Tạo tài khoản';
-        bannerText.textContent = 'Email này đã được đăng ký. Thử đăng nhập hoặc dùng email khác.';
+        bannerText.textContent = res.error;
         banner.classList.add('show');
         return;
       }
-      const interests = PREP.qsa('[data-fam][aria-pressed="true"]').map(b => b.getAttribute('data-fam'));
-      PrepAuth.register({ name, email, interests });
       location.href = '/prep/xac-thuc-email/?email=' + encodeURIComponent(email);
     }, 900);
   });

@@ -24,6 +24,24 @@ Lệnh khác:
 | `npm run build` | build lại CSS (**bắt buộc chạy + commit sau khi thêm class mới**) |
 | `npm run screenshot` | chụp desktop + mobile mọi màn vào `docs/screenshots/`, báo lỗi console/CSP |
 | `node scripts/audit.mjs` | audit tràn ngang, tương phản WCAG AA, nút xuống dòng, chiều cao nav (light + dark, 5 bề rộng) |
+| `node scripts/test-auth.mjs` | kiểm thử luồng đăng nhập / đổi mật khẩu / lưu tiến độ theo tài khoản |
+
+## Tài khoản demo
+
+| Tên đăng nhập | Mật khẩu | Ghi chú |
+|---|---|---|
+| `student` | `Goodmorning01` | Đăng nhập được bằng `student` hoặc `student@vpetprep.vn`. Có sẵn 1 bài VPET B1 đã mở khoá. |
+
+Trang đăng nhập có nút **Điền sẵn tài khoản demo**.
+
+> ⚠️ **Mật khẩu này nằm dạng chữ thường trong `public/prep/_mock.js`** — bất kỳ ai xem source
+> cũng đọc được. Nó chỉ hợp lệ ở bản dựng giao diện không có dữ liệu thật. Đừng dùng lại mật khẩu
+> này ở hệ thống khác, và xoá `PREP_SEED_ACCOUNTS` khi nối auth thật.
+
+Tài khoản tự đăng ký cũng đăng nhập lại được: mỗi bản ghi lưu trong `localStorage`
+(`prep.accounts.v1`), tiến độ (bài đã mở khoá, code, đơn) gắn theo tài khoản chứ không theo phiên,
+nên đăng xuất rồi đăng nhập lại vẫn còn. Đổi mật khẩu ở tab Bảo mật có hiệu lực thật cho lần đăng
+nhập sau. Tất cả vẫn là mock phía client — auth thật (bcrypt, phiên server, rate-limit) làm ở prompt backend.
 
 ## Bản đồ màn hình
 
@@ -106,8 +124,8 @@ nằm trong `public/prep/_chrome.js` — gọi `PrepChrome.mount({ title })`, kh
 
 ## Thử luồng demo
 
-- Đăng nhập bằng email bất kỳ (mật khẩu bất kỳ). Gõ mật khẩu `saimatkhau` để xem trạng thái lỗi.
-- Đăng ký với email bắt đầu bằng `test-loi@` để xem banner lỗi phía server.
+- Đăng nhập bằng tài khoản `student` ở trên; gõ sai mật khẩu để xem banner lỗi.
+- Đăng ký tài khoản mới bằng email bất kỳ; đăng ký lại cùng email đó để xem lỗi trùng.
 - Mã code demo ở màn Nhập code: `VPET-B1MK-24TR` (hợp lệ), `IELT-AC12-96HD` (mở trọn bộ IELTS),
   `PREP-HHAN-2025` (hết hạn), `PREP-DUNG-ROI1` (đã dùng).
 - Mua code demo sinh mã ngẫu nhiên có thể kích hoạt được ngay.

@@ -166,6 +166,31 @@ const PREP_DEMO_CODES = {
   'PREP-DUNG-ROI1': { unlocks: { testId: 'ielts-ac-01' }, expiresAt: '2026-12-31', status: 'used' }     // → lỗi "đã dùng"
 };
 
+/* ---------------- Tài khoản seed (demo) ----------------
+   ⚠ Mật khẩu để trần trong file JS công khai: CHỈ hợp lệ ở bản demo giao diện
+   không có dữ liệu thật. Không dùng lại mật khẩu này ở bất kỳ hệ thống nào khác.
+   // TODO(backend/auth): xoá seed này khi nối API đăng nhập thật
+   // (bcrypt phía server + phiên cookie, không bao giờ gửi mật khẩu xuống client) */
+const PREP_SEED_ACCOUNTS = [
+  {
+    username: 'student',
+    password: 'Goodmorning01',
+    name: 'Học viên Demo',
+    email: 'student@vpetprep.vn',
+    verified: true,
+    interests: ['vpet', 'ielts'],
+    // Có sẵn 1 bài đã mở khoá để xem được cả thẻ mở lẫn thẻ khoá trong thư viện
+    unlockedTestIds: ['vpet-b1-01'],
+    unlockedFamilyIds: [],
+    myCodes: [{
+      code: 'VPET-B1MK-24TR', unlocks: { testId: 'vpet-b1-01' },
+      redeemedAt: '2026-08-01T09:30:00Z', expiresAt: '2026-12-31', status: 'active'
+    }],
+    orders: [],
+    notif: { newTests: true, reminder: true, promo: false }
+  }
+];
+
 /* ---------------- Tenant (white-label demo) ---------------- */
 const PREP_TENANTS = [
   { id: 'default',   name: 'VPET Prep',        short: 'VP' },
@@ -308,6 +333,94 @@ const PrepTheme = {
 };
 
 /* ============================================================
+   PrepAccounts — "cơ sở dữ liệu" tài khoản giả lập (localStorage)
+   Gộp tài khoản seed (PREP_SEED_ACCOUNTS) với tài khoản người dùng tự đăng ký.
+   // TODO(backend/auth): thay bằng bảng users phía server; client KHÔNG giữ mật khẩu
+   ============================================================ */
+const PrepAccounts = {
+  KEY: 'prep.accounts.v1',
+
+  _local() {
+    try { return JSON.parse(localStorage.getItem(this.KEY)) || []; }
+    catch (e) { return []; }
+  },
+  _saveLocal(list) {
+    try { localStorage.setItem(this.KEY, JSON.stringify(list)); } catch (e) {}
+  },
+
+  /* Bản ghi trong localStorage (nếu có) đè lên bản seed cùng username */
+  all() {
+    const local = this._local();
+    const taken = local.map(a => a.username.toLowerCase());
+    const seeds = PREP_SEED_ACCOUNTS
+      .filter(s => !taken.includes(s.username.toLowerCase()))
+      .map(s => JSON.parse(JSON.stringify(s)));
+    return local.concat(seeds);
+  },
+
+  /* Tìm theo tên đăng nhập HOẶC email */
+  find(identifier) {
+    const k = String(identifier || '').trim().toLowerCase();
+    if (!k) return null;
+    return this.all().find(a =>
+      a.username.toLowerCase() === k || (a.email || '').toLowerCase() === k) || null;
+  },
+
+  exists(identifier) { return !!this.find(identifier); },
+
+  upsert(acc) {
+    const list = this._local();
+    const i = list.findIndex(a => a.username.toLowerCase() === acc.username.toLowerCase());
+    if (i >= 0) list[i] = acc; else list.push(acc);
+    this._saveLocal(list);
+  },
+
+  setPassword(username, password) {
+    const acc = this.find(username);
+    if (!acc) return false;
+    acc.password = password;
+    this.upsert(acc);
+    return true;
+  },
+
+  /* Đồng bộ tiến độ của phiên hiện tại về bản ghi tài khoản
+     để đăng xuất rồi đăng nhập lại vẫn còn bài đã mở khoá */
+  syncFromSession(s) {
+    if (!s || !s.account) return;
+    const acc = this.find(s.account);
+    if (!acc) return;
+    acc.name = s.user.name;
+    acc.email = s.user.email;
+    acc.verified = s.user.verified;
+    acc.interests = s.user.interests || [];
+    acc.unlockedTestIds = s.unlockedTestIds || [];
+    acc.unlockedFamilyIds = s.unlockedFamilyIds || [];
+    acc.myCodes = s.myCodes || [];
+    acc.orders = s.orders || [];
+    acc.generatedCodes = s.generatedCodes || {};
+    acc.notif = s.notif || acc.notif;
+    this.upsert(acc);
+  },
+
+  /* Bản ghi tài khoản → phiên đăng nhập */
+  toSession(acc) {
+    return {
+      account: acc.username,
+      user: {
+        name: acc.name, email: acc.email,
+        verified: !!acc.verified, interests: acc.interests || []
+      },
+      unlockedTestIds: (acc.unlockedTestIds || []).slice(),
+      unlockedFamilyIds: (acc.unlockedFamilyIds || []).slice(),
+      myCodes: (acc.myCodes || []).slice(),
+      orders: (acc.orders || []).slice(),
+      generatedCodes: Object.assign({}, acc.generatedCodes),
+      notif: Object.assign({ newTests: true, reminder: true, promo: false }, acc.notif)
+    };
+  }
+};
+
+/* ============================================================
    PrepState — trạng thái người dùng mock (localStorage)
    // TODO(backend): thay toàn bộ bằng API + phiên đăng nhập thật
    ============================================================ */
@@ -324,6 +437,7 @@ const PrepState = {
   save(s) {
     this._cache = s;
     try { localStorage.setItem(this.KEY, JSON.stringify(s)); } catch (e) {}
+    PrepAccounts.syncFromSession(s);   // giữ tiến độ theo tài khoản, không theo phiên
   },
   reset() {
     this._cache = null;
@@ -419,26 +533,45 @@ const PrepState = {
    // TODO(backend/auth): thay bằng session cookie + API thật
    ============================================================ */
 const PrepAuth = {
-  register({ name, email, interests }) {
-    PrepState.save({
-      user: { name, email, verified: false, interests: interests || [] },
-      unlockedTestIds: [], unlockedFamilyIds: [], myCodes: [], orders: [],
-      notif: { newTests: true, reminder: true, promo: false }
-    });
-  },
-  login(email) {
-    const cur = PrepState.load();
-    if (cur && cur.user && cur.user.email === email) {
-      cur.user.verified = true; // demo: đăng nhập lại coi như đã xác thực
-      PrepState.save(cur);
-      return;
+  /* Đăng ký: tạo bản ghi tài khoản (username = email) rồi mở phiên.
+     Trả { ok, error } — TODO(backend/auth): POST /api/auth/register */
+  register({ name, email, password, interests }) {
+    if (PrepAccounts.exists(email)) {
+      return { ok: false, error: 'Email này đã được đăng ký. Thử đăng nhập hoặc dùng email khác.' };
     }
-    const name = email.split('@')[0].replace(/[._-]+/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-    PrepState.save({
-      user: { name: name || 'Học viên', email, verified: true, interests: [] },
+    const acc = {
+      username: email, password, name, email,
+      verified: false, interests: interests || [],
       unlockedTestIds: [], unlockedFamilyIds: [], myCodes: [], orders: [],
       notif: { newTests: true, reminder: true, promo: false }
-    });
+    };
+    PrepAccounts.upsert(acc);
+    PrepState.save(PrepAccounts.toSession(acc));
+    return { ok: true };
+  },
+
+  /* Đăng nhập bằng tên đăng nhập HOẶC email + mật khẩu.
+     Trả { ok, error } — TODO(backend/auth): POST /api/auth/login, so khớp bcrypt phía server */
+  login(identifier, password) {
+    const acc = PrepAccounts.find(identifier);
+    // Thông báo chung cho cả hai trường hợp: không tiết lộ tài khoản nào tồn tại
+    if (!acc || acc.password !== password) {
+      return { ok: false, error: 'Tài khoản hoặc mật khẩu không đúng. Kiểm tra lại giúp mình nhé.' };
+    }
+    PrepState.save(PrepAccounts.toSession(acc));
+    return { ok: true };
+  },
+
+  /* Đổi mật khẩu (màn Bảo mật) — TODO(backend/auth): POST /api/me/password */
+  changePassword(currentPw, newPw) {
+    const s = PrepState.load();
+    if (!s || !s.account) return { ok: false, error: 'Phiên đăng nhập đã hết hạn.' };
+    const acc = PrepAccounts.find(s.account);
+    if (!acc || acc.password !== currentPw) {
+      return { ok: false, error: 'Mật khẩu hiện tại không đúng.' };
+    }
+    PrepAccounts.setPassword(acc.username, newPw);
+    return { ok: true };
   },
   markVerified() {
     const s = PrepState.load();

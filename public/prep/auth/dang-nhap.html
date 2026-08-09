@@ -44,9 +44,10 @@
 
       <form id="f" class="grid gap-5 mt-7" novalidate>
         <div>
-          <label class="label" for="email">Email</label>
-          <input class="input" id="email" name="email" type="email" autocomplete="email" placeholder="ban@truong.edu.vn" required>
-          <p class="field-error" id="err-email">Email chưa đúng định dạng.</p>
+          <label class="label" for="email">Tên đăng nhập hoặc email</label>
+          <input class="input" id="email" name="username" type="text" autocomplete="username"
+                 spellcheck="false" placeholder="student hoặc ban@truong.edu.vn" required>
+          <p class="field-error" id="err-email">Nhập tên đăng nhập hoặc email của bạn.</p>
         </div>
         <div>
           <div class="flex items-baseline justify-between mb-1.5">
@@ -69,7 +70,17 @@
       <p class="text-[14.5px] font-medium text-muted mt-7">
         Chưa có tài khoản? <a href="/prep/dang-ky/" class="font-bold text-brand-strong hover:underline">Đăng ký miễn phí</a>
       </p>
-      <p class="text-[12px] text-muted/75 mt-6">Bản demo giao diện: đăng nhập bằng email bất kỳ, dữ liệu chỉ lưu trên trình duyệt.</p>
+
+      <!-- Tài khoản demo: chỉ tồn tại ở bản dựng giao diện này -->
+      <div class="card bg-brand-soft border-0 p-4 mt-7">
+        <p class="text-[12.5px] font-bold uppercase tracking-wide text-muted">Tài khoản demo</p>
+        <p class="flex flex-wrap items-center gap-x-5 gap-y-1 mt-2 text-[14px]">
+          <span>Tên đăng nhập <b class="font-extrabold">student</b></span>
+          <span>Mật khẩu <b class="font-extrabold">Goodmorning01</b></span>
+        </p>
+        <button type="button" id="fill-demo" class="btn btn-soft btn-sm mt-3">Điền sẵn tài khoản demo</button>
+      </div>
+      <p class="text-[12px] text-muted/75 mt-4">Bản demo giao diện: tài khoản và tiến độ chỉ lưu trên trình duyệt này.</p>
     </div>
   </div>
 
@@ -110,6 +121,16 @@
     setEye(show);
   });
 
+  /* Điền nhanh tài khoản demo */
+  PREP.qs('#fill-demo').addEventListener('click', () => {
+    PREP.qs('#email').value = 'student';
+    pass.value = 'Goodmorning01';
+    PREP.qs('#form-banner').classList.remove('show');
+    PREP.qsa('.input').forEach(el => el.classList.remove('input-invalid'));
+    PREP.qsa('.field-error').forEach(el => el.classList.remove('show'));
+    PREP.qs('#submit').focus();
+  });
+
   /* Submit — TODO(backend/auth): POST /api/auth/login + session cookie */
   const f = PREP.qs('#f'), btn = PREP.qs('#submit');
   const banner = PREP.qs('#form-banner'), bannerText = PREP.qs('#form-banner-text');
@@ -122,23 +143,26 @@
   f.addEventListener('submit', ev => {
     ev.preventDefault();
     banner.classList.remove('show');
-    const email = PREP.qs('#email').value.trim();
+    const id = PREP.qs('#email').value.trim();
     let bad = false;
-    mark('email', !PREP.validEmail(email)); bad = bad || !PREP.validEmail(email);
+    // Chấp nhận tên đăng nhập (>= 3 ký tự) hoặc email đúng định dạng
+    const idOk = id.includes('@') ? PREP.validEmail(id) : id.length >= 3;
+    mark('email', !idOk); bad = bad || !idOk;
     mark('password', !pass.value); bad = bad || !pass.value;
     if (bad) return;
 
     btn.disabled = true;
     btn.innerHTML = PREP.icon('loader', 'w-5 h-5 animate-spin-slow') + 'Đang đăng nhập';
     setTimeout(() => {
-      // Demo trạng thái lỗi: gõ mật khẩu "saimatkhau" để xem banner lỗi
-      if (pass.value === 'saimatkhau') {
+      const res = PrepAuth.login(id, pass.value);
+      if (!res.ok) {
         btn.disabled = false; btn.textContent = 'Đăng nhập';
-        bannerText.textContent = 'Email hoặc mật khẩu không đúng. Thử lại nhé.';
+        bannerText.textContent = res.error;
         banner.classList.add('show');
+        pass.value = '';
+        pass.focus();
         return;
       }
-      PrepAuth.login(email);
       const next = new URLSearchParams(location.search).get('next');
       location.href = next && next.startsWith('/prep') ? next : '/prep/';
     }, 800);

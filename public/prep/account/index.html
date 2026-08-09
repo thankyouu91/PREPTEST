@@ -49,6 +49,11 @@
         <form id="profile-form" class="lg:col-span-7 card p-6 sm:p-7 grid gap-5 content-start" novalidate>
           <h3 class="font-extrabold tracking-tight text-lg">Thông tin cá nhân</h3>
           <div>
+            <label class="label" for="username">Tên đăng nhập</label>
+            <input class="input bg-surface" id="username" type="text" autocomplete="username" readonly>
+            <p class="help">Tên đăng nhập không đổi được. Dùng nó hoặc email để đăng nhập.</p>
+          </div>
+          <div>
             <label class="label" for="name">Họ và tên</label>
             <input class="input" id="name" type="text" autocomplete="name">
             <p class="field-error" id="err-name">Tên không được để trống.</p>
@@ -113,9 +118,13 @@
             <input class="input" id="re-pass" type="password" autocomplete="new-password">
             <p class="field-error" id="err-re-pass">Hai mật khẩu chưa khớp.</p>
           </div>
+          <div class="banner banner-error" id="pass-err" role="alert" aria-live="polite">
+            <svg viewBox="0 0 24 24" class="w-5 h-5 shrink-0 mt-0.5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>
+            <span id="pass-err-text"></span>
+          </div>
           <div class="banner banner-success" id="pass-ok" role="status" aria-live="polite">
             <svg viewBox="0 0 24 24" class="w-5 h-5 shrink-0 mt-0.5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
-            <span>Giao diện đã nhận yêu cầu. Đổi mật khẩu thật sẽ hoạt động khi nối backend.</span>
+            <span>Đã đổi mật khẩu. Lần đăng nhập sau dùng mật khẩu mới.</span>
           </div>
           <button type="submit" id="pass-save" class="btn btn-primary btn-md justify-self-start">Cập nhật mật khẩu</button>
         </form>
@@ -210,6 +219,7 @@
     });
 
     /* --- Hồ sơ --- TODO(backend): PATCH /api/me */
+    PREP.qs('#username').value = s.account || u.email;
     PREP.qs('#name').value = u.name;
     PREP.qs('#email').value = u.email;
     const box = PREP.qs('#interests');
@@ -280,6 +290,7 @@
     PREP.qs('#pass-form').addEventListener('submit', ev => {
       ev.preventDefault();
       PREP.qs('#pass-ok').classList.remove('show');
+      PREP.qs('#pass-err').classList.remove('show');
       const cur = PREP.qs('#cur-pass'), re = PREP.qs('#re-pass');
       const bad1 = !cur.value, bad2 = np.value.length < 8, bad3 = np.value !== re.value || !re.value;
       PREP.qs('#err-cur-pass').classList.toggle('show', bad1); cur.classList.toggle('input-invalid', bad1);
@@ -290,7 +301,15 @@
       btn.disabled = true;
       btn.innerHTML = PREP.icon('loader', 'w-5 h-5 animate-spin-slow') + 'Đang cập nhật';
       setTimeout(() => {
+        const res = PrepAuth.changePassword(cur.value, np.value);
         btn.disabled = false; btn.textContent = 'Cập nhật mật khẩu';
+        if (!res.ok) {
+          PREP.qs('#pass-err-text').textContent = res.error;
+          PREP.qs('#pass-err').classList.add('show');
+          cur.classList.add('input-invalid');
+          cur.select();
+          return;
+        }
         PREP.qs('#pass-ok').classList.add('show');
         cur.value = np.value = re.value = '';
         sWrap.setAttribute('hidden', '');
