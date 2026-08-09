@@ -212,6 +212,22 @@ const PREP = {
   testsOf(familyId) { return PREP_TESTS.filter(t => t.familyId === familyId); },
 
   vnd(n) { return n.toLocaleString('vi-VN') + 'đ'; },
+
+  /* Số ngày còn lại tới mốc ISO (âm = đã qua) */
+  daysUntil(iso) {
+    const d = new Date(iso);
+    if (isNaN(d)) return null;
+    return Math.ceil((d - new Date()) / 86400000);
+  },
+  /* "hôm nay" / "3 ngày trước" / "12/08/2026" */
+  timeAgo(iso) {
+    const diff = -this.daysUntil(iso);
+    if (diff === null) return '';
+    if (diff <= 0) return 'hôm nay';
+    if (diff === 1) return 'hôm qua';
+    if (diff < 30) return diff + ' ngày trước';
+    return this.fmtDate(iso);
+  },
   fmtDate(iso) {
     if (!iso) return '';
     const d = new Date(iso);
@@ -398,6 +414,7 @@ const PrepAccounts = {
     acc.myCodes = s.myCodes || [];
     acc.orders = s.orders || [];
     acc.generatedCodes = s.generatedCodes || {};
+    acc.seenTestIds = s.seenTestIds || [];
     acc.notif = s.notif || acc.notif;
     this.upsert(acc);
   },
@@ -414,6 +431,7 @@ const PrepAccounts = {
       unlockedFamilyIds: (acc.unlockedFamilyIds || []).slice(),
       myCodes: (acc.myCodes || []).slice(),
       orders: (acc.orders || []).slice(),
+      seenTestIds: (acc.seenTestIds || []).slice(),
       generatedCodes: Object.assign({}, acc.generatedCodes),
       notif: Object.assign({ newTests: true, reminder: true, promo: false }, acc.notif)
     };

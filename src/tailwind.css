@@ -217,6 +217,11 @@
   }
   .badge-muted { @apply bg-surface text-muted border border-line; }
 
+  /* Tint vàng highlight (dùng class thay cho style="" — CSP chặn inline style) */
+  .bg-hl-soft { background: color-mix(in srgb, var(--color-hl) 28%, transparent); }
+  .text-hl-ink { color: var(--color-hl-ink); }
+  .dark .text-hl-ink { color: var(--color-hl); }
+
   /* Chip nhận diện kỳ thi — màu cố định theo family, KHÔNG đổi theo tenant */
   .exam-chip {
     @apply inline-flex items-center rounded-full px-2.5 py-1 text-[11.5px] font-bold uppercase tracking-wide;

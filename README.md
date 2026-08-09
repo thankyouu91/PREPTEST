@@ -130,6 +130,26 @@ nằm trong `public/prep/_chrome.js` — gọi `PrepChrome.mount({ title })`, kh
   `PREP-HHAN-2025` (hết hạn), `PREP-DUNG-ROI1` (đã dùng).
 - Mua code demo sinh mã ngẫu nhiên có thể kích hoạt được ngay.
 
+## Dashboard học viên (`/prep/`)
+
+Màn hình sau khi đăng nhập, render hoàn toàn từ trạng thái thật của tài khoản. **Không có số liệu
+bịa**: chưa có engine làm bài nên không có điểm số, streak hay biểu đồ giả.
+
+| Khối | Nguồn dữ liệu |
+|---|---|
+| Ưu tiên hôm nay | bài đã mở khoá mà chưa xem cấu trúc; nếu chưa mở khoá bài nào thì đổi thành CTA nhập code |
+| Nhắc xác thực email | `user.verified` (ẩn khi đã xác thực) |
+| Bài thi của bạn | `unlockedTestIds` + `unlockedFamilyIds`, tối đa 4 thẻ, lấp ô lẻ bằng thẻ "Mở khoá thêm bài" |
+| Kết quả luyện tập | empty state trung thực, chờ `TODO(backend/exam-engine)` |
+| Tiến độ | tỉ lệ bài đã mở / tổng số bài + độ phủ 4 kỹ năng |
+| Bước tiếp theo | checklist suy ra từ trạng thái: xác thực email, chọn kỳ thi quan tâm, kích hoạt code, xem cấu trúc đề |
+| Code đang hoạt động | `myCodes` còn hạn, kèm số ngày còn lại (chip vàng khi ≤ 30 ngày) |
+| Hoạt động gần đây | mốc thời gian có thật từ code đã kích hoạt và đơn đã mua |
+| Khám phá theo kỳ thi | 6 kỳ thi, kỳ thi trong `interests` xếp trước |
+
+Việc "đã xem cấu trúc đề" được ghi nhận khi mở màn chi tiết bài thi (`seenTestIds`), nên checklist
+phản ánh hành vi thật chứ không phải cờ tĩnh.
+
 ## Trạng thái UI đã dựng
 
 Mọi nơi có dữ liệu đều có đủ **loading (skeleton khớp layout) · empty · error · success**:

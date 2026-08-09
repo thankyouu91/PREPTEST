@@ -112,6 +112,14 @@
       const unlocked = PrepState.isUnlocked(test);
       document.title = test.title + ' · VPET Prep';
 
+      /* Ghi nhận đã xem cấu trúc bài này (dashboard dùng cho checklist "Bước tiếp theo") */
+      const st = PrepState.load();
+      st.seenTestIds = st.seenTestIds || [];
+      if (!st.seenTestIds.includes(test.id)) {
+        st.seenTestIds.push(test.id);
+        PrepState.save(st);
+      }
+
       PREP.qs('#head-chips').innerHTML =
         '<span class="exam-chip" data-family="' + fam.id + '">' + fam.name + '</span>' +
         '<span class="badge badge-muted">' + test.level + '</span>' +

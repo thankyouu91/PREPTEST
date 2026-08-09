@@ -37,7 +37,9 @@ const PAGES = [
   { slug: 'dang-nhap',      url: '/prep/dang-nhap/',            auth: false },
   { slug: 'quen-mat-khau',  url: '/prep/quen-mat-khau/',        auth: false },
   { slug: 'xac-thuc-email', url: '/prep/xac-thuc-email/?email=ngocanh.study%40gmail.com', auth: false },
-  { slug: 'dashboard',       url: '/prep/',                      auth: true },
+  // Đăng nhập thật bằng tài khoản demo student rồi chụp dashboard
+  { slug: 'dashboard-student', url: '/prep/', login: { id: 'student', pw: 'Goodmorning01' }, full: true },
+  { slug: 'dashboard',       url: '/prep/',                      auth: true, full: true },
   { slug: 'dashboard-empty', url: '/prep/',                      auth: 'fresh' },
   { slug: 'thu-vien',        url: '/prep/thu-vien/',             auth: true, full: true },
   { slug: 'thu-vien-empty',  url: '/prep/thu-vien/?family=vept', auth: true },
@@ -83,7 +85,15 @@ const run = async () => {
         if (tenant) localStorage.setItem('prep.tenant', tenant);
       }, { auth: p.auth, dark: !!p.dark, tenant: p.tenant || null, session: SESSION });
 
-      await page.goto(BASE + p.url, { waitUntil: 'networkidle' });
+      if (p.login) {
+        await page.goto(BASE + '/prep/dang-nhap/', { waitUntil: 'networkidle' });
+        await page.fill('#email', p.login.id);
+        await page.fill('#password', p.login.pw);
+        await page.click('#submit');
+        await page.waitForURL('**' + p.url, { timeout: 10000 });
+      } else {
+        await page.goto(BASE + p.url, { waitUntil: 'networkidle' });
+      }
       await page.waitForTimeout(1300); // đợi skeleton nhường chỗ cho nội dung + font
       await page.screenshot({ path: path.join(OUT, `${p.slug}-${dev}.png`), fullPage: !!p.full });
 
