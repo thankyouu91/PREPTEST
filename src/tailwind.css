@@ -1,0 +1,404 @@
+/* Plus Jakarta Sans — self-host trong public/fonts (asset thật, CSP 'self' 100%) */
+@import './fonts.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============================================================
+   TOKENS — white-label theo tenant.
+   Đổi --color-primary / --color-accent (qua data-tenant hoặc JS)
+   là toàn bộ UI đổi màu theo. KHÔNG hardcode hex brand trong trang.
+   ============================================================ */
+@layer base {
+  :root {
+    --color-primary: #1c3d8f;   /* navy tin cậy (tenant mặc định: VPET Prep) */
+    --color-accent:  #0e8577;   /* teal — accent duy nhất toàn trang */
+    --color-surface: #f6f7fb;
+    --color-card:    #ffffff;
+    --color-text:    #111a33;
+    --color-muted:   #57627a;
+    --color-border:  #e4e8f1;
+    --color-danger:  #c23a52;
+    --color-success: #1e8a5e;
+    --color-hl:      #ffc94d;   /* vàng: highlight chức năng, không trang trí */
+    --color-hl-ink:  #4a3608;
+
+    /* Bảng màu cố định nhận diện KỲ THI — chỉ dùng cho chip/nhãn */
+    --exam-ielts: #d64545;      /* đỏ-cam */
+    --exam-toeic: #2563eb;      /* lam */
+    --exam-pte:   #7b5be6;      /* tím-lam */
+    --exam-vpet:  #0e9384;      /* teal */
+    --exam-vept:  #2f9e4f;      /* xanh lá */
+    --exam-ote:   #4338ca;      /* chàm */
+  }
+
+  /* Tenant demo (white-label): đặt data-tenant trên <html> */
+  [data-tenant='evergreen'] {
+    --color-primary: #175c3d;
+    --color-accent:  #0e7490;
+  }
+  [data-tenant='sunrise'] {
+    --color-primary: #9a3f12;
+    --color-accent:  #11615a;
+  }
+
+  .dark {
+    --color-primary: #5b82e8;
+    --color-accent:  #35c0ae;
+    --color-surface: #0c1222;
+    --color-card:    #141c33;
+    --color-text:    #e7ebf6;
+    --color-muted:   #9aa4bd;
+    --color-border:  #273254;
+    --color-danger:  #f08aa0;
+    --color-success: #4fc98f;
+    --color-hl:      #ffc94d;
+    --color-hl-ink:  #4a3608;
+  }
+  .dark[data-tenant='evergreen'] {
+    --color-primary: #52b788;
+    --color-accent:  #3fbdd8;
+  }
+  .dark[data-tenant='sunrise'] {
+    --color-primary: #e88e5a;
+    --color-accent:  #3ec2b3;
+  }
+
+  html { scroll-behavior: smooth; }
+  /* Thuộc tính hidden phải thắng mọi display của component class */
+  [hidden] { display: none !important; }
+  body {
+    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+    background: var(--color-surface);
+    color: var(--color-text);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  ::selection { background: color-mix(in srgb, var(--color-accent) 26%, transparent); }
+
+  :focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+    border-radius: 6px;
+  }
+
+  /* Nút bấm trong dark mode cần chữ tối trên nền brand sáng */
+  .dark .btn-primary { color: #0a1020; }
+  .dark .btn-accent  { color: #06201b; }
+}
+
+/* ============================================================
+   COMPONENTS — một thang bo góc: card 16px · nút/chip pill · input 12px
+   ============================================================ */
+@layer components {
+  /* ---- Nút ---- */
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-full font-semibold
+           whitespace-nowrap select-none transition
+           active:translate-y-[1px] active:scale-[.98]
+           disabled:opacity-50 disabled:pointer-events-none;
+  }
+  .btn-md { @apply px-5 py-2.5 text-sm; }
+  .btn-lg { @apply px-6 py-3 text-[15px]; }
+  .btn-sm { @apply px-3.5 py-1.5 text-[13px]; }
+  .btn-primary {
+    background: var(--color-primary);
+    @apply text-white shadow-soft;
+  }
+  .btn-primary:hover { background: color-mix(in srgb, var(--color-primary) 86%, black); }
+  .dark .btn-primary:hover { background: color-mix(in srgb, var(--color-primary) 86%, white); }
+  .btn-accent {
+    background: var(--color-accent);
+    @apply text-white shadow-soft;
+  }
+  .btn-accent:hover { background: color-mix(in srgb, var(--color-accent) 86%, black); }
+  .dark .btn-accent:hover { background: color-mix(in srgb, var(--color-accent) 86%, white); }
+  .btn-ghost {
+    @apply border border-line bg-card text-ink;
+  }
+  .btn-ghost:hover { background: color-mix(in srgb, var(--color-text) 5%, var(--color-card)); }
+  /* Nút trắng đặt trên nền brand: chữ luôn tối ở cả 2 theme (WCAG AA) */
+  .btn-on-brand {
+    @apply bg-white shadow-soft;
+    color: #10214d;
+  }
+  .btn-on-brand:hover { background: #eef2fb; }
+  .btn-outline-brand {
+    @apply border text-white;
+    border-color: rgb(255 255 255 / .45);
+  }
+  .btn-outline-brand:hover { background: rgb(255 255 255 / .12); }
+
+  .btn-soft {
+    background: color-mix(in srgb, var(--color-primary) 10%, transparent);
+    color: var(--color-primary);
+  }
+  .btn-soft:hover { background: color-mix(in srgb, var(--color-primary) 16%, transparent); }
+  .dark .btn-soft { color: color-mix(in srgb, var(--color-primary) 75%, white); }
+
+  /* ---- Card / bề mặt ---- */
+  .card { @apply bg-card border border-line rounded-2xl shadow-soft; }
+  .card-hover { @apply transition duration-300 hover:-translate-y-1 hover:shadow-soft-lg; }
+  /* Thẻ bài thi đang khoá: nền tint nhạt, phân biệt ngay với thẻ đã mở */
+  .card-locked {
+    background:
+      linear-gradient(color-mix(in srgb, var(--color-text) 4%, transparent), color-mix(in srgb, var(--color-text) 4%, transparent)),
+      var(--color-card);
+    border-style: dashed;
+  }
+  .tile { @apply rounded-2xl border border-line; }
+
+  /* Nền tint theo token (đổi màu theo tenant) */
+  .bg-brand-soft  { background: color-mix(in srgb, var(--color-primary) 8%, transparent); }
+  .bg-accent-soft { background: color-mix(in srgb, var(--color-accent) 10%, transparent); }
+  .text-brand-strong { color: color-mix(in srgb, var(--color-primary) 84%, black); }
+  .dark .text-brand-strong { color: color-mix(in srgb, var(--color-primary) 70%, white); }
+  .text-accent-strong { color: color-mix(in srgb, var(--color-accent) 78%, black); }
+  .dark .text-accent-strong { color: color-mix(in srgb, var(--color-accent) 65%, white); }
+
+  /* ---- Form ---- */
+  .label { @apply block text-sm font-semibold mb-1.5 text-ink; }
+  .input {
+    @apply w-full rounded-xl border border-line bg-card px-3.5 py-2.5 text-[15px]
+           text-ink transition;
+  }
+  .input::placeholder { color: color-mix(in srgb, var(--color-muted) 78%, transparent); }
+  .input:focus {
+    outline: none;
+    border-color: var(--color-accent);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent) 22%, transparent);
+  }
+  .input-invalid { border-color: var(--color-danger) !important; }
+  .input-invalid:focus { box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-danger) 20%, transparent); }
+  .help { @apply text-xs text-muted mt-1.5; }
+  .field-error { @apply text-[13px] font-medium mt-1.5 hidden; color: var(--color-danger); }
+  .field-error.show { @apply block; }
+
+  /* Banner trạng thái form */
+  .banner { @apply hidden items-start gap-3 rounded-xl border px-4 py-3 text-sm font-medium; }
+  .banner.show { @apply flex; }
+  .banner-error {
+    border-color: color-mix(in srgb, var(--color-danger) 35%, transparent);
+    background: color-mix(in srgb, var(--color-danger) 9%, transparent);
+    color: var(--color-danger);
+  }
+  .banner-success {
+    border-color: color-mix(in srgb, var(--color-success) 35%, transparent);
+    background: color-mix(in srgb, var(--color-success) 10%, transparent);
+    color: var(--color-success);
+  }
+
+  /* ---- Chip / badge ---- */
+  .chip {
+    @apply inline-flex items-center gap-1.5 rounded-full border border-line bg-card
+           px-3.5 py-1.5 text-[13px] font-semibold text-muted transition cursor-pointer
+           active:scale-[.97];
+  }
+  .chip:hover { border-color: color-mix(in srgb, var(--color-text) 22%, transparent); color: var(--color-text); }
+  .chip[aria-pressed='true'] {
+    background: var(--color-primary);
+    border-color: var(--color-primary);
+    @apply text-white;
+  }
+  .dark .chip[aria-pressed='true'] { color: #0a1020; }
+
+  .badge { @apply inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11.5px] font-bold tracking-wide; }
+  .badge-hl { background: var(--color-hl); color: var(--color-hl-ink); }
+  /* Nền đục (không phụ thuộc nền cha) + chữ đủ đậm để đạt WCAG AA ở cỡ 11.5px */
+  .badge-ok {
+    background: color-mix(in srgb, var(--color-success) 15%, white);
+    color: color-mix(in srgb, var(--color-success) 66%, black);
+  }
+  .dark .badge-ok {
+    background: color-mix(in srgb, var(--color-success) 22%, #0f1830);
+    color: color-mix(in srgb, var(--color-success) 55%, white);
+  }
+  .badge-muted { @apply bg-surface text-muted border border-line; }
+
+  /* Chip nhận diện kỳ thi — màu cố định theo family, KHÔNG đổi theo tenant */
+  .exam-chip {
+    @apply inline-flex items-center rounded-full px-2.5 py-1 text-[11.5px] font-bold uppercase tracking-wide;
+    background: color-mix(in srgb, var(--exam-c) 13%, transparent);
+    color: color-mix(in srgb, var(--exam-c) 72%, black);
+  }
+  .dark .exam-chip { color: color-mix(in srgb, var(--exam-c) 62%, white); }
+  .exam-chip[data-family='ielts'], .exam-dot[data-family='ielts'] { --exam-c: var(--exam-ielts); }
+  .exam-chip[data-family='toeic'], .exam-dot[data-family='toeic'] { --exam-c: var(--exam-toeic); }
+  .exam-chip[data-family='pte'],   .exam-dot[data-family='pte']   { --exam-c: var(--exam-pte); }
+  .exam-chip[data-family='vpet'],  .exam-dot[data-family='vpet']  { --exam-c: var(--exam-vpet); }
+  .exam-chip[data-family='vept'],  .exam-dot[data-family='vept']  { --exam-c: var(--exam-vept); }
+  .exam-chip[data-family='ote'],   .exam-dot[data-family='ote']   { --exam-c: var(--exam-ote); }
+  .exam-dot { background: color-mix(in srgb, var(--exam-c) 14%, transparent); color: color-mix(in srgb, var(--exam-c) 72%, black); }
+  .dark .exam-dot { color: color-mix(in srgb, var(--exam-c) 62%, white); }
+
+  /* Chip lọc theo kỳ thi: active nhuộm màu nhận diện của kỳ đó */
+  .chip[data-family][aria-pressed='true'] {
+    background: color-mix(in srgb, var(--exam-c) 14%, var(--color-card));
+    border-color: color-mix(in srgb, var(--exam-c) 55%, transparent);
+    color: color-mix(in srgb, var(--exam-c) 72%, black);
+  }
+  .dark .chip[data-family][aria-pressed='true'] {
+    color: color-mix(in srgb, var(--exam-c) 62%, white);
+  }
+  .chip[data-family='ielts'] { --exam-c: var(--exam-ielts); }
+  .chip[data-family='toeic'] { --exam-c: var(--exam-toeic); }
+  .chip[data-family='pte']   { --exam-c: var(--exam-pte); }
+  .chip[data-family='vpet']  { --exam-c: var(--exam-vpet); }
+  .chip[data-family='vept']  { --exam-c: var(--exam-vept); }
+  .chip[data-family='ote']   { --exam-c: var(--exam-ote); }
+
+  /* ---- Điều hướng app shell ---- */
+  .nav-item {
+    @apply flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm font-semibold text-muted transition;
+  }
+  .nav-item:hover { color: var(--color-text); background: color-mix(in srgb, var(--color-text) 5%, transparent); }
+  .nav-item[aria-current='page'] {
+    color: var(--color-primary);
+    background: color-mix(in srgb, var(--color-primary) 9%, transparent);
+  }
+  .dark .nav-item[aria-current='page'] { color: color-mix(in srgb, var(--color-primary) 75%, white); }
+
+  .bottom-item { @apply flex flex-col items-center gap-1 pt-2.5 pb-2 text-[10.5px] font-semibold text-muted flex-1 transition active:scale-95; }
+  .bottom-item[aria-current='page'] { color: var(--color-primary); }
+  .dark .bottom-item[aria-current='page'] { color: color-mix(in srgb, var(--color-primary) 78%, white); }
+
+  /* ---- Tab ---- */
+  .tabbtn {
+    @apply shrink-0 px-4 py-3 text-sm font-bold text-muted border-b-2 border-transparent -mb-px transition;
+  }
+  .tabbtn:hover { color: var(--color-text); }
+  .tabbtn[aria-selected='true'] {
+    color: var(--color-primary);
+    border-color: var(--color-primary);
+  }
+  .dark .tabbtn[aria-selected='true'] { color: color-mix(in srgb, var(--color-primary) 78%, white); }
+
+  /* ---- Skeleton (khớp layout, shimmer) ---- */
+  .skeleton {
+    @apply relative overflow-hidden rounded-xl;
+    background: color-mix(in srgb, var(--color-text) 7%, var(--color-card));
+  }
+  .skeleton::after {
+    content: '';
+    @apply absolute inset-0;
+    transform: translateX(-100%);
+    background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--color-card) 60%, transparent), transparent);
+    animation: shimmer 1.6s infinite;
+  }
+
+  /* ---- Toggle switch ---- */
+  .toggle {
+    @apply relative inline-flex h-6 w-11 shrink-0 cursor-pointer appearance-none rounded-full transition;
+    background: color-mix(in srgb, var(--color-text) 18%, var(--color-card));
+  }
+  .toggle::before {
+    content: '';
+    @apply absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow transition;
+  }
+  .toggle:checked { background: var(--color-accent); }
+  .toggle:checked::before { transform: translateX(20px); }
+
+  /* ---- Modal ---- */
+  .modal-backdrop {
+    @apply fixed inset-0 z-50 hidden items-end sm:items-center justify-center p-0 sm:p-6;
+    background: color-mix(in srgb, #060a18 55%, transparent);
+    backdrop-filter: blur(3px);
+  }
+  .modal-backdrop.show { @apply flex; }
+  .modal-panel {
+    @apply w-full sm:max-w-md bg-card border border-line shadow-soft-lg
+           rounded-t-2xl sm:rounded-2xl p-6 sm:p-7;
+    animation: modal-in .28s cubic-bezier(.16,1,.3,1) both;
+  }
+
+  /* ---- Motion nhẹ (fade/slide-in) ---- */
+  .rise { opacity: 0; animation: rise .6s cubic-bezier(.16,1,.3,1) forwards; }
+  .rise-1 { animation-delay: .06s; }
+  .rise-2 { animation-delay: .14s; }
+  .rise-3 { animation-delay: .22s; }
+  .rise-4 { animation-delay: .30s; }
+
+  /* Hào quang nền theo token (hero, panel thương hiệu) */
+  .halo-brand {
+    background:
+      radial-gradient(56rem 30rem at 85% -8%, color-mix(in srgb, var(--color-accent) 14%, transparent), transparent 60%),
+      radial-gradient(48rem 30rem at -10% 30%, color-mix(in srgb, var(--color-primary) 10%, transparent), transparent 55%);
+  }
+  .panel-brand {
+    background:
+      radial-gradient(42rem 26rem at 110% -10%, color-mix(in srgb, var(--color-accent) 30%, transparent), transparent 58%),
+      radial-gradient(40rem 30rem at -20% 110%, color-mix(in srgb, white 12%, transparent), transparent 55%),
+      var(--color-primary);
+  }
+  .dark .panel-brand {
+    background:
+      radial-gradient(42rem 26rem at 110% -10%, color-mix(in srgb, var(--color-accent) 26%, transparent), transparent 58%),
+      color-mix(in srgb, var(--color-primary) 30%, #0b1120);
+  }
+
+  /* Thanh đo nhỏ (độ phủ kỹ năng, độ mạnh mật khẩu…) */
+  .meter {
+    @apply h-2 rounded-full overflow-hidden;
+    background: color-mix(in srgb, var(--color-text) 9%, transparent);
+  }
+  .meter > i {
+    @apply block h-full rounded-full;
+    width: var(--w, 0%);
+    background: var(--color-accent);
+    transition: width .7s cubic-bezier(.16,1,.3,1);
+  }
+
+  /* Ô nhập mã code */
+  .code-input {
+    @apply input text-center font-bold tracking-[.18em] uppercase;
+    font-size: 19px;
+  }
+
+  /* Confetti (redeem thành công) */
+  .confetti-piece {
+    position: fixed;
+    top: -12px;
+    left: var(--cx);
+    width: 8px;
+    height: 13px;
+    border-radius: 2px;
+    background: var(--cc);
+    z-index: 80;
+    pointer-events: none;
+    animation: confetti-fall var(--cd) ease-in forwards;
+  }
+}
+
+@layer utilities {
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+  .text-balance { text-wrap: balance; }
+}
+
+@keyframes shimmer { 100% { transform: translateX(100%); } }
+@keyframes rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+@keyframes modal-in { from { opacity: 0; transform: translateY(18px) scale(.98); } to { opacity: 1; transform: none; } }
+@keyframes confetti-fall {
+  0%   { transform: translateY(-2vh) rotate(0); opacity: 1; }
+  100% { transform: translateY(104vh) rotate(var(--cr)); opacity: .9; }
+}
+@keyframes spin-slow { to { transform: rotate(360deg); } }
+.animate-spin-slow { animation: spin-slow 1s linear infinite; }
+
+/* Ring tiến độ: stroke đổi theo accent */
+.ring-track { stroke: color-mix(in srgb, var(--color-text) 10%, transparent); }
+.ring-val   { stroke: var(--color-accent); transition: stroke-dashoffset .9s cubic-bezier(.16,1,.3,1); }
+
+/* Tắt toàn bộ motion khi người dùng yêu cầu */
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+  }
+  .rise { opacity: 1; animation: none; }
+  .confetti-piece { display: none; }
+}

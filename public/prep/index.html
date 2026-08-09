@@ -1,0 +1,238 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Trang chủ · VPET Prep</title>
+  <meta name="description" content="Tổng quan luyện thi thử: bài thi đã mở khoá, tiến độ và khám phá 6 nhóm chứng chỉ.">
+  <meta name="theme-color" content="#1c3d8f">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="preload" href="/fonts/pjs-700-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/fonts/pjs-400-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/tailwind-built.css">
+  <style>body{font-family:'Plus Jakarta Sans',system-ui,sans-serif}</style>
+  <script>
+    /* Boot: dark mode + tenant trước khi paint (tránh nháy màu) */
+    (function(){try{
+      var t=localStorage.getItem('prep.theme');
+      if(t==='dark'||(!t&&matchMedia('(prefers-color-scheme: dark)').matches))document.documentElement.classList.add('dark');
+      var tn=localStorage.getItem('prep.tenant');
+      if(tn&&tn!=='default')document.documentElement.setAttribute('data-tenant',tn);
+    }catch(e){}})();
+  </script>
+</head>
+<body class="bg-surface text-ink">
+<div id="app" data-active="home" class="min-h-[100dvh]">
+  <main id="main">
+
+    <div class="max-w-shell mx-auto px-4 sm:px-6 lg:px-10">
+
+      <!-- Chào + hành động nhanh -->
+      <section class="mt-8 lg:mt-10 flex flex-wrap items-end gap-4 rise">
+        <div class="min-w-0">
+          <p class="text-sm font-semibold text-muted" id="greet-time">Chào bạn,</p>
+          <h2 class="text-2xl sm:text-[28px] font-extrabold tracking-tight mt-0.5" id="greet-name">Học viên</h2>
+        </div>
+        <div class="ms-auto flex gap-2.5">
+          <a href="/prep/thu-vien/" class="btn btn-primary btn-md" id="cta-library">Vào thư viện đề</a>
+        </div>
+      </section>
+
+      <!-- Lưới chính: Bài thi của bạn + cột phải (tiến độ, mua code) -->
+      <div class="grid lg:grid-cols-12 gap-6 mt-8">
+
+        <!-- Bài thi của bạn -->
+        <section class="lg:col-span-8" aria-labelledby="h-mytests">
+          <div class="flex items-baseline gap-3 mb-4">
+            <h3 id="h-mytests" class="text-lg font-extrabold tracking-tight">Bài thi của bạn</h3>
+            <span id="mytests-count" class="text-sm font-semibold text-muted"></span>
+          </div>
+
+          <!-- Loading skeleton (khớp layout card) -->
+          <div id="mytests-loading" class="grid sm:grid-cols-2 gap-4" aria-hidden="true">
+            <div class="card p-5">
+              <div class="skeleton h-6 w-16 mb-4"></div>
+              <div class="skeleton h-5 w-3/4 mb-2.5"></div>
+              <div class="skeleton h-4 w-1/2 mb-6"></div>
+              <div class="skeleton h-10 w-full rounded-full"></div>
+            </div>
+            <div class="card p-5 hidden sm:block">
+              <div class="skeleton h-6 w-16 mb-4"></div>
+              <div class="skeleton h-5 w-2/3 mb-2.5"></div>
+              <div class="skeleton h-4 w-1/2 mb-6"></div>
+              <div class="skeleton h-10 w-full rounded-full"></div>
+            </div>
+          </div>
+
+          <!-- Danh sách (JS render) -->
+          <div id="mytests-grid" class="grid sm:grid-cols-2 gap-4 hidden"></div>
+
+          <!-- Empty state: chưa mở khoá bài nào -->
+          <div id="mytests-empty" class="card p-8 sm:p-10 hidden text-center sm:text-left">
+            <div class="sm:flex items-center gap-8">
+              <svg viewBox="0 0 160 120" class="w-40 mx-auto sm:mx-0 shrink-0" aria-hidden="true" fill="none">
+                <rect x="22" y="30" width="90" height="64" rx="10" class="fill-[color:var(--color-card)] stroke-[color:var(--color-border)]" stroke-width="2"/>
+                <rect x="34" y="44" width="46" height="7" rx="3.5" fill="color-mix(in srgb, var(--color-primary) 22%, transparent)"/>
+                <rect x="34" y="58" width="62" height="7" rx="3.5" fill="color-mix(in srgb, var(--color-text) 10%, transparent)"/>
+                <rect x="34" y="72" width="30" height="7" rx="3.5" fill="color-mix(in srgb, var(--color-text) 10%, transparent)"/>
+                <circle cx="118" cy="78" r="26" fill="color-mix(in srgb, var(--color-accent) 14%, transparent)"/>
+                <g stroke="var(--color-accent)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="106" y="72" width="24" height="16" rx="4" fill="none"/>
+                  <path d="M111 72v-5a7 7 0 0 1 13.8-1.6"/>
+                </g>
+              </svg>
+              <div class="min-w-0 mt-5 sm:mt-0">
+                <h4 class="font-extrabold text-[17px] tracking-tight">Bạn chưa mở khoá bài thi nào</h4>
+                <p class="text-muted text-[15px] leading-relaxed mt-1.5 max-w-[46ch]">
+                  Nhập code có sẵn để mở khoá ngay, hoặc xem thư viện để chọn bài phù hợp với kỳ thi bạn nhắm tới.
+                </p>
+                <div class="flex flex-wrap justify-center sm:justify-start gap-2.5 mt-5">
+                  <a href="/prep/nhap-code/" class="btn btn-primary btn-md">Nhập code mở khoá</a>
+                  <a href="/prep/thu-vien/" class="btn btn-ghost btn-md">Xem thư viện</a>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Cột phải -->
+        <div class="lg:col-span-4 grid gap-6 content-start">
+
+          <!-- Tiến độ -->
+          <section id="tien-do" class="card p-6 scroll-mt-24" aria-labelledby="h-progress">
+            <h3 id="h-progress" class="font-extrabold tracking-tight">Tiến độ của bạn</h3>
+            <div class="flex items-center gap-6 mt-5">
+              <div class="relative w-[104px] h-[104px] shrink-0">
+                <svg viewBox="0 0 104 104" class="w-full h-full -rotate-90">
+                  <circle cx="52" cy="52" r="45" fill="none" stroke-width="9" class="ring-track"/>
+                  <circle id="ring-main" cx="52" cy="52" r="45" fill="none" stroke-width="9" stroke-linecap="round"
+                          class="ring-val" stroke-dasharray="282.7" stroke-dashoffset="282.7"/>
+                </svg>
+                <span class="absolute inset-0 flex flex-col items-center justify-center">
+                  <b id="ring-num" class="text-xl font-extrabold leading-none">0/0</b>
+                  <span class="text-[10.5px] font-semibold text-muted mt-1">bài mở khoá</span>
+                </span>
+              </div>
+              <p class="text-sm text-muted leading-relaxed" id="progress-note">
+                Mở khoá bài thi để bắt đầu theo dõi tiến độ luyện tập.
+              </p>
+            </div>
+            <div class="grid gap-3.5 mt-6" id="skill-meters"></div>
+          </section>
+
+          <!-- CTA mua thêm code -->
+          <section class="panel-brand rounded-2xl p-6 text-white shadow-soft-lg relative overflow-hidden" aria-labelledby="h-buy">
+            <span class="absolute -right-7 -bottom-8 opacity-15 pointer-events-none" aria-hidden="true">
+              <svg viewBox="0 0 24 24" class="w-40 h-40" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M2 9.5a2.5 2.5 0 0 1 0 5V17a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2.5a2.5 2.5 0 0 1 0-5V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z"/></svg>
+            </span>
+            <h3 id="h-buy" class="font-extrabold tracking-tight text-lg">Cần thêm bài luyện?</h3>
+            <p class="text-sm leading-relaxed mt-1.5 text-white/85 max-w-[34ch]">Mua code theo bài lẻ hoặc trọn gói kỳ thi, kích hoạt là vào luyện ngay.</p>
+            <a href="/prep/mua-code/" class="btn btn-on-brand btn-md mt-5">Mua thêm code</a>
+          </section>
+        </div>
+      </div>
+
+      <!-- Khám phá theo kỳ thi -->
+      <section class="mt-12 mb-4" aria-labelledby="h-explore">
+        <h3 id="h-explore" class="text-lg font-extrabold tracking-tight mb-4">Khám phá theo kỳ thi</h3>
+        <div id="family-grid" class="grid grid-cols-2 md:grid-cols-3 gap-4"></div>
+      </section>
+    </div>
+  </main>
+</div>
+
+<script src="/prep/_mock.js"></script>
+<script src="/prep/_chrome.js"></script>
+<script>
+  // Guard client (mock) — TODO(backend/auth): guard thật ở server
+  if (PrepAuth.require()) {
+    PrepChrome.mount({ title: 'Trang chủ' });
+    const user = PrepState.user();
+
+    /* Chào theo buổi */
+    const h = new Date().getHours();
+    PREP.qs('#greet-time').textContent = h < 11 ? 'Chào buổi sáng,' : h < 18 ? 'Chào buổi chiều,' : 'Chào buổi tối,';
+    PREP.qs('#greet-name').textContent = user.name;
+
+    /* Bài thi của bạn — TODO(backend): GET /api/me/tests */
+    const grid = PREP.qs('#mytests-grid');
+    const empty = PREP.qs('#mytests-empty');
+    const loading = PREP.qs('#mytests-loading');
+
+    function testCard(t) {
+      const fam = PREP.family(t.familyId);
+      const meta = [];
+      meta.push(PREP.icon('layers', 'w-4 h-4') + t.sections.length + ' phần');
+      meta.push(PREP.icon('clock', 'w-4 h-4') + t.durationMin + ' phút');
+      return '<article class="card card-hover p-5 flex flex-col">' +
+        '<div class="flex items-center gap-2 mb-3.5">' +
+          '<span class="exam-chip" data-family="' + fam.id + '">' + fam.name + '</span>' +
+          '<span class="badge badge-muted">' + t.level + '</span>' +
+          (t.comingSoon ? '<span class="badge badge-hl ms-auto">Sắp có</span>' : '') +
+        '</div>' +
+        '<h4 class="font-bold text-[16px] leading-snug">' + PREP.esc(t.title) + '</h4>' +
+        '<p class="flex items-center gap-4 text-[13px] font-semibold text-muted mt-2 mb-5">' +
+          meta.map(m => '<span class="inline-flex items-center gap-1.5">' + m + '</span>').join('') +
+        '</p>' +
+        '<a href="/prep/bai-thi/' + t.id + '/" class="btn btn-soft btn-md mt-auto w-full">' +
+          PREP.icon('play', 'w-4 h-4') + 'Vào chuẩn bị</a>' +
+      '</article>';
+    }
+
+    setTimeout(() => {                       // giả lập tải — TODO(backend): fetch thật
+      loading.classList.add('hidden');
+      const mine = PrepState.unlockedTests();
+      if (mine.length) {
+        grid.innerHTML = mine.map(testCard).join('');
+        grid.classList.remove('hidden');
+        PREP.qs('#mytests-count').textContent = mine.length + ' bài đã mở khoá';
+      } else {
+        empty.classList.remove('hidden');
+      }
+    }, 600);
+
+    /* Ring: số bài đã mở khoá / tổng số bài đang có */
+    const total = PREP.tests.length;
+    const mineN = PrepState.unlockedTests().length;
+    PREP.qs('#ring-num').textContent = mineN + '/' + total;
+    const C = 282.7;
+    requestAnimationFrame(() => {
+      PREP.qs('#ring-main').setAttribute('stroke-dashoffset', String(C * (1 - (total ? mineN / total : 0))));
+    });
+    if (mineN) PREP.qs('#progress-note').textContent =
+      'Bạn đã sẵn sàng với ' + mineN + ' bài. Đề sẽ mở làm ngay khi phát hành.';
+
+    /* Độ phủ kỹ năng theo bài đã mở khoá */
+    const SKILLS = [['listening','Nghe','headphones'],['reading','Đọc','book'],['writing','Viết','pen'],['speaking','Nói','mic']];
+    const mine = PrepState.unlockedTests();
+    PREP.qs('#skill-meters').innerHTML = SKILLS.map(([k, vi, ic]) => {
+      const n = mine.filter(t => t.skills.includes(k)).length;
+      const max = PREP.tests.filter(t => t.skills.includes(k)).length || 1;
+      return '<div>' +
+        '<div class="flex items-center justify-between text-[13px] font-semibold mb-1.5">' +
+          '<span class="inline-flex items-center gap-2 text-muted">' + PREP.icon(ic, 'w-4 h-4') + vi + '</span>' +
+          '<span>' + n + ' bài</span>' +
+        '</div>' +
+        '<div class="meter"><i data-w="' + Math.round(n / max * 100) + '"></i></div>' +
+      '</div>';
+    }).join('');
+    PREP.qsa('#skill-meters i[data-w]').forEach(el => {
+      requestAnimationFrame(() => el.style.setProperty('--w', el.getAttribute('data-w') + '%'));
+    });
+
+    /* Khám phá theo kỳ thi */
+    PREP.qs('#family-grid').innerHTML = PREP.families.map(f => {
+      const n = PREP.testsOf(f.id).length;
+      return '<a href="/prep/thu-vien/?family=' + f.id + '" class="card card-hover p-5 group">' +
+        '<span class="exam-chip" data-family="' + f.id + '">' + f.name + '</span>' +
+        '<p class="text-[13.5px] text-muted leading-relaxed mt-3 min-h-[40px]">' + PREP.esc(f.format) + '</p>' +
+        '<p class="flex items-center justify-between text-sm font-bold mt-3">' +
+          (n ? '<span>' + n + ' bài thi thử</span>' : '<span class="badge badge-hl">Sắp có</span>') +
+          '<span class="text-accent-strong opacity-0 group-hover:opacity-100 transition">' + PREP.icon('arrowRight', 'w-5 h-5') + '</span>' +
+        '</p>' +
+      '</a>';
+    }).join('');
+  }
+</script>
+</body>
+</html>

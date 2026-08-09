@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Xác thực email · VPET Prep</title>
+  <meta name="description" content="Xác thực email để hoàn tất đăng ký VPET Prep.">
+  <meta name="theme-color" content="#1c3d8f">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="preload" href="/fonts/pjs-700-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/fonts/pjs-400-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/tailwind-built.css">
+  <style>body{font-family:'Plus Jakarta Sans',system-ui,sans-serif}</style>
+  <script>
+    (function(){try{
+      var t=localStorage.getItem('prep.theme');
+      if(t==='dark'||(!t&&matchMedia('(prefers-color-scheme: dark)').matches))document.documentElement.classList.add('dark');
+      var tn=localStorage.getItem('prep.tenant');
+      if(tn&&tn!=='default')document.documentElement.setAttribute('data-tenant',tn);
+    }catch(e){}})();
+  </script>
+</head>
+<body class="bg-surface text-ink">
+
+<div class="min-h-[100dvh] flex flex-col px-4 py-7">
+  <a href="/prep/landing/" class="flex items-center gap-2.5 self-start sm:ms-6" aria-label="Về trang giới thiệu">
+    <span class="inline-flex items-center justify-center rounded-xl text-white panel-brand w-9 h-9">
+      <svg viewBox="0 0 24 24" class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21.4 10.9a1 1 0 0 0 0-1.8L12.8 5.2a2 2 0 0 0-1.6 0L2.6 9.1a1 1 0 0 0 0 1.8l8.6 3.9a2 2 0 0 0 1.6 0Z"/><path d="M22 10.5V16"/><path d="M6 12.5V16a6 3 0 0 0 12 0v-3.5"/></svg>
+    </span>
+    <b data-brand-name class="font-extrabold tracking-tight text-[17px]">VPET Prep</b>
+  </a>
+
+  <div class="w-full max-w-md mx-auto my-auto py-10 text-center">
+    <span class="relative w-20 h-20 rounded-2xl bg-brand-soft text-brand-strong inline-flex items-center justify-center rise">
+      <svg viewBox="0 0 24 24" class="w-10 h-10" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="16" x="2" y="4" rx="2.5"/><path d="m22 7-9 5.6a2 2 0 0 1-2 0L2 7"/></svg>
+      <span class="absolute -right-1.5 -top-1.5 w-6 h-6 rounded-full bg-[color:var(--color-hl)] text-[color:var(--color-hl-ink)] text-[12px] font-extrabold inline-flex items-center justify-center">1</span>
+    </span>
+
+    <h1 class="text-3xl font-extrabold tracking-tight mt-6 rise rise-1">Còn một bước nữa</h1>
+    <p class="text-muted text-[15px] leading-relaxed mt-3 rise rise-2">
+      Mình vừa gửi liên kết xác thực tới<br><b id="v-email" class="text-ink">email của bạn</b>.<br>
+      Mở email và bấm vào liên kết để kích hoạt tài khoản.
+    </p>
+
+    <div class="grid gap-2.5 mt-8 rise rise-3">
+      <!-- Demo: nút này thay cho việc bấm link trong email thật -->
+      <button type="button" id="verified" class="btn btn-primary btn-lg w-full">Tôi đã xác thực xong</button>
+      <button type="button" id="resend" class="btn btn-ghost btn-md w-full">Gửi lại email</button>
+    </div>
+
+    <div id="resent-note" class="banner banner-success mt-5 text-left" role="status" aria-live="polite">
+      <svg viewBox="0 0 24 24" class="w-5 h-5 shrink-0 mt-0.5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+      <span>Đã gửi lại. Kiểm tra hộp thư đến và mục spam nhé.</span>
+    </div>
+
+    <p class="text-[13.5px] font-medium text-muted mt-8">
+      Sai địa chỉ email? <a href="/prep/dang-ky/" class="font-bold text-brand-strong hover:underline">Đăng ký lại</a>
+    </p>
+    <p class="text-[12px] text-muted/75 mt-4">Bản demo giao diện: email xác thực chưa được gửi thật.</p>
+  </div>
+</div>
+
+<script src="/prep/_mock.js"></script>
+<script>
+  /* Slot brand tenant (white-label) */
+  (function () {
+    const t = PREP.tenants.find(x => x.id === PrepTheme.tenant()) || PREP.tenants[0];
+    PREP.qsa('[data-brand-name]').forEach(el => { el.textContent = t.name; });
+  })();
+
+  /* TODO(backend/auth): trạng thái xác thực do server quyết định qua token trong email */
+  const qEmail = new URLSearchParams(location.search).get('email');
+  const u = PrepState.user();
+  PREP.qs('#v-email').textContent = qEmail || (u && u.email) || 'email của bạn';
+
+  /* Gửi lại + đếm ngược 30s */
+  const resend = PREP.qs('#resend'), note = PREP.qs('#resent-note');
+  let timer = null;
+  resend.addEventListener('click', () => {
+    note.classList.add('show');
+    let left = 30;
+    resend.disabled = true;
+    const tick = () => {
+      resend.textContent = 'Gửi lại sau ' + left + 's';
+      if (left-- <= 0) {
+        clearInterval(timer);
+        resend.disabled = false;
+        resend.textContent = 'Gửi lại email';
+        note.classList.remove('show');
+      }
+    };
+    tick();
+    timer = setInterval(tick, 1000);
+  });
+
+  PREP.qs('#verified').addEventListener('click', () => {
+    if (PrepState.user()) {
+      PrepAuth.markVerified();
+      location.href = '/prep/';
+    } else {
+      location.href = '/prep/dang-ky/';
+    }
+  });
+</script>
+</body>
+</html>

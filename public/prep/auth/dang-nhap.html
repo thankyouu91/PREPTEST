@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Đăng nhập · VPET Prep</title>
+  <meta name="description" content="Đăng nhập VPET Prep để tiếp tục luyện thi thử.">
+  <meta name="theme-color" content="#1c3d8f">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="preload" href="/fonts/pjs-700-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/fonts/pjs-400-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/tailwind-built.css">
+  <style>body{font-family:'Plus Jakarta Sans',system-ui,sans-serif}</style>
+  <script>
+    (function(){try{
+      var t=localStorage.getItem('prep.theme');
+      if(t==='dark'||(!t&&matchMedia('(prefers-color-scheme: dark)').matches))document.documentElement.classList.add('dark');
+      var tn=localStorage.getItem('prep.tenant');
+      if(tn&&tn!=='default')document.documentElement.setAttribute('data-tenant',tn);
+    }catch(e){}})();
+  </script>
+</head>
+<body class="bg-surface text-ink">
+
+<div class="min-h-[100dvh] grid lg:grid-cols-2">
+
+  <!-- ===== Cột form ===== -->
+  <div class="flex flex-col px-4 sm:px-10 py-7">
+    <a href="/prep/landing/" class="flex items-center gap-2.5 self-start" aria-label="Về trang giới thiệu">
+      <span class="inline-flex items-center justify-center rounded-xl text-white panel-brand w-9 h-9">
+        <svg viewBox="0 0 24 24" class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21.4 10.9a1 1 0 0 0 0-1.8L12.8 5.2a2 2 0 0 0-1.6 0L2.6 9.1a1 1 0 0 0 0 1.8l8.6 3.9a2 2 0 0 0 1.6 0Z"/><path d="M22 10.5V16"/><path d="M6 12.5V16a6 3 0 0 0 12 0v-3.5"/></svg>
+      </span>
+      <b data-brand-name class="font-extrabold tracking-tight text-[17px]">VPET Prep</b>
+    </a>
+
+    <div class="w-full max-w-md mx-auto my-auto py-10">
+      <h1 class="text-3xl font-extrabold tracking-tight rise">Mừng bạn quay lại</h1>
+      <p class="text-muted text-[15px] leading-relaxed mt-2 rise rise-1">Đăng nhập để tiếp tục luyện đề của bạn.</p>
+
+      <div id="form-banner" class="banner banner-error mt-6" role="alert" aria-live="polite">
+        <svg viewBox="0 0 24 24" class="w-5 h-5 shrink-0 mt-0.5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>
+        <span id="form-banner-text"></span>
+      </div>
+
+      <form id="f" class="grid gap-5 mt-7" novalidate>
+        <div>
+          <label class="label" for="email">Email</label>
+          <input class="input" id="email" name="email" type="email" autocomplete="email" placeholder="ban@truong.edu.vn" required>
+          <p class="field-error" id="err-email">Email chưa đúng định dạng.</p>
+        </div>
+        <div>
+          <div class="flex items-baseline justify-between mb-1.5">
+            <label class="label mb-0" for="password">Mật khẩu</label>
+            <a href="/prep/quen-mat-khau/" class="text-[13px] font-bold text-brand-strong hover:underline">Quên mật khẩu?</a>
+          </div>
+          <div class="relative">
+            <input class="input pe-12" id="password" name="password" type="password" autocomplete="current-password" placeholder="Mật khẩu của bạn" required>
+            <button type="button" id="toggle-pass" class="absolute inset-y-0 right-0 px-3.5 text-muted hover:text-ink transition" aria-label="Hiện mật khẩu" aria-pressed="false"></button>
+          </div>
+          <p class="field-error" id="err-password">Nhập mật khẩu để đăng nhập.</p>
+        </div>
+        <label class="flex items-center gap-3 text-[14px] font-medium text-muted select-none">
+          <input type="checkbox" id="remember" checked class="w-4 h-4 rounded accent-[color:var(--color-accent)]">
+          Ghi nhớ đăng nhập trên máy này
+        </label>
+        <button type="submit" id="submit" class="btn btn-primary btn-lg w-full mt-1">Đăng nhập</button>
+      </form>
+
+      <p class="text-[14.5px] font-medium text-muted mt-7">
+        Chưa có tài khoản? <a href="/prep/dang-ky/" class="font-bold text-brand-strong hover:underline">Đăng ký miễn phí</a>
+      </p>
+      <p class="text-[12px] text-muted/75 mt-6">Bản demo giao diện: đăng nhập bằng email bất kỳ, dữ liệu chỉ lưu trên trình duyệt.</p>
+    </div>
+  </div>
+
+  <!-- ===== Panel thương hiệu ===== -->
+  <aside class="hidden lg:flex flex-col justify-between panel-brand text-white p-12 xl:p-16" aria-hidden="true">
+    <div class="max-w-md">
+      <h2 class="text-3xl xl:text-4xl font-extrabold tracking-tight leading-tight text-balance">Bài luyện của bạn vẫn đang đợi.</h2>
+      <p class="text-white/85 text-[15.5px] leading-relaxed mt-4 max-w-[40ch]">Tiến độ, code đã kích hoạt và phân tích kỹ năng đều nằm trong tài khoản của bạn.</p>
+    </div>
+    <div class="card bg-white/10 border-white/15 p-6 max-w-md backdrop-blur-sm">
+      <div class="flex items-center gap-2 mb-4">
+        <span class="exam-chip" data-family="toeic">TOEIC</span>
+        <span class="badge badge-ok ms-auto">Đã mở khoá</span>
+      </div>
+      <p class="font-bold">TOEIC Listening &amp; Reading 01</p>
+      <p class="text-[13px] text-white/70 font-semibold mt-1">Tiếp tục từ Part 5</p>
+      <span class="btn btn-on-brand btn-sm mt-4 pointer-events-none">Tiếp tục luyện</span>
+    </div>
+  </aside>
+</div>
+
+<script src="/prep/_mock.js"></script>
+<script>
+  /* Slot brand tenant (white-label) */
+  (function () {
+    const t = PREP.tenants.find(x => x.id === PrepTheme.tenant()) || PREP.tenants[0];
+    PREP.qsa('[data-brand-name]').forEach(el => { el.textContent = t.name; });
+  })();
+
+  const pass = PREP.qs('#password'), tg = PREP.qs('#toggle-pass');
+  const setEye = show => { tg.innerHTML = PREP.icon(show ? 'eyeOff' : 'eye', 'w-5 h-5'); };
+  setEye(false);
+  tg.addEventListener('click', () => {
+    const show = pass.type === 'password';
+    pass.type = show ? 'text' : 'password';
+    tg.setAttribute('aria-pressed', String(show));
+    tg.setAttribute('aria-label', show ? 'Ẩn mật khẩu' : 'Hiện mật khẩu');
+    setEye(show);
+  });
+
+  /* Submit — TODO(backend/auth): POST /api/auth/login + session cookie */
+  const f = PREP.qs('#f'), btn = PREP.qs('#submit');
+  const banner = PREP.qs('#form-banner'), bannerText = PREP.qs('#form-banner-text');
+  const mark = (id, bad) => {
+    PREP.qs('#err-' + id).classList.toggle('show', bad);
+    PREP.qs('#' + id).classList.toggle('input-invalid', bad);
+  };
+  ['email','password'].forEach(id => PREP.qs('#' + id).addEventListener('input', () => mark(id, false)));
+
+  f.addEventListener('submit', ev => {
+    ev.preventDefault();
+    banner.classList.remove('show');
+    const email = PREP.qs('#email').value.trim();
+    let bad = false;
+    mark('email', !PREP.validEmail(email)); bad = bad || !PREP.validEmail(email);
+    mark('password', !pass.value); bad = bad || !pass.value;
+    if (bad) return;
+
+    btn.disabled = true;
+    btn.innerHTML = PREP.icon('loader', 'w-5 h-5 animate-spin-slow') + 'Đang đăng nhập';
+    setTimeout(() => {
+      // Demo trạng thái lỗi: gõ mật khẩu "saimatkhau" để xem banner lỗi
+      if (pass.value === 'saimatkhau') {
+        btn.disabled = false; btn.textContent = 'Đăng nhập';
+        bannerText.textContent = 'Email hoặc mật khẩu không đúng. Thử lại nhé.';
+        banner.classList.add('show');
+        return;
+      }
+      PrepAuth.login(email);
+      const next = new URLSearchParams(location.search).get('next');
+      location.href = next && next.startsWith('/prep') ? next : '/prep/';
+    }, 800);
+  });
+</script>
+</body>
+</html>

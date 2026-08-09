@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Đăng ký · VPET Prep</title>
+  <meta name="description" content="Tạo tài khoản VPET Prep miễn phí để luyện thi thử 6 chứng chỉ tiếng Anh.">
+  <meta name="theme-color" content="#1c3d8f">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="preload" href="/fonts/pjs-700-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/fonts/pjs-400-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/tailwind-built.css">
+  <style>body{font-family:'Plus Jakarta Sans',system-ui,sans-serif}</style>
+  <script>
+    (function(){try{
+      var t=localStorage.getItem('prep.theme');
+      if(t==='dark'||(!t&&matchMedia('(prefers-color-scheme: dark)').matches))document.documentElement.classList.add('dark');
+      var tn=localStorage.getItem('prep.tenant');
+      if(tn&&tn!=='default')document.documentElement.setAttribute('data-tenant',tn);
+    }catch(e){}})();
+  </script>
+</head>
+<body class="bg-surface text-ink">
+
+<div class="min-h-[100dvh] grid lg:grid-cols-2">
+
+  <!-- ===== Cột form ===== -->
+  <div class="flex flex-col px-4 sm:px-10 py-7">
+    <a href="/prep/landing/" class="flex items-center gap-2.5 self-start" aria-label="Về trang giới thiệu">
+      <span class="inline-flex items-center justify-center rounded-xl text-white panel-brand w-9 h-9">
+        <svg viewBox="0 0 24 24" class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21.4 10.9a1 1 0 0 0 0-1.8L12.8 5.2a2 2 0 0 0-1.6 0L2.6 9.1a1 1 0 0 0 0 1.8l8.6 3.9a2 2 0 0 0 1.6 0Z"/><path d="M22 10.5V16"/><path d="M6 12.5V16a6 3 0 0 0 12 0v-3.5"/></svg>
+      </span>
+      <b data-brand-name class="font-extrabold tracking-tight text-[17px]">VPET Prep</b>
+    </a>
+
+    <div class="w-full max-w-md mx-auto my-auto py-10">
+      <h1 class="text-3xl font-extrabold tracking-tight rise">Tạo tài khoản</h1>
+      <p class="text-muted text-[15px] leading-relaxed mt-2 rise rise-1">Miễn phí, chỉ mất một phút. Mở khoá bài thi khi bạn sẵn sàng.</p>
+
+      <div id="form-banner" class="banner banner-error mt-6" role="alert" aria-live="polite">
+        <svg viewBox="0 0 24 24" class="w-5 h-5 shrink-0 mt-0.5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>
+        <span id="form-banner-text"></span>
+      </div>
+
+      <form id="f" class="grid gap-5 mt-7" novalidate>
+        <div>
+          <label class="label" for="name">Họ và tên</label>
+          <input class="input" id="name" name="name" type="text" autocomplete="name" placeholder="Nguyễn Ngọc Ánh" required>
+          <p class="field-error" id="err-name">Cho mình biết tên của bạn nhé.</p>
+        </div>
+        <div>
+          <label class="label" for="email">Email</label>
+          <input class="input" id="email" name="email" type="email" autocomplete="email" placeholder="ban@truong.edu.vn" required>
+          <p class="field-error" id="err-email">Email chưa đúng định dạng.</p>
+        </div>
+        <div>
+          <label class="label" for="password">Mật khẩu</label>
+          <div class="relative">
+            <input class="input pe-12" id="password" name="password" type="password" autocomplete="new-password" placeholder="Tối thiểu 8 ký tự" required>
+            <button type="button" id="toggle-pass" class="absolute inset-y-0 right-0 px-3.5 text-muted hover:text-ink transition" aria-label="Hiện mật khẩu" aria-pressed="false"></button>
+          </div>
+          <div class="flex items-center gap-2 mt-2.5" id="strength" hidden>
+            <span class="meter flex-1" aria-hidden="true"><i id="strength-bar"></i></span>
+            <b id="strength-label" class="text-[12px] font-bold text-muted w-20 text-right"></b>
+          </div>
+          <p class="field-error" id="err-password">Mật khẩu cần tối thiểu 8 ký tự.</p>
+        </div>
+        <fieldset>
+          <legend class="label">Kỳ thi bạn quan tâm <span class="font-medium text-muted">(chọn nhiều)</span></legend>
+          <div id="interests" class="flex flex-wrap gap-2 mt-1"></div>
+        </fieldset>
+        <label class="flex items-start gap-3 text-[14px] font-medium text-muted select-none">
+          <input type="checkbox" id="terms" class="mt-0.5 w-4 h-4 rounded accent-[color:var(--color-accent)]">
+          <span>Tôi đồng ý với <b class="text-ink">Điều khoản sử dụng</b> và <b class="text-ink">Chính sách quyền riêng tư</b>.</span>
+        </label>
+        <p class="field-error -mt-2" id="err-terms">Bạn cần đồng ý điều khoản để tiếp tục.</p>
+
+        <button type="submit" id="submit" class="btn btn-primary btn-lg w-full mt-1">Tạo tài khoản</button>
+      </form>
+
+      <p class="text-[14.5px] font-medium text-muted mt-7">
+        Đã có tài khoản? <a href="/prep/dang-nhap/" class="font-bold text-brand-strong hover:underline">Đăng nhập</a>
+      </p>
+      <p class="text-[12px] text-muted/75 mt-6">Bản demo giao diện: dữ liệu chỉ lưu trên trình duyệt của bạn.</p>
+    </div>
+  </div>
+
+  <!-- ===== Panel thương hiệu (ẩn trên mobile) ===== -->
+  <aside class="hidden lg:flex flex-col justify-between panel-brand text-white p-12 xl:p-16" aria-hidden="true">
+    <div class="max-w-md">
+      <h2 class="text-3xl xl:text-4xl font-extrabold tracking-tight leading-tight text-balance">Quen đề trước, <i class="font-extrabold">tự tin</i> sau.</h2>
+      <ul class="grid gap-4 mt-9 text-[15.5px] font-medium text-white/90">
+        <li class="flex items-center gap-3.5">
+          <span class="w-9 h-9 rounded-xl bg-white/15 inline-flex items-center justify-center shrink-0"><svg viewBox="0 0 24 24" class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg></span>
+          Đề bám sát format 6 chứng chỉ
+        </li>
+        <li class="flex items-center gap-3.5">
+          <span class="w-9 h-9 rounded-xl bg-white/15 inline-flex items-center justify-center shrink-0"><svg viewBox="0 0 24 24" class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 3 14h9l-1 8 10-12h-9Z"/></svg></span>
+          Chấm tự động, kết quả tức thì
+        </li>
+        <li class="flex items-center gap-3.5">
+          <span class="w-9 h-9 rounded-xl bg-white/15 inline-flex items-center justify-center shrink-0"><svg viewBox="0 0 24 24" class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-4"/></svg></span>
+          Phân tích điểm yếu 4 kỹ năng
+        </li>
+      </ul>
+    </div>
+    <figure class="card bg-white/10 border-white/15 p-6 max-w-md backdrop-blur-sm">
+      <blockquote class="text-[15px] leading-relaxed text-white/95">"Nhập code của lớp là có ngay bộ đề đúng kỳ thi trường yêu cầu. Đỡ hẳn khâu đi tìm đề trôi nổi."</blockquote>
+      <figcaption class="text-[13px] font-semibold text-white/70 mt-3.5">Lời chứng minh hoạ</figcaption>
+    </figure>
+  </aside>
+</div>
+
+<script src="/prep/_mock.js"></script>
+<script>
+  /* Slot brand tenant (white-label) */
+  (function () {
+    const t = PREP.tenants.find(x => x.id === PrepTheme.tenant()) || PREP.tenants[0];
+    PREP.qsa('[data-brand-name]').forEach(el => { el.textContent = t.name; });
+  })();
+
+  /* Chip kỳ thi quan tâm */
+  const box = PREP.qs('#interests');
+  box.innerHTML = PREP.families.map(f =>
+    '<button type="button" class="chip" data-fam="' + f.id + '" aria-pressed="false">' + f.name + '</button>').join('');
+  box.addEventListener('click', e => {
+    const b = e.target.closest('[data-fam]');
+    if (b) b.setAttribute('aria-pressed', b.getAttribute('aria-pressed') !== 'true');
+  });
+
+  /* Hiện/ẩn mật khẩu */
+  const pass = PREP.qs('#password'), tg = PREP.qs('#toggle-pass');
+  const setEye = show => { tg.innerHTML = PREP.icon(show ? 'eyeOff' : 'eye', 'w-5 h-5'); };
+  setEye(false);
+  tg.addEventListener('click', () => {
+    const show = pass.type === 'password';
+    pass.type = show ? 'text' : 'password';
+    tg.setAttribute('aria-pressed', String(show));
+    tg.setAttribute('aria-label', show ? 'Ẩn mật khẩu' : 'Hiện mật khẩu');
+    setEye(show);
+  });
+
+  /* Thanh đo độ mạnh mật khẩu (client-side) */
+  const sWrap = PREP.qs('#strength'), sBar = PREP.qs('#strength-bar'), sLab = PREP.qs('#strength-label');
+  const S = [['Quá yếu','#c23a52',10],['Yếu','#c23a52',25],['Trung bình','#b98900',50],['Khá','var(--color-accent)',75],['Mạnh','var(--color-success)',100]];
+  pass.addEventListener('input', () => {
+    if (!pass.value) { sWrap.setAttribute('hidden',''); return; }
+    sWrap.removeAttribute('hidden');
+    const n = PREP.passStrength(pass.value);
+    sBar.style.setProperty('--w', S[n][2] + '%');
+    sBar.style.background = S[n][1];
+    sLab.textContent = S[n][0];
+  });
+
+  /* Validate + submit — TODO(backend/auth): POST /api/auth/register */
+  const f = PREP.qs('#f'), btn = PREP.qs('#submit');
+  const banner = PREP.qs('#form-banner'), bannerText = PREP.qs('#form-banner-text');
+  const mark = (id, bad) => {
+    PREP.qs('#err-' + id).classList.toggle('show', bad);
+    const el = PREP.qs('#' + id);
+    if (el && el.classList.contains('input')) el.classList.toggle('input-invalid', bad);
+  };
+  ['name','email','password'].forEach(id =>
+    PREP.qs('#' + id).addEventListener('input', () => mark(id, false)));
+
+  f.addEventListener('submit', ev => {
+    ev.preventDefault();
+    banner.classList.remove('show');
+    const name = PREP.qs('#name').value.trim();
+    const email = PREP.qs('#email').value.trim();
+    let bad = false;
+    mark('name', !name); bad = bad || !name;
+    mark('email', !PREP.validEmail(email)); bad = bad || !PREP.validEmail(email);
+    mark('password', pass.value.length < 8); bad = bad || pass.value.length < 8;
+    const terms = PREP.qs('#terms').checked;
+    mark('terms', !terms); bad = bad || !terms;
+    if (bad) return;
+
+    btn.disabled = true;
+    btn.innerHTML = PREP.icon('loader', 'w-5 h-5 animate-spin-slow') + 'Đang tạo tài khoản';
+    setTimeout(() => {                                   // giả lập gọi API
+      // Demo trạng thái lỗi server: dùng email bắt đầu bằng "test-loi@"
+      if (/^test-loi@/i.test(email)) {
+        btn.disabled = false; btn.textContent = 'Tạo tài khoản';
+        bannerText.textContent = 'Email này đã được đăng ký. Thử đăng nhập hoặc dùng email khác.';
+        banner.classList.add('show');
+        return;
+      }
+      const interests = PREP.qsa('[data-fam][aria-pressed="true"]').map(b => b.getAttribute('data-fam'));
+      PrepAuth.register({ name, email, interests });
+      location.href = '/prep/xac-thuc-email/?email=' + encodeURIComponent(email);
+    }, 900);
+  });
+</script>
+</body>
+</html>

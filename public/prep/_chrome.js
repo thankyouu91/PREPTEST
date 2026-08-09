@@ -1,0 +1,168 @@
+/* ============================================================
+   VPET Prep — CHROME dùng chung cho các trang trong app
+   (sidebar desktop · topbar · bottom-nav mobile · dark mode ·
+    tenant switcher white-label · toast)
+
+   Trang dùng shell khai báo:
+     <div id="app" data-active="home|library|codes|progress|account">
+       <main id="main"> ...nội dung... </main>
+     </div>
+   rồi gọi PrepChrome.mount({ title: 'Tên trang' }).
+   ============================================================ */
+
+const PrepChrome = {
+  NAV: [
+    { key: 'home',     label: 'Trang chủ',   icon: 'home',    href: '/prep/' },
+    { key: 'library',  label: 'Thư viện',    icon: 'library', href: '/prep/thu-vien/' },
+    { key: 'codes',    label: 'Code của tôi', icon: 'ticket', href: '/prep/code-cua-toi/' },
+    { key: 'progress', label: 'Tiến độ',     icon: 'chart',   href: '/prep/#tien-do' },
+    { key: 'account',  label: 'Hồ sơ',       icon: 'user',    href: '/prep/tai-khoan/' }
+  ],
+
+  brandHTML(sizeCls) {
+    return '<span class="inline-flex items-center justify-center rounded-xl text-white panel-brand shrink-0 ' + (sizeCls || 'w-10 h-10') + '">' +
+      PREP.icon('cap', 'w-[58%] h-[58%]') + '</span>';
+  },
+
+  tenantName() {
+    const t = PREP.tenants.find(x => x.id === PrepTheme.tenant());
+    return t ? t.name : PREP.tenants[0].name;
+  },
+
+  mount(opts) {
+    opts = opts || {};
+    const app = PREP.qs('#app');
+    const main = PREP.qs('#main');
+    if (!app || !main) return;
+    const active = app.getAttribute('data-active') || 'home';
+    const user = PrepState.user() || { name: 'Học viên', email: '' };
+    const initials = user.name.trim().split(/\s+/).map(w => w[0]).slice(-2).join('').toUpperCase() || 'HV';
+
+    /* ---------- Sidebar (desktop) ---------- */
+    const nav = this.NAV.map(n =>
+      '<a href="' + n.href + '" class="nav-item" ' + (n.key === active ? 'aria-current="page"' : '') + '>' +
+      PREP.icon(n.icon, 'w-5 h-5 shrink-0') + '<span>' + n.label + '</span></a>'
+    ).join('');
+
+    const aside =
+      '<aside class="hidden lg:flex flex-col fixed inset-y-0 left-0 w-[268px] z-40 border-r border-line bg-card px-5 py-6" aria-label="Điều hướng chính">' +
+        '<a href="/prep/" class="flex items-center gap-3 px-1.5 mb-8">' +
+          this.brandHTML('w-11 h-11') +
+          '<span class="leading-tight"><span data-brand-name class="block font-extrabold tracking-tight text-[17px]">' + PREP.esc(this.tenantName()) + '</span>' +
+          '<span class="block text-xs text-muted font-medium">Luyện thi thử chứng chỉ</span></span>' +
+        '</a>' +
+        '<nav class="grid gap-1.5" aria-label="Menu">' + nav + '</nav>' +
+        '<a href="/prep/nhap-code/" class="btn btn-soft btn-md mt-6 justify-start gap-3">' + PREP.icon('plus', 'w-5 h-5') + 'Nhập code mở khoá</a>' +
+        '<div class="mt-auto pt-6 grid gap-4">' +
+          '<div class="flex items-center gap-2">' +
+            '<button type="button" data-dark-toggle class="btn btn-ghost btn-sm flex-1" aria-label="Bật tắt chế độ tối"><span data-dark-icon></span><span data-dark-label>Chế độ tối</span></button>' +
+            '<div class="relative">' +
+              '<button type="button" data-tenant-btn class="btn btn-ghost btn-sm" aria-label="Đổi thương hiệu tenant" aria-haspopup="true" aria-expanded="false">' + PREP.icon('palette', 'w-4 h-4') + '</button>' +
+              '<div data-tenant-menu hidden class="absolute bottom-11 right-0 w-52 card p-2 z-50"></div>' +
+            '</div>' +
+          '</div>' +
+          '<div class="flex items-center gap-3 border-t border-line pt-4 px-1">' +
+            '<span class="w-10 h-10 rounded-full bg-brand-soft text-brand-strong font-bold text-sm inline-flex items-center justify-center">' + PREP.esc(initials) + '</span>' +
+            '<span class="min-w-0 flex-1 leading-tight">' +
+              '<span class="block text-sm font-bold truncate">' + PREP.esc(user.name) + '</span>' +
+              '<span class="block text-xs text-muted truncate">' + PREP.esc(user.email) + '</span>' +
+            '</span>' +
+            '<button type="button" data-logout class="p-2 rounded-full text-muted hover:text-danger transition" aria-label="Đăng xuất">' + PREP.icon('logout', 'w-5 h-5') + '</button>' +
+          '</div>' +
+        '</div>' +
+      '</aside>';
+
+    /* ---------- Topbar ---------- */
+    const topbar =
+      '<header class="sticky top-0 z-30 border-b border-line bg-[color:var(--color-surface)]/85 backdrop-blur-md">' +
+        '<div class="flex items-center gap-3 h-16 px-4 sm:px-6 lg:px-10">' +
+          '<a href="/prep/" class="lg:hidden flex items-center gap-2.5 mr-1">' + this.brandHTML('w-9 h-9') + '</a>' +
+          '<h1 class="text-[17px] sm:text-lg font-extrabold tracking-tight truncate">' + PREP.esc(opts.title || '') + '</h1>' +
+          '<div class="ml-auto flex items-center gap-2">' +
+            '<a href="/prep/nhap-code/" class="btn btn-soft btn-sm hidden sm:inline-flex">' + PREP.icon('ticket', 'w-4 h-4') + 'Nhập code</a>' +
+            '<button type="button" data-dark-toggle class="p-2.5 rounded-full text-muted hover:text-ink transition" aria-label="Bật tắt chế độ tối"><span data-dark-icon></span></button>' +
+            '<a href="/prep/tai-khoan/" class="w-9 h-9 rounded-full bg-brand-soft text-brand-strong font-bold text-[13px] inline-flex items-center justify-center" aria-label="Tài khoản">' + PREP.esc(initials) + '</a>' +
+          '</div>' +
+        '</div>' +
+      '</header>';
+
+    /* ---------- Bottom nav (mobile) ---------- */
+    const bottom =
+      '<nav class="lg:hidden fixed bottom-0 inset-x-0 z-40 border-t border-line bg-card/95 backdrop-blur-md pb-[env(safe-area-inset-bottom)]" aria-label="Điều hướng dưới">' +
+        '<div class="flex">' +
+        this.NAV.map(n =>
+          '<a href="' + n.href + '" class="bottom-item" ' + (n.key === active ? 'aria-current="page"' : '') + '>' +
+          PREP.icon(n.icon, 'w-[22px] h-[22px]') + '<span>' + n.label + '</span></a>'
+        ).join('') +
+        '</div>' +
+      '</nav>';
+
+    app.insertAdjacentHTML('afterbegin', aside);
+    app.insertAdjacentHTML('beforeend', bottom);
+    main.insertAdjacentHTML('afterbegin', topbar);
+    main.classList.add('lg:pl-[268px]', 'pb-24', 'lg:pb-12', 'min-h-[100dvh]');
+
+    /* ---------- Hành vi ---------- */
+    this.syncDarkUI();
+    PREP.qsa('[data-dark-toggle]').forEach(b => b.addEventListener('click', () => {
+      PrepTheme.toggleDark();
+      this.syncDarkUI();
+    }));
+    PREP.qsa('[data-logout]').forEach(b => b.addEventListener('click', () => PrepAuth.logout()));
+
+    /* Tenant switcher (white-label demo) */
+    const tBtn = PREP.qs('[data-tenant-btn]');
+    const tMenu = PREP.qs('[data-tenant-menu]');
+    if (tBtn && tMenu) {
+      const render = () => {
+        tMenu.innerHTML = '<p class="px-2.5 pt-1 pb-2 text-[11px] font-bold uppercase tracking-wide text-muted">Thương hiệu (demo)</p>' +
+          PREP.tenants.map(t =>
+            '<button type="button" data-tenant-opt="' + t.id + '" class="w-full flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-semibold hover:bg-brand-soft transition text-left">' +
+              '<span class="w-2.5 h-2.5 rounded-full ' + (PrepTheme.tenant() === t.id ? 'bg-accent' : 'bg-line') + '"></span>' + PREP.esc(t.name) +
+            '</button>').join('');
+        PREP.qsa('[data-tenant-opt]', tMenu).forEach(o => o.addEventListener('click', () => {
+          PrepTheme.setTenant(o.getAttribute('data-tenant-opt'));
+          render();
+        }));
+      };
+      render();
+      tBtn.addEventListener('click', e => {
+        e.stopPropagation();
+        const open = tMenu.hasAttribute('hidden');
+        if (open) tMenu.removeAttribute('hidden'); else tMenu.setAttribute('hidden', '');
+        tBtn.setAttribute('aria-expanded', String(open));
+      });
+      document.addEventListener('click', e => {
+        if (!tMenu.contains(e.target) && e.target !== tBtn) { tMenu.setAttribute('hidden', ''); tBtn.setAttribute('aria-expanded', 'false'); }
+      });
+      document.addEventListener('prep:tenant', () => {
+        PREP.qsa('[data-brand-name]').forEach(el => { el.textContent = this.tenantName(); });
+      });
+    }
+  },
+
+  syncDarkUI() {
+    const dark = PrepTheme.isDark();
+    PREP.qsa('[data-dark-icon]').forEach(el => { el.innerHTML = PREP.icon(dark ? 'sun' : 'moon', 'w-5 h-5'); });
+    PREP.qsa('[data-dark-label]').forEach(el => { el.textContent = dark ? 'Chế độ sáng' : 'Chế độ tối'; });
+  },
+
+  /* Toast nhỏ dùng chung */
+  toast(msg, type) {
+    let holder = PREP.qs('#toast-holder');
+    if (!holder) {
+      holder = document.createElement('div');
+      holder.id = 'toast-holder';
+      holder.className = 'fixed bottom-24 lg:bottom-8 inset-x-0 z-[70] flex flex-col items-center gap-2 px-4 pointer-events-none';
+      document.body.appendChild(holder);
+    }
+    const t = document.createElement('div');
+    t.className = 'card px-4 py-2.5 text-sm font-semibold shadow-soft-lg flex items-center gap-2 rise';
+    t.innerHTML = (type === 'error'
+      ? '<span class="text-danger">' + PREP.icon('alert', 'w-5 h-5') + '</span>'
+      : '<span class="text-accent-strong">' + PREP.icon('check', 'w-5 h-5') + '</span>') + PREP.esc(msg);
+    holder.appendChild(t);
+    setTimeout(() => { t.style.opacity = '0'; t.style.transition = 'opacity .4s'; }, 2400);
+    setTimeout(() => t.remove(), 2900);
+  }
+};

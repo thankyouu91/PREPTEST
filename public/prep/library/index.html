@@ -1,0 +1,264 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Thư viện đề · VPET Prep</title>
+  <meta name="description" content="Thư viện bài thi thử theo 6 nhóm chứng chỉ, lọc theo kỹ năng, độ khó và trạng thái mở khoá.">
+  <meta name="theme-color" content="#1c3d8f">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="preload" href="/fonts/pjs-700-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/fonts/pjs-400-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/tailwind-built.css">
+  <style>body{font-family:'Plus Jakarta Sans',system-ui,sans-serif}</style>
+  <script>
+    (function(){try{
+      var t=localStorage.getItem('prep.theme');
+      if(t==='dark'||(!t&&matchMedia('(prefers-color-scheme: dark)').matches))document.documentElement.classList.add('dark');
+      var tn=localStorage.getItem('prep.tenant');
+      if(tn&&tn!=='default')document.documentElement.setAttribute('data-tenant',tn);
+    }catch(e){}})();
+  </script>
+</head>
+<body class="bg-surface text-ink">
+<div id="app" data-active="library" class="min-h-[100dvh]">
+  <main id="main">
+
+    <div class="max-w-shell mx-auto px-4 sm:px-6 lg:px-10">
+      <section class="mt-8 flex flex-wrap items-end gap-3">
+        <div>
+          <h2 class="text-2xl sm:text-[28px] font-extrabold tracking-tight">Thư viện bài thi thử</h2>
+          <p class="text-muted text-[15px] mt-1.5" id="result-count">Đang tải danh sách…</p>
+        </div>
+        <a href="/prep/mua-code/" class="btn btn-soft btn-md ms-auto">Mua code</a>
+      </section>
+    </div>
+
+    <!-- Thanh lọc dính -->
+    <div class="sticky top-16 z-20 mt-6 border-y border-line bg-[color:var(--color-surface)]/90 backdrop-blur-md">
+      <div class="max-w-shell mx-auto px-4 sm:px-6 lg:px-10 py-3.5 grid gap-3">
+        <div class="flex flex-wrap gap-2.5">
+          <label class="relative flex-1 min-w-[200px]" aria-label="Tìm kiếm bài thi">
+            <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted pointer-events-none">
+              <svg viewBox="0 0 24 24" class="w-[18px] h-[18px]" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+            </span>
+            <input id="q" type="search" class="input ps-10 py-2.5" placeholder="Tìm theo tên bài thi…">
+          </label>
+          <select id="f-skill" class="input w-auto py-2.5" aria-label="Lọc theo kỹ năng">
+            <option value="">Kỹ năng: tất cả</option>
+            <option value="listening">Nghe</option>
+            <option value="reading">Đọc</option>
+            <option value="writing">Viết</option>
+            <option value="speaking">Nói</option>
+          </select>
+          <select id="f-level" class="input w-auto py-2.5" aria-label="Lọc theo độ khó">
+            <option value="">Độ khó: tất cả</option>
+            <option>A1</option><option>A2</option><option>B1</option><option>B2</option><option>C1</option><option>C2</option>
+          </select>
+          <select id="f-status" class="input w-auto py-2.5" aria-label="Lọc theo trạng thái">
+            <option value="">Trạng thái: tất cả</option>
+            <option value="open">Đã mở khoá</option>
+            <option value="locked">Đang khoá</option>
+          </select>
+        </div>
+        <div id="family-chips" class="flex gap-2 overflow-x-auto no-scrollbar -mx-1 px-1 pb-0.5"></div>
+      </div>
+    </div>
+
+    <div class="max-w-shell mx-auto px-4 sm:px-6 lg:px-10 pb-6">
+
+      <!-- Skeleton -->
+      <div id="lib-skeleton" class="grid sm:grid-cols-2 xl:grid-cols-3 gap-5 mt-8">
+        <div class="card p-5"><div class="flex gap-2 mb-4"><div class="skeleton h-6 w-14"></div><div class="skeleton h-6 w-10"></div></div><div class="skeleton h-5 w-4/5 mb-2.5"></div><div class="skeleton h-4 w-3/5 mb-7"></div><div class="skeleton h-10 w-full rounded-full"></div></div>
+        <div class="card p-5"><div class="flex gap-2 mb-4"><div class="skeleton h-6 w-14"></div><div class="skeleton h-6 w-10"></div></div><div class="skeleton h-5 w-4/5 mb-2.5"></div><div class="skeleton h-4 w-3/5 mb-7"></div><div class="skeleton h-10 w-full rounded-full"></div></div>
+        <div class="card p-5 hidden sm:block"><div class="flex gap-2 mb-4"><div class="skeleton h-6 w-14"></div><div class="skeleton h-6 w-10"></div></div><div class="skeleton h-5 w-4/5 mb-2.5"></div><div class="skeleton h-4 w-3/5 mb-7"></div><div class="skeleton h-10 w-full rounded-full"></div></div>
+        <div class="card p-5 hidden xl:block"><div class="flex gap-2 mb-4"><div class="skeleton h-6 w-14"></div><div class="skeleton h-6 w-10"></div></div><div class="skeleton h-5 w-4/5 mb-2.5"></div><div class="skeleton h-4 w-3/5 mb-7"></div><div class="skeleton h-10 w-full rounded-full"></div></div>
+        <div class="card p-5 hidden xl:block"><div class="flex gap-2 mb-4"><div class="skeleton h-6 w-14"></div><div class="skeleton h-6 w-10"></div></div><div class="skeleton h-5 w-4/5 mb-2.5"></div><div class="skeleton h-4 w-3/5 mb-7"></div><div class="skeleton h-10 w-full rounded-full"></div></div>
+        <div class="card p-5 hidden xl:block"><div class="flex gap-2 mb-4"><div class="skeleton h-6 w-14"></div><div class="skeleton h-6 w-10"></div></div><div class="skeleton h-5 w-4/5 mb-2.5"></div><div class="skeleton h-4 w-3/5 mb-7"></div><div class="skeleton h-10 w-full rounded-full"></div></div>
+      </div>
+
+      <!-- Grid kết quả -->
+      <div id="lib-grid" class="grid sm:grid-cols-2 xl:grid-cols-3 gap-5 mt-8 hidden"></div>
+
+      <!-- Empty state: kỳ thi chưa có đề (ngôi sao của màn này) -->
+      <div id="lib-empty-family" hidden class="mt-10">
+        <div class="card overflow-hidden">
+          <div class="grid md:grid-cols-2 items-center">
+            <div class="p-8 sm:p-12">
+              <span class="exam-chip mb-5 inline-flex" data-family="vept" id="empty-chip">VEPT</span>
+              <h3 class="text-2xl font-extrabold tracking-tight text-balance" id="empty-title">Chưa có bài thi thử cho VEPT</h3>
+              <p class="text-muted text-[15.5px] leading-relaxed mt-3 max-w-[46ch]">
+                Đội biên soạn đang dựng đề bám sát cấu trúc mới nhất. Để lại email, mình sẽ báo ngay khi đề đầu tiên lên kệ.
+              </p>
+              <form id="notify-form" class="flex flex-wrap gap-2.5 mt-6 max-w-md" novalidate>
+                <label class="sr-only" for="notify-email">Email nhận thông báo</label>
+                <input id="notify-email" type="email" class="input flex-1 min-w-[190px]" placeholder="Email của bạn">
+                <button type="submit" class="btn btn-primary btn-md">Báo tôi khi có đề</button>
+              </form>
+              <p class="field-error" id="notify-err">Email chưa đúng định dạng.</p>
+              <div class="banner banner-success mt-4 max-w-md" id="notify-ok" role="status" aria-live="polite">
+                <svg viewBox="0 0 24 24" class="w-5 h-5 shrink-0 mt-0.5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+                <span>Đã ghi nhận! Đề mới về là bạn biết đầu tiên.</span>
+              </div>
+            </div>
+            <div class="hidden md:flex items-center justify-center bg-brand-soft min-h-[320px] p-10" aria-hidden="true">
+              <svg viewBox="0 0 220 170" class="w-full max-w-[300px]" fill="none">
+                <rect x="30" y="34" width="120" height="86" rx="12" class="fill-[color:var(--color-card)]" stroke="var(--color-border)" stroke-width="2.5"/>
+                <rect x="46" y="52" width="64" height="9" rx="4.5" fill="color-mix(in srgb, var(--color-primary) 24%, transparent)"/>
+                <rect x="46" y="70" width="88" height="9" rx="4.5" fill="color-mix(in srgb, var(--color-text) 11%, transparent)"/>
+                <rect x="46" y="88" width="42" height="9" rx="4.5" fill="color-mix(in srgb, var(--color-text) 11%, transparent)"/>
+                <g stroke="var(--color-accent)" stroke-width="3.4" stroke-linecap="round">
+                  <path d="M163 43c9-2 16 4 17 12"/>
+                  <circle cx="171" cy="88" r="30" fill="color-mix(in srgb, var(--color-accent) 12%, transparent)" stroke="none"/>
+                  <path d="M158 88h26M171 75v26" />
+                </g>
+                <path d="M40 138q30 14 60 0t60 0" stroke="color-mix(in srgb, var(--color-primary) 30%, transparent)" stroke-width="3" stroke-linecap="round"/>
+              </svg>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Empty state: bộ lọc không ra kết quả -->
+      <div id="lib-empty-filter" hidden class="card p-10 mt-8 text-center">
+        <span class="w-14 h-14 rounded-full bg-brand-soft text-brand-strong inline-flex items-center justify-center mx-auto">
+          <svg viewBox="0 0 24 24" class="w-7 h-7" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+        </span>
+        <h3 class="font-extrabold text-lg tracking-tight mt-4">Không có bài nào khớp bộ lọc</h3>
+        <p class="text-muted text-[15px] mt-1.5">Thử nới điều kiện hoặc xoá bộ lọc để xem toàn bộ thư viện.</p>
+        <button type="button" id="clear-filters" class="btn btn-ghost btn-md mt-6">Xoá bộ lọc</button>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script src="/prep/_mock.js"></script>
+<script src="/prep/_chrome.js"></script>
+<script>
+  if (PrepAuth.require()) {
+    PrepChrome.mount({ title: 'Thư viện đề' });
+
+    const state = { q: '', family: '', skill: '', level: '', status: '' };
+    const params = new URLSearchParams(location.search);
+    if (params.get('family')) state.family = params.get('family');
+
+    /* Chip 6 kỳ thi + Tất cả */
+    const chipBox = PREP.qs('#family-chips');
+    chipBox.innerHTML = '<button type="button" class="chip shrink-0" data-fam-filter="" aria-pressed="' + (!state.family) + '">Tất cả kỳ thi</button>' +
+      PREP.families.map(f =>
+        '<button type="button" class="chip shrink-0" data-family="' + f.id + '" data-fam-filter="' + f.id + '" aria-pressed="' + (state.family === f.id) + '">' + f.name + '</button>'
+      ).join('');
+    chipBox.addEventListener('click', e => {
+      const b = e.target.closest('[data-fam-filter]');
+      if (!b) return;
+      state.family = b.getAttribute('data-fam-filter');
+      PREP.qsa('[data-fam-filter]', chipBox).forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+      render();
+    });
+
+    /* Ô lọc còn lại */
+    PREP.qs('#q').addEventListener('input', e => { state.q = e.target.value.toLowerCase(); render(); });
+    PREP.qs('#f-skill').addEventListener('change', e => { state.skill = e.target.value; render(); });
+    PREP.qs('#f-level').addEventListener('change', e => { state.level = e.target.value; render(); });
+    PREP.qs('#f-status').addEventListener('change', e => { state.status = e.target.value; render(); });
+    PREP.qs('#clear-filters').addEventListener('click', () => {
+      state.q = state.skill = state.level = state.status = state.family = '';
+      PREP.qs('#q').value = ''; PREP.qs('#f-skill').value = ''; PREP.qs('#f-level').value = ''; PREP.qs('#f-status').value = '';
+      PREP.qsa('[data-fam-filter]', chipBox).forEach(x => x.setAttribute('aria-pressed', String(!x.getAttribute('data-fam-filter'))));
+      render();
+    });
+
+    const grid = PREP.qs('#lib-grid');
+    const countEl = PREP.qs('#result-count');
+
+    function totalItems(t) { return t.sections.reduce((s, x) => s + x.items, 0); }
+
+    function card(t) {
+      const fam = PREP.family(t.familyId);
+      const unlocked = PrepState.isUnlocked(t);
+      const inner =
+        '<div class="flex items-center gap-2 mb-3.5">' +
+          '<span class="exam-chip" data-family="' + fam.id + '">' + fam.name + '</span>' +
+          '<span class="badge badge-muted">' + t.level + '</span>' +
+          (t.comingSoon ? '<span class="badge badge-hl ms-auto">Sắp có</span>' : '') +
+        '</div>' +
+        '<h3 class="font-bold text-[16px] leading-snug">' + PREP.esc(t.title) + '</h3>' +
+        '<p class="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[13px] font-semibold text-muted mt-2.5 mb-5">' +
+          '<span class="inline-flex items-center gap-1.5">' + PREP.icon('layers', 'w-4 h-4') + t.sections.length + ' phần</span>' +
+          '<span class="inline-flex items-center gap-1.5">' + PREP.icon('clock', 'w-4 h-4') + t.durationMin + ' phút</span>' +
+          '<span class="inline-flex items-center gap-1.5">' + PREP.icon('list', 'w-4 h-4') + totalItems(t) + ' câu</span>' +
+        '</p>';
+
+      if (unlocked) {
+        return '<article class="card card-hover p-5 flex flex-col">' + inner +
+          '<a href="/prep/bai-thi/' + t.id + '/" class="btn btn-primary btn-md mt-auto w-full">' + PREP.icon('play', 'w-4 h-4') + 'Vào luyện</a>' +
+        '</article>';
+      }
+      // Đang khoá: nền tint + icon khoá thay nút, thông tin format vẫn đọc được
+      // (khoá là quyền vào làm bài, không phải giấu mô tả đề)
+      return '<article class="card card-locked card-hover p-5 flex flex-col">' +
+        '<div class="flex items-center gap-2 mb-3.5">' +
+          '<span class="exam-chip" data-family="' + fam.id + '">' + fam.name + '</span>' +
+          '<span class="badge badge-muted">' + t.level + '</span>' +
+          '<span class="w-7 h-7 rounded-full bg-[color:var(--color-card)] border border-line text-muted inline-flex items-center justify-center ms-auto" title="Đang khoá" aria-label="Đang khoá">' + PREP.icon('lock', 'w-[15px] h-[15px]') + '</span>' +
+        '</div>' +
+        '<h3 class="font-bold text-[16px] leading-snug text-muted">' + PREP.esc(t.title) + '</h3>' +
+        '<p class="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[13px] font-semibold text-muted/85 mt-2.5 mb-5">' +
+          '<span class="inline-flex items-center gap-1.5">' + PREP.icon('layers', 'w-4 h-4') + t.sections.length + ' phần</span>' +
+          '<span class="inline-flex items-center gap-1.5">' + PREP.icon('clock', 'w-4 h-4') + t.durationMin + ' phút</span>' +
+          '<span class="inline-flex items-center gap-1.5">' + PREP.icon('list', 'w-4 h-4') + totalItems(t) + ' câu</span>' +
+        '</p>' +
+        '<a href="/prep/nhap-code/?test=' + t.id + '" class="btn btn-accent btn-md mt-auto w-full">' + PREP.icon('unlock', 'w-4 h-4') + 'Mở khoá bằng code</a>' +
+      '</article>';
+    }
+
+    function render() {
+      const list = PREP.tests.filter(t => {
+        if (state.family && t.familyId !== state.family) return false;
+        if (state.q && !t.title.toLowerCase().includes(state.q)) return false;
+        if (state.skill && !t.skills.includes(state.skill)) return false;
+        if (state.level && t.level !== state.level) return false;
+        if (state.status === 'open' && !PrepState.isUnlocked(t)) return false;
+        if (state.status === 'locked' && PrepState.isUnlocked(t)) return false;
+        return true;
+      });
+
+      const famEmpty = state.family && PREP.testsOf(state.family).length === 0;
+      PREP.qs('#lib-empty-family').toggleAttribute('hidden', !famEmpty);
+      PREP.qs('#lib-empty-filter').toggleAttribute('hidden', famEmpty || list.length > 0);
+      grid.classList.toggle('hidden', famEmpty || list.length === 0);
+
+      if (famEmpty) {
+        const f = PREP.family(state.family);
+        PREP.qs('#empty-chip').setAttribute('data-family', f.id);
+        PREP.qs('#empty-chip').textContent = f.name;
+        PREP.qs('#empty-title').textContent = 'Chưa có bài thi thử cho ' + f.name;
+        countEl.textContent = f.name + ': đề đang được biên soạn';
+        return;
+      }
+      grid.innerHTML = list.map(card).join('');
+      const open = list.filter(t => PrepState.isUnlocked(t)).length;
+      countEl.textContent = list.length + ' bài thi thử · ' + open + ' đã mở khoá';
+    }
+
+    /* Giả lập tải — TODO(backend): GET /api/tests?filter=… */
+    setTimeout(() => {
+      PREP.qs('#lib-skeleton').classList.add('hidden');
+      render();
+    }, 800);
+
+    /* Form nhận thông báo khi có đề — TODO(backend): POST /api/notify-me */
+    PREP.qs('#notify-form').addEventListener('submit', ev => {
+      ev.preventDefault();
+      const em = PREP.qs('#notify-email');
+      const ok = PREP.validEmail(em.value);
+      PREP.qs('#notify-err').classList.toggle('show', !ok);
+      em.classList.toggle('input-invalid', !ok);
+      if (!ok) return;
+      PREP.qs('#notify-ok').classList.add('show');
+      em.value = '';
+    });
+  }
+</script>
+</body>
+</html>

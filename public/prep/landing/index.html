@@ -1,0 +1,468 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>VPET Prep · Luyện thi thử 6 chứng chỉ tiếng Anh</title>
+  <meta name="description" content="Nền tảng luyện thi thử VEPT, VPET, OTE, TOEIC, IELTS, PTE: quen format đề thật, chấm tự động, phân tích điểm yếu 4 kỹ năng.">
+  <meta name="theme-color" content="#1c3d8f">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="preload" href="/fonts/pjs-800-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/fonts/pjs-400-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/tailwind-built.css">
+  <style>body{font-family:'Plus Jakarta Sans',system-ui,sans-serif}</style>
+  <script>
+    /* Boot: dark mode + tenant trước khi paint (tránh nháy màu) */
+    (function(){try{
+      var t=localStorage.getItem('prep.theme');
+      if(t==='dark'||(!t&&matchMedia('(prefers-color-scheme: dark)').matches))document.documentElement.classList.add('dark');
+      var tn=localStorage.getItem('prep.tenant');
+      if(tn&&tn!=='default')document.documentElement.setAttribute('data-tenant',tn);
+    }catch(e){}})();
+  </script>
+</head>
+<body class="bg-surface text-ink">
+
+<!-- ===================== NAV ===================== -->
+<header class="sticky top-0 z-40 border-b border-line bg-[color:var(--color-surface)]/85 backdrop-blur-md">
+  <div class="max-w-shell mx-auto flex items-center gap-6 h-16 px-4 sm:px-6">
+    <a href="/prep/landing/" class="flex items-center gap-2.5 shrink-0" aria-label="Trang chủ VPET Prep">
+      <span class="inline-flex items-center justify-center rounded-xl text-white panel-brand w-9 h-9">
+        <svg viewBox="0 0 24 24" class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21.4 10.9a1 1 0 0 0 0-1.8L12.8 5.2a2 2 0 0 0-1.6 0L2.6 9.1a1 1 0 0 0 0 1.8l8.6 3.9a2 2 0 0 0 1.6 0Z"/><path d="M22 10.5V16"/><path d="M6 12.5V16a6 3 0 0 0 12 0v-3.5"/></svg>
+      </span>
+      <b data-brand-name class="font-extrabold tracking-tight text-[17px]">VPET Prep</b>
+    </a>
+    <nav class="hidden md:flex items-center gap-1 mx-auto" aria-label="Điều hướng chính">
+      <a href="#ky-thi" class="px-3.5 py-2 rounded-full text-sm font-semibold text-muted hover:text-ink transition">Kỳ thi</a>
+      <a href="#cach-hoat-dong" class="px-3.5 py-2 rounded-full text-sm font-semibold text-muted hover:text-ink transition">Cách hoạt động</a>
+      <a href="#bang-gia" class="px-3.5 py-2 rounded-full text-sm font-semibold text-muted hover:text-ink transition">Bảng giá</a>
+    </nav>
+    <div class="flex items-center gap-2 ms-auto md:ms-0">
+      <a href="/prep/dang-nhap/" data-when-guest class="btn btn-ghost btn-sm sm:btn-md hidden sm:inline-flex">Đăng nhập</a>
+      <a href="/prep/dang-ky/" data-when-guest class="btn btn-primary btn-sm sm:btn-md">
+        <span class="sm:hidden">Đăng ký</span><span class="hidden sm:inline">Đăng ký miễn phí</span>
+      </a>
+      <a href="/prep/" data-when-user hidden class="btn btn-primary btn-sm sm:btn-md">Vào học tiếp</a>
+    </div>
+  </div>
+</header>
+
+<main>
+  <!-- ===================== HERO (split, không căn giữa) ===================== -->
+  <section class="halo-brand border-b border-line overflow-hidden">
+    <div class="max-w-shell mx-auto grid lg:grid-cols-12 gap-10 lg:gap-6 items-center px-4 sm:px-6 pt-14 pb-16 lg:pt-20 lg:pb-24">
+      <div class="lg:col-span-6 max-w-xl">
+        <h1 class="text-4xl sm:text-5xl xl:text-[56px] font-extrabold tracking-tight leading-[1.08] text-balance rise">
+          Thi thử như thật, <span class="text-brand-strong whitespace-nowrap">tự tin</span> vào phòng thi
+        </h1>
+        <p class="text-[17px] sm:text-lg text-muted leading-relaxed mt-5 max-w-[52ch] rise rise-1">
+          Luyện đề cho 6 chứng chỉ tiếng Anh: quen cấu trúc đề thật, chấm tự động, thấy rõ điểm yếu từng kỹ năng.
+        </p>
+        <div class="flex flex-wrap items-center gap-3 mt-8 rise rise-2">
+          <a href="/prep/dang-ky/" class="btn btn-primary btn-lg">Đăng ký miễn phí</a>
+          <a href="#ky-thi" class="btn btn-ghost btn-lg">Xem 6 kỳ thi</a>
+        </div>
+        <ul class="flex flex-wrap gap-x-6 gap-y-2.5 mt-9 rise rise-3" aria-label="Điểm nổi bật">
+          <li class="inline-flex items-center gap-2 text-sm font-semibold text-muted">
+            <span class="text-accent-strong"><svg viewBox="0 0 24 24" class="w-[18px] h-[18px]" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span>
+            6 chứng chỉ
+          </li>
+          <li class="inline-flex items-center gap-2 text-sm font-semibold text-muted">
+            <span class="text-accent-strong"><svg viewBox="0 0 24 24" class="w-[18px] h-[18px]" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span>
+            Chấm tự động
+          </li>
+          <li class="inline-flex items-center gap-2 text-sm font-semibold text-muted">
+            <span class="text-accent-strong"><svg viewBox="0 0 24 24" class="w-[18px] h-[18px]" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span>
+            Phân tích điểm yếu
+          </li>
+        </ul>
+      </div>
+
+      <!-- Minh hoạ = mini-preview giao diện thật của sản phẩm (không ảnh stock) -->
+      <div class="lg:col-span-6 relative rise rise-2" aria-hidden="true">
+        <div class="relative max-w-[460px] mx-auto lg:ms-auto lg:me-2">
+          <div class="card p-6 sm:p-7 shadow-soft-lg rotate-1 lg:rotate-2">
+            <div class="flex items-center gap-2 mb-6">
+              <span class="exam-chip" data-family="vpet">VPET</span>
+              <span class="badge badge-muted">B1</span>
+              <span class="badge badge-ok ms-auto">Đã mở khoá</span>
+            </div>
+            <div class="flex items-center gap-6">
+              <div class="relative w-[104px] h-[104px] shrink-0">
+                <svg viewBox="0 0 104 104" class="w-full h-full -rotate-90">
+                  <circle cx="52" cy="52" r="45" fill="none" stroke-width="9" class="ring-track"/>
+                  <circle cx="52" cy="52" r="45" fill="none" stroke-width="9" stroke-linecap="round" class="ring-val"
+                          stroke-dasharray="282.7" stroke-dashoffset="76"/>
+                </svg>
+                <span class="absolute inset-0 flex flex-col items-center justify-center">
+                  <b class="text-2xl font-extrabold leading-none">73%</b>
+                  <span class="text-[10px] font-semibold text-muted mt-1">sẵn sàng</span>
+                </span>
+              </div>
+              <div class="flex-1 grid gap-3">
+                <div>
+                  <div class="flex justify-between text-[12px] font-bold mb-1"><span class="text-muted">Nghe</span><span>82%</span></div>
+                  <div class="meter"><i data-w="82"></i></div>
+                </div>
+                <div>
+                  <div class="flex justify-between text-[12px] font-bold mb-1"><span class="text-muted">Đọc</span><span>74%</span></div>
+                  <div class="meter"><i data-w="74"></i></div>
+                </div>
+                <div>
+                  <div class="flex justify-between text-[12px] font-bold mb-1"><span class="text-muted">Viết</span><span>58%</span></div>
+                  <div class="meter"><i data-w="58"></i></div>
+                </div>
+              </div>
+            </div>
+            <div class="flex items-center justify-between mt-6 pt-5 border-t border-line">
+              <p class="text-[13px] font-semibold text-muted">Gợi ý: luyện thêm Viết</p>
+              <span class="btn btn-primary btn-sm pointer-events-none">Luyện ngay</span>
+            </div>
+          </div>
+          <div class="card px-4 py-3.5 shadow-soft-lg absolute -left-2 sm:-left-8 -bottom-8 -rotate-2 flex items-center gap-3">
+            <span class="w-9 h-9 rounded-full bg-accent-soft text-accent-strong inline-flex items-center justify-center">
+              <svg viewBox="0 0 24 24" class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21.8 10.1A10 10 0 1 1 14 2.2"/><path d="m9 11 3 3L22 4"/></svg>
+            </span>
+            <span class="leading-tight">
+              <b class="block text-sm font-extrabold">Nộp bài thành công</b>
+              <span class="block text-xs text-muted font-medium">Kết quả trả về tức thì</span>
+            </span>
+          </div>
+        </div>
+        <p class="text-center lg:text-right text-[11.5px] font-medium text-muted/70 mt-12 lg:me-4">Minh hoạ giao diện</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== 6 KỲ THI ===================== -->
+  <section id="ky-thi" class="scroll-mt-20">
+    <div class="max-w-shell mx-auto px-4 sm:px-6 py-16 lg:py-24">
+      <div class="max-w-[60ch]">
+        <h2 class="text-3xl sm:text-4xl font-extrabold tracking-tight">Chọn kỳ thi của bạn</h2>
+        <p class="text-muted text-[16px] leading-relaxed mt-3">
+          Mỗi kỳ thi có cấu trúc và thang điểm riêng. Đề luyện bám đúng format để bạn không bỡ ngỡ trong phòng thi.
+        </p>
+      </div>
+
+      <!-- Skeleton khi tải danh mục -->
+      <div id="family-skeleton" class="grid sm:grid-cols-2 lg:grid-cols-3 gap-5 mt-10">
+        <div class="card p-6"><div class="skeleton h-6 w-16 mb-4"></div><div class="skeleton h-4 w-4/5 mb-2"></div><div class="skeleton h-4 w-3/5 mb-6"></div><div class="skeleton h-9 w-28 rounded-full"></div></div>
+        <div class="card p-6"><div class="skeleton h-6 w-16 mb-4"></div><div class="skeleton h-4 w-4/5 mb-2"></div><div class="skeleton h-4 w-3/5 mb-6"></div><div class="skeleton h-9 w-28 rounded-full"></div></div>
+        <div class="card p-6 hidden lg:block"><div class="skeleton h-6 w-16 mb-4"></div><div class="skeleton h-4 w-4/5 mb-2"></div><div class="skeleton h-4 w-3/5 mb-6"></div><div class="skeleton h-9 w-28 rounded-full"></div></div>
+      </div>
+
+      <div id="family-cards" class="grid sm:grid-cols-2 lg:grid-cols-3 gap-5 mt-10 hidden"></div>
+    </div>
+  </section>
+
+  <!-- ===================== CÁCH HOẠT ĐỘNG (timeline, không 3-card) ===================== -->
+  <section id="cach-hoat-dong" class="border-y border-line bg-[color:var(--color-card)] scroll-mt-20">
+    <div class="max-w-shell mx-auto grid lg:grid-cols-12 gap-10 px-4 sm:px-6 py-16 lg:py-24">
+      <div class="lg:col-span-5">
+        <div class="lg:sticky lg:top-28">
+          <h2 class="text-3xl sm:text-4xl font-extrabold tracking-tight text-balance">Ba bước là vào luyện</h2>
+          <p class="text-muted text-[16px] leading-relaxed mt-3 max-w-[44ch]">
+            Không cần thẻ tín dụng để bắt đầu. Tài khoản miễn phí, chỉ trả tiền cho bài bạn thật sự luyện.
+          </p>
+          <a href="/prep/dang-ky/" class="btn btn-soft btn-md mt-7" data-reveal>Đăng ký miễn phí</a>
+        </div>
+      </div>
+      <ol class="lg:col-span-7 relative grid gap-2">
+        <span class="absolute left-[27px] top-8 bottom-8 w-px bg-line" aria-hidden="true"></span>
+        <li class="relative flex gap-6 p-4 rounded-2xl transition" data-reveal>
+          <span class="relative z-10 w-14 h-14 shrink-0 rounded-2xl bg-brand-soft text-brand-strong inline-flex items-center justify-center font-extrabold text-xl">1</span>
+          <div class="pt-1.5">
+            <h3 class="font-extrabold text-[17px] tracking-tight">Đăng ký tài khoản</h3>
+            <p class="text-muted text-[15px] leading-relaxed mt-1.5 max-w-[52ch]">Một phút với email trường hoặc email cá nhân, xác thực là dùng được ngay.</p>
+          </div>
+        </li>
+        <li class="relative flex gap-6 p-4 rounded-2xl transition" data-reveal>
+          <span class="relative z-10 w-14 h-14 shrink-0 rounded-2xl bg-brand-soft text-brand-strong inline-flex items-center justify-center font-extrabold text-xl">2</span>
+          <div class="pt-1.5">
+            <h3 class="font-extrabold text-[17px] tracking-tight">Mua hoặc nhập code</h3>
+            <p class="text-muted text-[15px] leading-relaxed mt-1.5 max-w-[52ch]">Mỗi code mở đúng bài hoặc trọn gói kỳ thi bạn chọn. Có code từ trường, lớp học? Nhập là mở khoá.</p>
+          </div>
+        </li>
+        <li class="relative flex gap-6 p-4 rounded-2xl transition" data-reveal>
+          <span class="relative z-10 w-14 h-14 shrink-0 rounded-2xl bg-brand-soft text-brand-strong inline-flex items-center justify-center font-extrabold text-xl">3</span>
+          <div class="pt-1.5">
+            <h3 class="font-extrabold text-[17px] tracking-tight">Vào luyện như thi thật</h3>
+            <p class="text-muted text-[15px] leading-relaxed mt-1.5 max-w-[52ch]">Đồng hồ, cấu trúc, thang điểm đúng chuẩn. Nộp bài xong nhận ngay phân tích từng kỹ năng.</p>
+          </div>
+        </li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- ===================== VÌ SAO CHỌN (bento asymmetric) ===================== -->
+  <section>
+    <div class="max-w-shell mx-auto px-4 sm:px-6 py-16 lg:py-24">
+      <h2 class="text-3xl sm:text-4xl font-extrabold tracking-tight max-w-[24ch]">Luyện đúng chỗ yếu, không luyện mò</h2>
+
+      <div class="grid md:grid-cols-12 gap-5 mt-10">
+        <!-- Ô lớn: chấm tự động -->
+        <article class="md:col-span-7 tile bg-accent-soft p-7 sm:p-9 flex flex-col justify-between min-h-[260px]" data-reveal>
+          <div>
+            <h3 class="text-xl sm:text-2xl font-extrabold tracking-tight">Chấm tự động, kết quả tức thì</h3>
+            <p class="text-muted text-[15.5px] leading-relaxed mt-2 max-w-[48ch]">
+              Nộp bài là có điểm từng phần, kèm nhận xét chỗ sai. Không chờ giáo viên, không tự đoán.
+            </p>
+          </div>
+          <div class="card p-4 mt-7 max-w-sm">
+            <div class="flex items-center justify-between text-[13px] font-bold mb-2">
+              <span class="inline-flex items-center gap-2 text-muted">
+                <svg viewBox="0 0 24 24" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 3 14h9l-1 8 10-12h-9Z"/></svg>
+                Listening · Part 3
+              </span>
+              <span class="text-accent-strong">18/20 câu đúng</span>
+            </div>
+            <div class="meter"><i data-w="90"></i></div>
+          </div>
+        </article>
+
+        <!-- Ô đứng: 4 kỹ năng -->
+        <article class="md:col-span-5 tile bg-brand-soft p-7 sm:p-9" data-reveal>
+          <h3 class="text-xl font-extrabold tracking-tight">Phân tích riêng 4 kỹ năng</h3>
+          <p class="text-muted text-[15.5px] leading-relaxed mt-2">Nghe, Đọc, Viết, Nói tách bạch để biết kỹ năng nào đang kéo điểm xuống.</p>
+          <ul class="grid grid-cols-2 gap-3 mt-6">
+            <li class="card px-4 py-3.5 flex items-center gap-3 text-sm font-bold">
+              <span class="text-brand-strong"><svg viewBox="0 0 24 24" class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 14v-3a9 9 0 0 1 18 0v3"/><path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3Z"/><path d="M3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3Z"/></svg></span>Nghe
+            </li>
+            <li class="card px-4 py-3.5 flex items-center gap-3 text-sm font-bold">
+              <span class="text-brand-strong"><svg viewBox="0 0 24 24" class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/></svg></span>Đọc
+            </li>
+            <li class="card px-4 py-3.5 flex items-center gap-3 text-sm font-bold">
+              <span class="text-brand-strong"><svg viewBox="0 0 24 24" class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7.5 18.5 3 20l1.5-4.5Z"/></svg></span>Viết
+            </li>
+            <li class="card px-4 py-3.5 flex items-center gap-3 text-sm font-bold">
+              <span class="text-brand-strong"><svg viewBox="0 0 24 24" class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect width="6" height="12" x="9" y="2" rx="3"/><path d="M19 10v1a7 7 0 0 1-14 0v-1"/><path d="M12 18v4"/></svg></span>Nói
+            </li>
+          </ul>
+        </article>
+
+        <!-- 3 ô nhỏ -->
+        <article class="md:col-span-4 tile bg-card shadow-soft p-7" data-reveal>
+          <span class="w-11 h-11 rounded-xl bg-accent-soft text-accent-strong inline-flex items-center justify-center mb-4">
+            <svg viewBox="0 0 24 24" class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 13H8"/><path d="M16 17H8"/></svg>
+          </span>
+          <h3 class="font-extrabold text-[17px] tracking-tight">Ngân hàng chủ đề sát đề thật</h3>
+          <p class="text-muted text-[14.5px] leading-relaxed mt-1.5">Chủ đề được biên soạn theo đề thi các đợt gần nhất của từng chứng chỉ.</p>
+        </article>
+        <article class="md:col-span-4 tile bg-card shadow-soft p-7" data-reveal>
+          <span class="w-11 h-11 rounded-xl bg-accent-soft text-accent-strong inline-flex items-center justify-center mb-4">
+            <svg viewBox="0 0 24 24" class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="6"/><path d="M15.5 12.9 17 22l-5-3-5 3 1.5-9.1"/></svg>
+          </span>
+          <h3 class="font-extrabold text-[17px] tracking-tight">Bám chuẩn CEFR A1-C2</h3>
+          <p class="text-muted text-[14.5px] leading-relaxed mt-1.5">Chọn đề đúng trình độ hiện tại, nâng dần độ khó theo lộ trình.</p>
+        </article>
+        <article class="md:col-span-4 tile panel-brand text-white p-7" data-reveal>
+          <span class="w-11 h-11 rounded-xl bg-white/15 inline-flex items-center justify-center mb-4">
+            <svg viewBox="0 0 24 24" class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg>
+          </span>
+          <h3 class="font-extrabold text-[17px] tracking-tight">Luyện mọi lúc, mọi thiết bị</h3>
+          <p class="text-white/80 text-[14.5px] leading-relaxed mt-1.5">Điện thoại, máy tính đều mượt. Tiến độ đồng bộ theo tài khoản.</p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== BẢNG GIÁ / CƠ CHẾ CODE ===================== -->
+  <section id="bang-gia" class="border-y border-line bg-[color:var(--color-card)] scroll-mt-20">
+    <div class="max-w-shell mx-auto px-4 sm:px-6 py-16 lg:py-24">
+      <div class="max-w-[62ch]">
+        <h2 class="text-3xl sm:text-4xl font-extrabold tracking-tight">Một code, một cánh cửa</h2>
+        <p class="text-muted text-[16px] leading-relaxed mt-3">
+          Mỗi code mở khoá đúng một bài thi thử hoặc trọn gói kỳ thi. Không thuê bao tháng, không phí ẩn.
+        </p>
+      </div>
+
+      <div class="grid md:grid-cols-3 gap-5 md:gap-6 mt-12 md:items-start">
+        <article class="card p-7 md:mt-6" data-reveal>
+          <h3 class="font-extrabold text-lg tracking-tight">Bài lẻ</h3>
+          <p class="text-muted text-sm leading-relaxed mt-1">Thử sức một đề trước kỳ thi.</p>
+          <p class="mt-5"><b class="text-3xl font-extrabold tracking-tight">49.000đ</b><span class="text-muted text-sm font-semibold"> / bài</span></p>
+          <ul class="grid gap-2.5 mt-6 text-[14.5px] font-medium text-muted">
+            <li class="flex gap-2.5"><span class="text-accent-strong mt-0.5"><svg viewBox="0 0 24 24" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span>Chọn bài bất kỳ trong thư viện</li>
+            <li class="flex gap-2.5"><span class="text-accent-strong mt-0.5"><svg viewBox="0 0 24 24" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span>Làm lại không giới hạn trong hạn dùng</li>
+            <li class="flex gap-2.5"><span class="text-accent-strong mt-0.5"><svg viewBox="0 0 24 24" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span>Hạn dùng 6 tháng</li>
+          </ul>
+          <a href="/prep/dang-ky/" class="btn btn-ghost btn-md w-full mt-7">Đăng ký để mua</a>
+        </article>
+
+        <article class="card p-7 relative ring-2 ring-[color:var(--color-accent)] shadow-soft-lg" data-reveal>
+          <span class="badge badge-hl absolute -top-3 left-7">Phổ biến nhất</span>
+          <h3 class="font-extrabold text-lg tracking-tight">Gói kỳ thi</h3>
+          <p class="text-muted text-sm leading-relaxed mt-1">Toàn bộ bài của một chứng chỉ.</p>
+          <p class="mt-5"><b class="text-3xl font-extrabold tracking-tight">từ 129.000đ</b><span class="text-muted text-sm font-semibold"> / kỳ thi</span></p>
+          <ul class="grid gap-2.5 mt-6 text-[14.5px] font-medium text-muted">
+            <li class="flex gap-2.5"><span class="text-accent-strong mt-0.5"><svg viewBox="0 0 24 24" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span>Mọi bài hiện có của kỳ thi</li>
+            <li class="flex gap-2.5"><span class="text-accent-strong mt-0.5"><svg viewBox="0 0 24 24" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span>Đề mới phát hành: mở khoá miễn phí</li>
+            <li class="flex gap-2.5"><span class="text-accent-strong mt-0.5"><svg viewBox="0 0 24 24" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span>Hạn dùng 12 tháng</li>
+          </ul>
+          <a href="/prep/dang-ky/" class="btn btn-primary btn-md w-full mt-7">Đăng ký để mua</a>
+        </article>
+
+        <article class="card p-7 md:mt-6" data-reveal>
+          <h3 class="font-extrabold text-lg tracking-tight">Combo 2 kỳ thi</h3>
+          <p class="text-muted text-sm leading-relaxed mt-1">Cho bạn cần nhiều hơn một chứng chỉ.</p>
+          <p class="mt-5"><b class="text-3xl font-extrabold tracking-tight">329.000đ</b><span class="text-muted text-sm font-semibold"> / combo</span></p>
+          <ul class="grid gap-2.5 mt-6 text-[14.5px] font-medium text-muted">
+            <li class="flex gap-2.5"><span class="text-accent-strong mt-0.5"><svg viewBox="0 0 24 24" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span>Chọn 2 kỳ thi bất kỳ</li>
+            <li class="flex gap-2.5"><span class="text-accent-strong mt-0.5"><svg viewBox="0 0 24 24" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span>Tiết kiệm 49.000đ so với mua lẻ gói</li>
+            <li class="flex gap-2.5"><span class="text-accent-strong mt-0.5"><svg viewBox="0 0 24 24" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span>Hạn dùng 12 tháng</li>
+          </ul>
+          <a href="/prep/dang-ky/" class="btn btn-ghost btn-md w-full mt-7">Đăng ký để mua</a>
+        </article>
+      </div>
+      <p class="text-[13px] text-muted/80 font-medium mt-6">Giá minh hoạ trong giai đoạn thử nghiệm. Thanh toán VNPay / MoMo sẽ mở cùng đợt phát hành đề.</p>
+    </div>
+  </section>
+
+  <!-- ===================== LỜI CHỨNG (minh hoạ) ===================== -->
+  <section>
+    <div class="max-w-shell mx-auto px-4 sm:px-6 py-16 lg:py-24">
+      <div class="grid lg:grid-cols-12 gap-10">
+        <div class="lg:col-span-4">
+          <h2 class="text-3xl sm:text-4xl font-extrabold tracking-tight text-balance">Sinh viên cần gì, nền tảng làm đúng cái đó</h2>
+          <p class="text-[13px] text-muted/80 font-medium mt-4">Lời chứng minh hoạ cho giai đoạn demo.</p>
+        </div>
+        <div class="lg:col-span-8 grid sm:grid-cols-2 gap-5">
+          <figure class="card p-6 sm:translate-y-6" data-reveal>
+            <blockquote class="text-[15.5px] leading-relaxed font-medium">"Trước giờ mình toàn luyện đề trên giấy, vào thi máy cứ lóng ngóng. Thi thử đúng format nên đỡ hẳn."</blockquote>
+            <figcaption class="mt-4 flex items-center gap-3">
+              <span class="w-9 h-9 rounded-full bg-brand-soft text-brand-strong text-[12px] font-extrabold inline-flex items-center justify-center">TH</span>
+              <span class="text-[13px] leading-tight"><b class="block font-bold">Thu Hằng</b><span class="text-muted">Năm 3, ĐH Ngoại thương</span></span>
+            </figcaption>
+          </figure>
+          <figure class="card p-6" data-reveal>
+            <blockquote class="text-[15.5px] leading-relaxed font-medium">"Điểm Viết thấp mà không biết vì sao. Nhìn phân tích từng kỹ năng mới thấy mình yếu đúng phần nào."</blockquote>
+            <figcaption class="mt-4 flex items-center gap-3">
+              <span class="w-9 h-9 rounded-full bg-brand-soft text-brand-strong text-[12px] font-extrabold inline-flex items-center justify-center">QK</span>
+              <span class="text-[13px] leading-tight"><b class="block font-bold">Quốc Khánh</b><span class="text-muted">Năm 2, ĐH Bách khoa TP.HCM</span></span>
+            </figcaption>
+          </figure>
+          <figure class="card p-6 sm:translate-y-6" data-reveal>
+            <blockquote class="text-[15.5px] leading-relaxed font-medium">"Lớp mình được trường phát code, nhập vào là có bài luyện. Không phải cài gì thêm."</blockquote>
+            <figcaption class="mt-4 flex items-center gap-3">
+              <span class="w-9 h-9 rounded-full bg-brand-soft text-brand-strong text-[12px] font-extrabold inline-flex items-center justify-center">ML</span>
+              <span class="text-[13px] leading-tight"><b class="block font-bold">Mai Linh</b><span class="text-muted">Năm 1, HUTECH</span></span>
+            </figcaption>
+          </figure>
+          <div class="tile bg-brand-soft p-6 flex flex-col justify-center" data-reveal>
+            <p class="grid gap-4">
+              <span class="flex items-baseline gap-3"><b class="text-3xl font-extrabold tracking-tight">6</b><span class="text-sm font-semibold text-muted">nhóm chứng chỉ trên một nền tảng</span></span>
+              <span class="flex items-baseline gap-3"><b class="text-3xl font-extrabold tracking-tight">4</b><span class="text-sm font-semibold text-muted">kỹ năng được phân tích riêng</span></span>
+              <span class="flex items-baseline gap-3"><b class="text-3xl font-extrabold tracking-tight">2'</b><span class="text-sm font-semibold text-muted">từ nhập code đến vào luyện</span></span>
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== CTA CUỐI ===================== -->
+  <section class="px-4 sm:px-6 pb-16 lg:pb-24">
+    <div class="max-w-shell mx-auto panel-brand rounded-2xl text-white px-6 sm:px-12 py-12 sm:py-16 relative overflow-hidden" data-reveal>
+      <span class="absolute -right-10 -top-14 opacity-10 pointer-events-none" aria-hidden="true">
+        <svg viewBox="0 0 24 24" class="w-72 h-72" fill="none" stroke="currentColor" stroke-width="1"><path d="M21.4 10.9a1 1 0 0 0 0-1.8L12.8 5.2a2 2 0 0 0-1.6 0L2.6 9.1a1 1 0 0 0 0 1.8l8.6 3.9a2 2 0 0 0 1.6 0Z"/><path d="M22 10.5V16"/><path d="M6 12.5V16a6 3 0 0 0 12 0v-3.5"/></svg>
+      </span>
+      <div class="max-w-xl">
+        <h2 class="text-3xl sm:text-4xl font-extrabold tracking-tight text-balance">Kỳ thi không đợi ai. Bắt đầu hôm nay.</h2>
+        <p class="text-white/85 text-[16px] leading-relaxed mt-3">Tạo tài khoản miễn phí, khám phá thư viện đề và mở khoá khi bạn sẵn sàng.</p>
+        <div class="flex flex-wrap gap-3 mt-8">
+          <a href="/prep/dang-ky/" class="btn btn-on-brand btn-lg">Đăng ký miễn phí</a>
+          <a href="/prep/dang-nhap/" class="btn btn-outline-brand btn-lg">Đăng nhập</a>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<!-- ===================== FOOTER ===================== -->
+<footer class="border-t border-line bg-[color:var(--color-card)]">
+  <div class="max-w-shell mx-auto grid sm:grid-cols-2 lg:grid-cols-4 gap-10 px-4 sm:px-6 py-14">
+    <div class="lg:col-span-2 max-w-sm">
+      <p class="flex items-center gap-2.5">
+        <span class="inline-flex items-center justify-center rounded-xl text-white panel-brand w-9 h-9">
+          <svg viewBox="0 0 24 24" class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21.4 10.9a1 1 0 0 0 0-1.8L12.8 5.2a2 2 0 0 0-1.6 0L2.6 9.1a1 1 0 0 0 0 1.8l8.6 3.9a2 2 0 0 0 1.6 0Z"/><path d="M22 10.5V16"/><path d="M6 12.5V16a6 3 0 0 0 12 0v-3.5"/></svg>
+        </span>
+        <b data-brand-name class="font-extrabold tracking-tight text-[17px]">VPET Prep</b>
+      </p>
+      <p class="text-muted text-[14.5px] leading-relaxed mt-4">
+        Nền tảng luyện thi thử độc lập cho sinh viên Việt Nam. Không liên kết với các đơn vị tổ chức thi.
+      </p>
+    </div>
+    <nav aria-label="Nền tảng">
+      <h3 class="text-sm font-extrabold tracking-tight mb-3.5">Nền tảng</h3>
+      <ul class="grid gap-2.5 text-[14.5px] font-medium text-muted">
+        <li><a class="hover:text-ink transition" href="#ky-thi">Kỳ thi</a></li>
+        <li><a class="hover:text-ink transition" href="#bang-gia">Bảng giá</a></li>
+        <li><a class="hover:text-ink transition" href="/prep/dang-nhap/">Đăng nhập</a></li>
+        <li><a class="hover:text-ink transition" href="/prep/dang-ky/">Đăng ký miễn phí</a></li>
+      </ul>
+    </nav>
+    <nav aria-label="Hỗ trợ">
+      <h3 class="text-sm font-extrabold tracking-tight mb-3.5">Hỗ trợ</h3>
+      <ul class="grid gap-2.5 text-[14.5px] font-medium text-muted">
+        <li><a class="hover:text-ink transition" href="mailto:hotro@vpetprep.vn">hotro@vpetprep.vn</a></li>
+        <li><a class="hover:text-ink transition" href="/prep/landing/#bang-gia">Cơ chế code</a></li>
+        <li><span class="cursor-default">Điều khoản (đang cập nhật)</span></li>
+        <li><span class="cursor-default">Quyền riêng tư (đang cập nhật)</span></li>
+      </ul>
+    </nav>
+  </div>
+  <div class="border-t border-line">
+    <p class="max-w-shell mx-auto px-4 sm:px-6 py-5 text-[13px] text-muted">© 2026 VPET Prep. Dành cho mục đích luyện tập, không phải kỳ thi chính thức.</p>
+  </div>
+</footer>
+
+<script src="/prep/_mock.js"></script>
+<script>
+  /* Slot brand tenant: tên hiển thị theo tenant đang chọn (white-label) */
+  (function () {
+    const t = PREP.tenants.find(x => x.id === PrepTheme.tenant()) || PREP.tenants[0];
+    PREP.qsa('[data-brand-name]').forEach(el => { el.textContent = t.name; });
+    document.title = t.name + ' · Luyện thi thử 6 chứng chỉ tiếng Anh';
+  })();
+
+  /* Nav đổi theo trạng thái đăng nhập (mock) — TODO(backend/auth) */
+  if (PrepState.user()) {
+    PREP.qsa('[data-when-guest]').forEach(el => el.setAttribute('hidden', ''));
+    PREP.qsa('[data-when-user]').forEach(el => el.removeAttribute('hidden'));
+  }
+
+  /* Card 6 kỳ thi — render từ mock, có skeleton — TODO(backend): GET /api/families */
+  const grid = PREP.qs('#family-cards');
+  setTimeout(() => {
+    PREP.qs('#family-skeleton').classList.add('hidden');
+    grid.innerHTML = PREP.families.map(f => {
+      const n = PREP.testsOf(f.id).length;
+      return '<article class="card card-hover p-6 flex flex-col">' +
+        '<div class="flex items-center gap-2.5">' +
+          '<span class="exam-chip" data-family="' + f.id + '">' + f.name + '</span>' +
+          (n ? '<span class="text-[12.5px] font-bold text-muted">' + n + ' đề đang biên soạn</span>'
+             : '<span class="badge badge-hl">Sắp có</span>') +
+        '</div>' +
+        '<h3 class="font-extrabold text-[17px] tracking-tight mt-4">' + PREP.esc(f.sub) + '</h3>' +
+        '<p class="text-muted text-[14.5px] leading-relaxed mt-1.5 mb-6">' + PREP.esc(f.format) + '.</p>' +
+        '<a href="/prep/thu-vien/?family=' + f.id + '" class="btn btn-soft btn-md mt-auto w-full">Xem chi tiết' +
+          '<svg viewBox="0 0 24 24" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg>' +
+        '</a>' +
+      '</article>';
+    }).join('');
+    grid.classList.remove('hidden');
+  }, 700);
+
+  /* Meter minh hoạ trong hero/bento */
+  PREP.qsa('.meter > i[data-w]').forEach(el => {
+    requestAnimationFrame(() => el.style.setProperty('--w', el.getAttribute('data-w') + '%'));
+  });
+
+  /* Reveal-on-scroll tinh tế (tự tắt theo prefers-reduced-motion trong CSS) */
+  const io = new IntersectionObserver(es => es.forEach(e => {
+    if (e.isIntersecting) { e.target.classList.add('rise'); io.unobserve(e.target); }
+  }), { threshold: 0.18 });
+  PREP.qsa('[data-reveal]').forEach(el => io.observe(el));
+</script>
+</body>
+</html>
