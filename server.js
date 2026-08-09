@@ -1,19 +1,29 @@
 /**
- * VPET Prep — server tĩnh giai đoạn 1 (chỉ giao diện).
- * - HTML luôn được phục vụ qua serveHtmlWithNonce(): chèn nonce vào <script>/<style>
- *   và đặt CSP nghiêm ngặt cho từng response (không CDN, không eval, không inline lậu).
+ * VPET Prep — server.
+ *
+ * Hai khu vực:
+ * 1. Trang học viên (/prep/…): HTML tĩnh, state còn là mock phía client (giai đoạn 1).
+ * 2. Khu quản trị (/admin/… + /api/admin/…): backend thật trên SQLite, có đăng nhập,
+ *    phiên, CSRF, chống dò mật khẩu và nhật ký thao tác.
+ *
+ * - HTML luôn đi qua serveHtmlWithNonce(): chèn nonce vào <script>/<style> và đặt CSP
+ *   nghiêm ngặt cho từng response (không CDN, không eval, không inline lậu).
  * - Routing non-strict: '/prep/x/' cũng khớp '/prep/x' → guard exact-path redirect
  *   MỘT lần sang bản có dấu '/' (bản có '/' không vào nhánh redirect nên không lặp vòng).
  *
- * TODO(backend): thay mock client-side bằng API thật (auth, code, đề thi) — xem public/prep/_mock.js
+ * TODO(frontend): chuyển trang học viên từ public/prep/_mock.js sang GET /api/catalog.
  */
 const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
 
+const api = require('./server/api');
+const A = require('./server/auth');
+
 const app = express();
 app.disable('x-powered-by');
+app.set('trust proxy', true);
 
 const PUB = path.join(__dirname, 'public');
 const PORT = process.env.PORT || 3000;
@@ -59,6 +69,33 @@ function serveHtmlWithNonce(relFile) {
   };
 }
 
+/* ---------------- API (đăng ký trước static) ---------------- */
+app.use('/api', api);
+
+/* ---------------- Khu quản trị ----------------
+   Guard phía server: chưa đăng nhập thì đá về /admin/dang-nhap/ ngay từ HTTP,
+   không để lộ khung trang quản trị rồi mới kiểm ở client. */
+function adminPage(file) {
+  const serve = serveHtmlWithNonce(file);
+  return (req, res) => {
+    if (!A.currentAdmin(req)) {
+      if (!req.path.endsWith('/')) return res.redirect(301, req.path + '/');
+      const next = encodeURIComponent(req.originalUrl);
+      return res.redirect(302, '/admin/dang-nhap/?next=' + next);
+    }
+    serve(req, res);
+  };
+}
+
+app.get('/admin/dang-nhap/', serveHtmlWithNonce('admin/dang-nhap.html'));
+app.get('/admin/', adminPage('admin/index.html'));
+app.get('/admin/de-thi/', adminPage('admin/tests.html'));
+app.get('/admin/de-thi/:id/', adminPage('admin/builder.html'));
+app.get('/admin/ngan-hang/', adminPage('admin/bank.html'));
+app.get('/admin/hoc-vien/', adminPage('admin/users.html'));
+app.get('/admin/code/', adminPage('admin/codes.html'));
+app.get('/admin/quan-tri/', adminPage('admin/settings.html'));
+
 /* ---------------- Trang công khai ---------------- */
 app.get('/', (req, res) => res.redirect('/prep/landing/'));
 app.get('/prep/landing/', serveHtmlWithNonce('prep/landing/index.html'));
@@ -88,6 +125,12 @@ app.use((req, res) =>
   res.status(404).type('text').send('404 - không tìm thấy. Về trang chủ: /prep/landing/')
 );
 
+/* Tài khoản quản trị khởi tạo + dọn phiên hết hạn định kỳ */
+A.ensureSeedAdmin();
+setInterval(A.purgeSessions, 30 * 60e3).unref();
+
 app.listen(PORT, () => {
-  console.log(`VPET Prep UI chạy tại http://localhost:${PORT}`);
+  console.log(`VPET Prep chạy tại http://localhost:${PORT}`);
+  console.log(`  · Học viên:  http://localhost:${PORT}/prep/landing/`);
+  console.log(`  · Quản trị:  http://localhost:${PORT}/admin/`);
 });

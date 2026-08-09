@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Báo cáo · Quản trị VPET Prep</title>
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#1c3d8f">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="preload" href="/fonts/pjs-700-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/tailwind-built.css">
+  <style>body{font-family:'Plus Jakarta Sans',system-ui,sans-serif}</style>
+  <script>
+    (function(){try{
+      var t=localStorage.getItem('prep.theme');
+      if(t==='dark'||(!t&&matchMedia('(prefers-color-scheme: dark)').matches))document.documentElement.classList.add('dark');
+    }catch(e){}})();
+  </script>
+</head>
+<body class="bg-surface text-ink">
+<div id="app" data-active="reports" class="min-h-[100dvh]">
+  <main id="main">
+    <div class="max-w-[1240px] mx-auto px-4 sm:px-6 lg:px-8 pt-8" id="page">
+      <div id="loading">
+        <div class="grid sm:grid-cols-2 xl:grid-cols-4 gap-5">
+          <div class="card p-5"><div class="skeleton h-4 w-24 mb-4"></div><div class="skeleton h-8 w-20 mb-3"></div><div class="skeleton h-3 w-28"></div></div>
+          <div class="card p-5"><div class="skeleton h-4 w-24 mb-4"></div><div class="skeleton h-8 w-20 mb-3"></div><div class="skeleton h-3 w-28"></div></div>
+          <div class="card p-5 hidden sm:block"><div class="skeleton h-4 w-24 mb-4"></div><div class="skeleton h-8 w-20 mb-3"></div><div class="skeleton h-3 w-28"></div></div>
+          <div class="card p-5 hidden xl:block"><div class="skeleton h-4 w-24 mb-4"></div><div class="skeleton h-8 w-20 mb-3"></div><div class="skeleton h-3 w-28"></div></div>
+        </div>
+        <div class="card p-6 mt-6"><div class="skeleton h-5 w-40 mb-6"></div><div class="skeleton h-44 w-full"></div></div>
+      </div>
+      <div id="content" hidden></div>
+    </div>
+  </main>
+</div>
+
+<script src="/admin/_admin.js"></script>
+<script>
+(async () => {
+  await AD.mount({ title: 'Báo cáo', subtitle: 'Tổng quan nội dung, học viên và code' });
+
+  let d;
+  try {
+    d = await AD.get('/admin/reports');
+  } catch (e) {
+    AD.qs('#loading').hidden = true;
+    AD.qs('#content').hidden = false;
+    AD.qs('#content').innerHTML = AD.errorBox(e.message, 'retry');
+    AD.qs('#retry').addEventListener('click', () => location.reload());
+    return;
+  }
+
+  /* ---------- Ô số liệu ---------- */
+  const stat = (label, value, sub, icon, tone) =>
+    '<div class="card p-5">' +
+      '<div class="flex items-start justify-between gap-3">' +
+        '<span class="text-[12.5px] font-bold uppercase tracking-wide text-muted">' + AD.esc(label) + '</span>' +
+        '<span class="w-9 h-9 rounded-xl inline-flex items-center justify-center shrink-0 ' +
+          (tone === 'accent' ? 'bg-accent-soft text-accent-strong' : 'bg-brand-soft text-brand-strong') + '">' +
+          AD.icon(icon, 'w-[18px] h-[18px]') + '</span>' +
+      '</div>' +
+      '<p class="text-[30px] font-extrabold tracking-tight leading-none mt-3">' + AD.esc(value) + '</p>' +
+      '<p class="text-[13px] text-muted font-medium mt-2">' + AD.esc(sub) + '</p>' +
+    '</div>';
+
+  /* ---------- Biểu đồ cột 14 ngày (SVG nội bộ, không thư viện) ---------- */
+  function chart(series, key, color) {
+    const w = 720, h = 170, pad = 26, n = series.length;
+    const max = Math.max(1, ...series.map(s => s[key]));
+    const bw = (w - pad * 2) / n;
+    const bars = series.map((s, i) => {
+      const bh = Math.round((s[key] / max) * (h - pad * 2));
+      const x = pad + i * bw + bw * 0.18;
+      const y = h - pad - bh;
+      return '<rect x="' + x.toFixed(1) + '" y="' + (bh ? y : h - pad - 2) + '" width="' + (bw * 0.64).toFixed(1) +
+        '" height="' + Math.max(bh, 2) + '" rx="3" fill="' + color + '" opacity="' + (bh ? 1 : .28) + '">' +
+        '<title>' + s.day + ': ' + s[key] + '</title></rect>';
+    }).join('');
+    const labels = series.map((s, i) =>
+      (i % 3 === 0 || i === n - 1)
+        ? '<text x="' + (pad + i * bw + bw / 2).toFixed(1) + '" y="' + (h - 8) + '" text-anchor="middle" ' +
+          'font-size="10" fill="var(--color-muted)">' + s.day.slice(8) + '/' + s.day.slice(5, 7) + '</text>'
+        : '').join('');
+    return '<svg viewBox="0 0 ' + w + ' ' + h + '" class="w-full" role="img" aria-label="Biểu đồ 14 ngày">' +
+      '<line x1="' + pad + '" y1="' + (h - pad) + '" x2="' + (w - pad) + '" y2="' + (h - pad) +
+      '" stroke="var(--color-border)" stroke-width="1.5"/>' + bars + labels +
+      '<text x="' + pad + '" y="16" font-size="11" font-weight="700" fill="var(--color-muted)">Cao nhất: ' + max + '</text>' +
+      '</svg>';
+  }
+
+  const totalSeriesUsers = d.series.reduce((a, s) => a + s.users, 0);
+  const totalSeriesRedeems = d.series.reduce((a, s) => a + s.redeems, 0);
+
+  /* ---------- Bảng theo kỳ thi ---------- */
+  const famRows = d.byFamily.map(f =>
+    '<tr class="border-b border-line last:border-0">' +
+      '<td class="px-5 py-3.5"><span class="exam-chip" data-family="' + f.id + '">' + AD.esc(f.name) + '</span></td>' +
+      '<td class="px-4 py-3.5 text-right font-bold">' + AD.num(f.tests) + '</td>' +
+      '<td class="px-4 py-3.5 text-right font-bold">' + AD.num(f.questions) + '</td>' +
+      '<td class="px-4 py-3.5 text-right font-bold">' + AD.num(f.unlocks) + '</td>' +
+      '<td class="px-5 py-3.5 text-right font-bold">' + AD.num(f.interested) + '</td>' +
+    '</tr>').join('');
+
+  /* ---------- Cảnh báo thiếu câu hỏi ---------- */
+  const gaps = d.bankGaps.length
+    ? '<ul class="grid gap-2.5">' + d.bankGaps.map(g =>
+        '<li class="flex items-center gap-3 text-[14px]">' +
+          '<span class="badge badge-hl shrink-0">thiếu ' + (g.need - g.have) + '</span>' +
+          '<span class="min-w-0 flex-1"><b>' + AD.esc(g.family) + '</b> · ' +
+            AD.esc(AD.SKILL_VI[g.skill] || g.skill) + ' · ' + AD.esc(g.level) + '</span>' +
+          '<span class="text-muted font-semibold shrink-0">' + g.have + '/' + g.need + '</span>' +
+        '</li>').join('') + '</ul>' +
+      '<a href="/admin/ngan-hang/" class="btn btn-soft btn-md w-full mt-5">Bổ sung ngân hàng câu hỏi</a>'
+    : '<div class="flex items-start gap-3">' +
+        '<span class="w-9 h-9 rounded-full bg-accent-soft text-accent-strong shrink-0 inline-flex items-center justify-center">' +
+          AD.icon('check', 'w-[18px] h-[18px]') + '</span>' +
+        '<p class="text-[14.5px] text-muted leading-relaxed">Ngân hàng đủ câu cho mọi phần của các đề hiện có.</p>' +
+      '</div>';
+
+  const recent = d.recent.length
+    ? '<ul class="grid gap-3">' + d.recent.map(r =>
+        '<li class="flex gap-3 text-[13.5px]">' +
+          '<span class="w-2 h-2 rounded-full bg-accent mt-1.5 shrink-0"></span>' +
+          '<span class="min-w-0"><b class="font-semibold">' + AD.esc(r.action) + '</b>' +
+            (r.target ? ' <span class="text-muted">' + AD.esc(r.target) + '</span>' : '') +
+            '<span class="block text-muted text-[12.5px] mt-0.5">' + AD.esc(r.admin_name || r.admin || '—') +
+            ' · ' + AD.ago(r.at) + '</span></span>' +
+        '</li>').join('') + '</ul>'
+    : '<p class="text-[14px] text-muted">Chưa có thao tác nào được ghi nhận.</p>';
+
+  AD.qs('#content').innerHTML =
+    '<div class="grid sm:grid-cols-2 xl:grid-cols-4 gap-5">' +
+      stat('Học viên', AD.num(d.users.total), '+' + d.users.new7 + ' trong 7 ngày · ' + d.users.verified + ' đã xác thực', 'users') +
+      stat('Code đã phát', AD.num(d.codes.total),
+        d.codes.unused + ' chưa dùng · ' + d.codes.redeemed + ' đã kích hoạt', 'ticket', 'accent') +
+      stat('Đề thi', AD.num(d.content.tests),
+        d.content.published + ' đang phát hành · ' + d.content.draft + ' nháp', 'fileText') +
+      stat('Doanh thu 30 ngày', AD.vnd(d.revenue.d30),
+        d.revenue.orders30 + ' đơn · tổng ' + AD.vnd(d.revenue.total), 'wallet', 'accent') +
+    '</div>' +
+
+    '<div class="grid lg:grid-cols-12 gap-6 mt-6 items-start">' +
+      '<section class="lg:col-span-8 card p-6" aria-labelledby="h-chart">' +
+        '<div class="flex flex-wrap items-baseline gap-3">' +
+          '<h2 id="h-chart" class="text-lg font-extrabold tracking-tight">Hoạt động 14 ngày</h2>' +
+          '<div class="ms-auto flex gap-1.5" role="tablist" aria-label="Chọn chỉ số">' +
+            '<button type="button" class="chip" data-metric="users" aria-pressed="true">Học viên mới (' + totalSeriesUsers + ')</button>' +
+            '<button type="button" class="chip" data-metric="redeems" aria-pressed="false">Code kích hoạt (' + totalSeriesRedeems + ')</button>' +
+            '<button type="button" class="chip" data-metric="revenue" aria-pressed="false">Doanh thu</button>' +
+          '</div>' +
+        '</div>' +
+        '<div id="chart" class="mt-5"></div>' +
+      '</section>' +
+
+      '<section class="lg:col-span-4 card p-6" aria-labelledby="h-gaps">' +
+        '<h2 id="h-gaps" class="text-lg font-extrabold tracking-tight">Ngân hàng câu hỏi</h2>' +
+        '<p class="text-[13.5px] text-muted mt-1 mb-4">' + AD.num(d.content.questions) + ' câu đang dùng được</p>' +
+        gaps +
+      '</section>' +
+
+      '<section class="lg:col-span-8 card overflow-hidden" aria-labelledby="h-fam">' +
+        '<h2 id="h-fam" class="text-lg font-extrabold tracking-tight px-6 pt-6 pb-4">Theo kỳ thi</h2>' +
+        '<div class="overflow-x-auto"><table class="w-full text-[14px]">' +
+          '<thead><tr class="text-[12px] uppercase tracking-wide text-muted border-y border-line bg-surface">' +
+            '<th class="text-left font-bold px-5 py-3">Kỳ thi</th>' +
+            '<th class="text-right font-bold px-4 py-3">Đề</th>' +
+            '<th class="text-right font-bold px-4 py-3">Câu hỏi</th>' +
+            '<th class="text-right font-bold px-4 py-3">Code đã dùng</th>' +
+            '<th class="text-right font-bold px-5 py-3">Học viên quan tâm</th>' +
+          '</tr></thead><tbody>' + famRows + '</tbody>' +
+        '</table></div>' +
+      '</section>' +
+
+      '<section class="lg:col-span-4 card p-6" aria-labelledby="h-recent">' +
+        '<div class="flex items-baseline gap-3 mb-4">' +
+          '<h2 id="h-recent" class="text-lg font-extrabold tracking-tight">Thao tác gần đây</h2>' +
+          '<a href="/admin/quan-tri/#nhat-ky" class="ms-auto text-[13px] font-bold text-brand-strong hover:underline">Nhật ký</a>' +
+        '</div>' + recent +
+      '</section>' +
+    '</div>';
+
+  AD.qs('#loading').hidden = true;
+  AD.qs('#content').hidden = false;
+
+  /* Chuyển chỉ số biểu đồ */
+  const colors = { users: 'var(--color-primary)', redeems: 'var(--color-accent)', revenue: 'var(--color-primary)' };
+  const draw = key => { AD.qs('#chart').innerHTML = chart(d.series, key, colors[key]); };
+  draw('users');
+  AD.qsa('[data-metric]').forEach(b => b.addEventListener('click', () => {
+    AD.qsa('[data-metric]').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+    draw(b.getAttribute('data-metric'));
+  }));
+})();
+</script>
+</body>
+</html>

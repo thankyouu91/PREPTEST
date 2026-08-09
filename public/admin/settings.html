@@ -1,0 +1,221 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Quản trị · VPET Prep</title>
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#1c3d8f">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/tailwind-built.css">
+  <style>body{font-family:'Plus Jakarta Sans',system-ui,sans-serif}</style>
+  <script>
+    (function(){try{
+      var t=localStorage.getItem('prep.theme');
+      if(t==='dark'||(!t&&matchMedia('(prefers-color-scheme: dark)').matches))document.documentElement.classList.add('dark');
+    }catch(e){}})();
+  </script>
+</head>
+<body class="bg-surface text-ink">
+<div id="app" data-active="settings" class="min-h-[100dvh]">
+  <main id="main">
+    <div class="max-w-[1240px] mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-10">
+      <div role="tablist" aria-label="Mục quản trị" class="flex gap-2 overflow-x-auto no-scrollbar border-b border-line mb-7 -mx-1 px-1">
+        <button role="tab" id="tab-general" aria-controls="p-general" aria-selected="true" class="tabbtn">Nền tảng</button>
+        <button role="tab" id="tab-packages" aria-controls="p-packages" aria-selected="false" class="tabbtn">Gói bán</button>
+        <button role="tab" id="tab-account" aria-controls="p-account" aria-selected="false" class="tabbtn">Tài khoản quản trị</button>
+        <button role="tab" id="tab-audit" aria-controls="p-audit" aria-selected="false" class="tabbtn">Nhật ký</button>
+      </div>
+
+      <section role="tabpanel" id="p-general" aria-labelledby="tab-general"><div class="skeleton h-40 w-full rounded-2xl"></div></section>
+      <section role="tabpanel" id="p-packages" aria-labelledby="tab-packages" hidden></section>
+      <section role="tabpanel" id="p-account" aria-labelledby="tab-account" hidden></section>
+      <section role="tabpanel" id="p-audit" aria-labelledby="tab-audit" hidden></section>
+    </div>
+  </main>
+</div>
+
+<script src="/admin/_admin.js"></script>
+<script>
+(async () => {
+  const me = await AD.mount({ title: 'Quản trị', subtitle: 'Cấu hình nền tảng, gói bán và nhật ký thao tác' });
+
+  const tabs = [['tab-general','p-general'],['tab-packages','p-packages'],['tab-account','p-account'],['tab-audit','p-audit']];
+  tabs.forEach(([tid, pid]) => AD.qs('#' + tid).addEventListener('click', () => {
+    tabs.forEach(([t2, p2]) => {
+      const on = t2 === tid;
+      AD.qs('#' + t2).setAttribute('aria-selected', String(on));
+      AD.qs('#' + p2).toggleAttribute('hidden', !on);
+    });
+    if (pid === 'p-audit') loadAudit();
+    history.replaceState(null, '', pid === 'p-audit' ? '#nhat-ky' : location.pathname);
+  }));
+
+  let S;
+  try {
+    S = await AD.get('/admin/settings');
+  } catch (e) {
+    AD.qs('#p-general').innerHTML = AD.errorBox(e.message, 'retry');
+    AD.qs('#retry').addEventListener('click', () => location.reload());
+    return;
+  }
+
+  /* ---------------- Nền tảng ---------------- */
+  AD.qs('#p-general').innerHTML =
+    '<div class="grid lg:grid-cols-12 gap-6">' +
+      '<div class="lg:col-span-7 card p-6 sm:p-7 grid gap-5 content-start">' +
+        '<h2 class="text-lg font-extrabold tracking-tight">Thương hiệu</h2>' +
+        '<div><label class="label" for="g-name">Tên hiển thị</label>' +
+          '<input class="input" id="g-name" value="' + AD.esc(S.settings['brand.name'] || '') + '">' +
+          '<p class="help">Hiện ở đầu sidebar và trang giới thiệu.</p></div>' +
+        '<div><label class="label" for="g-tenant">Bộ màu tenant</label>' +
+          '<select class="input" id="g-tenant">' +
+            ['default', 'evergreen', 'sunrise'].map(t2 =>
+              '<option value="' + t2 + '"' + ((S.settings['brand.tenant'] || 'default') === t2 ? ' selected' : '') + '>' +
+              (t2 === 'default' ? 'Mặc định (navy + teal)' : t2 === 'evergreen' ? 'Evergreen (xanh lá)' : 'Sunrise (cam đất)') +
+              '</option>').join('') + '</select></div>' +
+        '<div><label class="label" for="g-notice">Thông báo toàn nền tảng</label>' +
+          '<input class="input" id="g-notice" value="' + AD.esc(S.settings['platform.notice'] || '') + '" placeholder="Để trống nếu không hiển thị">' +
+          '<p class="help">Dòng nhắc ngắn cho học viên, ví dụ lịch bảo trì.</p></div>' +
+        '<div class="banner banner-success" id="g-ok"><span>Đã lưu cấu hình.</span></div>' +
+        '<button type="button" id="g-save" class="btn btn-primary btn-md justify-self-start">Lưu cấu hình</button>' +
+      '</div>' +
+      '<div class="lg:col-span-5 card p-6">' +
+        '<h2 class="text-lg font-extrabold tracking-tight">Kỳ thi</h2>' +
+        '<p class="text-[13.5px] text-muted mt-1 mb-4">Danh mục cố định của nền tảng.</p>' +
+        '<ul class="grid gap-2.5">' + S.families.map(f =>
+          '<li class="flex items-center gap-3 py-2 border-b border-line last:border-0">' +
+            '<span class="exam-chip shrink-0" data-family="' + f.id + '">' + AD.esc(f.name) + '</span>' +
+            '<span class="text-[13.5px] text-muted truncate">' + AD.esc(f.format) + '</span>' +
+          '</li>').join('') + '</ul>' +
+      '</div>' +
+    '</div>';
+
+  AD.qs('#g-save').addEventListener('click', async () => {
+    AD.qs('#g-ok').classList.remove('show');
+    try {
+      await AD.put('/admin/settings', { settings: {
+        'brand.name': AD.qs('#g-name').value,
+        'brand.tenant': AD.qs('#g-tenant').value,
+        'platform.notice': AD.qs('#g-notice').value
+      }});
+      AD.qs('#g-ok').classList.add('show');
+      AD.toast('Đã lưu cấu hình nền tảng');
+    } catch (e) { AD.toast(e.message, 'error'); }
+  });
+
+  /* ---------------- Gói bán ---------------- */
+  AD.qs('#p-packages').innerHTML =
+    '<div class="grid md:grid-cols-2 xl:grid-cols-3 gap-5">' + S.packages.map(p =>
+      '<article class="card p-6" data-pkg="' + AD.esc(p.id) + '">' +
+        '<div class="flex items-center gap-2">' +
+          '<h3 class="font-extrabold text-[17px] tracking-tight">' + AD.esc(p.name) + '</h3>' +
+          (p.featured ? '<span class="badge badge-hl ms-auto">Nổi bật</span>' : '') +
+        '</div>' +
+        '<p class="text-muted text-[13.5px] leading-relaxed mt-2 min-h-[42px]">' + AD.esc(p.description) + '</p>' +
+        '<label class="label mt-4" for="pk-' + AD.esc(p.id) + '">Giá (VND)</label>' +
+        '<input class="input" id="pk-' + AD.esc(p.id) + '" type="number" min="0" step="1000" value="' + p.price + '" data-price>' +
+        '<label class="flex items-center gap-2.5 text-[14px] font-medium text-muted mt-3.5">' +
+          '<input type="checkbox" class="w-4 h-4 rounded accent-[color:var(--color-accent)]" data-active ' + (p.active ? 'checked' : '') + '>' +
+          'Đang bán</label>' +
+        '<button type="button" class="btn btn-soft btn-md w-full mt-4" data-save>Lưu gói</button>' +
+      '</article>').join('') + '</div>';
+
+  AD.qsa('[data-pkg]').forEach(card => {
+    card.querySelector('[data-save]').addEventListener('click', async () => {
+      const id = card.getAttribute('data-pkg');
+      try {
+        await AD.put('/admin/packages/' + encodeURIComponent(id), {
+          price: +card.querySelector('[data-price]').value || 0,
+          active: card.querySelector('[data-active]').checked
+        });
+        AD.toast('Đã lưu gói');
+      } catch (e) { AD.toast(e.message, 'error'); }
+    });
+  });
+
+  /* ---------------- Tài khoản quản trị ---------------- */
+  AD.qs('#p-account').innerHTML =
+    '<div class="grid lg:grid-cols-12 gap-6">' +
+      '<form id="pw-form" class="lg:col-span-7 card p-6 sm:p-7 grid gap-5 content-start" novalidate>' +
+        '<h2 class="text-lg font-extrabold tracking-tight">Đổi mật khẩu</h2>' +
+        '<div><label class="label" for="cur">Mật khẩu hiện tại</label>' +
+          '<input class="input" id="cur" type="password" autocomplete="current-password"></div>' +
+        '<div><label class="label" for="np">Mật khẩu mới</label>' +
+          '<input class="input" id="np" type="password" autocomplete="new-password" placeholder="Tối thiểu 10 ký tự, có chữ và số">' +
+          '<p class="help">Đổi xong mọi thiết bị sẽ bị đăng xuất.</p></div>' +
+        '<div><label class="label" for="re">Nhập lại mật khẩu mới</label>' +
+          '<input class="input" id="re" type="password" autocomplete="new-password"></div>' +
+        '<div class="banner banner-error" id="pw-err"><span id="pw-err-text"></span></div>' +
+        '<button type="submit" class="btn btn-primary btn-md justify-self-start">Cập nhật mật khẩu</button>' +
+      '</form>' +
+      '<div class="lg:col-span-5 card p-6">' +
+        '<h2 class="text-lg font-extrabold tracking-tight">Người quản trị</h2>' +
+        '<ul class="grid gap-3 mt-4">' + S.admins.map(a =>
+          '<li class="flex items-center gap-3 py-2 border-b border-line last:border-0">' +
+            '<span class="w-9 h-9 rounded-full bg-brand-soft text-brand-strong text-[12px] font-extrabold inline-flex items-center justify-center shrink-0">' +
+              AD.esc((a.name || a.username).slice(0, 2).toUpperCase()) + '</span>' +
+            '<span class="min-w-0 flex-1"><b class="block text-[14px] truncate">' + AD.esc(a.name) + '</b>' +
+              '<span class="block text-[12.5px] text-muted truncate">@' + AD.esc(a.username) + '</span></span>' +
+            '<span class="badge badge-muted shrink-0">' + (a.role === 'owner' ? 'Chủ tài khoản' : 'Biên tập') + '</span>' +
+          '</li>').join('') + '</ul>' +
+        '<p class="help mt-4">Thêm người quản trị mới sẽ làm ở bước phân quyền chi tiết.</p>' +
+      '</div>' +
+    '</div>';
+
+  AD.qs('#pw-form').addEventListener('submit', async ev => {
+    ev.preventDefault();
+    const err = AD.qs('#pw-err');
+    err.classList.remove('show');
+    const cur = AD.qs('#cur').value, np = AD.qs('#np').value, re = AD.qs('#re').value;
+    if (np !== re) {
+      AD.qs('#pw-err-text').textContent = 'Hai mật khẩu mới chưa khớp.';
+      err.classList.add('show');
+      return;
+    }
+    try {
+      await AD.post('/admin/password', { current: cur, next: np });
+      AD.toast('Đã đổi mật khẩu, đang đăng xuất…');
+      setTimeout(() => { location.href = '/admin/dang-nhap/'; }, 1200);
+    } catch (e) {
+      AD.qs('#pw-err-text').textContent = e.message;
+      err.classList.add('show');
+    }
+  });
+
+  /* ---------------- Nhật ký ---------------- */
+  let auditLoaded = false;
+  async function loadAudit() {
+    if (auditLoaded) return;
+    auditLoaded = true;
+    AD.qs('#p-audit').innerHTML = AD.skeletonRows(6);
+    try {
+      const { items } = await AD.get('/admin/audit?limit=100');
+      AD.qs('#p-audit').innerHTML = items.length
+        ? '<div class="card overflow-hidden"><div class="overflow-x-auto"><table class="w-full text-[14px]">' +
+          '<thead><tr class="text-[12px] uppercase tracking-wide text-muted border-b border-line bg-surface">' +
+            '<th class="text-left font-bold px-5 py-3">Thời điểm</th>' +
+            '<th class="text-left font-bold px-4 py-3">Người thực hiện</th>' +
+            '<th class="text-left font-bold px-4 py-3">Hành động</th>' +
+            '<th class="text-left font-bold px-5 py-3 hidden md:table-cell">Đối tượng</th>' +
+          '</tr></thead><tbody>' +
+          items.map(a =>
+            '<tr class="border-b border-line last:border-0">' +
+              '<td class="px-5 py-3 text-muted whitespace-nowrap">' + AD.dateTime(a.at) + '</td>' +
+              '<td class="px-4 py-3 font-semibold">' + AD.esc(a.admin || '—') + '</td>' +
+              '<td class="px-4 py-3"><code class="text-[13px]">' + AD.esc(a.action) + '</code></td>' +
+              '<td class="px-5 py-3 hidden md:table-cell text-muted truncate max-w-[260px]">' + AD.esc(a.target || '—') + '</td>' +
+            '</tr>').join('') +
+          '</tbody></table></div></div>'
+        : AD.emptyBox('history', 'Chưa có thao tác nào', 'Mọi thay đổi của quản trị viên sẽ được ghi lại ở đây.');
+    } catch (e) {
+      AD.qs('#p-audit').innerHTML = AD.errorBox(e.message);
+      auditLoaded = false;
+    }
+  }
+
+  if (location.hash === '#nhat-ky') AD.qs('#tab-audit').click();
+})();
+</script>
+</body>
+</html>

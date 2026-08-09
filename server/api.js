@@ -1,0 +1,912 @@
+/**
+ * API quản trị — tất cả nằm dưới /api/admin (trừ /api/catalog công khai).
+ *
+ * Nguyên tắc:
+ * - Mọi route thay đổi dữ liệu: requireAdmin + csrfGuard + ghi audit.
+ * - Mọi truy vấn dùng tham số ràng buộc, không nối chuỗi giá trị người dùng.
+ * - Trả lỗi dạng { error } kèm HTTP status hợp lý.
+ */
+'use strict';
+const express = require('express');
+const { q, tx, nowISO, jparse, makeCode, audit } = require('./db');
+const A = require('./auth');
+
+const router = express.Router();
+router.use(express.json({ limit: '1mb' }));
+
+/* ============================ Trợ giúp ============================ */
+const SKILLS = ['listening', 'reading', 'writing', 'speaking'];
+const LEVELS = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
+const QTYPES = ['mcq', 'gap', 'essay', 'speaking'];
+const STATUSES = ['draft', 'published', 'archived'];
+
+const bad = (res, msg) => res.status(400).json({ error: msg });
+const str = (v, max) => (typeof v === 'string' ? v.trim().slice(0, max || 400) : '');
+const int = (v, dflt) => (Number.isFinite(+v) ? Math.trunc(+v) : dflt);
+const clamp = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+const slug = s => str(s, 60).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
+  .replace(/đ/g, 'd').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+const daysAgoISO = n => new Date(Date.now() - n * 86400000).toISOString();
+
+function familyExists(id) { return !!q.val('SELECT 1 FROM families WHERE id=?', id); }
+
+/** Mô tả quyền mở khoá của một code thành chữ */
+function unlockLabel(type, ref) {
+  if (type === 'test') {
+    const t = q.get('SELECT title FROM tests WHERE id=?', ref);
+    return t ? t.title : 'Bài ' + ref;
+  }
+  if (type === 'family') {
+    const f = q.get('SELECT name FROM families WHERE id=?', ref);
+    return 'Trọn bộ ' + (f ? f.name : ref);
+  }
+  const names = String(ref).split(',').map(id => {
+    const f = q.get('SELECT name FROM families WHERE id=?', id);
+    return f ? f.name : id;
+  });
+  return 'Combo ' + names.join(' + ');
+}
+
+/* ======================= Đăng nhập quản trị ======================= */
+router.post('/admin/login', (req, res) => {
+  const username = str(req.body && req.body.username, 60);
+  const password = typeof (req.body && req.body.password) === 'string' ? req.body.password : '';
+  if (!username || !password) return bad(res, 'Nhập tên đăng nhập và mật khẩu.');
+
+  const key = A.throttleKey(req, username);
+  const lockedFor = A.isLocked(key);
+  if (lockedFor) {
+    return res.status(429).json({
+      error: 'Sai quá nhiều lần. Thử lại sau ' + Math.ceil(lockedFor / 60) + ' phút.'
+    });
+  }
+
+  const admin = q.get('SELECT * FROM admins WHERE username=? AND active=1', username);
+  // Vẫn băm một lần khi không tìm thấy tài khoản để thời gian phản hồi không lộ thông tin
+  const ok = admin ? A.verifyPassword(password, admin.pass_hash)
+                   : A.verifyPassword(password, A.hashPassword('không-tồn-tại'));
+  if (!admin || !ok) {
+    A.noteFailure(key);
+    audit({ ip: req.ip }, 'admin.login.failed', 'admins/' + username, {});
+    return res.status(401).json({ error: 'Tên đăng nhập hoặc mật khẩu không đúng.' });
+  }
+
+  A.clearFailures(key);
+  A.createSession(admin.id, req, res);
+  q.run('UPDATE admins SET last_login_at=? WHERE id=?', nowISO(), admin.id);
+  audit({ admin, ip: req.ip }, 'admin.login', 'admins/' + admin.username, {});
+  res.json({ ok: true, admin: { username: admin.username, name: admin.name, role: admin.role } });
+});
+
+router.post('/admin/logout', A.csrfGuard, (req, res) => {
+  const admin = A.currentAdmin(req);
+  if (admin) audit({ admin, ip: req.ip }, 'admin.logout', 'admins/' + admin.username, {});
+  A.destroySession(req, res);
+  res.json({ ok: true });
+});
+
+router.get('/admin/me', (req, res) => {
+  const admin = A.currentAdmin(req);
+  if (!admin) return res.status(401).json({ error: 'Chưa đăng nhập.' });
+  res.json({ admin });
+});
+
+/* Từ đây trở xuống đều cần đăng nhập + CSRF */
+router.use('/admin', A.requireAdmin, A.csrfGuard);
+
+/* ============================ BÁO CÁO ============================ */
+router.get('/admin/reports', (req, res) => {
+  const d7 = daysAgoISO(7), d30 = daysAgoISO(30);
+
+  const users = {
+    total: q.val('SELECT COUNT(*) c FROM users'),
+    new7: q.val('SELECT COUNT(*) c FROM users WHERE created_at >= ?', d7),
+    new30: q.val('SELECT COUNT(*) c FROM users WHERE created_at >= ?', d30),
+    verified: q.val('SELECT COUNT(*) c FROM users WHERE verified=1'),
+    locked: q.val("SELECT COUNT(*) c FROM users WHERE status='locked'")
+  };
+  const codes = {
+    total: q.val('SELECT COUNT(*) c FROM codes'),
+    unused: q.val("SELECT COUNT(*) c FROM codes WHERE status='unused'"),
+    redeemed: q.val("SELECT COUNT(*) c FROM codes WHERE status='redeemed'"),
+    revoked: q.val("SELECT COUNT(*) c FROM codes WHERE status='revoked'"),
+    expired: q.val("SELECT COUNT(*) c FROM codes WHERE status='unused' AND expires_at IS NOT NULL AND expires_at < ?", nowISO().slice(0, 10)),
+    redeemed7: q.val("SELECT COUNT(*) c FROM codes WHERE redeemed_at >= ?", d7)
+  };
+  const content = {
+    tests: q.val('SELECT COUNT(*) c FROM tests'),
+    published: q.val("SELECT COUNT(*) c FROM tests WHERE status='published'"),
+    draft: q.val("SELECT COUNT(*) c FROM tests WHERE status='draft'"),
+    questions: q.val("SELECT COUNT(*) c FROM questions WHERE status='active'"),
+    families: q.val('SELECT COUNT(*) c FROM families')
+  };
+  const revenue = {
+    total: q.val("SELECT COALESCE(SUM(amount),0) s FROM orders WHERE status='paid'"),
+    d30: q.val("SELECT COALESCE(SUM(amount),0) s FROM orders WHERE status='paid' AND created_at >= ?", d30),
+    orders30: q.val("SELECT COUNT(*) c FROM orders WHERE created_at >= ?", d30)
+  };
+
+  // Chuỗi 14 ngày: user mới và code kích hoạt
+  const series = [];
+  for (let i = 13; i >= 0; i--) {
+    const day = new Date(Date.now() - i * 86400000).toISOString().slice(0, 10);
+    series.push({
+      day,
+      users: q.val('SELECT COUNT(*) c FROM users WHERE substr(created_at,1,10)=?', day),
+      redeems: q.val('SELECT COUNT(*) c FROM codes WHERE substr(redeemed_at,1,10)=?', day),
+      revenue: q.val("SELECT COALESCE(SUM(amount),0) s FROM orders WHERE status='paid' AND substr(created_at,1,10)=?", day)
+    });
+  }
+
+  const byFamily = q.all(`
+    SELECT f.id, f.name,
+           (SELECT COUNT(*) FROM tests t WHERE t.family_id=f.id) tests,
+           (SELECT COUNT(*) FROM questions qq WHERE qq.family_id=f.id AND qq.status='active') questions,
+           (SELECT COUNT(*) FROM codes c WHERE c.unlock_type='family' AND c.unlock_ref=f.id AND c.status='redeemed') unlocks,
+           (SELECT COUNT(*) FROM users u WHERE u.interests_json LIKE '%"' || f.id || '"%') interested
+      FROM families f ORDER BY f.sort`);
+
+  const bankGaps = q.all(`
+    SELECT f.name family, s.skill, s.level, s.need, COALESCE(b.have,0) have
+      FROM (SELECT DISTINCT t.family_id fid, se.skill skill, t.level level,
+                   CASE se.skill WHEN 'writing' THEN 2 WHEN 'speaking' THEN 3 ELSE 20 END need
+              FROM sections se JOIN tests t ON t.id = se.test_id) s
+      JOIN families f ON f.id = s.fid
+      LEFT JOIN (SELECT family_id, skill, level, COUNT(*) have FROM questions
+                  WHERE status='active' GROUP BY family_id, skill, level) b
+        ON b.family_id = s.fid AND b.skill = s.skill AND b.level = s.level
+     WHERE COALESCE(b.have,0) < s.need
+     ORDER BY (s.need - COALESCE(b.have,0)) DESC LIMIT 8`);
+
+  const recent = q.all(
+    'SELECT admin_name, action, target, at FROM audit ORDER BY id DESC LIMIT 8');
+
+  res.json({ users, codes, content, revenue, series, byFamily, bankGaps, recent });
+});
+
+/* ====================== NGÂN HÀNG CÂU HỎI ====================== */
+router.get('/admin/questions', (req, res) => {
+  const where = ["status != 'deleted'"];
+  const args = [];
+  const add = (cond, v) => { where.push(cond); args.push(v); };
+
+  if (req.query.family) add('family_id = ?', str(req.query.family, 20));
+  if (req.query.skill) add('skill = ?', str(req.query.skill, 20));
+  if (req.query.level) add('level = ?', str(req.query.level, 5));
+  if (req.query.type) add('type = ?', str(req.query.type, 20));
+  if (req.query.status) add('status = ?', str(req.query.status, 20));
+  if (req.query.q) add('prompt LIKE ?', '%' + str(req.query.q, 80) + '%');
+
+  const limit = clamp(int(req.query.limit, 30), 1, 200);
+  const offset = clamp(int(req.query.offset, 0), 0, 1e6);
+  const sql = 'FROM questions WHERE ' + where.join(' AND ');
+  const total = q.val('SELECT COUNT(*) c ' + sql, ...args);
+  const rows = q.all(
+    `SELECT id, family_id, skill, level, type, prompt, options_json, answer, explanation, tags_json, status, created_at
+       ${sql} ORDER BY id DESC LIMIT ? OFFSET ?`, ...args, limit, offset);
+
+  res.json({
+    total, limit, offset,
+    items: rows.map(r => ({
+      id: r.id, familyId: r.family_id, skill: r.skill, level: r.level, type: r.type,
+      prompt: r.prompt, options: jparse(r.options_json, []), answer: r.answer,
+      explanation: r.explanation, tags: jparse(r.tags_json, []), status: r.status, createdAt: r.created_at
+    }))
+  });
+});
+
+function readQuestion(body) {
+  const familyId = str(body.familyId, 20);
+  const skill = str(body.skill, 20);
+  const level = str(body.level, 5).toUpperCase();
+  const type = str(body.type, 20);
+  const prompt = str(body.prompt, 4000);
+  if (!familyExists(familyId)) return { err: 'Kỳ thi không hợp lệ.' };
+  if (!SKILLS.includes(skill)) return { err: 'Kỹ năng không hợp lệ.' };
+  if (!LEVELS.includes(level)) return { err: 'Độ khó không hợp lệ.' };
+  if (!QTYPES.includes(type)) return { err: 'Dạng câu không hợp lệ.' };
+  if (prompt.length < 5) return { err: 'Nội dung câu hỏi quá ngắn.' };
+
+  const options = Array.isArray(body.options) ? body.options.map(o => str(o, 500)).filter(Boolean) : [];
+  const answer = str(body.answer, 500);
+  if (type === 'mcq') {
+    if (options.length < 2) return { err: 'Câu trắc nghiệm cần ít nhất 2 phương án.' };
+    if (!options.includes(answer)) return { err: 'Đáp án phải là một trong các phương án đã nhập.' };
+  }
+  const tags = Array.isArray(body.tags) ? body.tags.map(t => str(t, 30)).filter(Boolean).slice(0, 10) : [];
+  return {
+    familyId, skill, level, type, prompt, options, answer,
+    explanation: str(body.explanation, 2000), tags
+  };
+}
+
+router.post('/admin/questions', (req, res) => {
+  const d = readQuestion(req.body || {});
+  if (d.err) return bad(res, d.err);
+  const r = q.run(
+    `INSERT INTO questions (family_id,skill,level,type,prompt,options_json,answer,explanation,tags_json,status,created_at,created_by)
+     VALUES (?,?,?,?,?,?,?,?,?,'active',?,?)`,
+    d.familyId, d.skill, d.level, d.type, d.prompt, JSON.stringify(d.options), d.answer,
+    d.explanation, JSON.stringify(d.tags), nowISO(), req.admin.id);
+  audit(req, 'question.create', 'questions/' + r.lastInsertRowid, { family: d.familyId, skill: d.skill });
+  res.status(201).json({ id: Number(r.lastInsertRowid) });
+});
+
+router.put('/admin/questions/:id', (req, res) => {
+  const id = int(req.params.id, 0);
+  if (!q.val('SELECT 1 FROM questions WHERE id=?', id)) return res.status(404).json({ error: 'Không tìm thấy câu hỏi.' });
+  const d = readQuestion(req.body || {});
+  if (d.err) return bad(res, d.err);
+  q.run(`UPDATE questions SET family_id=?, skill=?, level=?, type=?, prompt=?, options_json=?, answer=?, explanation=?, tags_json=?
+          WHERE id=?`,
+    d.familyId, d.skill, d.level, d.type, d.prompt, JSON.stringify(d.options), d.answer,
+    d.explanation, JSON.stringify(d.tags), id);
+  audit(req, 'question.update', 'questions/' + id, {});
+  res.json({ ok: true });
+});
+
+/** Ngưng dùng / dùng lại câu hỏi (không xoá cứng để đề cũ không mất nội dung) */
+router.post('/admin/questions/:id/status', (req, res) => {
+  const id = int(req.params.id, 0);
+  const status = str(req.body && req.body.status, 20);
+  if (!['active', 'retired'].includes(status)) return bad(res, 'Trạng thái không hợp lệ.');
+  const r = q.run('UPDATE questions SET status=? WHERE id=?', status, id);
+  if (!r.changes) return res.status(404).json({ error: 'Không tìm thấy câu hỏi.' });
+  audit(req, 'question.status', 'questions/' + id, { status });
+  res.json({ ok: true });
+});
+
+/** Nhập hàng loạt câu hỏi (dán JSON hoặc CSV đã tách sẵn ở client) */
+router.post('/admin/questions/bulk', (req, res) => {
+  const items = Array.isArray(req.body && req.body.items) ? req.body.items : null;
+  if (!items || !items.length) return bad(res, 'Không có câu hỏi nào để nhập.');
+  if (items.length > 500) return bad(res, 'Mỗi lần nhập tối đa 500 câu.');
+
+  const errors = [];
+  const ok = [];
+  items.forEach((raw, i) => {
+    const d = readQuestion(raw || {});
+    if (d.err) errors.push({ row: i + 1, error: d.err }); else ok.push(d);
+  });
+  if (!ok.length) return res.status(400).json({ error: 'Không dòng nào hợp lệ.', errors });
+
+  tx(() => {
+    const ins = require('./db').db.prepare(
+      `INSERT INTO questions (family_id,skill,level,type,prompt,options_json,answer,explanation,tags_json,status,created_at,created_by)
+       VALUES (?,?,?,?,?,?,?,?,?,'active',?,?)`);
+    const at = nowISO();
+    for (const d of ok) {
+      ins.run(d.familyId, d.skill, d.level, d.type, d.prompt, JSON.stringify(d.options),
+        d.answer, d.explanation, JSON.stringify(d.tags), at, req.admin.id);
+    }
+  });
+  audit(req, 'question.bulk', 'questions', { inserted: ok.length, failed: errors.length });
+  res.status(201).json({ inserted: ok.length, failed: errors.length, errors: errors.slice(0, 20) });
+});
+
+/** Đếm số câu khả dụng theo tiêu chí — trình sinh đề tự động dùng để báo thiếu */
+router.get('/admin/questions/availability', (req, res) => {
+  const family = str(req.query.family, 20);
+  const level = str(req.query.level, 5).toUpperCase();
+  if (!familyExists(family)) return bad(res, 'Kỳ thi không hợp lệ.');
+  const rows = q.all(
+    `SELECT skill, COUNT(*) exact FROM questions
+      WHERE family_id=? AND level=? AND status='active' GROUP BY skill`, family, level);
+  const any = q.all(
+    `SELECT skill, COUNT(*) total FROM questions
+      WHERE family_id=? AND status='active' GROUP BY skill`, family);
+  const out = {};
+  for (const s of SKILLS) {
+    out[s] = {
+      exact: (rows.find(r => r.skill === s) || {}).exact || 0,
+      total: (any.find(r => r.skill === s) || {}).total || 0
+    };
+  }
+  res.json({ family, level, availability: out });
+});
+
+/* ============================ ĐỀ THI ============================ */
+function testDetail(id) {
+  const t = q.get('SELECT * FROM tests WHERE id=?', id);
+  if (!t) return null;
+  const sections = q.all('SELECT * FROM sections WHERE test_id=? ORDER BY sort, id', id).map(s => {
+    const items = q.all(
+      `SELECT si.id item_id, si.sort, qs.id, qs.prompt, qs.type, qs.level, qs.skill, qs.status
+         FROM section_items si JOIN questions qs ON qs.id = si.question_id
+        WHERE si.section_id=? ORDER BY si.sort, si.id`, s.id);
+    return {
+      id: s.id, name: s.name, skill: s.skill, type: s.type, minutes: s.minutes, sort: s.sort,
+      items: items.map(i => ({
+        itemId: i.item_id, questionId: i.id, prompt: i.prompt,
+        type: i.type, level: i.level, skill: i.skill, status: i.status
+      }))
+    };
+  });
+  return {
+    id: t.id, familyId: t.family_id, title: t.title, level: t.level,
+    durationMin: t.duration_min, scoring: t.scoring, guide: jparse(t.guide_json, []),
+    status: t.status, buildMode: t.build_mode, createdAt: t.created_at, updatedAt: t.updated_at,
+    sections,
+    totalItems: sections.reduce((a, s) => a + s.items.length, 0)
+  };
+}
+
+router.get('/admin/tests', (req, res) => {
+  const where = [];
+  const args = [];
+  if (req.query.family) { where.push('t.family_id = ?'); args.push(str(req.query.family, 20)); }
+  if (req.query.status) { where.push('t.status = ?'); args.push(str(req.query.status, 20)); }
+  if (req.query.q) { where.push('t.title LIKE ?'); args.push('%' + str(req.query.q, 80) + '%'); }
+  const w = where.length ? 'WHERE ' + where.join(' AND ') : '';
+  const rows = q.all(`
+    SELECT t.*, f.name family_name,
+           (SELECT COUNT(*) FROM sections s WHERE s.test_id=t.id) sections,
+           (SELECT COUNT(*) FROM section_items si JOIN sections s ON s.id=si.section_id WHERE s.test_id=t.id) items
+      FROM tests t JOIN families f ON f.id=t.family_id
+      ${w} ORDER BY t.updated_at DESC`, ...args);
+  res.json({
+    items: rows.map(r => ({
+      id: r.id, familyId: r.family_id, familyName: r.family_name, title: r.title, level: r.level,
+      durationMin: r.duration_min, status: r.status, buildMode: r.build_mode,
+      sections: r.sections, items: r.items, updatedAt: r.updated_at
+    }))
+  });
+});
+
+router.get('/admin/tests/:id', (req, res) => {
+  const t = testDetail(str(req.params.id, 60));
+  if (!t) return res.status(404).json({ error: 'Không tìm thấy đề.' });
+  res.json(t);
+});
+
+/** Tạo đề rỗng (chế độ thủ công) */
+router.post('/admin/tests', (req, res) => {
+  const b = req.body || {};
+  const familyId = str(b.familyId, 20);
+  const title = str(b.title, 200);
+  const level = str(b.level, 5).toUpperCase();
+  if (!familyExists(familyId)) return bad(res, 'Kỳ thi không hợp lệ.');
+  if (title.length < 3) return bad(res, 'Tên đề quá ngắn.');
+  if (!LEVELS.includes(level)) return bad(res, 'Độ khó không hợp lệ.');
+
+  let id = slug(b.id || (familyId + '-' + level + '-' + title)).slice(0, 50) || (familyId + '-' + Date.now());
+  let i = 1;
+  while (q.val('SELECT 1 FROM tests WHERE id=?', id)) id = id.replace(/-\d+$/, '') + '-' + (++i);
+
+  const at = nowISO();
+  q.run(`INSERT INTO tests (id,family_id,title,level,duration_min,scoring,guide_json,status,build_mode,created_at,updated_at,created_by)
+         VALUES (?,?,?,?,?,?,?,'draft',?,?,?,?)`,
+    id, familyId, title, level, int(b.durationMin, 0), str(b.scoring, 300),
+    JSON.stringify(Array.isArray(b.guide) ? b.guide.map(g => str(g, 300)).filter(Boolean) : []),
+    str(b.buildMode, 10) === 'auto' ? 'auto' : 'manual', at, at, req.admin.id);
+  audit(req, 'test.create', 'tests/' + id, { title, familyId });
+  res.status(201).json(testDetail(id));
+});
+
+router.put('/admin/tests/:id', (req, res) => {
+  const id = str(req.params.id, 60);
+  if (!q.val('SELECT 1 FROM tests WHERE id=?', id)) return res.status(404).json({ error: 'Không tìm thấy đề.' });
+  const b = req.body || {};
+  const title = str(b.title, 200);
+  const level = str(b.level, 5).toUpperCase();
+  if (title.length < 3) return bad(res, 'Tên đề quá ngắn.');
+  if (!LEVELS.includes(level)) return bad(res, 'Độ khó không hợp lệ.');
+  q.run(`UPDATE tests SET title=?, level=?, duration_min=?, scoring=?, guide_json=?, updated_at=? WHERE id=?`,
+    title, level, int(b.durationMin, 0), str(b.scoring, 300),
+    JSON.stringify(Array.isArray(b.guide) ? b.guide.map(g => str(g, 300)).filter(Boolean) : []),
+    nowISO(), id);
+  audit(req, 'test.update', 'tests/' + id, {});
+  res.json(testDetail(id));
+});
+
+/** Đổi trạng thái: chỉ cho phát hành khi mọi phần đều đã có câu hỏi */
+router.post('/admin/tests/:id/status', (req, res) => {
+  const id = str(req.params.id, 60);
+  const status = str(req.body && req.body.status, 20);
+  if (!STATUSES.includes(status)) return bad(res, 'Trạng thái không hợp lệ.');
+  const t = testDetail(id);
+  if (!t) return res.status(404).json({ error: 'Không tìm thấy đề.' });
+
+  if (status === 'published') {
+    if (!t.sections.length) return bad(res, 'Đề chưa có phần nào, không phát hành được.');
+    const empty = t.sections.filter(s => !s.items.length).map(s => s.name);
+    if (empty.length) return bad(res, 'Các phần sau chưa có câu hỏi: ' + empty.join(', '));
+  }
+  q.run('UPDATE tests SET status=?, updated_at=? WHERE id=?', status, nowISO(), id);
+  audit(req, 'test.status', 'tests/' + id, { status });
+  res.json({ ok: true, status });
+});
+
+router.delete('/admin/tests/:id', (req, res) => {
+  const id = str(req.params.id, 60);
+  const used = q.val("SELECT COUNT(*) c FROM codes WHERE unlock_type='test' AND unlock_ref=?", id);
+  if (used) return bad(res, 'Đã có ' + used + ' code gắn với đề này. Hãy chuyển đề sang lưu trữ thay vì xoá.');
+  const r = q.run('DELETE FROM tests WHERE id=?', id);
+  if (!r.changes) return res.status(404).json({ error: 'Không tìm thấy đề.' });
+  audit(req, 'test.delete', 'tests/' + id, {});
+  res.json({ ok: true });
+});
+
+/* ---- Phần thi (sections) ---- */
+router.post('/admin/tests/:id/sections', (req, res) => {
+  const id = str(req.params.id, 60);
+  if (!q.val('SELECT 1 FROM tests WHERE id=?', id)) return res.status(404).json({ error: 'Không tìm thấy đề.' });
+  const b = req.body || {};
+  const name = str(b.name, 100);
+  const skill = str(b.skill, 20);
+  if (name.length < 2) return bad(res, 'Tên phần quá ngắn.');
+  if (!SKILLS.includes(skill)) return bad(res, 'Kỹ năng không hợp lệ.');
+  const sort = (q.val('SELECT COALESCE(MAX(sort),-1) s FROM sections WHERE test_id=?', id)) + 1;
+  const r = q.run('INSERT INTO sections (test_id,name,skill,type,minutes,sort) VALUES (?,?,?,?,?,?)',
+    id, name, skill, str(b.type, 100) || 'Trắc nghiệm', clamp(int(b.minutes, 0), 0, 600), sort);
+  q.run('UPDATE tests SET updated_at=? WHERE id=?', nowISO(), id);
+  audit(req, 'section.create', 'tests/' + id, { section: name });
+  res.status(201).json({ id: Number(r.lastInsertRowid) });
+});
+
+router.put('/admin/sections/:sid', (req, res) => {
+  const sid = int(req.params.sid, 0);
+  const s = q.get('SELECT * FROM sections WHERE id=?', sid);
+  if (!s) return res.status(404).json({ error: 'Không tìm thấy phần thi.' });
+  const b = req.body || {};
+  q.run('UPDATE sections SET name=?, type=?, minutes=? WHERE id=?',
+    str(b.name, 100) || s.name, str(b.type, 100) || s.type, clamp(int(b.minutes, s.minutes), 0, 600), sid);
+  q.run('UPDATE tests SET updated_at=? WHERE id=?', nowISO(), s.test_id);
+  audit(req, 'section.update', 'sections/' + sid, {});
+  res.json({ ok: true });
+});
+
+router.delete('/admin/sections/:sid', (req, res) => {
+  const sid = int(req.params.sid, 0);
+  const s = q.get('SELECT test_id FROM sections WHERE id=?', sid);
+  if (!s) return res.status(404).json({ error: 'Không tìm thấy phần thi.' });
+  q.run('DELETE FROM sections WHERE id=?', sid);
+  q.run('UPDATE tests SET updated_at=? WHERE id=?', nowISO(), s.test_id);
+  audit(req, 'section.delete', 'sections/' + sid, {});
+  res.json({ ok: true });
+});
+
+/** Gắn câu hỏi vào phần (thủ công, chọn từ ngân hàng) */
+router.post('/admin/sections/:sid/items', (req, res) => {
+  const sid = int(req.params.sid, 0);
+  const s = q.get('SELECT * FROM sections WHERE id=?', sid);
+  if (!s) return res.status(404).json({ error: 'Không tìm thấy phần thi.' });
+  const ids = Array.isArray(req.body && req.body.questionIds)
+    ? req.body.questionIds.map(x => int(x, 0)).filter(Boolean) : [];
+  if (!ids.length) return bad(res, 'Chưa chọn câu hỏi nào.');
+
+  const test = q.get('SELECT family_id FROM tests WHERE id=?', s.test_id);
+  let added = 0, skipped = 0;
+  tx(() => {
+    let sort = (q.val('SELECT COALESCE(MAX(sort),-1) s FROM section_items WHERE section_id=?', sid)) + 1;
+    for (const qid of ids) {
+      const row = q.get("SELECT family_id, skill FROM questions WHERE id=? AND status='active'", qid);
+      // Chỉ nhận câu cùng kỳ thi và cùng kỹ năng với phần thi
+      if (!row || row.family_id !== test.family_id || row.skill !== s.skill) { skipped++; continue; }
+      const r = q.run('INSERT OR IGNORE INTO section_items (section_id,question_id,sort) VALUES (?,?,?)', sid, qid, sort++);
+      if (r.changes) added++; else skipped++;
+    }
+    q.run('UPDATE tests SET updated_at=? WHERE id=?', nowISO(), s.test_id);
+  });
+  audit(req, 'section.items.add', 'sections/' + sid, { added, skipped });
+  res.json({ added, skipped });
+});
+
+router.delete('/admin/items/:itemId', (req, res) => {
+  const itemId = int(req.params.itemId, 0);
+  const row = q.get(`SELECT si.id, s.test_id FROM section_items si
+                       JOIN sections s ON s.id = si.section_id WHERE si.id=?`, itemId);
+  if (!row) return res.status(404).json({ error: 'Không tìm thấy câu trong phần thi.' });
+  q.run('DELETE FROM section_items WHERE id=?', itemId);
+  q.run('UPDATE tests SET updated_at=? WHERE id=?', nowISO(), row.test_id);
+  audit(req, 'section.items.remove', 'items/' + itemId, {});
+  res.json({ ok: true });
+});
+
+/** Sinh đề TỰ ĐỘNG theo blueprint: bốc ngẫu nhiên từ ngân hàng câu hỏi.
+ *  body: { familyId, level, title?, blueprint:[{name,skill,type,items,minutes}], strictLevel? }
+ *  - strictLevel=true: chỉ lấy câu đúng độ khó; mặc định ưu tiên đúng độ khó rồi mới lấy độ khó khác.
+ *  - Trả lỗi rõ ràng khi ngân hàng không đủ câu.
+ */
+router.post('/admin/tests/generate', (req, res) => {
+  const b = req.body || {};
+  const familyId = str(b.familyId, 20);
+  const level = str(b.level, 5).toUpperCase();
+  const strict = !!b.strictLevel;
+  if (!familyExists(familyId)) return bad(res, 'Kỳ thi không hợp lệ.');
+  if (!LEVELS.includes(level)) return bad(res, 'Độ khó không hợp lệ.');
+  const bp = Array.isArray(b.blueprint) ? b.blueprint : [];
+  if (!bp.length) return bad(res, 'Chưa khai báo phần nào cho đề.');
+
+  // Kiểm tra đủ câu trước khi tạo, gom hết thiếu hụt để báo một lần
+  const picked = [];
+  const shortages = [];
+  const usedIds = new Set();
+  for (const sec of bp) {
+    const skill = str(sec.skill, 20);
+    const want = clamp(int(sec.items, 0), 1, 200);
+    if (!SKILLS.includes(skill)) return bad(res, 'Kỹ năng không hợp lệ: ' + skill);
+
+    const pool = strict
+      ? q.all(`SELECT id FROM questions WHERE family_id=? AND skill=? AND level=? AND status='active'`, familyId, skill, level)
+      : q.all(`SELECT id, (level=?) exact FROM questions WHERE family_id=? AND skill=? AND status='active'
+                ORDER BY exact DESC`, level, familyId, skill);
+
+    const avail = pool.filter(r => !usedIds.has(r.id));
+    if (avail.length < want) {
+      shortages.push({ section: str(sec.name, 100) || skill, skill, need: want, have: avail.length });
+      continue;
+    }
+    // Xáo trong nhóm ưu tiên: giữ thứ tự exact trước, trộn ngẫu nhiên trong từng nhóm
+    const exact = avail.filter(r => strict || r.exact);
+    const other = avail.filter(r => !strict && !r.exact);
+    const shuffle = arr => arr.map(v => [Math.random(), v]).sort((a, c) => a[0] - c[0]).map(v => v[1]);
+    const chosen = shuffle(exact).concat(shuffle(other)).slice(0, want);
+    chosen.forEach(r => usedIds.add(r.id));
+    picked.push({ sec, ids: chosen.map(r => r.id) });
+  }
+
+  if (shortages.length) {
+    return res.status(409).json({
+      error: 'Ngân hàng câu hỏi chưa đủ để sinh đề.',
+      shortages
+    });
+  }
+
+  const title = str(b.title, 200) || (q.get('SELECT name FROM families WHERE id=?', familyId).name +
+    ' tự động ' + level + ' ' + new Date().toISOString().slice(0, 10));
+  let id = slug(familyId + '-auto-' + level + '-' + Date.now().toString(36));
+  const at = nowISO();
+
+  tx(() => {
+    q.run(`INSERT INTO tests (id,family_id,title,level,duration_min,scoring,guide_json,status,build_mode,created_at,updated_at,created_by)
+           VALUES (?,?,?,?,?,?,?,'draft','auto',?,?,?)`,
+      id, familyId, title, level,
+      bp.reduce((a, s) => a + clamp(int(s.minutes, 0), 0, 600), 0),
+      str(b.scoring, 300), JSON.stringify(Array.isArray(b.guide) ? b.guide.map(g => str(g, 300)) : []),
+      at, at, req.admin.id);
+
+    picked.forEach((p, i) => {
+      q.run('INSERT INTO sections (test_id,name,skill,type,minutes,sort) VALUES (?,?,?,?,?,?)',
+        id, str(p.sec.name, 100) || p.sec.skill, str(p.sec.skill, 20),
+        str(p.sec.type, 100) || 'Trắc nghiệm', clamp(int(p.sec.minutes, 0), 0, 600), i);
+      const sid = q.val('SELECT id FROM sections WHERE test_id=? ORDER BY id DESC LIMIT 1', id);
+      p.ids.forEach((qid, j) =>
+        q.run('INSERT OR IGNORE INTO section_items (section_id,question_id,sort) VALUES (?,?,?)', sid, qid, j));
+    });
+  });
+
+  audit(req, 'test.generate', 'tests/' + id, { familyId, level, sections: bp.length, items: usedIds.size });
+  res.status(201).json(testDetail(id));
+});
+
+/** Bốc lại toàn bộ câu của một phần (giữ số lượng) */
+router.post('/admin/sections/:sid/reshuffle', (req, res) => {
+  const sid = int(req.params.sid, 0);
+  const s = q.get('SELECT * FROM sections WHERE id=?', sid);
+  if (!s) return res.status(404).json({ error: 'Không tìm thấy phần thi.' });
+  const t = q.get('SELECT family_id, level FROM tests WHERE id=?', s.test_id);
+  const want = q.val('SELECT COUNT(*) c FROM section_items WHERE section_id=?', sid);
+  if (!want) return bad(res, 'Phần này chưa có câu nào để bốc lại.');
+
+  const pool = q.all(
+    `SELECT id, (level=?) exact FROM questions WHERE family_id=? AND skill=? AND status='active' ORDER BY exact DESC`,
+    t.level, t.family_id, s.skill);
+  if (pool.length < want) return bad(res, 'Ngân hàng chỉ còn ' + pool.length + ' câu, không đủ ' + want + ' câu.');
+
+  const shuffle = arr => arr.map(v => [Math.random(), v]).sort((a, c) => a[0] - c[0]).map(v => v[1]);
+  const chosen = shuffle(pool.filter(r => r.exact)).concat(shuffle(pool.filter(r => !r.exact))).slice(0, want);
+  tx(() => {
+    q.run('DELETE FROM section_items WHERE section_id=?', sid);
+    chosen.forEach((r, i) => q.run('INSERT INTO section_items (section_id,question_id,sort) VALUES (?,?,?)', sid, r.id, i));
+    q.run('UPDATE tests SET updated_at=? WHERE id=?', nowISO(), s.test_id);
+  });
+  audit(req, 'section.reshuffle', 'sections/' + sid, { count: want });
+  res.json({ ok: true, count: want });
+});
+
+/* ============================= USER ============================= */
+router.get('/admin/users', (req, res) => {
+  const where = [];
+  const args = [];
+  if (req.query.status) { where.push('status = ?'); args.push(str(req.query.status, 20)); }
+  if (req.query.verified === '1') where.push('verified = 1');
+  if (req.query.verified === '0') where.push('verified = 0');
+  if (req.query.q) {
+    where.push('(name LIKE ? OR email LIKE ? OR username LIKE ?)');
+    const like = '%' + str(req.query.q, 80) + '%';
+    args.push(like, like, like);
+  }
+  const w = where.length ? 'WHERE ' + where.join(' AND ') : '';
+  const limit = clamp(int(req.query.limit, 25), 1, 200);
+  const offset = clamp(int(req.query.offset, 0), 0, 1e6);
+  const total = q.val('SELECT COUNT(*) c FROM users ' + w, ...args);
+  const rows = q.all(`
+    SELECT u.*,
+           (SELECT COUNT(*) FROM codes c WHERE c.user_id=u.id AND c.status='redeemed') codes,
+           (SELECT COALESCE(SUM(o.amount),0) FROM orders o WHERE o.user_id=u.id AND o.status='paid') spent
+      FROM users u ${w} ORDER BY u.created_at DESC LIMIT ? OFFSET ?`, ...args, limit, offset);
+  res.json({
+    total, limit, offset,
+    items: rows.map(u => ({
+      id: u.id, username: u.username, email: u.email, name: u.name,
+      verified: !!u.verified, status: u.status, interests: jparse(u.interests_json, []),
+      codes: u.codes, spent: u.spent, note: u.note, createdAt: u.created_at, lastLoginAt: u.last_login_at
+    }))
+  });
+});
+
+router.get('/admin/users/:id', (req, res) => {
+  const id = int(req.params.id, 0);
+  const u = q.get('SELECT * FROM users WHERE id=?', id);
+  if (!u) return res.status(404).json({ error: 'Không tìm thấy học viên.' });
+  const codes = q.all('SELECT * FROM codes WHERE user_id=? ORDER BY redeemed_at DESC', id);
+  const orders = q.all('SELECT * FROM orders WHERE user_id=? ORDER BY created_at DESC', id);
+  res.json({
+    user: {
+      id: u.id, username: u.username, email: u.email, name: u.name, verified: !!u.verified,
+      status: u.status, interests: jparse(u.interests_json, []), note: u.note,
+      createdAt: u.created_at, lastLoginAt: u.last_login_at
+    },
+    codes: codes.map(c => ({
+      id: c.id, code: c.code, unlockType: c.unlock_type, unlockRef: c.unlock_ref,
+      label: unlockLabel(c.unlock_type, c.unlock_ref), status: c.status,
+      redeemedAt: c.redeemed_at, expiresAt: c.expires_at
+    })),
+    orders: orders.map(o => ({ id: o.id, name: o.name, amount: o.amount, status: o.status, createdAt: o.created_at }))
+  });
+});
+
+router.post('/admin/users/:id/status', (req, res) => {
+  const id = int(req.params.id, 0);
+  const status = str(req.body && req.body.status, 20);
+  if (!['active', 'locked'].includes(status)) return bad(res, 'Trạng thái không hợp lệ.');
+  const r = q.run('UPDATE users SET status=? WHERE id=?', status, id);
+  if (!r.changes) return res.status(404).json({ error: 'Không tìm thấy học viên.' });
+  audit(req, 'user.status', 'users/' + id, { status });
+  res.json({ ok: true });
+});
+
+router.post('/admin/users/:id/verify', (req, res) => {
+  const id = int(req.params.id, 0);
+  const r = q.run('UPDATE users SET verified=1 WHERE id=?', id);
+  if (!r.changes) return res.status(404).json({ error: 'Không tìm thấy học viên.' });
+  audit(req, 'user.verify', 'users/' + id, {});
+  res.json({ ok: true });
+});
+
+router.put('/admin/users/:id', (req, res) => {
+  const id = int(req.params.id, 0);
+  const u = q.get('SELECT * FROM users WHERE id=?', id);
+  if (!u) return res.status(404).json({ error: 'Không tìm thấy học viên.' });
+  const b = req.body || {};
+  const name = str(b.name, 120) || u.name;
+  const note = str(b.note, 500);
+  const interests = Array.isArray(b.interests)
+    ? b.interests.map(x => str(x, 20)).filter(familyExists) : jparse(u.interests_json, []);
+  q.run('UPDATE users SET name=?, note=?, interests_json=? WHERE id=?', name, note, JSON.stringify(interests), id);
+  audit(req, 'user.update', 'users/' + id, {});
+  res.json({ ok: true });
+});
+
+/* ============================= CODE ============================= */
+function validUnlock(type, ref) {
+  if (type === 'test') return !!q.val('SELECT 1 FROM tests WHERE id=?', ref);
+  if (type === 'family') return familyExists(ref);
+  if (type === 'bundle') {
+    const ids = String(ref).split(',').map(s => s.trim()).filter(Boolean);
+    return ids.length >= 2 && ids.every(familyExists);
+  }
+  return false;
+}
+
+router.get('/admin/codes', (req, res) => {
+  const where = [];
+  const args = [];
+  if (req.query.status) { where.push('c.status = ?'); args.push(str(req.query.status, 20)); }
+  if (req.query.type) { where.push('c.unlock_type = ?'); args.push(str(req.query.type, 20)); }
+  if (req.query.batch) { where.push('c.batch_id = ?'); args.push(int(req.query.batch, 0)); }
+  if (req.query.q) { where.push('c.code LIKE ?'); args.push('%' + str(req.query.q, 40).toUpperCase() + '%'); }
+  const w = where.length ? 'WHERE ' + where.join(' AND ') : '';
+  const limit = clamp(int(req.query.limit, 30), 1, 500);
+  const offset = clamp(int(req.query.offset, 0), 0, 1e6);
+  const total = q.val('SELECT COUNT(*) c FROM codes c ' + w, ...args);
+  const rows = q.all(`
+    SELECT c.*, u.name user_name, u.email user_email, b.name batch_name
+      FROM codes c LEFT JOIN users u ON u.id=c.user_id LEFT JOIN batches b ON b.id=c.batch_id
+      ${w} ORDER BY c.id DESC LIMIT ? OFFSET ?`, ...args, limit, offset);
+  res.json({
+    total, limit, offset,
+    items: rows.map(c => ({
+      id: c.id, code: c.code, unlockType: c.unlock_type, unlockRef: c.unlock_ref,
+      label: unlockLabel(c.unlock_type, c.unlock_ref), status: c.status,
+      expiresAt: c.expires_at, redeemedAt: c.redeemed_at, note: c.note,
+      batchId: c.batch_id, batchName: c.batch_name,
+      user: c.user_id ? { id: c.user_id, name: c.user_name, email: c.user_email } : null,
+      createdAt: c.created_at
+    }))
+  });
+});
+
+router.get('/admin/batches', (req, res) => {
+  const rows = q.all(`
+    SELECT b.*, (SELECT COUNT(*) FROM codes c WHERE c.batch_id=b.id) total,
+           (SELECT COUNT(*) FROM codes c WHERE c.batch_id=b.id AND c.status='redeemed') used
+      FROM batches b ORDER BY b.id DESC LIMIT 50`);
+  res.json({
+    items: rows.map(b => ({
+      id: b.id, name: b.name, unlockType: b.unlock_type, unlockRef: b.unlock_ref,
+      label: unlockLabel(b.unlock_type, b.unlock_ref), qty: b.qty, total: b.total, used: b.used,
+      expiresAt: b.expires_at, createdAt: b.created_at
+    }))
+  });
+});
+
+/** Cấp code: một lô nhiều mã, hoặc cấp thẳng cho một học viên */
+router.post('/admin/codes', (req, res) => {
+  const b = req.body || {};
+  const type = str(b.unlockType, 20);
+  const ref = str(b.unlockRef, 200);
+  const qty = clamp(int(b.qty, 1), 1, 500);
+  const note = str(b.note, 200);
+  const expiresAt = str(b.expiresAt, 10) || null;
+  const assignTo = int(b.userId, 0) || null;
+
+  if (!validUnlock(type, ref)) return bad(res, 'Quyền mở khoá không hợp lệ.');
+  if (expiresAt && !/^\d{4}-\d{2}-\d{2}$/.test(expiresAt)) return bad(res, 'Hạn dùng phải theo dạng YYYY-MM-DD.');
+  if (assignTo && !q.val('SELECT 1 FROM users WHERE id=?', assignTo)) return bad(res, 'Học viên không tồn tại.');
+  if (assignTo && qty !== 1) return bad(res, 'Cấp trực tiếp cho học viên thì mỗi lần một mã.');
+
+  const at = nowISO();
+  let batchId = null;
+  const created = [];
+
+  tx(() => {
+    if (qty > 1) {
+      q.run('INSERT INTO batches (name,unlock_type,unlock_ref,qty,expires_at,created_at,created_by) VALUES (?,?,?,?,?,?,?)',
+        str(b.batchName, 120) || ('Lô ' + unlockLabel(type, ref) + ' ' + at.slice(0, 10)),
+        type, ref, qty, expiresAt, at, req.admin.id);
+      batchId = q.val('SELECT id FROM batches ORDER BY id DESC LIMIT 1');
+    }
+    for (let i = 0; i < qty; i++) {
+      let code = makeCode();
+      while (q.val('SELECT 1 FROM codes WHERE code=?', code)) code = makeCode();
+      q.run(`INSERT INTO codes (code,batch_id,unlock_type,unlock_ref,status,expires_at,user_id,redeemed_at,note,created_at,created_by)
+             VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
+        code, batchId, type, ref, assignTo ? 'redeemed' : 'unused', expiresAt,
+        assignTo, assignTo ? at : null, note || null, at, req.admin.id);
+      created.push(code);
+    }
+  });
+
+  audit(req, 'code.issue', batchId ? 'batches/' + batchId : 'codes', { qty, type, ref, assignTo });
+  res.status(201).json({ created, batchId, qty });
+});
+
+router.post('/admin/codes/:id/revoke', (req, res) => {
+  const id = int(req.params.id, 0);
+  const c = q.get('SELECT * FROM codes WHERE id=?', id);
+  if (!c) return res.status(404).json({ error: 'Không tìm thấy mã.' });
+  if (c.status === 'revoked') return bad(res, 'Mã đã bị thu hồi trước đó.');
+  q.run("UPDATE codes SET status='revoked' WHERE id=?", id);
+  audit(req, 'code.revoke', 'codes/' + id, { code: c.code, wasStatus: c.status });
+  res.json({ ok: true });
+});
+
+/** Xuất CSV danh sách mã (theo lô hoặc theo bộ lọc trạng thái) */
+router.get('/admin/codes/export', (req, res) => {
+  const where = [];
+  const args = [];
+  if (req.query.batch) { where.push('c.batch_id = ?'); args.push(int(req.query.batch, 0)); }
+  if (req.query.status) { where.push('c.status = ?'); args.push(str(req.query.status, 20)); }
+  const w = where.length ? 'WHERE ' + where.join(' AND ') : '';
+  const rows = q.all(`SELECT c.code, c.unlock_type, c.unlock_ref, c.status, c.expires_at, c.redeemed_at,
+                             u.email user_email
+                        FROM codes c LEFT JOIN users u ON u.id=c.user_id ${w}
+                       ORDER BY c.id DESC LIMIT 5000`, ...args);
+  const esc = v => '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"';
+  const csv = ['ma,quyen_mo_khoa,doi_tuong,trang_thai,han_dung,ngay_kich_hoat,email_hoc_vien']
+    .concat(rows.map(r => [r.code, r.unlock_type, r.unlock_ref, r.status, r.expires_at, r.redeemed_at, r.user_email].map(esc).join(',')))
+    .join('\r\n');
+  audit(req, 'code.export', 'codes', { rows: rows.length });
+  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+  res.setHeader('Content-Disposition', 'attachment; filename="codes.csv"');
+  res.send('﻿' + csv);            // BOM để Excel đọc đúng tiếng Việt
+});
+
+/* ======================= CÀI ĐẶT · NHẬT KÝ ======================= */
+router.get('/admin/settings', (req, res) => {
+  const rows = q.all('SELECT key, value FROM settings');
+  const settings = {};
+  rows.forEach(r => { settings[r.key] = r.value; });
+  res.json({
+    settings,
+    packages: q.all('SELECT * FROM packages ORDER BY sort').map(p => ({
+      id: p.id, name: p.name, price: p.price, familyId: p.family_id,
+      description: p.description, perks: jparse(p.perks_json, []),
+      featured: !!p.featured, active: !!p.active
+    })),
+    families: q.all('SELECT * FROM families ORDER BY sort').map(f => ({
+      id: f.id, name: f.name, sub: f.sub, format: f.format, skills: jparse(f.skills_json, [])
+    })),
+    admins: q.all('SELECT id, username, name, role, active, created_at, last_login_at FROM admins ORDER BY id')
+  });
+});
+
+router.put('/admin/settings', (req, res) => {
+  const b = (req.body && req.body.settings) || {};
+  const allowed = ['brand.name', 'brand.tenant', 'platform.notice'];
+  const ins = require('./db').db.prepare(
+    'INSERT INTO settings (key,value) VALUES (?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value');
+  for (const k of allowed) if (k in b) ins.run(k, str(b[k], 300));
+  audit(req, 'settings.update', 'settings', { keys: Object.keys(b) });
+  res.json({ ok: true });
+});
+
+router.put('/admin/packages/:id', (req, res) => {
+  const id = str(req.params.id, 40);
+  const p = q.get('SELECT * FROM packages WHERE id=?', id);
+  if (!p) return res.status(404).json({ error: 'Không tìm thấy gói.' });
+  const b = req.body || {};
+  const price = clamp(int(b.price, p.price), 0, 100000000);
+  q.run('UPDATE packages SET name=?, price=?, description=?, active=? WHERE id=?',
+    str(b.name, 120) || p.name, price, str(b.description, 400) || p.description,
+    b.active === false ? 0 : 1, id);
+  audit(req, 'package.update', 'packages/' + id, { price });
+  res.json({ ok: true });
+});
+
+/** Đổi mật khẩu quản trị của chính mình */
+router.post('/admin/password', (req, res) => {
+  const b = req.body || {};
+  const cur = typeof b.current === 'string' ? b.current : '';
+  const next = typeof b.next === 'string' ? b.next : '';
+  const me = q.get('SELECT * FROM admins WHERE id=?', req.admin.id);
+  if (!A.verifyPassword(cur, me.pass_hash)) return res.status(403).json({ error: 'Mật khẩu hiện tại không đúng.' });
+  if (next.length < 10) return bad(res, 'Mật khẩu mới cần ít nhất 10 ký tự.');
+  if (!/[A-Za-z]/.test(next) || !/\d/.test(next)) return bad(res, 'Mật khẩu mới cần có cả chữ và số.');
+  q.run('UPDATE admins SET pass_hash=? WHERE id=?', A.hashPassword(next), req.admin.id);
+  q.run('DELETE FROM sessions WHERE admin_id=?', req.admin.id);   // buộc đăng nhập lại mọi thiết bị
+  audit(req, 'admin.password', 'admins/' + req.admin.username, {});
+  res.json({ ok: true, reauth: true });
+});
+
+router.get('/admin/audit', (req, res) => {
+  const limit = clamp(int(req.query.limit, 60), 1, 300);
+  const rows = q.all('SELECT * FROM audit ORDER BY id DESC LIMIT ?', limit);
+  res.json({
+    items: rows.map(r => ({
+      id: r.id, admin: r.admin_name, action: r.action, target: r.target,
+      meta: jparse(r.meta_json, {}), ip: r.ip, at: r.at
+    }))
+  });
+});
+
+/* =================== CATALOG CÔNG KHAI (đọc) ===================
+   Shape trùng với mock phía học viên để frontend chuyển sang API mà
+   không phải sửa markup. // TODO(frontend): thay _mock.js bằng endpoint này */
+router.get('/catalog', (req, res) => {
+  const families = q.all('SELECT * FROM families ORDER BY sort').map(f => ({
+    id: f.id, name: f.name, sub: f.sub, format: f.format, skills: jparse(f.skills_json, [])
+  }));
+  const tests = q.all("SELECT * FROM tests WHERE status='published' ORDER BY family_id, id").map(t => {
+    const sections = q.all('SELECT * FROM sections WHERE test_id=? ORDER BY sort, id', t.id).map(s => ({
+      name: s.name, type: s.type, minutes: s.minutes,
+      items: q.val('SELECT COUNT(*) c FROM section_items WHERE section_id=?', s.id)
+    }));
+    return {
+      id: t.id, familyId: t.family_id, title: t.title, level: t.level,
+      durationMin: t.duration_min, scoring: t.scoring, guide: jparse(t.guide_json, []),
+      skills: [...new Set(q.all('SELECT skill FROM sections WHERE test_id=?', t.id).map(r => r.skill))],
+      sections,
+      comingSoon: sections.some(s => !s.items)
+    };
+  });
+  const packages = q.all('SELECT * FROM packages WHERE active=1 ORDER BY sort').map(p => ({
+    id: p.id, name: p.name, price: p.price, familyId: p.family_id,
+    desc: p.description, perks: jparse(p.perks_json, []), featured: !!p.featured
+  }));
+  res.set('Cache-Control', 'no-store').json({ families, tests, packages });
+});
+
+module.exports = router;

@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Học viên · Quản trị VPET Prep</title>
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#1c3d8f">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/tailwind-built.css">
+  <style>body{font-family:'Plus Jakarta Sans',system-ui,sans-serif}</style>
+  <script>
+    (function(){try{
+      var t=localStorage.getItem('prep.theme');
+      if(t==='dark'||(!t&&matchMedia('(prefers-color-scheme: dark)').matches))document.documentElement.classList.add('dark');
+    }catch(e){}})();
+  </script>
+</head>
+<body class="bg-surface text-ink">
+<div id="app" data-active="users" class="min-h-[100dvh]">
+  <main id="main">
+    <div class="max-w-[1240px] mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-10">
+
+      <div class="flex flex-wrap items-center gap-2.5 mb-6">
+        <div class="flex gap-2 flex-wrap">
+          <button type="button" class="chip" data-f="" aria-pressed="true">Tất cả</button>
+          <button type="button" class="chip" data-f="verified" aria-pressed="false">Đã xác thực</button>
+          <button type="button" class="chip" data-f="unverified" aria-pressed="false">Chưa xác thực</button>
+          <button type="button" class="chip" data-f="locked" aria-pressed="false">Đang khoá</button>
+        </div>
+        <label class="relative ms-auto min-w-[220px]">
+          <span class="sr-only">Tìm học viên</span>
+          <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted pointer-events-none" id="search-icon"></span>
+          <input id="q" type="search" class="input ps-10 py-2.5" placeholder="Tìm theo tên, email…">
+        </label>
+      </div>
+
+      <p class="text-[13.5px] font-semibold text-muted mb-3" id="count">Đang tải…</p>
+      <div id="list"><div class="card p-5 grid gap-3.5">
+        <div class="skeleton h-6 w-11/12"></div><div class="skeleton h-6 w-full"></div><div class="skeleton h-6 w-4/5"></div>
+      </div></div>
+      <div class="flex justify-center gap-2.5 mt-6" id="pager"></div>
+    </div>
+  </main>
+</div>
+
+<script src="/admin/_admin.js"></script>
+<script>
+(async () => {
+  await AD.mount({ title: 'Học viên', subtitle: 'Tra cứu tài khoản, quyền mở khoá và đơn hàng' });
+  AD.qs('#search-icon').innerHTML = AD.icon('search', 'w-[18px] h-[18px]');
+
+  let families = [];
+  try { families = (await AD.get('/catalog')).families; } catch (e) {}
+  const famName = id => (families.find(f => f.id === id) || {}).name || id;
+
+  const state = { filter: '', q: '', offset: 0, limit: 25 };
+
+  AD.qsa('[data-f]').forEach(b => b.addEventListener('click', () => {
+    state.filter = b.getAttribute('data-f'); state.offset = 0;
+    AD.qsa('[data-f]').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+    load();
+  }));
+  let t = null;
+  AD.qs('#q').addEventListener('input', e => {
+    state.q = e.target.value.trim(); state.offset = 0;
+    clearTimeout(t); t = setTimeout(load, 250);
+  });
+
+  async function load() {
+    const p = new URLSearchParams({ limit: state.limit, offset: state.offset });
+    if (state.q) p.set('q', state.q);
+    if (state.filter === 'verified') p.set('verified', '1');
+    if (state.filter === 'unverified') p.set('verified', '0');
+    if (state.filter === 'locked') p.set('status', 'locked');
+    try {
+      const r = await AD.get('/admin/users?' + p);
+      AD.qs('#count').textContent = r.total
+        ? AD.num(r.total) + ' học viên · hiện ' + (r.offset + 1) + '-' + Math.min(r.offset + r.limit, r.total)
+        : 'Không có học viên nào khớp';
+      if (!r.items.length) {
+        AD.qs('#list').innerHTML = AD.emptyBox('users', 'Không có học viên nào khớp',
+          'Thử xoá bộ lọc hoặc đổi từ khoá tìm kiếm.');
+        AD.qs('#pager').innerHTML = '';
+        return;
+      }
+      AD.qs('#list').innerHTML =
+        '<div class="card overflow-hidden"><div class="overflow-x-auto"><table class="w-full text-[14px]">' +
+        '<thead><tr class="text-[12px] uppercase tracking-wide text-muted border-b border-line bg-surface">' +
+          '<th class="text-left font-bold px-5 py-3">Học viên</th>' +
+          '<th class="text-left font-bold px-4 py-3 hidden md:table-cell">Quan tâm</th>' +
+          '<th class="text-right font-bold px-4 py-3 hidden sm:table-cell">Code</th>' +
+          '<th class="text-right font-bold px-4 py-3 hidden lg:table-cell">Đã chi</th>' +
+          '<th class="text-left font-bold px-4 py-3">Trạng thái</th>' +
+          '<th class="px-5 py-3"><span class="sr-only">Thao tác</span></th>' +
+        '</tr></thead><tbody>' +
+        r.items.map(u =>
+          '<tr class="border-b border-line last:border-0">' +
+            '<td class="px-5 py-3.5"><div class="flex items-center gap-3">' +
+              '<span class="w-9 h-9 rounded-full bg-brand-soft text-brand-strong text-[12px] font-extrabold inline-flex items-center justify-center shrink-0">' +
+                AD.esc(u.name.trim().split(/\s+/).map(w => w[0]).slice(-2).join('').toUpperCase()) + '</span>' +
+              '<span class="min-w-0"><b class="block truncate">' + AD.esc(u.name) + '</b>' +
+              '<span class="block text-[12.5px] text-muted truncate">' + AD.esc(u.email) + '</span></span>' +
+            '</div></td>' +
+            '<td class="px-4 py-3.5 hidden md:table-cell">' +
+              (u.interests.length
+                ? u.interests.map(i => '<span class="exam-chip me-1" data-family="' + i + '">' + AD.esc(famName(i)) + '</span>').join('')
+                : '<span class="text-muted">—</span>') + '</td>' +
+            '<td class="px-4 py-3.5 hidden sm:table-cell text-right font-bold">' + u.codes + '</td>' +
+            '<td class="px-4 py-3.5 hidden lg:table-cell text-right font-bold whitespace-nowrap">' + AD.vnd(u.spent) + '</td>' +
+            '<td class="px-4 py-3.5 whitespace-nowrap">' +
+              (u.status === 'locked' ? '<span class="badge badge-hl">Đang khoá</span>'
+                : u.verified ? '<span class="badge badge-ok">Đã xác thực</span>'
+                : '<span class="badge badge-muted">Chưa xác thực</span>') + '</td>' +
+            '<td class="px-5 py-3.5 text-right">' +
+              '<button type="button" class="btn btn-ghost btn-sm" data-open="' + u.id + '">Chi tiết</button></td>' +
+          '</tr>').join('') +
+        '</tbody></table></div></div>';
+
+      AD.qsa('[data-open]').forEach(b => b.addEventListener('click', () => openUser(+b.getAttribute('data-open'))));
+
+      const pages = Math.ceil(r.total / r.limit);
+      const cur = Math.floor(r.offset / r.limit) + 1;
+      AD.qs('#pager').innerHTML = pages > 1
+        ? '<button type="button" class="btn btn-ghost btn-sm" data-page="prev" ' + (cur === 1 ? 'disabled' : '') + '>Trước</button>' +
+          '<span class="text-[13.5px] font-bold text-muted self-center px-2">Trang ' + cur + '/' + pages + '</span>' +
+          '<button type="button" class="btn btn-ghost btn-sm" data-page="next" ' + (cur === pages ? 'disabled' : '') + '>Sau</button>'
+        : '';
+      AD.qsa('[data-page]').forEach(b => b.addEventListener('click', () => {
+        state.offset = Math.max(0, state.offset + (b.getAttribute('data-page') === 'next' ? state.limit : -state.limit));
+        load();
+      }));
+    } catch (e) {
+      AD.qs('#list').innerHTML = AD.errorBox(e.message, 'retry');
+      AD.qs('#retry').addEventListener('click', load);
+    }
+  }
+
+  async function openUser(id) {
+    let d;
+    try { d = await AD.get('/admin/users/' + id); }
+    catch (e) { AD.toast(e.message, 'error'); return; }
+    const u = d.user;
+
+    const codeRows = d.codes.length
+      ? d.codes.map(c =>
+          '<li class="flex items-center gap-3 py-2.5 border-b border-line last:border-0 text-[13.5px]">' +
+            '<code class="font-bold tracking-wide shrink-0">' + AD.esc(c.code) + '</code>' +
+            '<span class="min-w-0 flex-1 truncate text-muted">' + AD.esc(c.label) + '</span>' +
+            '<span class="text-muted shrink-0">' + AD.date(c.redeemedAt) + '</span>' +
+          '</li>').join('')
+      : '<li class="py-4 text-[14px] text-muted">Chưa kích hoạt code nào.</li>';
+
+    const orderRows = d.orders.length
+      ? d.orders.map(o =>
+          '<li class="flex items-center gap-3 py-2.5 border-b border-line last:border-0 text-[13.5px]">' +
+            '<span class="min-w-0 flex-1 truncate"><b>' + AD.esc(o.name) + '</b></span>' +
+            '<span class="font-bold shrink-0">' + AD.vnd(o.amount) + '</span>' +
+            '<span class="text-muted shrink-0 w-24 text-right">' + AD.date(o.createdAt) + '</span>' +
+          '</li>').join('')
+      : '<li class="py-4 text-[14px] text-muted">Chưa có đơn nào.</li>';
+
+    const mm = AD.modal(
+      '<div class="flex items-start gap-3.5">' +
+        '<span class="w-12 h-12 rounded-full bg-brand-soft text-brand-strong font-extrabold inline-flex items-center justify-center shrink-0">' +
+          AD.esc(u.name.trim().split(/\s+/).map(w => w[0]).slice(-2).join('').toUpperCase()) + '</span>' +
+        '<div class="min-w-0">' +
+          '<h3 class="text-lg font-extrabold tracking-tight truncate">' + AD.esc(u.name) + '</h3>' +
+          '<p class="text-[13.5px] text-muted truncate">' + AD.esc(u.email) + ' · @' + AD.esc(u.username) + '</p>' +
+          '<p class="flex flex-wrap gap-1.5 mt-2">' +
+            (u.status === 'locked' ? '<span class="badge badge-hl">Đang khoá</span>' : '<span class="badge badge-ok">Hoạt động</span>') +
+            (u.verified ? '<span class="badge badge-ok">Đã xác thực</span>' : '<span class="badge badge-muted">Chưa xác thực</span>') +
+            '<span class="badge badge-muted">Tham gia ' + AD.date(u.createdAt) + '</span>' +
+          '</p>' +
+        '</div>' +
+      '</div>' +
+
+      '<div class="grid sm:grid-cols-2 gap-5 mt-6">' +
+        '<section><h4 class="text-[13px] font-bold uppercase tracking-wide text-muted mb-1">Code đã kích hoạt</h4>' +
+          '<ul class="max-h-40 overflow-y-auto">' + codeRows + '</ul></section>' +
+        '<section><h4 class="text-[13px] font-bold uppercase tracking-wide text-muted mb-1">Đơn hàng</h4>' +
+          '<ul class="max-h-40 overflow-y-auto">' + orderRows + '</ul></section>' +
+      '</div>' +
+
+      '<div class="border-t border-line mt-6 pt-5 grid gap-4">' +
+        '<div><label class="label" for="u-note">Ghi chú nội bộ</label>' +
+          '<input class="input" id="u-note" value="' + AD.esc(u.note || '') + '" placeholder="Chỉ quản trị viên thấy"></div>' +
+        '<div class="flex flex-wrap gap-2.5">' +
+          '<button type="button" id="u-save" class="btn btn-primary btn-md">Lưu ghi chú</button>' +
+          (u.verified ? '' : '<button type="button" id="u-verify" class="btn btn-ghost btn-md">Đánh dấu đã xác thực</button>') +
+          '<button type="button" id="u-lock" class="btn btn-ghost btn-md ' + (u.status === 'locked' ? '' : 'text-danger') + '">' +
+            (u.status === 'locked' ? 'Mở khoá tài khoản' : 'Khoá tài khoản') + '</button>' +
+          '<button type="button" id="u-code" class="btn btn-soft btn-md ms-auto">' + AD.icon('ticket', 'w-4 h-4') + 'Cấp code</button>' +
+        '</div>' +
+      '</div>', { wide: true });
+
+    mm.el.querySelector('#u-save').addEventListener('click', async () => {
+      try {
+        await AD.put('/admin/users/' + id, { name: u.name, note: mm.el.querySelector('#u-note').value, interests: u.interests });
+        mm.close(); AD.toast('Đã lưu ghi chú'); load();
+      } catch (e) { AD.toast(e.message, 'error'); }
+    });
+    const vb = mm.el.querySelector('#u-verify');
+    if (vb) vb.addEventListener('click', async () => {
+      try { await AD.post('/admin/users/' + id + '/verify'); mm.close(); AD.toast('Đã đánh dấu xác thực'); load(); }
+      catch (e) { AD.toast(e.message, 'error'); }
+    });
+    mm.el.querySelector('#u-lock').addEventListener('click', async () => {
+      const to = u.status === 'locked' ? 'active' : 'locked';
+      if (to === 'locked' && !await AD.confirm('Khoá tài khoản?',
+        'Học viên ' + u.name + ' sẽ không đăng nhập được cho tới khi bạn mở lại.', 'Khoá tài khoản')) return;
+      try { await AD.post('/admin/users/' + id + '/status', { status: to }); mm.close(); AD.toast(to === 'locked' ? 'Đã khoá tài khoản' : 'Đã mở khoá'); load(); }
+      catch (e) { AD.toast(e.message, 'error'); }
+    });
+    mm.el.querySelector('#u-code').addEventListener('click', () => {
+      mm.close();
+      location.href = '/admin/code/?user=' + id;
+    });
+  }
+
+  load();
+})();
+</script>
+</body>
+</html>

@@ -7,7 +7,9 @@
     "start": "node server.js",
     "dev": "node --watch server.js",
     "build": "tailwindcss -i ./src/tailwind.css -o ./public/tailwind-built.css --minify",
-    "screenshot": "node scripts/screenshot.mjs"
+    "screenshot": "node scripts/screenshot.mjs",
+    "screenshot:admin": "node scripts/shot-admin.mjs",
+    "test": "node scripts/test-admin.mjs && node scripts/test-auth.mjs && node scripts/audit.mjs"
   },
   "dependencies": {
     "express": "^4.21.2"

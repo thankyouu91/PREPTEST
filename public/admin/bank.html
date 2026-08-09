@@ -1,0 +1,307 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ngân hàng câu hỏi · Quản trị VPET Prep</title>
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#1c3d8f">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/tailwind-built.css">
+  <style>body{font-family:'Plus Jakarta Sans',system-ui,sans-serif}</style>
+  <script>
+    (function(){try{
+      var t=localStorage.getItem('prep.theme');
+      if(t==='dark'||(!t&&matchMedia('(prefers-color-scheme: dark)').matches))document.documentElement.classList.add('dark');
+    }catch(e){}})();
+  </script>
+</head>
+<body class="bg-surface text-ink">
+<div id="app" data-active="bank" class="min-h-[100dvh]">
+  <main id="main">
+    <div class="max-w-[1240px] mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-10">
+
+      <div class="card p-4 mb-6 grid gap-3">
+        <div class="flex flex-wrap gap-2.5">
+          <label class="relative flex-1 min-w-[200px]">
+            <span class="sr-only">Tìm câu hỏi</span>
+            <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted pointer-events-none" id="search-icon"></span>
+            <input id="q" type="search" class="input ps-10 py-2.5" placeholder="Tìm trong nội dung câu hỏi…">
+          </label>
+          <label class="sr-only" for="f-skill">Lọc kỹ năng</label>
+          <select id="f-skill" class="input w-auto py-2.5">
+            <option value="">Mọi kỹ năng</option>
+            <option value="listening">Nghe</option><option value="reading">Đọc</option>
+            <option value="writing">Viết</option><option value="speaking">Nói</option>
+          </select>
+          <label class="sr-only" for="f-level">Lọc độ khó</label>
+          <select id="f-level" class="input w-auto py-2.5">
+            <option value="">Mọi độ khó</option>
+            <option>A1</option><option>A2</option><option>B1</option><option>B2</option><option>C1</option><option>C2</option>
+          </select>
+          <label class="sr-only" for="f-type">Lọc dạng câu</label>
+          <select id="f-type" class="input w-auto py-2.5">
+            <option value="">Mọi dạng</option>
+            <option value="mcq">Trắc nghiệm</option><option value="gap">Điền từ</option>
+            <option value="essay">Tự luận</option><option value="speaking">Ghi âm</option>
+          </select>
+          <label class="sr-only" for="f-status">Lọc trạng thái</label>
+          <select id="f-status" class="input w-auto py-2.5">
+            <option value="active">Đang dùng</option>
+            <option value="retired">Đã ngưng</option>
+            <option value="">Tất cả</option>
+          </select>
+        </div>
+        <div class="flex gap-2 overflow-x-auto no-scrollbar" id="fam-chips"></div>
+      </div>
+
+      <p class="text-[13.5px] font-semibold text-muted mb-3" id="count">Đang tải…</p>
+      <div id="list"><div class="card p-5 grid gap-3.5">
+        <div class="skeleton h-6 w-11/12"></div><div class="skeleton h-6 w-full"></div><div class="skeleton h-6 w-4/5"></div>
+      </div></div>
+      <div class="flex justify-center gap-2.5 mt-6" id="pager"></div>
+    </div>
+  </main>
+</div>
+
+<script src="/admin/_admin.js"></script>
+<script>
+(async () => {
+  await AD.mount({ title: 'Ngân hàng câu hỏi', subtitle: 'Kho câu dùng chung cho mọi đề của một kỳ thi' });
+  AD.qs('#search-icon').innerHTML = AD.icon('search', 'w-[18px] h-[18px]');
+  AD.qs('#page-actions').innerHTML =
+    '<button type="button" id="btn-bulk" class="btn btn-soft btn-sm">' + AD.icon('upload', 'w-4 h-4') + '<span class="hidden sm:inline">Nhập hàng loạt</span></button>' +
+    '<button type="button" id="btn-new" class="btn btn-primary btn-sm">' + AD.icon('plus', 'w-4 h-4') + 'Thêm câu</button>';
+
+  let families = [];
+  try { families = (await AD.get('/catalog')).families; } catch (e) {}
+
+  const state = { family: '', skill: '', level: '', type: '', status: 'active', q: '', offset: 0, limit: 25 };
+
+  AD.qs('#fam-chips').innerHTML =
+    '<button type="button" class="chip shrink-0" data-f="" aria-pressed="true">Mọi kỳ thi</button>' +
+    families.map(f => '<button type="button" class="chip shrink-0" data-family="' + f.id + '" data-f="' + f.id + '" aria-pressed="false">' + AD.esc(f.name) + '</button>').join('');
+  AD.qs('#fam-chips').addEventListener('click', e => {
+    const b = e.target.closest('[data-f]');
+    if (!b) return;
+    state.family = b.getAttribute('data-f'); state.offset = 0;
+    AD.qsa('[data-f]').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+    load();
+  });
+  ['skill', 'level', 'type', 'status'].forEach(k => AD.qs('#f-' + k).addEventListener('change', e => {
+    state[k] = e.target.value; state.offset = 0; load();
+  }));
+  let t = null;
+  AD.qs('#q').addEventListener('input', e => {
+    state.q = e.target.value.trim(); state.offset = 0;
+    clearTimeout(t); t = setTimeout(load, 250);
+  });
+
+  async function load() {
+    const p = new URLSearchParams({ limit: state.limit, offset: state.offset });
+    ['family', 'skill', 'level', 'type', 'status', 'q'].forEach(k => { if (state[k]) p.set(k, state[k]); });
+    try {
+      const r = await AD.get('/admin/questions?' + p);
+      AD.qs('#count').textContent = r.total
+        ? AD.num(r.total) + ' câu khớp bộ lọc · hiện ' + (r.offset + 1) + '-' + Math.min(r.offset + r.limit, r.total)
+        : 'Không có câu nào khớp';
+      if (!r.items.length) {
+        AD.qs('#list').innerHTML = AD.emptyBox('database', 'Ngân hàng chưa có câu nào khớp',
+          'Thêm câu thủ công, hoặc nhập hàng loạt bằng JSON để dựng kho nhanh.',
+          '<button type="button" class="btn btn-primary btn-md" data-empty-new>Thêm câu hỏi</button>');
+        const b = AD.qs('[data-empty-new]');
+        if (b) b.addEventListener('click', () => openEditor(null));
+        AD.qs('#pager').innerHTML = '';
+        return;
+      }
+      AD.qs('#list').innerHTML = '<div class="grid gap-2.5">' + r.items.map(card).join('') + '</div>';
+      AD.qsa('[data-edit]').forEach(b => b.addEventListener('click', () => {
+        openEditor(r.items.find(x => x.id === +b.getAttribute('data-edit')));
+      }));
+      AD.qsa('[data-toggle]').forEach(b => b.addEventListener('click', async () => {
+        const id = +b.getAttribute('data-toggle');
+        const to = b.getAttribute('data-to');
+        try { await AD.post('/admin/questions/' + id + '/status', { status: to }); AD.toast(to === 'retired' ? 'Đã ngưng dùng câu này' : 'Đã dùng lại câu này'); load(); }
+        catch (e) { AD.toast(e.message, 'error'); }
+      }));
+
+      const pages = Math.ceil(r.total / r.limit);
+      const cur = Math.floor(r.offset / r.limit) + 1;
+      AD.qs('#pager').innerHTML = pages > 1
+        ? '<button type="button" class="btn btn-ghost btn-sm" data-page="prev" ' + (cur === 1 ? 'disabled' : '') + '>Trước</button>' +
+          '<span class="text-[13.5px] font-bold text-muted self-center px-2">Trang ' + cur + '/' + pages + '</span>' +
+          '<button type="button" class="btn btn-ghost btn-sm" data-page="next" ' + (cur === pages ? 'disabled' : '') + '>Sau</button>'
+        : '';
+      AD.qsa('[data-page]').forEach(b => b.addEventListener('click', () => {
+        state.offset += b.getAttribute('data-page') === 'next' ? state.limit : -state.limit;
+        state.offset = Math.max(0, state.offset);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        load();
+      }));
+    } catch (e) {
+      AD.qs('#list').innerHTML = AD.errorBox(e.message, 'retry');
+      AD.qs('#retry').addEventListener('click', load);
+    }
+  }
+
+  function card(i) {
+    const fam = families.find(f => f.id === i.familyId);
+    return '<article class="card p-4 flex items-start gap-3.5' + (i.status === 'retired' ? ' opacity-60' : '') + '">' +
+      '<span class="min-w-0 flex-1">' +
+        '<span class="flex flex-wrap items-center gap-1.5 mb-2">' +
+          '<span class="exam-chip" data-family="' + i.familyId + '">' + AD.esc(fam ? fam.name : i.familyId) + '</span>' +
+          '<span class="badge badge-muted">' + AD.esc(AD.SKILL_VI[i.skill] || i.skill) + '</span>' +
+          '<span class="badge badge-muted">' + AD.esc(i.level) + '</span>' +
+          '<span class="badge badge-muted">' + AD.esc(AD.TYPE_VI[i.type] || i.type) + '</span>' +
+          (i.status === 'retired' ? '<span class="badge badge-hl">Đã ngưng</span>' : '') +
+        '</span>' +
+        '<span class="block text-[14.5px] leading-snug">' + AD.esc(i.prompt) + '</span>' +
+        (i.options && i.options.length
+          ? '<span class="block text-[12.5px] text-muted mt-1.5">' +
+              i.options.map(o => (o === i.answer ? '<b class="text-accent-strong">' + AD.esc(o) + '</b>' : AD.esc(o))).join(' · ') + '</span>'
+          : '') +
+      '</span>' +
+      '<span class="flex flex-col gap-1.5 shrink-0">' +
+        '<button type="button" class="p-2 rounded-full text-muted hover:text-ink transition" data-edit="' + i.id + '" aria-label="Sửa câu hỏi">' + AD.icon('edit', 'w-4 h-4') + '</button>' +
+        '<button type="button" class="p-2 rounded-full text-muted hover:text-danger transition" data-toggle="' + i.id + '" data-to="' +
+          (i.status === 'active' ? 'retired' : 'active') + '" aria-label="' + (i.status === 'active' ? 'Ngưng dùng' : 'Dùng lại') + '">' +
+          AD.icon(i.status === 'active' ? 'x' : 'check', 'w-4 h-4') + '</button>' +
+      '</span>' +
+    '</article>';
+  }
+
+  /* ---------- Thêm / sửa câu ---------- */
+  function openEditor(item) {
+    const isNew = !item;
+    const d = item || { familyId: families[0] && families[0].id, skill: 'listening', level: 'B1', type: 'mcq', prompt: '', options: ['', '', '', ''], answer: '', explanation: '', tags: [] };
+    const mm = AD.modal(
+      '<h3 class="text-lg font-extrabold tracking-tight">' + (isNew ? 'Thêm câu hỏi' : 'Sửa câu hỏi') + '</h3>' +
+      '<div class="grid gap-4 mt-5">' +
+        '<div class="grid grid-cols-2 gap-3">' +
+          '<div><label class="label" for="q-family">Kỳ thi</label><select class="input" id="q-family">' +
+            families.map(f => '<option value="' + f.id + '"' + (f.id === d.familyId ? ' selected' : '') + '>' + AD.esc(f.name) + '</option>').join('') + '</select></div>' +
+          '<div><label class="label" for="q-skill">Kỹ năng</label><select class="input" id="q-skill">' +
+            ['listening','reading','writing','speaking'].map(s => '<option value="' + s + '"' + (s === d.skill ? ' selected' : '') + '>' + AD.SKILL_VI[s] + '</option>').join('') + '</select></div>' +
+          '<div><label class="label" for="q-level">Độ khó</label><select class="input" id="q-level">' +
+            ['A1','A2','B1','B2','C1','C2'].map(l => '<option' + (l === d.level ? ' selected' : '') + '>' + l + '</option>').join('') + '</select></div>' +
+          '<div><label class="label" for="q-type">Dạng câu</label><select class="input" id="q-type">' +
+            ['mcq','gap','essay','speaking'].map(t2 => '<option value="' + t2 + '"' + (t2 === d.type ? ' selected' : '') + '>' + AD.TYPE_VI[t2] + '</option>').join('') + '</select></div>' +
+        '</div>' +
+        '<div><label class="label" for="q-prompt">Nội dung câu hỏi</label>' +
+          '<textarea class="input" id="q-prompt" rows="3">' + AD.esc(d.prompt) + '</textarea></div>' +
+        '<div id="q-mcq">' +
+          '<p class="label">Phương án (đánh dấu đáp án đúng)</p>' +
+          '<div class="grid gap-2" id="q-options"></div>' +
+        '</div>' +
+        '<div><label class="label" for="q-exp">Giải thích <span class="font-medium text-muted">(không bắt buộc)</span></label>' +
+          '<textarea class="input" id="q-exp" rows="2">' + AD.esc(d.explanation) + '</textarea></div>' +
+        '<div class="banner banner-error" id="q-err"><span id="q-err-text"></span></div>' +
+        '<div class="flex gap-2.5"><button type="button" id="q-save" class="btn btn-primary btn-md flex-1">' +
+          (isNew ? 'Thêm vào ngân hàng' : 'Lưu thay đổi') + '</button>' +
+          '<button type="button" data-close class="btn btn-ghost btn-md">Huỷ</button></div>' +
+      '</div>', { wide: true });
+
+    const typeEl = mm.el.querySelector('#q-type');
+    const optWrap = mm.el.querySelector('#q-options');
+    const mcqBox = mm.el.querySelector('#q-mcq');
+
+    function renderOptions() {
+      const opts = (d.options && d.options.length ? d.options : ['', '', '', '']).slice(0, 6);
+      while (opts.length < 4) opts.push('');
+      optWrap.innerHTML = opts.map((o, i) =>
+        '<label class="flex items-center gap-2.5">' +
+          '<input type="radio" name="ans" class="w-4 h-4 accent-[color:var(--color-accent)] shrink-0" ' +
+            (o && o === d.answer ? 'checked' : '') + ' data-ans="' + i + '" aria-label="Đáp án đúng là phương án ' + (i + 1) + '">' +
+          '<input class="input py-2" data-opt="' + i + '" value="' + AD.esc(o) + '" placeholder="Phương án ' + (i + 1) + '" aria-label="Phương án ' + (i + 1) + '">' +
+        '</label>').join('');
+    }
+    function syncType() {
+      mcqBox.hidden = typeEl.value !== 'mcq';
+    }
+    renderOptions(); syncType();
+    typeEl.addEventListener('change', syncType);
+
+    mm.el.querySelector('#q-save').addEventListener('click', async () => {
+      const err = mm.el.querySelector('#q-err');
+      err.classList.remove('show');
+      const options = AD.qsa('[data-opt]', mm.el).map(i => i.value.trim()).filter(Boolean);
+      const ansIdx = AD.qsa('[data-ans]', mm.el).findIndex(r => r.checked);
+      const allOpts = AD.qsa('[data-opt]', mm.el).map(i => i.value.trim());
+      const body = {
+        familyId: mm.el.querySelector('#q-family').value,
+        skill: mm.el.querySelector('#q-skill').value,
+        level: mm.el.querySelector('#q-level').value,
+        type: typeEl.value,
+        prompt: mm.el.querySelector('#q-prompt').value,
+        explanation: mm.el.querySelector('#q-exp').value,
+        options: typeEl.value === 'mcq' ? options : [],
+        answer: typeEl.value === 'mcq' ? (ansIdx >= 0 ? allOpts[ansIdx] : '') : '',
+        tags: d.tags || []
+      };
+      try {
+        if (isNew) await AD.post('/admin/questions', body);
+        else await AD.put('/admin/questions/' + item.id, body);
+        mm.close();
+        AD.toast(isNew ? 'Đã thêm câu hỏi' : 'Đã lưu câu hỏi');
+        load();
+      } catch (e) {
+        mm.el.querySelector('#q-err-text').textContent = e.message;
+        err.classList.add('show');
+      }
+    });
+  }
+  AD.qs('#btn-new').addEventListener('click', () => openEditor(null));
+
+  /* ---------- Nhập hàng loạt bằng JSON ---------- */
+  AD.qs('#btn-bulk').addEventListener('click', () => {
+    const sample = JSON.stringify([{
+      familyId: families[0] ? families[0].id : 'ielts', skill: 'reading', level: 'B1', type: 'mcq',
+      prompt: 'Nội dung câu hỏi…', options: ['A', 'B', 'C', 'D'], answer: 'A', explanation: ''
+    }], null, 2);
+    const mm = AD.modal(
+      '<h3 class="text-lg font-extrabold tracking-tight">Nhập câu hỏi hàng loạt</h3>' +
+      '<p class="text-muted text-[14px] mt-1.5 leading-relaxed">Dán mảng JSON, mỗi phần tử là một câu. Tối đa 500 câu mỗi lần. Dòng lỗi sẽ được báo lại, các dòng hợp lệ vẫn được nhập.</p>' +
+      '<div class="grid gap-4 mt-5">' +
+        '<div><label class="label" for="b-json">Dữ liệu JSON</label>' +
+          '<textarea class="input font-mono text-[12.5px]" id="b-json" rows="10" spellcheck="false">' + AD.esc(sample) + '</textarea></div>' +
+        '<div class="banner banner-error" id="b-err"><span id="b-err-text"></span></div>' +
+        '<div class="banner banner-success" id="b-ok"><span id="b-ok-text"></span></div>' +
+        '<div class="flex gap-2.5"><button type="button" id="b-go" class="btn btn-primary btn-md flex-1">Nhập vào ngân hàng</button>' +
+          '<button type="button" data-close class="btn btn-ghost btn-md">Đóng</button></div>' +
+      '</div>', { wide: true });
+
+    mm.el.querySelector('#b-go').addEventListener('click', async () => {
+      const err = mm.el.querySelector('#b-err'), ok = mm.el.querySelector('#b-ok');
+      err.classList.remove('show'); ok.classList.remove('show');
+      let items;
+      try {
+        items = JSON.parse(mm.el.querySelector('#b-json').value);
+        if (!Array.isArray(items)) throw new Error('Dữ liệu phải là một mảng JSON.');
+      } catch (e) {
+        mm.el.querySelector('#b-err-text').textContent = 'JSON không hợp lệ: ' + e.message;
+        err.classList.add('show');
+        return;
+      }
+      try {
+        const r = await AD.post('/admin/questions/bulk', { items });
+        mm.el.querySelector('#b-ok-text').textContent =
+          'Đã nhập ' + r.inserted + ' câu' + (r.failed ? ', bỏ qua ' + r.failed + ' dòng lỗi.' : '.');
+        ok.classList.add('show');
+        if (r.errors && r.errors.length) {
+          mm.el.querySelector('#b-err-text').innerHTML =
+            r.errors.map(e2 => 'Dòng ' + e2.row + ': ' + AD.esc(e2.error)).join('<br>');
+          err.classList.add('show');
+        }
+        load();
+      } catch (e) {
+        mm.el.querySelector('#b-err-text').textContent = e.message;
+        err.classList.add('show');
+      }
+    });
+  });
+
+  load();
+})();
+</script>
+</body>
+</html>
