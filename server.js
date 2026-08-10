@@ -12,7 +12,7 @@
  * - Routing non-strict: '/prep/x/' cũng khớp '/prep/x' → guard exact-path redirect
  *   MỘT lần sang bản có dấu '/' (bản có '/' không vào nhánh redirect nên không lặp vòng).
  *
- * TODO(frontend): nối 4 màn auth học viên vào /api/auth/… (hiện còn PrepAuth localStorage).
+ * 3. Khu tự học (/prep/hoc/…): tra cứu và luyện từ vựng, ngữ pháp, phát âm bằng TTS.
  */
 const express = require('express');
 const path = require('path');
@@ -144,6 +144,9 @@ app.get('/prep/nhap-code/', studentPage('prep/codes/nhap-code.html'));
 app.get('/prep/code-cua-toi/', studentPage('prep/codes/code-cua-toi.html'));
 app.get('/prep/bai-thi/:id/', studentPage('prep/test/index.html'));
 app.get('/prep/tai-khoan/', studentPage('prep/account/index.html'));
+
+/* Khu tự học */
+app.get('/prep/hoc/dong-tu-bat-quy-tac/', studentPage('prep/learn/dong-tu-bat-quy-tac.html'));
 
 /* ---------------- Static (CSS/JS/SVG/ảnh) ----------------
    Chặn *.html tĩnh để HTML không bao giờ thoát khỏi vòng chèn nonce. */

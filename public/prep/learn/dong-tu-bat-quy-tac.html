@@ -1,0 +1,247 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Động từ bất quy tắc · VPET Prep</title>
+  <meta name="description" content="Bảng động từ bất quy tắc V1 V2 V3 đầy đủ, có phiên âm Anh Mỹ, nghĩa tiếng Việt, ví dụ và phát âm.">
+  <meta name="theme-color" content="#1c3d8f">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="preload" href="/fonts/pjs-700-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/fonts/pjs-400-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/tailwind-built.css">
+  <style>body{font-family:'Plus Jakarta Sans',system-ui,sans-serif}</style>
+  <script>
+    (function(){try{
+      var t=localStorage.getItem('prep.theme');
+      if(t==='dark'||(!t&&matchMedia('(prefers-color-scheme: dark)').matches))document.documentElement.classList.add('dark');
+      var tn=localStorage.getItem('prep.tenant');
+      if(tn&&tn!=='default')document.documentElement.setAttribute('data-tenant',tn);
+    }catch(e){}})();
+  </script>
+</head>
+<body class="bg-surface text-ink">
+<div id="app" data-active="learn" class="min-h-[100dvh]">
+  <main id="main">
+    <div class="max-w-shell mx-auto px-4 sm:px-6 lg:px-10 pb-6">
+
+      <section class="mt-8 max-w-[68ch]">
+        <h2 class="text-2xl sm:text-[28px] font-extrabold tracking-tight">Động từ bất quy tắc</h2>
+        <p class="text-muted text-[15px] leading-relaxed mt-2">
+          Tra theo cột nào cũng được — gõ <b class="text-ink">went</b> ra <b class="text-ink">go</b>,
+          gõ <b class="text-ink">quên</b> ra <b class="text-ink">forget</b>.
+          Nhấn vào bất kỳ dạng nào để nghe phát âm.
+        </p>
+      </section>
+
+      <!-- Thanh lọc + chọn giọng -->
+      <div class="sticky top-16 z-20 mt-6 border-y border-line bg-[color:var(--color-surface)]/90 backdrop-blur-md">
+        <div class="py-3.5 grid gap-3">
+          <div class="flex flex-wrap gap-2.5">
+            <label class="relative flex-1 min-w-[210px]" aria-label="Tìm động từ">
+              <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted pointer-events-none">
+                <svg viewBox="0 0 24 24" class="w-[18px] h-[18px]" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+              </span>
+              <input id="q" type="search" class="input ps-10 py-2.5" placeholder="go, went, gone hoặc nghĩa tiếng Việt…">
+            </label>
+            <select id="f-level" class="input w-full sm:w-auto py-2.5" aria-label="Lọc theo bậc">
+              <option value="">Bậc: tất cả</option>
+              <option>A1</option><option>A2</option><option>B1</option>
+              <option>B2</option><option>C1</option><option>C2</option>
+            </select>
+            <select id="f-group" class="input w-full sm:w-auto py-2.5" aria-label="Lọc theo nhóm biến đổi">
+              <option value="">Nhóm: tất cả</option>
+              <option value="aaa">Ba dạng giống nhau</option>
+              <option value="aba">V1 = V3</option>
+              <option value="abb">V2 = V3</option>
+              <option value="abc">Ba dạng khác nhau</option>
+            </select>
+          </div>
+          <div class="flex flex-wrap items-center gap-3">
+            <div id="tts-controls"></div>
+            <span id="result-count" class="text-[13px] font-semibold text-muted ms-auto"></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Máy không có giọng tiếng Anh -->
+      <div id="tts-warn" hidden class="mt-5">
+        <div class="banner banner-warn show" role="status">
+          <svg viewBox="0 0 24 24" class="w-5 h-5 shrink-0 mt-0.5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>
+          <span>Thiết bị này chưa có giọng đọc tiếng Anh nên không phát âm được. Cột phiên âm IPA vẫn dùng để tra được nhé.</span>
+        </div>
+      </div>
+
+      <!-- Skeleton -->
+      <div id="skeleton" class="card mt-6 p-5 grid gap-4" aria-hidden="true">
+        <div class="skeleton h-7 w-full"></div>
+        <div class="skeleton h-7 w-11/12"></div>
+        <div class="skeleton h-7 w-full"></div>
+        <div class="skeleton h-7 w-10/12"></div>
+      </div>
+
+      <!-- Bảng (desktop) -->
+      <div id="table-wrap" hidden class="card mt-6 overflow-hidden hidden lg:block">
+        <table class="w-full text-[14.5px]">
+          <thead>
+            <tr class="text-left text-[12.5px] uppercase tracking-wide text-muted border-b border-line">
+              <th class="font-bold px-5 py-4">V1 — nguyên thể</th>
+              <th class="font-bold px-4 py-4">V2 — quá khứ</th>
+              <th class="font-bold px-4 py-4">V3 — phân từ II</th>
+              <th class="font-bold px-4 py-4">V-ing</th>
+              <th class="font-bold px-4 py-4">Nghĩa</th>
+              <th class="font-bold px-5 py-4 text-right">Bậc</th>
+            </tr>
+          </thead>
+          <tbody id="tbody"></tbody>
+        </table>
+      </div>
+
+      <!-- Thẻ (mobile) -->
+      <div id="cards" hidden class="grid gap-4 mt-6 lg:hidden"></div>
+
+      <!-- Không tìm thấy -->
+      <div id="empty" hidden class="card p-10 mt-6 text-center">
+        <span class="w-14 h-14 rounded-full bg-brand-soft text-brand-strong inline-flex items-center justify-center mx-auto">
+          <svg viewBox="0 0 24 24" class="w-7 h-7" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+        </span>
+        <h3 class="font-extrabold text-lg tracking-tight mt-4">Không tìm thấy động từ nào</h3>
+        <p class="text-muted text-[15px] mt-1.5">Thử gõ ít ký tự hơn, hoặc xoá bộ lọc để xem toàn bộ bảng.</p>
+        <button type="button" id="clear" class="btn btn-ghost btn-md mt-6">Xoá bộ lọc</button>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script src="/prep/_mock.js"></script>
+<script src="/prep/_chrome.js"></script>
+<script src="/prep/learn/_tts.js"></script>
+<script>
+  PREP.boot({ auth: true }).then(() => {
+    PrepChrome.mount({ title: 'Động từ bất quy tắc' });
+
+    const GROUP_LABEL = {
+      aaa: 'Ba dạng giống nhau',
+      aba: 'V1 = V3',
+      abb: 'V2 = V3',
+      abc: 'Ba dạng khác nhau'
+    };
+
+    let all = [];
+    const state = { q: '', level: '', group: '' };
+
+    /* Một dạng động từ: bấm để nghe, kèm nhãn cho trình đọc màn hình */
+    const form = (word, label) =>
+      '<button type="button" class="tts-word font-bold" data-say="' + PREP.esc(word) + '" ' +
+        'aria-label="Phát âm ' + label + ': ' + PREP.esc(word) + '">' + PREP.esc(word) + '</button>';
+
+    const ipaCell = v => {
+      const ipa = PrepTTS.accent() === 'uk' ? v.ipaUk : v.ipaUs;
+      return ipa ? '<span class="block text-[12.5px] text-muted font-medium mt-0.5">/' + PREP.esc(ipa) + '/</span>' : '';
+    };
+
+    const noteChip = v => v.note
+      ? '<span class="badge badge-hl mt-1.5 inline-flex max-w-[22ch]"><span class="truncate">' + PREP.esc(v.note) + '</span></span>'
+      : '';
+
+    function row(v) {
+      return '<tr class="border-b border-line last:border-0 align-top">' +
+        '<td class="px-5 py-4">' + form(v.v1, 'nguyên thể') + ipaCell(v) + noteChip(v) + '</td>' +
+        '<td class="px-4 py-4">' + form(v.v2, 'quá khứ') + '</td>' +
+        '<td class="px-4 py-4">' + form(v.v3, 'phân từ hai') + '</td>' +
+        '<td class="px-4 py-4 text-muted">' + PREP.esc(v.ving) + '</td>' +
+        '<td class="px-4 py-4">' +
+          '<span class="font-semibold">' + PREP.esc(v.vi) + '</span>' +
+          (v.exEn
+            ? '<span class="block text-[13px] text-muted mt-1.5">' + PrepTTS.wordify(v.exEn) + '</span>' +
+              '<span class="block text-[13px] text-muted/80 italic">' + PREP.esc(v.exVi || '') + '</span>'
+            : '') +
+        '</td>' +
+        '<td class="px-5 py-4 text-right"><span class="badge badge-muted">' + v.level + '</span></td>' +
+      '</tr>';
+    }
+
+    function card(v) {
+      return '<article class="card p-5">' +
+        '<div class="flex items-center gap-2 mb-3">' +
+          '<span class="badge badge-muted">' + v.level + '</span>' +
+          '<span class="text-[12px] font-bold text-muted">' + GROUP_LABEL[v.group] + '</span>' +
+          '<button type="button" class="ms-auto btn btn-ghost btn-sm" data-say="' + PREP.esc(v.v1) + '" aria-label="Phát âm ' + PREP.esc(v.v1) + '">' +
+            PREP.icon('headphones', 'w-4 h-4') + '</button>' +
+        '</div>' +
+        '<div class="grid grid-cols-3 gap-2 text-center">' +
+          ['V1', 'V2', 'V3'].map((lab, i) =>
+            // min-w-0 + break-words: từ dài như "misunderstood" phải xuống dòng
+            // trong cột hẹp thay vì đẩy tràn cả trang ở 360px
+            '<div class="min-w-0 rounded-xl bg-brand-soft px-2 py-2.5">' +
+              '<span class="block text-[11px] font-bold uppercase tracking-wide text-muted">' + lab + '</span>' +
+              '<span class="block text-[14px] break-words">' + form([v.v1, v.v2, v.v3][i], lab) + '</span>' +
+            '</div>').join('') +
+        '</div>' +
+        (PrepTTS.accent() === 'uk' ? v.ipaUk : v.ipaUs
+          ? '<p class="text-[12.5px] text-muted font-medium mt-2.5">/' + PREP.esc(PrepTTS.accent() === 'uk' ? v.ipaUk : v.ipaUs) + '/ · V-ing: ' + PREP.esc(v.ving) + '</p>'
+          : '<p class="text-[12.5px] text-muted font-medium mt-2.5">V-ing: ' + PREP.esc(v.ving) + '</p>') +
+        '<p class="font-semibold mt-2.5">' + PREP.esc(v.vi) + '</p>' +
+        (v.note ? '<p class="badge badge-hl mt-2 inline-flex">' + PREP.esc(v.note) + '</p>' : '') +
+        (v.exEn
+          ? '<p class="text-[13.5px] text-muted mt-3">' + PrepTTS.wordify(v.exEn) + '</p>' +
+            '<p class="text-[13px] text-muted/80 italic">' + PREP.esc(v.exVi || '') + '</p>'
+          : '') +
+      '</article>';
+    }
+
+    function render() {
+      const kw = state.q.trim().toLowerCase();
+      const list = all.filter(v => {
+        if (state.level && v.level !== state.level) return false;
+        if (state.group && v.group !== state.group) return false;
+        if (!kw) return true;
+        return [v.v1, v.v2, v.v3, v.ving, v.vi].some(x => String(x).toLowerCase().includes(kw));
+      });
+
+      PREP.qs('#result-count').textContent = list.length + '/' + all.length + ' động từ';
+      const none = list.length === 0;
+      PREP.qs('#empty').toggleAttribute('hidden', !none);
+      PREP.qs('#table-wrap').toggleAttribute('hidden', none);
+      PREP.qs('#cards').toggleAttribute('hidden', none);
+      if (none) return;
+
+      PREP.qs('#tbody').innerHTML = list.map(row).join('');
+      PREP.qs('#cards').innerHTML = list.map(card).join('');
+    }
+
+    /* Bộ lọc */
+    PREP.qs('#q').addEventListener('input', e => { state.q = e.target.value; render(); });
+    PREP.qs('#f-level').addEventListener('change', e => { state.level = e.target.value; render(); });
+    PREP.qs('#f-group').addEventListener('change', e => { state.group = e.target.value; render(); });
+    PREP.qs('#clear').addEventListener('click', () => {
+      state.q = state.level = state.group = '';
+      PREP.qs('#q').value = ''; PREP.qs('#f-level').value = ''; PREP.qs('#f-group').value = '';
+      render();
+    });
+
+    /* Phát âm: nhấn từ, bôi đen để nghe, chọn giọng Anh/Mỹ */
+    PrepTTS.onUnavailable = () => PREP.qs('#tts-warn').removeAttribute('hidden');
+    PrepTTS.bindClicks(document);
+    PrepTTS.init().then(() => {
+      PrepTTS.mountControls(PREP.qs('#tts-controls'), render);   // đổi giọng → đổi cột IPA
+      PrepTTS.bindSelection(PREP.qs('#main'));
+      if (!PrepTTS.available()) PREP.qs('#tts-warn').removeAttribute('hidden');
+    });
+
+    /* Dữ liệu */
+    PrepApi.get('/api/learn/irregular-verbs').then(res => {
+      PREP.qs('#skeleton').classList.add('hidden');
+      if (!res.ok) {
+        PREP.qs('#empty').removeAttribute('hidden');
+        PREP.qs('#empty').querySelector('h3').textContent = 'Không tải được bảng động từ';
+        PREP.qs('#empty').querySelector('p').textContent = PrepApi.err(res, 'Thử tải lại trang giúp mình nhé.');
+        return;
+      }
+      all = res.data.verbs || [];
+      render();
+    });
+  });
+</script>
+</body>
+</html>

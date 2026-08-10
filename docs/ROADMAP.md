@@ -18,7 +18,18 @@ Nhánh làm việc: `claude/prep-test-platform-design-fpiuqn`
 - [x] Chuyển trang học viên từ `public/prep/_mock.js` sang đọc `GET /api/catalog`, giữ nguyên markup và các trạng thái loading/empty
 - [x] API học viên thật: đăng ký, đăng nhập, xác thực email, quên/đặt lại mật khẩu, phiên cookie `prep_user` (scrypt như khu quản trị)
 - [x] Nối 4 màn auth + màn Tài khoản vào API học viên: bỏ `PrepAuth`/`PrepAccounts` localStorage, dựng thêm màn `/prep/dat-lai-mat-khau/`, guard phía server cho trang cần đăng nhập
+- [x] Nghiên cứu cơ cấu và cách chấm 6 kỳ thi + thiết kế engine chấm điểm (`docs/SCORING.md`)
+- [x] Thiết kế khu tự học: định mức từ vựng A1–C2, nguồn dữ liệu mở, lược đồ (`docs/LEARNING.md`)
+- [x] Bảng động từ bất quy tắc V1–V2–V3 (193 từ) + lớp TTS Anh/Mỹ dùng chung
 - [ ] API kích hoạt code phía server (`POST /api/redeem`) + rate-limit chống dò mã, thay `PrepState.redeem`
+- [ ] Linking words: ~120 mục theo chức năng × độ trang trọng, có cảnh báo lạm dụng
+- [ ] Lược đồ từ vựng (`vocab_entries` / `senses` / `examples` / `forms`) + trình nhập NGSL–NAWL–TSL
+- [ ] Nhập câu ví dụ song ngữ từ Tatoeba, ghép vào từng nghĩa
+- [ ] Màn học từ vựng có lặp lại ngắt quãng (SM-2 rút gọn)
+- [ ] Ngữ pháp: 12 thì trước (công thức, khi dùng / không dùng, lỗi người Việt hay mắc)
+- [ ] Ngữ pháp: mở rộng theo bảng bậc × nhóm trong `docs/LEARNING.md` (~303 điểm)
+- [ ] Collocations: trích từ corpus + màn luyện
+- [ ] Engine chấm điểm: `attempts` + chấm trắc nghiệm/điền từ + bảng quy đổi theo kỳ thi
 - [ ] Engine làm bài: khung làm bài theo phần, đồng hồ từng phần, tự lưu tiến độ, nộp bài
 - [ ] Chấm tự động phần trắc nghiệm và điền từ, lưu kết quả theo lần làm
 - [ ] Màn kết quả cho học viên: điểm từng phần, phân tích 4 kỹ năng, lịch sử các lần làm

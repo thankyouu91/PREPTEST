@@ -55,6 +55,7 @@ const PAGES = [
   { slug: 'bai-thi',         url: '/prep/bai-thi/vpet-b1-01/',   auth: true, full: true },
   { slug: 'bai-thi-khoa',    url: '/prep/bai-thi/pte-ac-01/',    auth: true },
   { slug: 'tai-khoan',       url: '/prep/tai-khoan/',            auth: true },
+  { slug: 'hoc-dong-tu',     url: '/prep/hoc/dong-tu-bat-quy-tac/', auth: true },
   { slug: 'dashboard-dark',  url: '/prep/',                      auth: true, dark: true },
   { slug: 'landing-dark',    url: '/prep/landing/',              auth: false, dark: true },
   { slug: 'landing-tenant',  url: '/prep/landing/',              auth: false, tenant: 'evergreen' }

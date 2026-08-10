@@ -925,4 +925,38 @@ router.get('/catalog', (req, res) => {
   res.set('Cache-Control', 'no-store').json({ families, tests, packages });
 });
 
+/* ==================== Khu tự học (công khai) ==================== */
+
+/** Bảng động từ bất quy tắc. Tra được theo V1, V2, V3 hoặc nghĩa tiếng Việt. */
+router.get('/learn/irregular-verbs', (req, res) => {
+  const level = LEVELS.includes(str(req.query.level, 2)) ? str(req.query.level, 2) : '';
+  const grp = ['aaa', 'aba', 'abb', 'abc'].includes(str(req.query.group, 3)) ? str(req.query.group, 3) : '';
+  const kw = str(req.query.q, 60).toLowerCase();
+
+  const where = [];
+  const args = [];
+  if (level) { where.push('level = ?'); args.push(level); }
+  if (grp) { where.push('grp = ?'); args.push(grp); }
+  if (kw) {
+    where.push('(lower(v1) LIKE ? OR lower(v2) LIKE ? OR lower(v3) LIKE ? OR lower(vi) LIKE ?)');
+    const like = '%' + kw + '%';
+    args.push(like, like, like, like);
+  }
+  const sql = 'SELECT * FROM irregular_verbs' +
+    (where.length ? ' WHERE ' + where.join(' AND ') : '') + ' ORDER BY sort, v1';
+
+  const verbs = q.all(sql, ...args).map(v => ({
+    v1: v.v1, v2: v.v2, v3: v.v3, ving: v.ving,
+    ipaUk: v.ipa_uk, ipaUs: v.ipa_us, vi: v.vi,
+    group: v.grp, level: v.level, note: v.note,
+    exEn: v.ex_en, exVi: v.ex_vi
+  }));
+
+  res.set('Cache-Control', 'public, max-age=300').json({
+    total: q.val('SELECT COUNT(*) c FROM irregular_verbs'),
+    count: verbs.length,
+    verbs
+  });
+});
+
 module.exports = router;

@@ -109,6 +109,25 @@ Tài khoản tự đăng ký nằm trong bảng `users` phía server, mật kh�
 từ các code đã kích hoạt trong CSDL, nên đổi máy vẫn còn. Đổi mật khẩu ở tab Bảo mật đăng xuất mọi
 thiết bị khác.
 
+## Khu tự học
+
+| Màn | Đường dẫn | Nội dung |
+|---|---|---|
+| Động từ bất quy tắc | `/prep/hoc/dong-tu-bat-quy-tac/` | 193 động từ, tra theo V1/V2/V3 hoặc nghĩa tiếng Việt, lọc theo bậc và nhóm biến đổi, phát âm từng dạng |
+
+**Phát âm miễn phí bằng Web Speech API** (`public/prep/learn/_tts.js`): giọng có sẵn
+trong trình duyệt nên không tốn phí, không gọi mạng ngoài, không đụng CSP. Ba cách
+kích hoạt — nhấn vào từ, bôi đen đoạn chữ, hoặc nút loa. Chuyển giọng **Mỹ ↔ Anh**
+và chỉnh tốc độ, lưu theo trình duyệt. Máy không có giọng tiếng Anh thì hiện cảnh
+báo và vẫn tra được IPA.
+
+Kế hoạch chi tiết cho từ vựng, ngữ pháp, collocations và linking words nằm trong
+[`docs/LEARNING.md`](docs/LEARNING.md) — kèm **định mức từ vựng theo bậc A1–C2** và
+danh sách nguồn dữ liệu mở có giấy phép rõ ràng.
+
+Cơ cấu và cách chấm điểm của 6 kỳ thi, cùng thiết kế engine chấm, nằm trong
+[`docs/SCORING.md`](docs/SCORING.md).
+
 ## Bản đồ màn hình
 
 | Route | File | Truy cập |
@@ -126,6 +145,7 @@ thiết bị khác.
 | `/prep/code-cua-toi/` | `public/prep/codes/code-cua-toi.html` | Cần đăng nhập |
 | `/prep/bai-thi/:id/` | `public/prep/test/index.html` | Cần đăng nhập (+ code để bắt đầu) |
 | `/prep/tai-khoan/` | `public/prep/account/index.html` | Cần đăng nhập |
+| `/prep/hoc/dong-tu-bat-quy-tac/` | `public/prep/learn/dong-tu-bat-quy-tac.html` | Cần đăng nhập |
 
 Mỗi route khai báo trong `server.js` qua `serveHtmlWithNonce(...)`, kèm guard exact-path:
 bản không có dấu `/` ở cuối được redirect **một lần** sang bản chuẩn (bản có `/` không đi vào

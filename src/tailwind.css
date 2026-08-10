@@ -290,6 +290,44 @@
   }
   .dark .tabbtn[aria-selected='true'] { color: color-mix(in srgb, var(--color-primary) 78%, white); }
 
+  /* ---- Nút gạt phân đoạn (chọn giọng Anh/Mỹ, lọc nhanh) ---- */
+  .seg { @apply inline-flex rounded-full border border-line bg-card p-0.5; }
+  .seg-btn {
+    @apply rounded-full px-3.5 py-1.5 text-[13px] font-bold text-muted transition;
+  }
+  .seg-btn:hover { color: var(--color-text); }
+  .seg-btn[aria-pressed='true'] {
+    background: var(--color-primary);
+    @apply text-white;
+  }
+  .dark .seg-btn[aria-pressed='true'] { color: #0a1020; }
+
+  /* ---- Phát âm: từ bấm được + bong bóng khi bôi đen ---- */
+  /* Từ trong câu ví dụ: bấm là nghe. Gạch chân mờ để biết bấm được mà
+     không phá nhịp đọc của câu. */
+  .tts-word {
+    @apply rounded px-0.5 transition;
+    text-decoration: underline;
+    text-decoration-style: dotted;
+    text-decoration-color: color-mix(in srgb, var(--color-text) 28%, transparent);
+    text-underline-offset: 3px;
+  }
+  .tts-word:hover {
+    background: var(--color-accent-soft);
+    color: var(--color-accent-strong);
+    text-decoration-color: transparent;
+  }
+  .tts-word:active { transform: scale(.96); }
+
+  .tts-bubble {
+    @apply fixed z-50 inline-flex items-center gap-1.5 rounded-full px-3 py-1.5
+           text-[13px] font-bold text-white shadow-soft-lg;
+    background: var(--color-primary);
+    transform: translateX(-50%);
+  }
+  .tts-bubble:hover { background: color-mix(in srgb, var(--color-primary) 86%, black); }
+  .dark .tts-bubble { color: #0a1020; }
+
   /* ---- Skeleton (khớp layout, shimmer) ---- */
   .skeleton {
     @apply relative overflow-hidden rounded-xl;

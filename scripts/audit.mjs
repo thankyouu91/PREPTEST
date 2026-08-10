@@ -24,7 +24,8 @@ const GUEST_URLS = ['/prep/landing/', '/prep/dang-ky/', '/prep/dang-nhap/', '/pr
 
 const URLS = GUEST_URLS.concat([
   '/prep/', '/prep/thu-vien/', '/prep/thu-vien/?family=vept', '/prep/mua-code/', '/prep/nhap-code/',
-  '/prep/code-cua-toi/', '/prep/bai-thi/vpet-b1-01/', '/prep/bai-thi/pte-ac-01/', '/prep/tai-khoan/'
+  '/prep/code-cua-toi/', '/prep/bai-thi/vpet-b1-01/', '/prep/bai-thi/pte-ac-01/', '/prep/tai-khoan/',
+  '/prep/hoc/dong-tu-bat-quy-tac/'
 ]);
 const WIDTHS = [360, 390, 768, 1024, 1440];
 

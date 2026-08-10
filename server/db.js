@@ -82,6 +82,29 @@ CREATE TABLE IF NOT EXISTS user_tokens (
 
 CREATE INDEX IF NOT EXISTS idx_user_tokens_user ON user_tokens(user_id, kind);
 
+-- Khu tự học: bảng động từ bất quy tắc V1–V2–V3.
+-- Tra được theo bất kỳ cột nào (gõ "went" phải ra "go") nên đánh index cả ba.
+CREATE TABLE IF NOT EXISTS irregular_verbs (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  v1 TEXT NOT NULL UNIQUE,
+  v2 TEXT NOT NULL,
+  v3 TEXT NOT NULL,
+  ving TEXT NOT NULL,
+  ipa_uk TEXT,
+  ipa_us TEXT,
+  vi TEXT NOT NULL,                             -- nghĩa tiếng Việt
+  grp TEXT NOT NULL,                            -- aaa | aba | abb | abc
+  level TEXT NOT NULL,                          -- A1…C2
+  note TEXT,                                    -- biến thể Anh–Mỹ, bẫy phát âm
+  ex_en TEXT,
+  ex_vi TEXT,
+  sort INTEGER NOT NULL DEFAULT 0
+);
+
+CREATE INDEX IF NOT EXISTS idx_irr_v2 ON irregular_verbs(v2);
+CREATE INDEX IF NOT EXISTS idx_irr_v3 ON irregular_verbs(v3);
+CREATE INDEX IF NOT EXISTS idx_irr_level ON irregular_verbs(level);
+
 CREATE TABLE IF NOT EXISTS families (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
@@ -512,6 +535,27 @@ function seed() {
     ins.run('brand.tenant', 'default');
     ins.run('platform.notice', '');
   }
+
+  seedIrregularVerbs();
+}
+
+/* Bảng động từ bất quy tắc — nạp lại khi số dòng trong tệp nguồn nhiều hơn
+   trong CSDL, để bổ sung động từ mới mà không phải xoá cả CSDL. */
+function seedIrregularVerbs() {
+  const rows = require('./data/irregular-verbs').rows();
+  if (q.val('SELECT COUNT(*) c FROM irregular_verbs') >= rows.length) return;
+  const ins = db.prepare(`INSERT INTO irregular_verbs
+    (v1,v2,v3,ving,ipa_uk,ipa_us,vi,grp,level,note,ex_en,ex_vi,sort)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
+    ON CONFLICT(v1) DO UPDATE SET
+      v2=excluded.v2, v3=excluded.v3, ving=excluded.ving,
+      ipa_uk=excluded.ipa_uk, ipa_us=excluded.ipa_us, vi=excluded.vi,
+      grp=excluded.grp, level=excluded.level, note=excluded.note,
+      ex_en=excluded.ex_en, ex_vi=excluded.ex_vi, sort=excluded.sort`);
+  rows.forEach((r, i) => {
+    ins.run(r.v1, r.v2, r.v3, r.ving, r.ipa_uk, r.ipa_us, r.vi,
+      r.grp, r.level, r.note || null, r.ex_en || null, r.ex_vi || null, i);
+  });
 }
 
 seed();

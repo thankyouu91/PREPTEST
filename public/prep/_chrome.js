@@ -4,7 +4,7 @@
     tenant switcher white-label · toast)
 
    Trang dùng shell khai báo:
-     <div id="app" data-active="home|library|codes|progress|account">
+     <div id="app" data-active="home|library|learn|codes|progress|account">
        <main id="main"> ...nội dung... </main>
      </div>
    rồi gọi PrepChrome.mount({ title: 'Tên trang' }).
@@ -14,6 +14,7 @@ const PrepChrome = {
   NAV: [
     { key: 'home',     label: 'Trang chủ',   icon: 'home',    href: '/prep/' },
     { key: 'library',  label: 'Thư viện',    icon: 'library', href: '/prep/thu-vien/' },
+    { key: 'learn',    label: 'Tự học',      icon: 'book',    href: '/prep/hoc/dong-tu-bat-quy-tac/' },
     { key: 'codes',    label: 'Code của tôi', icon: 'ticket', href: '/prep/code-cua-toi/' },
     { key: 'progress', label: 'Tiến độ',     icon: 'chart',   href: '/prep/#tien-do' },
     { key: 'account',  label: 'Hồ sơ',       icon: 'user',    href: '/prep/tai-khoan/' }
