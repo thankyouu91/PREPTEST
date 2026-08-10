@@ -22,6 +22,7 @@ Lệnh khác:
 | Lệnh | Việc |
 |---|---|
 | `npm run dev` | chạy server với `--watch` |
+| `cai-dat\chay-server.bat` | **Windows**: nhấn đúp để chạy — tự kiểm tra Node, cài thư viện, build CSS, bật server và mở trình duyệt. Xem [`cai-dat/README.md`](cai-dat/README.md) |
 | `npm run build` | build lại CSS (**bắt buộc chạy + commit sau khi thêm class mới**) |
 | `npm run screenshot` | chụp desktop + mobile mọi màn vào `docs/screenshots/`, báo lỗi console/CSP |
 | `node scripts/audit.mjs` | audit tràn ngang, tương phản WCAG AA, nút xuống dòng, chiều cao nav (light + dark, 5 bề rộng) |

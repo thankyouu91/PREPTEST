@@ -5,3 +5,7 @@ npm-debug.log*
 # Chỉ bỏ qua CSDL chạy ở gốc repo. KHÔNG dùng "data/" trần vì nó khớp cả
 # server/data/ (dữ liệu nguồn phải được commit).
 /data/
+
+# Cấu hình riêng từng máy cho script Windows (có thể chứa mật khẩu quản trị).
+# Bản mẫu cau-hinh.mau.bat thì vẫn commit.
+cai-dat/cau-hinh.bat

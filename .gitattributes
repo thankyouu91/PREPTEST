@@ -1,0 +1,10 @@
+# Xuống dòng theo loại tệp — chỉ đặt cho hai loại thật sự cần, để không
+# đụng tới phần còn lại của repo.
+
+# Batch phải là CRLF. cmd.exe đọc tệp theo từng dòng; tệp chỉ có LF thì
+# goto và nhãn có thể nhảy sai — lỗi kinh điển của batch trên Windows.
+*.bat text eol=crlf
+
+# Ngược lại, script bash phải là LF. Máy Windows đặt core.autocrlf=true mà
+# nhận scripts/verify.sh bản CRLF thì bash báo lỗi "\r: command not found".
+*.sh text eol=lf
