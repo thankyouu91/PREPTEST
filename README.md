@@ -29,8 +29,9 @@ Lệnh khác:
 | `node scripts/test-admin.mjs` | kiểm thử API quản trị: phiên, CSRF, phân quyền, CRUD, sinh đề, cấp code |
 | `node scripts/test-catalog.mjs` | kiểm thử trang học viên đọc `/api/catalog` + nhánh dự phòng khi API hỏng |
 | `node scripts/test-user-api.mjs` | kiểm thử API tài khoản học viên: đăng ký, đăng nhập, xác thực email, đặt lại mật khẩu, CSRF, chống dò |
+| `node scripts/test-learn.mjs` | kiểm thử khu tự học: chất lượng dữ liệu động từ bất quy tắc và từ nối (nhóm khớp hình thái, ví dụ chứa đúng mục từ, đủ nghĩa Việt) + bộ lọc hai trang |
 | `npm run screenshot:admin` | chụp các màn quản trị |
-| `npm test` | chạy cả năm bộ kiểm thử |
+| `npm test` | chạy cả sáu bộ kiểm thử |
 
 ## Khu quản trị (backend thật)
 
@@ -136,6 +137,7 @@ thiết bị khác.
 | Màn | Đường dẫn | Nội dung |
 |---|---|---|
 | Động từ bất quy tắc | `/prep/hoc/dong-tu-bat-quy-tac/` | 193 động từ, tra theo V1/V2/V3 hoặc nghĩa tiếng Việt, lọc theo bậc và nhóm biến đổi, phát âm từng dạng |
+| Từ nối | `/prep/hoc/tu-noi/` | 123 từ nối theo 13 chức năng × 3 mức trang trọng, kèm vị trí trong câu, quy tắc dấu câu, ví dụ song ngữ và cảnh báo dùng sai |
 
 **Phát âm miễn phí bằng Web Speech API** (`public/prep/learn/_tts.js`): giọng có sẵn
 trong trình duyệt nên không tốn phí, không gọi mạng ngoài, không đụng CSP. Ba cách

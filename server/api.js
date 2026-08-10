@@ -11,6 +11,7 @@ const express = require('express');
 const { q, tx, nowISO, jparse, makeCode, audit } = require('./db');
 const A = require('./auth');
 const EXAM_FORMATS = require('./data/exam-formats');
+const LINKING = require('./data/linking-words');
 
 const router = express.Router();
 router.use(express.json({ limit: '1mb' }));
@@ -1015,6 +1016,43 @@ router.get('/learn/irregular-verbs', (req, res) => {
     total: q.val('SELECT COUNT(*) c FROM irregular_verbs'),
     count: verbs.length,
     verbs
+  });
+});
+
+/** Từ nối — lọc theo chức năng, độ trang trọng, bậc, hoặc từ khoá */
+router.get('/learn/linking-words', (req, res) => {
+  const fns = new Set(LINKING.FUNCTIONS.map(f => f[0]));
+  const regs = new Set(LINKING.REGISTERS.map(r => r[0]));
+  const fn = fns.has(str(req.query.fn, 20)) ? str(req.query.fn, 20) : '';
+  const reg = regs.has(str(req.query.register, 20)) ? str(req.query.register, 20) : '';
+  const level = LEVELS.includes(str(req.query.level, 2).toUpperCase())
+    ? str(req.query.level, 2).toUpperCase() : '';
+  const kw = str(req.query.q, 60).toLowerCase();
+
+  const where = [];
+  const args = [];
+  if (fn) { where.push('fn = ?'); args.push(fn); }
+  if (reg) { where.push('register = ?'); args.push(reg); }
+  if (level) { where.push('level = ?'); args.push(level); }
+  if (kw) {
+    where.push('(lower(word) LIKE ? OR lower(vi) LIKE ? OR lower(ex_en) LIKE ?)');
+    const like = '%' + kw + '%';
+    args.push(like, like, like);
+  }
+  const sql = 'SELECT * FROM linking_words' +
+    (where.length ? ' WHERE ' + where.join(' AND ') : '') + ' ORDER BY sort, word';
+
+  const words = q.all(sql, ...args).map(w => ({
+    word: w.word, fn: w.fn, register: w.register, pos: w.pos, punct: w.punct,
+    vi: w.vi, level: w.level, exEn: w.ex_en, exVi: w.ex_vi, warn: w.warn
+  }));
+
+  res.set('Cache-Control', 'public, max-age=300').json({
+    total: q.val('SELECT COUNT(*) c FROM linking_words'),
+    count: words.length,
+    functions: LINKING.FUNCTIONS.map(([id, label]) => ({ id, label })),
+    registers: LINKING.REGISTERS.map(([id, label]) => ({ id, label })),
+    words
   });
 });
 

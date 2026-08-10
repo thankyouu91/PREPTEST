@@ -29,7 +29,7 @@ Nhánh làm việc: `claude/prep-test-platform-design-fpiuqn`
 
 ### Việc soạn nội dung (Routine làm tiếp từ đây)
 
-- [ ] Linking words: ~120 mục theo chức năng × độ trang trọng, kèm vị trí trong câu và cảnh báo lạm dụng
+- [x] Linking words: 123 mục theo chức năng × độ trang trọng, kèm vị trí trong câu, dấu câu và cảnh báo lạm dụng
 - [ ] Ngữ pháp 12 thì: công thức, khi dùng / khi không dùng, phân biệt cặp dễ nhầm, lỗi người Việt hay mắc, 8 ví dụ + 12 câu luyện mỗi thì
 - [ ] Ngữ pháp nhóm danh từ – mạo từ – lượng từ theo bảng bậc trong `docs/LEARNING.md`
 - [ ] Ngữ pháp nhóm động từ khuyết thiếu + câu điều kiện
@@ -46,7 +46,7 @@ Nhánh làm việc: `claude/prep-test-platform-design-fpiuqn`
 Routine **không** lấy việc ở mục này.
 
 - [ ] Lược đồ từ vựng: `vocab_entries` / `vocab_senses` / `vocab_examples` / `vocab_forms` / `collocations` + trình nhập
-- [ ] Lược đồ ngữ pháp: `grammar_points` / `grammar_examples` / `linking_words`
+- [ ] Lược đồ ngữ pháp: `grammar_points` / `grammar_examples` (bảng `linking_words` đã dựng cùng mục từ nối)
 - [ ] API kích hoạt code phía server (`POST /api/redeem`) + rate-limit chống dò mã, thay `PrepState.redeem`
 - [ ] Màn học từ vựng có lặp lại ngắt quãng (SM-2 rút gọn) + bảng `learn_progress`
 - [ ] Engine chấm điểm: `attempts` + chấm trắc nghiệm/điền từ + bảng quy đổi theo kỳ thi (`docs/SCORING.md` mục 2)
@@ -64,6 +64,7 @@ hãy dùng đúng một lệnh sau, nó tự cài dependency, tự bật/tắt s
 
 ```bash
 npm run verify          # cài deps → build → chạy server → 5 bộ test → audit → chụp ảnh
+                        # (test-admin, test-auth, test-catalog, test-user-api, test-learn)
 SKIP_SHOTS=1 npm run verify   # bản nhanh, bỏ bước chụp ảnh
 ```
 

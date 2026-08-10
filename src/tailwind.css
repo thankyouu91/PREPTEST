@@ -213,6 +213,13 @@
     @apply text-white;
   }
   .dark .chip[aria-pressed='true'] { color: #0a1020; }
+  /* Chip dùng làm liên kết điều hướng: trang hiện tại tô như đang chọn */
+  .chip[aria-current='page'] {
+    background: var(--color-primary);
+    border-color: var(--color-primary);
+    @apply text-white;
+  }
+  .dark .chip[aria-current='page'] { color: #0a1020; }
 
   .badge { @apply inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11.5px] font-bold tracking-wide; }
   .badge-hl { background: var(--color-hl); color: var(--color-hl-ink); }

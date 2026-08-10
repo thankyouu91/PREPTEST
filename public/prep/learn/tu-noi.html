@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Từ nối · VPET Prep</title>
+  <meta name="description" content="Từ nối tiếng Anh xếp theo chức năng và độ trang trọng, kèm vị trí trong câu, quy tắc dấu câu, ví dụ song ngữ và cảnh báo dùng sai.">
+  <meta name="theme-color" content="#1c3d8f">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="preload" href="/fonts/pjs-700-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/fonts/pjs-400-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/tailwind-built.css">
+  <style>body{font-family:'Plus Jakarta Sans',system-ui,sans-serif}</style>
+  <script>
+    (function(){try{
+      var t=localStorage.getItem('prep.theme');
+      if(t==='dark'||(!t&&matchMedia('(prefers-color-scheme: dark)').matches))document.documentElement.classList.add('dark');
+      var tn=localStorage.getItem('prep.tenant');
+      if(tn&&tn!=='default')document.documentElement.setAttribute('data-tenant',tn);
+    }catch(e){}})();
+  </script>
+</head>
+<body class="bg-surface text-ink">
+<div id="app" data-active="learn" class="min-h-[100dvh]">
+  <main id="main">
+    <div class="max-w-shell mx-auto px-4 sm:px-6 lg:px-10 pb-6">
+
+      <section class="mt-8 max-w-[70ch]">
+        <h2 class="text-2xl sm:text-[28px] font-extrabold tracking-tight">Từ nối</h2>
+        <p class="text-muted text-[15px] leading-relaxed mt-2">
+          Xếp theo <b class="text-ink">chức năng</b> và <b class="text-ink">độ trang trọng</b>, không theo bảng chữ cái.
+          Lỗi hay gặp không phải là không biết từ, mà là dùng sai chỗ —
+          nhét <i>Moreover</i> vào câu nói chuyện, hoặc mở đoạn văn học thuật bằng <i>Plus</i>.
+          Mỗi mục ghi rõ vị trí trong câu và dấu câu đi kèm.
+        </p>
+      </section>
+
+      <nav class="flex gap-2 overflow-x-auto no-scrollbar mt-6 -mx-1 px-1" aria-label="Mục tự học">
+        <a href="/prep/hoc/dong-tu-bat-quy-tac/" class="chip shrink-0">Động từ bất quy tắc</a>
+        <a href="/prep/hoc/tu-noi/" class="chip shrink-0" aria-current="page">Từ nối</a>
+      </nav>
+
+      <!-- Thanh lọc -->
+      <div class="sticky top-16 z-20 mt-6 border-y border-line bg-[color:var(--color-surface)]/90 backdrop-blur-md">
+        <div class="py-3.5 grid gap-3">
+          <div class="flex flex-wrap gap-2.5">
+            <label class="relative flex-1 min-w-[210px]" aria-label="Tìm từ nối">
+              <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted pointer-events-none">
+                <svg viewBox="0 0 24 24" class="w-[18px] h-[18px]" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+              </span>
+              <input id="q" type="search" class="input ps-10 py-2.5" placeholder="however, tuy nhiên…">
+            </label>
+            <select id="f-register" class="input w-full sm:w-auto py-2.5" aria-label="Lọc theo độ trang trọng">
+              <option value="">Văn phong: tất cả</option>
+            </select>
+            <select id="f-level" class="input w-full sm:w-auto py-2.5" aria-label="Lọc theo bậc">
+              <option value="">Bậc: tất cả</option>
+              <option>A1</option><option>A2</option><option>B1</option>
+              <option>B2</option><option>C1</option><option>C2</option>
+            </select>
+          </div>
+          <div id="fn-chips" class="flex gap-2 overflow-x-auto no-scrollbar -mx-1 px-1 pb-0.5"></div>
+          <div class="flex flex-wrap items-center gap-3">
+            <div id="tts-controls"></div>
+            <span id="result-count" class="text-[13px] font-semibold text-muted ms-auto"></span>
+          </div>
+        </div>
+      </div>
+
+      <div id="tts-warn" hidden class="mt-5">
+        <div class="banner banner-warn show" role="status">
+          <svg viewBox="0 0 24 24" class="w-5 h-5 shrink-0 mt-0.5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>
+          <span>Thiết bị này chưa có giọng đọc tiếng Anh nên không phát âm được. Phần ví dụ vẫn đọc và tra được bình thường.</span>
+        </div>
+      </div>
+
+      <div id="skeleton" class="grid sm:grid-cols-2 xl:grid-cols-3 gap-5 mt-6" aria-hidden="true">
+        <div class="card p-5"><div class="skeleton h-6 w-2/5 mb-3"></div><div class="skeleton h-4 w-full mb-2"></div><div class="skeleton h-4 w-4/5"></div></div>
+        <div class="card p-5"><div class="skeleton h-6 w-2/5 mb-3"></div><div class="skeleton h-4 w-full mb-2"></div><div class="skeleton h-4 w-4/5"></div></div>
+        <div class="card p-5 hidden xl:block"><div class="skeleton h-6 w-2/5 mb-3"></div><div class="skeleton h-4 w-full mb-2"></div><div class="skeleton h-4 w-4/5"></div></div>
+      </div>
+
+      <div id="grid" class="grid sm:grid-cols-2 xl:grid-cols-3 gap-5 mt-6" hidden></div>
+
+      <div id="empty" hidden class="card p-10 mt-6 text-center">
+        <span class="w-14 h-14 rounded-full bg-brand-soft text-brand-strong inline-flex items-center justify-center mx-auto">
+          <svg viewBox="0 0 24 24" class="w-7 h-7" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+        </span>
+        <h3 class="font-extrabold text-lg tracking-tight mt-4">Không có từ nối nào khớp</h3>
+        <p class="text-muted text-[15px] mt-1.5">Thử nới bộ lọc hoặc gõ ít ký tự hơn.</p>
+        <button type="button" id="clear" class="btn btn-ghost btn-md mt-6">Xoá bộ lọc</button>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script src="/prep/_mock.js"></script>
+<script src="/prep/_chrome.js"></script>
+<script src="/prep/learn/_tts.js"></script>
+<script>
+  PREP.boot({ auth: true }).then(() => {
+    PrepChrome.mount({ title: 'Từ nối' });
+
+    const REG_LABEL = { spoken: 'Nói', neutral: 'Viết trung tính', academic: 'Học thuật' };
+    const REG_BADGE = { spoken: 'badge-muted', neutral: 'badge-ok', academic: 'badge-hl' };
+    const POS_LABEL = {
+      start: 'đầu câu', mid: 'giữa câu', end: 'cuối câu',
+      'start-mid': 'đầu hoặc giữa câu',
+      conj: 'liên từ, nối hai mệnh đề',
+      prep: 'giới từ, theo sau là danh từ hoặc V-ing'
+    };
+
+    let all = [], functions = [];
+    const state = { q: '', fn: '', register: '', level: '' };
+
+    function card(w) {
+      return '<article class="card p-5 flex flex-col">' +
+        '<div class="flex flex-wrap items-center gap-2">' +
+          '<button type="button" class="tts-word text-[17px] font-extrabold tracking-tight" ' +
+            'data-say="' + PREP.esc(w.word) + '" aria-label="Phát âm ' + PREP.esc(w.word) + '">' +
+            PREP.esc(w.word) + '</button>' +
+          '<span class="badge ' + REG_BADGE[w.register] + '">' + REG_LABEL[w.register] + '</span>' +
+          '<span class="badge badge-muted ms-auto">' + w.level + '</span>' +
+        '</div>' +
+        '<p class="font-semibold text-[15px] mt-2">' + PREP.esc(w.vi) + '</p>' +
+        '<p class="text-[13px] text-muted font-medium mt-1.5">' +
+          '<b class="text-ink">Vị trí:</b> ' + PREP.esc(POS_LABEL[w.pos] || w.pos) + '</p>' +
+        '<p class="text-[13px] text-muted font-medium mt-1">' +
+          '<b class="text-ink">Dấu câu:</b> ' + PREP.esc(w.punct) + '</p>' +
+        '<div class="rounded-xl bg-brand-soft px-3.5 py-3 mt-3.5">' +
+          '<p class="text-[14px] leading-relaxed">' + PrepTTS.wordify(w.exEn) + '</p>' +
+          '<p class="text-[13px] text-muted italic mt-1">' + PREP.esc(w.exVi) + '</p>' +
+        '</div>' +
+        (w.warn
+          ? '<p class="flex gap-2 text-[13px] font-medium mt-3.5 text-hl-ink">' +
+              PREP.icon('alert', 'w-4 h-4 shrink-0 mt-0.5') +
+              '<span>' + PREP.esc(w.warn) + '</span></p>'
+          : '') +
+      '</article>';
+    }
+
+    function renderChips() {
+      PREP.qs('#fn-chips').innerHTML =
+        '<button type="button" class="chip shrink-0" data-fn="" aria-pressed="' + (!state.fn) + '">Tất cả chức năng</button>' +
+        functions.map(f =>
+          '<button type="button" class="chip shrink-0" data-fn="' + f.id + '" aria-pressed="' +
+          (state.fn === f.id) + '">' + PREP.esc(f.label) + '</button>').join('');
+    }
+
+    function render() {
+      const kw = state.q.trim().toLowerCase();
+      const list = all.filter(w => {
+        if (state.fn && w.fn !== state.fn) return false;
+        if (state.register && w.register !== state.register) return false;
+        if (state.level && w.level !== state.level) return false;
+        if (!kw) return true;
+        return [w.word, w.vi, w.exEn].some(x => String(x).toLowerCase().includes(kw));
+      });
+
+      PREP.qs('#result-count').textContent = list.length + '/' + all.length + ' từ nối';
+      const none = list.length === 0;
+      PREP.qs('#empty').toggleAttribute('hidden', !none);
+      PREP.qs('#grid').toggleAttribute('hidden', none);
+      if (!none) PREP.qs('#grid').innerHTML = list.map(card).join('');
+    }
+
+    PREP.qs('#q').addEventListener('input', e => { state.q = e.target.value; render(); });
+    PREP.qs('#f-register').addEventListener('change', e => { state.register = e.target.value; render(); });
+    PREP.qs('#f-level').addEventListener('change', e => { state.level = e.target.value; render(); });
+    PREP.qs('#fn-chips').addEventListener('click', e => {
+      const b = e.target.closest('[data-fn]');
+      if (!b) return;
+      state.fn = b.getAttribute('data-fn');
+      renderChips();
+      render();
+    });
+    PREP.qs('#clear').addEventListener('click', () => {
+      state.q = state.fn = state.register = state.level = '';
+      PREP.qs('#q').value = ''; PREP.qs('#f-register').value = ''; PREP.qs('#f-level').value = '';
+      renderChips();
+      render();
+    });
+
+    PrepTTS.onUnavailable = () => PREP.qs('#tts-warn').removeAttribute('hidden');
+    PrepTTS.bindClicks(document);
+    PrepTTS.init().then(() => {
+      PrepTTS.mountControls(PREP.qs('#tts-controls'));
+      PrepTTS.bindSelection(PREP.qs('#main'));
+      if (!PrepTTS.available()) PREP.qs('#tts-warn').removeAttribute('hidden');
+    });
+
+    PrepApi.get('/api/learn/linking-words').then(res => {
+      PREP.qs('#skeleton').classList.add('hidden');
+      if (!res.ok) {
+        PREP.qs('#empty').removeAttribute('hidden');
+        PREP.qs('#empty').querySelector('h3').textContent = 'Không tải được danh sách từ nối';
+        PREP.qs('#empty').querySelector('p').textContent = PrepApi.err(res, 'Thử tải lại trang giúp mình nhé.');
+        return;
+      }
+      all = res.data.words || [];
+      functions = res.data.functions || [];
+      PREP.qs('#f-register').innerHTML = '<option value="">Văn phong: tất cả</option>' +
+        (res.data.registers || []).map(r =>
+          '<option value="' + r.id + '">' + PREP.esc(r.label) + '</option>').join('');
+      renderChips();
+      render();
+    });
+  });
+</script>
+</body>
+</html>

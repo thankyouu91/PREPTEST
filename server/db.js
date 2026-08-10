@@ -105,6 +105,38 @@ CREATE INDEX IF NOT EXISTS idx_irr_v2 ON irregular_verbs(v2);
 CREATE INDEX IF NOT EXISTS idx_irr_v3 ON irregular_verbs(v3);
 CREATE INDEX IF NOT EXISTS idx_irr_level ON irregular_verbs(level);
 
+-- Từ nối: xếp theo chức năng × độ trang trọng, kèm vị trí trong câu,
+-- quy tắc dấu câu và cảnh báo dùng sai / lạm dụng.
+CREATE TABLE IF NOT EXISTS linking_words (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  word TEXT NOT NULL,
+  fn TEXT NOT NULL,                             -- add | contrast | concession | cause | …
+  register TEXT NOT NULL,                       -- spoken | neutral | academic
+  pos TEXT NOT NULL,                            -- start | mid | end | start-mid | conj | prep
+  punct TEXT NOT NULL,                          -- quy tắc dấu câu
+  vi TEXT NOT NULL,
+  level TEXT NOT NULL,
+  ex_en TEXT NOT NULL,
+  ex_vi TEXT NOT NULL,
+  warn TEXT,                                    -- cảnh báo lạm dụng / dùng sai
+  sort INTEGER NOT NULL DEFAULT 0,
+  UNIQUE(word, fn)                              -- một từ có thể mang nhiều chức năng
+);
+
+CREATE INDEX IF NOT EXISTS idx_link_fn ON linking_words(fn);
+CREATE INDEX IF NOT EXISTS idx_link_reg ON linking_words(register);
+CREATE INDEX IF NOT EXISTS idx_link_level ON linking_words(level);
+
+-- Vân tay của các bảng nội dung soạn sẵn (động từ bất quy tắc, từ nối, …).
+-- Nạp lại khi vân tay đổi, nhờ vậy sửa nội dung hay bỏ bớt mục cũng xuống
+-- được CSDL đang chạy — không chỉ khi thêm dòng mới.
+CREATE TABLE IF NOT EXISTS seed_meta (
+  name TEXT PRIMARY KEY,
+  hash TEXT NOT NULL,
+  n INTEGER NOT NULL,
+  at TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS families (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
@@ -537,25 +569,53 @@ function seed() {
   }
 
   seedIrregularVerbs();
+  seedLinkingWords();
 }
 
-/* Bảng động từ bất quy tắc — nạp lại khi số dòng trong tệp nguồn nhiều hơn
-   trong CSDL, để bổ sung động từ mới mà không phải xoá cả CSDL. */
-function seedIrregularVerbs() {
-  const rows = require('./data/irregular-verbs').rows();
-  if (q.val('SELECT COUNT(*) c FROM irregular_verbs') >= rows.length) return;
-  const ins = db.prepare(`INSERT INTO irregular_verbs
-    (v1,v2,v3,ving,ipa_uk,ipa_us,vi,grp,level,note,ex_en,ex_vi,sort)
-    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
-    ON CONFLICT(v1) DO UPDATE SET
-      v2=excluded.v2, v3=excluded.v3, ving=excluded.ving,
-      ipa_uk=excluded.ipa_uk, ipa_us=excluded.ipa_us, vi=excluded.vi,
-      grp=excluded.grp, level=excluded.level, note=excluded.note,
-      ex_en=excluded.ex_en, ex_vi=excluded.ex_vi, sort=excluded.sort`);
-  rows.forEach((r, i) => {
-    ins.run(r.v1, r.v2, r.v3, r.ving, r.ipa_uk, r.ipa_us, r.vi,
-      r.grp, r.level, r.note || null, r.ex_en || null, r.ex_vi || null, i);
+/* Nạp một bảng nội dung soạn sẵn khi và chỉ khi tệp nguồn đã đổi.
+   Mốc so sánh là vân tay nội dung chứ không phải số dòng: sửa sai một ô, đổi
+   tên một mục hay bỏ bớt mục cũng phải xuống được CSDL đang chạy. Bảng nhỏ và
+   không có khoá ngoại trỏ tới, nên xoá sạch rồi nạp lại là cách chắc chắn
+   nhất — mục đã gỡ khỏi tệp nguồn không còn sót lại. */
+function seedContent(name, table, rows, insertSql, values) {
+  const hash = crypto.createHash('sha256')
+    .update(JSON.stringify(rows)).digest('hex').slice(0, 32);
+  if (q.val('SELECT hash FROM seed_meta WHERE name=?', name) === hash) return;
+  tx(() => {
+    db.exec(`DELETE FROM ${table}`);
+    const ins = db.prepare(insertSql);
+    rows.forEach((r, i) => ins.run(...values(r, i)));
+    db.prepare(`INSERT INTO seed_meta (name,hash,n,at) VALUES (?,?,?,?)
+      ON CONFLICT(name) DO UPDATE SET
+        hash=excluded.hash, n=excluded.n, at=excluded.at`)
+      .run(name, hash, rows.length, nowISO());
   });
+}
+
+/* Bảng động từ bất quy tắc V1–V2–V3 */
+function seedIrregularVerbs() {
+  seedContent(
+    'irregular-verbs', 'irregular_verbs',
+    require('./data/irregular-verbs').rows(),
+    `INSERT INTO irregular_verbs
+      (v1,v2,v3,ving,ipa_uk,ipa_us,vi,grp,level,note,ex_en,ex_vi,sort)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+    (r, i) => [r.v1, r.v2, r.v3, r.ving, r.ipa_uk, r.ipa_us, r.vi,
+      r.grp, r.level, r.note || null, r.ex_en || null, r.ex_vi || null, i]
+  );
+}
+
+/* Bảng từ nối theo chức năng × độ trang trọng */
+function seedLinkingWords() {
+  seedContent(
+    'linking-words', 'linking_words',
+    require('./data/linking-words').rows(),
+    `INSERT INTO linking_words
+      (word,fn,register,pos,punct,vi,level,ex_en,ex_vi,warn,sort)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
+    (r, i) => [r.word, r.fn, r.register, r.pos, r.punct, r.vi,
+      r.level, r.ex_en, r.ex_vi, r.warn || null, i]
+  );
 }
 
 seed();
