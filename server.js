@@ -153,6 +153,7 @@ app.get('/prep/hoc/thi/', studentPage('prep/learn/thi.html'));
 app.get('/prep/hoc/danh-tu/', studentPage('prep/learn/danh-tu.html'));
 app.get('/prep/hoc/khuyet-thieu/', studentPage('prep/learn/khuyet-thieu.html'));
 app.get('/prep/hoc/dieu-kien/', studentPage('prep/learn/dieu-kien.html'));
+app.get('/prep/hoc/bi-dong/', studentPage('prep/learn/bi-dong.html'));
 
 /* ---------------- Static (CSS/JS/SVG/ảnh) ----------------
    Chặn *.html tĩnh để HTML không bao giờ thoát khỏi vòng chèn nonce. */

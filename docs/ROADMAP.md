@@ -37,7 +37,10 @@ Nhánh làm việc: `claude/prep-test-platform-design-fpiuqn`
 - [x] Ngữ pháp động từ khuyết thiếu bậc B2–C2 (15 điểm: suy đoán quá khứ, should have, needn't have khác didn't need to, could have, would đa chức năng, khuyết thiếu bị động, thang chắc chắn, hedging học thuật, may well / might as well, bán khuyết thiếu với "be", shall, lùi thì để lịch sự, cụm cố định, was to have done, lược bỏ sau khuyết thiếu) — nhóm này đủ 29/29 điểm
 - [x] Ngữ pháp câu điều kiện bậc A2–B2 (11 điểm: loại 0, loại 1, loại 2, unless và các liên từ điều kiện, wish hiện tại, biến thể loại 1, loại 3, wish quá khứ và wish + would, điều kiện hỗn hợp, would rather / it's time, các cách nói điều kiện khác)
 - [x] Ngữ pháp câu điều kiện bậc C1–C2 (9 điểm: đảo ngữ điều kiện, but for / if it were not for, thức giả định trong mệnh đề that, điều kiện ngầm, otherwise trong lập luận, lest, rào đón bằng điều kiện trong bài học thuật, sắc thái tiếc nuối và trách móc, lược bỏ trong câu điều kiện) — nhóm này đủ 20/20 điểm
-- [ ] Ngữ pháp nhóm bị động – tường thuật – mệnh đề quan hệ
+- [x] Ngữ pháp bị động và tường thuật, bậc A2–B2 (13 điểm: bị động cơ bản, bị động các thì, by-tác nhân, bị động với khuyết thiếu, hai tân ngữ, bị động phi ngôi, have/get something done; tường thuật câu kể, câu hỏi, mệnh lệnh, chuyển đại từ và trạng ngữ, ngoại lệ lùi thì, mẫu câu động từ tường thuật)
+- [ ] Ngữ pháp bị động và tường thuật, bậc C1–C2 (9 điểm còn lại theo hạn mức: bị động trong văn học thuật, bị động với động từ tri giác và sai khiến, `there is said to be`, tường thuật gián tiếp tự do, động từ tường thuật mang sắc thái đánh giá, tường thuật trong văn bản pháp lý)
+- [ ] Ngữ pháp mệnh đề quan hệ và mệnh đề phụ, bậc A2–B2 (17 điểm theo hạn mức: who/which/that, mệnh đề xác định và không xác định, whose/where/when, rút gọn mệnh đề quan hệ, giới từ + which, mệnh đề trạng ngữ chỉ thời gian, nguyên nhân, mục đích, nhượng bộ) — nhóm này to, lượt làm nên tách đôi
+- [ ] Ngữ pháp mệnh đề quan hệ và mệnh đề phụ, bậc C1–C2 (12 điểm còn lại)
 - [ ] Ngữ pháp nhóm đảo ngữ – nhấn mạnh – sắc thái và độ trang trọng
 - [ ] Nhập từ vựng NGSL (~2.800 từ) → `vocab_entries`, gán bậc A1–B1 theo hạng tần suất
 - [ ] Nhập từ vựng NAWL (~960 từ học thuật) + TSL (~1.200 từ TOEIC), gán bậc B2–C1
