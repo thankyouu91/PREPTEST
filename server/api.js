@@ -10,6 +10,7 @@
 const express = require('express');
 const { q, tx, nowISO, jparse, makeCode, audit } = require('./db');
 const A = require('./auth');
+const EXAM_FORMATS = require('./data/exam-formats');
 
 const router = express.Router();
 router.use(express.json({ limit: '1mb' }));
@@ -321,6 +322,57 @@ router.get('/admin/questions/availability', (req, res) => {
   res.json({ family, level, availability: out });
 });
 
+/* ======================= FORMAT ĐỀ CHUẨN =======================
+   Bộ format đề của từng kỳ thi + phân tích ngân hàng câu hỏi có đủ để
+   sinh đề theo format đó chưa. Admin chọn format thay vì gõ tay blueprint. */
+
+/** Đếm câu dùng được cho một khối: đúng kỳ thi, kỹ năng, dạng câu cho phép */
+function bankCount(familyId, skill, types, level) {
+  const t = Array.isArray(types) && types.length ? types.filter(x => QTYPES.includes(x)) : QTYPES;
+  const holes = t.map(() => '?').join(',');
+  const args = [familyId, skill, ...t];
+  const base = `SELECT COUNT(*) c FROM questions
+                 WHERE family_id=? AND skill=? AND type IN (${holes}) AND status='active'`;
+  return {
+    total: q.val(base, ...args),
+    exact: level ? q.val(base + ' AND level=?', ...args, level) : 0
+  };
+}
+
+router.get('/admin/exam-formats', (req, res) => {
+  const familyId = str(req.query.familyId, 20);
+  const level = LEVELS.includes(str(req.query.level, 5).toUpperCase())
+    ? str(req.query.level, 5).toUpperCase() : '';
+  const strict = req.query.strict === '1';
+
+  const list = EXAM_FORMATS.FORMATS
+    .filter(f => !familyId || f.familyId === familyId)
+    .map(f => {
+      const fam = q.get('SELECT name FROM families WHERE id=?', f.familyId);
+      const sections = f.sections.map(s => {
+        const bank = bankCount(f.familyId, s.skill, s.types, level);
+        const have = strict ? bank.exact : bank.total;
+        return {
+          name: s.name, skill: s.skill, type: s.type, items: s.items, minutes: s.minutes,
+          types: s.types || [], parts: s.parts || [],
+          bank: { have, exact: bank.exact, total: bank.total, need: s.items, short: Math.max(0, s.items - have) }
+        };
+      });
+      const short = sections.reduce((a, s) => a + s.bank.short, 0);
+      return {
+        id: f.id, familyId: f.familyId, familyName: fam ? fam.name : f.familyId,
+        name: f.name, kind: f.kind, levels: f.levels,
+        scoring: f.scoring, guide: f.guide, notes: f.notes,
+        totalItems: EXAM_FORMATS.totalItems(f), totalMinutes: EXAM_FORMATS.totalMinutes(f),
+        sections,
+        ready: short === 0,               // ngân hàng đủ để sinh đề ngay
+        shortBy: short                    // còn thiếu bao nhiêu câu
+      };
+    });
+
+  res.set('Cache-Control', 'no-store').json({ level, strict, formats: list });
+});
+
 /* ============================ ĐỀ THI ============================ */
 function testDetail(id) {
   const t = q.get('SELECT * FROM tests WHERE id=?', id);
@@ -543,10 +595,17 @@ router.post('/admin/tests/generate', (req, res) => {
     const want = clamp(int(sec.items, 0), 1, 200);
     if (!SKILLS.includes(skill)) return bad(res, 'Kỹ năng không hợp lệ: ' + skill);
 
+    // Format chuẩn khai báo dạng câu cho phép (vd TOEIC Part 5 chỉ nhận mcq);
+    // không khai thì nhận mọi dạng như trước.
+    const wantTypes = Array.isArray(sec.types) && sec.types.length
+      ? sec.types.filter(x => QTYPES.includes(x)) : QTYPES;
+    const holes = wantTypes.map(() => '?').join(',');
     const pool = strict
-      ? q.all(`SELECT id FROM questions WHERE family_id=? AND skill=? AND level=? AND status='active'`, familyId, skill, level)
-      : q.all(`SELECT id, (level=?) exact FROM questions WHERE family_id=? AND skill=? AND status='active'
-                ORDER BY exact DESC`, level, familyId, skill);
+      ? q.all(`SELECT id FROM questions WHERE family_id=? AND skill=? AND level=?
+                 AND type IN (${holes}) AND status='active'`, familyId, skill, level, ...wantTypes)
+      : q.all(`SELECT id, (level=?) exact FROM questions WHERE family_id=? AND skill=?
+                 AND type IN (${holes}) AND status='active' ORDER BY exact DESC`,
+              level, familyId, skill, ...wantTypes);
 
     const avail = pool.filter(r => !usedIds.has(r.id));
     if (avail.length < want) {

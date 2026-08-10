@@ -1,8 +1,12 @@
 # Lộ trình xây nền tảng VPET Prep
 
-Đây là **hàng đợi công việc** cho phiên tự động chạy mỗi giờ (Routine).
-Quy tắc: mỗi lần chạy làm **đúng một mục chưa tick** ở đầu danh sách, làm cho xong,
-kiểm thử, commit, push, rồi tick vào ô đó. Không nhảy cóc, không tự thêm việc ngoài danh sách.
+Hai hàng đợi tách riêng:
+
+- **Hàng đợi** — việc lặp, tốn thời gian, làm được không cần bàn bạc (nhồi dữ liệu,
+  soạn nội dung theo mẫu). Phiên tự động chạy mỗi giờ (Routine) **chỉ lấy việc ở đây**:
+  mỗi lượt đúng một mục chưa tick ở đầu danh sách, làm xong, kiểm thử, commit, push, tick.
+- **Việc kiến trúc** — thiết kế hệ thống, đổi lược đồ, engine. Làm trực tiếp cùng người
+  dùng, **Routine không đụng vào**.
 
 Nhánh làm việc: `claude/prep-test-platform-design-fpiuqn`
 
@@ -21,17 +25,32 @@ Nhánh làm việc: `claude/prep-test-platform-design-fpiuqn`
 - [x] Nghiên cứu cơ cấu và cách chấm 6 kỳ thi + thiết kế engine chấm điểm (`docs/SCORING.md`)
 - [x] Thiết kế khu tự học: định mức từ vựng A1–C2, nguồn dữ liệu mở, lược đồ (`docs/LEARNING.md`)
 - [x] Bảng động từ bất quy tắc V1–V2–V3 (193 từ) + lớp TTS Anh/Mỹ dùng chung
+- [x] Engine format đề chuẩn: 11 format của 6 kỳ thi + phân tích độ phủ ngân hàng + sinh đề một chạm
+
+### Việc soạn nội dung (Routine làm tiếp từ đây)
+
+- [ ] Linking words: ~120 mục theo chức năng × độ trang trọng, kèm vị trí trong câu và cảnh báo lạm dụng
+- [ ] Ngữ pháp 12 thì: công thức, khi dùng / khi không dùng, phân biệt cặp dễ nhầm, lỗi người Việt hay mắc, 8 ví dụ + 12 câu luyện mỗi thì
+- [ ] Ngữ pháp nhóm danh từ – mạo từ – lượng từ theo bảng bậc trong `docs/LEARNING.md`
+- [ ] Ngữ pháp nhóm động từ khuyết thiếu + câu điều kiện
+- [ ] Ngữ pháp nhóm bị động – tường thuật – mệnh đề quan hệ
+- [ ] Ngữ pháp nhóm đảo ngữ – nhấn mạnh – sắc thái và độ trang trọng
+- [ ] Nhập từ vựng NGSL (~2.800 từ) → `vocab_entries`, gán bậc A1–B1 theo hạng tần suất
+- [ ] Nhập từ vựng NAWL (~960 từ học thuật) + TSL (~1.200 từ TOEIC), gán bậc B2–C1
+- [ ] Nhập câu ví dụ song ngữ Anh–Việt từ Tatoeba, ghép vào từng nghĩa
+- [ ] Bổ sung nghĩa và phiên âm Anh/Mỹ từ Wiktextract cho toàn bộ từ đã nhập
+- [ ] Collocations: trích từ corpus bằng thống kê đồng hiện, lọc tay, gán bậc
+
+## Việc kiến trúc
+
+Routine **không** lấy việc ở mục này.
+
+- [ ] Lược đồ từ vựng: `vocab_entries` / `vocab_senses` / `vocab_examples` / `vocab_forms` / `collocations` + trình nhập
+- [ ] Lược đồ ngữ pháp: `grammar_points` / `grammar_examples` / `linking_words`
 - [ ] API kích hoạt code phía server (`POST /api/redeem`) + rate-limit chống dò mã, thay `PrepState.redeem`
-- [ ] Linking words: ~120 mục theo chức năng × độ trang trọng, có cảnh báo lạm dụng
-- [ ] Lược đồ từ vựng (`vocab_entries` / `senses` / `examples` / `forms`) + trình nhập NGSL–NAWL–TSL
-- [ ] Nhập câu ví dụ song ngữ từ Tatoeba, ghép vào từng nghĩa
-- [ ] Màn học từ vựng có lặp lại ngắt quãng (SM-2 rút gọn)
-- [ ] Ngữ pháp: 12 thì trước (công thức, khi dùng / không dùng, lỗi người Việt hay mắc)
-- [ ] Ngữ pháp: mở rộng theo bảng bậc × nhóm trong `docs/LEARNING.md` (~303 điểm)
-- [ ] Collocations: trích từ corpus + màn luyện
-- [ ] Engine chấm điểm: `attempts` + chấm trắc nghiệm/điền từ + bảng quy đổi theo kỳ thi
+- [ ] Màn học từ vựng có lặp lại ngắt quãng (SM-2 rút gọn) + bảng `learn_progress`
+- [ ] Engine chấm điểm: `attempts` + chấm trắc nghiệm/điền từ + bảng quy đổi theo kỳ thi (`docs/SCORING.md` mục 2)
 - [ ] Engine làm bài: khung làm bài theo phần, đồng hồ từng phần, tự lưu tiến độ, nộp bài
-- [ ] Chấm tự động phần trắc nghiệm và điền từ, lưu kết quả theo lần làm
 - [ ] Màn kết quả cho học viên: điểm từng phần, phân tích 4 kỹ năng, lịch sử các lần làm
 - [ ] Chấm phần Viết và Nói: khung chấm theo tiêu chí + chỗ cắm dịch vụ chấm
 - [ ] Tích hợp thanh toán VNPay/MoMo ở chế độ sandbox, tự sinh code sau khi thanh toán thành công
@@ -54,7 +73,8 @@ Quy trình một lượt:
 
 1. `git fetch origin` và `git pull --rebase origin claude/prep-test-platform-design-fpiuqn`.
 2. Nếu commit gần nhất mới dưới 15 phút: có thể có phiên khác đang làm, bỏ lượt, thoát êm.
-3. Lấy mục chưa tick đầu tiên ở "Hàng đợi". Làm đúng một mục đó.
+3. Lấy mục chưa tick đầu tiên ở **"Hàng đợi"**. Làm đúng một mục đó.
+   Tuyệt đối không lấy việc ở mục "Việc kiến trúc".
 4. Chạy `npm run verify`. Đỏ thì sửa; không sửa được thì `git checkout -- .`, ghi lý do vào
    "Vướng mắc" bên dưới, commit riêng ghi chú đó rồi thoát. Không push code hỏng.
 5. Tick ô đã xong, cập nhật README nếu có tính năng mới, commit và push.

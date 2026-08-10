@@ -2,4 +2,6 @@ node_modules/
 npm-debug.log*
 .DS_Store
 *.local
-data/
+# Chỉ bỏ qua CSDL chạy ở gốc repo. KHÔNG dùng "data/" trần vì nó khớp cả
+# server/data/ (dữ liệu nguồn phải được commit).
+/data/

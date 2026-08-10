@@ -119,6 +119,7 @@ const AD = {
   NAV: [
     { key: 'reports', label: 'Báo cáo', icon: 'gauge', href: '/admin/' },
     { key: 'tests', label: 'Đề thi', icon: 'fileText', href: '/admin/de-thi/' },
+    { key: 'formats', label: 'Format đề', icon: 'layers', href: '/admin/format/' },
     { key: 'bank', label: 'Ngân hàng câu hỏi', icon: 'database', href: '/admin/ngan-hang/' },
     { key: 'users', label: 'Học viên', icon: 'users', href: '/admin/hoc-vien/' },
     { key: 'codes', label: 'Code', icon: 'ticket', href: '/admin/code/' },

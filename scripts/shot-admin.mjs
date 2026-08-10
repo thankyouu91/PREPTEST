@@ -8,6 +8,7 @@ const PAGES = [
   ['admin-login', '/admin/dang-nhap/', false],
   ['admin-reports', '/admin/', true],
   ['admin-tests', '/admin/de-thi/', true],
+  ['admin-formats', '/admin/format/', true],
   ['admin-builder', '/admin/de-thi/vpet-b1-01/', true],
   ['admin-bank', '/admin/ngan-hang/', true],
   ['admin-users', '/admin/hoc-vien/', true],

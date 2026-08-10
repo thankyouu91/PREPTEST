@@ -47,11 +47,33 @@ nếu chưa có tài khoản nào và cũng không có `ADMIN_PASSWORD`.
 |---|---|---|
 | Báo cáo | `/admin/` | Số học viên, code, đề, doanh thu; biểu đồ 14 ngày; bảng theo kỳ thi; cảnh báo thiếu câu hỏi; thao tác gần đây |
 | Đề thi | `/admin/de-thi/` | Danh sách, lọc theo kỳ thi và trạng thái, tạo thủ công, **sinh đề tự động** |
+| Format đề | `/admin/format/` | 11 format chuẩn của 6 kỳ thi, phân tích độ phủ ngân hàng, **sinh đề một chạm** |
 | Xây đề | `/admin/de-thi/:id/` | Sửa thông tin, thêm/xoá phần, chọn câu từ ngân hàng, bốc lại cả phần, phát hành |
 | Ngân hàng câu hỏi | `/admin/ngan-hang/` | Lọc đa tiêu chí, thêm/sửa câu, ngưng dùng, **nhập hàng loạt từ CSV** (tải mẫu, xem trước, báo lỗi từng dòng) hoặc JSON |
 | Học viên | `/admin/hoc-vien/` | Tìm kiếm, xem code và đơn, ghi chú, khoá/mở, đánh dấu xác thực, cấp code |
 | Code | `/admin/code/` | Lô code, cấp theo lô hoặc cho một học viên, thu hồi, xuất CSV |
 | Quản trị | `/admin/quan-tri/` | Thương hiệu, giá gói, đổi mật khẩu, nhật ký thao tác |
+
+### Format đề chuẩn
+
+`/admin/format/` giữ cấu trúc đề thật của cả 6 kỳ thi — dữ liệu nằm trong
+`server/data/exam-formats.js`, không hardcode trong giao diện.
+
+| Kỳ thi | Format |
+|---|---|
+| VEPT · VPET | 4 kỹ năng chuẩn VSTEP.3-5 — 80 câu, 172 phút |
+| IELTS | Academic trọn bài (85 câu, 164 phút) + luyện riêng Nghe / Đọc |
+| TOEIC | L&R đầy đủ 200 câu (120 phút), L&R rút gọn 100 câu, Speaking & Writing |
+| PTE | Academic trọn bài, 3 khối, 127 phút |
+| OTE | Module Nghe và module Đọc (thi từng module) |
+
+Mỗi format khai báo tới **từng part**: Part 1 của TOEIC 6 câu mô tả tranh, Part 7
+54 câu đọc hiểu, IELTS Reading Passage 3 khó nhất 14 câu… kèm dạng câu được phép
+bốc (`types`) nên trình sinh đề không lấy nhầm câu tự luận vào phần trắc nghiệm.
+
+**Phân tích độ phủ**: trước khi bấm sinh đề, mỗi khối hiện ngay ngân hàng đang có
+bao nhiêu câu dùng được so với số cần. Thiếu thì nút Sinh đề khoá lại và ghi rõ
+thiếu bao nhiêu — không để admin bấm rồi mới báo lỗi.
 
 ### Sinh đề: tự động và thủ công
 

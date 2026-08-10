@@ -93,6 +93,7 @@ function adminPage(file) {
 app.get('/admin/dang-nhap/', serveHtmlWithNonce('admin/dang-nhap.html'));
 app.get('/admin/', adminPage('admin/index.html'));
 app.get('/admin/de-thi/', adminPage('admin/tests.html'));
+app.get('/admin/format/', adminPage('admin/formats.html'));
 app.get('/admin/de-thi/:id/', adminPage('admin/builder.html'));
 app.get('/admin/ngan-hang/', adminPage('admin/bank.html'));
 app.get('/admin/hoc-vien/', adminPage('admin/users.html'));
