@@ -241,12 +241,12 @@ try {
 
   /* Hai nhóm phải tách bạch, không lẫn vào nhau */
   const allGrammar = await get('/api/learn/grammar');
-  ok(allGrammar.count === 80, 'Tổng bốn nhóm là 80 điểm (' + allGrammar.count + ')');
+  ok(allGrammar.count === 89, 'Tổng bốn nhóm là 89 điểm (' + allGrammar.count + ')');
   ok(allGrammar.groups.some(g => g.id === 'tense' && g.count === 12) &&
      allGrammar.groups.some(g => g.id === 'noun' && g.count === 28) &&
      allGrammar.groups.some(g => g.id === 'modal' && g.count === 29) &&
-     allGrammar.groups.some(g => g.id === 'conditional' && g.count === 11),
-    'Thống kê theo nhóm đúng: tense 12, noun 28, modal 29, conditional 11');
+     allGrammar.groups.some(g => g.id === 'conditional' && g.count === 20),
+    'Thống kê theo nhóm đúng: tense 12, noun 28, modal 29, conditional 20');
   ok(new Set(allGrammar.points.map(p => p.slug)).size === allGrammar.count,
     'Không có slug trùng giữa các nhóm');
 
@@ -373,12 +373,15 @@ try {
   console.log('\n\x1b[1m== API ngữ pháp (câu điều kiện) ==\x1b[0m');
 
   const cd = await get('/api/learn/grammar?grp=conditional');
-  ok(cd.count === 11, 'Có 11 điểm bậc A2–B2 (' + cd.count + ')');
+  ok(cd.count === 20, 'Nhóm điều kiện đủ 20 điểm A2–C2 (' + cd.count + ')');
   const cdLevel = cd.points.reduce((a, p) => (a[p.level] = (a[p.level] || 0) + 1, a), {});
-  const CD_QUOTA = { A2: 2, B1: 4, B2: 5 };
+  const CD_QUOTA = { A2: 2, B1: 4, B2: 5, C1: 5, C2: 4 };
   const cdLech = Object.keys(CD_QUOTA).filter(l => cdLevel[l] !== CD_QUOTA[l]);
-  ok(cdLech.length === 0, 'Đúng hạn mức A2 2, B1 4, B2 5' +
+  ok(cdLech.length === 0, 'Đúng hạn mức A2 2, B1 4, B2 5, C1 5, C2 4' +
     (cdLech.length ? ' (lệch: ' + cdLech.map(l => l + ' ' + (cdLevel[l] || 0)).join(', ') + ')' : ''));
+  const cdBac = { A1: 1, A2: 2, B1: 3, B2: 4, C1: 5, C2: 6 };
+  ok(cd.points.every((p, i) => i === 0 || cdBac[p.level] >= cdBac[cd.points[i - 1].level]),
+    'Nhóm điều kiện xếp từ bậc thấp lên bậc cao');
   ok(cd.points.every(p => p.counts.example === 6 && p.counts.practice === 10),
     'Mỗi điểm đủ 6 ví dụ và 10 câu luyện');
 
@@ -399,6 +402,17 @@ try {
   const honHop = await get('/api/learn/grammar/mixed-conditionals');
   ok(/now|today/i.test(JSON.stringify(honHop.point)),
     'Mục điều kiện hỗn hợp nêu dấu hiệu mốc thời gian "now"');
+
+  /* Bậc cao: điều kiện không còn chữ "if" — chỗ người học hay đọc lướt qua */
+  const daoNgu = await get('/api/learn/grammar/conditional-inversion');
+  ok(daoNgu.point.useNot.some(u => /if/i.test(u.what + u.why)),
+    'Mục đảo ngữ cảnh báo phải bỏ hẳn chữ "if"');
+  const giaDinh = await get('/api/learn/grammar/mandative-subjunctive');
+  ok(/suggest/i.test(JSON.stringify(giaDinh.point)),
+    'Mục thức giả định nêu nhóm động từ dẫn như "suggest"');
+  const ngam = await get('/api/learn/grammar/implied-conditionals');
+  ok(/would/i.test(JSON.stringify(ngam.point.formula)),
+    'Mục điều kiện ngầm chỉ ra "would" là dấu hiệu nhận biết');
 
   /* ============ 6. Chất lượng câu luyện của TOÀN BỘ ngữ pháp ============
      Dấu ngoặc trong câu luyện có hai kiểu, phải tách bạch trước khi kiểm:
@@ -462,8 +476,8 @@ try {
     (kyTuLa.length ? ' (' + kyTuLa.length + ' chỗ, ví dụ: ' + kyTuLa[0] + ')' : ''));
   ok(lechDapAn.length === 0, 'Đáp án luôn nằm trong danh sách lựa chọn của câu trắc nghiệm' +
     (lechDapAn.length ? ' (' + lechDapAn.length + ' sai, ví dụ: ' + lechDapAn[0] + ')' : ''));
-  ok(tongLuyen === 12 * 12 + 28 * 10 + 29 * 10 + 11 * 10,
-    'Tổng câu luyện toàn khu ngữ pháp là ' + (12 * 12 + 28 * 10 + 29 * 10 + 11 * 10) + ' (' + tongLuyen + ')');
+  ok(tongLuyen === 12 * 12 + 28 * 10 + 29 * 10 + 20 * 10,
+    'Tổng câu luyện toàn khu ngữ pháp là ' + (12 * 12 + 28 * 10 + 29 * 10 + 20 * 10) + ' (' + tongLuyen + ')');
 
   /* ============ 7. Năm trang tự học ============ */
   console.log('\n\x1b[1m== Trang khu tự học ==\x1b[0m');
@@ -591,7 +605,7 @@ try {
   /* --- Trang câu điều kiện --- */
   await page.goto(BASE + '/prep/hoc/dieu-kien/', { waitUntil: 'networkidle' });
   await page.waitForSelector('#list article', { timeout: 10000 });
-  ok(await page.locator('#list article').count() === 11, 'Trang câu điều kiện hiện đủ 11 mục');
+  ok(await page.locator('#list article').count() === 20, 'Trang câu điều kiện hiện đủ 20 mục');
 
   await page.click('[data-toggle="conditional-third"]');
   await page.waitForSelector('#list article[data-slug="conditional-third"] [data-answer]',
