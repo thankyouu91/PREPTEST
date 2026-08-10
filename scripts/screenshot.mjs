@@ -62,6 +62,7 @@ const PAGES = [
   { slug: 'hoc-khuyet-thieu',url: '/prep/hoc/khuyet-thieu/',      auth: true },
   { slug: 'hoc-dieu-kien',   url: '/prep/hoc/dieu-kien/',         auth: true },
   { slug: 'hoc-bi-dong',     url: '/prep/hoc/bi-dong/',           auth: true },
+  { slug: 'hoc-menh-de',     url: '/prep/hoc/menh-de/',           auth: true },
   { slug: 'dashboard-dark',  url: '/prep/',                      auth: true, dark: true },
   { slug: 'landing-dark',    url: '/prep/landing/',              auth: false, dark: true },
   { slug: 'landing-tenant',  url: '/prep/landing/',              auth: false, tenant: 'evergreen' }
