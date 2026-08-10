@@ -42,7 +42,10 @@ Nhánh làm việc: `claude/prep-test-platform-design-fpiuqn`
 - [x] Ngữ pháp mệnh đề quan hệ và mệnh đề phụ, bậc A2–B1 (9 điểm: who/which/that, mệnh đề chỉ thời gian, mệnh đề chỉ nguyên nhân; mệnh đề xác định và không xác định, whose, where/when/why, lược bỏ đại từ quan hệ, mệnh đề chỉ mục đích, mệnh đề nhượng bộ) — mục 17 điểm A2–B2 đã tách đôi đúng như ghi chú
 - [x] Ngữ pháp mệnh đề quan hệ và mệnh đề phụ, bậc B2 (8 điểm: rút gọn mệnh đề quan hệ bằng V-ing / V3 / to-V, giới từ + which và whom, mệnh đề quan hệ với lượng từ (`some of which`, `most of whom`), `which` thay cho cả mệnh đề đứng trước, mệnh đề đối chiếu (`whereas`, `while`), mệnh đề chỉ cách thức (`as if`, `as though`), nhóm `-ever`, mệnh đề danh ngữ với `what` và `whether`)
 - [x] Ngữ pháp mệnh đề quan hệ và mệnh đề phụ, bậc C1–C2 (12 điểm: mệnh đề phân từ làm trạng ngữ và lỗi phân từ treo, mệnh đề kết quả, chủ ngữ giả `it`, `for + tân ngữ + to-V`, lược bỏ trong mệnh đề phụ, `in case`/`provided that`, mệnh đề `as` học thuật; cấu trúc tuyệt đối, `whereby`/`wherein`/`whereupon`, mệnh đề quan hệ tách xa, nhượng bộ trang trọng, mệnh đề gắn nhầm chỗ) — nhóm này đủ 29/29 điểm
-- [ ] Ngữ pháp nhóm đảo ngữ – nhấn mạnh – sắc thái và độ trang trọng
+- [x] Ngữ pháp đảo ngữ – nhấn mạnh – câu chẻ, bậc B1–C1 (14 điểm: So do I, Here comes, nhấn mạnh bằng do/does/did, câu chẻ `It is… that`, câu chẻ `What… is`, đảo ngữ sau Never/Rarely, đại từ phản thân nhấn mạnh; `Not only`/`No sooner`/`Hardly`/`Little did`, đảo ngữ sau `Only`, `So great was`, đưa lên đầu mà không đảo, biến thể `All I want is`, câu chẻ đảo `That is what`, trạng từ nhấn mạnh) — mục gốc gộp hai hàng hạn mức (đảo ngữ 21 + sắc thái 33 = 54 điểm) nên đã tách theo hai bảng dưới đây
+- [ ] Ngữ pháp đảo ngữ – nhấn mạnh – câu chẻ, bậc C2 (7 điểm còn lại theo hạn mức)
+- [ ] Ngữ pháp sắc thái – độ trang trọng – hedging, bậc A1–B2 (14 điểm theo hạn mức: A1 1, A2 2, B1 4, B2 7)
+- [ ] Ngữ pháp sắc thái – độ trang trọng – hedging, bậc C1–C2 (19 điểm còn lại — nhóm này to, lượt làm nên tách đôi)
 - [ ] Nhập từ vựng NGSL (~2.800 từ) → `vocab_entries`, gán bậc A1–B1 theo hạng tần suất
 - [ ] Nhập từ vựng NAWL (~960 từ học thuật) + TSL (~1.200 từ TOEIC), gán bậc B2–C1
 - [ ] Nhập câu ví dụ song ngữ Anh–Việt từ Tatoeba, ghép vào từng nghĩa

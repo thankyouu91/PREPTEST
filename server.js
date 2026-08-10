@@ -155,6 +155,7 @@ app.get('/prep/hoc/khuyet-thieu/', studentPage('prep/learn/khuyet-thieu.html'));
 app.get('/prep/hoc/dieu-kien/', studentPage('prep/learn/dieu-kien.html'));
 app.get('/prep/hoc/bi-dong/', studentPage('prep/learn/bi-dong.html'));
 app.get('/prep/hoc/menh-de/', studentPage('prep/learn/menh-de.html'));
+app.get('/prep/hoc/nhan-manh/', studentPage('prep/learn/nhan-manh.html'));
 
 /* ---------------- Static (CSS/JS/SVG/ảnh) ----------------
    Chặn *.html tĩnh để HTML không bao giờ thoát khỏi vòng chèn nonce. */

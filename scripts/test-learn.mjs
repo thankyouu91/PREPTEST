@@ -241,14 +241,15 @@ try {
 
   /* Hai nhóm phải tách bạch, không lẫn vào nhau */
   const allGrammar = await get('/api/learn/grammar');
-  ok(allGrammar.count === 140, 'Tổng sáu nhóm là 140 điểm (' + allGrammar.count + ')');
+  ok(allGrammar.count === 154, 'Tổng bảy nhóm là 154 điểm (' + allGrammar.count + ')');
   ok(allGrammar.groups.some(g => g.id === 'tense' && g.count === 12) &&
      allGrammar.groups.some(g => g.id === 'noun' && g.count === 28) &&
      allGrammar.groups.some(g => g.id === 'modal' && g.count === 29) &&
      allGrammar.groups.some(g => g.id === 'conditional' && g.count === 20) &&
      allGrammar.groups.some(g => g.id === 'passive' && g.count === 22) &&
-     allGrammar.groups.some(g => g.id === 'clause' && g.count === 29),
-    'Thống kê theo nhóm đúng: tense 12, noun 28, modal 29, conditional 20, passive 22, clause 29');
+     allGrammar.groups.some(g => g.id === 'clause' && g.count === 29) &&
+     allGrammar.groups.some(g => g.id === 'emphasis' && g.count === 14),
+    'Thống kê theo nhóm đúng: tense 12, noun 28, modal 29, conditional 20, passive 22, clause 29, emphasis 14');
   ok(new Set(allGrammar.points.map(p => p.slug)).size === allGrammar.count,
     'Không có slug trùng giữa các nhóm');
 
@@ -627,6 +628,61 @@ try {
   ok(ganNham.point.confuse.some(c => /hai nghĩa/i.test(c.with + c.tell)),
     'Mục gắn nhầm chỗ nêu rõ vấn đề là câu hiểu hai nghĩa');
 
+  /* ============ 5e. Ngữ pháp: đảo ngữ, nhấn mạnh, câu chẻ ============ */
+  console.log('\n\x1b[1m== API ngữ pháp (đảo ngữ, nhấn mạnh, câu chẻ) ==\x1b[0m');
+
+  const nm = await get('/api/learn/grammar?grp=emphasis');
+  ok(nm.count === 14, 'Có 14 điểm bậc B1–C1 (' + nm.count + ')');
+  const nmLevel = nm.points.reduce((a, p) => (a[p.level] = (a[p.level] || 0) + 1, a), {});
+  const NM_QUOTA = { B1: 2, B2: 5, C1: 7 };
+  const nmLech = Object.keys(NM_QUOTA).filter(l => nmLevel[l] !== NM_QUOTA[l]);
+  ok(nmLech.length === 0, 'Đúng hạn mức B1 2, B2 5, C1 7' +
+    (nmLech.length ? ' (lệch: ' + nmLech.map(l => l + ' ' + (nmLevel[l] || 0) + '/' + NM_QUOTA[l]).join(', ') + ')' : ''));
+  ok(nm.points.every(p => p.counts.example === 6 && p.counts.practice === 10),
+    'Mỗi điểm đủ 6 ví dụ và 10 câu luyện');
+  const bacNm = { B1: 3, B2: 4, C1: 5 };
+  ok(nm.points.every((p, i) => i === 0 || bacNm[p.level] >= bacNm[nm.points[i - 1].level]),
+    'Danh sách xếp từ bậc thấp lên bậc cao');
+
+  /* Trục chính của nhóm: đảo hay không đảo. Hai mục phải đối chiếu được với nhau,
+     mất một trong hai thì người học không có chỗ nào phân biệt được luật ngược nhau. */
+  const daoPhuDinh = await get('/api/learn/grammar/negative-inversion-basic');
+  ok(/Never have I/.test(JSON.stringify(daoPhuDinh.point.errors)),
+    'Đảo ngữ phủ định nêu đúng câu sửa "Never have I…"');
+  const khongDao = await get('/api/learn/grammar/fronting-no-inversion');
+  ok(khongDao.point.confuse.some(c => /tân ngữ/i.test(c.with + c.tell) && /phủ định/i.test(c.with + c.tell)),
+    'Mục đưa lên đầu không đảo đối chiếu thẳng với đảo ngữ phủ định');
+  ok(khongDao.point.useNot.some(u => /không đảo/i.test(u.what + u.why)),
+    'Mục đưa lên đầu cảnh báo không được đảo khi đưa tân ngữ lên trước');
+
+  /* Cặp từ đi kèm của đảo ngữ nâng cao là bẫy C1 kinh điển */
+  const daoNangCao = await get('/api/learn/grammar/negative-inversion-advanced');
+  ok(daoNangCao.point.useNot.some(u => /than/i.test(u.what + u.why) && /when/i.test(u.what + u.why)),
+    'Đảo ngữ nâng cao cảnh báo cặp "No sooner… than" khác "Hardly… when"');
+
+  const daoOnly = await get('/api/learn/grammar/only-inversion');
+  ok(daoOnly.point.useNot.some(u => /chủ ngữ/i.test(u.what + u.why)),
+    'Đảo ngữ "Only" nêu ngoại lệ khi only bổ nghĩa cho chủ ngữ');
+
+  const cheIt = await get('/api/learn/grammar/it-cleft');
+  ok(cheIt.point.useNot.some(u => /that/i.test(u.what + u.why) && /who/i.test(u.what + u.why)),
+    'Câu chẻ "It" cảnh báo không được bỏ "that" hay "who"');
+  const cheWhat = await get('/api/learn/grammar/wh-cleft');
+  ok(cheWhat.point.confuse.some(c => /cuối/i.test(c.with + c.tell) || /đầu/i.test(c.with + c.tell)),
+    'Câu chẻ "What" đối chiếu vị trí phần nhấn với câu chẻ "It"');
+
+  const nhanDo = await get('/api/learn/grammar/do-emphasis');
+  ok(/did call/.test(JSON.stringify(nhanDo.point.errors)),
+    'Nhấn mạnh bằng "do" bắt lỗi chia động từ chính sau "did"');
+
+  const traTuNhan = await get('/api/learn/grammar/emphasis-adverbs');
+  ok(traTuNhan.point.useNot.some(u => /whatsoever/i.test(u.what + u.why)),
+    'Trạng từ nhấn mạnh cảnh báo "whatsoever" chỉ dùng trong câu phủ định');
+
+  const bienThe = await get('/api/learn/grammar/cleft-variants');
+  ok(/All what/.test(JSON.stringify(bienThe.point.errors)),
+    'Biến thể câu chẻ bắt lỗi "All what I want"');
+
   /* ============ 6. Chất lượng câu luyện của TOÀN BỘ ngữ pháp ============
      Dấu ngoặc trong câu luyện có hai kiểu, phải tách bạch trước khi kiểm:
 
@@ -689,8 +745,8 @@ try {
     (kyTuLa.length ? ' (' + kyTuLa.length + ' chỗ, ví dụ: ' + kyTuLa[0] + ')' : ''));
   ok(lechDapAn.length === 0, 'Đáp án luôn nằm trong danh sách lựa chọn của câu trắc nghiệm' +
     (lechDapAn.length ? ' (' + lechDapAn.length + ' sai, ví dụ: ' + lechDapAn[0] + ')' : ''));
-  ok(tongLuyen === 12 * 12 + 28 * 10 + 29 * 10 + 20 * 10 + 22 * 10 + 29 * 10,
-    'Tổng câu luyện toàn khu ngữ pháp là ' + (12 * 12 + 28 * 10 + 29 * 10 + 20 * 10 + 22 * 10 + 29 * 10) + ' (' + tongLuyen + ')');
+  ok(tongLuyen === 12 * 12 + 28 * 10 + 29 * 10 + 20 * 10 + 22 * 10 + 29 * 10 + 14 * 10,
+    'Tổng câu luyện toàn khu ngữ pháp là ' + (12 * 12 + 28 * 10 + 29 * 10 + 20 * 10 + 22 * 10 + 29 * 10 + 14 * 10) + ' (' + tongLuyen + ')');
 
   /* ============ 7. Năm trang tự học ============ */
   console.log('\n\x1b[1m== Trang khu tự học ==\x1b[0m');
@@ -901,7 +957,26 @@ try {
   ok(await page.locator('article[data-slug="clause-attachment"] [data-answer]').count() === 10,
     'Mục bậc C2 cuối danh sách cũng mở ra đủ 10 câu luyện');
 
-  ok(errs.length === 0, 'Không có lỗi JavaScript trên tám trang tự học' +
+  /* --- Trang đảo ngữ, nhấn mạnh và câu chẻ --- */
+  await page.goto(BASE + '/prep/hoc/nhan-manh/', { waitUntil: 'networkidle' });
+  await page.waitForSelector('#list article', { timeout: 10000 });
+  ok(await page.locator('#list article').count() === 14, 'Trang đảo ngữ hiện đủ 14 mục');
+
+  await page.click('[data-toggle="negative-inversion-basic"]');
+  await page.waitForSelector('#list article[data-slug="negative-inversion-basic"] [data-answer]',
+    { state: 'attached', timeout: 10000 });
+  ok(await page.locator('article[data-slug="negative-inversion-basic"] [data-answer]').count() === 10,
+    'Mở ra thấy đủ 10 câu luyện');
+
+  await page.selectOption('#f-level', 'B1');
+  await page.waitForTimeout(300);
+  ok(await page.locator('#list article').count() === 2, 'Lọc bậc B1 còn 2 mục');
+
+  await page.selectOption('#f-level', 'C1');
+  await page.waitForTimeout(300);
+  ok(await page.locator('#list article').count() === 7, 'Lọc bậc C1 còn 7 mục');
+
+  ok(errs.length === 0, 'Không có lỗi JavaScript trên chín trang tự học' +
     (errs.length ? ': ' + errs[0] : ''));
 
   await ctx.close();
