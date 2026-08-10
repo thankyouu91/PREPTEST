@@ -15,6 +15,7 @@ Bản cũ hơn thì `chay-server.bat` sẽ báo lỗi và dừng chứ không ch
 | Tệp | Việc nó làm |
 |---|---|
 | `chay-server.bat` | Nhấn đúp để chạy. Tự kiểm tra Node, cài thư viện, build CSS, bật server rồi mở trình duyệt |
+| `cap-nhat.bat` | Kéo code mới nhất từ GitHub về, cài lại thư viện, build lại CSS |
 | `dung-server.bat` | Tắt server còn sót lại khi lỡ đóng cửa sổ mà tiến trình vẫn chạy |
 | `cau-hinh.mau.bat` | Mẫu cấu hình. Chép thành `cau-hinh.bat` rồi sửa nếu muốn đổi cổng hay mật khẩu |
 | `_mo-trinh-duyet.bat` | Tệp phụ, `chay-server.bat` gọi. Không chạy trực tiếp |
@@ -31,6 +32,32 @@ Tài khoản khởi tạo in ra ngay trong cửa sổ đen lúc server lên. Đ�
 thì **đổi mật khẩu ngay** trong màn Quản trị.
 
 Muốn dừng: bấm `Ctrl+C` trong cửa sổ đen, hoặc đóng cửa sổ rồi chạy `dung-server.bat`.
+
+## Lấy code mới nhất về
+
+Nhấn đúp `cap-nhat.bat`. Nó kéo code mới từ GitHub, cài lại thư viện, build lại
+CSS, rồi liệt kê những commit vừa về.
+
+Hai chỗ nó **cố ý dừng lại** thay vì làm liều:
+
+- **Bạn đang có sửa đổi chưa lưu.** Script in ra danh sách tệp đang sửa và dừng,
+  không kéo code đè lên. Muốn giữ phần đang sửa thì `git stash`, muốn bỏ thì
+  `git checkout -- .`, rồi chạy lại.
+- **Nhánh ở máy đã rẽ hướng khác** so với trên GitHub (thường là do bạn đã commit
+  thêm ở máy). Script chỉ cho phép tua thẳng (`--ff-only`) nên sẽ báo lỗi thay vì
+  tự trộn. Xem lại bằng `git log --oneline --graph --all -20`.
+
+Script không bao giờ xoá hay ghi đè thay đổi của bạn.
+
+### Lần đầu tải về
+
+Nếu thư mục chưa phải bản sao git, mở Command Prompt ở **thư mục cha** rồi chạy:
+
+```bat
+git clone -b claude/prep-test-platform-design-fpiuqn https://github.com/thankyouu91/PREPTEST.git PrepTest
+```
+
+Cần cài Git trước: <https://git-scm.com/download/win>.
 
 ## Đổi cổng hoặc mật khẩu
 
