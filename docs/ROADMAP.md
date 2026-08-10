@@ -32,7 +32,7 @@ Nhánh làm việc: `claude/prep-test-platform-design-fpiuqn`
 - [x] Linking words: 123 mục theo chức năng × độ trang trọng, kèm vị trí trong câu, dấu câu và cảnh báo lạm dụng
 - [x] Ngữ pháp 12 thì: công thức, khi dùng / khi không dùng, phân biệt cặp dễ nhầm, lỗi người Việt hay mắc, 8 ví dụ + 12 câu luyện mỗi thì
 - [x] Ngữ pháp nhóm danh từ – mạo từ – lượng từ, bậc A1–A2 (14 điểm: số nhiều, đếm được, a/an/the/zero, this–that, some–any, sở hữu cách, much–many, a few–a little, danh từ ghép, there is–are, đơn vị đo)
-- [ ] Ngữ pháp nhóm danh từ – mạo từ – lượng từ, bậc B1–C2 (14 điểm còn lại theo hạn mức: few/little không có "a", all–both–each–every, danh từ tập hợp, mạo từ với tên riêng, danh từ hai dạng đếm được, lượng từ với "of", no–none–neither, mạo từ trong lối nói khái quát, zero article trong văn học thuật, lượng từ trang trọng, hoà hợp chủ ngữ với "a number of", mạo từ trong thành ngữ, danh từ hoá)
+- [x] Ngữ pháp nhóm danh từ – mạo từ – lượng từ, bậc B1–C2 (14 điểm: few/little không có "a", all–both–whole, each–every, danh từ tập hợp, mạo từ với tên riêng, danh từ đổi nghĩa theo tính đếm được, lượng từ với "of", no–none–neither, mạo từ khái quát, zero article học thuật, lượng từ trang trọng, hoà hợp chủ ngữ với cụm lượng, mạo từ trong thành ngữ, danh từ hoá) — nhóm này đủ 28/28 điểm theo hạn mức
 - [ ] Ngữ pháp nhóm động từ khuyết thiếu + câu điều kiện
 - [ ] Ngữ pháp nhóm bị động – tường thuật – mệnh đề quan hệ
 - [ ] Ngữ pháp nhóm đảo ngữ – nhấn mạnh – sắc thái và độ trang trọng

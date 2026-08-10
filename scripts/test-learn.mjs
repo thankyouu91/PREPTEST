@@ -219,14 +219,21 @@ try {
   console.log('\n\x1b[1m== API ngữ pháp (danh từ, mạo từ, lượng từ) ==\x1b[0m');
 
   const nn = await get('/api/learn/grammar?grp=noun');
-  ok(nn.count === 14, 'Có 14 điểm bậc A1–A2 (' + nn.count + ')');
+  ok(nn.count === 28, 'Có đủ 28 điểm A1–C2 (' + nn.count + ')');
   ok(nn.points.every(p => p.grp === 'noun'), 'Lọc theo nhóm trả đúng nhóm');
-  ok(nn.points.every(p => ['A1', 'A2'].includes(p.level)), 'Chỉ có bậc A1 và A2 trong đợt này');
 
-  /* Bám đúng hạn mức A1 ×8, A2 ×6 của bảng phân bậc trong docs/LEARNING.md */
+  /* Bám sát hạn mức A1 8 · A2 6 · B1 5 · B2 4 · C1 3 · C2 2 trong docs/LEARNING.md.
+     Đây là chốt chặn cho ràng buộc "không tự nâng số lượng để cho nhiều". */
   const byLevel = nn.points.reduce((a, p) => (a[p.level] = (a[p.level] || 0) + 1, a), {});
-  ok(byLevel.A1 === 8, 'Đúng hạn mức A1 là 8 điểm (' + byLevel.A1 + ')');
-  ok(byLevel.A2 === 6, 'Đúng hạn mức A2 là 6 điểm (' + byLevel.A2 + ')');
+  const QUOTA = { A1: 8, A2: 6, B1: 5, B2: 4, C1: 3, C2: 2 };
+  const lech = Object.keys(QUOTA).filter(l => byLevel[l] !== QUOTA[l]);
+  ok(lech.length === 0, 'Đúng hạn mức từng bậc theo bảng phân bậc' +
+    (lech.length ? ' (lệch: ' + lech.map(l => l + ' ' + (byLevel[l] || 0) + '/' + QUOTA[l]).join(', ') + ')' : ''));
+
+  /* Thứ tự hiển thị phải đi từ bậc thấp lên bậc cao, không cài răng lược */
+  const bacSo = { A1: 1, A2: 2, B1: 3, B2: 4, C1: 5, C2: 6 };
+  const daSap = nn.points.every((p, i) => i === 0 || bacSo[p.level] >= bacSo[nn.points[i - 1].level]);
+  ok(daSap, 'Danh sách xếp từ bậc thấp lên bậc cao');
 
   ok(nn.points.every(p => formRows(p).length >= 2), 'Mọi điểm có ít nhất hai dòng công thức');
   ok(nn.points.every(p => p.counts.example === 6), 'Mỗi điểm có đúng 6 câu ví dụ');
@@ -234,10 +241,10 @@ try {
 
   /* Hai nhóm phải tách bạch, không lẫn vào nhau */
   const allGrammar = await get('/api/learn/grammar');
-  ok(allGrammar.count === 26, 'Tổng hai nhóm là 26 điểm (' + allGrammar.count + ')');
+  ok(allGrammar.count === 40, 'Tổng hai nhóm là 40 điểm (' + allGrammar.count + ')');
   ok(allGrammar.groups.some(g => g.id === 'tense' && g.count === 12) &&
-     allGrammar.groups.some(g => g.id === 'noun' && g.count === 14),
-    'Thống kê theo nhóm đúng: tense 12, noun 14');
+     allGrammar.groups.some(g => g.id === 'noun' && g.count === 28),
+    'Thống kê theo nhóm đúng: tense 12, noun 28');
   ok(new Set(allGrammar.points.map(p => p.slug)).size === allGrammar.count,
     'Không có slug trùng giữa hai nhóm');
 
@@ -266,8 +273,8 @@ try {
       (x.en.match(/___/g) || []).length !== x.answer.split('…').length);
     if (gapMismatch.length) nFlaws.push(p.slug + ': ' + gapMismatch.length + ' câu luyện lệch chỗ trống/đáp án');
   }
-  ok(nExTotal === 84, 'Tổng 84 câu ví dụ (' + nExTotal + ')');
-  ok(nPrTotal === 140, 'Tổng 140 câu luyện tập (' + nPrTotal + ')');
+  ok(nExTotal === 168, 'Tổng 168 câu ví dụ (' + nExTotal + ')');
+  ok(nPrTotal === 280, 'Tổng 280 câu luyện tập (' + nPrTotal + ')');
   ok(nFlaws.length === 0, 'Mọi điểm đủ lát cắt và dữ liệu sạch' +
     (nFlaws.length ? ' — ' + nFlaws.slice(0, 6).join('; ') : ''));
 
@@ -289,6 +296,27 @@ try {
   const there = await get('/api/learn/grammar/there-is-there-are');
   ok(there.point.errors.some(e => /have/i.test(e.wrong)),
     'Mục There is/are cảnh báo lỗi dịch thẳng "trong phòng có" thành "have"');
+
+  /* Bậc cao: kiểm mấy chỗ chính bậc C1–C2 tồn tại là để dạy */
+  const fewLittle = await get('/api/learn/grammar/few-little');
+  ok(fewLittle.point.formula.note && /quite a few/i.test(fewLittle.point.formula.note),
+    'Mục few/little cảnh báo bẫy ngược nghĩa "quite a few"');
+  ok(fewLittle.point.confuse.length >= 2, 'Mục few/little có ít nhất hai cặp phân biệt');
+
+  const agree = await get('/api/learn/grammar/quantifier-agreement');
+  const agreeText = JSON.stringify(agree.point);
+  ok(/a number of/i.test(agreeText) && /the number of/i.test(agreeText),
+    'Mục hoà hợp chủ ngữ đối chiếu "a number of" với "the number of"');
+  ok(agree.practice.some(x => /the number of/i.test(x.en) && /^has$/i.test(x.answer)),
+    'Có câu luyện chốt "the number of" đi với động từ số ít');
+
+  const acaZero = await get('/api/learn/grammar/article-academic-zero');
+  ok(acaZero.point.formula.note && /bổ nghĩa/i.test(acaZero.point.formula.note),
+    'Mục zero article học thuật nêu quy tắc "có bổ nghĩa thì phải có the"');
+
+  const nomin = await get('/api/learn/grammar/nominalisation');
+  ok(nomin.point.useNot.some(u => /lạm dụng|cả đoạn/i.test(u.what + u.why)),
+    'Mục danh từ hoá cảnh báo lạm dụng, không chỉ dạy cách dùng');
 
   /* ============ 5. Bốn trang tự học ============ */
   console.log('\n\x1b[1m== Trang khu tự học ==\x1b[0m');
@@ -377,7 +405,7 @@ try {
   /* --- Trang danh từ dùng chung khối PrepGrammar với trang 12 thì --- */
   await page.goto(BASE + '/prep/hoc/danh-tu/', { waitUntil: 'networkidle' });
   await page.waitForSelector('#list article', { timeout: 10000 });
-  ok(await page.locator('#list article').count() === 14, 'Trang danh từ hiện đủ 14 mục');
+  ok(await page.locator('#list article').count() === 28, 'Trang danh từ hiện đủ 28 mục');
 
   await page.click('[data-toggle="article-a-an"]');
   await page.waitForSelector('#list article[data-slug="article-a-an"] [data-answer]',

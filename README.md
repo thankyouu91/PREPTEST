@@ -140,7 +140,7 @@ thiết bị khác.
 | Động từ bất quy tắc | `/prep/hoc/dong-tu-bat-quy-tac/` | 193 động từ, tra theo V1/V2/V3 hoặc nghĩa tiếng Việt, lọc theo bậc và nhóm biến đổi, phát âm từng dạng |
 | Từ nối | `/prep/hoc/tu-noi/` | 123 từ nối theo 13 chức năng × 3 mức trang trọng, kèm vị trí trong câu, quy tắc dấu câu, ví dụ song ngữ và cảnh báo dùng sai |
 | 12 thì | `/prep/hoc/thi/` | 12 thì, mỗi thì đủ bốn lát cắt: công thức, dùng khi nào, **không** dùng khi nào, phân biệt với thì dễ nhầm — kèm lỗi người Việt hay mắc, 8 ví dụ (có cả phản ví dụ kèm cách sửa) và 12 câu luyện có đáp án |
-| Danh từ, mạo từ, lượng từ | `/prep/hoc/danh-tu/` | 14 điểm bậc A1–A2: số nhiều có quy tắc và bất quy tắc, đếm được / không đếm được, `a` – `an` – `the` – không mạo từ, `this/that`, `some/any`, sở hữu cách, `much/many`, `a few/a little`, danh từ ghép, `There is/are`, đơn vị đo. Bậc B1–C2 soạn ở lượt sau |
+| Danh từ, mạo từ, lượng từ | `/prep/hoc/danh-tu/` | Đủ 28 điểm A1–C2. Bậc thấp lo hình thái: số nhiều, đếm được / không đếm được, `a` – `an` – `the` – không mạo từ, `some/any`, sở hữu cách, `much/many`. Bậc cao lo sắc thái và hoà hợp: `few` khác `a few`, `each` khác `every`, danh từ tập hợp, mạo từ với tên riêng, `most of` khác `most`, zero article học thuật, `a number of` khác `the number of`, mạo từ trong thành ngữ, danh từ hoá |
 
 **Phát âm miễn phí bằng Web Speech API** (`public/prep/learn/_tts.js`): giọng có sẵn
 trong trình duyệt nên không tốn phí, không gọi mạng ngoài, không đụng CSP. Ba cách

@@ -675,10 +675,17 @@ function seedGrammar() {
   // ngoại, xoá bảng cha là mất hết bản ghi con, nên phải dựng lại trọn bộ.
   const src = [
     require('./data/grammar-tenses'),
-    require('./data/grammar-nouns')
+    require('./data/grammar-nouns'),
+    require('./data/grammar-nouns-b1c2')
   ];
   const points = src.flatMap(s => s.points());
   const examples = src.flatMap(s => s.examples());
+
+  // Đánh lại số thứ tự theo thứ tự xuất hiện trong từng nhóm. Mỗi tệp tự đếm
+  // từ 0 nên nếu giữ nguyên thì hai tệp cùng nhóm sẽ cài răng lược vào nhau;
+  // đánh lại ở đây thì thứ tự tệp trong mảng trên quyết định thứ tự hiển thị.
+  const dem = {};
+  points.forEach(p => { p.sort = (dem[p.grp] = (dem[p.grp] || 0) + 1) - 1; });
 
   seedContent('grammar', { points, examples, n: points.length + examples.length },
     ['grammar_examples', 'grammar_points'],
