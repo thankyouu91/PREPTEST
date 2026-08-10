@@ -174,4 +174,5 @@ app.listen(PORT, () => {
   console.log(`VPET Prep chạy tại http://localhost:${PORT}`);
   console.log(`  · Học viên:  http://localhost:${PORT}/prep/landing/`);
   console.log(`  · Quản trị:  http://localhost:${PORT}/admin/`);
+  A.reportAdminAccounts();
 });

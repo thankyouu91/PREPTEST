@@ -293,15 +293,42 @@ function ensureSeedAdmin() {
 /* ------------- Mật khẩu cho tài khoản học viên demo -------------
    Bản seed tạo user 'student' không có mật khẩu. Ngoài production, đặt sẵn
    mật khẩu demo để thử luồng đăng nhập; ở production để trống nên không ai
-   đăng nhập được vào tài khoản mẫu. */
+   đăng nhập được vào tài khoản mẫu.
+
+   Trước đây hàm này chỉ đặt mật khẩu khi ô pass_hash còn trống, nên hễ mật khẩu
+   bị đổi một lần (đổi tay, hoặc một lần chạy thử cũ) là nó lệch khỏi README
+   vĩnh viễn mà không báo gì — người dùng đọc README rồi đăng nhập không được.
+   Nay ngoài production thì mỗi lần khởi động đều kéo tài khoản demo về đúng
+   trạng thái tài liệu ghi, và in ra một dòng khi thật sự có sửa. */
 const DEMO_STUDENT_PASSWORD = 'Goodmorning01';
 
 function ensureDemoStudentPassword() {
   if (process.env.NODE_ENV === 'production') return false;
-  const u = q.get("SELECT id, pass_hash FROM users WHERE username='student'");
-  if (!u || u.pass_hash) return false;
-  q.run('UPDATE users SET pass_hash=? WHERE id=?', hashPassword(DEMO_STUDENT_PASSWORD), u.id);
+  const u = q.get("SELECT id, pass_hash, verified, status FROM users WHERE username='student'");
+  if (!u) return false;
+
+  const dungMatKhau = u.pass_hash && verifyPassword(DEMO_STUDENT_PASSWORD, u.pass_hash);
+  const dungTrangThai = u.verified === 1 && u.status === 'active';
+  if (dungMatKhau && dungTrangThai) return false;
+
+  q.run("UPDATE users SET pass_hash=?, verified=1, status='active' WHERE id=?",
+    hashPassword(DEMO_STUDENT_PASSWORD), u.id);
+  console.warn(
+    '\n⚠  Tài khoản học viên demo đã lệch khỏi tài liệu, đã đặt lại:' +
+    '\n   student / ' + DEMO_STUDENT_PASSWORD +
+    '\n   (chỉ chạy ngoài production; đặt NODE_ENV=production để tắt hẳn tài khoản demo)\n'
+  );
   return true;
+}
+
+/** Nhắc lại tài khoản quản trị đang có, để người dùng không mò trong bóng tối.
+    Chỉ in TÊN, không in mật khẩu — CSDL chỉ lưu bản băm nên cũng không đọc được. */
+function reportAdminAccounts() {
+  if (process.env.NODE_ENV === 'production') return;
+  const admins = q.all('SELECT username FROM admins WHERE active=1 ORDER BY id');
+  if (!admins.length) return;
+  console.log('   · Quản trị:  ' + admins.map(a => a.username).join(', ') +
+    '  (quên mật khẩu? chạy: node scripts/tai-khoan.js dat-lai-admin)');
 }
 
 module.exports = {
@@ -313,6 +340,6 @@ module.exports = {
   rateLimit, rateLimitPeek, rateLimitNote,
   issueToken, consumeToken,
   requireAdmin, requireOwner, csrfGuard,
-  ensureSeedAdmin, ensureDemoStudentPassword,
+  ensureSeedAdmin, ensureDemoStudentPassword, reportAdminAccounts,
   DEV_DEFAULT_PASSWORD, DEMO_STUDENT_PASSWORD
 };

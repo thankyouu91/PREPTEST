@@ -20,6 +20,9 @@ fi
 step "Build CSS"
 npm run build || fail=1
 
+step "Kiểm thử cứu hộ tài khoản"
+node scripts/test-taikhoan.js || fail=1
+
 step "Khởi động server"
 pkill -f 'node server\.js' 2>/dev/null || true
 sleep 0.5
