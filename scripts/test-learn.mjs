@@ -241,11 +241,11 @@ try {
 
   /* Hai nhóm phải tách bạch, không lẫn vào nhau */
   const allGrammar = await get('/api/learn/grammar');
-  ok(allGrammar.count === 54, 'Tổng ba nhóm là 54 điểm (' + allGrammar.count + ')');
+  ok(allGrammar.count === 69, 'Tổng ba nhóm là 69 điểm (' + allGrammar.count + ')');
   ok(allGrammar.groups.some(g => g.id === 'tense' && g.count === 12) &&
      allGrammar.groups.some(g => g.id === 'noun' && g.count === 28) &&
-     allGrammar.groups.some(g => g.id === 'modal' && g.count === 14),
-    'Thống kê theo nhóm đúng: tense 12, noun 28, modal 14');
+     allGrammar.groups.some(g => g.id === 'modal' && g.count === 29),
+    'Thống kê theo nhóm đúng: tense 12, noun 28, modal 29');
   ok(new Set(allGrammar.points.map(p => p.slug)).size === allGrammar.count,
     'Không có slug trùng giữa các nhóm');
 
@@ -323,16 +323,18 @@ try {
   console.log('\n\x1b[1m== API ngữ pháp (động từ khuyết thiếu) ==\x1b[0m');
 
   const md = await get('/api/learn/grammar?grp=modal');
-  ok(md.count === 14, 'Có 14 điểm bậc A1–B1 (' + md.count + ')');
+  ok(md.count === 29, 'Nhóm khuyết thiếu đủ 29 điểm A1–C2 (' + md.count + ')');
   ok(md.points.every(p => p.grp === 'modal'), 'Lọc theo nhóm trả đúng nhóm');
 
   /* Hạn mức của nhóm này là A1 ×3, A2 ×5, B1 ×6 */
   const mdLevel = md.points.reduce((a, p) => (a[p.level] = (a[p.level] || 0) + 1, a), {});
-  const MD_QUOTA = { A1: 3, A2: 5, B1: 6 };
+  const MD_QUOTA = { A1: 3, A2: 5, B1: 6, B2: 6, C1: 5, C2: 4 };
   const mdLech = Object.keys(MD_QUOTA).filter(l => mdLevel[l] !== MD_QUOTA[l]);
-  ok(mdLech.length === 0, 'Đúng hạn mức A1 3, A2 5, B1 6' +
+  ok(mdLech.length === 0, 'Đúng hạn mức A1 3, A2 5, B1 6, B2 6, C1 5, C2 4' +
     (mdLech.length ? ' (lệch: ' + mdLech.map(l => l + ' ' + (mdLevel[l] || 0)).join(', ') + ')' : ''));
-  ok(md.points.every(p => ['A1', 'A2', 'B1'].includes(p.level)), 'Chưa lẫn bậc B2–C2 vào đợt này');
+  const mdBac = { A1: 1, A2: 2, B1: 3, B2: 4, C1: 5, C2: 6 };
+  ok(md.points.every((p, i) => i === 0 || mdBac[p.level] >= mdBac[md.points[i - 1].level]),
+    'Nhóm khuyết thiếu xếp từ bậc thấp lên bậc cao');
   ok(md.points.every(p => p.counts.example === 6 && p.counts.practice === 10),
     'Mỗi điểm đủ 6 ví dụ và 10 câu luyện');
 
@@ -403,10 +405,33 @@ try {
   }
 
   ok(soTracNghiem > 200, 'Có đủ câu trắc nghiệm để phép kiểm này có ý nghĩa (' + soTracNghiem + ')');
+
+  /* Câu tiếng Anh chỉ được chứa chữ Latin, số và dấu câu quen thuộc. Ký tự của
+     hệ chữ khác lọt vào do gõ nhầm bảng mã thì mắt thường rất khó thấy giữa một
+     nghìn câu, mà lên trang là hiện ra ngay và TTS đọc thành tiếng lạ. */
+  const CHU_LATIN = /^[\x20-\x7E‘’“”–—…→]*$/;
+  const viTri = s => [...s].filter(c => !CHU_LATIN.test(c)).join('');
+  let kyTuLa = [];
+  for (const p of allPoints) {
+    const d = await get('/api/learn/grammar/' + p.slug);
+    const cauAnh = [
+      ...d.examples.map(x => x.en),
+      ...d.practice.map(x => x.en),
+      ...d.point.confuse.flatMap(c => (c.pair || []).map(s => s.en)),
+      ...d.point.errors.flatMap(e => [e.wrong, e.right])
+    ];
+    for (const s of cauAnh) {
+      /* Tên riêng tiếng Việt trong câu ví dụ là cố ý, bỏ qua dấu tiếng Việt */
+      const la = viTri(s.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/đ/gi, 'd'));
+      if (la) kyTuLa.push(p.slug + ': ' + JSON.stringify(la) + ' trong "' + s + '"');
+    }
+  }
+  ok(kyTuLa.length === 0, 'Câu tiếng Anh không lẫn ký tự của hệ chữ khác' +
+    (kyTuLa.length ? ' (' + kyTuLa.length + ' chỗ, ví dụ: ' + kyTuLa[0] + ')' : ''));
   ok(lechDapAn.length === 0, 'Đáp án luôn nằm trong danh sách lựa chọn của câu trắc nghiệm' +
     (lechDapAn.length ? ' (' + lechDapAn.length + ' sai, ví dụ: ' + lechDapAn[0] + ')' : ''));
-  ok(tongLuyen === 12 * 12 + 28 * 10 + 14 * 10,
-    'Tổng câu luyện toàn khu ngữ pháp là ' + (12 * 12 + 28 * 10 + 14 * 10) + ' (' + tongLuyen + ')');
+  ok(tongLuyen === 12 * 12 + 28 * 10 + 29 * 10,
+    'Tổng câu luyện toàn khu ngữ pháp là ' + (12 * 12 + 28 * 10 + 29 * 10) + ' (' + tongLuyen + ')');
 
   /* ============ 7. Năm trang tự học ============ */
   console.log('\n\x1b[1m== Trang khu tự học ==\x1b[0m');
@@ -518,7 +543,7 @@ try {
   /* --- Trang động từ khuyết thiếu --- */
   await page.goto(BASE + '/prep/hoc/khuyet-thieu/', { waitUntil: 'networkidle' });
   await page.waitForSelector('#list article', { timeout: 10000 });
-  ok(await page.locator('#list article').count() === 14, 'Trang khuyết thiếu hiện đủ 14 mục');
+  ok(await page.locator('#list article').count() === 29, 'Trang khuyết thiếu hiện đủ 29 mục');
 
   await page.click('[data-toggle="must-vs-have-to"]');
   await page.waitForSelector('#list article[data-slug="must-vs-have-to"] [data-answer]',

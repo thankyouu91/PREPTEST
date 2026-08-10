@@ -189,8 +189,8 @@ const POINTS = [
         with: 'Quá khứ đơn',
         tell: 'Đây là lỗi kinh điển của người Việt vì tiếng Việt không chia thì. Quy tắc gọn: có mốc quá khứ xác định → quá khứ đơn; không có mốc, hoặc quãng thời gian còn mở → hiện tại hoàn thành.',
         pair: [
-          { en: 'I have lost my wallet. (không tìm thấy tới giờ)', vi: 'Tôi làm mất ví rồi. — kết quả còn tới hiện tại' },
-          { en: 'I lost my wallet yesterday. (có mốc "yesterday")', vi: 'Hôm qua tôi làm mất ví. — chỉ kể việc đã xong' }
+          { en: 'I have lost my wallet.', vi: 'Tôi làm mất ví rồi. — kết quả còn tới hiện tại, giờ vẫn chưa tìm thấy' },
+          { en: 'I lost my wallet yesterday.', vi: 'Hôm qua tôi làm mất ví. — có mốc "yesterday" nên chỉ kể việc đã xong' }
         ]
       },
       {
