@@ -151,7 +151,8 @@ try {
   ok(new Set(gr.points.map(p => p.slug)).size === 12, 'Không có slug trùng');
 
   /* Công thức phải đủ ba dạng, nếu thiếu thì mục học là nửa vời */
-  const noForm = gr.points.filter(p => !p.formula || !p.formula.pos || !p.formula.neg || !p.formula.que);
+  const formRows = p => (p.formula && p.formula.rows || []).filter(r => r && r[1]);
+  const noForm = gr.points.filter(p => formRows(p).length !== 3);
   ok(noForm.length === 0, 'Mọi thì có đủ công thức khẳng định, phủ định, nghi vấn' +
     (noForm.length ? ' (thiếu: ' + noForm.map(p => p.slug).join(', ') + ')' : ''));
   ok(gr.points.every(p => p.signals && p.signals.length), 'Mọi thì có dấu hiệu nhận biết');
@@ -214,7 +215,82 @@ try {
   ok(fs.point.useNot.some(u => /if|when|điều kiện|thời gian/i.test(u.what + u.why)),
     'Tương lai đơn cảnh báo không dùng "will" trong mệnh đề if/when');
 
-  /* ============ 4. Ba trang tự học ============ */
+  /* ============ 4. Ngữ pháp: danh từ, mạo từ, lượng từ ============ */
+  console.log('\n\x1b[1m== API ngữ pháp (danh từ, mạo từ, lượng từ) ==\x1b[0m');
+
+  const nn = await get('/api/learn/grammar?grp=noun');
+  ok(nn.count === 14, 'Có 14 điểm bậc A1–A2 (' + nn.count + ')');
+  ok(nn.points.every(p => p.grp === 'noun'), 'Lọc theo nhóm trả đúng nhóm');
+  ok(nn.points.every(p => ['A1', 'A2'].includes(p.level)), 'Chỉ có bậc A1 và A2 trong đợt này');
+
+  /* Bám đúng hạn mức A1 ×8, A2 ×6 của bảng phân bậc trong docs/LEARNING.md */
+  const byLevel = nn.points.reduce((a, p) => (a[p.level] = (a[p.level] || 0) + 1, a), {});
+  ok(byLevel.A1 === 8, 'Đúng hạn mức A1 là 8 điểm (' + byLevel.A1 + ')');
+  ok(byLevel.A2 === 6, 'Đúng hạn mức A2 là 6 điểm (' + byLevel.A2 + ')');
+
+  ok(nn.points.every(p => formRows(p).length >= 2), 'Mọi điểm có ít nhất hai dòng công thức');
+  ok(nn.points.every(p => p.counts.example === 6), 'Mỗi điểm có đúng 6 câu ví dụ');
+  ok(nn.points.every(p => p.counts.practice === 10), 'Mỗi điểm có đúng 10 câu luyện tập');
+
+  /* Hai nhóm phải tách bạch, không lẫn vào nhau */
+  const allGrammar = await get('/api/learn/grammar');
+  ok(allGrammar.count === 26, 'Tổng hai nhóm là 26 điểm (' + allGrammar.count + ')');
+  ok(allGrammar.groups.some(g => g.id === 'tense' && g.count === 12) &&
+     allGrammar.groups.some(g => g.id === 'noun' && g.count === 14),
+    'Thống kê theo nhóm đúng: tense 12, noun 14');
+  ok(new Set(allGrammar.points.map(p => p.slug)).size === allGrammar.count,
+    'Không có slug trùng giữa hai nhóm');
+
+  let nExTotal = 0, nPrTotal = 0;
+  const nFlaws = [];
+  for (const p of nn.points) {
+    const d = await get('/api/learn/grammar/' + p.slug);
+    nExTotal += d.examples.length;
+    nPrTotal += d.practice.length;
+
+    if (!d.point.useWhen.length) nFlaws.push(p.slug + ': thiếu "dùng khi nào"');
+    if (!d.point.useNot.length) nFlaws.push(p.slug + ': thiếu "KHÔNG dùng khi nào"');
+    if (!d.point.confuse.length) nFlaws.push(p.slug + ': thiếu phần phân biệt');
+    if (!d.point.errors.length) nFlaws.push(p.slug + ': thiếu lỗi hay mắc');
+    if (d.point.useNot.some(u => !u.what || !u.why)) nFlaws.push(p.slug + ': mục "không dùng" thiếu lý do');
+    if (d.point.errors.some(e => !e.wrong || !e.right || !e.why)) nFlaws.push(p.slug + ': lỗi thiếu câu sửa hoặc lý do');
+    if (d.point.confuse.some(c => !c.with || !c.tell || !c.pair || c.pair.length !== 2)) {
+      nFlaws.push(p.slug + ': cặp phân biệt không đủ hai câu');
+    }
+    if (d.examples.some(x => !x.en || !x.vi)) nFlaws.push(p.slug + ': ví dụ thiếu song ngữ');
+    if (d.practice.some(x => !x.en || !x.vi || !x.answer)) nFlaws.push(p.slug + ': câu luyện thiếu nghĩa Việt hoặc đáp án');
+    if (d.examples.some(x => !x.ok && !x.note)) nFlaws.push(p.slug + ': phản ví dụ không có cách sửa');
+    if (d.examples.filter(x => !x.ok).length < 2) nFlaws.push(p.slug + ': chưa đủ hai phản ví dụ');
+
+    const gapMismatch = d.practice.filter(x =>
+      (x.en.match(/___/g) || []).length !== x.answer.split('…').length);
+    if (gapMismatch.length) nFlaws.push(p.slug + ': ' + gapMismatch.length + ' câu luyện lệch chỗ trống/đáp án');
+  }
+  ok(nExTotal === 84, 'Tổng 84 câu ví dụ (' + nExTotal + ')');
+  ok(nPrTotal === 140, 'Tổng 140 câu luyện tập (' + nPrTotal + ')');
+  ok(nFlaws.length === 0, 'Mọi điểm đủ lát cắt và dữ liệu sạch' +
+    (nFlaws.length ? ' — ' + nFlaws.slice(0, 6).join('; ') : ''));
+
+  /* Kiểm đúng những chỗ người Việt sai nhiều nhất */
+  const aAn = await get('/api/learn/grammar/article-a-an');
+  ok(aAn.point.formula.note && /âm/i.test(aAn.point.formula.note),
+    'Mục a/an nhấn mạnh chọn theo ÂM chứ không theo chữ cái');
+  ok(aAn.examples.some(x => /an hour/i.test(x.en)) && aAn.examples.some(x => /a university/i.test(x.en)),
+    'Mục a/an có cả hai ca bẫy: "an hour" và "a university"');
+
+  const zero = await get('/api/learn/grammar/article-zero');
+  ok(zero.point.confuse.some(c => /school/i.test(c.tell + JSON.stringify(c.pair))),
+    'Mục zero article phân biệt "go to school" với "go to the school"');
+
+  const count = await get('/api/learn/grammar/noun-countability');
+  ok(count.point.formula.note && /information|advice/i.test(count.point.formula.note),
+    'Mục đếm được liệt kê danh từ tiếng Việt đếm được nhưng tiếng Anh thì không');
+
+  const there = await get('/api/learn/grammar/there-is-there-are');
+  ok(there.point.errors.some(e => /have/i.test(e.wrong)),
+    'Mục There is/are cảnh báo lỗi dịch thẳng "trong phòng có" thành "have"');
+
+  /* ============ 5. Bốn trang tự học ============ */
   console.log('\n\x1b[1m== Trang khu tự học ==\x1b[0m');
 
   const ctx = await browser.newContext();
@@ -298,7 +374,30 @@ try {
   await page.waitForTimeout(300);
   ok(await page.locator('#empty:not([hidden])').count() === 1, 'Bậc chưa có thì nào thì hiện trạng thái rỗng');
 
-  ok(errs.length === 0, 'Không có lỗi JavaScript trên ba trang tự học' +
+  /* --- Trang danh từ dùng chung khối PrepGrammar với trang 12 thì --- */
+  await page.goto(BASE + '/prep/hoc/danh-tu/', { waitUntil: 'networkidle' });
+  await page.waitForSelector('#list article', { timeout: 10000 });
+  ok(await page.locator('#list article').count() === 14, 'Trang danh từ hiện đủ 14 mục');
+
+  await page.click('[data-toggle="article-a-an"]');
+  await page.waitForSelector('#list article[data-slug="article-a-an"] [data-answer]',
+    { state: 'attached', timeout: 10000 });
+  const nCard = page.locator('article[data-slug="article-a-an"]');
+  ok(await nCard.locator('[data-answer]').count() === 10, 'Mở ra thấy đủ 10 câu luyện');
+  const nBody = await nCard.innerText();
+  ok(/Ghi nhớ nhanh/.test(nBody), 'Nhãn khối chip đổi theo nhóm thành "Ghi nhớ nhanh"');
+  ok(/Phân biệt với mục dễ nhầm/.test(nBody), 'Nhãn khối phân biệt đổi theo nhóm');
+  ok(/KHÔNG dùng khi nào/.test(nBody), 'Vẫn có mục "KHÔNG dùng khi nào"');
+
+  await nCard.locator('[data-reveal]').click();
+  await page.waitForTimeout(250);
+  ok(await nCard.locator('[data-answer]:not([hidden])').count() === 10, 'Nút hiện đáp án chạy đúng ở trang danh từ');
+
+  await page.selectOption('#f-level', 'A1');
+  await page.waitForTimeout(300);
+  ok(await page.locator('#list article').count() === 8, 'Lọc bậc A1 còn 8 mục');
+
+  ok(errs.length === 0, 'Không có lỗi JavaScript trên bốn trang tự học' +
     (errs.length ? ': ' + errs[0] : ''));
 
   await ctx.close();

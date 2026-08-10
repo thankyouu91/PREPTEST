@@ -817,7 +817,16 @@ function points() {
     grp: 'tense',
     level: p.level,
     summary: p.summary,
-    formula_json: JSON.stringify(p.formula),
+    // Đưa về dạng chung {rows:[[nhãn, nội dung]], note} để khối hiển thị dùng
+    // được cho mọi nhóm ngữ pháp, kể cả nhóm không có khẳng định/phủ định/nghi vấn.
+    formula_json: JSON.stringify({
+      rows: [
+        ['Khẳng định', p.formula.pos],
+        ['Phủ định', p.formula.neg],
+        ['Nghi vấn', p.formula.que]
+      ],
+      note: p.formula.note
+    }),
     signals_json: JSON.stringify(p.signals),
     use_when_json: JSON.stringify(p.useWhen),
     use_not_json: JSON.stringify(p.useNot),

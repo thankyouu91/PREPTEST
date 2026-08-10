@@ -29,7 +29,7 @@ Lệnh khác:
 | `node scripts/test-admin.mjs` | kiểm thử API quản trị: phiên, CSRF, phân quyền, CRUD, sinh đề, cấp code |
 | `node scripts/test-catalog.mjs` | kiểm thử trang học viên đọc `/api/catalog` + nhánh dự phòng khi API hỏng |
 | `node scripts/test-user-api.mjs` | kiểm thử API tài khoản học viên: đăng ký, đăng nhập, xác thực email, đặt lại mật khẩu, CSRF, chống dò |
-| `node scripts/test-learn.mjs` | kiểm thử khu tự học: chất lượng dữ liệu động từ bất quy tắc và từ nối (nhóm khớp hình thái, ví dụ chứa đúng mục từ, đủ nghĩa Việt) + bộ lọc hai trang |
+| `node scripts/test-learn.mjs` | kiểm thử khu tự học: chất lượng dữ liệu động từ bất quy tắc, từ nối và hai nhóm ngữ pháp (nhóm khớp hình thái, ví dụ chứa đúng mục từ, đủ bốn lát cắt, chỗ trống khớp đáp án, đúng hạn mức bậc) + bộ lọc bốn trang |
 | `npm run screenshot:admin` | chụp các màn quản trị |
 | `npm test` | chạy cả sáu bộ kiểm thử |
 
@@ -139,6 +139,7 @@ thiết bị khác.
 | Động từ bất quy tắc | `/prep/hoc/dong-tu-bat-quy-tac/` | 193 động từ, tra theo V1/V2/V3 hoặc nghĩa tiếng Việt, lọc theo bậc và nhóm biến đổi, phát âm từng dạng |
 | Từ nối | `/prep/hoc/tu-noi/` | 123 từ nối theo 13 chức năng × 3 mức trang trọng, kèm vị trí trong câu, quy tắc dấu câu, ví dụ song ngữ và cảnh báo dùng sai |
 | 12 thì | `/prep/hoc/thi/` | 12 thì, mỗi thì đủ bốn lát cắt: công thức, dùng khi nào, **không** dùng khi nào, phân biệt với thì dễ nhầm — kèm lỗi người Việt hay mắc, 8 ví dụ (có cả phản ví dụ kèm cách sửa) và 12 câu luyện có đáp án |
+| Danh từ, mạo từ, lượng từ | `/prep/hoc/danh-tu/` | 14 điểm bậc A1–A2: số nhiều có quy tắc và bất quy tắc, đếm được / không đếm được, `a` – `an` – `the` – không mạo từ, `this/that`, `some/any`, sở hữu cách, `much/many`, `a few/a little`, danh từ ghép, `There is/are`, đơn vị đo. Bậc B1–C2 soạn ở lượt sau |
 
 **Phát âm miễn phí bằng Web Speech API** (`public/prep/learn/_tts.js`): giọng có sẵn
 trong trình duyệt nên không tốn phí, không gọi mạng ngoài, không đụng CSP. Ba cách

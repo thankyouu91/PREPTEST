@@ -671,11 +671,16 @@ function seedLinkingWords() {
    một vân tay: dữ liệu con trỏ sang cha bằng slug, đổi bên nào cũng nạp lại cả
    hai để không bao giờ lệch nhau. */
 function seedGrammar() {
-  const src = require('./data/grammar-tenses');
-  const points = src.points();
-  const examples = src.examples();
+  // Mỗi nhóm là một tệp riêng nhưng nạp chung một lượt: hai bảng nối bằng khoá
+  // ngoại, xoá bảng cha là mất hết bản ghi con, nên phải dựng lại trọn bộ.
+  const src = [
+    require('./data/grammar-tenses'),
+    require('./data/grammar-nouns')
+  ];
+  const points = src.flatMap(s => s.points());
+  const examples = src.flatMap(s => s.examples());
 
-  seedContent('grammar-tenses', { points, examples, n: points.length + examples.length },
+  seedContent('grammar', { points, examples, n: points.length + examples.length },
     ['grammar_examples', 'grammar_points'],
     data => {
       const insP = db.prepare(`INSERT INTO grammar_points
