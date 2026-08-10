@@ -252,34 +252,241 @@
   }
   AD.qs('#btn-new').addEventListener('click', () => openEditor(null));
 
-  /* ---------- Nhập hàng loạt bằng JSON ---------- */
+  /* ============================================================
+     Nhập hàng loạt: CSV (mặc định) hoặc JSON
+     CSV được phân tích ngay tại trình duyệt, xem trước rồi mới gửi lên.
+     ============================================================ */
+
+  /** Tách CSV có hỗ trợ dấu ngoặc kép, dấu phẩy trong ô và xuống dòng CRLF/LF */
+  function parseCSV(text) {
+    text = text.replace(/^﻿/, '');              // bỏ BOM nếu có
+    const rows = [];
+    let row = [], field = '', inQuotes = false;
+    for (let i = 0; i < text.length; i++) {
+      const c = text[i], next = text[i + 1];
+      if (inQuotes) {
+        if (c === '"' && next === '"') { field += '"'; i++; }
+        else if (c === '"') inQuotes = false;
+        else field += c;
+      } else if (c === '"') inQuotes = true;
+      else if (c === ',') { row.push(field); field = ''; }
+      else if (c === '\r') { /* bỏ qua, xử lý ở \n */ }
+      else if (c === '\n') { row.push(field); rows.push(row); row = []; field = ''; }
+      else field += c;
+    }
+    if (field.length || row.length) { row.push(field); rows.push(row); }
+    return rows.filter(r => r.some(cell => cell.trim() !== ''));
+  }
+
+  const CSV_COLS = ['ky_thi','ky_nang','do_kho','dang_cau','noi_dung',
+                    'phuong_an_1','phuong_an_2','phuong_an_3','phuong_an_4','dap_an','giai_thich'];
+  const SKILL_ALIAS = { nghe:'listening', doc:'reading', viet:'writing', noi:'speaking',
+                        listening:'listening', reading:'reading', writing:'writing', speaking:'speaking' };
+  const TYPE_ALIAS = { 'trac nghiem':'mcq', 'dien tu':'gap', 'tu luan':'essay', 'ghi am':'speaking',
+                       mcq:'mcq', gap:'gap', essay:'essay', speaking:'speaking' };
+  const norm = s => String(s || '').trim().toLowerCase()
+    .normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/đ/g, 'd');
+
+  /** Một dòng CSV → object câu hỏi + lý do lỗi nếu có */
+  function rowToItem(cells, header) {
+    const get = name => {
+      const i = header.indexOf(name);
+      return i >= 0 ? String(cells[i] || '').trim() : '';
+    };
+    const familyId = norm(get('ky_thi'));
+    const skill = SKILL_ALIAS[norm(get('ky_nang'))];
+    const level = get('do_kho').toUpperCase();
+    const type = TYPE_ALIAS[norm(get('dang_cau'))];
+    const prompt = get('noi_dung');
+    const options = ['phuong_an_1','phuong_an_2','phuong_an_3','phuong_an_4'].map(get).filter(Boolean);
+    const answer = get('dap_an');
+
+    if (!families.some(f => f.id === familyId)) return { error: 'Kỳ thi "' + get('ky_thi') + '" không có trong hệ thống.' };
+    if (!skill) return { error: 'Kỹ năng "' + get('ky_nang') + '" không hợp lệ (nghe/đọc/viết/nói).' };
+    if (!['A1','A2','B1','B2','C1','C2'].includes(level)) return { error: 'Độ khó "' + get('do_kho') + '" không hợp lệ.' };
+    if (!type) return { error: 'Dạng câu "' + get('dang_cau') + '" không hợp lệ.' };
+    if (prompt.length < 5) return { error: 'Nội dung câu hỏi quá ngắn.' };
+    if (type === 'mcq') {
+      if (options.length < 2) return { error: 'Câu trắc nghiệm cần ít nhất 2 phương án.' };
+      if (!options.includes(answer)) return { error: 'Đáp án phải trùng một trong các phương án.' };
+    }
+    return {
+      item: { familyId, skill, level, type, prompt,
+              options: type === 'mcq' ? options : [],
+              answer: type === 'mcq' ? answer : '',
+              explanation: get('giai_thich'), tags: ['nhập csv'] }
+    };
+  }
+
   AD.qs('#btn-bulk').addEventListener('click', () => {
-    const sample = JSON.stringify([{
+    const sampleJson = JSON.stringify([{
       familyId: families[0] ? families[0].id : 'ielts', skill: 'reading', level: 'B1', type: 'mcq',
       prompt: 'Nội dung câu hỏi…', options: ['A', 'B', 'C', 'D'], answer: 'A', explanation: ''
     }], null, 2);
+
     const mm = AD.modal(
       '<h3 class="text-lg font-extrabold tracking-tight">Nhập câu hỏi hàng loạt</h3>' +
-      '<p class="text-muted text-[14px] mt-1.5 leading-relaxed">Dán mảng JSON, mỗi phần tử là một câu. Tối đa 500 câu mỗi lần. Dòng lỗi sẽ được báo lại, các dòng hợp lệ vẫn được nhập.</p>' +
-      '<div class="grid gap-4 mt-5">' +
-        '<div><label class="label" for="b-json">Dữ liệu JSON</label>' +
-          '<textarea class="input font-mono text-[12.5px]" id="b-json" rows="10" spellcheck="false">' + AD.esc(sample) + '</textarea></div>' +
-        '<div class="banner banner-error" id="b-err"><span id="b-err-text"></span></div>' +
-        '<div class="banner banner-success" id="b-ok"><span id="b-ok-text"></span></div>' +
-        '<div class="flex gap-2.5"><button type="button" id="b-go" class="btn btn-primary btn-md flex-1">Nhập vào ngân hàng</button>' +
-          '<button type="button" data-close class="btn btn-ghost btn-md">Đóng</button></div>' +
-      '</div>', { wide: true });
+      '<p class="text-muted text-[14px] mt-1.5 leading-relaxed">Tối đa 500 câu mỗi lần. Dòng lỗi được liệt kê riêng, các dòng hợp lệ vẫn nhập được.</p>' +
 
+      '<div role="tablist" aria-label="Cách nhập" class="flex gap-2 border-b border-line mt-5">' +
+        '<button role="tab" id="tb-csv" aria-controls="pn-csv" aria-selected="true" class="tabbtn">Từ CSV</button>' +
+        '<button role="tab" id="tb-json" aria-controls="pn-json" aria-selected="false" class="tabbtn">Từ JSON</button>' +
+      '</div>' +
+
+      /* ----- Tab CSV ----- */
+      '<div role="tabpanel" id="pn-csv" aria-labelledby="tb-csv" class="grid gap-4 mt-5">' +
+        '<div class="card bg-brand-soft border-0 p-4">' +
+          '<p class="text-[13.5px] leading-relaxed">Cột theo thứ tự: <b>ky_thi, ky_nang, do_kho, dang_cau, noi_dung, phuong_an_1..4, dap_an, giai_thich</b>. ' +
+            'Kỹ năng nhận cả tiếng Việt (nghe, đọc, viết, nói) lẫn tiếng Anh.</p>' +
+          '<a href="/api/admin/questions/template.csv" class="btn btn-soft btn-sm mt-3">' +
+            AD.icon('download', 'w-4 h-4') + 'Tải tệp CSV mẫu</a>' +
+        '</div>' +
+        '<div><label class="label" for="c-file">Chọn tệp CSV</label>' +
+          '<input class="input py-2" id="c-file" type="file" accept=".csv,text/csv"></div>' +
+        '<div><label class="label" for="c-text">Hoặc dán trực tiếp nội dung CSV</label>' +
+          '<textarea class="input font-mono text-[12.5px]" id="c-text" rows="6" spellcheck="false" ' +
+            'placeholder="ky_thi,ky_nang,do_kho,dang_cau,noi_dung,..."></textarea></div>' +
+        '<button type="button" id="c-preview" class="btn btn-ghost btn-md">Xem trước</button>' +
+        '<div id="c-result"></div>' +
+      '</div>' +
+
+      /* ----- Tab JSON ----- */
+      '<div role="tabpanel" id="pn-json" aria-labelledby="tb-json" hidden class="grid gap-4 mt-5">' +
+        '<div><label class="label" for="b-json">Mảng JSON</label>' +
+          '<textarea class="input font-mono text-[12.5px]" id="b-json" rows="10" spellcheck="false">' + AD.esc(sampleJson) + '</textarea></div>' +
+        '<button type="button" id="b-go" class="btn btn-primary btn-md">Nhập vào ngân hàng</button>' +
+      '</div>' +
+
+      '<div class="banner banner-error mt-4" id="b-err"><span id="b-err-text"></span></div>' +
+      '<div class="banner banner-success mt-4" id="b-ok"><span id="b-ok-text"></span></div>' +
+      '<div class="flex justify-end mt-5"><button type="button" data-close class="btn btn-ghost btn-md">Đóng</button></div>',
+      { wide: true });
+
+    const err = mm.el.querySelector('#b-err'), ok = mm.el.querySelector('#b-ok');
+    const showErr = html => { mm.el.querySelector('#b-err-text').innerHTML = html; err.classList.add('show'); };
+    const clearMsg = () => { err.classList.remove('show'); ok.classList.remove('show'); };
+
+    /* Chuyển tab */
+    [['tb-csv','pn-csv'],['tb-json','pn-json']].forEach(([t2, p2], _, all) => {
+      mm.el.querySelector('#' + t2).addEventListener('click', () => {
+        all.forEach(([t3, p3]) => {
+          const on = t3 === t2;
+          mm.el.querySelector('#' + t3).setAttribute('aria-selected', String(on));
+          mm.el.querySelector('#' + p3).toggleAttribute('hidden', !on);
+        });
+        clearMsg();
+      });
+    });
+
+    /* Đọc tệp vào ô văn bản */
+    mm.el.querySelector('#c-file').addEventListener('change', ev => {
+      const f = ev.target.files && ev.target.files[0];
+      if (!f) return;
+      const reader = new FileReader();
+      reader.onload = () => { mm.el.querySelector('#c-text').value = String(reader.result || ''); preview(); };
+      reader.onerror = () => showErr('Không đọc được tệp.');
+      reader.readAsText(f, 'utf-8');
+    });
+
+    let pending = [];
+    function preview() {
+      clearMsg();
+      pending = [];
+      const raw = mm.el.querySelector('#c-text').value.trim();
+      const box = mm.el.querySelector('#c-result');
+      if (!raw) { box.innerHTML = ''; showErr('Chưa có nội dung CSV nào.'); return; }
+
+      const rows = parseCSV(raw);
+      if (rows.length < 2) { box.innerHTML = ''; showErr('Cần dòng tiêu đề và ít nhất một dòng dữ liệu.'); return; }
+
+      const header = rows[0].map(h => norm(h).replace(/\s+/g, '_'));
+      const missing = ['ky_thi','ky_nang','do_kho','dang_cau','noi_dung'].filter(c => !header.includes(c));
+      if (missing.length) { box.innerHTML = ''; showErr('Thiếu cột bắt buộc: ' + missing.join(', ')); return; }
+
+      const bad = [];
+      rows.slice(1).forEach((cells, i) => {
+        const r = rowToItem(cells, header);
+        if (r.error) bad.push({ row: i + 2, error: r.error, preview: (cells[header.indexOf('noi_dung')] || '').slice(0, 60) });
+        else pending.push(r.item);
+      });
+
+      if (pending.length > 500) {
+        box.innerHTML = '';
+        showErr('Tệp có ' + pending.length + ' dòng hợp lệ, vượt giới hạn 500 câu mỗi lần. Hãy chia nhỏ tệp.');
+        pending = [];
+        return;
+      }
+
+      box.innerHTML =
+        '<div class="flex flex-wrap items-center gap-2.5 mb-3">' +
+          '<span class="badge badge-ok">' + pending.length + ' dòng hợp lệ</span>' +
+          (bad.length ? '<span class="badge badge-hl">' + bad.length + ' dòng lỗi</span>' : '') +
+        '</div>' +
+        (pending.length
+          ? '<div class="card overflow-hidden mb-3"><div class="max-h-52 overflow-y-auto"><table class="w-full text-[13px]">' +
+            '<thead><tr class="text-[11.5px] uppercase tracking-wide text-muted border-b border-line bg-surface">' +
+              '<th class="text-left font-bold px-3 py-2">Kỳ thi</th>' +
+              '<th class="text-left font-bold px-3 py-2">Kỹ năng</th>' +
+              '<th class="text-left font-bold px-3 py-2">Độ khó</th>' +
+              '<th class="text-left font-bold px-3 py-2">Nội dung</th>' +
+            '</tr></thead><tbody>' +
+            pending.slice(0, 50).map(it =>
+              '<tr class="border-b border-line last:border-0">' +
+                '<td class="px-3 py-2"><span class="exam-chip" data-family="' + it.familyId + '">' +
+                  AD.esc((families.find(f => f.id === it.familyId) || {}).name || it.familyId) + '</span></td>' +
+                '<td class="px-3 py-2 text-muted">' + AD.esc(AD.SKILL_VI[it.skill]) + '</td>' +
+                '<td class="px-3 py-2 text-muted">' + AD.esc(it.level) + '</td>' +
+                '<td class="px-3 py-2 truncate max-w-[280px]">' + AD.esc(it.prompt) + '</td>' +
+              '</tr>').join('') +
+            '</tbody></table></div>' +
+            (pending.length > 50 ? '<p class="text-[12.5px] text-muted px-3 py-2 border-t border-line">Xem trước 50 dòng đầu.</p>' : '') +
+            '</div>'
+          : '') +
+        (bad.length
+          ? '<div class="card border-[color:var(--color-danger)] p-3 mb-3 max-h-40 overflow-y-auto">' +
+            '<p class="text-[12.5px] font-bold uppercase tracking-wide text-muted mb-2">Dòng bị bỏ qua</p>' +
+            bad.slice(0, 30).map(b =>
+              '<p class="text-[13px] leading-relaxed"><b>Dòng ' + b.row + ':</b> ' + AD.esc(b.error) +
+              (b.preview ? ' <span class="text-muted">— ' + AD.esc(b.preview) + '…</span>' : '') + '</p>').join('') +
+            (bad.length > 30 ? '<p class="text-[12.5px] text-muted mt-2">…và ' + (bad.length - 30) + ' dòng nữa.</p>' : '') +
+            '</div>'
+          : '') +
+        (pending.length
+          ? '<button type="button" id="c-go" class="btn btn-primary btn-md w-full">Nhập ' + pending.length + ' câu hợp lệ</button>'
+          : '<p class="text-[14px] text-muted text-center py-2">Không có dòng nào hợp lệ để nhập.</p>');
+
+      const go = mm.el.querySelector('#c-go');
+      if (go) go.addEventListener('click', async () => {
+        go.disabled = true;
+        go.innerHTML = AD.icon('loader', 'w-4 h-4 animate-spin-slow') + 'Đang nhập';
+        try {
+          const r = await AD.post('/admin/questions/bulk', { items: pending });
+          clearMsg();
+          mm.el.querySelector('#b-ok-text').textContent =
+            'Đã nhập ' + r.inserted + ' câu vào ngân hàng.' + (r.failed ? ' Máy chủ từ chối ' + r.failed + ' dòng.' : '');
+          ok.classList.add('show');
+          mm.el.querySelector('#c-result').innerHTML = '';
+          mm.el.querySelector('#c-text').value = '';
+          mm.el.querySelector('#c-file').value = '';
+          load();
+        } catch (e) {
+          go.disabled = false;
+          go.textContent = 'Nhập ' + pending.length + ' câu hợp lệ';
+          showErr(AD.esc(e.message));
+        }
+      });
+    }
+    mm.el.querySelector('#c-preview').addEventListener('click', preview);
+
+    /* Tab JSON giữ nguyên hành vi cũ */
     mm.el.querySelector('#b-go').addEventListener('click', async () => {
-      const err = mm.el.querySelector('#b-err'), ok = mm.el.querySelector('#b-ok');
-      err.classList.remove('show'); ok.classList.remove('show');
+      clearMsg();
       let items;
       try {
         items = JSON.parse(mm.el.querySelector('#b-json').value);
         if (!Array.isArray(items)) throw new Error('Dữ liệu phải là một mảng JSON.');
       } catch (e) {
-        mm.el.querySelector('#b-err-text').textContent = 'JSON không hợp lệ: ' + e.message;
-        err.classList.add('show');
+        showErr('JSON không hợp lệ: ' + AD.esc(e.message));
         return;
       }
       try {
@@ -288,14 +495,11 @@
           'Đã nhập ' + r.inserted + ' câu' + (r.failed ? ', bỏ qua ' + r.failed + ' dòng lỗi.' : '.');
         ok.classList.add('show');
         if (r.errors && r.errors.length) {
-          mm.el.querySelector('#b-err-text').innerHTML =
-            r.errors.map(e2 => 'Dòng ' + e2.row + ': ' + AD.esc(e2.error)).join('<br>');
-          err.classList.add('show');
+          showErr(r.errors.map(e2 => 'Dòng ' + e2.row + ': ' + AD.esc(e2.error)).join('<br>'));
         }
         load();
       } catch (e) {
-        mm.el.querySelector('#b-err-text').textContent = e.message;
-        err.classList.add('show');
+        showErr(AD.esc(e.message));
       }
     });
   });

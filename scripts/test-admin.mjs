@@ -124,6 +124,15 @@ const run = async () => {
   check('Nhập hàng loạt: nhận dòng đúng, báo dòng lỗi',
     r.status === 201 && r.data.inserted === 2 && r.data.failed === 1, JSON.stringify(r.data));
 
+
+  /* 7b. Tệp CSV mẫu để nhập hàng loạt */
+  r = await call('GET', '/api/admin/questions/template.csv');
+  const csvLines = String(r.data).replace(/^\ufeff/, '').split('\r\n');
+  check('Tải được CSV mẫu có tiêu đề đúng',
+    r.status === 200 && csvLines[0].startsWith('ky_thi,ky_nang,do_kho,dang_cau,noi_dung'),
+    csvLines[0] && csvLines[0].slice(0, 50));
+  check('CSV mẫu có dòng ví dụ', csvLines.length >= 4, 'dòng ' + csvLines.length);
+
   /* 8. Đề thi: tạo thủ công → thêm phần → gắn câu → phát hành */
   r = await call('POST', '/api/admin/tests', {
     familyId: 'vpet', title: 'Đề kiểm thử tự động', level: 'B1', durationMin: 60

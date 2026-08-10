@@ -284,6 +284,22 @@ router.post('/admin/questions/bulk', (req, res) => {
   res.status(201).json({ inserted: ok.length, failed: errors.length, errors: errors.slice(0, 20) });
 });
 
+/** Tệp CSV mẫu để nhập câu hỏi hàng loạt.
+ *  Phục vụ từ server (không dựng blob ở client) để CSP giữ nguyên mức nghiêm ngặt. */
+router.get('/admin/questions/template.csv', (req, res) => {
+  const fam = q.get('SELECT id FROM families ORDER BY sort LIMIT 1');
+  const famId = fam ? fam.id : 'ielts';
+  const rows = [
+    'ky_thi,ky_nang,do_kho,dang_cau,noi_dung,phuong_an_1,phuong_an_2,phuong_an_3,phuong_an_4,dap_an,giai_thich',
+    `${famId},reading,B1,mcq,"Chọn từ đồng nghĩa với ""rapid"".",quick,slow,heavy,quiet,quick,"Rapid nghĩa là nhanh."`,
+    `${famId},listening,B2,gap,"Nghe và điền số còn thiếu: The train leaves at ____.",,,,,,`,
+    `${famId},writing,B2,essay,"Some people think exams should be replaced by coursework. Discuss.",,,,,,`
+  ];
+  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+  res.setHeader('Content-Disposition', 'attachment; filename="mau-cau-hoi.csv"');
+  res.send('﻿' + rows.join('\r\n'));   // BOM để Excel mở đúng tiếng Việt
+});
+
 /** Đếm số câu khả dụng theo tiêu chí — trình sinh đề tự động dùng để báo thiếu */
 router.get('/admin/questions/availability', (req, res) => {
   const family = str(req.query.family, 20);

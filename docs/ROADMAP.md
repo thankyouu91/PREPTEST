@@ -14,7 +14,7 @@ Nhánh làm việc: `claude/prep-test-platform-design-fpiuqn`
 - [x] Backend quản trị: SQLite, phiên đăng nhập, CSRF, chống dò mật khẩu, nhật ký thao tác
 - [x] API quản trị: báo cáo, đề thi, ngân hàng câu hỏi, học viên, code, cài đặt
 - [x] Giao diện quản trị: đăng nhập, báo cáo, danh sách đề, trình xây đề, ngân hàng câu hỏi, học viên, code, quản trị + ảnh nghiệm thu
-- [ ] Nhập câu hỏi hàng loạt từ CSV trong màn Ngân hàng câu hỏi (tải mẫu, xem trước, báo lỗi từng dòng)
+- [x] Nhập câu hỏi hàng loạt từ CSV trong màn Ngân hàng câu hỏi (tải mẫu, xem trước, báo lỗi từng dòng)
 - [ ] Chuyển trang học viên từ `public/prep/_mock.js` sang đọc `GET /api/catalog`, giữ nguyên markup và các trạng thái loading/empty
 - [ ] API học viên thật: đăng ký, đăng nhập, xác thực email, phiên cookie (scrypt như khu quản trị) — thay `PrepAuth` phía client
 - [ ] API kích hoạt code phía server (`POST /api/redeem`) + rate-limit chống dò mã, thay `PrepState.redeem`
@@ -28,13 +28,27 @@ Nhánh làm việc: `claude/prep-test-platform-design-fpiuqn`
 
 ## Ghi chú cho phiên tự động
 
-- Trước khi làm: `git fetch origin` và `git pull --rebase origin <nhánh>`.
-- Nếu commit gần nhất mới dưới 15 phút, khả năng có phiên khác đang làm: bỏ lượt này, thoát êm.
-- Sau khi làm xong phải chạy đủ: `npm run build`, `node scripts/test-admin.mjs`,
-  `node scripts/test-auth.mjs`, `node scripts/audit.mjs`, `npm run screenshot`.
-- Chỉ push khi tất cả đều xanh. Nếu không sửa được thì hoàn tác thay đổi, ghi lý do vào mục
-  "Vướng mắc" bên dưới rồi thoát, không push code hỏng.
-- Không đụng vào `data/` (dữ liệu chạy), không commit mật khẩu hay khoá bí mật.
+**Quan trọng — phiên mới clone repo sạch, chưa có `node_modules`.** Đừng chạy lẻ từng lệnh test,
+hãy dùng đúng một lệnh sau, nó tự cài dependency, tự bật/tắt server và chạy hết mọi bước:
+
+```bash
+npm run verify          # cài deps → build → chạy server → 3 bộ test → audit → chụp ảnh
+SKIP_SHOTS=1 npm run verify   # bản nhanh, bỏ bước chụp ảnh
+```
+
+Lệnh trả mã thoát khác 0 nếu có bước đỏ. Chỉ push khi nó xanh.
+
+Quy trình một lượt:
+
+1. `git fetch origin` và `git pull --rebase origin claude/prep-test-platform-design-fpiuqn`.
+2. Nếu commit gần nhất mới dưới 15 phút: có thể có phiên khác đang làm, bỏ lượt, thoát êm.
+3. Lấy mục chưa tick đầu tiên ở "Hàng đợi". Làm đúng một mục đó.
+4. Chạy `npm run verify`. Đỏ thì sửa; không sửa được thì `git checkout -- .`, ghi lý do vào
+   "Vướng mắc" bên dưới, commit riêng ghi chú đó rồi thoát. Không push code hỏng.
+5. Tick ô đã xong, cập nhật README nếu có tính năng mới, commit và push.
+
+Giới hạn: không đụng `data/` (dữ liệu chạy), không commit mật khẩu hay khoá bí mật, không
+force-push, không tạo pull request, không đổi nhánh.
 
 ## Vướng mắc
 
