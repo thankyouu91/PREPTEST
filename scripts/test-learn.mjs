@@ -241,11 +241,12 @@ try {
 
   /* Hai nhóm phải tách bạch, không lẫn vào nhau */
   const allGrammar = await get('/api/learn/grammar');
-  ok(allGrammar.count === 69, 'Tổng ba nhóm là 69 điểm (' + allGrammar.count + ')');
+  ok(allGrammar.count === 80, 'Tổng bốn nhóm là 80 điểm (' + allGrammar.count + ')');
   ok(allGrammar.groups.some(g => g.id === 'tense' && g.count === 12) &&
      allGrammar.groups.some(g => g.id === 'noun' && g.count === 28) &&
-     allGrammar.groups.some(g => g.id === 'modal' && g.count === 29),
-    'Thống kê theo nhóm đúng: tense 12, noun 28, modal 29');
+     allGrammar.groups.some(g => g.id === 'modal' && g.count === 29) &&
+     allGrammar.groups.some(g => g.id === 'conditional' && g.count === 11),
+    'Thống kê theo nhóm đúng: tense 12, noun 28, modal 29, conditional 11');
   ok(new Set(allGrammar.points.map(p => p.slug)).size === allGrammar.count,
     'Không có slug trùng giữa các nhóm');
 
@@ -368,6 +369,37 @@ try {
   ok(usedTo.point.confuse.some(c => /be used to/i.test(c.with + c.tell)),
     'Mục used to phân biệt với "be used to"');
 
+  /* ============ 5b. Ngữ pháp: câu điều kiện ============ */
+  console.log('\n\x1b[1m== API ngữ pháp (câu điều kiện) ==\x1b[0m');
+
+  const cd = await get('/api/learn/grammar?grp=conditional');
+  ok(cd.count === 11, 'Có 11 điểm bậc A2–B2 (' + cd.count + ')');
+  const cdLevel = cd.points.reduce((a, p) => (a[p.level] = (a[p.level] || 0) + 1, a), {});
+  const CD_QUOTA = { A2: 2, B1: 4, B2: 5 };
+  const cdLech = Object.keys(CD_QUOTA).filter(l => cdLevel[l] !== CD_QUOTA[l]);
+  ok(cdLech.length === 0, 'Đúng hạn mức A2 2, B1 4, B2 5' +
+    (cdLech.length ? ' (lệch: ' + cdLech.map(l => l + ' ' + (cdLevel[l] || 0)).join(', ') + ')' : ''));
+  ok(cd.points.every(p => p.counts.example === 6 && p.counts.practice === 10),
+    'Mỗi điểm đủ 6 ví dụ và 10 câu luyện');
+
+  /* Hai lỗi kinh điển của nhóm này phải được cảnh báo tử tế */
+  const loai1 = await get('/api/learn/grammar/conditional-first');
+  ok(loai1.point.errors.some(e => /will/i.test(e.wrong)),
+    'Loại 1 cảnh báo không đặt "will" vào mệnh đề if');
+  const loai3 = await get('/api/learn/grammar/conditional-third');
+  ok(loai3.point.errors.some(e => /would have known|would/i.test(e.wrong)),
+    'Loại 3 cảnh báo không đặt "would" vào mệnh đề if');
+
+  const unless = await get('/api/learn/grammar/unless-and-conjunctions');
+  ok(unless.point.errors.some(e => /do not|not/i.test(e.wrong)),
+    'Mục unless cảnh báo lỗi phủ định hai lần');
+  ok(unless.point.confuse.some(c => /in case/i.test(c.with)),
+    'Mục unless phân biệt "in case" với "if"');
+
+  const honHop = await get('/api/learn/grammar/mixed-conditionals');
+  ok(/now|today/i.test(JSON.stringify(honHop.point)),
+    'Mục điều kiện hỗn hợp nêu dấu hiệu mốc thời gian "now"');
+
   /* ============ 6. Chất lượng câu luyện của TOÀN BỘ ngữ pháp ============
      Dấu ngoặc trong câu luyện có hai kiểu, phải tách bạch trước khi kiểm:
 
@@ -430,8 +462,8 @@ try {
     (kyTuLa.length ? ' (' + kyTuLa.length + ' chỗ, ví dụ: ' + kyTuLa[0] + ')' : ''));
   ok(lechDapAn.length === 0, 'Đáp án luôn nằm trong danh sách lựa chọn của câu trắc nghiệm' +
     (lechDapAn.length ? ' (' + lechDapAn.length + ' sai, ví dụ: ' + lechDapAn[0] + ')' : ''));
-  ok(tongLuyen === 12 * 12 + 28 * 10 + 29 * 10,
-    'Tổng câu luyện toàn khu ngữ pháp là ' + (12 * 12 + 28 * 10 + 29 * 10) + ' (' + tongLuyen + ')');
+  ok(tongLuyen === 12 * 12 + 28 * 10 + 29 * 10 + 11 * 10,
+    'Tổng câu luyện toàn khu ngữ pháp là ' + (12 * 12 + 28 * 10 + 29 * 10 + 11 * 10) + ' (' + tongLuyen + ')');
 
   /* ============ 7. Năm trang tự học ============ */
   console.log('\n\x1b[1m== Trang khu tự học ==\x1b[0m');
@@ -556,7 +588,22 @@ try {
   await page.waitForTimeout(300);
   ok(await page.locator('#list article').count() === 3, 'Lọc bậc A1 còn 3 mục');
 
-  ok(errs.length === 0, 'Không có lỗi JavaScript trên năm trang tự học' +
+  /* --- Trang câu điều kiện --- */
+  await page.goto(BASE + '/prep/hoc/dieu-kien/', { waitUntil: 'networkidle' });
+  await page.waitForSelector('#list article', { timeout: 10000 });
+  ok(await page.locator('#list article').count() === 11, 'Trang câu điều kiện hiện đủ 11 mục');
+
+  await page.click('[data-toggle="conditional-third"]');
+  await page.waitForSelector('#list article[data-slug="conditional-third"] [data-answer]',
+    { state: 'attached', timeout: 10000 });
+  ok(await page.locator('article[data-slug="conditional-third"] [data-answer]').count() === 10,
+    'Mở ra thấy đủ 10 câu luyện');
+
+  await page.selectOption('#f-level', 'A2');
+  await page.waitForTimeout(300);
+  ok(await page.locator('#list article').count() === 2, 'Lọc bậc A2 còn 2 mục');
+
+  ok(errs.length === 0, 'Không có lỗi JavaScript trên sáu trang tự học' +
     (errs.length ? ': ' + errs[0] : ''));
 
   await ctx.close();

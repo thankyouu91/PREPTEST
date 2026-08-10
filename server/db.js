@@ -678,7 +678,8 @@ function seedGrammar() {
     require('./data/grammar-nouns'),
     require('./data/grammar-nouns-b1c2'),
     require('./data/grammar-modals'),
-    require('./data/grammar-modals-b2c2')
+    require('./data/grammar-modals-b2c2'),
+    require('./data/grammar-conditionals')
   ];
   const points = src.flatMap(s => s.points());
   const examples = src.flatMap(s => s.examples());
