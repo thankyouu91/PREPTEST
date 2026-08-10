@@ -857,7 +857,7 @@ const POINTS = [
     ],
     practice: [
       ['She learnt the whole poem by ___ (–/the) heart.', '–', 'Cô ấy học thuộc lòng cả bài thơ.'],
-      ['___ (–/In the) fact, nobody noticed the change.', 'In', 'Thực ra chẳng ai để ý tới thay đổi đó.'],
+      ['___ (In / In the) fact, nobody noticed the change.', 'In', 'Thực ra chẳng ai để ý tới thay đổi đó.'],
       ['We walked there on ___ (–/the) foot.', '–', 'Chúng tôi đi bộ tới đó.'],
       ['In ___ (a / the) long run, this will save money.', 'the', 'Về lâu dài, cách này sẽ tiết kiệm tiền.'],
       ['As ___ (a / the) rule, the office closes at five.', 'a', 'Theo lệ, văn phòng đóng cửa lúc năm giờ.'],

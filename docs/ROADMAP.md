@@ -33,7 +33,9 @@ Nhánh làm việc: `claude/prep-test-platform-design-fpiuqn`
 - [x] Ngữ pháp 12 thì: công thức, khi dùng / khi không dùng, phân biệt cặp dễ nhầm, lỗi người Việt hay mắc, 8 ví dụ + 12 câu luyện mỗi thì
 - [x] Ngữ pháp nhóm danh từ – mạo từ – lượng từ, bậc A1–A2 (14 điểm: số nhiều, đếm được, a/an/the/zero, this–that, some–any, sở hữu cách, much–many, a few–a little, danh từ ghép, there is–are, đơn vị đo)
 - [x] Ngữ pháp nhóm danh từ – mạo từ – lượng từ, bậc B1–C2 (14 điểm: few/little không có "a", all–both–whole, each–every, danh từ tập hợp, mạo từ với tên riêng, danh từ đổi nghĩa theo tính đếm được, lượng từ với "of", no–none–neither, mạo từ khái quát, zero article học thuật, lượng từ trang trọng, hoà hợp chủ ngữ với cụm lượng, mạo từ trong thành ngữ, danh từ hoá) — nhóm này đủ 28/28 điểm theo hạn mức
-- [ ] Ngữ pháp nhóm động từ khuyết thiếu + câu điều kiện
+- [x] Ngữ pháp động từ khuyết thiếu bậc A1–B1 (14 điểm: can, can/could xin phép, must/mustn't, have to, should, may/might, would like, could quá khứ, must khác have to, suy đoán, should/ought to/had better, used to, xin phép theo độ trang trọng, be able to)
+- [ ] Ngữ pháp động từ khuyết thiếu bậc B2–C2 (15 điểm còn lại theo hạn mức: suy đoán về quá khứ `must have`/`can't have`/`might have`, `should have` tiếc nuối, `needn't have` khác `didn't need to`, `would` trong lời mời và thói quen, `may well`/`might as well`, hedging bằng khuyết thiếu trong văn học thuật)
+- [ ] Ngữ pháp câu điều kiện và giả định (20 điểm theo hạn mức: loại 0–1–2–3, hỗn hợp, `unless`, `wish`/`if only`, `would rather`, `it is time`, đảo ngữ điều kiện `Had I known`) — nhóm này to, lượt làm nên tách đôi theo bậc như nhóm danh từ
 - [ ] Ngữ pháp nhóm bị động – tường thuật – mệnh đề quan hệ
 - [ ] Ngữ pháp nhóm đảo ngữ – nhấn mạnh – sắc thái và độ trang trọng
 - [ ] Nhập từ vựng NGSL (~2.800 từ) → `vocab_entries`, gán bậc A1–B1 theo hạng tần suất

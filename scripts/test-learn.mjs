@@ -241,12 +241,13 @@ try {
 
   /* Hai nhóm phải tách bạch, không lẫn vào nhau */
   const allGrammar = await get('/api/learn/grammar');
-  ok(allGrammar.count === 40, 'Tổng hai nhóm là 40 điểm (' + allGrammar.count + ')');
+  ok(allGrammar.count === 54, 'Tổng ba nhóm là 54 điểm (' + allGrammar.count + ')');
   ok(allGrammar.groups.some(g => g.id === 'tense' && g.count === 12) &&
-     allGrammar.groups.some(g => g.id === 'noun' && g.count === 28),
-    'Thống kê theo nhóm đúng: tense 12, noun 28');
+     allGrammar.groups.some(g => g.id === 'noun' && g.count === 28) &&
+     allGrammar.groups.some(g => g.id === 'modal' && g.count === 14),
+    'Thống kê theo nhóm đúng: tense 12, noun 28, modal 14');
   ok(new Set(allGrammar.points.map(p => p.slug)).size === allGrammar.count,
-    'Không có slug trùng giữa hai nhóm');
+    'Không có slug trùng giữa các nhóm');
 
   let nExTotal = 0, nPrTotal = 0;
   const nFlaws = [];
@@ -318,7 +319,96 @@ try {
   ok(nomin.point.useNot.some(u => /lạm dụng|cả đoạn/i.test(u.what + u.why)),
     'Mục danh từ hoá cảnh báo lạm dụng, không chỉ dạy cách dùng');
 
-  /* ============ 5. Bốn trang tự học ============ */
+  /* ============ 5. Ngữ pháp: động từ khuyết thiếu ============ */
+  console.log('\n\x1b[1m== API ngữ pháp (động từ khuyết thiếu) ==\x1b[0m');
+
+  const md = await get('/api/learn/grammar?grp=modal');
+  ok(md.count === 14, 'Có 14 điểm bậc A1–B1 (' + md.count + ')');
+  ok(md.points.every(p => p.grp === 'modal'), 'Lọc theo nhóm trả đúng nhóm');
+
+  /* Hạn mức của nhóm này là A1 ×3, A2 ×5, B1 ×6 */
+  const mdLevel = md.points.reduce((a, p) => (a[p.level] = (a[p.level] || 0) + 1, a), {});
+  const MD_QUOTA = { A1: 3, A2: 5, B1: 6 };
+  const mdLech = Object.keys(MD_QUOTA).filter(l => mdLevel[l] !== MD_QUOTA[l]);
+  ok(mdLech.length === 0, 'Đúng hạn mức A1 3, A2 5, B1 6' +
+    (mdLech.length ? ' (lệch: ' + mdLech.map(l => l + ' ' + (mdLevel[l] || 0)).join(', ') + ')' : ''));
+  ok(md.points.every(p => ['A1', 'A2', 'B1'].includes(p.level)), 'Chưa lẫn bậc B2–C2 vào đợt này');
+  ok(md.points.every(p => p.counts.example === 6 && p.counts.practice === 10),
+    'Mỗi điểm đủ 6 ví dụ và 10 câu luyện');
+
+  let mdFlaws = [];
+  for (const p of md.points) {
+    const d = await get('/api/learn/grammar/' + p.slug);
+    if (!d.point.useNot.length) mdFlaws.push(p.slug + ': thiếu "KHÔNG dùng khi nào"');
+    if (!d.point.confuse.length) mdFlaws.push(p.slug + ': thiếu phần phân biệt');
+    if (!d.point.errors.length) mdFlaws.push(p.slug + ': thiếu lỗi hay mắc');
+    if (d.examples.filter(x => !x.ok).length < 2) mdFlaws.push(p.slug + ': chưa đủ hai phản ví dụ');
+    if (d.examples.some(x => !x.ok && !x.note)) mdFlaws.push(p.slug + ': phản ví dụ không có cách sửa');
+  }
+  ok(mdFlaws.length === 0, 'Mọi điểm đủ lát cắt' +
+    (mdFlaws.length ? ' — ' + mdFlaws.slice(0, 6).join('; ') : ''));
+
+  /* Cặp bị nhầm nhiều nhất cả nhóm phải được dạy tử tế */
+  const mustHave = await get('/api/learn/grammar/must-vs-have-to');
+  const mhText = JSON.stringify(mustHave.point);
+  ok(/CẤM/.test(mhText) && /KHÔNG CẦN/.test(mhText),
+    'Mục must khác have to nói rõ mustn\'t là CẤM còn don\'t have to là KHÔNG CẦN');
+
+  const deduce = await get('/api/learn/grammar/deduction-present');
+  ok(deduce.point.useNot.some(u => /can't|cant/i.test(u.what + u.why)),
+    'Mục suy đoán cảnh báo phủ định phải dùng "can\'t" chứ không phải "mustn\'t"');
+
+  const ableTo = await get('/api/learn/grammar/ability-across-tenses');
+  ok(/will can/i.test(JSON.stringify(ableTo.point)),
+    'Mục be able to cảnh báo lỗi ghép hai động từ khuyết thiếu "will can"');
+
+  const usedTo = await get('/api/learn/grammar/used-to-would');
+  ok(usedTo.point.confuse.some(c => /be used to/i.test(c.with + c.tell)),
+    'Mục used to phân biệt với "be used to"');
+
+  /* ============ 6. Chất lượng câu luyện của TOÀN BỘ ngữ pháp ============
+     Dấu ngoặc trong câu luyện có hai kiểu, phải tách bạch trước khi kiểm:
+
+       trắc nghiệm  "___ (much / many) sugar"     → đáp án PHẢI là một lựa chọn
+       gợi ý chia   "___ (not / live) in Da Nang" → đáp án là dạng đã chia ("don't live")
+
+     Kiểu thứ hai luôn mở đầu bằng một từ gợi ý (not, already, just…), nên bỏ
+     qua. Chỉ soi kiểu trắc nghiệm: ở đó nếu đáp án không nằm trong danh sách
+     thì học viên chọn kiểu gì cũng sai. Câu nhiều chỗ trống thì soi từng chỗ
+     một, ghép theo thứ tự với các phần đáp án ngăn bởi dấu '…'. */
+  console.log('\n\x1b[1m== Chất lượng câu luyện toàn bộ ngữ pháp ==\x1b[0m');
+
+  const CUE = ['not', 'already', 'just', 'never', 'always', 'probably', 'ever', 'still'];
+  const allPoints = (await get('/api/learn/grammar')).points;
+  let lechDapAn = [], soTracNghiem = 0, tongLuyen = 0;
+
+  for (const p of allPoints) {
+    const d = await get('/api/learn/grammar/' + p.slug);
+    tongLuyen += d.practice.length;
+    for (const x of d.practice) {
+      const brackets = [...x.en.matchAll(/\(([^)]*)\)/g)].map(m => m[1]);
+      const parts = x.answer.split('…').map(s => s.trim());
+      if (brackets.length !== parts.length) continue;   // đã có phép kiểm riêng cho lệch số chỗ trống
+
+      brackets.forEach((b, i) => {
+        if (!b.includes('/')) return;                    // ngoặc một từ: gợi ý chia, không phải trắc nghiệm
+        const opts = b.split('/').map(s => s.trim());
+        if (CUE.includes(opts[0].toLowerCase())) return; // gợi ý chia kèm trạng từ
+        soTracNghiem++;
+        if (!opts.includes(parts[i])) {
+          lechDapAn.push(p.slug + ': ' + x.en + ' → ' + parts[i] + ' (chọn: ' + opts.join(' | ') + ')');
+        }
+      });
+    }
+  }
+
+  ok(soTracNghiem > 200, 'Có đủ câu trắc nghiệm để phép kiểm này có ý nghĩa (' + soTracNghiem + ')');
+  ok(lechDapAn.length === 0, 'Đáp án luôn nằm trong danh sách lựa chọn của câu trắc nghiệm' +
+    (lechDapAn.length ? ' (' + lechDapAn.length + ' sai, ví dụ: ' + lechDapAn[0] + ')' : ''));
+  ok(tongLuyen === 12 * 12 + 28 * 10 + 14 * 10,
+    'Tổng câu luyện toàn khu ngữ pháp là ' + (12 * 12 + 28 * 10 + 14 * 10) + ' (' + tongLuyen + ')');
+
+  /* ============ 7. Năm trang tự học ============ */
   console.log('\n\x1b[1m== Trang khu tự học ==\x1b[0m');
 
   const ctx = await browser.newContext();
@@ -425,7 +515,23 @@ try {
   await page.waitForTimeout(300);
   ok(await page.locator('#list article').count() === 8, 'Lọc bậc A1 còn 8 mục');
 
-  ok(errs.length === 0, 'Không có lỗi JavaScript trên bốn trang tự học' +
+  /* --- Trang động từ khuyết thiếu --- */
+  await page.goto(BASE + '/prep/hoc/khuyet-thieu/', { waitUntil: 'networkidle' });
+  await page.waitForSelector('#list article', { timeout: 10000 });
+  ok(await page.locator('#list article').count() === 14, 'Trang khuyết thiếu hiện đủ 14 mục');
+
+  await page.click('[data-toggle="must-vs-have-to"]');
+  await page.waitForSelector('#list article[data-slug="must-vs-have-to"] [data-answer]',
+    { state: 'attached', timeout: 10000 });
+  const mCard = page.locator('article[data-slug="must-vs-have-to"]');
+  ok(await mCard.locator('[data-answer]').count() === 10, 'Mở ra thấy đủ 10 câu luyện');
+  ok(/CẤM/.test(await mCard.innerText()), 'Chi tiết nêu rõ mustn\'t là CẤM');
+
+  await page.selectOption('#f-level', 'A1');
+  await page.waitForTimeout(300);
+  ok(await page.locator('#list article').count() === 3, 'Lọc bậc A1 còn 3 mục');
+
+  ok(errs.length === 0, 'Không có lỗi JavaScript trên năm trang tự học' +
     (errs.length ? ': ' + errs[0] : ''));
 
   await ctx.close();
