@@ -142,12 +142,15 @@
     const params = new URLSearchParams(location.search);
     if (params.get('family')) state.family = params.get('family');
 
-    /* Chip 6 kỳ thi + Tất cả */
+    /* Chip 6 kỳ thi + Tất cả — dựng lại sau khi có danh mục thật */
     const chipBox = PREP.qs('#family-chips');
-    chipBox.innerHTML = '<button type="button" class="chip shrink-0" data-fam-filter="" aria-pressed="' + (!state.family) + '">Tất cả kỳ thi</button>' +
-      PREP.families.map(f =>
-        '<button type="button" class="chip shrink-0" data-family="' + f.id + '" data-fam-filter="' + f.id + '" aria-pressed="' + (state.family === f.id) + '">' + f.name + '</button>'
-      ).join('');
+    function renderChips() {
+      chipBox.innerHTML = '<button type="button" class="chip shrink-0" data-fam-filter="" aria-pressed="' + (!state.family) + '">Tất cả kỳ thi</button>' +
+        PREP.families.map(f =>
+          '<button type="button" class="chip shrink-0" data-family="' + f.id + '" data-fam-filter="' + f.id + '" aria-pressed="' + (state.family === f.id) + '">' + f.name + '</button>'
+        ).join('');
+    }
+    renderChips();
     chipBox.addEventListener('click', e => {
       const b = e.target.closest('[data-fam-filter]');
       if (!b) return;
@@ -171,7 +174,15 @@
     const grid = PREP.qs('#lib-grid');
     const countEl = PREP.qs('#result-count');
 
-    function totalItems(t) { return t.sections.reduce((s, x) => s + x.items, 0); }
+    /* Bài chưa nhập câu hỏi trả về 0 — khi đó bỏ hẳn dòng "câu" thay vì hiện "0 câu" */
+    function metaLine(t, cls) {
+      const n = PREP.itemCount(t);
+      return '<p class="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[13px] font-semibold ' + cls + ' mt-2.5 mb-5">' +
+        '<span class="inline-flex items-center gap-1.5">' + PREP.icon('layers', 'w-4 h-4') + t.sections.length + ' phần</span>' +
+        '<span class="inline-flex items-center gap-1.5">' + PREP.icon('clock', 'w-4 h-4') + t.durationMin + ' phút</span>' +
+        (n ? '<span class="inline-flex items-center gap-1.5">' + PREP.icon('list', 'w-4 h-4') + n + ' câu</span>' : '') +
+      '</p>';
+    }
 
     function card(t) {
       const fam = PREP.family(t.familyId);
@@ -183,11 +194,7 @@
           (t.comingSoon ? '<span class="badge badge-hl ms-auto">Sắp có</span>' : '') +
         '</div>' +
         '<h3 class="font-bold text-[16px] leading-snug">' + PREP.esc(t.title) + '</h3>' +
-        '<p class="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[13px] font-semibold text-muted mt-2.5 mb-5">' +
-          '<span class="inline-flex items-center gap-1.5">' + PREP.icon('layers', 'w-4 h-4') + t.sections.length + ' phần</span>' +
-          '<span class="inline-flex items-center gap-1.5">' + PREP.icon('clock', 'w-4 h-4') + t.durationMin + ' phút</span>' +
-          '<span class="inline-flex items-center gap-1.5">' + PREP.icon('list', 'w-4 h-4') + totalItems(t) + ' câu</span>' +
-        '</p>';
+        metaLine(t, 'text-muted');
 
       if (unlocked) {
         return '<article class="card card-hover p-5 flex flex-col">' + inner +
@@ -203,11 +210,7 @@
           '<span class="w-7 h-7 rounded-full bg-[color:var(--color-card)] border border-line text-muted inline-flex items-center justify-center ms-auto" title="Đang khoá" aria-label="Đang khoá">' + PREP.icon('lock', 'w-[15px] h-[15px]') + '</span>' +
         '</div>' +
         '<h3 class="font-bold text-[16px] leading-snug text-muted">' + PREP.esc(t.title) + '</h3>' +
-        '<p class="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[13px] font-semibold text-muted/85 mt-2.5 mb-5">' +
-          '<span class="inline-flex items-center gap-1.5">' + PREP.icon('layers', 'w-4 h-4') + t.sections.length + ' phần</span>' +
-          '<span class="inline-flex items-center gap-1.5">' + PREP.icon('clock', 'w-4 h-4') + t.durationMin + ' phút</span>' +
-          '<span class="inline-flex items-center gap-1.5">' + PREP.icon('list', 'w-4 h-4') + totalItems(t) + ' câu</span>' +
-        '</p>' +
+        metaLine(t, 'text-muted/85') +
         '<a href="/prep/nhap-code/?test=' + t.id + '" class="btn btn-accent btn-md mt-auto w-full">' + PREP.icon('unlock', 'w-4 h-4') + 'Mở khoá bằng code</a>' +
       '</article>';
     }
@@ -228,6 +231,17 @@
       PREP.qs('#lib-empty-filter').toggleAttribute('hidden', famEmpty || list.length > 0);
       grid.classList.toggle('hidden', famEmpty || list.length === 0);
 
+      /* Cả thư viện chưa có đề nào (admin chưa phát hành): đổi lời cho đúng, ẩn nút xoá lọc */
+      const noneAtAll = PREP.tests.length === 0;
+      if (!famEmpty && !list.length) {
+        PREP.qs('#lib-empty-filter h3').textContent =
+          noneAtAll ? 'Thư viện đang được biên soạn' : 'Không có bài nào khớp bộ lọc';
+        PREP.qs('#lib-empty-filter p').textContent = noneAtAll
+          ? 'Chưa có bài thi thử nào được phát hành. Quay lại sau nhé, đề mới sẽ hiện ngay tại đây.'
+          : 'Thử nới điều kiện hoặc xoá bộ lọc để xem toàn bộ thư viện.';
+        PREP.qs('#clear-filters').classList.toggle('hidden', noneAtAll);
+      }
+
       if (famEmpty) {
         const f = PREP.family(state.family);
         PREP.qs('#empty-chip').setAttribute('data-family', f.id);
@@ -241,11 +255,13 @@
       countEl.textContent = list.length + ' bài thi thử · ' + open + ' đã mở khoá';
     }
 
-    /* Giả lập tải — TODO(backend): GET /api/tests?filter=… */
-    setTimeout(() => {
+    /* Danh mục thật từ máy chủ; hỏng thì giữ dữ liệu dự phòng + dải cảnh báo */
+    PREP.loadCatalog().then(res => {
       PREP.qs('#lib-skeleton').classList.add('hidden');
+      PREP.catalogWarning(res);
+      renderChips();
       render();
-    }, 800);
+    });
 
     /* Form nhận thông báo khi có đề — TODO(backend): POST /api/notify-me */
     PREP.qs('#notify-form').addEventListener('submit', ev => {

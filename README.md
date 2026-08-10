@@ -4,9 +4,10 @@ Giao diện nền tảng luyện thi thử (mock test) cho 6 nhóm chứng chỉ
 **VEPT · VPET · OTE · TOEIC · IELTS · PTE**.
 Cơ chế truy cập: đăng ký tài khoản → mua/nhập code → mở khoá bài thi.
 
-> **Phạm vi giai đoạn 1: chỉ vỏ nền tảng + luồng UI.**
-> Chưa có engine làm bài, chưa chấm điểm, chưa có nội dung đề (admin nhập sau).
-> Mọi màn render từ mock JSON với "seam" rõ ràng để backend cắm vào.
+> **Phạm vi hiện tại: vỏ nền tảng + luồng UI + khu quản trị có backend thật.**
+> Chưa có engine làm bài, chưa chấm điểm.
+> Danh mục (kỳ thi / đề đã phát hành / gói code) đọc thật từ `GET /api/catalog`;
+> tài khoản và tiến độ học viên vẫn là mock localStorage — auth thật làm ở bước sau.
 
 ## Chạy thử
 
@@ -26,8 +27,9 @@ Lệnh khác:
 | `node scripts/audit.mjs` | audit tràn ngang, tương phản WCAG AA, nút xuống dòng, chiều cao nav (light + dark, 5 bề rộng) |
 | `node scripts/test-auth.mjs` | kiểm thử luồng đăng nhập / đổi mật khẩu / lưu tiến độ theo tài khoản |
 | `node scripts/test-admin.mjs` | kiểm thử API quản trị: phiên, CSRF, phân quyền, CRUD, sinh đề, cấp code |
+| `node scripts/test-catalog.mjs` | kiểm thử trang học viên đọc `/api/catalog` + nhánh dự phòng khi API hỏng |
 | `npm run screenshot:admin` | chụp các màn quản trị |
-| `npm test` | chạy cả ba bộ kiểm thử |
+| `npm test` | chạy cả bốn bộ kiểm thử |
 
 ## Khu quản trị (backend thật)
 
@@ -104,7 +106,8 @@ Trang đăng nhập có nút **Điền sẵn tài khoản demo**.
 Tài khoản tự đăng ký cũng đăng nhập lại được: mỗi bản ghi lưu trong `localStorage`
 (`prep.accounts.v1`), tiến độ (bài đã mở khoá, code, đơn) gắn theo tài khoản chứ không theo phiên,
 nên đăng xuất rồi đăng nhập lại vẫn còn. Đổi mật khẩu ở tab Bảo mật có hiệu lực thật cho lần đăng
-nhập sau. Tất cả vẫn là mock phía client — auth thật (bcrypt, phiên server, rate-limit) làm ở prompt backend.
+nhập sau. Phần tài khoản này vẫn là mock phía client — auth thật (scrypt, phiên cookie, rate-limit,
+như khu quản trị đang dùng) là mục kế tiếp trong `docs/ROADMAP.md`.
 
 ## Bản đồ màn hình
 
@@ -159,26 +162,42 @@ Dùng qua token: `bg-brand`, `text-accent-strong`, `bg-[color:var(--color-surfac
 **Màu nhận diện kỳ thi** (`--exam-ielts`, `--exam-toeic`, `--exam-pte`, `--exam-vpet`, `--exam-vept`,
 `--exam-ote`) cố định, **không** đổi theo tenant, và chỉ dùng cho chip/nhãn kỳ thi.
 
-## Seam cho backend
+## Nguồn dữ liệu phía học viên
 
-`public/prep/_mock.js` chứa toàn bộ dữ liệu + trạng thái giả lập, mỗi chỗ đọc mock đều có
-`// TODO(backend)`. Shape dữ liệu để backend thay bằng API tương ứng:
+Danh mục đã nối API thật. Mọi trang gọi `PREP.loadCatalog()` (trong `public/prep/_mock.js`)
+trước khi render:
 
 ```js
-examFamily = { id, name, sub, format }
-mockTest   = { id, familyId, title, level, durationMin, skills[], comingSoon,
+PREP.loadCatalog().then(res => {   // luôn resolve { ok, error }, không bao giờ throw
+  PREP.catalogWarning(res);        // ok=false → dải cảnh báo vàng, trang vẫn chạy
+  ...render...                     // PREP.families / PREP.tests / PREP.packages đã là dữ liệu thật
+});
+```
+
+- Chỉ fetch **một lần** mỗi trang, các lời gọi sau dùng chung promise.
+- Hỏng mạng hoặc API lỗi → giữ mảng `PREP_*` tĩnh làm **dữ liệu dự phòng**, hiện banner
+  "đang hiển thị bản lưu sẵn" kèm nút tải lại. Trang không bao giờ trắng.
+- `PREP.catalogSource` cho biết đang dùng `'api'` hay `'fallback'`.
+- Đề chưa nhập câu hỏi trả `items: 0` → giao diện ẩn dòng "N câu" và ghi "đề đang biên soạn"
+  thay vì hiện "0 câu".
+
+Shape dữ liệu (giống hệt giữa API và dữ liệu dự phòng):
+
+```js
+examFamily = { id, name, sub, format, skills[] }
+test       = { id, familyId, title, level, durationMin, skills[], comingSoon,
                sections: [{ name, type, items, minutes }], scoring, guide[] }
 user       = { name, email, verified, interests[] }
 accessCode = { code, unlocks: { testId? | familyId? | bundle[] }, redeemedAt, expiresAt, status }
-package    = { id, name, price, familyId, desc, perks[] }
+package    = { id, name, price, familyId, desc, perks[], featured }
 ```
 
-Các seam chính:
+Các seam còn lại:
 
 | Seam | Vị trí | Ghi chú |
 |---|---|---|
 | `TODO(backend/auth)` | `PrepAuth`, 4 màn auth | Đăng ký/đăng nhập/xác thực email đang là mock localStorage |
-| `TODO(backend)` | `PrepState`, dashboard, thư viện, code | Trạng thái mở khoá, danh sách đề, code đã kích hoạt |
+| `TODO(backend)` | `PrepState` | Trạng thái mở khoá, code đã kích hoạt, tiến độ — còn ở localStorage |
 | `TODO(backend/payment)` | `mua-code.html` | Nút thanh toán hiện chỉ mở modal demo và cấp mã miễn phí |
 | `TODO(backend/exam-engine)` | `test/index.html` | Nút "Bắt đầu làm bài" mở overlay "sẽ sớm ra mắt" |
 

@@ -189,6 +189,16 @@
     background: color-mix(in srgb, var(--color-success) 10%, transparent);
     color: var(--color-success);
   }
+  /* Cảnh báo chức năng (vàng highlight) — nền đục để chữ luôn đủ tương phản */
+  .banner-warn {
+    border-color: color-mix(in srgb, var(--color-hl) 62%, transparent);
+    background: color-mix(in srgb, var(--color-hl) 24%, white);
+    color: var(--color-hl-ink);
+  }
+  .dark .banner-warn {
+    background: color-mix(in srgb, var(--color-hl) 15%, #0f1830);
+    color: color-mix(in srgb, var(--color-hl) 88%, white);
+  }
 
   /* ---- Chip / badge ---- */
   .chip {

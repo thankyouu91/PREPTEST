@@ -1,16 +1,19 @@
 /* ============================================================
-   VPET Prep — MOCK DATA + STATE (giai đoạn 1: chỉ giao diện)
+   VPET Prep — DỮ LIỆU + TRẠNG THÁI PHÍA HỌC VIÊN
    ------------------------------------------------------------
-   Đây là "seam" cho backend: mọi màn hình render từ các cấu trúc
-   dưới đây. Khi có API thật, thay từng nhóm hàm bằng fetch cùng
-   shape dữ liệu — KHÔNG cần sửa markup.
+   Danh mục (kỳ thi / bài thi / gói code) nay đọc thật từ
+   `GET /api/catalog`. Các mảng PREP_* bên dưới chỉ còn là
+   DỮ LIỆU DỰ PHÒNG: dùng khi chưa gọi API xong hoặc khi máy chủ
+   không trả lời, để trang không bao giờ trắng.
 
-   // TODO(backend): thay PREP_DATA tĩnh bằng API catalog
+   Gọi `PREP.loadCatalog()` trước khi render; nó chỉ fetch một lần
+   cho mỗi trang và luôn resolve `{ ok, error }` (không bao giờ throw).
+
    // TODO(backend/auth): thay PrepAuth (localStorage) bằng phiên thật
    // TODO(backend): thay PrepState (localStorage) bằng API user-state
    ============================================================ */
 
-/* ---------------- Danh mục 6 nhóm kỳ thi ---------------- */
+/* ---------------- Danh mục 6 nhóm kỳ thi (dự phòng) ---------------- */
 // Màu badge của từng kỳ nằm trong CSS (--exam-*), cố định, không đổi theo tenant.
 const PREP_FAMILIES = [
   { id: 'vept',  name: 'VEPT',  sub: 'Chứng chỉ VEPT 4 kỹ năng',                 format: '4 kỹ năng theo chuẩn CEFR' },
@@ -207,9 +210,60 @@ const PREP = {
   packages: PREP_PACKAGES,
   tenants: PREP_TENANTS,
 
-  family(id) { return PREP_FAMILIES.find(f => f.id === id); },
-  test(id) { return PREP_TESTS.find(t => t.id === id); },
-  testsOf(familyId) { return PREP_TESTS.filter(t => t.familyId === familyId); },
+  /* 'fallback' khi còn dùng mảng tĩnh, 'api' khi đã đọc được /api/catalog */
+  catalogSource: 'fallback',
+  _catalogPromise: null,
+
+  /* Đọc danh mục thật từ server. Gọi nhiều lần cũng chỉ fetch một lần.
+     Luôn resolve { ok, error } — lỗi mạng không làm vỡ trang, chỉ giữ dữ liệu dự phòng. */
+  loadCatalog() {
+    if (this._catalogPromise) return this._catalogPromise;
+    this._catalogPromise = fetch('/api/catalog', {
+      credentials: 'same-origin', headers: { Accept: 'application/json' }
+    })
+      .then(r => {
+        if (!r.ok) throw new Error('Máy chủ trả về ' + r.status);
+        return r.json();
+      })
+      .then(d => {
+        if (!d || !Array.isArray(d.families) || !Array.isArray(d.tests)) {
+          throw new Error('Dữ liệu danh mục không đúng định dạng');
+        }
+        if (d.families.length) this.families = d.families;
+        this.tests = d.tests;                                   // rỗng là hợp lệ: chưa phát hành đề nào
+        if (Array.isArray(d.packages) && d.packages.length) this.packages = d.packages;
+        this.catalogSource = 'api';
+        return { ok: true };
+      })
+      .catch(err => ({ ok: false, error: err && err.message ? err.message : 'Không tải được danh mục' }));
+    return this._catalogPromise;
+  },
+
+  /* Dải cảnh báo khi không đọc được danh mục (trang vẫn render dữ liệu dự phòng).
+     Gọi ngay sau loadCatalog(); không làm gì nếu tải thành công. */
+  catalogWarning(res) {
+    if (!res || res.ok || document.getElementById('catalog-warning')) return;
+    const host = document.getElementById('main') || document.body;
+    const box = document.createElement('div');
+    box.id = 'catalog-warning';
+    box.className = 'max-w-shell mx-auto px-4 sm:px-6 lg:px-10 mt-5';
+    box.innerHTML =
+      '<div class="banner banner-warn show" role="alert">' +
+        this.icon('alert', 'w-5 h-5 shrink-0 mt-0.5') +
+        '<span>Chưa đọc được danh mục mới nhất từ máy chủ, đang hiển thị bản lưu sẵn. ' +
+          '<button type="button" class="underline font-bold" data-catalog-retry>Tải lại trang</button>' +
+        '</span>' +
+      '</div>';
+    host.prepend(box);
+    box.querySelector('[data-catalog-retry]').addEventListener('click', () => location.reload());
+  },
+
+  family(id) { return this.families.find(f => f.id === id); },
+  test(id) { return this.tests.find(t => t.id === id); },
+  testsOf(familyId) { return this.tests.filter(t => t.familyId === familyId); },
+
+  /* Tổng số câu của một bài; 0 nghĩa là admin chưa nhập câu hỏi */
+  itemCount(t) { return (t.sections || []).reduce((s, x) => s + (x.items || 0), 0); },
 
   vnd(n) { return n.toLocaleString('vi-VN') + 'đ'; },
 
@@ -472,7 +526,7 @@ const PrepState = {
            (s.unlockedFamilyIds || []).includes(test.familyId);
   },
   unlockedTests() {
-    return PREP_TESTS.filter(t => this.isUnlocked(t));
+    return PREP.tests.filter(t => this.isUnlocked(t));
   },
 
   /* --- Redeem code (mock) ---

@@ -222,9 +222,13 @@
     PREP.qs('#username').value = s.account || u.email;
     PREP.qs('#name').value = u.name;
     PREP.qs('#email').value = u.email;
+    /* Chip kỳ thi quan tâm dựng từ danh mục thật (GET /api/catalog) */
     const box = PREP.qs('#interests');
-    box.innerHTML = PREP.families.map(f =>
-      '<button type="button" class="chip" data-family="' + f.id + '" data-fam="' + f.id + '" aria-pressed="' + ((u.interests || []).includes(f.id)) + '">' + f.name + '</button>').join('');
+    PREP.loadCatalog().then(res => {
+      PREP.catalogWarning(res);
+      box.innerHTML = PREP.families.map(f =>
+        '<button type="button" class="chip" data-family="' + f.id + '" data-fam="' + f.id + '" aria-pressed="' + ((u.interests || []).includes(f.id)) + '">' + f.name + '</button>').join('');
+    });
     box.addEventListener('click', e => {
       const b = e.target.closest('[data-fam]');
       if (b) b.setAttribute('aria-pressed', b.getAttribute('aria-pressed') !== 'true');

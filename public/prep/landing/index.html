@@ -431,16 +431,17 @@
     PREP.qsa('[data-when-user]').forEach(el => el.removeAttribute('hidden'));
   }
 
-  /* Card 6 kỳ thi — render từ mock, có skeleton — TODO(backend): GET /api/families */
+  /* Card 6 kỳ thi — danh mục thật từ GET /api/catalog, có skeleton */
   const grid = PREP.qs('#family-cards');
-  setTimeout(() => {
+  PREP.loadCatalog().then(res => {
+    PREP.catalogWarning(res);
     PREP.qs('#family-skeleton').classList.add('hidden');
     grid.innerHTML = PREP.families.map(f => {
       const n = PREP.testsOf(f.id).length;
       return '<article class="card card-hover p-6 flex flex-col">' +
         '<div class="flex items-center gap-2.5">' +
           '<span class="exam-chip" data-family="' + f.id + '">' + f.name + '</span>' +
-          (n ? '<span class="text-[12.5px] font-bold text-muted">' + n + ' đề đang biên soạn</span>'
+          (n ? '<span class="text-[12.5px] font-bold text-muted">' + n + ' bài thi thử</span>'
              : '<span class="badge badge-hl">Sắp có</span>') +
         '</div>' +
         '<h3 class="font-extrabold text-[17px] tracking-tight mt-4">' + PREP.esc(f.sub) + '</h3>' +
@@ -451,7 +452,7 @@
       '</article>';
     }).join('');
     grid.classList.remove('hidden');
-  }, 700);
+  });
 
   /* Meter minh hoạ trong hero/bento */
   PREP.qsa('.meter > i[data-w]').forEach(el => {

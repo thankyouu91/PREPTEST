@@ -119,10 +119,13 @@
     PREP.qsa('[data-brand-name]').forEach(el => { el.textContent = t.name; });
   })();
 
-  /* Chip kỳ thi quan tâm */
+  /* Chip kỳ thi quan tâm — danh mục thật (GET /api/catalog), công khai nên gọi được khi chưa đăng nhập */
   const box = PREP.qs('#interests');
-  box.innerHTML = PREP.families.map(f =>
-    '<button type="button" class="chip" data-fam="' + f.id + '" aria-pressed="false">' + f.name + '</button>').join('');
+  PREP.loadCatalog().then(res => {
+    PREP.catalogWarning(res);
+    box.innerHTML = PREP.families.map(f =>
+      '<button type="button" class="chip" data-fam="' + f.id + '" aria-pressed="false">' + f.name + '</button>').join('');
+  });
   box.addEventListener('click', e => {
     const b = e.target.closest('[data-fam]');
     if (b) b.setAttribute('aria-pressed', b.getAttribute('aria-pressed') !== 'true');

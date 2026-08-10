@@ -111,7 +111,9 @@
         '<button type="button" class="p-1 rounded-full text-muted hover:text-ink transition" data-code-copy="' + i + '" aria-label="Sao chép mã">' + PREP.icon('copy', 'w-4 h-4') + '</button>' +
       '</span>';
 
-    setTimeout(() => {
+    /* Tên quyền mở khoá lấy từ danh mục thật, nên đợi GET /api/catalog */
+    PREP.loadCatalog().then(res => {
+      PREP.catalogWarning(res);
       PREP.qs('#codes-loading').classList.add('hidden');
 
       if (!codes.length) {
@@ -159,7 +161,7 @@
           .then(() => PrepChrome.toast('Đã sao chép mã'))
           .catch(() => PrepChrome.toast('Không sao chép được', 'error'));
       }));
-    }, 600);
+    });
   }
 </script>
 </body>

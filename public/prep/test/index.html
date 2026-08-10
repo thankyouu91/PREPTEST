@@ -25,6 +25,25 @@
   <main id="main">
     <div class="max-w-shell mx-auto px-4 sm:px-6 lg:px-10 pb-6">
 
+      <!-- Loading: chờ GET /api/catalog -->
+      <div id="t-loading" class="mt-10 grid lg:grid-cols-3 gap-6" aria-hidden="true">
+        <div class="lg:col-span-2">
+          <div class="flex gap-2 mb-5"><div class="skeleton h-6 w-16"></div><div class="skeleton h-6 w-10"></div></div>
+          <div class="skeleton h-8 w-3/4 mb-3"></div>
+          <div class="skeleton h-4 w-2/5 mb-8"></div>
+          <div class="card p-6 grid gap-4">
+            <div class="skeleton h-5 w-full"></div>
+            <div class="skeleton h-5 w-5/6"></div>
+            <div class="skeleton h-5 w-4/6"></div>
+          </div>
+        </div>
+        <div class="card p-6 grid gap-4 content-start">
+          <div class="skeleton h-6 w-2/3"></div>
+          <div class="skeleton h-4 w-full"></div>
+          <div class="skeleton h-11 w-full rounded-full"></div>
+        </div>
+      </div>
+
       <!-- Not found -->
       <section id="nf" hidden class="card p-10 mt-10 max-w-lg mx-auto text-center">
         <span class="w-14 h-14 rounded-full bg-brand-soft text-brand-strong inline-flex items-center justify-center mx-auto">
@@ -100,97 +119,106 @@
   if (PrepAuth.require()) {
     PrepChrome.mount({ title: 'Chi tiết bài thi' });
 
-    /* Lấy id từ path /prep/bai-thi/:id/ — TODO(backend): GET /api/tests/:id */
+    /* Lấy id từ path /prep/bai-thi/:id/ rồi tra trong danh mục thật (GET /api/catalog) */
     const m = location.pathname.match(/\/prep\/bai-thi\/([^/]+)\/?/);
-    const test = m && PREP.test(decodeURIComponent(m[1]));
 
-    if (!test) {
-      PREP.qs('#nf').removeAttribute('hidden');
-    } else {
-      PREP.qs('#page').removeAttribute('hidden');
-      const fam = PREP.family(test.familyId);
-      const unlocked = PrepState.isUnlocked(test);
-      document.title = test.title + ' · VPET Prep';
+    PREP.loadCatalog().then(res => {
+      PREP.catalogWarning(res);
+      PREP.qs('#t-loading').classList.add('hidden');
+      const test = m && PREP.test(decodeURIComponent(m[1]));
 
-      /* Ghi nhận đã xem cấu trúc bài này (dashboard dùng cho checklist "Bước tiếp theo") */
-      const st = PrepState.load();
-      st.seenTestIds = st.seenTestIds || [];
-      if (!st.seenTestIds.includes(test.id)) {
-        st.seenTestIds.push(test.id);
-        PrepState.save(st);
-      }
-
-      PREP.qs('#head-chips').innerHTML =
-        '<span class="exam-chip" data-family="' + fam.id + '">' + fam.name + '</span>' +
-        '<span class="badge badge-muted">' + test.level + '</span>' +
-        (test.comingSoon ? '<span class="badge badge-hl">Sắp có</span>' : '') +
-        (unlocked ? '<span class="badge badge-ok">Đã mở khoá</span>' : '');
-      PREP.qs('#t-title').textContent = test.title;
-
-      const totalQ = test.sections.reduce((s, x) => s + x.items, 0);
-      PREP.qs('#t-meta').innerHTML =
-        '<span class="inline-flex items-center gap-1.5">' + PREP.icon('layers', 'w-[18px] h-[18px]') + test.sections.length + ' phần</span>' +
-        '<span class="inline-flex items-center gap-1.5">' + PREP.icon('clock', 'w-[18px] h-[18px]') + test.durationMin + ' phút</span>' +
-        '<span class="inline-flex items-center gap-1.5">' + PREP.icon('list', 'w-[18px] h-[18px]') + totalQ + ' câu hỏi</span>';
-
-      /* Các phần thi */
-      const skillIcon = name => {
-        const n = name.toLowerCase();
-        if (n.includes('listen')) return 'headphones';
-        if (n.includes('read')) return 'book';
-        if (n.includes('speak')) return 'mic';
-        return 'pen';
-      };
-      PREP.qs('#sections').innerHTML = test.sections.map(s =>
-        '<div class="flex items-center gap-4 py-3.5 border-b border-line last:border-0">' +
-          '<span class="w-10 h-10 rounded-xl bg-brand-soft text-brand-strong inline-flex items-center justify-center shrink-0">' + PREP.icon(skillIcon(s.name), 'w-5 h-5') + '</span>' +
-          '<span class="min-w-0 flex-1">' +
-            '<b class="block font-bold text-[15px]">' + PREP.esc(s.name) + '</b>' +
-            '<span class="block text-[13px] text-muted font-medium mt-0.5">' + PREP.esc(s.type) + '</span>' +
-          '</span>' +
-          '<span class="text-right shrink-0 text-[13.5px] font-bold">' + s.items + ' câu' +
-            '<span class="block text-muted font-semibold">' + s.minutes + ' phút</span>' +
-          '</span>' +
-        '</div>').join('');
-      PREP.qs('#t-total').textContent = 'Tổng: ' + totalQ + ' câu, ' + test.durationMin + ' phút';
-      PREP.qs('#t-scoring').innerHTML = PREP.icon('award', 'w-[18px] h-[18px]') + PREP.esc(test.scoring);
-
-      PREP.qs('#guide').innerHTML = test.guide.map(g =>
-        '<li class="flex gap-3 text-[15px] leading-relaxed">' +
-          '<span class="text-accent-strong mt-1 shrink-0">' + PREP.icon('check', 'w-[18px] h-[18px]') + '</span>' +
-          '<span>' + PREP.esc(g) + '</span>' +
-        '</li>').join('');
-
-      /* Thẻ hành động */
-      const ac = PREP.qs('#action-card');
-      if (unlocked) {
-        ac.innerHTML =
-          '<p class="flex items-center gap-2.5 font-extrabold"><span class="w-9 h-9 rounded-full bg-accent-soft text-accent-strong inline-flex items-center justify-center">' + PREP.icon('unlock', 'w-5 h-5') + '</span>Bạn đã mở khoá bài này</p>' +
-          '<p class="text-muted text-[14px] leading-relaxed mt-3">Trạng thái: <b class="text-ink">chưa bắt đầu</b>. Kết quả và tiến độ sẽ lưu tại đây sau mỗi lần luyện.</p>' +
-          '<button type="button" id="start" class="btn btn-primary btn-lg w-full mt-5">' + PREP.icon('play', 'w-5 h-5') + 'Bắt đầu làm bài</button>' +
-          '<button type="button" class="btn btn-ghost btn-md w-full mt-2.5 opacity-55 cursor-not-allowed" aria-disabled="true">Luyện theo từng phần <span class="badge badge-muted ms-1.5">sắp có</span></button>';
-        /* Seam engine: // TODO(backend/exam-engine) — thay overlay bằng điều hướng vào bài làm */
-        PREP.qs('#start').addEventListener('click', () => PREP.qs('#soon-modal').classList.add('show'));
+      if (!test) {
+        PREP.qs('#nf').removeAttribute('hidden');
       } else {
-        ac.innerHTML =
-          '<p class="flex items-center gap-2.5 font-extrabold"><span class="w-9 h-9 rounded-full bg-brand-soft text-brand-strong inline-flex items-center justify-center">' + PREP.icon('lock', 'w-5 h-5') + '</span>Bài này đang khoá</p>' +
-          '<p class="text-muted text-[14px] leading-relaxed mt-3">Kích hoạt code của bài này hoặc gói ' + fam.name + ' để bắt đầu luyện.</p>' +
-          '<a href="/prep/nhap-code/?test=' + test.id + '" class="btn btn-accent btn-lg w-full mt-5">Mở khoá bằng code</a>' +
-          '<a href="/prep/mua-code/" class="btn btn-ghost btn-md w-full mt-2.5">Xem gói code</a>' +
-          '<button type="button" class="btn btn-primary btn-lg w-full mt-5 opacity-45" disabled>' + PREP.icon('play', 'w-5 h-5') + 'Bắt đầu làm bài</button>';
-      }
+        PREP.qs('#page').removeAttribute('hidden');
+        const fam = PREP.family(test.familyId);
+        const unlocked = PrepState.isUnlocked(test);
+        document.title = test.title + ' · VPET Prep';
 
-      /* Modal sắp ra mắt */
-      const modal = PREP.qs('#soon-modal');
-      PREP.qsa('[data-close]', modal).forEach(b => b.addEventListener('click', () => modal.classList.remove('show')));
-      modal.addEventListener('click', e => { if (e.target === modal) modal.classList.remove('show'); });
-      document.addEventListener('keydown', e => { if (e.key === 'Escape') modal.classList.remove('show'); });
-      PREP.qs('#notify-me').addEventListener('click', () => {
-        modal.classList.remove('show');
-        PrepChrome.toast('Sẽ báo bạn qua email khi đề phát hành');
-        /* TODO(backend): POST /api/notify-me { testId } */
-      });
-    }
+        /* Ghi nhận đã xem cấu trúc bài này (dashboard dùng cho checklist "Bước tiếp theo") */
+        const st = PrepState.load();
+        st.seenTestIds = st.seenTestIds || [];
+        if (!st.seenTestIds.includes(test.id)) {
+          st.seenTestIds.push(test.id);
+          PrepState.save(st);
+        }
+
+        PREP.qs('#head-chips').innerHTML =
+          '<span class="exam-chip" data-family="' + fam.id + '">' + fam.name + '</span>' +
+          '<span class="badge badge-muted">' + test.level + '</span>' +
+          (test.comingSoon ? '<span class="badge badge-hl">Sắp có</span>' : '') +
+          (unlocked ? '<span class="badge badge-ok">Đã mở khoá</span>' : '');
+        PREP.qs('#t-title').textContent = test.title;
+
+        /* 0 câu = admin chưa nhập đề cho phần đó; nói thẳng thay vì hiện "0 câu" */
+        const totalQ = PREP.itemCount(test);
+        PREP.qs('#t-meta').innerHTML =
+          '<span class="inline-flex items-center gap-1.5">' + PREP.icon('layers', 'w-[18px] h-[18px]') + test.sections.length + ' phần</span>' +
+          '<span class="inline-flex items-center gap-1.5">' + PREP.icon('clock', 'w-[18px] h-[18px]') + test.durationMin + ' phút</span>' +
+          '<span class="inline-flex items-center gap-1.5">' + PREP.icon('list', 'w-[18px] h-[18px]') +
+            (totalQ ? totalQ + ' câu hỏi' : 'đề đang biên soạn') + '</span>';
+
+        /* Các phần thi */
+        const skillIcon = name => {
+          const n = name.toLowerCase();
+          if (n.includes('listen')) return 'headphones';
+          if (n.includes('read')) return 'book';
+          if (n.includes('speak')) return 'mic';
+          return 'pen';
+        };
+        PREP.qs('#sections').innerHTML = test.sections.map(s =>
+          '<div class="flex items-center gap-4 py-3.5 border-b border-line last:border-0">' +
+            '<span class="w-10 h-10 rounded-xl bg-brand-soft text-brand-strong inline-flex items-center justify-center shrink-0">' + PREP.icon(skillIcon(s.name), 'w-5 h-5') + '</span>' +
+            '<span class="min-w-0 flex-1">' +
+              '<b class="block font-bold text-[15px]">' + PREP.esc(s.name) + '</b>' +
+              '<span class="block text-[13px] text-muted font-medium mt-0.5">' + PREP.esc(s.type) + '</span>' +
+            '</span>' +
+            '<span class="text-right shrink-0 text-[13.5px] font-bold">' + (s.items ? s.items + ' câu' : '—') +
+              '<span class="block text-muted font-semibold">' + s.minutes + ' phút</span>' +
+            '</span>' +
+          '</div>').join('');
+        PREP.qs('#t-total').textContent = totalQ
+          ? 'Tổng: ' + totalQ + ' câu, ' + test.durationMin + ' phút'
+          : 'Tổng: ' + test.durationMin + ' phút · câu hỏi đang được biên soạn';
+        PREP.qs('#t-scoring').innerHTML = PREP.icon('award', 'w-[18px] h-[18px]') + PREP.esc(test.scoring);
+
+        PREP.qs('#guide').innerHTML = test.guide.map(g =>
+          '<li class="flex gap-3 text-[15px] leading-relaxed">' +
+            '<span class="text-accent-strong mt-1 shrink-0">' + PREP.icon('check', 'w-[18px] h-[18px]') + '</span>' +
+            '<span>' + PREP.esc(g) + '</span>' +
+          '</li>').join('');
+
+        /* Thẻ hành động */
+        const ac = PREP.qs('#action-card');
+        if (unlocked) {
+          ac.innerHTML =
+            '<p class="flex items-center gap-2.5 font-extrabold"><span class="w-9 h-9 rounded-full bg-accent-soft text-accent-strong inline-flex items-center justify-center">' + PREP.icon('unlock', 'w-5 h-5') + '</span>Bạn đã mở khoá bài này</p>' +
+            '<p class="text-muted text-[14px] leading-relaxed mt-3">Trạng thái: <b class="text-ink">chưa bắt đầu</b>. Kết quả và tiến độ sẽ lưu tại đây sau mỗi lần luyện.</p>' +
+            '<button type="button" id="start" class="btn btn-primary btn-lg w-full mt-5">' + PREP.icon('play', 'w-5 h-5') + 'Bắt đầu làm bài</button>' +
+            '<button type="button" class="btn btn-ghost btn-md w-full mt-2.5 opacity-55 cursor-not-allowed" aria-disabled="true">Luyện theo từng phần <span class="badge badge-muted ms-1.5">sắp có</span></button>';
+          /* Seam engine: // TODO(backend/exam-engine) — thay overlay bằng điều hướng vào bài làm */
+          PREP.qs('#start').addEventListener('click', () => PREP.qs('#soon-modal').classList.add('show'));
+        } else {
+          ac.innerHTML =
+            '<p class="flex items-center gap-2.5 font-extrabold"><span class="w-9 h-9 rounded-full bg-brand-soft text-brand-strong inline-flex items-center justify-center">' + PREP.icon('lock', 'w-5 h-5') + '</span>Bài này đang khoá</p>' +
+            '<p class="text-muted text-[14px] leading-relaxed mt-3">Kích hoạt code của bài này hoặc gói ' + fam.name + ' để bắt đầu luyện.</p>' +
+            '<a href="/prep/nhap-code/?test=' + test.id + '" class="btn btn-accent btn-lg w-full mt-5">Mở khoá bằng code</a>' +
+            '<a href="/prep/mua-code/" class="btn btn-ghost btn-md w-full mt-2.5">Xem gói code</a>' +
+            '<button type="button" class="btn btn-primary btn-lg w-full mt-5 opacity-45" disabled>' + PREP.icon('play', 'w-5 h-5') + 'Bắt đầu làm bài</button>';
+        }
+
+        /* Modal sắp ra mắt */
+        const modal = PREP.qs('#soon-modal');
+        PREP.qsa('[data-close]', modal).forEach(b => b.addEventListener('click', () => modal.classList.remove('show')));
+        modal.addEventListener('click', e => { if (e.target === modal) modal.classList.remove('show'); });
+        document.addEventListener('keydown', e => { if (e.key === 'Escape') modal.classList.remove('show'); });
+        PREP.qs('#notify-me').addEventListener('click', () => {
+          modal.classList.remove('show');
+          PrepChrome.toast('Sẽ báo bạn qua email khi đề phát hành');
+          /* TODO(backend): POST /api/notify-me { testId } */
+        });
+      }
+    });
   }
 </script>
 </body>

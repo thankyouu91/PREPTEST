@@ -32,7 +32,21 @@
         </p>
       </section>
 
-      <div id="pkg-grid" class="grid md:grid-cols-2 xl:grid-cols-3 gap-5 mt-8 mb-4"></div>
+      <!-- Loading: chờ GET /api/catalog -->
+      <div id="pkg-skeleton" class="grid md:grid-cols-2 xl:grid-cols-3 gap-5 mt-8 mb-4" aria-hidden="true">
+        <div class="card p-6"><div class="skeleton h-5 w-2/5 mb-3"></div><div class="skeleton h-4 w-4/5 mb-5"></div><div class="skeleton h-8 w-1/2 mb-6"></div><div class="skeleton h-10 w-full rounded-full"></div></div>
+        <div class="card p-6"><div class="skeleton h-5 w-2/5 mb-3"></div><div class="skeleton h-4 w-4/5 mb-5"></div><div class="skeleton h-8 w-1/2 mb-6"></div><div class="skeleton h-10 w-full rounded-full"></div></div>
+        <div class="card p-6 hidden xl:block"><div class="skeleton h-5 w-2/5 mb-3"></div><div class="skeleton h-4 w-4/5 mb-5"></div><div class="skeleton h-8 w-1/2 mb-6"></div><div class="skeleton h-10 w-full rounded-full"></div></div>
+      </div>
+
+      <div id="pkg-grid" class="grid md:grid-cols-2 xl:grid-cols-3 gap-5 mt-8 mb-4 hidden"></div>
+
+      <!-- Empty: chưa mở bán gói nào -->
+      <div id="pkg-empty" hidden class="card p-10 mt-8 text-center">
+        <h3 class="font-extrabold text-lg tracking-tight">Chưa có gói code nào đang mở bán</h3>
+        <p class="text-muted text-[15px] mt-1.5">Liên hệ trung tâm của bạn để nhận code, hoặc quay lại sau nhé.</p>
+        <a href="/prep/nhap-code/" class="btn btn-soft btn-md mt-6">Tôi đã có code</a>
+      </div>
       <p class="text-[13px] text-muted/80 font-medium mb-6">Giá minh hoạ trong giai đoạn thử nghiệm. Thanh toán VNPay / MoMo nối sau.</p>
     </div>
   </main>
@@ -91,23 +105,35 @@
   if (PrepAuth.require()) {
     PrepChrome.mount({ title: 'Mua code' });
 
-    /* Render gói — TODO(backend): GET /api/packages */
-    const famChip = id => id ? '<span class="exam-chip" data-family="' + id + '">' + PREP.family(id).name + '</span>' : '';
-    PREP.qs('#pkg-grid').innerHTML = PREP.packages.map(p =>
-      '<article class="card p-6 flex flex-col relative ' + (p.featured ? 'ring-2 ring-[color:var(--color-accent)] shadow-soft-lg' : 'card-hover') + '">' +
-        (p.featured ? '<span class="badge badge-hl absolute -top-3 left-6">Phổ biến nhất</span>' : '') +
-        '<div class="flex items-center gap-2">' +
-          '<h3 class="font-extrabold text-[17px] tracking-tight">' + PREP.esc(p.name) + '</h3>' +
-          (p.familyId ? '<span class="ms-auto">' + famChip(p.familyId) + '</span>' : '') +
-        '</div>' +
-        '<p class="text-muted text-[14px] leading-relaxed mt-1.5">' + PREP.esc(p.desc) + '</p>' +
-        '<p class="mt-4"><b class="text-[26px] font-extrabold tracking-tight">' + PREP.vnd(p.price) + '</b></p>' +
-        '<ul class="grid gap-2 mt-4 mb-6 text-[13.5px] font-medium text-muted">' +
-          p.perks.map(x => '<li class="flex gap-2"><span class="text-accent-strong mt-0.5">' + PREP.icon('check', 'w-4 h-4') + '</span>' + PREP.esc(x) + '</li>').join('') +
-        '</ul>' +
-        '<button type="button" data-buy="' + p.id + '" class="btn ' + (p.featured ? 'btn-primary' : 'btn-soft') + ' btn-md w-full mt-auto">Mua gói này</button>' +
-      '</article>'
-    ).join('');
+    /* Render gói từ danh mục thật (GET /api/catalog) */
+    const famChip = id => {
+      const f = PREP.family(id);
+      return f ? '<span class="exam-chip" data-family="' + f.id + '">' + f.name + '</span>' : '';
+    };
+    PREP.loadCatalog().then(res => {
+      PREP.catalogWarning(res);
+      PREP.qs('#pkg-skeleton').classList.add('hidden');
+      if (!PREP.packages.length) {
+        PREP.qs('#pkg-empty').removeAttribute('hidden');
+        return;
+      }
+      PREP.qs('#pkg-grid').classList.remove('hidden');
+      PREP.qs('#pkg-grid').innerHTML = PREP.packages.map(p =>
+        '<article class="card p-6 flex flex-col relative ' + (p.featured ? 'ring-2 ring-[color:var(--color-accent)] shadow-soft-lg' : 'card-hover') + '">' +
+          (p.featured ? '<span class="badge badge-hl absolute -top-3 left-6">Phổ biến nhất</span>' : '') +
+          '<div class="flex items-center gap-2">' +
+            '<h3 class="font-extrabold text-[17px] tracking-tight">' + PREP.esc(p.name) + '</h3>' +
+            (p.familyId ? '<span class="ms-auto">' + famChip(p.familyId) + '</span>' : '') +
+          '</div>' +
+          '<p class="text-muted text-[14px] leading-relaxed mt-1.5">' + PREP.esc(p.desc) + '</p>' +
+          '<p class="mt-4"><b class="text-[26px] font-extrabold tracking-tight">' + PREP.vnd(p.price) + '</b></p>' +
+          '<ul class="grid gap-2 mt-4 mb-6 text-[13.5px] font-medium text-muted">' +
+            p.perks.map(x => '<li class="flex gap-2"><span class="text-accent-strong mt-0.5">' + PREP.icon('check', 'w-4 h-4') + '</span>' + PREP.esc(x) + '</li>').join('') +
+          '</ul>' +
+          '<button type="button" data-buy="' + p.id + '" class="btn ' + (p.featured ? 'btn-primary' : 'btn-soft') + ' btn-md w-full mt-auto">Mua gói này</button>' +
+        '</article>'
+      ).join('');
+    });
 
     /* ----- Modal mua (demo) ----- */
     const modal = PREP.qs('#buy-modal');
@@ -132,10 +158,15 @@
 
       /* Gói bài lẻ: chọn bài · Combo: chọn 2 kỳ thi */
       if (p.id === 'pk-single') {
-        pick.innerHTML = '<label class="label" for="bm-test">Chọn bài thi thử</label>' +
-          '<select id="bm-test" class="input">' +
-          PREP.tests.map(t => '<option value="' + t.id + '">' + PREP.family(t.familyId).name + ' · ' + PREP.esc(t.title) + '</option>').join('') +
-          '</select>';
+        pick.innerHTML = PREP.tests.length
+          ? '<label class="label" for="bm-test">Chọn bài thi thử</label>' +
+            '<select id="bm-test" class="input">' +
+            PREP.tests.map(t => {
+              const f = PREP.family(t.familyId);
+              return '<option value="' + t.id + '">' + (f ? f.name + ' · ' : '') + PREP.esc(t.title) + '</option>';
+            }).join('') +
+            '</select>'
+          : '<p class="text-[14px] text-muted">Thư viện chưa có bài thi thử nào để chọn.</p>';
       } else if (p.id === 'pk-combo') {
         pick.innerHTML = '<p class="label mb-2">Chọn 2 kỳ thi</p><div class="flex flex-wrap gap-2" id="bm-fams">' +
           PREP.families.map(f => '<button type="button" class="chip" data-family="' + f.id + '" data-pick-fam="' + f.id + '" aria-pressed="false">' + f.name + '</button>').join('') +
@@ -153,15 +184,20 @@
       modal.classList.add('show');
     }
 
-    PREP.qsa('[data-buy]').forEach(b => b.addEventListener('click', () => {
+    /* Uỷ quyền sự kiện: thẻ gói được dựng sau khi có danh mục */
+    PREP.qs('#pkg-grid').addEventListener('click', e => {
+      const b = e.target.closest('[data-buy]');
+      if (!b) return;
       openModal(PREP.packages.find(p => p.id === b.getAttribute('data-buy')));
-    }));
+    });
 
     /* Nhận mã demo — TODO(backend/payment): thay bằng redirect cổng thanh toán */
     PREP.qs('#bm-buy').addEventListener('click', () => {
       let unlocks = null;
       if (current.id === 'pk-single') {
-        unlocks = { testId: PREP.qs('#bm-test').value };
+        const sel = PREP.qs('#bm-test');
+        if (!sel) return;                        // thư viện trống: không có bài để gán
+        unlocks = { testId: sel.value };
       } else if (current.id === 'pk-combo') {
         const fams = PREP.qsa('[data-pick-fam][aria-pressed="true"]', pick).map(x => x.getAttribute('data-pick-fam'));
         if (fams.length !== 2) { PREP.qs('#bm-fam-err').classList.add('show'); return; }

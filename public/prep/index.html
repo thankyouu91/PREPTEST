@@ -240,9 +240,9 @@
 
     const s = PrepState.load();
     const user = s.user;
-    const mine = PrepState.unlockedTests();
     const codes = (s.myCodes || []).slice();
     const seen = s.seenTestIds || [];
+    let mine = [];                  // bài đã mở khoá — chỉ tính được sau khi có danh mục
 
     /* ---------- Lời chào ---------- */
     const h = new Date().getHours();
@@ -292,7 +292,7 @@
       }
       const t = mine.find(x => !seen.includes(x.id)) || mine[0];
       const fam = PREP.family(t.familyId);
-      const totalQ = t.sections.reduce((a, x) => a + x.items, 0);
+      const totalQ = PREP.itemCount(t);
       const isNew = !seen.includes(t.id);
       box.innerHTML =
         '<div class="card p-6 sm:p-7 relative overflow-hidden">' +
@@ -315,7 +315,7 @@
           '<p class="flex flex-wrap items-center gap-x-5 gap-y-2 text-[13.5px] font-semibold text-muted mt-4">' +
             '<span class="inline-flex items-center gap-1.5">' + PREP.icon('layers', 'w-4 h-4') + t.sections.length + ' phần</span>' +
             '<span class="inline-flex items-center gap-1.5">' + PREP.icon('clock', 'w-4 h-4') + t.durationMin + ' phút</span>' +
-            '<span class="inline-flex items-center gap-1.5">' + PREP.icon('list', 'w-4 h-4') + totalQ + ' câu</span>' +
+            (totalQ ? '<span class="inline-flex items-center gap-1.5">' + PREP.icon('list', 'w-4 h-4') + totalQ + ' câu</span>' : '') +
           '</p>' +
           '<div class="flex flex-wrap gap-2.5 mt-6">' +
             '<a href="/prep/bai-thi/' + t.id + '/" class="btn btn-primary btn-lg">' + PREP.icon('play', 'w-5 h-5') + 'Xem cấu trúc bài</a>' +
@@ -324,9 +324,13 @@
         '</div>';
     }
 
-    /* ---------- Tải nội dung chính (giả lập độ trễ API) ----------
-       TODO(backend): GET /api/me/dashboard */
-    setTimeout(() => {
+    /* ---------- Tải danh mục thật rồi dựng mọi phần phụ thuộc ----------
+       Danh mục: GET /api/catalog. Tiến độ cá nhân vẫn ở localStorage.
+       // TODO(backend): gộp thành GET /api/me/dashboard khi có API học viên */
+    PREP.loadCatalog().then(res => {
+      PREP.catalogWarning(res);
+      mine = PrepState.unlockedTests();
+
       PREP.qs('#focus-loading').classList.add('hidden');
       PREP.qs('#focus').removeAttribute('hidden');
       renderFocus();
@@ -348,124 +352,124 @@
       } else {
         PREP.qs('#mytests-empty').removeAttribute('hidden');
       }
-    }, 600);
 
-    /* ---------- Ring tiến độ ---------- */
-    const total = PREP.tests.length;
-    PREP.qs('#ring-num').textContent = mine.length + '/' + total;
-    const C = 282.7;
-    requestAnimationFrame(() => {
-      PREP.qs('#ring-main').setAttribute('stroke-dashoffset', String(C * (1 - (total ? mine.length / total : 0))));
-    });
-    if (mine.length) {
-      PREP.qs('#progress-note').textContent =
-        'Bạn đã sẵn sàng với ' + mine.length + ' trên ' + total + ' bài hiện có. Đề sẽ mở làm ngay khi phát hành.';
-    }
+      /* ---------- Ring tiến độ ---------- */
+      const total = PREP.tests.length;
+      PREP.qs('#ring-num').textContent = mine.length + '/' + total;
+      const C = 282.7;
+      requestAnimationFrame(() => {
+        PREP.qs('#ring-main').setAttribute('stroke-dashoffset', String(C * (1 - (total ? mine.length / total : 0))));
+      });
+      if (mine.length) {
+        PREP.qs('#progress-note').textContent =
+          'Bạn đã sẵn sàng với ' + mine.length + ' trên ' + total + ' bài hiện có. Đề sẽ mở làm ngay khi phát hành.';
+      }
 
-    /* ---------- Độ phủ kỹ năng ---------- */
-    const SKILLS = [['listening','Nghe','headphones'],['reading','Đọc','book'],['writing','Viết','pen'],['speaking','Nói','mic']];
-    PREP.qs('#skill-meters').innerHTML = SKILLS.map(([k, vi, ic]) => {
-      const n = mine.filter(t => t.skills.includes(k)).length;
-      const max = PREP.tests.filter(t => t.skills.includes(k)).length || 1;
-      return '<div>' +
-        '<div class="flex items-center justify-between text-[13px] font-semibold mb-1.5">' +
-          '<span class="inline-flex items-center gap-2 text-muted">' + PREP.icon(ic, 'w-4 h-4') + vi + '</span>' +
-          '<span>' + n + ' bài</span>' +
-        '</div>' +
-        '<div class="meter"><i data-w="' + Math.round(n / max * 100) + '"></i></div>' +
-      '</div>';
-    }).join('');
+      /* ---------- Độ phủ kỹ năng ---------- */
+      const SKILLS = [['listening','Nghe','headphones'],['reading','Đọc','book'],['writing','Viết','pen'],['speaking','Nói','mic']];
+      PREP.qs('#skill-meters').innerHTML = SKILLS.map(([k, vi, ic]) => {
+        const n = mine.filter(t => t.skills.includes(k)).length;
+        const max = PREP.tests.filter(t => t.skills.includes(k)).length || 1;
+        return '<div>' +
+          '<div class="flex items-center justify-between text-[13px] font-semibold mb-1.5">' +
+            '<span class="inline-flex items-center gap-2 text-muted">' + PREP.icon(ic, 'w-4 h-4') + vi + '</span>' +
+            '<span>' + n + ' bài</span>' +
+          '</div>' +
+          '<div class="meter"><i data-w="' + Math.round(n / max * 100) + '"></i></div>' +
+        '</div>';
+      }).join('');
 
-    /* ---------- Bước tiếp theo (checklist) ---------- */
-    const steps = [
-      { done: true, label: 'Tạo tài khoản', href: null },
-      { done: !!user.verified, label: 'Xác thực email', href: '/prep/xac-thuc-email/' },
-      { done: (user.interests || []).length > 0, label: 'Chọn kỳ thi quan tâm', href: '/prep/tai-khoan/' },
-      { done: codes.length > 0, label: 'Kích hoạt code đầu tiên', href: '/prep/nhap-code/' },
-      { done: seen.length > 0, label: 'Xem cấu trúc một bài thi', href: '/prep/thu-vien/' }
-    ];
-    const doneN = steps.filter(x => x.done).length;
-    PREP.qs('#steps-count').textContent = doneN + '/' + steps.length;
-    PREP.qs('#steps-bar').setAttribute('data-w', Math.round(doneN / steps.length * 100));
-    PREP.qs('#steps-list').innerHTML = steps.map(x => {
-      const icon = x.done
-        ? '<span class="w-6 h-6 rounded-full shrink-0 inline-flex items-center justify-center badge-ok">' + PREP.icon('check', 'w-[14px] h-[14px]') + '</span>'
-        : '<span class="w-6 h-6 rounded-full border-2 border-line shrink-0"></span>';
-      const text = '<span class="text-[14.5px] font-semibold ' + (x.done ? 'text-muted line-through' : '') + '">' + x.label + '</span>';
-      const row = icon + text + (x.done || !x.href ? '' :
-        '<span class="ms-auto text-brand-strong shrink-0">' + PREP.icon('arrowRight', 'w-[18px] h-[18px]') + '</span>');
-      return x.done || !x.href
-        ? '<li class="flex items-center gap-3 py-2">' + row + '</li>'
-        : '<li><a href="' + x.href + '" class="flex items-center gap-3 py-2 rounded-lg transition hover:bg-brand-soft px-1.5 -mx-1.5">' + row + '</a></li>';
-    }).join('');
+      /* ---------- Bước tiếp theo (checklist) ---------- */
+      const steps = [
+        { done: true, label: 'Tạo tài khoản', href: null },
+        { done: !!user.verified, label: 'Xác thực email', href: '/prep/xac-thuc-email/' },
+        { done: (user.interests || []).length > 0, label: 'Chọn kỳ thi quan tâm', href: '/prep/tai-khoan/' },
+        { done: codes.length > 0, label: 'Kích hoạt code đầu tiên', href: '/prep/nhap-code/' },
+        { done: seen.length > 0, label: 'Xem cấu trúc một bài thi', href: '/prep/thu-vien/' }
+      ];
+      const doneN = steps.filter(x => x.done).length;
+      PREP.qs('#steps-count').textContent = doneN + '/' + steps.length;
+      PREP.qs('#steps-bar').setAttribute('data-w', Math.round(doneN / steps.length * 100));
+      PREP.qs('#steps-list').innerHTML = steps.map(x => {
+        const icon = x.done
+          ? '<span class="w-6 h-6 rounded-full shrink-0 inline-flex items-center justify-center badge-ok">' + PREP.icon('check', 'w-[14px] h-[14px]') + '</span>'
+          : '<span class="w-6 h-6 rounded-full border-2 border-line shrink-0"></span>';
+        const text = '<span class="text-[14.5px] font-semibold ' + (x.done ? 'text-muted line-through' : '') + '">' + x.label + '</span>';
+        const row = icon + text + (x.done || !x.href ? '' :
+          '<span class="ms-auto text-brand-strong shrink-0">' + PREP.icon('arrowRight', 'w-[18px] h-[18px]') + '</span>');
+        return x.done || !x.href
+          ? '<li class="flex items-center gap-3 py-2">' + row + '</li>'
+          : '<li><a href="' + x.href + '" class="flex items-center gap-3 py-2 rounded-lg transition hover:bg-brand-soft px-1.5 -mx-1.5">' + row + '</a></li>';
+      }).join('');
 
-    /* ---------- Code đang hoạt động ---------- */
-    const activeCodes = codes
-      .filter(c => PREP.daysUntil(c.expiresAt) >= 0)
-      .sort((a, b) => PREP.daysUntil(a.expiresAt) - PREP.daysUntil(b.expiresAt));
-    PREP.qs('#codes-box').innerHTML = activeCodes.length
-      ? activeCodes.slice(0, 3).map(c => {
-          const left = PREP.daysUntil(c.expiresAt);
-          const warn = left <= 30;
-          return '<div class="flex items-center gap-3 py-2.5 border-b border-line last:border-0">' +
-            '<span class="w-9 h-9 rounded-xl bg-brand-soft text-brand-strong shrink-0 inline-flex items-center justify-center">' + PREP.icon('ticket', 'w-[18px] h-[18px]') + '</span>' +
-            '<span class="min-w-0 flex-1">' +
-              '<b class="block text-[14px] font-bold truncate">' + PREP.esc(PrepState.unlockLabel(c.unlocks)) + '</b>' +
-              '<span class="block text-[12.5px] text-muted font-medium">' + PREP.maskCode(c.code) + '</span>' +
-            '</span>' +
-            '<span class="badge shrink-0 ' + (warn ? 'badge-hl' : 'badge-muted') + '">còn ' + left + ' ngày</span>' +
-          '</div>';
-        }).join('')
-      : '<p class="text-[14px] text-muted leading-relaxed">Chưa có code nào đang hoạt động.</p>' +
-        '<a href="/prep/nhap-code/" class="btn btn-soft btn-md w-full mt-4">Nhập code</a>';
+      /* ---------- Code đang hoạt động ---------- */
+      const activeCodes = codes
+        .filter(c => PREP.daysUntil(c.expiresAt) >= 0)
+        .sort((a, b) => PREP.daysUntil(a.expiresAt) - PREP.daysUntil(b.expiresAt));
+      PREP.qs('#codes-box').innerHTML = activeCodes.length
+        ? activeCodes.slice(0, 3).map(c => {
+            const left = PREP.daysUntil(c.expiresAt);
+            const warn = left <= 30;
+            return '<div class="flex items-center gap-3 py-2.5 border-b border-line last:border-0">' +
+              '<span class="w-9 h-9 rounded-xl bg-brand-soft text-brand-strong shrink-0 inline-flex items-center justify-center">' + PREP.icon('ticket', 'w-[18px] h-[18px]') + '</span>' +
+              '<span class="min-w-0 flex-1">' +
+                '<b class="block text-[14px] font-bold truncate">' + PREP.esc(PrepState.unlockLabel(c.unlocks)) + '</b>' +
+                '<span class="block text-[12.5px] text-muted font-medium">' + PREP.maskCode(c.code) + '</span>' +
+              '</span>' +
+              '<span class="badge shrink-0 ' + (warn ? 'badge-hl' : 'badge-muted') + '">còn ' + left + ' ngày</span>' +
+            '</div>';
+          }).join('')
+        : '<p class="text-[14px] text-muted leading-relaxed">Chưa có code nào đang hoạt động.</p>' +
+          '<a href="/prep/nhap-code/" class="btn btn-soft btn-md w-full mt-4">Nhập code</a>';
 
-    /* ---------- Hoạt động gần đây (từ code + đơn có thật) ---------- */
-    const events = []
-      .concat(codes.map(c => ({
-        at: c.redeemedAt, icon: 'unlock',
-        text: 'Kích hoạt code, mở khoá ' + PrepState.unlockLabel(c.unlocks)
-      })))
-      .concat((s.orders || []).map(o => ({
-        at: o.at, icon: 'receipt', text: 'Mua ' + o.name + ' · ' + PREP.vnd(o.amount)
-      })))
-      .sort((a, b) => new Date(b.at) - new Date(a.at))
-      .slice(0, 4);
-    PREP.qs('#activity-box').innerHTML = events.length
-      ? '<ul class="grid gap-3.5">' + events.map(e =>
-          '<li class="flex gap-3">' +
-            '<span class="w-8 h-8 rounded-full bg-accent-soft text-accent-strong shrink-0 inline-flex items-center justify-center">' + PREP.icon(e.icon, 'w-4 h-4') + '</span>' +
-            '<span class="min-w-0">' +
-              '<span class="block text-[14px] font-semibold leading-snug">' + PREP.esc(e.text) + '</span>' +
-              '<span class="block text-[12.5px] text-muted font-medium mt-0.5">' + PREP.timeAgo(e.at) + '</span>' +
-            '</span>' +
-          '</li>').join('') + '</ul>'
-      : '<p class="text-[14px] text-muted leading-relaxed">Chưa có hoạt động nào. Kích hoạt code là mốc đầu tiên của bạn.</p>';
+      /* ---------- Hoạt động gần đây (từ code + đơn có thật) ---------- */
+      const events = []
+        .concat(codes.map(c => ({
+          at: c.redeemedAt, icon: 'unlock',
+          text: 'Kích hoạt code, mở khoá ' + PrepState.unlockLabel(c.unlocks)
+        })))
+        .concat((s.orders || []).map(o => ({
+          at: o.at, icon: 'receipt', text: 'Mua ' + o.name + ' · ' + PREP.vnd(o.amount)
+        })))
+        .sort((a, b) => new Date(b.at) - new Date(a.at))
+        .slice(0, 4);
+      PREP.qs('#activity-box').innerHTML = events.length
+        ? '<ul class="grid gap-3.5">' + events.map(e =>
+            '<li class="flex gap-3">' +
+              '<span class="w-8 h-8 rounded-full bg-accent-soft text-accent-strong shrink-0 inline-flex items-center justify-center">' + PREP.icon(e.icon, 'w-4 h-4') + '</span>' +
+              '<span class="min-w-0">' +
+                '<span class="block text-[14px] font-semibold leading-snug">' + PREP.esc(e.text) + '</span>' +
+                '<span class="block text-[12.5px] text-muted font-medium mt-0.5">' + PREP.timeAgo(e.at) + '</span>' +
+              '</span>' +
+            '</li>').join('') + '</ul>'
+        : '<p class="text-[14px] text-muted leading-relaxed">Chưa có hoạt động nào. Kích hoạt code là mốc đầu tiên của bạn.</p>';
 
-    /* ---------- Khám phá theo kỳ thi (ưu tiên kỳ thi bạn quan tâm) ---------- */
-    const interests = user.interests || [];
-    const fams = PREP.families.slice().sort((a, b) =>
-      (interests.includes(b.id) ? 1 : 0) - (interests.includes(a.id) ? 1 : 0));
-    PREP.qs('#explore-note').textContent = interests.length ? 'Kỳ thi bạn quan tâm xếp trước' : '';
-    PREP.qs('#family-grid').innerHTML = fams.map(f => {
-      const n = PREP.testsOf(f.id).length;
-      const openN = PREP.testsOf(f.id).filter(t => PrepState.isUnlocked(t)).length;
-      return '<a href="/prep/thu-vien/?family=' + f.id + '" class="card card-hover p-5 group">' +
-        '<div class="flex items-center gap-2">' +
-          '<span class="exam-chip" data-family="' + f.id + '">' + f.name + '</span>' +
-          (interests.includes(f.id) ? '<span class="badge badge-ok">Đang theo</span>' : '') +
-        '</div>' +
-        '<p class="text-[13.5px] text-muted leading-relaxed mt-3 min-h-[40px]">' + PREP.esc(f.format) + '</p>' +
-        '<p class="flex items-center justify-between text-sm font-bold mt-3">' +
-          (n ? '<span>' + (openN ? openN + '/' + n + ' bài đã mở' : n + ' bài thi thử') + '</span>'
-             : '<span class="badge badge-hl">Sắp có</span>') +
-          '<span class="text-accent-strong opacity-0 group-hover:opacity-100 transition">' + PREP.icon('arrowRight', 'w-5 h-5') + '</span>' +
-        '</p>' +
-      '</a>';
-    }).join('');
+      /* ---------- Khám phá theo kỳ thi (ưu tiên kỳ thi bạn quan tâm) ---------- */
+      const interests = user.interests || [];
+      const fams = PREP.families.slice().sort((a, b) =>
+        (interests.includes(b.id) ? 1 : 0) - (interests.includes(a.id) ? 1 : 0));
+      PREP.qs('#explore-note').textContent = interests.length ? 'Kỳ thi bạn quan tâm xếp trước' : '';
+      PREP.qs('#family-grid').innerHTML = fams.map(f => {
+        const n = PREP.testsOf(f.id).length;
+        const openN = PREP.testsOf(f.id).filter(t => PrepState.isUnlocked(t)).length;
+        return '<a href="/prep/thu-vien/?family=' + f.id + '" class="card card-hover p-5 group">' +
+          '<div class="flex items-center gap-2">' +
+            '<span class="exam-chip" data-family="' + f.id + '">' + f.name + '</span>' +
+            (interests.includes(f.id) ? '<span class="badge badge-ok">Đang theo</span>' : '') +
+          '</div>' +
+          '<p class="text-[13.5px] text-muted leading-relaxed mt-3 min-h-[40px]">' + PREP.esc(f.format) + '</p>' +
+          '<p class="flex items-center justify-between text-sm font-bold mt-3">' +
+            (n ? '<span>' + (openN ? openN + '/' + n + ' bài đã mở' : n + ' bài thi thử') + '</span>'
+               : '<span class="badge badge-hl">Sắp có</span>') +
+            '<span class="text-accent-strong opacity-0 group-hover:opacity-100 transition">' + PREP.icon('arrowRight', 'w-5 h-5') + '</span>' +
+          '</p>' +
+        '</a>';
+      }).join('');
 
-    /* Chạy hoạt ảnh cho mọi thanh đo sau khi render */
-    PREP.qsa('.meter > i[data-w]').forEach(el => {
-      requestAnimationFrame(() => el.style.setProperty('--w', el.getAttribute('data-w') + '%'));
+      /* Chạy hoạt ảnh cho mọi thanh đo sau khi render */
+      PREP.qsa('.meter > i[data-w]').forEach(el => {
+        requestAnimationFrame(() => el.style.setProperty('--w', el.getAttribute('data-w') + '%'));
+      });
     });
   }
 </script>

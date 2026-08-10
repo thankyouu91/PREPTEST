@@ -91,13 +91,17 @@
     const errBox = PREP.qs('#code-err'), errText = PREP.qs('#code-err-text');
     const params = new URLSearchParams(location.search);
 
-    /* Ngữ cảnh: đến từ nút "Mở khoá bằng code" của một bài cụ thể */
-    const forTest = params.get('test') && PREP.test(params.get('test'));
-    if (forTest) {
-      const ctx = PREP.qs('#test-context');
-      ctx.textContent = 'Bạn đang mở khoá cho bài: ' + forTest.title;
-      ctx.removeAttribute('hidden');
-    }
+    /* Ngữ cảnh: đến từ nút "Mở khoá bằng code" của một bài cụ thể.
+       Tên bài lấy từ danh mục thật nên phải đợi GET /api/catalog. */
+    PREP.loadCatalog().then(res => {
+      PREP.catalogWarning(res);
+      const forTest = params.get('test') && PREP.test(params.get('test'));
+      if (forTest) {
+        const ctx = PREP.qs('#test-context');
+        ctx.textContent = 'Bạn đang mở khoá cho bài: ' + forTest.title;
+        ctx.removeAttribute('hidden');
+      }
+    });
 
     /* Auto-format XXXX-XXXX-XXXX khi gõ */
     input.addEventListener('input', () => {
@@ -149,7 +153,7 @@
           (res.unlocks.bundle && res.unlocks.bundle.includes(t.familyId)));
         PREP.qs('#ok-tests').innerHTML = opened.map(t =>
           '<a href="/prep/bai-thi/' + t.id + '/" class="card card-hover px-4 py-3.5 flex items-center gap-3">' +
-            '<span class="exam-chip shrink-0" data-family="' + t.familyId + '">' + PREP.family(t.familyId).name + '</span>' +
+            '<span class="exam-chip shrink-0" data-family="' + t.familyId + '">' + ((PREP.family(t.familyId) || {}).name || t.familyId) + '</span>' +
             '<span class="font-bold text-[14.5px] truncate">' + PREP.esc(t.title) + '</span>' +
             (t.comingSoon ? '<span class="badge badge-hl ms-auto shrink-0">Sắp có</span>'
                           : '<span class="text-accent-strong ms-auto shrink-0">' + PREP.icon('arrowRight', 'w-5 h-5') + '</span>') +
