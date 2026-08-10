@@ -47,7 +47,7 @@ nếu chưa có tài khoản nào và cũng không có `ADMIN_PASSWORD`.
 
 | Màn | Đường dẫn | Nội dung |
 |---|---|---|
-| Báo cáo | `/admin/` | Số học viên, code, đề, doanh thu; biểu đồ 14 ngày; bảng theo kỳ thi; cảnh báo thiếu câu hỏi; thao tác gần đây |
+| Tổng quan | `/admin/` | **Việc cần làm** xếp theo mức khẩn; 4 chỉ số so với kỳ liền trước; phễu học viên; biểu đồ 7/30/90 ngày; cung–cầu theo kỳ thi; doanh thu theo gói; thao tác gần đây |
 | Đề thi | `/admin/de-thi/` | Danh sách, lọc theo kỳ thi và trạng thái, tạo thủ công, **sinh đề tự động** |
 | Format đề | `/admin/format/` | 11 format chuẩn của 6 kỳ thi, phân tích độ phủ ngân hàng, **sinh đề một chạm** |
 | Xây đề | `/admin/de-thi/:id/` | Sửa thông tin, thêm/xoá phần, chọn câu từ ngân hàng, bốc lại cả phần, phát hành |
@@ -104,7 +104,8 @@ thiếu bao nhiêu — không để admin bấm rồi mới báo lỗi.
 
 Công khai: `GET /api/catalog` (kỳ thi, đề đã phát hành, gói bán — cùng shape với mock phía học viên).
 
-Quản trị (đều cần phiên + CSRF): `/api/admin/reports`, `/api/admin/tests` (+ `/generate`,
+Quản trị (đều cần phiên + CSRF): `/api/admin/reports` (nhận `?days=7|30|90`, trả kèm
+`kpi` so sánh kỳ trước, `funnel`, `todo`, `revenueByPackage`), `/api/admin/tests` (+ `/generate`,
 `/:id/status`, `/:id/sections`), `/api/admin/sections/:id` (+ `/items`, `/reshuffle`),
 `/api/admin/questions` (+ `/bulk`, `/availability`, `/:id/status`), `/api/admin/users`,
 `/api/admin/codes` (+ `/export`, `/:id/revoke`), `/api/admin/batches`, `/api/admin/settings`,

@@ -96,8 +96,60 @@ router.get('/admin/me', (req, res) => {
 /* Từ đây trở xuống đều cần đăng nhập + CSRF */
 router.use('/admin', A.requireAdmin, A.csrfGuard);
 
-/* ============================ BÁO CÁO ============================ */
+/* ============================ BÁO CÁO ============================
+   Dashboard quản lý tổng. Ngoài số liệu thô còn trả về ba thứ mà người quản lý
+   thật sự cần để ra quyết định:
+   - kpi:    số của kỳ này ĐẶT CẠNH kỳ trước cùng độ dài, kèm % thay đổi. Một
+             con số đứng một mình không nói lên điều gì.
+   - funnel: đăng ký → xác thực → kích hoạt code → còn hoạt động, để thấy rơi
+             rụng ở khâu nào.
+   - todo:   danh sách việc cần làm, xếp theo mức khẩn. Đây là phần biến trang
+             báo cáo thành trang điều hành.                                    */
 router.get('/admin/reports', (req, res) => {
+  // Cửa sổ thời gian: chỉ nhận 7, 30, 90 để không ai gõ ?days=100000 làm nặng DB
+  const days = [7, 30, 90].includes(int(req.query.days, 30)) ? int(req.query.days, 30) : 30;
+  const from = daysAgoISO(days);
+  const prevFrom = daysAgoISO(days * 2);
+  const hnay = nowISO().slice(0, 10);
+  const sau7ngay = new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10);
+
+  /* Một chỉ số = giá trị kỳ này + kỳ trước + phần trăm thay đổi.
+     delta = null khi kỳ trước bằng 0, vì "tăng vô hạn" không phải thông tin. */
+  const kpiOf = (sql, ...args) => {
+    const value = q.val(sql, from, nowISO(), ...args) || 0;
+    const prev = q.val(sql, prevFrom, from, ...args) || 0;
+    return { value, prev, delta: prev ? Math.round(((value - prev) / prev) * 100) : null };
+  };
+
+  const kpi = {
+    users: kpiOf('SELECT COUNT(*) c FROM users WHERE created_at >= ? AND created_at < ?'),
+    redeems: kpiOf('SELECT COUNT(*) c FROM codes WHERE redeemed_at >= ? AND redeemed_at < ?'),
+    revenue: kpiOf("SELECT COALESCE(SUM(amount),0) s FROM orders WHERE status='paid' AND created_at >= ? AND created_at < ?"),
+    orders: kpiOf("SELECT COUNT(*) c FROM orders WHERE status='paid' AND created_at >= ? AND created_at < ?")
+  };
+
+  /* Phễu học viên — trạng thái tích luỹ, không giới hạn theo kỳ. Tỷ lệ tính
+     trên bước đầu tiên để thấy tổng hao hụt, không phải trên bước liền trước.
+
+     Mỗi bước phải là TẬP CON của bước trước, nếu không thì cái cột lại phình ra
+     và hình phễu mất nghĩa. Vì thế bước cuối là "đã kích hoạt code VÀ còn đăng
+     nhập gần đây" chứ không phải mọi người còn đăng nhập — người chưa có code
+     vẫn đăng nhập được nên con số đó không nằm dưới bước ba. */
+  const fTong = q.val('SELECT COUNT(*) c FROM users');
+  const fXacThuc = q.val('SELECT COUNT(*) c FROM users WHERE verified=1');
+  const fKichHoat = q.val(
+    "SELECT COUNT(DISTINCT c.user_id) c FROM codes c JOIN users u ON u.id = c.user_id" +
+    " WHERE c.status='redeemed' AND u.verified=1");
+  const fHoatDong = q.val(
+    "SELECT COUNT(DISTINCT c.user_id) c FROM codes c JOIN users u ON u.id = c.user_id" +
+    " WHERE c.status='redeemed' AND u.verified=1 AND u.last_login_at >= ?", daysAgoISO(30));
+  const funnel = [
+    { key: 'registered', label: 'Đã đăng ký', value: fTong },
+    { key: 'verified', label: 'Đã xác thực email', value: fXacThuc },
+    { key: 'redeemed', label: 'Đã kích hoạt code', value: fKichHoat },
+    { key: 'active', label: 'Còn học trong 30 ngày', value: fHoatDong }
+  ].map(s => ({ ...s, rate: fTong ? Math.round((s.value / fTong) * 100) : 0 }));
+
   const d7 = daysAgoISO(7), d30 = daysAgoISO(30);
 
   const users = {
@@ -128,9 +180,9 @@ router.get('/admin/reports', (req, res) => {
     orders30: q.val("SELECT COUNT(*) c FROM orders WHERE created_at >= ?", d30)
   };
 
-  // Chuỗi 14 ngày: user mới và code kích hoạt
+  // Chuỗi theo ngày trong cửa sổ đang chọn: user mới, code kích hoạt, doanh thu
   const series = [];
-  for (let i = 13; i >= 0; i--) {
+  for (let i = days - 1; i >= 0; i--) {
     const day = new Date(Date.now() - i * 86400000).toISOString().slice(0, 10);
     series.push({
       day,
@@ -143,6 +195,7 @@ router.get('/admin/reports', (req, res) => {
   const byFamily = q.all(`
     SELECT f.id, f.name,
            (SELECT COUNT(*) FROM tests t WHERE t.family_id=f.id) tests,
+           (SELECT COUNT(*) FROM tests t WHERE t.family_id=f.id AND t.status='published') published,
            (SELECT COUNT(*) FROM questions qq WHERE qq.family_id=f.id AND qq.status='active') questions,
            (SELECT COUNT(*) FROM codes c WHERE c.unlock_type='family' AND c.unlock_ref=f.id AND c.status='redeemed') unlocks,
            (SELECT COUNT(*) FROM users u WHERE u.interests_json LIKE '%"' || f.id || '"%') interested
@@ -163,7 +216,89 @@ router.get('/admin/reports', (req, res) => {
   const recent = q.all(
     'SELECT admin_name, action, target, at FROM audit ORDER BY id DESC LIMIT 8');
 
-  res.json({ users, codes, content, revenue, series, byFamily, bankGaps, recent });
+  /* Doanh thu theo gói bán trong kỳ. Gộp theo package_id; đơn không gắn gói
+     (cấp tay) thì gộp theo tên đơn để vẫn nhìn thấy được. */
+  const revenueByPackage = q.all(`
+    SELECT COALESCE(p.name, o.name) name,
+           COUNT(*) orders,
+           COALESCE(SUM(o.amount),0) amount
+      FROM orders o LEFT JOIN packages p ON p.id = o.package_id
+     WHERE o.status='paid' AND o.created_at >= ?
+     GROUP BY COALESCE(o.package_id, o.name)
+     ORDER BY amount DESC LIMIT 8`, from);
+
+  /* ---- Việc cần làm ----
+     Xếp theo mức khẩn: cao là chuyện đang mất tiền hoặc mất học viên ngay,
+     vừa là chuyện sẽ thành vấn đề nếu để lâu, thấp là dọn dẹp. Mỗi mục kèm
+     đường dẫn tới đúng màn xử lý để không phải tự đi tìm. */
+  const todo = [];
+
+  const thieuDe = byFamily.filter(f => f.interested > 0 && f.published === 0);
+  if (thieuDe.length) {
+    todo.push({
+      sev: 'cao',
+      title: 'Có người quan tâm nhưng chưa có đề để bán',
+      detail: thieuDe.map(f => f.name + ' (' + f.interested + ' quan tâm)').join(' · '),
+      href: '/admin/format/', cta: 'Sinh đề', count: thieuDe.length
+    });
+  }
+
+  const hetHan = q.val(
+    "SELECT COUNT(*) c FROM codes WHERE status='unused' AND expires_at IS NOT NULL AND expires_at >= ? AND expires_at <= ?",
+    hnay, sau7ngay);
+  if (hetHan) {
+    todo.push({
+      sev: 'cao',
+      title: 'Code sắp hết hạn trong 7 ngày',
+      detail: hetHan + ' code chưa ai dùng sẽ hết hạn, nên gia hạn hoặc cấp lại.',
+      href: '/admin/code/', cta: 'Xem code', count: hetHan
+    });
+  }
+
+  if (content.draft) {
+    todo.push({
+      sev: 'vua',
+      title: 'Đề nháp chưa phát hành',
+      detail: content.draft + ' đề đã dựng nhưng học viên chưa thấy được.',
+      href: '/admin/de-thi/', cta: 'Xem đề', count: content.draft
+    });
+  }
+
+  if (bankGaps.length) {
+    const thieuTong = bankGaps.reduce((a, g) => a + (g.need - g.have), 0);
+    todo.push({
+      sev: 'vua',
+      title: 'Ngân hàng câu hỏi chưa đủ',
+      detail: bankGaps.length + ' chỗ còn thiếu, tổng ' + thieuTong + ' câu.',
+      href: '/admin/ngan-hang/', cta: 'Bổ sung', count: bankGaps.length
+    });
+  }
+
+  const treoXacThuc = q.val(
+    'SELECT COUNT(*) c FROM users WHERE verified=0 AND created_at < ?', d7);
+  if (treoXacThuc) {
+    todo.push({
+      sev: 'thap',
+      title: 'Học viên đăng ký nhưng chưa xác thực email',
+      detail: treoXacThuc + ' tài khoản quá 7 ngày vẫn chưa xác thực.',
+      href: '/admin/hoc-vien/', cta: 'Xem học viên', count: treoXacThuc
+    });
+  }
+
+  if (users.locked) {
+    todo.push({
+      sev: 'thap',
+      title: 'Tài khoản đang bị khoá',
+      detail: users.locked + ' tài khoản không đăng nhập được.',
+      href: '/admin/hoc-vien/', cta: 'Xem học viên', count: users.locked
+    });
+  }
+
+  res.json({
+    period: { days, from, prevFrom },
+    kpi, funnel, todo, revenueByPackage,
+    users, codes, content, revenue, series, byFamily, bankGaps, recent
+  });
 });
 
 /* ====================== NGÂN HÀNG CÂU HỎI ====================== */

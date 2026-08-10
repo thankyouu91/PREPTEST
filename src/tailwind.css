@@ -248,6 +248,19 @@
   .text-hl-ink { color: var(--color-hl-ink); }
   .dark .text-hl-ink { color: var(--color-hl); }
 
+  /* Thanh phễu ở dashboard quản trị. Bề rộng do JS đặt qua biến --w bằng
+     CSSOM (element.style.setProperty) chứ không phải thuộc tính style="" trong
+     HTML — CSP chỉ chặn cái sau. */
+  .funnel-bar { width: var(--w, 0%); transition: width .45s ease; }
+
+  /* Mức thay đổi so với kỳ trước */
+  .delta { @apply inline-flex items-center gap-1 text-[12.5px] font-extrabold; }
+  .delta-tang { color: color-mix(in srgb, var(--color-success) 78%, black); }
+  .dark .delta-tang { color: color-mix(in srgb, var(--color-success) 62%, white); }
+  .delta-giam { color: color-mix(in srgb, var(--color-danger) 74%, black); }
+  .dark .delta-giam { color: color-mix(in srgb, var(--color-danger) 60%, white); }
+  .delta-khong { @apply text-muted; }
+
   /* Tint đỏ và xanh cho khối ví dụ đúng / sai */
   .bg-danger-soft { background: color-mix(in srgb, var(--color-danger) 8%, transparent); }
   .border-danger-line { border-color: color-mix(in srgb, var(--color-danger) 30%, transparent); }

@@ -74,8 +74,70 @@ const run = async () => {
   const rep = r.data;
   check('Báo cáo trả đủ nhóm số liệu',
     rep && rep.users && rep.codes && rep.content && rep.revenue &&
-    Array.isArray(rep.series) && rep.series.length === 14 && Array.isArray(rep.byFamily));
+    Array.isArray(rep.series) && Array.isArray(rep.byFamily));
   check('Báo cáo đếm được học viên', rep.users.total > 0, 'total ' + (rep.users && rep.users.total));
+
+  /* 5b. Dashboard quản lý tổng: cửa sổ thời gian, so sánh kỳ, phễu, việc cần làm */
+  check('Mặc định là kỳ 30 ngày',
+    rep.period && rep.period.days === 30 && rep.series.length === 30,
+    'days ' + (rep.period && rep.period.days) + ', series ' + rep.series.length);
+
+  for (const d of [7, 30, 90]) {
+    r = await call('GET', '/api/admin/reports?days=' + d);
+    check('Kỳ ' + d + ' ngày trả đúng ' + d + ' điểm dữ liệu',
+      r.data.period.days === d && r.data.series.length === d,
+      'series ' + r.data.series.length);
+  }
+
+  /* Chỉ nhận 7, 30, 90 — tham số lạ phải rơi về mặc định chứ không dựng
+     chuỗi 100000 ngày làm nghẽn truy vấn */
+  r = await call('GET', '/api/admin/reports?days=100000');
+  check('Cửa sổ thời gian lạ rơi về mặc định 30 ngày',
+    r.data.period.days === 30 && r.data.series.length === 30, 'days ' + r.data.period.days);
+  r = await call('GET', '/api/admin/reports?days=abc');
+  check('Cửa sổ thời gian không phải số cũng rơi về mặc định', r.data.period.days === 30);
+
+  const rep30 = (await call('GET', '/api/admin/reports?days=30')).data;
+
+  const kpiKeys = ['users', 'redeems', 'revenue', 'orders'];
+  check('Mỗi chỉ số có giá trị kỳ này, kỳ trước và mức thay đổi',
+    kpiKeys.every(k => rep30.kpi[k] && typeof rep30.kpi[k].value === 'number' &&
+      typeof rep30.kpi[k].prev === 'number' &&
+      (rep30.kpi[k].delta === null || typeof rep30.kpi[k].delta === 'number')),
+    JSON.stringify(rep30.kpi));
+  check('Kỳ trước bằng 0 thì không bịa ra phần trăm tăng',
+    kpiKeys.every(k => rep30.kpi[k].prev !== 0 || rep30.kpi[k].delta === null));
+
+  /* Phễu chỉ có nghĩa khi mỗi bước là tập con của bước trước. Bước nào phình
+     to hơn bước trên là định nghĩa sai, không phải dữ liệu lạ. */
+  check('Phễu có đủ 4 bước và mỗi bước đều có nhãn tiếng Việt',
+    Array.isArray(rep30.funnel) && rep30.funnel.length === 4 &&
+    rep30.funnel.every(s => s.label && typeof s.value === 'number' && typeof s.rate === 'number'));
+  check('Phễu thu hẹp dần, không có bước nào phình ra',
+    rep30.funnel.every((s, i) => i === 0 || s.value <= rep30.funnel[i - 1].value),
+    rep30.funnel.map(s => s.label + '=' + s.value).join(' > '));
+  check('Tỷ lệ phễu tính trên bước đầu tiên',
+    rep30.funnel[0].rate === 100 || rep30.funnel[0].value === 0);
+
+  check('Việc cần làm là mảng, mỗi mục đủ mức khẩn, tiêu đề và đường dẫn',
+    Array.isArray(rep30.todo) &&
+    rep30.todo.every(t => ['cao', 'vua', 'thap'].includes(t.sev) && t.title && t.detail &&
+      String(t.href).startsWith('/admin/') && t.cta),
+    JSON.stringify(rep30.todo.map(t => t.sev)));
+  check('Việc cần làm xếp khẩn trước',
+    (() => {
+      const bac = { cao: 0, vua: 1, thap: 2 };
+      return rep30.todo.every((t, i) => i === 0 || bac[t.sev] >= bac[rep30.todo[i - 1].sev]);
+    })(),
+    rep30.todo.map(t => t.sev).join(','));
+
+  check('Bảng theo kỳ thi tách riêng đề đã phát hành',
+    rep30.byFamily.every(f => typeof f.published === 'number' && f.published <= f.tests),
+    rep30.byFamily.map(f => f.id + ' ' + f.published + '/' + f.tests).join(', '));
+
+  check('Doanh thu theo gói trả về mảng có tên và số tiền',
+    Array.isArray(rep30.revenueByPackage) &&
+    rep30.revenueByPackage.every(g => g.name && typeof g.amount === 'number' && g.orders > 0));
 
   /* 6. Ngân hàng câu hỏi: tạo, sửa, lọc, kiểm tra dữ liệu vào */
   r = await call('POST', '/api/admin/questions', {
