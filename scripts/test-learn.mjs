@@ -241,13 +241,13 @@ try {
 
   /* Hai nhóm phải tách bạch, không lẫn vào nhau */
   const allGrammar = await get('/api/learn/grammar');
-  ok(allGrammar.count === 102, 'Tổng năm nhóm là 102 điểm (' + allGrammar.count + ')');
+  ok(allGrammar.count === 111, 'Tổng năm nhóm là 111 điểm (' + allGrammar.count + ')');
   ok(allGrammar.groups.some(g => g.id === 'tense' && g.count === 12) &&
      allGrammar.groups.some(g => g.id === 'noun' && g.count === 28) &&
      allGrammar.groups.some(g => g.id === 'modal' && g.count === 29) &&
      allGrammar.groups.some(g => g.id === 'conditional' && g.count === 20) &&
-     allGrammar.groups.some(g => g.id === 'passive' && g.count === 13),
-    'Thống kê theo nhóm đúng: tense 12, noun 28, modal 29, conditional 20, passive 13');
+     allGrammar.groups.some(g => g.id === 'passive' && g.count === 22),
+    'Thống kê theo nhóm đúng: tense 12, noun 28, modal 29, conditional 20, passive 22');
   ok(new Set(allGrammar.points.map(p => p.slug)).size === allGrammar.count,
     'Không có slug trùng giữa các nhóm');
 
@@ -419,14 +419,19 @@ try {
   console.log('\n\x1b[1m== API ngữ pháp (bị động, tường thuật) ==\x1b[0m');
 
   const bd = await get('/api/learn/grammar?grp=passive');
-  ok(bd.count === 13, 'Có 13 điểm bậc A2–B2 (' + bd.count + ')');
+  ok(bd.count === 22, 'Đủ 22 điểm bậc A2–C2 theo hạn mức (' + bd.count + ')');
   const bdLevel = bd.points.reduce((a, p) => (a[p.level] = (a[p.level] || 0) + 1, a), {});
-  const BD_QUOTA = { A2: 2, B1: 5, B2: 6 };
+  const BD_QUOTA = { A2: 2, B1: 5, B2: 6, C1: 5, C2: 4 };
   const bdLech = Object.keys(BD_QUOTA).filter(l => bdLevel[l] !== BD_QUOTA[l]);
-  ok(bdLech.length === 0, 'Đúng hạn mức A2 2, B1 5, B2 6' +
-    (bdLech.length ? ' (lệch: ' + bdLech.map(l => l + ' ' + (bdLevel[l] || 0)).join(', ') + ')' : ''));
+  ok(bdLech.length === 0, 'Đúng hạn mức A2 2, B1 5, B2 6, C1 5, C2 4' +
+    (bdLech.length ? ' (lệch: ' + bdLech.map(l => l + ' ' + (bdLevel[l] || 0) + '/' + BD_QUOTA[l]).join(', ') + ')' : ''));
   ok(bd.points.every(p => p.counts.example === 6 && p.counts.practice === 10),
     'Mỗi điểm đủ 6 ví dụ và 10 câu luyện');
+
+  /* Hai tệp dữ liệu ghép lại phải liền mạch bậc, không cài răng lược */
+  const bacBd = { A2: 2, B1: 3, B2: 4, C1: 5, C2: 6 };
+  ok(bd.points.every((p, i) => i === 0 || bacBd[p.level] >= bacBd[bd.points[i - 1].level]),
+    'Hai tệp A2–B2 và C1–C2 ghép liền mạch, xếp từ bậc thấp lên cao');
 
   /* Ba lỗi kinh điển của nhóm này phải được cảnh báo */
   const bdCoBan = await get('/api/learn/grammar/passive-basic');
@@ -441,6 +446,37 @@ try {
   const nhoLam = await get('/api/learn/grammar/have-get-done');
   ok(nhoLam.point.confuse.some(c => /tự làm/i.test(c.with + c.tell)),
     'Mục have/get done phân biệt tự làm với nhờ người làm');
+
+  /* Bậc C1–C2: những bài học cốt lõi, mất đi thì mục đó thành vô nghĩa */
+  const triGiac = await get('/api/learn/grammar/passive-perception-causative');
+  ok(/was made to sign|made to sign/i.test(JSON.stringify(triGiac.point.errors)),
+    'Động từ tri giác và sai khiến cảnh báo lỗi bỏ "to" khi sang bị động');
+
+  const thereSaid = await get('/api/learn/grammar/there-said-to-be');
+  ok(thereSaid.point.useNot.some(u => /There is said that/i.test(u.what + u.why)),
+    'Mục "there is said to be" cảnh báo không được viết "There is said that…"');
+  ok(/There are believed/i.test(JSON.stringify(thereSaid.point.errors)),
+    'Mục "there is said to be" bắt lỗi hoà hợp số nhiều');
+
+  const sacThai = await get('/api/learn/grammar/reporting-verb-stance');
+  ok(sacThai.point.confuse.some(c => /point out/i.test(c.with + c.tell) && /claim/i.test(c.with + c.tell)),
+    'Động từ tường thuật phân biệt "point out" đồng tình với "claim" nghi ngờ');
+
+  const tuDo = await get('/api/learn/grammar/free-indirect-speech');
+  ok(tuDo.point.level === 'C2' && /ngôi thứ ba/i.test(JSON.stringify(tuDo.point)),
+    'Tường thuật gián tiếp tự do là bậc C2 và nêu rõ dùng ngôi thứ ba');
+
+  const phapLy = await get('/api/learn/grammar/reported-legal');
+  ok(phapLy.point.useNot.some(u => /shall/i.test(u.what + u.why) && /tương lai/i.test(u.what + u.why)),
+    'Mục pháp lý cảnh báo "shall" là nghĩa vụ chứ không phải thì tương lai');
+
+  const giauTacNhan = await get('/api/learn/grammar/passive-agent-deletion');
+  ok(/by/i.test(giauTacNhan.point.formula.note) && /chính đáng|né/i.test(JSON.stringify(giauTacNhan.point)),
+    'Mục giấu tác nhân có phép thử thêm "by…" để tách bị động chính đáng với né tránh');
+
+  const danhTuTT = await get('/api/learn/grammar/reporting-nouns');
+  ok(danhTuTT.point.useNot.some(u => /which/i.test(u.what + u.why)),
+    'Danh từ tường thuật cảnh báo không thay "that" bằng "which"');
 
   /* ============ 6. Chất lượng câu luyện của TOÀN BỘ ngữ pháp ============
      Dấu ngoặc trong câu luyện có hai kiểu, phải tách bạch trước khi kiểm:
@@ -504,8 +540,8 @@ try {
     (kyTuLa.length ? ' (' + kyTuLa.length + ' chỗ, ví dụ: ' + kyTuLa[0] + ')' : ''));
   ok(lechDapAn.length === 0, 'Đáp án luôn nằm trong danh sách lựa chọn của câu trắc nghiệm' +
     (lechDapAn.length ? ' (' + lechDapAn.length + ' sai, ví dụ: ' + lechDapAn[0] + ')' : ''));
-  ok(tongLuyen === 12 * 12 + 28 * 10 + 29 * 10 + 20 * 10 + 13 * 10,
-    'Tổng câu luyện toàn khu ngữ pháp là ' + (12 * 12 + 28 * 10 + 29 * 10 + 20 * 10 + 13 * 10) + ' (' + tongLuyen + ')');
+  ok(tongLuyen === 12 * 12 + 28 * 10 + 29 * 10 + 20 * 10 + 22 * 10,
+    'Tổng câu luyện toàn khu ngữ pháp là ' + (12 * 12 + 28 * 10 + 29 * 10 + 20 * 10 + 22 * 10) + ' (' + tongLuyen + ')');
 
   /* ============ 7. Năm trang tự học ============ */
   console.log('\n\x1b[1m== Trang khu tự học ==\x1b[0m');
@@ -648,7 +684,7 @@ try {
   /* --- Trang bị động và tường thuật --- */
   await page.goto(BASE + '/prep/hoc/bi-dong/', { waitUntil: 'networkidle' });
   await page.waitForSelector('#list article', { timeout: 10000 });
-  ok(await page.locator('#list article').count() === 13, 'Trang bị động hiện đủ 13 mục');
+  ok(await page.locator('#list article').count() === 22, 'Trang bị động hiện đủ 22 mục');
 
   await page.click('[data-toggle="passive-basic"]');
   await page.waitForSelector('#list article[data-slug="passive-basic"] [data-answer]',
@@ -656,9 +692,20 @@ try {
   ok(await page.locator('article[data-slug="passive-basic"] [data-answer]').count() === 10,
     'Mở ra thấy đủ 10 câu luyện');
 
+  /* Mục bậc C2 nằm ở cuối danh sách dài, phải mở được như mục đầu */
+  await page.click('[data-toggle="free-indirect-speech"]');
+  await page.waitForSelector('#list article[data-slug="free-indirect-speech"] [data-answer]',
+    { state: 'attached', timeout: 10000 });
+  ok(await page.locator('article[data-slug="free-indirect-speech"] [data-answer]').count() === 10,
+    'Mục bậc C2 cuối danh sách cũng mở ra đủ 10 câu luyện');
+
   await page.selectOption('#f-level', 'A2');
   await page.waitForTimeout(300);
   ok(await page.locator('#list article').count() === 2, 'Lọc bậc A2 còn 2 mục');
+
+  await page.selectOption('#f-level', 'C2');
+  await page.waitForTimeout(300);
+  ok(await page.locator('#list article').count() === 4, 'Lọc bậc C2 còn 4 mục');
 
   ok(errs.length === 0, 'Không có lỗi JavaScript trên bảy trang tự học' +
     (errs.length ? ': ' + errs[0] : ''));

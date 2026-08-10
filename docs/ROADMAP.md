@@ -38,7 +38,7 @@ Nhánh làm việc: `claude/prep-test-platform-design-fpiuqn`
 - [x] Ngữ pháp câu điều kiện bậc A2–B2 (11 điểm: loại 0, loại 1, loại 2, unless và các liên từ điều kiện, wish hiện tại, biến thể loại 1, loại 3, wish quá khứ và wish + would, điều kiện hỗn hợp, would rather / it's time, các cách nói điều kiện khác)
 - [x] Ngữ pháp câu điều kiện bậc C1–C2 (9 điểm: đảo ngữ điều kiện, but for / if it were not for, thức giả định trong mệnh đề that, điều kiện ngầm, otherwise trong lập luận, lest, rào đón bằng điều kiện trong bài học thuật, sắc thái tiếc nuối và trách móc, lược bỏ trong câu điều kiện) — nhóm này đủ 20/20 điểm
 - [x] Ngữ pháp bị động và tường thuật, bậc A2–B2 (13 điểm: bị động cơ bản, bị động các thì, by-tác nhân, bị động với khuyết thiếu, hai tân ngữ, bị động phi ngôi, have/get something done; tường thuật câu kể, câu hỏi, mệnh lệnh, chuyển đại từ và trạng ngữ, ngoại lệ lùi thì, mẫu câu động từ tường thuật)
-- [ ] Ngữ pháp bị động và tường thuật, bậc C1–C2 (9 điểm còn lại theo hạn mức: bị động trong văn học thuật, bị động với động từ tri giác và sai khiến, `there is said to be`, tường thuật gián tiếp tự do, động từ tường thuật mang sắc thái đánh giá, tường thuật trong văn bản pháp lý)
+- [x] Ngữ pháp bị động và tường thuật, bậc C1–C2 (9 điểm: bị động trong văn học thuật, bị động với động từ tri giác và sai khiến, bị động dạng không chia, `there is said to be`, động từ tường thuật mang sắc thái đánh giá, tường thuật gián tiếp tự do, tường thuật trong văn bản pháp lý, bị động giấu tác nhân, danh từ tường thuật) — nhóm này đủ 22/22 điểm
 - [ ] Ngữ pháp mệnh đề quan hệ và mệnh đề phụ, bậc A2–B2 (17 điểm theo hạn mức: who/which/that, mệnh đề xác định và không xác định, whose/where/when, rút gọn mệnh đề quan hệ, giới từ + which, mệnh đề trạng ngữ chỉ thời gian, nguyên nhân, mục đích, nhượng bộ) — nhóm này to, lượt làm nên tách đôi
 - [ ] Ngữ pháp mệnh đề quan hệ và mệnh đề phụ, bậc C1–C2 (12 điểm còn lại)
 - [ ] Ngữ pháp nhóm đảo ngữ – nhấn mạnh – sắc thái và độ trang trọng
@@ -70,8 +70,9 @@ Routine **không** lấy việc ở mục này.
 hãy dùng đúng một lệnh sau, nó tự cài dependency, tự bật/tắt server và chạy hết mọi bước:
 
 ```bash
-npm run verify          # cài deps → build → chạy server → 5 bộ test → audit → chụp ảnh
-                        # (test-admin, test-auth, test-catalog, test-user-api, test-learn)
+npm run verify          # cài deps → build → chạy server → 6 bộ test → audit → chụp ảnh
+                        # (test-taikhoan, test-admin, test-auth, test-catalog,
+                        #  test-user-api, test-learn)
 SKIP_SHOTS=1 npm run verify   # bản nhanh, bỏ bước chụp ảnh
 ```
 

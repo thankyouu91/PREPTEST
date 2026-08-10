@@ -681,7 +681,8 @@ function seedGrammar() {
     require('./data/grammar-modals-b2c2'),
     require('./data/grammar-conditionals'),
     require('./data/grammar-conditionals-c1c2'),
-    require('./data/grammar-passive-reported')
+    require('./data/grammar-passive-reported'),
+    require('./data/grammar-passive-reported-c1c2')
   ];
   const points = src.flatMap(s => s.points());
   const examples = src.flatMap(s => s.examples());
