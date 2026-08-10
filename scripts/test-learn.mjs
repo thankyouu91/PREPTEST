@@ -241,14 +241,14 @@ try {
 
   /* Hai nhóm phải tách bạch, không lẫn vào nhau */
   const allGrammar = await get('/api/learn/grammar');
-  ok(allGrammar.count === 120, 'Tổng sáu nhóm là 120 điểm (' + allGrammar.count + ')');
+  ok(allGrammar.count === 128, 'Tổng sáu nhóm là 128 điểm (' + allGrammar.count + ')');
   ok(allGrammar.groups.some(g => g.id === 'tense' && g.count === 12) &&
      allGrammar.groups.some(g => g.id === 'noun' && g.count === 28) &&
      allGrammar.groups.some(g => g.id === 'modal' && g.count === 29) &&
      allGrammar.groups.some(g => g.id === 'conditional' && g.count === 20) &&
      allGrammar.groups.some(g => g.id === 'passive' && g.count === 22) &&
-     allGrammar.groups.some(g => g.id === 'clause' && g.count === 9),
-    'Thống kê theo nhóm đúng: tense 12, noun 28, modal 29, conditional 20, passive 22, clause 9');
+     allGrammar.groups.some(g => g.id === 'clause' && g.count === 17),
+    'Thống kê theo nhóm đúng: tense 12, noun 28, modal 29, conditional 20, passive 22, clause 17');
   ok(new Set(allGrammar.points.map(p => p.slug)).size === allGrammar.count,
     'Không có slug trùng giữa các nhóm');
 
@@ -483,17 +483,17 @@ try {
   console.log('\n\x1b[1m== API ngữ pháp (mệnh đề quan hệ, mệnh đề phụ) ==\x1b[0m');
 
   const mq = await get('/api/learn/grammar?grp=clause');
-  ok(mq.count === 9, 'Có 9 điểm bậc A2–B1 (' + mq.count + ')');
+  ok(mq.count === 17, 'Có 17 điểm bậc A2–B2 (' + mq.count + ')');
   const mqLevel = mq.points.reduce((a, p) => (a[p.level] = (a[p.level] || 0) + 1, a), {});
-  const MQ_QUOTA = { A2: 3, B1: 6 };
+  const MQ_QUOTA = { A2: 3, B1: 6, B2: 8 };
   const mqLech = Object.keys(MQ_QUOTA).filter(l => mqLevel[l] !== MQ_QUOTA[l]);
-  ok(mqLech.length === 0, 'Đúng hạn mức A2 3, B1 6' +
+  ok(mqLech.length === 0, 'Đúng hạn mức A2 3, B1 6, B2 8' +
     (mqLech.length ? ' (lệch: ' + mqLech.map(l => l + ' ' + (mqLevel[l] || 0) + '/' + MQ_QUOTA[l]).join(', ') + ')' : ''));
   ok(mq.points.every(p => p.counts.example === 6 && p.counts.practice === 10),
     'Mỗi điểm đủ 6 ví dụ và 10 câu luyện');
-  const bacMq = { A2: 2, B1: 3 };
+  const bacMq = { A2: 2, B1: 3, B2: 4 };
   ok(mq.points.every((p, i) => i === 0 || bacMq[p.level] >= bacMq[mq.points[i - 1].level]),
-    'Danh sách xếp từ bậc thấp lên bậc cao');
+    'Hai tệp A2–B1 và B2 ghép liền mạch, xếp từ bậc thấp lên cao');
 
   /* Hai cặp liên từ ghép đôi là lỗi đặc trưng của người Việt — phải cảnh báo cả hai.
      Đây là lý do chính để tách riêng hai điểm này, mất đi là mục đó hụt mất trọng tâm. */
@@ -531,6 +531,46 @@ try {
   const mucDich = await get('/api/learn/grammar/adverbial-purpose');
   ok(mucDich.point.useNot.some(u => /for/i.test(u.what + u.why) && /ing/i.test(u.what + u.why)),
     'Mệnh đề mục đích phân biệt "to + V" với "for + V-ing"');
+
+  /* Bậc B2: bốn lỗi đặc trưng, mỗi lỗi có một điểm riêng lo — mất cảnh báo là mục đó hụt trọng tâm */
+  const rutGon = await get('/api/learn/grammar/relative-reduced');
+  ok(rutGon.point.useNot.some(u => /tân ngữ/i.test(u.what + u.why)),
+    'Rút gọn mệnh đề quan hệ cảnh báo không rút khi đại từ làm tân ngữ');
+
+  const gioiTu = await get('/api/learn/grammar/relative-preposition');
+  ok(gioiTu.point.useNot.some(u => /that/i.test(u.what + u.why)) &&
+     gioiTu.point.useNot.some(u => /whom/i.test(u.what + u.why)),
+    'Giới từ + đại từ quan hệ cấm cả "that" lẫn "who" sau giới từ');
+
+  const luongTu = await get('/api/learn/grammar/relative-quantifier');
+  ok(luongTu.point.useNot.some(u => /them/i.test(u.what + u.why)),
+    'Lượng từ trong mệnh đề quan hệ cảnh báo lỗi dùng "them" thay "whom"');
+
+  const whichCaMenhDe = await get('/api/learn/grammar/relative-which-clause');
+  ok(whichCaMenhDe.point.useNot.some(u => /what/i.test(u.what + u.why)),
+    'Mục "which thay cả mệnh đề" cảnh báo không dùng "what"');
+  ok(whichCaMenhDe.point.confuse.some(c => /phẩy/i.test(c.with + c.tell)),
+    'Mục "which thay cả mệnh đề" cho thấy thiếu dấu phẩy là đổi nghĩa');
+
+  const doiChieu = await get('/api/learn/grammar/adverbial-contrast');
+  ok(doiChieu.point.confuse.some(c => /whereas/i.test(c.with + c.tell) && /although/i.test(c.with + c.tell)),
+    'Mệnh đề đối chiếu phân biệt "whereas" với "although"');
+
+  const cachThuc = await get('/api/learn/grammar/adverbial-manner');
+  ok(cachThuc.point.useNot.some(u => /like/i.test(u.what + u.why)),
+    'Mệnh đề cách thức cảnh báo "like" không dùng làm liên từ trong văn trang trọng');
+
+  const nhomEver = await get('/api/learn/grammar/adverbial-ever');
+  ok(nhomEver.point.useNot.some(u => /however/i.test(u.what + u.why)),
+    'Nhóm "-ever" cảnh báo trật tự sai sau "however"');
+  ok(/However hard he tried/.test(JSON.stringify(nhomEver.point.errors)),
+    'Nhóm "-ever" nêu đúng câu sửa "However hard he tried"');
+
+  const danhNgu = await get('/api/learn/grammar/noun-clause-what-whether');
+  ok(danhNgu.point.useNot.some(u => /giới từ/i.test(u.what + u.why) && /whether/i.test(u.what + u.why)),
+    'Mệnh đề danh ngữ cảnh báo sau giới từ phải dùng "whether"');
+  ok(danhNgu.point.confuse.some(c => /what/i.test(c.with + c.tell) && /that/i.test(c.with + c.tell)),
+    'Mệnh đề danh ngữ phân biệt "what" với "that"');
 
   /* ============ 6. Chất lượng câu luyện của TOÀN BỘ ngữ pháp ============
      Dấu ngoặc trong câu luyện có hai kiểu, phải tách bạch trước khi kiểm:
@@ -594,8 +634,8 @@ try {
     (kyTuLa.length ? ' (' + kyTuLa.length + ' chỗ, ví dụ: ' + kyTuLa[0] + ')' : ''));
   ok(lechDapAn.length === 0, 'Đáp án luôn nằm trong danh sách lựa chọn của câu trắc nghiệm' +
     (lechDapAn.length ? ' (' + lechDapAn.length + ' sai, ví dụ: ' + lechDapAn[0] + ')' : ''));
-  ok(tongLuyen === 12 * 12 + 28 * 10 + 29 * 10 + 20 * 10 + 22 * 10 + 9 * 10,
-    'Tổng câu luyện toàn khu ngữ pháp là ' + (12 * 12 + 28 * 10 + 29 * 10 + 20 * 10 + 22 * 10 + 9 * 10) + ' (' + tongLuyen + ')');
+  ok(tongLuyen === 12 * 12 + 28 * 10 + 29 * 10 + 20 * 10 + 22 * 10 + 17 * 10,
+    'Tổng câu luyện toàn khu ngữ pháp là ' + (12 * 12 + 28 * 10 + 29 * 10 + 20 * 10 + 22 * 10 + 17 * 10) + ' (' + tongLuyen + ')');
 
   /* ============ 7. Năm trang tự học ============ */
   console.log('\n\x1b[1m== Trang khu tự học ==\x1b[0m');
@@ -764,13 +804,20 @@ try {
   /* --- Trang mệnh đề quan hệ và mệnh đề phụ --- */
   await page.goto(BASE + '/prep/hoc/menh-de/', { waitUntil: 'networkidle' });
   await page.waitForSelector('#list article', { timeout: 10000 });
-  ok(await page.locator('#list article').count() === 9, 'Trang mệnh đề hiện đủ 9 mục');
+  ok(await page.locator('#list article').count() === 17, 'Trang mệnh đề hiện đủ 17 mục');
 
   await page.click('[data-toggle="adverbial-reason-basic"]');
   await page.waitForSelector('#list article[data-slug="adverbial-reason-basic"] [data-answer]',
     { state: 'attached', timeout: 10000 });
   ok(await page.locator('article[data-slug="adverbial-reason-basic"] [data-answer]').count() === 10,
     'Mở ra thấy đủ 10 câu luyện');
+
+  /* Mục bậc B2 nằm cuối danh sách dài, phải mở được như mục đầu */
+  await page.click('[data-toggle="noun-clause-what-whether"]');
+  await page.waitForSelector('#list article[data-slug="noun-clause-what-whether"] [data-answer]',
+    { state: 'attached', timeout: 10000 });
+  ok(await page.locator('article[data-slug="noun-clause-what-whether"] [data-answer]').count() === 10,
+    'Mục bậc B2 cuối danh sách cũng mở ra đủ 10 câu luyện');
 
   await page.selectOption('#f-level', 'A2');
   await page.waitForTimeout(300);
@@ -779,6 +826,10 @@ try {
   await page.selectOption('#f-level', 'B1');
   await page.waitForTimeout(300);
   ok(await page.locator('#list article').count() === 6, 'Lọc bậc B1 còn 6 mục');
+
+  await page.selectOption('#f-level', 'B2');
+  await page.waitForTimeout(300);
+  ok(await page.locator('#list article').count() === 8, 'Lọc bậc B2 còn 8 mục');
 
   ok(errs.length === 0, 'Không có lỗi JavaScript trên tám trang tự học' +
     (errs.length ? ': ' + errs[0] : ''));
