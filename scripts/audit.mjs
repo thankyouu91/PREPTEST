@@ -5,19 +5,27 @@
 import { chromium } from 'playwright-core';
 
 const BASE = process.env.BASE_URL || 'http://localhost:3000';
-const SESSION = {
-  user: { name: 'Ngọc Ánh', email: 'ngocanh.study@gmail.com', verified: true, interests: ['ielts'] },
-  unlockedTestIds: ['vpet-b1-01'], unlockedFamilyIds: ['ielts'],
-  myCodes: [{ code: 'VPET-B1MK-24TR', unlocks: { testId: 'vpet-b1-01' }, redeemedAt: '2026-08-01T09:30:00Z', expiresAt: '2026-12-31', status: 'active' }],
-  orders: [{ id: 'DH26080101', packageId: 'pk-vpet', name: 'Gói VPET', amount: 129000, at: '2026-08-01T09:28:00Z', status: 'demo', code: 'ABCD-EFGH-JKLM' }],
-  notif: { newTests: true, reminder: true, promo: false }
+/* Phiên thật (cookie) bằng tài khoản demo + lớp phủ cục bộ cho code kích hoạt client */
+const DEMO = { id: 'student', pw: 'Goodmorning01' };
+const LOCAL_OVERLAY = {
+  student: {
+    seenTestIds: [], generatedCodes: {},
+    extraCodes: [{ code: 'IELT-AC12-96HD', unlocks: { familyId: 'ielts' }, redeemedAt: '2026-08-05T14:00:00Z', expiresAt: '2026-10-15', status: 'active' }],
+    extraTestIds: [], extraFamilyIds: ['ielts'],
+    extraOrders: [{ id: 'DH26080101', packageId: 'pk-vpet', name: 'Gói VPET', amount: 129000, at: '2026-08-01T09:28:00Z', status: 'demo', code: 'ABCD-EFGH-JKLM' }],
+    notif: { newTests: true, reminder: true, promo: false }
+  }
 };
 
-const URLS = [
-  '/prep/landing/', '/prep/dang-ky/', '/prep/dang-nhap/', '/prep/quen-mat-khau/', '/prep/xac-thuc-email/',
+/* Trang khách (không đăng nhập) — server sẽ đá trang này về /prep/ nếu có phiên,
+   nên phải duyệt chúng bằng context KHÔNG đăng nhập. */
+const GUEST_URLS = ['/prep/landing/', '/prep/dang-ky/', '/prep/dang-nhap/', '/prep/quen-mat-khau/',
+  '/prep/xac-thuc-email/', '/prep/dat-lai-mat-khau/'];
+
+const URLS = GUEST_URLS.concat([
   '/prep/', '/prep/thu-vien/', '/prep/thu-vien/?family=vept', '/prep/mua-code/', '/prep/nhap-code/',
   '/prep/code-cua-toi/', '/prep/bai-thi/vpet-b1-01/', '/prep/bai-thi/pte-ac-01/', '/prep/tai-khoan/'
-];
+]);
 const WIDTHS = [360, 390, 768, 1024, 1440];
 
 /* Tương phản WCAG */
@@ -55,11 +63,16 @@ const run = async () => {
         const errs = [];
         page.on('console', m => { if (m.type() === 'error') errs.push(m.text()); });
         page.on('pageerror', e => errs.push('PAGEERROR ' + e.message));
-        await page.addInitScript(({ s, d }) => {
+        const guest = GUEST_URLS.includes(url.split('?')[0]);
+        await page.addInitScript(({ o, d, g }) => {
           localStorage.clear();
-          localStorage.setItem('prep.session.v1', JSON.stringify(s));
+          if (!g) localStorage.setItem('prep.local.v1', JSON.stringify(o));
           localStorage.setItem('prep.theme', d ? 'dark' : 'light');
-        }, { s: SESSION, d: dark });
+        }, { o: LOCAL_OVERLAY, d: dark, g: guest });
+        if (!guest) {
+          const r = await ctx.request.post(BASE + '/api/auth/login', { data: { username: DEMO.id, password: DEMO.pw } });
+          if (!r.ok()) issues.push(`[đăng nhập] ${url}: HTTP ${r.status()}`);
+        }
         await page.goto(BASE + url, { waitUntil: 'networkidle' });
         await page.waitForTimeout(1100);
 

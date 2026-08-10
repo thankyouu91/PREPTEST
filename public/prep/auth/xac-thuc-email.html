@@ -42,21 +42,44 @@
       Mở email và bấm vào liên kết để kích hoạt tài khoản.
     </p>
 
-    <div class="grid gap-2.5 mt-8 rise rise-3">
-      <!-- Demo: nút này thay cho việc bấm link trong email thật -->
-      <button type="button" id="verified" class="btn btn-primary btn-lg w-full">Tôi đã xác thực xong</button>
-      <button type="button" id="resend" class="btn btn-ghost btn-md w-full">Gửi lại email</button>
+    <div id="verify-wait">
+      <div class="grid gap-2.5 mt-8 rise rise-3">
+        <button type="button" id="verified" class="btn btn-primary btn-lg w-full">Tôi đã xác thực xong</button>
+        <button type="button" id="resend" class="btn btn-ghost btn-md w-full">Gửi lại email</button>
+      </div>
+
+      <div id="resent-note" class="banner banner-success mt-5 text-left" role="status" aria-live="polite">
+        <svg viewBox="0 0 24 24" class="w-5 h-5 shrink-0 mt-0.5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+        <span>Đã gửi lại. Kiểm tra hộp thư đến và mục spam nhé.</span>
+      </div>
+
+      <div id="verify-err" class="banner banner-error mt-5 text-left" role="alert" aria-live="polite">
+        <svg viewBox="0 0 24 24" class="w-5 h-5 shrink-0 mt-0.5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>
+        <span id="verify-err-text"></span>
+      </div>
+
+      <!-- Bản chạy thử: chưa nối dịch vụ gửi mail nên hiện thẳng liên kết -->
+      <div id="dev-link" hidden class="banner banner-warn show mt-5 text-left">
+        <svg viewBox="0 0 24 24" class="w-5 h-5 shrink-0 mt-0.5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>
+        <span>Bản chạy thử chưa gửi email thật.
+          <a id="dev-link-a" href="#" class="underline font-bold">Mở liên kết xác thực</a>
+        </span>
+      </div>
     </div>
 
-    <div id="resent-note" class="banner banner-success mt-5 text-left" role="status" aria-live="polite">
-      <svg viewBox="0 0 24 24" class="w-5 h-5 shrink-0 mt-0.5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
-      <span>Đã gửi lại. Kiểm tra hộp thư đến và mục spam nhé.</span>
+    <!-- Đã xác thực xong -->
+    <div id="verify-result" hidden class="mt-8 rise">
+      <div class="banner banner-success show text-left">
+        <svg viewBox="0 0 24 24" class="w-5 h-5 shrink-0 mt-0.5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21.8 10.1A10 10 0 1 1 14 2.2"/><path d="m9 11 3 3L22 4"/></svg>
+        <span>Email đã được xác thực. Tài khoản của bạn đã sẵn sàng.</span>
+      </div>
+      <a href="/prep/" class="btn btn-primary btn-lg w-full mt-5">Vào trang chủ</a>
     </div>
 
     <p class="text-[13.5px] font-medium text-muted mt-8">
       Sai địa chỉ email? <a href="/prep/dang-ky/" class="font-bold text-brand-strong hover:underline">Đăng ký lại</a>
     </p>
-    <p class="text-[12px] text-muted/75 mt-4">Bản demo giao diện: email xác thực chưa được gửi thật.</p>
+    <p class="text-[12px] text-muted/75 mt-4">Chưa nối dịch vụ gửi mail: bản chạy thử hiện liên kết ngay tại đây.</p>
   </div>
 </div>
 
@@ -68,38 +91,80 @@
     PREP.qsa('[data-brand-name]').forEach(el => { el.textContent = t.name; });
   })();
 
-  /* TODO(backend/auth): trạng thái xác thực do server quyết định qua token trong email */
-  const qEmail = new URLSearchParams(location.search).get('email');
-  const u = PrepState.user();
-  PREP.qs('#v-email').textContent = qEmail || (u && u.email) || 'email của bạn';
+  /* Trạng thái xác thực do server quyết định qua token trong email.
+     Mở được ở trình duyệt bất kỳ, không cần phiên đăng nhập. */
+  const params = new URLSearchParams(location.search);
+  const token = params.get('token');
+
+  /* Có token trong URL: xác thực ngay, khỏi bắt người dùng bấm gì thêm */
+  if (token) {
+    PREP.qs('#v-email').textContent = 'tài khoản của bạn';
+    PrepAuth.verify(token).then(res => {
+      const box = PREP.qs('#verify-result');
+      if (res.ok) {
+        PREP.qs('#verify-wait').setAttribute('hidden', '');
+        box.removeAttribute('hidden');
+      } else {
+        PREP.qs('#resent-note').classList.remove('show');
+        const err = PREP.qs('#verify-err');
+        PREP.qs('#verify-err-text').textContent = res.error;
+        err.classList.add('show');
+      }
+    });
+  } else {
+    PREP.boot().then(() => {
+      const u = PrepState.user();
+      PREP.qs('#v-email').textContent = params.get('email') || (u && u.email) || 'email của bạn';
+      if (u && u.verified) {
+        PREP.qs('#verify-wait').setAttribute('hidden', '');
+        PREP.qs('#verify-result').removeAttribute('hidden');
+      }
+    });
+  }
+
+  /* Bản chạy thử: liên kết do màn đăng ký chuyển sang, bấm thẳng được */
+  const devLink = params.get('link');
+  if (devLink && devLink.startsWith('/prep/')) {
+    PREP.qs('#dev-link-a').href = devLink;
+    PREP.qs('#dev-link').removeAttribute('hidden');
+  }
 
   /* Gửi lại + đếm ngược 30s */
   const resend = PREP.qs('#resend'), note = PREP.qs('#resent-note');
   let timer = null;
   resend.addEventListener('click', () => {
-    note.classList.add('show');
-    let left = 30;
     resend.disabled = true;
-    const tick = () => {
-      resend.textContent = 'Gửi lại sau ' + left + 's';
-      if (left-- <= 0) {
-        clearInterval(timer);
+    PrepAuth.resendVerify().then(res => {
+      if (!res.ok) {
         resend.disabled = false;
-        resend.textContent = 'Gửi lại email';
-        note.classList.remove('show');
+        PREP.qs('#verify-err-text').textContent = res.error;
+        PREP.qs('#verify-err').classList.add('show');
+        return;
       }
-    };
-    tick();
-    timer = setInterval(tick, 1000);
+      note.classList.add('show');
+      if (res.verifyLink) {
+        PREP.qs('#dev-link-a').href = res.verifyLink;
+        PREP.qs('#dev-link').removeAttribute('hidden');
+      }
+      let left = 30;
+      const tick = () => {
+        resend.textContent = 'Gửi lại sau ' + left + 's';
+        if (left-- <= 0) {
+          clearInterval(timer);
+          resend.disabled = false;
+          resend.textContent = 'Gửi lại email';
+          note.classList.remove('show');
+        }
+      };
+      tick();
+      timer = setInterval(tick, 1000);
+    });
   });
 
   PREP.qs('#verified').addEventListener('click', () => {
-    if (PrepState.user()) {
-      PrepAuth.markVerified();
-      location.href = '/prep/';
-    } else {
-      location.href = '/prep/dang-ky/';
-    }
+    PREP.boot().then(() => {
+      location.href = PrepState.user() ? '/prep/' : '/prep/dang-nhap/';
+    });
   });
 </script>
 </body>

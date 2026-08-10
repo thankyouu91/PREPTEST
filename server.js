@@ -99,24 +99,51 @@ app.get('/admin/hoc-vien/', adminPage('admin/users.html'));
 app.get('/admin/code/', adminPage('admin/codes.html'));
 app.get('/admin/quan-tri/', adminPage('admin/settings.html'));
 
-/* ---------------- Trang công khai ---------------- */
+/* ---------------- Trang công khai ----------------
+   Đã đăng nhập rồi thì vào thẳng khu học viên, không bắt đăng nhập lại. */
+function guestPage(file) {
+  const serve = serveHtmlWithNonce(file);
+  return (req, res) => {
+    if (A.currentUser(req)) {
+      if (!req.path.endsWith('/')) return res.redirect(301, req.path + '/');
+      const next = new URLSearchParams(req.originalUrl.split('?')[1] || '').get('next');
+      return res.redirect(302, next && next.startsWith('/prep/') ? next : '/prep/');
+    }
+    serve(req, res);
+  };
+}
+
 app.get('/', (req, res) => res.redirect('/prep/landing/'));
 app.get('/prep/landing/', serveHtmlWithNonce('prep/landing/index.html'));
-app.get('/prep/dang-ky/', serveHtmlWithNonce('prep/auth/dang-ky.html'));
-app.get('/prep/dang-nhap/', serveHtmlWithNonce('prep/auth/dang-nhap.html'));
-app.get('/prep/quen-mat-khau/', serveHtmlWithNonce('prep/auth/quen-mat-khau.html'));
+app.get('/prep/dang-ky/', guestPage('prep/auth/dang-ky.html'));
+app.get('/prep/dang-nhap/', guestPage('prep/auth/dang-nhap.html'));
+app.get('/prep/quen-mat-khau/', guestPage('prep/auth/quen-mat-khau.html'));
+// Hai màn dưới mở cho cả khách lẫn người đã đăng nhập: liên kết trong email có
+// thể được mở ở trình duyệt bất kỳ.
 app.get('/prep/xac-thuc-email/', serveHtmlWithNonce('prep/auth/xac-thuc-email.html'));
-// TODO(frontend): /prep/dat-lai-mat-khau/ — màn đặt lại mật khẩu từ liên kết email,
-// dựng ở mục "nối 4 màn auth vào API" trong docs/ROADMAP.md.
+app.get('/prep/dat-lai-mat-khau/', serveHtmlWithNonce('prep/auth/dat-lai-mat-khau.html'));
 
-/* ------------- Trang cần đăng nhập (mock guard ở client) ------------- */
-app.get('/prep/', serveHtmlWithNonce('prep/index.html'));
-app.get('/prep/thu-vien/', serveHtmlWithNonce('prep/library/index.html'));
-app.get('/prep/mua-code/', serveHtmlWithNonce('prep/codes/mua-code.html'));
-app.get('/prep/nhap-code/', serveHtmlWithNonce('prep/codes/nhap-code.html'));
-app.get('/prep/code-cua-toi/', serveHtmlWithNonce('prep/codes/code-cua-toi.html'));
-app.get('/prep/bai-thi/:id/', serveHtmlWithNonce('prep/test/index.html'));
-app.get('/prep/tai-khoan/', serveHtmlWithNonce('prep/account/index.html'));
+/* ------------- Trang cần đăng nhập -------------
+   Guard ở server: chưa có phiên thì đá về màn đăng nhập ngay từ HTTP, không
+   để lộ khung trang rồi mới kiểm ở client. */
+function studentPage(file) {
+  const serve = serveHtmlWithNonce(file);
+  return (req, res) => {
+    if (!A.currentUser(req)) {
+      if (!req.path.endsWith('/')) return res.redirect(301, req.path + '/');
+      return res.redirect(302, '/prep/dang-nhap/?next=' + encodeURIComponent(req.originalUrl));
+    }
+    serve(req, res);
+  };
+}
+
+app.get('/prep/', studentPage('prep/index.html'));
+app.get('/prep/thu-vien/', studentPage('prep/library/index.html'));
+app.get('/prep/mua-code/', studentPage('prep/codes/mua-code.html'));
+app.get('/prep/nhap-code/', studentPage('prep/codes/nhap-code.html'));
+app.get('/prep/code-cua-toi/', studentPage('prep/codes/code-cua-toi.html'));
+app.get('/prep/bai-thi/:id/', studentPage('prep/test/index.html'));
+app.get('/prep/tai-khoan/', studentPage('prep/account/index.html'));
 
 /* ---------------- Static (CSS/JS/SVG/ảnh) ----------------
    Chặn *.html tĩnh để HTML không bao giờ thoát khỏi vòng chèn nonce. */

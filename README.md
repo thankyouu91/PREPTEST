@@ -4,10 +4,10 @@ Giao diện nền tảng luyện thi thử (mock test) cho 6 nhóm chứng chỉ
 **VEPT · VPET · OTE · TOEIC · IELTS · PTE**.
 Cơ chế truy cập: đăng ký tài khoản → mua/nhập code → mở khoá bài thi.
 
-> **Phạm vi hiện tại: vỏ nền tảng + luồng UI + khu quản trị có backend thật.**
+> **Phạm vi hiện tại: khu học viên và khu quản trị đều chạy trên backend thật.**
 > Chưa có engine làm bài, chưa chấm điểm.
-> Danh mục (kỳ thi / đề đã phát hành / gói code) đọc thật từ `GET /api/catalog`;
-> tài khoản và tiến độ học viên vẫn là mock localStorage — auth thật làm ở bước sau.
+> Danh mục đọc từ `GET /api/catalog`; tài khoản học viên có đăng ký / đăng nhập / xác thực
+> email / đặt lại mật khẩu thật với phiên cookie. Kích hoạt code còn ở phía client.
 
 ## Chạy thử
 
@@ -25,7 +25,7 @@ Lệnh khác:
 | `npm run build` | build lại CSS (**bắt buộc chạy + commit sau khi thêm class mới**) |
 | `npm run screenshot` | chụp desktop + mobile mọi màn vào `docs/screenshots/`, báo lỗi console/CSP |
 | `node scripts/audit.mjs` | audit tràn ngang, tương phản WCAG AA, nút xuống dòng, chiều cao nav (light + dark, 5 bề rộng) |
-| `node scripts/test-auth.mjs` | kiểm thử luồng đăng nhập / đổi mật khẩu / lưu tiến độ theo tài khoản |
+| `node scripts/test-auth.mjs` | kiểm thử luồng tài khoản trên giao diện: đăng ký, đăng nhập, guard, xác thực email, đặt lại mật khẩu |
 | `node scripts/test-admin.mjs` | kiểm thử API quản trị: phiên, CSRF, phân quyền, CRUD, sinh đề, cấp code |
 | `node scripts/test-catalog.mjs` | kiểm thử trang học viên đọc `/api/catalog` + nhánh dự phòng khi API hỏng |
 | `node scripts/test-user-api.mjs` | kiểm thử API tài khoản học viên: đăng ký, đăng nhập, xác thực email, đặt lại mật khẩu, CSRF, chống dò |
@@ -100,15 +100,14 @@ tác và ghi lý do vào mục "Vướng mắc" thay vì push. Tắt Routine b�
 
 Trang đăng nhập có nút **Điền sẵn tài khoản demo**.
 
-> ⚠️ **Mật khẩu này nằm dạng chữ thường trong `public/prep/_mock.js`** — bất kỳ ai xem source
-> cũng đọc được. Nó chỉ hợp lệ ở bản dựng giao diện không có dữ liệu thật. Đừng dùng lại mật khẩu
-> này ở hệ thống khác, và xoá `PREP_SEED_ACCOUNTS` khi nối auth thật.
+> ⚠️ **Mật khẩu demo chỉ được đặt khi `NODE_ENV` khác `production`** (xem
+> `ensureDemoStudentPassword` trong `server/auth.js`). Ở production bản seed để trống
+> `pass_hash` nên không ai đăng nhập được vào tài khoản mẫu. Đừng dùng lại mật khẩu này
+> ở bất kỳ hệ thống nào khác.
 
-Tài khoản tự đăng ký cũng đăng nhập lại được: mỗi bản ghi lưu trong `localStorage`
-(`prep.accounts.v1`), tiến độ (bài đã mở khoá, code, đơn) gắn theo tài khoản chứ không theo phiên,
-nên đăng xuất rồi đăng nhập lại vẫn còn. Đổi mật khẩu ở tab Bảo mật có hiệu lực thật cho lần đăng
-nhập sau. Phần tài khoản này vẫn là mock phía client — auth thật (scrypt, phiên cookie, rate-limit,
-như khu quản trị đang dùng) là mục kế tiếp trong `docs/ROADMAP.md`.
+Tài khoản tự đăng ký nằm trong bảng `users` phía server, mật khẩu băm scrypt. Quyền mở khoá suy ra
+từ các code đã kích hoạt trong CSDL, nên đổi máy vẫn còn. Đổi mật khẩu ở tab Bảo mật đăng xuất mọi
+thiết bị khác.
 
 ## Bản đồ màn hình
 
@@ -118,7 +117,8 @@ như khu quản trị đang dùng) là mục kế tiếp trong `docs/ROADMAP.md`
 | `/prep/dang-ky/` | `public/prep/auth/dang-ky.html` | Công khai |
 | `/prep/dang-nhap/` | `public/prep/auth/dang-nhap.html` | Công khai |
 | `/prep/quen-mat-khau/` | `public/prep/auth/quen-mat-khau.html` | Công khai |
-| `/prep/xac-thuc-email/` | `public/prep/auth/xac-thuc-email.html` | Công khai |
+| `/prep/xac-thuc-email/` | `public/prep/auth/xac-thuc-email.html` | Công khai (mở được từ email) |
+| `/prep/dat-lai-mat-khau/` | `public/prep/auth/dat-lai-mat-khau.html` | Công khai (cần token trong liên kết) |
 | `/prep/` (dashboard) | `public/prep/index.html` | Cần đăng nhập |
 | `/prep/thu-vien/` | `public/prep/library/index.html` | Cần đăng nhập |
 | `/prep/mua-code/` | `public/prep/codes/mua-code.html` | Cần đăng nhập |
@@ -222,12 +222,24 @@ token đặt lại sống 2 giờ, cả hai chỉ dùng được một lần và
 Tài khoản demo `student` được đặt sẵn mật khẩu ở môi trường không phải production;
 ở production bản seed để trống `pass_hash` nên không ai đăng nhập được vào nó.
 
+### Guard phía server
+
+Trang cần đăng nhập (`/prep/`, `/prep/thu-vien/`, `/prep/mua-code/`, `/prep/nhap-code/`,
+`/prep/code-cua-toi/`, `/prep/bai-thi/:id/`, `/prep/tai-khoan/`) đi qua `studentPage()`: chưa có
+phiên thì redirect 302 về `/prep/dang-nhap/?next=…` ngay ở tầng HTTP, không để lộ khung trang rồi
+mới kiểm ở client. Ngược lại `guestPage()` đưa người đã đăng nhập từ màn đăng ký / đăng nhập /
+quên mật khẩu vào thẳng khu học viên.
+
+`PREP.boot({ auth: true })` trong `_mock.js` là lớp đỡ thứ hai (cho HTML nằm trong cache): nạp
+danh mục và phiên song song, chuyển hướng nếu không có phiên, rồi mới render.
+
 Các seam còn lại:
 
 | Seam | Vị trí | Ghi chú |
 |---|---|---|
-| `TODO(frontend)` | `PrepAuth`, 4 màn auth | Giao diện còn dùng localStorage, chưa gọi API ở trên |
-| `TODO(backend)` | `PrepState` | Kích hoạt code và tiến độ còn ở localStorage |
+| `TODO(backend)` | `PrepState.redeem`, `demoPurchase` | Kích hoạt code và đơn demo còn ở client, dưới dạng lớp phủ trên dữ liệu server |
+| `TODO(backend)` | `seenTestIds`, `notif` | Hai tuỳ chọn nhỏ chưa có API, lưu cục bộ theo tài khoản |
+| `TODO(backend/mail)` | `server/user-api.js` | Chưa nối dịch vụ gửi mail |
 | `TODO(backend/payment)` | `mua-code.html` | Nút thanh toán hiện chỉ mở modal demo và cấp mã miễn phí |
 | `TODO(backend/exam-engine)` | `test/index.html` | Nút "Bắt đầu làm bài" mở overlay "sẽ sớm ra mắt" |
 

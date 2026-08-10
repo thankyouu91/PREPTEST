@@ -80,7 +80,7 @@
         </p>
         <button type="button" id="fill-demo" class="btn btn-soft btn-sm mt-3">Điền sẵn tài khoản demo</button>
       </div>
-      <p class="text-[12px] text-muted/75 mt-4">Bản demo giao diện: tài khoản và tiến độ chỉ lưu trên trình duyệt này.</p>
+      <p class="text-[12px] text-muted/75 mt-4">Tài khoản demo chỉ có ở bản chạy thử, không tồn tại trên môi trường thật.</p>
     </div>
   </div>
 
@@ -131,7 +131,7 @@
     PREP.qs('#submit').focus();
   });
 
-  /* Submit — TODO(backend/auth): POST /api/auth/login + session cookie */
+  /* Submit — POST /api/auth/login, phiên nằm ở cookie prep_user */
   const f = PREP.qs('#f'), btn = PREP.qs('#submit');
   const banner = PREP.qs('#form-banner'), bannerText = PREP.qs('#form-banner-text');
   const mark = (id, bad) => {
@@ -153,8 +153,7 @@
 
     btn.disabled = true;
     btn.innerHTML = PREP.icon('loader', 'w-5 h-5 animate-spin-slow') + 'Đang đăng nhập';
-    setTimeout(() => {
-      const res = PrepAuth.login(id, pass.value);
+    PrepAuth.login(id, pass.value).then(res => {
       if (!res.ok) {
         btn.disabled = false; btn.textContent = 'Đăng nhập';
         bannerText.textContent = res.error;
@@ -164,8 +163,8 @@
         return;
       }
       const next = new URLSearchParams(location.search).get('next');
-      location.href = next && next.startsWith('/prep') ? next : '/prep/';
-    }, 800);
+      location.href = next && next.startsWith('/prep/') ? next : '/prep/';
+    });
   });
 </script>
 </body>

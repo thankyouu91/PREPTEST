@@ -234,8 +234,8 @@
 <script src="/prep/_mock.js"></script>
 <script src="/prep/_chrome.js"></script>
 <script>
-  // Guard client (mock) — TODO(backend/auth): guard thật ở server
-  if (PrepAuth.require()) {
+  /* Guard chính ở server (studentPage); boot() là lớp đỡ thứ hai */
+  PREP.boot({ auth: true }).then(() => {
     PrepChrome.mount({ title: 'Trang chủ' });
 
     const s = PrepState.load();
@@ -471,7 +471,7 @@
         requestAnimationFrame(() => el.style.setProperty('--w', el.getAttribute('data-w') + '%'));
       });
     });
-  }
+  });
 </script>
 </body>
 </html>

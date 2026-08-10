@@ -76,6 +76,7 @@ ok(!!verifyToken, 'Có liên kết xác thực (chỉ ngoài production)');
 
 r = await c.post('/api/auth/register', { name: 'Trùng', email: NEW_EMAIL, password: 'Matkhau123' });
 ok(r.status === 409, 'Từ chối email đã đăng ký');
+ok(r.status !== 429, 'Yêu cầu hỏng không tiêu tốn hạn mức đăng ký');
 
 console.log('\n\x1b[1m== Hồ sơ và phiên ==\x1b[0m');
 r = await c.get('/api/me');
@@ -84,7 +85,10 @@ ok(Array.isArray(r.data.myCodes) && r.data.myCodes.length === 0, 'Tài khoản m
 
 const anon = client();
 r = await anon.get('/api/me');
-ok(r.status === 401, 'Chưa đăng nhập thì /api/me trả 401');
+ok(r.status === 200 && r.data.user === null, 'Chưa đăng nhập thì /api/me trả 200 với user null');
+
+r = await anon.patch('/api/me', { name: 'X', email: 'x@vidu.vn' });
+ok(r.status === 401, 'Route cần quyền vẫn trả 401 khi chưa đăng nhập');
 
 r = await c.patch('/api/me', { name: 'Tên Đã Sửa', email: NEW_EMAIL, interests: ['toeic'] });
 ok(r.status === 200 && r.data.user.name === 'Tên Đã Sửa', 'Sửa được hồ sơ');
@@ -130,7 +134,7 @@ ok(r.status === 200, 'Đổi mật khẩu thành công');
 ok(c2.jar.get('prep_user') !== oldSessionCookie, 'Cấp phiên mới cho thiết bị đang dùng');
 
 r = await c.get('/api/me');
-ok(r.status === 401, 'Đổi mật khẩu làm hết hiệu lực phiên trên thiết bị khác');
+ok(r.data.user === null, 'Đổi mật khẩu làm hết hiệu lực phiên trên thiết bị khác');
 
 const c3 = client();
 r = await c3.post('/api/auth/login', { username: NEW_EMAIL, password: 'Matkhau123' });
@@ -158,7 +162,7 @@ r = await c4.post('/api/auth/reset', { token: resetToken, password: 'Datlai789' 
 ok(r.status === 200, 'Đặt lại mật khẩu thành công');
 
 r = await c3.get('/api/me');
-ok(r.status === 401, 'Đặt lại mật khẩu đăng xuất mọi thiết bị');
+ok(r.data.user === null, 'Đặt lại mật khẩu đăng xuất mọi thiết bị');
 
 r = await c4.post('/api/auth/reset', { token: resetToken, password: 'Datlai789' });
 ok(r.status === 400, 'Token đặt lại chỉ dùng được một lần');
@@ -182,7 +186,7 @@ ok(r.status === 200, 'Đăng nhập được bằng email');
 r = await demo.post('/api/auth/logout');
 ok(r.status === 200, 'Đăng xuất trả 200');
 r = await demo.get('/api/me');
-ok(r.status === 401, 'Phiên hết hiệu lực sau khi đăng xuất');
+ok(r.data.user === null, 'Phiên hết hiệu lực sau khi đăng xuất');
 
 console.log('\n\x1b[1m== Chống dò mật khẩu ==\x1b[0m');
 const brute = client();

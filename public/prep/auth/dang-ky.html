@@ -56,14 +56,14 @@
         <div>
           <label class="label" for="password">Mật khẩu</label>
           <div class="relative">
-            <input class="input pe-12" id="password" name="password" type="password" autocomplete="new-password" placeholder="Tối thiểu 8 ký tự" required>
+            <input class="input pe-12" id="password" name="password" type="password" autocomplete="new-password" placeholder="Tối thiểu 8 ký tự, có chữ và số" required>
             <button type="button" id="toggle-pass" class="absolute inset-y-0 right-0 px-3.5 text-muted hover:text-ink transition" aria-label="Hiện mật khẩu" aria-pressed="false"></button>
           </div>
           <div class="flex items-center gap-2 mt-2.5" id="strength" hidden>
             <span class="meter flex-1" aria-hidden="true"><i id="strength-bar"></i></span>
             <b id="strength-label" class="text-[12px] font-bold text-muted w-20 text-right"></b>
           </div>
-          <p class="field-error" id="err-password">Mật khẩu cần tối thiểu 8 ký tự.</p>
+          <p class="field-error" id="err-password">Mật khẩu cần tối thiểu 8 ký tự, có cả chữ và số.</p>
         </div>
         <fieldset>
           <legend class="label">Kỳ thi bạn quan tâm <span class="font-medium text-muted">(chọn nhiều)</span></legend>
@@ -81,7 +81,7 @@
       <p class="text-[14.5px] font-medium text-muted mt-7">
         Đã có tài khoản? <a href="/prep/dang-nhap/" class="font-bold text-brand-strong hover:underline">Đăng nhập</a>
       </p>
-      <p class="text-[12px] text-muted/75 mt-6">Bản demo giao diện: dữ liệu chỉ lưu trên trình duyệt của bạn.</p>
+      <p class="text-[12px] text-muted/75 mt-6">Chưa nối dịch vụ gửi mail: ở bản chạy thử, liên kết xác thực hiện ngay trên màn kế tiếp.</p>
     </div>
   </div>
 
@@ -155,7 +155,7 @@
     sLab.textContent = S[n][0];
   });
 
-  /* Validate + submit — TODO(backend/auth): POST /api/auth/register */
+  /* Validate + submit — POST /api/auth/register */
   const f = PREP.qs('#f'), btn = PREP.qs('#submit');
   const banner = PREP.qs('#form-banner'), bannerText = PREP.qs('#form-banner-text');
   const mark = (id, bad) => {
@@ -174,24 +174,29 @@
     let bad = false;
     mark('name', !name); bad = bad || !name;
     mark('email', !PREP.validEmail(email)); bad = bad || !PREP.validEmail(email);
-    mark('password', pass.value.length < 8); bad = bad || pass.value.length < 8;
+    // Cùng quy tắc với server: tối thiểu 8 ký tự, có cả chữ và số
+    const pwOk = pass.value.length >= 8 && /[A-Za-z]/.test(pass.value) && /\d/.test(pass.value);
+    mark('password', !pwOk); bad = bad || !pwOk;
     const terms = PREP.qs('#terms').checked;
     mark('terms', !terms); bad = bad || !terms;
     if (bad) return;
 
     btn.disabled = true;
     btn.innerHTML = PREP.icon('loader', 'w-5 h-5 animate-spin-slow') + 'Đang tạo tài khoản';
-    setTimeout(() => {                                   // giả lập gọi API
-      const interests = PREP.qsa('[data-fam][aria-pressed="true"]').map(b => b.getAttribute('data-fam'));
-      const res = PrepAuth.register({ name, email, password: pass.value, interests });
-      if (!res.ok) {                                     // vd: email đã tồn tại
+    const interests = PREP.qsa('[data-fam][aria-pressed="true"]').map(b => b.getAttribute('data-fam'));
+    PrepAuth.register({ name, email, password: pass.value, interests }).then(res => {
+      if (!res.ok) {                                     // vd: email đã tồn tại, mật khẩu yếu
         btn.disabled = false; btn.textContent = 'Tạo tài khoản';
         bannerText.textContent = res.error;
         banner.classList.add('show');
         return;
       }
-      location.href = '/prep/xac-thuc-email/?email=' + encodeURIComponent(email);
-    }, 900);
+      // Đăng ký xong đã có phiên; sang màn xác thực email.
+      // verifyLink chỉ có ngoài production (chưa nối dịch vụ gửi mail).
+      const q = '?email=' + encodeURIComponent(email) +
+        (res.verifyLink ? '&link=' + encodeURIComponent(res.verifyLink) : '');
+      location.href = '/prep/xac-thuc-email/' + q;
+    });
   });
 </script>
 </body>

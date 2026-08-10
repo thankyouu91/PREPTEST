@@ -116,7 +116,7 @@
 <script src="/prep/_mock.js"></script>
 <script src="/prep/_chrome.js"></script>
 <script>
-  if (PrepAuth.require()) {
+  PREP.boot({ auth: true }).then(() => {
     PrepChrome.mount({ title: 'Chi tiết bài thi' });
 
     /* Lấy id từ path /prep/bai-thi/:id/ rồi tra trong danh mục thật (GET /api/catalog) */
@@ -219,7 +219,7 @@
         });
       }
     });
-  }
+  });
 </script>
 </body>
 </html>

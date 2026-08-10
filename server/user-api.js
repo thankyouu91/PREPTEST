@@ -100,7 +100,9 @@ function ordersOf(userId) {
 
 /* ============================ Đăng ký ============================ */
 router.post('/auth/register', (req, res) => {
-  const wait = A.rateLimit('register|' + (req.ip || '?'), 5, 3600e3);
+  // Chỉ trừ lượt khi TẠO ĐƯỢC tài khoản: dữ liệu sai hay email trùng không tiêu tốn hạn mức
+  const rlKey = 'register|' + (req.ip || '?');
+  const wait = A.rateLimitPeek(rlKey, 5, 3600e3);
   if (wait) return res.status(429).json({ error: 'Bạn đã tạo nhiều tài khoản liên tiếp. Thử lại sau ' + Math.ceil(wait / 60) + ' phút.' });
 
   const b = req.body || {};
@@ -121,6 +123,7 @@ router.post('/auth/register', (req, res) => {
          VALUES (?,?,?,?,0,'active',?,?)`,
     email, email, name, A.hashPassword(password), JSON.stringify(cleanInterests(b.interests)), nowISO());
 
+  A.rateLimitNote(rlKey);
   const user = q.get('SELECT * FROM users WHERE email=?', email);
   const devLink = deliverLink('verify', user, A.issueToken(user.id, 'verify'));
   A.createUserSession(user.id, req, res);
@@ -227,9 +230,12 @@ router.post('/auth/reset', (req, res) => {
 });
 
 /* ========================= Hồ sơ học viên ========================= */
+/* Thăm dò phiên: mọi trang đều gọi khi khởi động, kể cả trang công khai.
+   Chưa đăng nhập trả 200 kèm user: null — không phải lỗi, và tránh việc trình
+   duyệt ghi một dòng lỗi 401 ở mọi trang khách. Các route cần quyền vẫn trả 401. */
 router.get('/me', (req, res) => {
   const user = A.currentUser(req);
-  if (!user) return res.status(401).json({ error: 'Chưa đăng nhập.' });
+  if (!user) return res.set('Cache-Control', 'no-store').json({ user: null });
   const access = accessOf(user.id);
   res.set('Cache-Control', 'no-store').json({
     user: profileOf(user.id),

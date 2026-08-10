@@ -93,10 +93,11 @@
 <script src="/prep/_mock.js"></script>
 <script src="/prep/_chrome.js"></script>
 <script>
-  if (PrepAuth.require()) {
+  PREP.boot({ auth: true }).then(() => {
     PrepChrome.mount({ title: 'Code của tôi' });
 
-    /* TODO(backend): GET /api/me/codes */
+    /* Code đã kích hoạt: phần trong CSDL đến từ GET /api/me, phần kích hoạt ở
+       client nằm trong lớp phủ cục bộ. // TODO(backend): gộp khi có POST /api/redeem */
     const s = PrepState.load();
     const codes = (s.myCodes || []).slice().sort((a, b) => new Date(b.redeemedAt) - new Date(a.redeemedAt));
 
@@ -162,7 +163,7 @@
           .catch(() => PrepChrome.toast('Không sao chép được', 'error'));
       }));
     });
-  }
+  });
 </script>
 </body>
 </html>

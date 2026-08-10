@@ -15,20 +15,25 @@ fs.mkdirSync(OUT, { recursive: true });
 
 const only = (process.argv.find(a => a.startsWith('--only=')) || '').split('=')[1];
 
-/* Phiên đăng nhập mock + dữ liệu demo phong phú để screenshot có trạng thái thật */
-const SESSION = {
-  account: 'ngocanh.study@gmail.com',
-  user: { name: 'Ngọc Ánh', email: 'ngocanh.study@gmail.com', verified: true, interests: ['ielts', 'toeic'] },
-  unlockedTestIds: ['vpet-b1-01'],
-  unlockedFamilyIds: ['ielts'],
-  myCodes: [
-    { code: 'VPET-B1MK-24TR', unlocks: { testId: 'vpet-b1-01' }, redeemedAt: '2026-08-01T09:30:00Z', expiresAt: '2026-12-31', status: 'active' },
-    { code: 'IELT-AC12-96HD', unlocks: { familyId: 'ielts' }, redeemedAt: '2026-08-05T14:00:00Z', expiresAt: '2026-10-15', status: 'active' }
-  ],
-  orders: [
-    { id: 'DH26080101', packageId: 'pk-vpet', name: 'Gói VPET', amount: 129000, at: '2026-08-01T09:28:00Z', status: 'demo' }
-  ],
-  notif: { newTests: true, reminder: true, promo: false }
+/* Tài khoản demo (phiên thật qua cookie) + lớp phủ cục bộ để ảnh có trạng thái phong phú.
+   Lớp phủ chính là phần code kích hoạt phía client — đúng thứ người dùng thật sẽ có,
+   không cần chèn dữ liệu giả vào CSDL. */
+const DEMO = { id: 'student', pw: 'Goodmorning01' };
+
+const LOCAL_OVERLAY = {
+  student: {
+    seenTestIds: [],
+    generatedCodes: {},
+    extraCodes: [
+      { code: 'IELT-AC12-96HD', unlocks: { familyId: 'ielts' }, redeemedAt: '2026-08-05T14:00:00Z', expiresAt: '2026-10-15', status: 'active' }
+    ],
+    extraTestIds: [],
+    extraFamilyIds: ['ielts'],
+    extraOrders: [
+      { id: 'DH26080101', packageId: 'pk-vpet', name: 'Gói VPET', amount: 129000, at: '2026-08-01T09:28:00Z', status: 'demo' }
+    ],
+    notif: { newTests: true, reminder: true, promo: false }
+  }
 };
 
 const PAGES = [
@@ -36,6 +41,7 @@ const PAGES = [
   { slug: 'dang-ky',        url: '/prep/dang-ky/',              auth: false },
   { slug: 'dang-nhap',      url: '/prep/dang-nhap/',            auth: false },
   { slug: 'quen-mat-khau',  url: '/prep/quen-mat-khau/',        auth: false },
+  { slug: 'dat-lai-mat-khau', url: '/prep/dat-lai-mat-khau/?token=vi-du', auth: false },
   { slug: 'xac-thuc-email', url: '/prep/xac-thuc-email/?email=ngocanh.study%40gmail.com', auth: false },
   // Đăng nhập thật bằng tài khoản demo student rồi chụp dashboard
   { slug: 'dashboard-student', url: '/prep/', login: { id: 'student', pw: 'Goodmorning01' }, full: true },
@@ -54,6 +60,27 @@ const PAGES = [
   { slug: 'landing-tenant',  url: '/prep/landing/',              auth: false, tenant: 'evergreen' }
 ];
 
+/** Đăng nhập qua API — cookie phiên đi thẳng vào cookie jar của context */
+const apiLogin = async (ctx, username, password) => {
+  const r = await ctx.request.post(BASE + '/api/auth/login', { data: { username, password } });
+  if (!r.ok()) throw new Error('Không đăng nhập được ' + username + ': HTTP ' + r.status());
+};
+
+/** Tài khoản mới tinh cho ảnh "dashboard trống" — đăng ký một lần mỗi lượt chạy */
+const makeFreshAccount = async (browser) => {
+  const ctx = await browser.newContext({ ignoreHTTPSErrors: true });
+  const account = {
+    email: `anh-chup.${String(process.hrtime.bigint()).slice(-9)}@thu-nghiem.vn`,
+    password: 'Matkhau123'
+  };
+  const r = await ctx.request.post(BASE + '/api/auth/register', {
+    data: { name: 'Tân Sinh Viên', email: account.email, password: account.password, interests: [] }
+  });
+  await ctx.close();
+  if (!r.ok()) throw new Error('Không tạo được tài khoản trống: HTTP ' + r.status());
+  return account;
+};
+
 const run = async () => {
   const launchOpts = { executablePath: '/opt/pw-browsers/chromium' };
   // Môi trường CI/remote: đi qua agent proxy để tải được Google Fonts
@@ -62,6 +89,7 @@ const run = async () => {
   }
   const browser = await chromium.launch(launchOpts);
   const problems = [];
+  const freshAccount = await makeFreshAccount(browser);
 
   for (const p of PAGES.filter(x => !only || x.slug === only)) {
     for (const [dev, vp] of [['desktop', { width: 1440, height: 900 }], ['mobile', { width: 390, height: 844 }]]) {
@@ -73,17 +101,16 @@ const run = async () => {
       page.on('console', m => { if (m.type() === 'error') errors.push(m.text()); });
       page.on('pageerror', e => errors.push('PAGEERROR ' + e.message));
 
-      await page.addInitScript(({ auth, dark, tenant, session }) => {
+      await page.addInitScript(({ auth, dark, tenant, overlay }) => {
         localStorage.clear();
-        if (auth === true) localStorage.setItem('prep.session.v1', JSON.stringify(session));
-        if (auth === 'fresh') localStorage.setItem('prep.session.v1', JSON.stringify({
-          user: { name: 'Tân Sinh Viên', email: 'tan.sv@gmail.com', verified: true, interests: [] },
-          unlockedTestIds: [], unlockedFamilyIds: [], myCodes: [], orders: [],
-          notif: { newTests: true, reminder: true, promo: false }
-        }));
+        if (auth === true) localStorage.setItem('prep.local.v1', JSON.stringify(overlay));
         localStorage.setItem('prep.theme', dark ? 'dark' : 'light');
         if (tenant) localStorage.setItem('prep.tenant', tenant);
-      }, { auth: p.auth, dark: !!p.dark, tenant: p.tenant || null, session: SESSION });
+      }, { auth: p.auth, dark: !!p.dark, tenant: p.tenant || null, overlay: LOCAL_OVERLAY });
+
+      /* Phiên thật: đăng nhập qua API để cookie nằm sẵn trong context */
+      if (p.auth === true) await apiLogin(ctx, DEMO.id, DEMO.pw);
+      if (p.auth === 'fresh') await apiLogin(ctx, freshAccount.email, freshAccount.password);
 
       if (p.login) {
         await page.goto(BASE + '/prep/dang-nhap/', { waitUntil: 'networkidle' });

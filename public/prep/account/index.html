@@ -89,7 +89,7 @@
           </div>
           <div class="card p-6">
             <h3 class="font-extrabold tracking-tight">Phiên đăng nhập</h3>
-            <p class="text-muted text-[14px] leading-relaxed mt-2">Đăng xuất khỏi thiết bị này. Dữ liệu demo lưu trên trình duyệt sẽ bị xoá.</p>
+            <p class="text-muted text-[14px] leading-relaxed mt-2">Đăng xuất khỏi thiết bị này. Đổi mật khẩu sẽ đăng xuất mọi thiết bị khác.</p>
             <button type="button" id="logout-btn" class="btn btn-ghost btn-md w-full mt-4 text-danger">Đăng xuất</button>
           </div>
         </aside>
@@ -111,7 +111,7 @@
               <span class="meter flex-1" aria-hidden="true"><i id="strength-bar"></i></span>
               <b id="strength-label" class="text-[12px] font-bold text-muted w-20 text-right"></b>
             </div>
-            <p class="field-error" id="err-new-pass">Mật khẩu mới cần tối thiểu 8 ký tự.</p>
+            <p class="field-error" id="err-new-pass">Mật khẩu mới cần tối thiểu 8 ký tự, có cả chữ và số.</p>
           </div>
           <div>
             <label class="label" for="re-pass">Nhập lại mật khẩu mới</label>
@@ -193,7 +193,7 @@
 <script src="/prep/_mock.js"></script>
 <script src="/prep/_chrome.js"></script>
 <script>
-  if (PrepAuth.require()) {
+  PREP.boot({ auth: true }).then(() => {
     PrepChrome.mount({ title: 'Hồ sơ' });
     const s = PrepState.load();
     const u = s.user;
@@ -218,7 +218,7 @@
       });
     });
 
-    /* --- Hồ sơ --- TODO(backend): PATCH /api/me */
+    /* --- Hồ sơ --- lưu qua PATCH /api/me */
     PREP.qs('#username').value = s.account || u.email;
     PREP.qs('#name').value = u.name;
     PREP.qs('#email').value = u.email;
@@ -247,20 +247,30 @@
       if (badName || badEmail) return;
 
       const btn = PREP.qs('#profile-save');
+      const interests = PREP.qsa('[data-fam][aria-pressed="true"]').map(b => b.getAttribute('data-fam'));
       btn.disabled = true;
       btn.innerHTML = PREP.icon('loader', 'w-5 h-5 animate-spin-slow') + 'Đang lưu';
-      setTimeout(() => {
-        const st = PrepState.load();
-        st.user.name = name;
-        st.user.email = email;
-        st.user.interests = PREP.qsa('[data-fam][aria-pressed="true"]').map(b => b.getAttribute('data-fam'));
-        PrepState.save(st);
+      PrepApi.patch('/api/me', { name, email, interests }).then(res => {
         btn.disabled = false; btn.textContent = 'Lưu thay đổi';
-        PREP.qs('#profile-ok').classList.add('show');
-        PREP.qs('#u-name').textContent = name;
-        PREP.qs('#u-email').textContent = email;
-        PREP.qs('#avatar').textContent = name.trim().split(/\s+/).map(w => w[0]).slice(-2).join('').toUpperCase();
-      }, 700);
+        if (!res.ok) {
+          PREP.qs('#err-email').textContent = PrepApi.err(res, 'Không lưu được thay đổi.');
+          PREP.qs('#err-email').classList.add('show');
+          PREP.qs('#email').classList.add('input-invalid');
+          return;
+        }
+        // Server là nguồn sự thật: nạp lại hồ sơ thay vì tự đoán
+        PrepState.reset();
+        PrepState.fetch().then(() => {
+          const u = PrepState.user() || { name, email, verified: false };
+          PREP.qs('#profile-ok').classList.add('show');
+          PREP.qs('#u-name').textContent = u.name;
+          PREP.qs('#u-email').textContent = u.email;
+          PREP.qs('#u-verified').innerHTML = u.verified
+            ? '<span class="badge badge-ok">Đã xác thực</span>'
+            : '<a href="/prep/xac-thuc-email/" class="badge badge-hl">Chưa xác thực</a>';
+          PREP.qs('#avatar').textContent = u.name.trim().split(/\s+/).map(w => w[0]).slice(-2).join('').toUpperCase();
+        });
+      });
     });
 
     /* Giao diện: dark + tenant */
@@ -279,7 +289,7 @@
     renderTenants();
     PREP.qs('#logout-btn').addEventListener('click', () => PrepAuth.logout());
 
-    /* --- Bảo mật (chỉ UI) --- TODO(backend/auth): POST /api/me/password */
+    /* --- Bảo mật --- POST /api/me/password, các thiết bị khác bị đăng xuất */
     const np = PREP.qs('#new-pass');
     const sWrap = PREP.qs('#strength'), sBar = PREP.qs('#strength-bar'), sLab = PREP.qs('#strength-label');
     const S = [['Quá yếu','#c23a52',10],['Yếu','#c23a52',25],['Trung bình','#b98900',50],['Khá','var(--color-accent)',75],['Mạnh','var(--color-success)',100]];
@@ -296,7 +306,10 @@
       PREP.qs('#pass-ok').classList.remove('show');
       PREP.qs('#pass-err').classList.remove('show');
       const cur = PREP.qs('#cur-pass'), re = PREP.qs('#re-pass');
-      const bad1 = !cur.value, bad2 = np.value.length < 8, bad3 = np.value !== re.value || !re.value;
+      // Cùng quy tắc với server: tối thiểu 8 ký tự, có cả chữ và số
+      const bad1 = !cur.value;
+      const bad2 = !(np.value.length >= 8 && /[A-Za-z]/.test(np.value) && /\d/.test(np.value));
+      const bad3 = np.value !== re.value || !re.value;
       PREP.qs('#err-cur-pass').classList.toggle('show', bad1); cur.classList.toggle('input-invalid', bad1);
       PREP.qs('#err-new-pass').classList.toggle('show', bad2); np.classList.toggle('input-invalid', bad2);
       PREP.qs('#err-re-pass').classList.toggle('show', bad3); re.classList.toggle('input-invalid', bad3);
@@ -304,8 +317,7 @@
       const btn = PREP.qs('#pass-save');
       btn.disabled = true;
       btn.innerHTML = PREP.icon('loader', 'w-5 h-5 animate-spin-slow') + 'Đang cập nhật';
-      setTimeout(() => {
-        const res = PrepAuth.changePassword(cur.value, np.value);
+      PrepAuth.changePassword(cur.value, np.value).then(res => {
         btn.disabled = false; btn.textContent = 'Cập nhật mật khẩu';
         if (!res.ok) {
           PREP.qs('#pass-err-text').textContent = res.error;
@@ -317,7 +329,7 @@
         PREP.qs('#pass-ok').classList.add('show');
         cur.value = np.value = re.value = '';
         sWrap.setAttribute('hidden', '');
-      }, 800);
+      });
     });
 
     /* --- Thông báo --- TODO(backend): PATCH /api/me/notifications */
@@ -352,7 +364,7 @@
           '</span>' +
         '</article>').join('');
     }
-  }
+  });
 </script>
 </body>
 </html>

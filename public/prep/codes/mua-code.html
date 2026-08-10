@@ -102,7 +102,7 @@
 <script src="/prep/_mock.js"></script>
 <script src="/prep/_chrome.js"></script>
 <script>
-  if (PrepAuth.require()) {
+  PREP.boot({ auth: true }).then(() => {
     PrepChrome.mount({ title: 'Mua code' });
 
     /* Render gói từ danh mục thật (GET /api/catalog) */
@@ -224,7 +224,7 @@
         .then(() => PrepChrome.toast('Đã sao chép mã'))
         .catch(() => PrepChrome.toast('Không sao chép được, chọn tay giúp mình nhé', 'error'));
     });
-  }
+  });
 </script>
 </body>
 </html>

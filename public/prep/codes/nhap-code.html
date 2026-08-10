@@ -84,7 +84,7 @@
 <script src="/prep/_mock.js"></script>
 <script src="/prep/_chrome.js"></script>
 <script>
-  if (PrepAuth.require()) {
+  PREP.boot({ auth: true }).then(() => {
     PrepChrome.mount({ title: 'Nhập code' });
 
     const input = PREP.qs('#code');
@@ -122,7 +122,7 @@
       input.focus();
     }));
 
-    /* Kích hoạt — TODO(backend): POST /api/codes/redeem (kiểm tra server-side) */
+    /* Kích hoạt — còn ở client. // TODO(backend): POST /api/redeem, kiểm mã phía server */
     const f = PREP.qs('#f'), btn = PREP.qs('#submit');
     f.addEventListener('submit', ev => {
       ev.preventDefault();
@@ -171,7 +171,7 @@
       PREP.qs('#redeem-box').removeAttribute('hidden');
       input.focus();
     });
-  }
+  });
 </script>
 </body>
 </html>

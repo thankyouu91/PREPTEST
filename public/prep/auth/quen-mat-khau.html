@@ -60,6 +60,15 @@
       <p class="text-muted text-[15px] leading-relaxed mt-2">
         Nếu <b id="done-email" class="text-ink"></b> có trong hệ thống, liên kết đặt lại sẽ đến trong ít phút. Nhớ xem cả mục spam nhé.
       </p>
+
+      <!-- Bản chạy thử: chưa nối dịch vụ gửi mail nên hiện thẳng liên kết -->
+      <div id="dev-link" hidden class="banner banner-warn show mt-6 text-left">
+        <svg viewBox="0 0 24 24" class="w-5 h-5 shrink-0 mt-0.5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>
+        <span>Bản chạy thử chưa gửi email thật.
+          <a id="dev-link-a" href="#" class="underline font-bold">Mở liên kết đặt lại</a>
+        </span>
+      </div>
+
       <div class="grid gap-2.5 mt-7">
         <a href="/prep/dang-nhap/" class="btn btn-primary btn-md w-full">Về trang đăng nhập</a>
         <button type="button" id="again" class="btn btn-ghost btn-md w-full">Gửi lại với email khác</button>
@@ -78,7 +87,8 @@
     PREP.qsa('[data-brand-name]').forEach(el => { el.textContent = t.name; });
   })();
 
-  /* TODO(backend/auth): POST /api/auth/forgot — gửi email thật + rate-limit */
+  /* POST /api/auth/forgot — server luôn trả cùng một câu trả lời nên màn này
+     không bao giờ tiết lộ email nào có trong hệ thống. */
   const f = PREP.qs('#f'), btn = PREP.qs('#submit'), email = PREP.qs('#email');
   email.addEventListener('input', () => {
     PREP.qs('#err-email').classList.remove('show');
@@ -92,16 +102,31 @@
     if (!ok) return;
     btn.disabled = true;
     btn.innerHTML = PREP.icon('loader', 'w-5 h-5 animate-spin-slow') + 'Đang gửi';
-    setTimeout(() => {
+    PrepAuth.forgot(email.value.trim()).then(res => {
+      btn.disabled = false; btn.textContent = 'Gửi liên kết đặt lại';
+      if (!res.ok) {
+        PREP.qs('#err-email').textContent = res.error;
+        PREP.qs('#err-email').classList.add('show');
+        email.classList.add('input-invalid');
+        return;
+      }
       PREP.qs('#done-email').textContent = email.value.trim();
       PREP.qs('#step-form').setAttribute('hidden', '');
       PREP.qs('#step-done').removeAttribute('hidden');
       PREP.qs('#step-done').classList.add('rise');
-    }, 800);
+      // Chưa nối dịch vụ gửi mail: ngoài production server trả kèm liên kết
+      // để bấm thẳng được. // TODO(backend/mail)
+      if (res.resetLink) {
+        const box = PREP.qs('#dev-link');
+        PREP.qs('#dev-link-a').href = res.resetLink;
+        box.removeAttribute('hidden');
+      }
+    });
   });
   PREP.qs('#again').addEventListener('click', () => {
     btn.disabled = false; btn.textContent = 'Gửi liên kết đặt lại';
     email.value = '';
+    PREP.qs('#dev-link').setAttribute('hidden', '');
     PREP.qs('#step-done').setAttribute('hidden', '');
     PREP.qs('#step-form').removeAttribute('hidden');
     email.focus();

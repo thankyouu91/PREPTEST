@@ -425,16 +425,15 @@
     document.title = t.name + ' · Luyện thi thử 6 chứng chỉ tiếng Anh';
   })();
 
-  /* Nav đổi theo trạng thái đăng nhập (mock) — TODO(backend/auth) */
-  if (PrepState.user()) {
-    PREP.qsa('[data-when-guest]').forEach(el => el.setAttribute('hidden', ''));
-    PREP.qsa('[data-when-user]').forEach(el => el.removeAttribute('hidden'));
-  }
-
-  /* Card 6 kỳ thi — danh mục thật từ GET /api/catalog, có skeleton */
+  /* Trang công khai: boot() không bắt đăng nhập, chỉ nạp danh mục + phiên nếu có */
   const grid = PREP.qs('#family-cards');
-  PREP.loadCatalog().then(res => {
-    PREP.catalogWarning(res);
+  PREP.boot().then(res => {
+    /* Nav đổi theo trạng thái đăng nhập (phiên thật từ /api/me) */
+    if (PrepState.user()) {
+      PREP.qsa('[data-when-guest]').forEach(el => el.setAttribute('hidden', ''));
+      PREP.qsa('[data-when-user]').forEach(el => el.removeAttribute('hidden'));
+    }
+
     PREP.qs('#family-skeleton').classList.add('hidden');
     grid.innerHTML = PREP.families.map(f => {
       const n = PREP.testsOf(f.id).length;

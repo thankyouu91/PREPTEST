@@ -187,18 +187,28 @@ function clearFailures(key) { attempts.delete(key); }
    // TODO(scale): chuyển sang kho dùng chung nếu chạy nhiều tiến trình. */
 const buckets = new Map();           // key → { hits: [timestamp…] }
 
-/** Trả 0 nếu còn lượt, hoặc số giây phải chờ nếu đã chạm trần. */
+/** Trả 0 nếu còn lượt, hoặc số giây phải chờ nếu đã chạm trần. Có trừ lượt. */
 function rateLimit(key, max, windowMs) {
+  const wait = rateLimitPeek(key, max, windowMs);
+  if (!wait) rateLimitNote(key);
+  return wait;
+}
+
+/** Như rateLimit nhưng KHÔNG trừ lượt — dùng khi chỉ muốn trừ lúc thao tác thành công. */
+function rateLimitPeek(key, max, windowMs) {
   const now = Date.now();
-  const b = buckets.get(key) || { hits: [] };
+  const b = buckets.get(key) || { hits: [], windowMs };
+  b.windowMs = windowMs;
   b.hits = b.hits.filter(t => now - t < windowMs);
-  if (b.hits.length >= max) {
-    buckets.set(key, b);
-    return Math.ceil((windowMs - (now - b.hits[0])) / 1000);
-  }
-  b.hits.push(now);
   buckets.set(key, b);
-  return 0;
+  return b.hits.length >= max ? Math.ceil((windowMs - (now - b.hits[0])) / 1000) : 0;
+}
+
+/** Trừ một lượt của khoá. */
+function rateLimitNote(key) {
+  const b = buckets.get(key) || { hits: [] };
+  b.hits.push(Date.now());
+  buckets.set(key, b);
 }
 
 /* ------------------ Token dùng một lần gửi qua email ------------------ */
@@ -299,7 +309,8 @@ module.exports = {
   parseCookies, setCookie,
   createSession, destroySession, currentAdmin, purgeSessions,
   createUserSession, destroyUserSession, dropUserSessions, currentUser, requireUser,
-  throttleKey, isLocked, noteFailure, clearFailures, rateLimit,
+  throttleKey, isLocked, noteFailure, clearFailures,
+  rateLimit, rateLimitPeek, rateLimitNote,
   issueToken, consumeToken,
   requireAdmin, requireOwner, csrfGuard,
   ensureSeedAdmin, ensureDemoStudentPassword,

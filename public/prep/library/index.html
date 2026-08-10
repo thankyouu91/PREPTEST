@@ -135,7 +135,7 @@
 <script src="/prep/_mock.js"></script>
 <script src="/prep/_chrome.js"></script>
 <script>
-  if (PrepAuth.require()) {
+  PREP.boot({ auth: true }).then(() => {
     PrepChrome.mount({ title: 'Thư viện đề' });
 
     const state = { q: '', family: '', skill: '', level: '', status: '' };
@@ -274,7 +274,7 @@
       PREP.qs('#notify-ok').classList.add('show');
       em.value = '';
     });
-  }
+  });
 </script>
 </body>
 </html>
