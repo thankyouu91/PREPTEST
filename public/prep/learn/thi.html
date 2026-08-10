@@ -1,0 +1,294 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>12 thì tiếng Anh · VPET Prep</title>
+  <meta name="description" content="Mười hai thì tiếng Anh: công thức, dùng khi nào, không dùng khi nào, phân biệt cặp dễ nhầm, lỗi người Việt hay mắc, ví dụ song ngữ và câu luyện tập.">
+  <meta name="theme-color" content="#1c3d8f">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="preload" href="/fonts/pjs-700-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/fonts/pjs-400-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/tailwind-built.css">
+  <style>body{font-family:'Plus Jakarta Sans',system-ui,sans-serif}</style>
+  <script>
+    (function(){try{
+      var t=localStorage.getItem('prep.theme');
+      if(t==='dark'||(!t&&matchMedia('(prefers-color-scheme: dark)').matches))document.documentElement.classList.add('dark');
+      var tn=localStorage.getItem('prep.tenant');
+      if(tn&&tn!=='default')document.documentElement.setAttribute('data-tenant',tn);
+    }catch(e){}})();
+  </script>
+</head>
+<body class="bg-surface text-ink">
+<div id="app" data-active="learn" class="min-h-[100dvh]">
+  <main id="main">
+    <div class="max-w-shell mx-auto px-4 sm:px-6 lg:px-10 pb-6">
+
+      <section class="mt-8 max-w-[70ch]">
+        <h2 class="text-2xl sm:text-[28px] font-extrabold tracking-tight">12 thì tiếng Anh</h2>
+        <p class="text-muted text-[15px] leading-relaxed mt-2">
+          Tiếng Việt không chia thì, nên chỗ mất điểm không nằm ở việc thuộc công thức mà ở chỗ
+          <b class="text-ink">biết khi nào KHÔNG được dùng</b>. Mỗi thì dưới đây có đủ bốn lát cắt:
+          công thức, dùng khi nào, không dùng khi nào, và phân biệt với thì dễ nhầm — kèm lỗi
+          người Việt hay mắc, ví dụ song ngữ và câu luyện tập có đáp án.
+        </p>
+      </section>
+
+      <nav class="flex gap-2 overflow-x-auto no-scrollbar mt-6 -mx-1 px-1" aria-label="Mục tự học">
+        <a href="/prep/hoc/dong-tu-bat-quy-tac/" class="chip shrink-0">Động từ bất quy tắc</a>
+        <a href="/prep/hoc/tu-noi/" class="chip shrink-0">Từ nối</a>
+        <a href="/prep/hoc/thi/" class="chip shrink-0" aria-current="page">12 thì</a>
+      </nav>
+
+      <!-- Thanh lọc -->
+      <div class="sticky top-16 z-20 mt-6 border-y border-line bg-[color:var(--color-surface)]/90 backdrop-blur-md">
+        <div class="py-3.5 flex flex-wrap items-center gap-3">
+          <select id="f-level" class="input w-full sm:w-auto py-2.5" aria-label="Lọc theo bậc">
+            <option value="">Bậc: tất cả</option>
+            <option>A1</option><option>A2</option><option>B1</option>
+            <option>B2</option><option>C1</option><option>C2</option>
+          </select>
+          <div id="tts-controls"></div>
+          <span id="result-count" class="text-[13px] font-semibold text-muted ms-auto"></span>
+        </div>
+      </div>
+
+      <div id="tts-warn" hidden class="mt-5">
+        <div class="banner banner-warn show" role="status">
+          <svg viewBox="0 0 24 24" class="w-5 h-5 shrink-0 mt-0.5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>
+          <span>Thiết bị này chưa có giọng đọc tiếng Anh nên không phát âm được. Phần ví dụ vẫn đọc và tra được bình thường.</span>
+        </div>
+      </div>
+
+      <div id="skeleton" class="grid gap-4 mt-6" aria-hidden="true">
+        <div class="card p-5"><div class="skeleton h-6 w-2/5 mb-3"></div><div class="skeleton h-4 w-full mb-2"></div><div class="skeleton h-4 w-4/5"></div></div>
+        <div class="card p-5"><div class="skeleton h-6 w-2/5 mb-3"></div><div class="skeleton h-4 w-full mb-2"></div><div class="skeleton h-4 w-4/5"></div></div>
+        <div class="card p-5"><div class="skeleton h-6 w-2/5 mb-3"></div><div class="skeleton h-4 w-full mb-2"></div><div class="skeleton h-4 w-4/5"></div></div>
+      </div>
+
+      <div id="list" class="grid gap-4 mt-6" hidden></div>
+
+      <div id="empty" hidden class="card p-10 mt-6 text-center">
+        <span class="w-14 h-14 rounded-full bg-brand-soft text-brand-strong inline-flex items-center justify-center mx-auto">
+          <svg viewBox="0 0 24 24" class="w-7 h-7" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+        </span>
+        <h3 class="font-extrabold text-lg tracking-tight mt-4">Không có thì nào ở bậc này</h3>
+        <p class="text-muted text-[15px] mt-1.5">Chọn lại bậc khác để xem.</p>
+        <button type="button" id="clear" class="btn btn-ghost btn-md mt-6">Xoá bộ lọc</button>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script src="/prep/_mock.js"></script>
+<script src="/prep/_chrome.js"></script>
+<script src="/prep/learn/_tts.js"></script>
+<script>
+  PREP.boot({ auth: true }).then(() => {
+    PrepChrome.mount({ title: '12 thì' });
+
+    let all = [];
+    const open = new Set();          // slug các thì đang mở
+    const detail = new Map();        // slug → dữ liệu chi tiết đã tải
+    const state = { level: '' };
+
+    /* ---------- Khối chi tiết ---------- */
+
+    function formulaBlock(f) {
+      const line = (label, val) => val
+        ? '<div class="flex flex-wrap gap-x-2 gap-y-0.5 text-[14px]">' +
+            '<b class="text-ink shrink-0 w-[74px]">' + label + '</b>' +
+            '<code class="font-mono text-[13px] text-brand-strong">' + PREP.esc(val) + '</code></div>'
+        : '';
+      return '<div class="rounded-xl bg-brand-soft px-4 py-3.5 grid gap-1.5">' +
+        line('Khẳng định', f.pos) + line('Phủ định', f.neg) + line('Nghi vấn', f.que) +
+        (f.note ? '<p class="text-[13px] text-muted font-medium mt-1">' + PREP.esc(f.note) + '</p>' : '') +
+        '</div>';
+    }
+
+    function listBlock(title, items, render) {
+      if (!items || !items.length) return '';
+      return '<div class="mt-5">' +
+        '<h4 class="font-extrabold text-[15px] tracking-tight">' + title + '</h4>' +
+        '<ul class="grid gap-2 mt-2.5">' + items.map(render).join('') + '</ul></div>';
+    }
+
+    function sentence(en, vi) {
+      return '<p class="text-[14px] leading-relaxed">' + PrepTTS.wordify(en) + '</p>' +
+        '<p class="text-[13px] text-muted italic mt-0.5">' + PREP.esc(vi) + '</p>';
+    }
+
+    function detailHtml(d) {
+      const p = d.point;
+
+      const useWhen = listBlock('Dùng khi nào', p.useWhen, u =>
+        '<li class="flex gap-2 text-[14px]">' +
+          '<span class="text-ok-ink shrink-0" aria-hidden="true">•</span>' +
+          '<span>' + PREP.esc(u) + '</span></li>');
+
+      const useNot = listBlock('KHÔNG dùng khi nào', p.useNot, u =>
+        '<li class="rounded-xl border border-line px-3.5 py-3">' +
+          '<p class="text-[14px] font-semibold">' + PREP.esc(u.what) + '</p>' +
+          '<p class="text-[13px] text-muted font-medium mt-1">' + PREP.esc(u.why) + '</p></li>');
+
+      const confuse = listBlock('Phân biệt với thì dễ nhầm', p.confuse, c =>
+        '<li class="rounded-xl border border-line px-3.5 py-3">' +
+          '<p class="text-[14px] font-semibold">Với ' + PREP.esc(c.with) + '</p>' +
+          '<p class="text-[13px] text-muted font-medium mt-1">' + PREP.esc(c.tell) + '</p>' +
+          '<div class="grid sm:grid-cols-2 gap-2.5 mt-2.5">' +
+            c.pair.map(s => '<div class="rounded-lg bg-brand-soft px-3 py-2.5">' +
+              sentence(s.en, s.vi) + '</div>').join('') +
+          '</div></li>');
+
+      const errors = listBlock('Lỗi người Việt hay mắc', p.errors, e =>
+        '<li class="rounded-xl border border-line px-3.5 py-3">' +
+          '<p class="text-[14px]"><span class="badge badge-danger">Sai</span> ' +
+            '<span class="line-through text-muted">' + PREP.esc(e.wrong) + '</span></p>' +
+          '<p class="text-[14px] mt-1.5"><span class="badge badge-ok">Đúng</span> ' +
+            PrepTTS.wordify(e.right) + '</p>' +
+          '<p class="text-[13px] text-muted font-medium mt-1.5">' + PREP.esc(e.why) + '</p></li>');
+
+      const examples = listBlock('Câu ví dụ', d.examples, x =>
+        '<li class="rounded-xl px-3.5 py-3 ' +
+            (x.ok ? 'bg-brand-soft' : 'border border-danger-line bg-danger-soft') + '">' +
+          '<div class="flex items-start gap-2">' +
+            '<span class="badge ' + (x.ok ? 'badge-ok' : 'badge-danger') + ' shrink-0">' +
+              (x.ok ? 'Đúng' : 'Sai') + '</span>' +
+            '<div class="min-w-0">' + sentence(x.en, x.vi) + '</div></div>' +
+          (x.note ? '<p class="text-[13px] text-muted font-medium mt-1.5">' + PREP.esc(x.note) + '</p>' : '') +
+        '</li>');
+
+      const practice = d.practice.length
+        ? '<div class="mt-5">' +
+            '<div class="flex flex-wrap items-center gap-3">' +
+              '<h4 class="font-extrabold text-[15px] tracking-tight">Luyện tập</h4>' +
+              '<button type="button" class="btn btn-ghost btn-sm" data-reveal="' + PREP.esc(p.slug) + '">' +
+                'Hiện tất cả đáp án</button>' +
+            '</div>' +
+            '<ol class="grid gap-2 mt-2.5">' + d.practice.map((x, i) =>
+              '<li class="rounded-xl border border-line px-3.5 py-3">' +
+                '<p class="text-[14px]"><span class="text-muted font-semibold me-1.5">' + (i + 1) + '.</span>' +
+                  PREP.esc(x.en) + '</p>' +
+                '<p class="text-[13px] text-muted italic mt-0.5">' + PREP.esc(x.vi) + '</p>' +
+                '<p class="text-[14px] mt-1.5" data-answer hidden>' +
+                  '<span class="badge badge-ok">Đáp án</span> ' +
+                  '<b class="text-ok-ink">' + PREP.esc(x.answer) + '</b></p>' +
+              '</li>').join('') +
+            '</ol></div>'
+        : '';
+
+      const signals = p.signals && p.signals.length
+        ? '<div class="mt-5"><h4 class="font-extrabold text-[15px] tracking-tight">Dấu hiệu nhận biết</h4>' +
+            '<div class="flex flex-wrap gap-1.5 mt-2.5">' +
+              p.signals.map(s => '<span class="badge badge-muted">' + PREP.esc(s) + '</span>').join('') +
+            '</div></div>'
+        : '';
+
+      return '<div class="border-t border-line mt-4 pt-4">' +
+        formulaBlock(p.formula) + signals + useWhen + useNot + confuse + errors + examples + practice +
+        '</div>';
+    }
+
+    /* ---------- Danh sách ---------- */
+
+    function card(p) {
+      const isOpen = open.has(p.slug);
+      const d = detail.get(p.slug);
+      return '<article class="card p-5" data-slug="' + PREP.esc(p.slug) + '">' +
+        '<button type="button" class="w-full text-start flex items-start gap-3" ' +
+            'data-toggle="' + PREP.esc(p.slug) + '" aria-expanded="' + isOpen + '">' +
+          '<span class="min-w-0 flex-1">' +
+            '<span class="flex flex-wrap items-center gap-2">' +
+              '<b class="text-[17px] font-extrabold tracking-tight">' + PREP.esc(p.nameVi) + '</b>' +
+              '<span class="badge badge-muted">' + PREP.esc(p.level) + '</span>' +
+            '</span>' +
+            '<span class="block text-[13px] text-muted font-semibold mt-0.5">' + PREP.esc(p.nameEn) + '</span>' +
+            '<span class="block text-[14px] mt-1.5">' + PREP.esc(p.summary) + '</span>' +
+            '<span class="block text-[13px] text-muted font-medium mt-1.5">' +
+              p.counts.example + ' ví dụ · ' + p.counts.practice + ' câu luyện</span>' +
+          '</span>' +
+          PREP.icon('chevronDown', 'w-5 h-5 shrink-0 text-muted mt-1 transition-transform' +
+            (isOpen ? ' rotate-180' : '')) +
+        '</button>' +
+        (isOpen
+          ? (d ? detailHtml(d)
+               : '<p class="text-[14px] text-muted font-medium mt-4">Đang tải…</p>')
+          : '') +
+        '</article>';
+    }
+
+    function render() {
+      const list = all.filter(p => !state.level || p.level === state.level);
+      const none = list.length === 0;
+      PREP.qs('#empty').toggleAttribute('hidden', !none);
+      PREP.qs('#list').toggleAttribute('hidden', none);
+      PREP.qs('#result-count').textContent = list.length + '/' + all.length + ' thì';
+      PREP.qs('#list').innerHTML = list.map(card).join('');
+    }
+
+    /* ---------- Sự kiện ---------- */
+
+    PREP.qs('#list').addEventListener('click', e => {
+      const reveal = e.target.closest('[data-reveal]');
+      if (reveal) {
+        const art = reveal.closest('article');
+        const hidden = art.querySelectorAll('[data-answer][hidden]').length > 0;
+        art.querySelectorAll('[data-answer]').forEach(el => el.toggleAttribute('hidden', !hidden));
+        reveal.textContent = hidden ? 'Ẩn đáp án' : 'Hiện tất cả đáp án';
+        return;
+      }
+      const t = e.target.closest('[data-toggle]');
+      if (!t) return;
+      const slug = t.getAttribute('data-toggle');
+      if (open.has(slug)) { open.delete(slug); render(); return; }
+
+      open.add(slug);
+      render();
+      if (detail.has(slug)) return;
+      PrepApi.get('/api/learn/grammar/' + encodeURIComponent(slug)).then(res => {
+        if (!res.ok) { open.delete(slug); render(); return; }
+        detail.set(slug, res.data);
+        if (open.has(slug)) render();
+      });
+    });
+
+    PREP.qs('#f-level').addEventListener('change', e => {
+      state.level = e.target.value;
+      render();
+    });
+
+    PREP.qs('#clear').addEventListener('click', () => {
+      state.level = '';
+      PREP.qs('#f-level').value = '';
+      render();
+    });
+
+    /* ---------- Nạp ---------- */
+
+    PrepTTS.onUnavailable = () => PREP.qs('#tts-warn').removeAttribute('hidden');
+    PrepTTS.init();
+    PrepTTS.mountControls(PREP.qs('#tts-controls'));
+    PrepTTS.bindSelection(PREP.qs('#main'));
+    // Uỷ quyền một lần trên #list — nội dung bên trong vẽ lại bao nhiêu lần
+    // cũng không cần gắn thêm listener.
+    PrepTTS.bindClicks(PREP.qs('#list'));
+
+    PrepApi.get('/api/learn/grammar?grp=tense').then(res => {
+      PREP.qs('#skeleton').classList.add('hidden');
+      if (!PrepTTS.available()) PREP.qs('#tts-warn').removeAttribute('hidden');
+      if (!res.ok) {
+        PREP.qs('#empty').removeAttribute('hidden');
+        PREP.qs('#empty').querySelector('h3').textContent = 'Không tải được danh sách thì';
+        PREP.qs('#empty').querySelector('p').textContent =
+          PrepApi.err(res, 'Thử tải lại trang giúp mình nhé.');
+        return;
+      }
+      all = res.data.points;
+      if (!all.length) { PREP.qs('#empty').removeAttribute('hidden'); return; }
+      render();
+    });
+  });
+</script>
+</body>
+</html>

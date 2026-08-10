@@ -138,6 +138,7 @@ thiết bị khác.
 |---|---|---|
 | Động từ bất quy tắc | `/prep/hoc/dong-tu-bat-quy-tac/` | 193 động từ, tra theo V1/V2/V3 hoặc nghĩa tiếng Việt, lọc theo bậc và nhóm biến đổi, phát âm từng dạng |
 | Từ nối | `/prep/hoc/tu-noi/` | 123 từ nối theo 13 chức năng × 3 mức trang trọng, kèm vị trí trong câu, quy tắc dấu câu, ví dụ song ngữ và cảnh báo dùng sai |
+| 12 thì | `/prep/hoc/thi/` | 12 thì, mỗi thì đủ bốn lát cắt: công thức, dùng khi nào, **không** dùng khi nào, phân biệt với thì dễ nhầm — kèm lỗi người Việt hay mắc, 8 ví dụ (có cả phản ví dụ kèm cách sửa) và 12 câu luyện có đáp án |
 
 **Phát âm miễn phí bằng Web Speech API** (`public/prep/learn/_tts.js`): giọng có sẵn
 trong trình duyệt nên không tốn phí, không gọi mạng ngoài, không đụng CSP. Ba cách

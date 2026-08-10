@@ -233,11 +233,26 @@
     color: color-mix(in srgb, var(--color-success) 55%, white);
   }
   .badge-muted { @apply bg-surface text-muted border border-line; }
+  /* Đối trọng của badge-ok — dùng cho phản ví dụ "câu này SAI" trong khu tự học */
+  .badge-danger {
+    background: color-mix(in srgb, var(--color-danger) 14%, white);
+    color: color-mix(in srgb, var(--color-danger) 70%, black);
+  }
+  .dark .badge-danger {
+    background: color-mix(in srgb, var(--color-danger) 24%, #0f1830);
+    color: color-mix(in srgb, var(--color-danger) 58%, white);
+  }
 
   /* Tint vàng highlight (dùng class thay cho style="" — CSP chặn inline style) */
   .bg-hl-soft { background: color-mix(in srgb, var(--color-hl) 28%, transparent); }
   .text-hl-ink { color: var(--color-hl-ink); }
   .dark .text-hl-ink { color: var(--color-hl); }
+
+  /* Tint đỏ và xanh cho khối ví dụ đúng / sai */
+  .bg-danger-soft { background: color-mix(in srgb, var(--color-danger) 8%, transparent); }
+  .border-danger-line { border-color: color-mix(in srgb, var(--color-danger) 30%, transparent); }
+  .text-ok-ink { color: color-mix(in srgb, var(--color-success) 76%, black); }
+  .dark .text-ok-ink { color: color-mix(in srgb, var(--color-success) 62%, white); }
 
   /* Chip nhận diện kỳ thi — màu cố định theo family, KHÔNG đổi theo tenant */
   .exam-chip {

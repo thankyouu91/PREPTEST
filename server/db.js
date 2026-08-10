@@ -127,6 +127,44 @@ CREATE INDEX IF NOT EXISTS idx_link_fn ON linking_words(fn);
 CREATE INDEX IF NOT EXISTS idx_link_reg ON linking_words(register);
 CREATE INDEX IF NOT EXISTS idx_link_level ON linking_words(level);
 
+-- Điểm ngữ pháp. Mỗi mục có đủ bốn lát cắt mà docs/LEARNING.md mục 2 đòi:
+-- công thức, dùng khi nào, KHÔNG dùng khi nào, phân biệt với điểm dễ nhầm.
+-- Các cột *_json giữ mảng/đối tượng, đọc ra bằng jparse().
+CREATE TABLE IF NOT EXISTS grammar_points (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  slug TEXT NOT NULL UNIQUE,
+  name_en TEXT NOT NULL,
+  name_vi TEXT NOT NULL,
+  grp TEXT NOT NULL,                            -- tense | noun | modal | passive | …
+  level TEXT NOT NULL,                          -- A1…C2
+  summary TEXT NOT NULL,                        -- một câu tóm tắt tiếng Việt
+  formula_json TEXT NOT NULL,                   -- {pos, neg, que, note}
+  signals_json TEXT NOT NULL,                   -- ["every day", "always", …]
+  use_when_json TEXT NOT NULL,                  -- ["dùng khi …", …]
+  use_not_json TEXT NOT NULL,                   -- [{what, why}]
+  confuse_json TEXT NOT NULL,                   -- [{with, tell, pair:[{en,vi},{en,vi}]}]
+  errors_json TEXT NOT NULL,                    -- [{wrong, right, why}]
+  sort INTEGER NOT NULL DEFAULT 0
+);
+
+CREATE INDEX IF NOT EXISTS idx_gp_grp ON grammar_points(grp);
+CREATE INDEX IF NOT EXISTS idx_gp_level ON grammar_points(level);
+
+-- Câu ví dụ và câu luyện tập của từng điểm ngữ pháp.
+CREATE TABLE IF NOT EXISTS grammar_examples (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  point_id INTEGER NOT NULL REFERENCES grammar_points(id) ON DELETE CASCADE,
+  kind TEXT NOT NULL,                           -- example | practice
+  en TEXT NOT NULL,                             -- câu Anh, câu luyện có '___'
+  vi TEXT NOT NULL,
+  ok INTEGER,                                   -- 1 câu đúng, 0 phản ví dụ, NULL với câu luyện
+  answer TEXT,                                  -- đáp án, chỉ có ở câu luyện
+  note TEXT,                                    -- giải thích
+  sort INTEGER NOT NULL DEFAULT 0
+);
+
+CREATE INDEX IF NOT EXISTS idx_ge_point ON grammar_examples(point_id, kind, sort);
+
 -- Vân tay của các bảng nội dung soạn sẵn (động từ bất quy tắc, từ nối, …).
 -- Nạp lại khi vân tay đổi, nhờ vậy sửa nội dung hay bỏ bớt mục cũng xuống
 -- được CSDL đang chạy — không chỉ khi thêm dòng mới.
@@ -570,6 +608,7 @@ function seed() {
 
   seedIrregularVerbs();
   seedLinkingWords();
+  seedGrammar();
 }
 
 /* Nạp một bảng nội dung soạn sẵn khi và chỉ khi tệp nguồn đã đổi.
@@ -577,24 +616,33 @@ function seed() {
    tên một mục hay bỏ bớt mục cũng phải xuống được CSDL đang chạy. Bảng nhỏ và
    không có khoá ngoại trỏ tới, nên xoá sạch rồi nạp lại là cách chắc chắn
    nhất — mục đã gỡ khỏi tệp nguồn không còn sót lại. */
-function seedContent(name, table, rows, insertSql, values) {
+function seedContent(name, rows, tables, apply) {
   const hash = crypto.createHash('sha256')
     .update(JSON.stringify(rows)).digest('hex').slice(0, 32);
   if (q.val('SELECT hash FROM seed_meta WHERE name=?', name) === hash) return;
   tx(() => {
-    db.exec(`DELETE FROM ${table}`);
-    const ins = db.prepare(insertSql);
-    rows.forEach((r, i) => ins.run(...values(r, i)));
+    // Xoá theo thứ tự truyền vào: bảng con trước, bảng cha sau, để khoá ngoại
+    // không chặn giữa chừng.
+    tables.forEach(t => db.exec(`DELETE FROM ${t}`));
+    apply(rows);
     db.prepare(`INSERT INTO seed_meta (name,hash,n,at) VALUES (?,?,?,?)
       ON CONFLICT(name) DO UPDATE SET
         hash=excluded.hash, n=excluded.n, at=excluded.at`)
-      .run(name, hash, rows.length, nowISO());
+      .run(name, hash, Array.isArray(rows) ? rows.length : rows.n, nowISO());
+  });
+}
+
+/** Nạp một bảng phẳng — trường hợp dùng nhiều nhất của seedContent. */
+function seedTable(name, table, rows, insertSql, values) {
+  seedContent(name, rows, [table], list => {
+    const ins = db.prepare(insertSql);
+    list.forEach((r, i) => ins.run(...values(r, i)));
   });
 }
 
 /* Bảng động từ bất quy tắc V1–V2–V3 */
 function seedIrregularVerbs() {
-  seedContent(
+  seedTable(
     'irregular-verbs', 'irregular_verbs',
     require('./data/irregular-verbs').rows(),
     `INSERT INTO irregular_verbs
@@ -607,7 +655,7 @@ function seedIrregularVerbs() {
 
 /* Bảng từ nối theo chức năng × độ trang trọng */
 function seedLinkingWords() {
-  seedContent(
+  seedTable(
     'linking-words', 'linking_words',
     require('./data/linking-words').rows(),
     `INSERT INTO linking_words
@@ -616,6 +664,40 @@ function seedLinkingWords() {
     (r, i) => [r.word, r.fn, r.register, r.pos, r.punct, r.vi,
       r.level, r.ex_en, r.ex_vi, r.warn || null, i]
   );
+}
+
+/* Điểm ngữ pháp + câu ví dụ, câu luyện tập.
+   Hai bảng nối bằng khoá ngoại nên phải nạp trong cùng một giao dịch và cùng
+   một vân tay: dữ liệu con trỏ sang cha bằng slug, đổi bên nào cũng nạp lại cả
+   hai để không bao giờ lệch nhau. */
+function seedGrammar() {
+  const src = require('./data/grammar-tenses');
+  const points = src.points();
+  const examples = src.examples();
+
+  seedContent('grammar-tenses', { points, examples, n: points.length + examples.length },
+    ['grammar_examples', 'grammar_points'],
+    data => {
+      const insP = db.prepare(`INSERT INTO grammar_points
+        (slug,name_en,name_vi,grp,level,summary,formula_json,signals_json,
+         use_when_json,use_not_json,confuse_json,errors_json,sort)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`);
+      const idOf = new Map();
+      data.points.forEach(p => {
+        insP.run(p.slug, p.name_en, p.name_vi, p.grp, p.level, p.summary,
+          p.formula_json, p.signals_json, p.use_when_json, p.use_not_json,
+          p.confuse_json, p.errors_json, p.sort);
+        idOf.set(p.slug, q.val('SELECT id FROM grammar_points WHERE slug=?', p.slug));
+      });
+
+      const insE = db.prepare(`INSERT INTO grammar_examples
+        (point_id,kind,en,vi,ok,answer,note,sort) VALUES (?,?,?,?,?,?,?,?)`);
+      data.examples.forEach(e => {
+        const pid = idOf.get(e.slug);
+        if (!pid) throw new Error('Câu ví dụ trỏ tới điểm ngữ pháp không tồn tại: ' + e.slug);
+        insE.run(pid, e.kind, e.en, e.vi, e.ok, e.answer, e.note, e.sort);
+      });
+    });
 }
 
 seed();

@@ -1056,4 +1056,59 @@ router.get('/learn/linking-words', (req, res) => {
   });
 });
 
+/* Điểm ngữ pháp — danh sách gọn, không kèm câu ví dụ cho nhẹ payload */
+router.get('/learn/grammar', (req, res) => {
+  const grp = str(req.query.grp, 20);
+  const level = LEVELS.includes(str(req.query.level, 2).toUpperCase())
+    ? str(req.query.level, 2).toUpperCase() : '';
+
+  const where = [];
+  const args = [];
+  if (grp) { where.push('grp = ?'); args.push(grp); }
+  if (level) { where.push('level = ?'); args.push(level); }
+  const sql = 'SELECT * FROM grammar_points' +
+    (where.length ? ' WHERE ' + where.join(' AND ') : '') + ' ORDER BY sort, id';
+
+  const points = q.all(sql, ...args).map(p => ({
+    slug: p.slug, nameEn: p.name_en, nameVi: p.name_vi,
+    grp: p.grp, level: p.level, summary: p.summary,
+    formula: jparse(p.formula_json), signals: jparse(p.signals_json),
+    counts: {
+      example: q.val('SELECT COUNT(*) c FROM grammar_examples WHERE point_id=? AND kind=?', p.id, 'example'),
+      practice: q.val('SELECT COUNT(*) c FROM grammar_examples WHERE point_id=? AND kind=?', p.id, 'practice')
+    }
+  }));
+
+  res.set('Cache-Control', 'public, max-age=300').json({
+    total: q.val('SELECT COUNT(*) c FROM grammar_points'),
+    count: points.length,
+    groups: q.all('SELECT grp, COUNT(*) c FROM grammar_points GROUP BY grp ORDER BY grp')
+      .map(g => ({ id: g.grp, count: g.c })),
+    points
+  });
+});
+
+/* Một điểm ngữ pháp kèm toàn bộ ví dụ và câu luyện tập */
+router.get('/learn/grammar/:slug', (req, res) => {
+  const p = q.get('SELECT * FROM grammar_points WHERE slug = ?', str(req.params.slug, 60));
+  if (!p) return res.status(404).json({ error: 'Không tìm thấy điểm ngữ pháp' });
+
+  const rows = q.all(
+    'SELECT * FROM grammar_examples WHERE point_id = ? ORDER BY kind, sort, id', p.id);
+
+  res.set('Cache-Control', 'public, max-age=300').json({
+    point: {
+      slug: p.slug, nameEn: p.name_en, nameVi: p.name_vi,
+      grp: p.grp, level: p.level, summary: p.summary,
+      formula: jparse(p.formula_json), signals: jparse(p.signals_json),
+      useWhen: jparse(p.use_when_json), useNot: jparse(p.use_not_json),
+      confuse: jparse(p.confuse_json), errors: jparse(p.errors_json)
+    },
+    examples: rows.filter(r => r.kind === 'example')
+      .map(r => ({ en: r.en, vi: r.vi, ok: r.ok === 1, note: r.note })),
+    practice: rows.filter(r => r.kind === 'practice')
+      .map(r => ({ en: r.en, vi: r.vi, answer: r.answer }))
+  });
+});
+
 module.exports = router;

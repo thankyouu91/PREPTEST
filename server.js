@@ -149,6 +149,7 @@ app.get('/prep/tai-khoan/', studentPage('prep/account/index.html'));
 /* Khu tự học */
 app.get('/prep/hoc/dong-tu-bat-quy-tac/', studentPage('prep/learn/dong-tu-bat-quy-tac.html'));
 app.get('/prep/hoc/tu-noi/', studentPage('prep/learn/tu-noi.html'));
+app.get('/prep/hoc/thi/', studentPage('prep/learn/thi.html'));
 
 /* ---------------- Static (CSS/JS/SVG/ảnh) ----------------
    Chặn *.html tĩnh để HTML không bao giờ thoát khỏi vòng chèn nonce. */

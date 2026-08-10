@@ -140,7 +140,81 @@ try {
     '"however" cảnh báo phải dùng dấu chấm hoặc chấm phẩy');
   ok(wAll.filter(w => w.warn && w.warn.trim()).length >= 40, 'Ít nhất 40 mục có cảnh báo dùng sai');
 
-  /* ============ 3. Hai trang tự học ============ */
+  /* ============ 3. Ngữ pháp: 12 thì ============ */
+  console.log('\n\x1b[1m== API ngữ pháp (12 thì) ==\x1b[0m');
+
+  const gr = await get('/api/learn/grammar?grp=tense');
+  ok(gr.count === 12, 'Có đúng 12 thì (' + gr.count + ')');
+  ok(gr.points.every(p => p.grp === 'tense'), 'Lọc theo nhóm trả đúng nhóm');
+  ok(gr.points.every(p => p.nameVi && p.nameEn && p.summary), 'Mọi thì có tên Việt, tên Anh và tóm tắt');
+  ok(gr.points.every(p => ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'].includes(p.level)), 'Bậc luôn hợp lệ');
+  ok(new Set(gr.points.map(p => p.slug)).size === 12, 'Không có slug trùng');
+
+  /* Công thức phải đủ ba dạng, nếu thiếu thì mục học là nửa vời */
+  const noForm = gr.points.filter(p => !p.formula || !p.formula.pos || !p.formula.neg || !p.formula.que);
+  ok(noForm.length === 0, 'Mọi thì có đủ công thức khẳng định, phủ định, nghi vấn' +
+    (noForm.length ? ' (thiếu: ' + noForm.map(p => p.slug).join(', ') + ')' : ''));
+  ok(gr.points.every(p => p.signals && p.signals.length), 'Mọi thì có dấu hiệu nhận biết');
+  ok(gr.points.every(p => p.counts.example === 8), 'Mỗi thì có đúng 8 câu ví dụ');
+  ok(gr.points.every(p => p.counts.practice === 12), 'Mỗi thì có đúng 12 câu luyện tập');
+
+  const grLvl = await get('/api/learn/grammar?grp=tense&level=a1');
+  ok(grLvl.count > 0 && grLvl.points.every(p => p.level === 'A1'), 'Lọc theo bậc chấp nhận chữ thường');
+  ok(grLvl.count < 12, 'Lọc theo bậc thu hẹp kết quả');
+
+  const gr404 = await fetch(BASE + '/api/learn/grammar/khong-co-that');
+  ok(gr404.status === 404, 'Slug không tồn tại trả 404');
+
+  /* Soi kỹ từng thì: đây là nơi lỗi soạn nội dung hay lọt qua */
+  let exTotal = 0, prTotal = 0;
+  const flaws = [];
+  for (const p of gr.points) {
+    const d = await get('/api/learn/grammar/' + p.slug);
+    exTotal += d.examples.length;
+    prTotal += d.practice.length;
+
+    if (!d.point.useWhen.length) flaws.push(p.slug + ': thiếu "dùng khi nào"');
+    if (!d.point.useNot.length) flaws.push(p.slug + ': thiếu "KHÔNG dùng khi nào"');
+    if (!d.point.confuse.length) flaws.push(p.slug + ': thiếu phần phân biệt');
+    if (!d.point.errors.length) flaws.push(p.slug + ': thiếu lỗi hay mắc');
+    if (d.point.useNot.some(u => !u.what || !u.why)) flaws.push(p.slug + ': mục "không dùng" thiếu lý do');
+    if (d.point.errors.some(e => !e.wrong || !e.right || !e.why)) flaws.push(p.slug + ': lỗi thiếu câu sửa hoặc lý do');
+    if (d.point.confuse.some(c => !c.with || !c.tell || !c.pair || c.pair.length !== 2)) {
+      flaws.push(p.slug + ': cặp phân biệt không đủ hai câu');
+    }
+    if (d.examples.some(x => !x.en || !x.vi)) flaws.push(p.slug + ': ví dụ thiếu song ngữ');
+    if (d.practice.some(x => !x.en || !x.vi || !x.answer)) flaws.push(p.slug + ': câu luyện thiếu nghĩa Việt hoặc đáp án');
+
+    /* Phản ví dụ phải có ghi chú, nếu không người học chỉ thấy câu sai mà không biết sửa sao */
+    if (d.examples.some(x => !x.ok && !x.note)) flaws.push(p.slug + ': phản ví dụ không có cách sửa');
+    if (!d.examples.some(x => !x.ok)) flaws.push(p.slug + ': không có phản ví dụ nào');
+
+    /* Số chỗ trống phải khớp số phần đáp án — bắt lỗi gõ nhầm trong dữ liệu */
+    const gapMismatch = d.practice.filter(x =>
+      (x.en.match(/___/g) || []).length !== x.answer.split('…').length);
+    if (gapMismatch.length) flaws.push(p.slug + ': ' + gapMismatch.length + ' câu luyện lệch chỗ trống/đáp án');
+  }
+  ok(exTotal === 96, 'Tổng 96 câu ví dụ (' + exTotal + ')');
+  ok(prTotal === 144, 'Tổng 144 câu luyện tập (' + prTotal + ')');
+  ok(flaws.length === 0, 'Mọi thì đủ bốn lát cắt và dữ liệu sạch' +
+    (flaws.length ? ' — ' + flaws.slice(0, 6).join('; ') : ''));
+
+  /* Kiểm điểm nội dung học thuật ở chỗ dễ sai nhất */
+  const pp = await get('/api/learn/grammar/present-perfect');
+  ok(pp.point.confuse.some(c => /quá khứ đơn/i.test(c.with)),
+    'Hiện tại hoàn thành có đối chiếu với quá khứ đơn — lỗi kinh điển của người Việt');
+  ok(pp.point.useNot.some(u => /yesterday|mốc/i.test(u.what + u.why)),
+    'Hiện tại hoàn thành cảnh báo không dùng với mốc quá khứ xác định');
+
+  const pc = await get('/api/learn/grammar/present-continuous');
+  ok(pc.point.useNot.some(u => /trạng thái/i.test(u.what + u.why)),
+    'Hiện tại tiếp diễn cảnh báo động từ trạng thái');
+
+  const fs = await get('/api/learn/grammar/future-simple');
+  ok(fs.point.useNot.some(u => /if|when|điều kiện|thời gian/i.test(u.what + u.why)),
+    'Tương lai đơn cảnh báo không dùng "will" trong mệnh đề if/when');
+
+  /* ============ 4. Ba trang tự học ============ */
   console.log('\n\x1b[1m== Trang khu tự học ==\x1b[0m');
 
   const ctx = await browser.newContext();
@@ -184,7 +258,47 @@ try {
   await page.waitForTimeout(350);
   ok(await page.locator('#grid article').count() === lw.count, 'Nút "Xoá bộ lọc" đưa về đủ danh sách');
 
-  ok(errs.length === 0, 'Không có lỗi JavaScript trên hai trang' +
+  /* --- Trang 12 thì: mở/đóng, tải chi tiết, hiện đáp án --- */
+  await page.goto(BASE + '/prep/hoc/thi/', { waitUntil: 'networkidle' });
+  await page.waitForSelector('#list article', { timeout: 10000 });
+  ok(await page.locator('#list article').count() === 12, 'Trang 12 thì hiện đủ 12 mục');
+
+  /* Chi tiết chỉ tải khi mở ra, không nạp sẵn 240 câu vào trang */
+  ok(await page.locator('#list [data-answer]').count() === 0, 'Chưa mở thì chưa tải chi tiết');
+
+  await page.click('[data-toggle="present-perfect"]');
+  // state 'attached': đáp án cố tình ẩn cho tới khi bấm hiện, chờ 'visible' sẽ treo
+  await page.waitForSelector('#list article[data-slug="present-perfect"] [data-answer]',
+    { state: 'attached', timeout: 10000 });
+  const card = page.locator('article[data-slug="present-perfect"]');
+  ok(await card.locator('[data-answer]').count() === 12, 'Mở ra thấy đủ 12 câu luyện');
+  ok(await card.locator('[data-answer]:not([hidden])').count() === 0, 'Đáp án ẩn cho tới khi bấm hiện');
+
+  const body = await card.innerText();
+  ok(/KHÔNG dùng khi nào/.test(body), 'Chi tiết có mục "KHÔNG dùng khi nào"');
+  ok(/Phân biệt với thì dễ nhầm/.test(body), 'Chi tiết có mục phân biệt');
+  ok(/Lỗi người Việt hay mắc/.test(body), 'Chi tiết có mục lỗi hay mắc');
+
+  await card.locator('[data-reveal]').click();
+  await page.waitForTimeout(250);
+  ok(await card.locator('[data-answer]:not([hidden])').count() === 12, 'Bấm "Hiện tất cả đáp án" thì hiện đủ 12 đáp án');
+
+  await page.click('[data-toggle="present-perfect"]');
+  await page.waitForTimeout(250);
+  ok(await page.locator('#list [data-answer]').count() === 0, 'Bấm lần nữa thì thu lại');
+
+  /* Lọc theo bậc */
+  await page.selectOption('#f-level', 'A1');
+  await page.waitForTimeout(300);
+  const a1Count = (await get('/api/learn/grammar?grp=tense&level=A1')).count;
+  ok(await page.locator('#list article').count() === a1Count,
+    'Lọc bậc A1 còn ' + a1Count + ' thì');
+
+  await page.selectOption('#f-level', 'C2');
+  await page.waitForTimeout(300);
+  ok(await page.locator('#empty:not([hidden])').count() === 1, 'Bậc chưa có thì nào thì hiện trạng thái rỗng');
+
+  ok(errs.length === 0, 'Không có lỗi JavaScript trên ba trang tự học' +
     (errs.length ? ': ' + errs[0] : ''));
 
   await ctx.close();
