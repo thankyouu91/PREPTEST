@@ -241,14 +241,14 @@ try {
 
   /* Hai nhóm phải tách bạch, không lẫn vào nhau */
   const allGrammar = await get('/api/learn/grammar');
-  ok(allGrammar.count === 128, 'Tổng sáu nhóm là 128 điểm (' + allGrammar.count + ')');
+  ok(allGrammar.count === 140, 'Tổng sáu nhóm là 140 điểm (' + allGrammar.count + ')');
   ok(allGrammar.groups.some(g => g.id === 'tense' && g.count === 12) &&
      allGrammar.groups.some(g => g.id === 'noun' && g.count === 28) &&
      allGrammar.groups.some(g => g.id === 'modal' && g.count === 29) &&
      allGrammar.groups.some(g => g.id === 'conditional' && g.count === 20) &&
      allGrammar.groups.some(g => g.id === 'passive' && g.count === 22) &&
-     allGrammar.groups.some(g => g.id === 'clause' && g.count === 17),
-    'Thống kê theo nhóm đúng: tense 12, noun 28, modal 29, conditional 20, passive 22, clause 17');
+     allGrammar.groups.some(g => g.id === 'clause' && g.count === 29),
+    'Thống kê theo nhóm đúng: tense 12, noun 28, modal 29, conditional 20, passive 22, clause 29');
   ok(new Set(allGrammar.points.map(p => p.slug)).size === allGrammar.count,
     'Không có slug trùng giữa các nhóm');
 
@@ -483,17 +483,17 @@ try {
   console.log('\n\x1b[1m== API ngữ pháp (mệnh đề quan hệ, mệnh đề phụ) ==\x1b[0m');
 
   const mq = await get('/api/learn/grammar?grp=clause');
-  ok(mq.count === 17, 'Có 17 điểm bậc A2–B2 (' + mq.count + ')');
+  ok(mq.count === 29, 'Đủ 29 điểm bậc A2–C2 theo hạn mức (' + mq.count + ')');
   const mqLevel = mq.points.reduce((a, p) => (a[p.level] = (a[p.level] || 0) + 1, a), {});
-  const MQ_QUOTA = { A2: 3, B1: 6, B2: 8 };
+  const MQ_QUOTA = { A2: 3, B1: 6, B2: 8, C1: 7, C2: 5 };
   const mqLech = Object.keys(MQ_QUOTA).filter(l => mqLevel[l] !== MQ_QUOTA[l]);
-  ok(mqLech.length === 0, 'Đúng hạn mức A2 3, B1 6, B2 8' +
+  ok(mqLech.length === 0, 'Đúng hạn mức A2 3, B1 6, B2 8, C1 7, C2 5' +
     (mqLech.length ? ' (lệch: ' + mqLech.map(l => l + ' ' + (mqLevel[l] || 0) + '/' + MQ_QUOTA[l]).join(', ') + ')' : ''));
   ok(mq.points.every(p => p.counts.example === 6 && p.counts.practice === 10),
     'Mỗi điểm đủ 6 ví dụ và 10 câu luyện');
-  const bacMq = { A2: 2, B1: 3, B2: 4 };
+  const bacMq = { A2: 2, B1: 3, B2: 4, C1: 5, C2: 6 };
   ok(mq.points.every((p, i) => i === 0 || bacMq[p.level] >= bacMq[mq.points[i - 1].level]),
-    'Hai tệp A2–B1 và B2 ghép liền mạch, xếp từ bậc thấp lên cao');
+    'Ba tệp A2–B1, B2 và C1–C2 ghép liền mạch, xếp từ bậc thấp lên cao');
 
   /* Hai cặp liên từ ghép đôi là lỗi đặc trưng của người Việt — phải cảnh báo cả hai.
      Đây là lý do chính để tách riêng hai điểm này, mất đi là mục đó hụt mất trọng tâm. */
@@ -572,6 +572,61 @@ try {
   ok(danhNgu.point.confuse.some(c => /what/i.test(c.with + c.tell) && /that/i.test(c.with + c.tell)),
     'Mệnh đề danh ngữ phân biệt "what" với "that"');
 
+  /* Bậc C1–C2: lỗi phân từ treo là trục chính, phải xuất hiện ở cả ba mục liên quan */
+  const phanTu = await get('/api/learn/grammar/participle-clause-adverbial');
+  ok(phanTu.point.useNot.some(u => /treo/i.test(u.what + u.why)),
+    'Mệnh đề phân từ cảnh báo lỗi phân từ treo');
+  ok(/building came into view/i.test(JSON.stringify(phanTu.point.errors)),
+    'Mệnh đề phân từ nêu đúng ví dụ phân từ treo kinh điển');
+
+  const luocBoPhu = await get('/api/learn/grammar/ellipsis-subordinate');
+  ok(luocBoPhu.point.useNot.some(u => /chủ ngữ/i.test(u.what + u.why)),
+    'Lược bỏ trong mệnh đề phụ cảnh báo hai chủ ngữ phải trùng nhau');
+
+  const tuyetDoi = await get('/api/learn/grammar/absolute-construction');
+  ok(tuyetDoi.point.confuse.some(c => /chủ ngữ riêng/i.test(c.with + c.tell)),
+    'Cấu trúc tuyệt đối phân biệt với mệnh đề phân từ bằng chủ ngữ riêng');
+
+  const ketQua = await get('/api/learn/grammar/result-clause');
+  ok(ketQua.point.confuse.some(c => /kết quả/i.test(c.with + c.tell) && /mục đích/i.test(c.with + c.tell)),
+    'Mệnh đề kết quả phân biệt "so…that" với "so that" mục đích');
+
+  const chuNguGia = await get('/api/learn/grammar/extraposition-it');
+  ok(chuNguGia.point.useNot.some(u => /chủ ngữ/i.test(u.what + u.why)),
+    'Chủ ngữ giả "it" cảnh báo không được bỏ "it" ở đầu câu');
+
+  const forTo = await get('/api/learn/grammar/for-to-clause');
+  ok(forTo.point.useNot.some(u => /sở hữu/i.test(u.what + u.why)),
+    'Mệnh đề "for + to-V" cảnh báo dùng đại từ tân ngữ, không dùng sở hữu');
+
+  const deThuong = await get('/api/learn/grammar/clause-in-case');
+  ok(deThuong.point.confuse.some(c => /in case/i.test(c.with + c.tell) && /\bif\b/i.test(c.with + c.tell)),
+    'Mục "in case" phân biệt đề phòng với điều kiện "if"');
+  ok(deThuong.point.useNot.some(u => /will/i.test(u.what + u.why)),
+    'Mục "in case" cảnh báo không dùng "will" sau nó');
+
+  const asHocThuat = await get('/api/learn/grammar/as-clause-academic');
+  ok(asHocThuat.point.useNot.some(u => /\bit\b/i.test(u.what + u.why)),
+    'Mệnh đề "as" học thuật cảnh báo không chen "it" vào giữa');
+
+  const wherebyC2 = await get('/api/learn/grammar/relative-whereby');
+  ok(wherebyC2.point.useNot.some(u => /whereby/i.test(u.what + u.why)),
+    'Mục "whereby" cảnh báo nó không mang nghĩa nơi chốn');
+
+  const tachXa = await get('/api/learn/grammar/relative-postponed');
+  ok(tachXa.point.useNot.some(u => /danh từ/i.test(u.what + u.why)),
+    'Mệnh đề tách xa cảnh báo danh từ khác chen vào gây hiểu nhầm');
+
+  const nhuongBoTrangTrong = await get('/api/learn/grammar/concessive-formal');
+  ok(nhuongBoTrangTrong.point.useNot.some(u => /\bbut\b/i.test(u.what + u.why)),
+    'Nhượng bộ trang trọng vẫn cấm ghép đôi với "but"');
+  ok(/Try as he might/.test(JSON.stringify(nhuongBoTrangTrong.point.errors)),
+    'Nhượng bộ trang trọng giữ nguyên cụm cố định "Try as he might"');
+
+  const ganNham = await get('/api/learn/grammar/clause-attachment');
+  ok(ganNham.point.confuse.some(c => /hai nghĩa/i.test(c.with + c.tell)),
+    'Mục gắn nhầm chỗ nêu rõ vấn đề là câu hiểu hai nghĩa');
+
   /* ============ 6. Chất lượng câu luyện của TOÀN BỘ ngữ pháp ============
      Dấu ngoặc trong câu luyện có hai kiểu, phải tách bạch trước khi kiểm:
 
@@ -634,8 +689,8 @@ try {
     (kyTuLa.length ? ' (' + kyTuLa.length + ' chỗ, ví dụ: ' + kyTuLa[0] + ')' : ''));
   ok(lechDapAn.length === 0, 'Đáp án luôn nằm trong danh sách lựa chọn của câu trắc nghiệm' +
     (lechDapAn.length ? ' (' + lechDapAn.length + ' sai, ví dụ: ' + lechDapAn[0] + ')' : ''));
-  ok(tongLuyen === 12 * 12 + 28 * 10 + 29 * 10 + 20 * 10 + 22 * 10 + 17 * 10,
-    'Tổng câu luyện toàn khu ngữ pháp là ' + (12 * 12 + 28 * 10 + 29 * 10 + 20 * 10 + 22 * 10 + 17 * 10) + ' (' + tongLuyen + ')');
+  ok(tongLuyen === 12 * 12 + 28 * 10 + 29 * 10 + 20 * 10 + 22 * 10 + 29 * 10,
+    'Tổng câu luyện toàn khu ngữ pháp là ' + (12 * 12 + 28 * 10 + 29 * 10 + 20 * 10 + 22 * 10 + 29 * 10) + ' (' + tongLuyen + ')');
 
   /* ============ 7. Năm trang tự học ============ */
   console.log('\n\x1b[1m== Trang khu tự học ==\x1b[0m');
@@ -804,7 +859,7 @@ try {
   /* --- Trang mệnh đề quan hệ và mệnh đề phụ --- */
   await page.goto(BASE + '/prep/hoc/menh-de/', { waitUntil: 'networkidle' });
   await page.waitForSelector('#list article', { timeout: 10000 });
-  ok(await page.locator('#list article').count() === 17, 'Trang mệnh đề hiện đủ 17 mục');
+  ok(await page.locator('#list article').count() === 29, 'Trang mệnh đề hiện đủ 29 mục');
 
   await page.click('[data-toggle="adverbial-reason-basic"]');
   await page.waitForSelector('#list article[data-slug="adverbial-reason-basic"] [data-answer]',
@@ -830,6 +885,21 @@ try {
   await page.selectOption('#f-level', 'B2');
   await page.waitForTimeout(300);
   ok(await page.locator('#list article').count() === 8, 'Lọc bậc B2 còn 8 mục');
+
+  await page.selectOption('#f-level', 'C1');
+  await page.waitForTimeout(300);
+  ok(await page.locator('#list article').count() === 7, 'Lọc bậc C1 còn 7 mục');
+
+  await page.selectOption('#f-level', 'C2');
+  await page.waitForTimeout(300);
+  ok(await page.locator('#list article').count() === 5, 'Lọc bậc C2 còn 5 mục');
+
+  /* Mục bậc C2 cuối danh sách 29 mục phải mở được như mục đầu */
+  await page.click('[data-toggle="clause-attachment"]');
+  await page.waitForSelector('#list article[data-slug="clause-attachment"] [data-answer]',
+    { state: 'attached', timeout: 10000 });
+  ok(await page.locator('article[data-slug="clause-attachment"] [data-answer]').count() === 10,
+    'Mục bậc C2 cuối danh sách cũng mở ra đủ 10 câu luyện');
 
   ok(errs.length === 0, 'Không có lỗi JavaScript trên tám trang tự học' +
     (errs.length ? ': ' + errs[0] : ''));
