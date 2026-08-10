@@ -28,8 +28,9 @@ Lệnh khác:
 | `node scripts/test-auth.mjs` | kiểm thử luồng đăng nhập / đổi mật khẩu / lưu tiến độ theo tài khoản |
 | `node scripts/test-admin.mjs` | kiểm thử API quản trị: phiên, CSRF, phân quyền, CRUD, sinh đề, cấp code |
 | `node scripts/test-catalog.mjs` | kiểm thử trang học viên đọc `/api/catalog` + nhánh dự phòng khi API hỏng |
+| `node scripts/test-user-api.mjs` | kiểm thử API tài khoản học viên: đăng ký, đăng nhập, xác thực email, đặt lại mật khẩu, CSRF, chống dò |
 | `npm run screenshot:admin` | chụp các màn quản trị |
-| `npm test` | chạy cả bốn bộ kiểm thử |
+| `npm test` | chạy cả năm bộ kiểm thử |
 
 ## Khu quản trị (backend thật)
 
@@ -192,12 +193,41 @@ accessCode = { code, unlocks: { testId? | familyId? | bundle[] }, redeemedAt, ex
 package    = { id, name, price, familyId, desc, perks[], featured }
 ```
 
+## API tài khoản học viên
+
+Backend thật, cùng cơ chế bảo mật với khu quản trị (scrypt, phiên cookie HttpOnly,
+CSRF double-submit, chống dò, ghi nhật ký). Cookie phiên là `prep_user`, tách hẳn khỏi
+`prep_admin` để hai khu không dùng nhầm phiên của nhau.
+
+| Endpoint | Việc |
+|---|---|
+| `POST /api/auth/register` | tạo tài khoản, mở phiên, phát token xác thực email |
+| `POST /api/auth/login` | đăng nhập bằng tên đăng nhập **hoặc** email |
+| `POST /api/auth/logout` | huỷ phiên hiện tại |
+| `POST /api/auth/verify/send` | gửi lại liên kết xác thực (tối đa 3 lần/giờ) |
+| `POST /api/auth/verify` | đổi token lấy trạng thái đã xác thực (không cần phiên) |
+| `POST /api/auth/forgot` | xin liên kết đặt lại — luôn trả cùng một câu trả lời |
+| `POST /api/auth/reset` | đặt lại mật khẩu bằng token, đăng xuất mọi thiết bị |
+| `GET /api/me` | hồ sơ + quyền mở khoá + code + đơn hàng |
+| `PATCH /api/me` | sửa tên, email, kỳ thi quan tâm (đổi email thì phải xác thực lại) |
+| `POST /api/me/password` | đổi mật khẩu, đăng xuất thiết bị khác |
+
+Quy tắc mật khẩu: tối thiểu 8 ký tự, có cả chữ và số. Token xác thực sống 48 giờ,
+token đặt lại sống 2 giờ, cả hai chỉ dùng được một lần và DB chỉ lưu bản băm.
+
+> **Chưa nối dịch vụ gửi mail.** Liên kết xác thực / đặt lại được in ra log máy chủ,
+> và chỉ khi `NODE_ENV` khác `production` mới trả kèm trong response để chạy thử luồng.
+> Xem `TODO(backend/mail)` trong `server/user-api.js`.
+
+Tài khoản demo `student` được đặt sẵn mật khẩu ở môi trường không phải production;
+ở production bản seed để trống `pass_hash` nên không ai đăng nhập được vào nó.
+
 Các seam còn lại:
 
 | Seam | Vị trí | Ghi chú |
 |---|---|---|
-| `TODO(backend/auth)` | `PrepAuth`, 4 màn auth | Đăng ký/đăng nhập/xác thực email đang là mock localStorage |
-| `TODO(backend)` | `PrepState` | Trạng thái mở khoá, code đã kích hoạt, tiến độ — còn ở localStorage |
+| `TODO(frontend)` | `PrepAuth`, 4 màn auth | Giao diện còn dùng localStorage, chưa gọi API ở trên |
+| `TODO(backend)` | `PrepState` | Kích hoạt code và tiến độ còn ở localStorage |
 | `TODO(backend/payment)` | `mua-code.html` | Nút thanh toán hiện chỉ mở modal demo và cấp mã miễn phí |
 | `TODO(backend/exam-engine)` | `test/index.html` | Nút "Bắt đầu làm bài" mở overlay "sẽ sớm ra mắt" |
 

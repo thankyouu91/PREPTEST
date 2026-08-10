@@ -16,7 +16,8 @@ Nhánh làm việc: `claude/prep-test-platform-design-fpiuqn`
 - [x] Giao diện quản trị: đăng nhập, báo cáo, danh sách đề, trình xây đề, ngân hàng câu hỏi, học viên, code, quản trị + ảnh nghiệm thu
 - [x] Nhập câu hỏi hàng loạt từ CSV trong màn Ngân hàng câu hỏi (tải mẫu, xem trước, báo lỗi từng dòng)
 - [x] Chuyển trang học viên từ `public/prep/_mock.js` sang đọc `GET /api/catalog`, giữ nguyên markup và các trạng thái loading/empty
-- [ ] API học viên thật: đăng ký, đăng nhập, xác thực email, phiên cookie (scrypt như khu quản trị) — thay `PrepAuth` phía client
+- [x] API học viên thật: đăng ký, đăng nhập, xác thực email, quên/đặt lại mật khẩu, phiên cookie `prep_user` (scrypt như khu quản trị)
+- [ ] Nối 4 màn auth + màn Tài khoản vào API học viên: bỏ `PrepAuth`/`PrepAccounts` localStorage, dựng thêm màn `/prep/dat-lai-mat-khau/`, guard phía server cho trang cần đăng nhập
 - [ ] API kích hoạt code phía server (`POST /api/redeem`) + rate-limit chống dò mã, thay `PrepState.redeem`
 - [ ] Engine làm bài: khung làm bài theo phần, đồng hồ từng phần, tự lưu tiến độ, nộp bài
 - [ ] Chấm tự động phần trắc nghiệm và điền từ, lưu kết quả theo lần làm
@@ -32,7 +33,7 @@ Nhánh làm việc: `claude/prep-test-platform-design-fpiuqn`
 hãy dùng đúng một lệnh sau, nó tự cài dependency, tự bật/tắt server và chạy hết mọi bước:
 
 ```bash
-npm run verify          # cài deps → build → chạy server → 4 bộ test → audit → chụp ảnh
+npm run verify          # cài deps → build → chạy server → 5 bộ test → audit → chụp ảnh
 SKIP_SHOTS=1 npm run verify   # bản nhanh, bỏ bước chụp ảnh
 ```
 

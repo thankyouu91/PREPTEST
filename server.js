@@ -2,7 +2,8 @@
  * VPET Prep — server.
  *
  * Hai khu vực:
- * 1. Trang học viên (/prep/…): HTML tĩnh, state còn là mock phía client (giai đoạn 1).
+ * 1. Trang học viên (/prep/…): HTML tĩnh; danh mục đọc từ /api/catalog, tài khoản
+ *    có API thật ở /api/auth/… và /api/me (giao diện đang nối dần).
  * 2. Khu quản trị (/admin/… + /api/admin/…): backend thật trên SQLite, có đăng nhập,
  *    phiên, CSRF, chống dò mật khẩu và nhật ký thao tác.
  *
@@ -11,7 +12,7 @@
  * - Routing non-strict: '/prep/x/' cũng khớp '/prep/x' → guard exact-path redirect
  *   MỘT lần sang bản có dấu '/' (bản có '/' không vào nhánh redirect nên không lặp vòng).
  *
- * TODO(frontend): chuyển trang học viên từ public/prep/_mock.js sang GET /api/catalog.
+ * TODO(frontend): nối 4 màn auth học viên vào /api/auth/… (hiện còn PrepAuth localStorage).
  */
 const express = require('express');
 const path = require('path');
@@ -19,6 +20,7 @@ const fs = require('fs');
 const crypto = require('crypto');
 
 const api = require('./server/api');
+const userApi = require('./server/user-api');
 const A = require('./server/auth');
 
 const app = express();
@@ -70,7 +72,8 @@ function serveHtmlWithNonce(relFile) {
 }
 
 /* ---------------- API (đăng ký trước static) ---------------- */
-app.use('/api', api);
+app.use('/api', userApi);        // tài khoản học viên: /api/auth/…, /api/me
+app.use('/api', api);            // danh mục công khai + /api/admin/…
 
 /* ---------------- Khu quản trị ----------------
    Guard phía server: chưa đăng nhập thì đá về /admin/dang-nhap/ ngay từ HTTP,
@@ -103,6 +106,8 @@ app.get('/prep/dang-ky/', serveHtmlWithNonce('prep/auth/dang-ky.html'));
 app.get('/prep/dang-nhap/', serveHtmlWithNonce('prep/auth/dang-nhap.html'));
 app.get('/prep/quen-mat-khau/', serveHtmlWithNonce('prep/auth/quen-mat-khau.html'));
 app.get('/prep/xac-thuc-email/', serveHtmlWithNonce('prep/auth/xac-thuc-email.html'));
+// TODO(frontend): /prep/dat-lai-mat-khau/ — màn đặt lại mật khẩu từ liên kết email,
+// dựng ở mục "nối 4 màn auth vào API" trong docs/ROADMAP.md.
 
 /* ------------- Trang cần đăng nhập (mock guard ở client) ------------- */
 app.get('/prep/', serveHtmlWithNonce('prep/index.html'));
@@ -127,6 +132,7 @@ app.use((req, res) =>
 
 /* Tài khoản quản trị khởi tạo + dọn phiên hết hạn định kỳ */
 A.ensureSeedAdmin();
+A.ensureDemoStudentPassword();
 setInterval(A.purgeSessions, 30 * 60e3).unref();
 
 app.listen(PORT, () => {

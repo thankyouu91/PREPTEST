@@ -58,6 +58,30 @@ CREATE TABLE IF NOT EXISTS users (
   last_login_at TEXT
 );
 
+-- Phiên đăng nhập của học viên. Tách khỏi bảng sessions của quản trị để hai khu
+-- không bao giờ dùng nhầm phiên của nhau; cũng chỉ lưu BẢN BĂM của token.
+CREATE TABLE IF NOT EXISTS user_sessions (
+  token_hash TEXT PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  created_at TEXT NOT NULL,
+  expires_at TEXT NOT NULL,
+  ip TEXT,
+  ua TEXT
+);
+
+-- Token dùng một lần gửi qua email: xác thực tài khoản và đặt lại mật khẩu.
+-- Lưu bản băm để rò rỉ DB không dựng lại được liên kết trong hộp thư.
+CREATE TABLE IF NOT EXISTS user_tokens (
+  token_hash TEXT PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  kind TEXT NOT NULL,                           -- verify | reset
+  created_at TEXT NOT NULL,
+  expires_at TEXT NOT NULL,
+  used_at TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_user_tokens_user ON user_tokens(user_id, kind);
+
 CREATE TABLE IF NOT EXISTS families (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,

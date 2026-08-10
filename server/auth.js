@@ -100,6 +100,63 @@ function currentAdmin(req) {
 /** Dọn phiên hết hạn (gọi định kỳ) */
 function purgeSessions() {
   q.run('DELETE FROM sessions WHERE expires_at <= ?', nowISO());
+  q.run('DELETE FROM user_sessions WHERE expires_at <= ?', nowISO());
+  q.run('DELETE FROM user_tokens WHERE expires_at <= ?', nowISO());
+}
+
+/* --------------------------- Phiên học viên ---------------------------
+   Cookie riêng (prep_user) và bảng riêng (user_sessions) để khu học viên và
+   khu quản trị không bao giờ dùng nhầm phiên của nhau. Cùng cơ chế: token 32
+   byte, DB chỉ giữ bản băm, cookie HttpOnly + SameSite=Strict.            */
+const USER_SESSION_DAYS = 14;
+
+function createUserSession(userId, req, res) {
+  const token = crypto.randomBytes(32).toString('base64url');
+  const maxAge = USER_SESSION_DAYS * 86400;
+  const expires = new Date(Date.now() + maxAge * 1000).toISOString();
+  q.run('INSERT INTO user_sessions (token_hash, user_id, created_at, expires_at, ip, ua) VALUES (?,?,?,?,?,?)',
+    sha256(token), userId, nowISO(), expires, req.ip || null, (req.headers['user-agent'] || '').slice(0, 200));
+  setCookie(res, 'prep_user', token, { maxAge });
+  setCookie(res, 'prep_csrf', crypto.randomBytes(24).toString('base64url'), { httpOnly: false, maxAge });
+  return token;
+}
+
+function destroyUserSession(req, res) {
+  const token = parseCookies(req).prep_user;
+  if (token) q.run('DELETE FROM user_sessions WHERE token_hash=?', sha256(token));
+  setCookie(res, 'prep_user', '', { maxAge: 0 });
+  setCookie(res, 'prep_csrf', '', { httpOnly: false, maxAge: 0 });
+}
+
+/** Đăng xuất mọi thiết bị — dùng sau khi đổi hoặc đặt lại mật khẩu */
+function dropUserSessions(userId) {
+  q.run('DELETE FROM user_sessions WHERE user_id=?', userId);
+}
+
+function currentUser(req) {
+  const token = parseCookies(req).prep_user;
+  if (!token) return null;
+  const row = q.get(
+    `SELECT u.id, u.username, u.email, u.name, u.verified, u.status, u.interests_json, s.expires_at
+       FROM user_sessions s JOIN users u ON u.id = s.user_id
+      WHERE s.token_hash = ?`, sha256(token));
+  if (!row) return null;
+  if (row.expires_at <= nowISO()) {
+    q.run('DELETE FROM user_sessions WHERE token_hash=?', sha256(token));
+    return null;
+  }
+  if (row.status !== 'active') return null;        // tài khoản bị khoá thì phiên hết giá trị
+  return {
+    id: row.id, username: row.username, email: row.email, name: row.name,
+    verified: !!row.verified, interests: JSON.parse(row.interests_json || '[]')
+  };
+}
+
+function requireUser(req, res, next) {
+  const user = currentUser(req);
+  if (!user) return res.status(401).json({ error: 'Chưa đăng nhập hoặc phiên đã hết hạn.' });
+  req.user = user;
+  next();
 }
 
 /* --------------------------- Chống dò mã --------------------------- */
@@ -124,6 +181,48 @@ function noteFailure(key) {
   attempts.set(key, a);
 }
 function clearFailures(key) { attempts.delete(key); }
+
+/* --------------------- Giới hạn tần suất chung ---------------------
+   Bộ đếm cửa sổ trượt trong bộ nhớ tiến trình: đủ cho một tiến trình đơn.
+   // TODO(scale): chuyển sang kho dùng chung nếu chạy nhiều tiến trình. */
+const buckets = new Map();           // key → { hits: [timestamp…] }
+
+/** Trả 0 nếu còn lượt, hoặc số giây phải chờ nếu đã chạm trần. */
+function rateLimit(key, max, windowMs) {
+  const now = Date.now();
+  const b = buckets.get(key) || { hits: [] };
+  b.hits = b.hits.filter(t => now - t < windowMs);
+  if (b.hits.length >= max) {
+    buckets.set(key, b);
+    return Math.ceil((windowMs - (now - b.hits[0])) / 1000);
+  }
+  b.hits.push(now);
+  buckets.set(key, b);
+  return 0;
+}
+
+/* ------------------ Token dùng một lần gửi qua email ------------------ */
+const TOKEN_HOURS = { verify: 48, reset: 2 };
+
+/** Sinh token cho user; trả chuỗi thô (chỉ lần này), DB giữ bản băm. */
+function issueToken(userId, kind) {
+  const hours = TOKEN_HOURS[kind] || 2;
+  const token = crypto.randomBytes(32).toString('base64url');
+  q.run('DELETE FROM user_tokens WHERE user_id=? AND kind=? AND used_at IS NULL', userId, kind);
+  q.run('INSERT INTO user_tokens (token_hash, user_id, kind, created_at, expires_at) VALUES (?,?,?,?,?)',
+    sha256(token), userId, kind, nowISO(), new Date(Date.now() + hours * 3600e3).toISOString());
+  return token;
+}
+
+/** Đổi token lấy user_id và đánh dấu đã dùng. Trả null nếu sai/hết hạn/đã dùng. */
+function consumeToken(token, kind) {
+  if (!token) return null;
+  const hash = sha256(String(token));
+  const row = q.get('SELECT * FROM user_tokens WHERE token_hash=? AND kind=?', hash, kind);
+  if (!row || row.used_at || row.expires_at <= nowISO()) return null;
+  q.run('UPDATE user_tokens SET used_at=? WHERE token_hash=?', nowISO(), hash);
+  return row.user_id;
+}
 
 /* ------------------------------ Middleware ------------------------------ */
 function requireAdmin(req, res, next) {
@@ -181,11 +280,28 @@ function ensureSeedAdmin() {
   return { username, password: envPw ? null : password };
 }
 
+/* ------------- Mật khẩu cho tài khoản học viên demo -------------
+   Bản seed tạo user 'student' không có mật khẩu. Ngoài production, đặt sẵn
+   mật khẩu demo để thử luồng đăng nhập; ở production để trống nên không ai
+   đăng nhập được vào tài khoản mẫu. */
+const DEMO_STUDENT_PASSWORD = 'Goodmorning01';
+
+function ensureDemoStudentPassword() {
+  if (process.env.NODE_ENV === 'production') return false;
+  const u = q.get("SELECT id, pass_hash FROM users WHERE username='student'");
+  if (!u || u.pass_hash) return false;
+  q.run('UPDATE users SET pass_hash=? WHERE id=?', hashPassword(DEMO_STUDENT_PASSWORD), u.id);
+  return true;
+}
+
 module.exports = {
   hashPassword, verifyPassword,
   parseCookies, setCookie,
   createSession, destroySession, currentAdmin, purgeSessions,
-  throttleKey, isLocked, noteFailure, clearFailures,
+  createUserSession, destroyUserSession, dropUserSessions, currentUser, requireUser,
+  throttleKey, isLocked, noteFailure, clearFailures, rateLimit,
+  issueToken, consumeToken,
   requireAdmin, requireOwner, csrfGuard,
-  ensureSeedAdmin, DEV_DEFAULT_PASSWORD
+  ensureSeedAdmin, ensureDemoStudentPassword,
+  DEV_DEFAULT_PASSWORD, DEMO_STUDENT_PASSWORD
 };

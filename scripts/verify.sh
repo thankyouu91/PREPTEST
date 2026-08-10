@@ -46,6 +46,9 @@ node scripts/test-auth.mjs || fail=1
 step "Kiểm thử danh mục học viên (/api/catalog)"
 node scripts/test-catalog.mjs || fail=1
 
+step "Kiểm thử API tài khoản học viên"
+node scripts/test-user-api.mjs || fail=1
+
 step "Audit giao diện (tràn ngang, tương phản, CSP)"
 node scripts/audit.mjs || fail=1
 
