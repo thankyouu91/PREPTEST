@@ -140,28 +140,51 @@ try {
     '"however" cảnh báo phải dùng dấu chấm hoặc chấm phẩy');
   ok(wAll.filter(w => w.warn && w.warn.trim()).length >= 40, 'Ít nhất 40 mục có cảnh báo dùng sai');
 
-  /* ============ 3. Ngữ pháp: 12 thì ============ */
-  console.log('\n\x1b[1m== API ngữ pháp (12 thì) ==\x1b[0m');
+  /* ============ 3. Ngữ pháp: 12 thì + phối hợp thì ============ */
+  console.log('\n\x1b[1m== API ngữ pháp (thì và phối hợp thì) ==\x1b[0m');
 
   const gr = await get('/api/learn/grammar?grp=tense');
-  ok(gr.count === 12, 'Có đúng 12 thì (' + gr.count + ')');
+  ok(gr.count === 21, 'Có đủ 21 điểm: 12 thì + 9 điểm phối hợp thì (' + gr.count + ')');
   ok(gr.points.every(p => p.grp === 'tense'), 'Lọc theo nhóm trả đúng nhóm');
-  ok(gr.points.every(p => p.nameVi && p.nameEn && p.summary), 'Mọi thì có tên Việt, tên Anh và tóm tắt');
+  ok(gr.points.every(p => p.nameVi && p.nameEn && p.summary), 'Mọi điểm có tên Việt, tên Anh và tóm tắt');
   ok(gr.points.every(p => ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'].includes(p.level)), 'Bậc luôn hợp lệ');
-  ok(new Set(gr.points.map(p => p.slug)).size === 12, 'Không có slug trùng');
+  ok(new Set(gr.points.map(p => p.slug)).size === 21, 'Không có slug trùng');
+
+  /* Hạn mức nhóm "Thì" trong docs/LEARNING.md mục 2. Chốt chặn cho ràng buộc
+     "không tự nâng số lượng để cho nhiều". */
+  const tByLevel = gr.points.reduce((a, p) => (a[p.level] = (a[p.level] || 0) + 1, a), {});
+  const T_QUOTA = { A1: 4, A2: 4, B1: 4, B2: 4, C1: 3, C2: 2 };
+  const tLech = Object.keys(T_QUOTA).filter(l => tByLevel[l] !== T_QUOTA[l]);
+  ok(tLech.length === 0, 'Đúng hạn mức A1 4, A2 4, B1 4, B2 4, C1 3, C2 2' +
+    (tLech.length ? ' (lệch: ' + tLech.map(l => l + ' ' + (tByLevel[l] || 0) + '/' + T_QUOTA[l]).join(', ') + ')' : ''));
+
+  /* Nhóm này gồm hai phần soạn theo hai chuẩn khác nhau: 12 thì có công thức ba
+     dạng và 8+12 câu; 9 điểm phối hợp thì dùng bảng công thức tự do và 6+10 câu
+     như mọi nhóm soạn về sau. Tách ra kiểm riêng chứ không hạ chuẩn cả nhóm. */
+  const MUOI_HAI_THI = ['present-simple', 'present-continuous', 'present-perfect',
+    'present-perfect-continuous', 'past-simple', 'past-continuous', 'past-perfect',
+    'past-perfect-continuous', 'future-simple', 'future-continuous', 'future-perfect',
+    'future-perfect-continuous'];
+  const thi = gr.points.filter(p => MUOI_HAI_THI.includes(p.slug));
+  const phoiHop = gr.points.filter(p => !MUOI_HAI_THI.includes(p.slug));
+  ok(thi.length === 12 && phoiHop.length === 9,
+    'Đủ 12 thì và 9 điểm phối hợp thì (' + thi.length + ' + ' + phoiHop.length + ')');
 
   /* Công thức phải đủ ba dạng, nếu thiếu thì mục học là nửa vời */
   const formRows = p => (p.formula && p.formula.rows || []).filter(r => r && r[1]);
-  const noForm = gr.points.filter(p => formRows(p).length !== 3);
+  const noForm = thi.filter(p => formRows(p).length !== 3);
   ok(noForm.length === 0, 'Mọi thì có đủ công thức khẳng định, phủ định, nghi vấn' +
     (noForm.length ? ' (thiếu: ' + noForm.map(p => p.slug).join(', ') + ')' : ''));
-  ok(gr.points.every(p => p.signals && p.signals.length), 'Mọi thì có dấu hiệu nhận biết');
-  ok(gr.points.every(p => p.counts.example === 8), 'Mỗi thì có đúng 8 câu ví dụ');
-  ok(gr.points.every(p => p.counts.practice === 12), 'Mỗi thì có đúng 12 câu luyện tập');
+  ok(phoiHop.every(p => formRows(p).length >= 2), 'Mọi điểm phối hợp thì có ít nhất hai dòng công thức');
+  ok(gr.points.every(p => p.signals && p.signals.length), 'Mọi điểm có dấu hiệu nhận biết');
+  ok(thi.every(p => p.counts.example === 8), 'Mỗi thì có đúng 8 câu ví dụ');
+  ok(thi.every(p => p.counts.practice === 12), 'Mỗi thì có đúng 12 câu luyện tập');
+  ok(phoiHop.every(p => p.counts.example === 6), 'Mỗi điểm phối hợp thì có đúng 6 câu ví dụ');
+  ok(phoiHop.every(p => p.counts.practice === 10), 'Mỗi điểm phối hợp thì có đúng 10 câu luyện tập');
 
   const grLvl = await get('/api/learn/grammar?grp=tense&level=a1');
   ok(grLvl.count > 0 && grLvl.points.every(p => p.level === 'A1'), 'Lọc theo bậc chấp nhận chữ thường');
-  ok(grLvl.count < 12, 'Lọc theo bậc thu hẹp kết quả');
+  ok(grLvl.count < 21, 'Lọc theo bậc thu hẹp kết quả');
 
   const gr404 = await fetch(BASE + '/api/learn/grammar/khong-co-that');
   ok(gr404.status === 404, 'Slug không tồn tại trả 404');
@@ -195,9 +218,9 @@ try {
       (x.en.match(/___/g) || []).length !== x.answer.split('…').length);
     if (gapMismatch.length) flaws.push(p.slug + ': ' + gapMismatch.length + ' câu luyện lệch chỗ trống/đáp án');
   }
-  ok(exTotal === 96, 'Tổng 96 câu ví dụ (' + exTotal + ')');
-  ok(prTotal === 144, 'Tổng 144 câu luyện tập (' + prTotal + ')');
-  ok(flaws.length === 0, 'Mọi thì đủ bốn lát cắt và dữ liệu sạch' +
+  ok(exTotal === 150, 'Tổng 150 câu ví dụ: 12 thì × 8 + 9 điểm × 6 (' + exTotal + ')');
+  ok(prTotal === 234, 'Tổng 234 câu luyện tập: 12 thì × 12 + 9 điểm × 10 (' + prTotal + ')');
+  ok(flaws.length === 0, 'Mọi điểm đủ bốn lát cắt và dữ liệu sạch' +
     (flaws.length ? ' — ' + flaws.slice(0, 6).join('; ') : ''));
 
   /* Kiểm điểm nội dung học thuật ở chỗ dễ sai nhất */
@@ -214,6 +237,25 @@ try {
   const fs = await get('/api/learn/grammar/future-simple');
   ok(fs.point.useNot.some(u => /if|when|điều kiện|thời gian/i.test(u.what + u.why)),
     'Tương lai đơn cảnh báo không dùng "will" trong mệnh đề if/when');
+
+  /* Phần phối hợp thì: soi đúng chỗ dễ soạn sai nhất */
+  const seq = await get('/api/learn/grammar/sequence-before-after');
+  ok(seq.point.useNot.some(u => /will/i.test(u.what + u.why)),
+    '"before/after" cảnh báo không dùng "will" trong mệnh đề thời gian');
+  ok(seq.point.confuse.some(c => /quá khứ hoàn thành/i.test(c.tell)),
+    '"before/after" đối chiếu với trường hợp bắt buộc dùng quá khứ hoàn thành');
+
+  const fip = await get('/api/learn/grammar/future-in-the-past');
+  ok(fip.point.confuse.some(c => /điều kiện/i.test(c.with)),
+    'Tương lai trong quá khứ tách bạch với "would" của câu điều kiện');
+
+  const hp = await get('/api/learn/grammar/historic-present');
+  ok(hp.point.confuse.some(c => /trôi thì/i.test(c.with)),
+    'Hiện tại lịch sử phân biệt với lỗi trôi thì');
+
+  const aw = await get('/api/learn/grammar/tense-academic-writing');
+  ok(aw.point.confuse.some(c => /hiện tại hoàn thành/i.test(c.with)),
+    'Thì trong văn học thuật đối chiếu hiện tại hoàn thành với quá khứ đơn khi dẫn nguồn');
 
   /* ============ 4. Ngữ pháp: danh từ, mạo từ, lượng từ ============ */
   console.log('\n\x1b[1m== API ngữ pháp (danh từ, mạo từ, lượng từ) ==\x1b[0m');
@@ -241,8 +283,8 @@ try {
 
   /* Hai nhóm phải tách bạch, không lẫn vào nhau */
   const allGrammar = await get('/api/learn/grammar');
-  ok(allGrammar.count === 194, 'Tổng tám nhóm là 194 điểm (' + allGrammar.count + ')');
-  ok(allGrammar.groups.some(g => g.id === 'tense' && g.count === 12) &&
+  ok(allGrammar.count === 203, 'Tổng tám nhóm là 203 điểm (' + allGrammar.count + ')');
+  ok(allGrammar.groups.some(g => g.id === 'tense' && g.count === 21) &&
      allGrammar.groups.some(g => g.id === 'noun' && g.count === 28) &&
      allGrammar.groups.some(g => g.id === 'modal' && g.count === 29) &&
      allGrammar.groups.some(g => g.id === 'conditional' && g.count === 20) &&
@@ -250,7 +292,7 @@ try {
      allGrammar.groups.some(g => g.id === 'clause' && g.count === 29) &&
      allGrammar.groups.some(g => g.id === 'emphasis' && g.count === 21) &&
      allGrammar.groups.some(g => g.id === 'register' && g.count === 33),
-    'Thống kê theo nhóm đúng: tense 12, noun 28, modal 29, conditional 20, passive 22, clause 29, emphasis 21, register 33');
+    'Thống kê theo nhóm đúng: tense 21, noun 28, modal 29, conditional 20, passive 22, clause 29, emphasis 21, register 33');
   ok(new Set(allGrammar.points.map(p => p.slug)).size === allGrammar.count,
     'Không có slug trùng giữa các nhóm');
 
@@ -941,8 +983,8 @@ try {
     (kyTuLa.length ? ' (' + kyTuLa.length + ' chỗ, ví dụ: ' + kyTuLa[0] + ')' : ''));
   ok(lechDapAn.length === 0, 'Đáp án luôn nằm trong danh sách lựa chọn của câu trắc nghiệm' +
     (lechDapAn.length ? ' (' + lechDapAn.length + ' sai, ví dụ: ' + lechDapAn[0] + ')' : ''));
-  ok(tongLuyen === 12 * 12 + 28 * 10 + 29 * 10 + 20 * 10 + 22 * 10 + 29 * 10 + 21 * 10 + 33 * 10,
-    'Tổng câu luyện toàn khu ngữ pháp là ' + (12 * 12 + 28 * 10 + 29 * 10 + 20 * 10 + 22 * 10 + 29 * 10 + 21 * 10 + 33 * 10) + ' (' + tongLuyen + ')');
+  ok(tongLuyen === 12 * 12 + 9 * 10 + 28 * 10 + 29 * 10 + 20 * 10 + 22 * 10 + 29 * 10 + 21 * 10 + 33 * 10,
+    'Tổng câu luyện toàn khu ngữ pháp là ' + (12 * 12 + 9 * 10 + 28 * 10 + 29 * 10 + 20 * 10 + 22 * 10 + 29 * 10 + 21 * 10 + 33 * 10) + ' (' + tongLuyen + ')');
 
   /* ============ 7. Năm trang tự học ============ */
   console.log('\n\x1b[1m== Trang khu tự học ==\x1b[0m');
@@ -988,12 +1030,12 @@ try {
   await page.waitForTimeout(350);
   ok(await page.locator('#grid article').count() === lw.count, 'Nút "Xoá bộ lọc" đưa về đủ danh sách');
 
-  /* --- Trang 12 thì: mở/đóng, tải chi tiết, hiện đáp án --- */
+  /* --- Trang thì và phối hợp thì: mở/đóng, tải chi tiết, hiện đáp án --- */
   await page.goto(BASE + '/prep/hoc/thi/', { waitUntil: 'networkidle' });
   await page.waitForSelector('#list article', { timeout: 10000 });
-  ok(await page.locator('#list article').count() === 12, 'Trang 12 thì hiện đủ 12 mục');
+  ok(await page.locator('#list article').count() === 21, 'Trang thì hiện đủ 21 mục');
 
-  /* Chi tiết chỉ tải khi mở ra, không nạp sẵn 240 câu vào trang */
+  /* Chi tiết chỉ tải khi mở ra, không nạp sẵn 384 câu vào trang */
   ok(await page.locator('#list [data-answer]').count() === 0, 'Chưa mở thì chưa tải chi tiết');
 
   await page.click('[data-toggle="present-perfect"]');
@@ -1006,7 +1048,7 @@ try {
 
   const body = await card.innerText();
   ok(/KHÔNG dùng khi nào/.test(body), 'Chi tiết có mục "KHÔNG dùng khi nào"');
-  ok(/Phân biệt với thì dễ nhầm/.test(body), 'Chi tiết có mục phân biệt');
+  ok(/Phân biệt với chỗ dễ nhầm/.test(body), 'Chi tiết có mục phân biệt');
   ok(/Lỗi người Việt hay mắc/.test(body), 'Chi tiết có mục lỗi hay mắc');
 
   await card.locator('[data-reveal]').click();
@@ -1022,11 +1064,14 @@ try {
   await page.waitForTimeout(300);
   const a1Count = (await get('/api/learn/grammar?grp=tense&level=A1')).count;
   ok(await page.locator('#list article').count() === a1Count,
-    'Lọc bậc A1 còn ' + a1Count + ' thì');
+    'Lọc bậc A1 còn ' + a1Count + ' mục');
 
+  /* Bậc C2 của nhóm này chỉ có phần phối hợp thì, không có thì nào */
   await page.selectOption('#f-level', 'C2');
   await page.waitForTimeout(300);
-  ok(await page.locator('#empty:not([hidden])').count() === 1, 'Bậc chưa có thì nào thì hiện trạng thái rỗng');
+  const c2Count = (await get('/api/learn/grammar?grp=tense&level=C2')).count;
+  ok(await page.locator('#list article').count() === c2Count && c2Count === 2,
+    'Lọc bậc C2 còn đúng 2 mục phối hợp thì');
 
   /* --- Trang danh từ dùng chung khối PrepGrammar với trang 12 thì --- */
   await page.goto(BASE + '/prep/hoc/danh-tu/', { waitUntil: 'networkidle' });

@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>12 thì tiếng Anh · VPET Prep</title>
-  <meta name="description" content="Mười hai thì tiếng Anh: công thức, dùng khi nào, không dùng khi nào, phân biệt cặp dễ nhầm, lỗi người Việt hay mắc, ví dụ song ngữ và câu luyện tập.">
+  <title>Thì và phối hợp thì · VPET Prep</title>
+  <meta name="description" content="Mười hai thì tiếng Anh và chín điểm phối hợp thì: công thức, dùng khi nào, không dùng khi nào, phân biệt cặp dễ nhầm, lỗi người Việt hay mắc, ví dụ song ngữ và câu luyện tập.">
   <meta name="theme-color" content="#1c3d8f">
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <link rel="preload" href="/fonts/pjs-700-latin.woff2" as="font" type="font/woff2" crossorigin>
@@ -26,19 +26,22 @@
     <div class="max-w-shell mx-auto px-4 sm:px-6 lg:px-10 pb-6">
 
       <section class="mt-8 max-w-[70ch]">
-        <h2 class="text-2xl sm:text-[28px] font-extrabold tracking-tight">12 thì tiếng Anh</h2>
+        <h2 class="text-2xl sm:text-[28px] font-extrabold tracking-tight">Thì và phối hợp thì</h2>
         <p class="text-muted text-[15px] leading-relaxed mt-2">
           Tiếng Việt không chia thì, nên chỗ mất điểm không nằm ở việc thuộc công thức mà ở chỗ
-          <b class="text-ink">biết khi nào KHÔNG được dùng</b>. Mỗi thì dưới đây có đủ bốn lát cắt:
-          công thức, dùng khi nào, không dùng khi nào, và phân biệt với thì dễ nhầm — kèm lỗi
-          người Việt hay mắc, ví dụ song ngữ và câu luyện tập có đáp án.
+          <b class="text-ink">biết khi nào KHÔNG được dùng</b>. Mười hai thì ở đầu danh sách có đủ bốn
+          lát cắt: công thức, dùng khi nào, không dùng khi nào, và phân biệt với thì dễ nhầm. Chín mục
+          <b class="text-ink">phối hợp thì</b> ở sau lo việc khó hơn: chọn và ghép nhiều thì trong một
+          câu, một đoạn, một bài — chỗ một chữ "đã" của tiếng Việt phủ lên cả câu, còn tiếng Anh bắt
+          từng động từ tự mang thì. Mục nào cũng kèm lỗi người Việt hay mắc, ví dụ song ngữ và câu
+          luyện tập có đáp án.
         </p>
       </section>
 
       <nav class="flex gap-2 overflow-x-auto no-scrollbar mt-6 -mx-1 px-1" aria-label="Mục tự học">
         <a href="/prep/hoc/dong-tu-bat-quy-tac/" class="chip shrink-0">Động từ bất quy tắc</a>
         <a href="/prep/hoc/tu-noi/" class="chip shrink-0">Từ nối</a>
-        <a href="/prep/hoc/thi/" class="chip shrink-0" aria-current="page">12 thì</a>
+        <a href="/prep/hoc/thi/" class="chip shrink-0" aria-current="page">Thì, phối hợp thì</a>
         <a href="/prep/hoc/danh-tu/" class="chip shrink-0">Danh từ, mạo từ</a>
         <a href="/prep/hoc/khuyet-thieu/" class="chip shrink-0">Khuyết thiếu</a>
         <a href="/prep/hoc/dieu-kien/" class="chip shrink-0">Câu điều kiện</a>
@@ -80,7 +83,7 @@
         <span class="w-14 h-14 rounded-full bg-brand-soft text-brand-strong inline-flex items-center justify-center mx-auto">
           <svg viewBox="0 0 24 24" class="w-7 h-7" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
         </span>
-        <h3 class="font-extrabold text-lg tracking-tight mt-4">Không có thì nào ở bậc này</h3>
+        <h3 class="font-extrabold text-lg tracking-tight mt-4">Không có mục nào ở bậc này</h3>
         <p class="text-muted text-[15px] mt-1.5">Chọn lại bậc khác để xem.</p>
         <button type="button" id="clear" class="btn btn-ghost btn-md mt-6">Xoá bộ lọc</button>
       </div>
@@ -95,12 +98,12 @@
 <script src="/prep/learn/_grammar.js"></script>
 <script>
   PREP.boot({ auth: true }).then(() => {
-    PrepChrome.mount({ title: '12 thì' });
+    PrepChrome.mount({ title: 'Thì và phối hợp thì' });
     PrepGrammar.mount({
       grp: 'tense',
-      unit: 'thì',
+      unit: 'mục',
       signalsLabel: 'Dấu hiệu nhận biết',
-      confuseLabel: 'Phân biệt với thì dễ nhầm'
+      confuseLabel: 'Phân biệt với chỗ dễ nhầm'
     });
   });
 </script>

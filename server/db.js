@@ -675,6 +675,7 @@ function seedGrammar() {
   // ngoại, xoá bảng cha là mất hết bản ghi con, nên phải dựng lại trọn bộ.
   const src = [
     require('./data/grammar-tenses'),
+    require('./data/grammar-tenses-sequence'),
     require('./data/grammar-nouns'),
     require('./data/grammar-nouns-b1c2'),
     require('./data/grammar-modals'),

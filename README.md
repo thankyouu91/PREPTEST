@@ -143,7 +143,7 @@ thiết bị khác.
 |---|---|---|
 | Động từ bất quy tắc | `/prep/hoc/dong-tu-bat-quy-tac/` | 193 động từ, tra theo V1/V2/V3 hoặc nghĩa tiếng Việt, lọc theo bậc và nhóm biến đổi, phát âm từng dạng |
 | Từ nối | `/prep/hoc/tu-noi/` | 123 từ nối theo 13 chức năng × 3 mức trang trọng, kèm vị trí trong câu, quy tắc dấu câu, ví dụ song ngữ và cảnh báo dùng sai |
-| 12 thì | `/prep/hoc/thi/` | 12 thì, mỗi thì đủ bốn lát cắt: công thức, dùng khi nào, **không** dùng khi nào, phân biệt với thì dễ nhầm — kèm lỗi người Việt hay mắc, 8 ví dụ (có cả phản ví dụ kèm cách sửa) và 12 câu luyện có đáp án |
+| Thì, phối hợp thì | `/prep/hoc/thi/` | Đủ 21 điểm A1–C2. **12 thì**: mỗi thì đủ bốn lát cắt — công thức, dùng khi nào, **không** dùng khi nào, phân biệt với thì dễ nhầm, kèm 8 ví dụ và 12 câu luyện. **9 điểm phối hợp thì**: chỗ tiếng Việt chỉ cần một chữ *đã* cho cả câu còn tiếng Anh bắt từng động từ tự mang thì. Bậc thấp lo hai vế nối bằng `and`/`but` phải chia cả hai, và vì sao có `before`/`after` thì quá khứ đơn là đủ. Bậc B1–B2 lo bộ ba thì kể chuyện (nền tiếp diễn → chuỗi việc quá khứ đơn → quá khứ hoàn thành lùi về trước), giữ mốc thì nhất quán trong cả đoạn (**lỗi trôi thì** bị trừ điểm nặng ở bài Viết), và tương lai nhìn từ quá khứ (`would`, `was going to`, `was to`). Bậc C1–C2 lo ba thì hoàn thành quanh một mốc quy chiếu (`by the time` không bao giờ đi với `will`), thì theo từng phần của bài học thuật (tổng quan / phương pháp / bàn luận), hiện tại lịch sử, và cách điều khiển một đoạn hồi tưởng |
 | Danh từ, mạo từ, lượng từ | `/prep/hoc/danh-tu/` | Đủ 28 điểm A1–C2. Bậc thấp lo hình thái: số nhiều, đếm được / không đếm được, `a` – `an` – `the` – không mạo từ, `some/any`, sở hữu cách, `much/many`. Bậc cao lo sắc thái và hoà hợp: `few` khác `a few`, `each` khác `every`, danh từ tập hợp, mạo từ với tên riêng, `most of` khác `most`, zero article học thuật, `a number of` khác `the number of`, mạo từ trong thành ngữ, danh từ hoá |
 | Động từ khuyết thiếu | `/prep/hoc/khuyet-thieu/` | Đủ 29 điểm A1–C2. Bậc thấp: `can`, `must`, `have to`, `should`, `may`/`might`, `used to`, `be able to` — trọng tâm là sắc thái, `mustn't` là CẤM còn `don't have to` là KHÔNG CẦN. Bậc cao: nói về quá khứ bằng `have + V3` (`must have`, `should have`, `needn't have` khác `didn't need to`), hedging trong bài viết học thuật, và lùi thì để giữ khoảng cách lịch sự |
 | Câu điều kiện | `/prep/hoc/dieu-kien/` | Đủ 20 điểm A2–C2. Bậc thấp: loại 0–1–2–3, điều kiện hỗn hợp, `unless`, `wish`/`if only`, `would rather`, `it's time` — trọng tâm là cơ chế lùi thì, nguồn của hai lỗi kinh điển `if … will` và `if … would`. Bậc cao: điều kiện **không còn chữ `if`** — đảo ngữ `Had I known`, `but for`, thức giả định trong mệnh đề `that`, điều kiện ngầm, `otherwise` trong lập luận, `lest`, và lược bỏ (`if so`, `if any`, `if anything`) |
@@ -177,8 +177,8 @@ Dự án: `https://lyyykupmtkisppmvslao.supabase.co` — đọc qua PostgREST (`
 |---|---|---|---|
 | `irregular_verbs` | 193 | `server/data/irregular-verbs.js` | có |
 | `linking_words` | 123 | `server/data/linking-words.js` | có |
-| `grammar_points` | 194 | 17 tệp `server/data/grammar-*.js` | có |
-| `grammar_examples` | 3.152 | 17 tệp `server/data/grammar-*.js` | có |
+| `grammar_points` | 203 | 18 tệp `server/data/grammar-*.js` | có |
+| `grammar_examples` | 3.296 | 18 tệp `server/data/grammar-*.js` | có |
 | `exam_families` | 6 | `data/prep.sqlite` | có |
 | `exam_packages` | 5 | `data/prep.sqlite` | có |
 | `exam_formats` | 11 | `server/data/exam-formats.js` | có |
