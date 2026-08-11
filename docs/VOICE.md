@@ -57,13 +57,17 @@ read this one:
    Principles 4 and 5 of `docs/SCORING.md` section 2.1 apply unchanged:
    explainable, and never presented as a real exam result.
 
-**Delivery model (owner, 2026-08-11): AI scores go to a teacher, never straight to
-the candidate.** The teacher reviews, signs off, releases the result, and can
-export a certificate (section 8). This makes the human review step mandatory
-rather than a spot check, takes marking latency off the critical path entirely,
-and demotes prompt injection from a serious risk to a nuisance — but it also
-raises the bar on the certificate itself, which must never read as an official
-VPET document.
+**Delivery model (owner, 2026-08-11).** A practice attempt reports back to the
+candidate **immediately**, on the GSE 10–90 scale alongside CEFR, with ranked
+advice on how to gain the next points. A teacher gets the same attempt in a score
+report, and **certificates are only ever issued after a teacher signs off**. The
+split is a per-test `release_policy` (section 8.1): fast feedback for practice, a
+human gate on anything that becomes a document.
+
+**VPET is sat at one of two levels** (owner, 2026-08-11): Level 1 measures B1 and
+below, Level 2 measures B2 and above. A form never reports outside its own range —
+it reports a ceiling or a floor and recommends the other level instead
+(section 1.7).
 
 **What does not change.** The current architecture is right where it needs to be:
 the storage adapter (`server/storage.js`), the strict CSP with no external
@@ -229,23 +233,95 @@ The blank cells are **deliberate omissions**, not oversights:
   measurable consistently across the whole section, and the only two the
   deterministic metrics layer in section 6.2 can cross-check numerically.
 
-### 1.6 From criterion scores to a CEFR level
+### 1.6 From criterion scores to GSE and CEFR
 
-Each criterion is scored **0–6**, mapping straight onto the levels:
+Reporting runs on **two scales at once**, and each earns its place:
 
-| Score | 0 | 1 | 2 | 3 | 4 | 5 | 6 |
+- **GSE 10–90** is the working number. It is fine-grained, so "you are at 55, B2
+  starts at 59" is a sentence the platform can actually say. CEFR alone cannot
+  express distance to the next level, which makes improvement advice vague.
+- **CEFR A1–C2** is the label people recognise, and what `docs/SCORING.md`
+  already reports for this family.
+
+GSE is already in the platform's vocabulary — `docs/SCORING.md` section 1.5 uses
+it for PTE. Here it becomes the primary internal scale for every skill.
+
+**Step 1 — criterion score to GSE.** Each criterion is scored 0–6 by the marker
+(section 1.5), then mapped onto the GSE midpoint of its band:
+
+| Criterion score | 0 | 1 | 2 | 3 | 4 | 5 | 6 |
 |---|---|---|---|---|---|---|---|
-| Level | not ratable | A1 | A2 | B1 | B2 | C1 | C2 |
+| CEFR band | not ratable | A1 | A2 | B1 | B2 | C1 | C2 |
+| GSE anchor | — | 26 | 33 | 47 | 63 | 80 | 87 |
 
-Part score = weighted mean of its criteria (section 1.5).
-Speaking score = weighted mean of the three parts (section 1.4), then converted:
+Interpolate between anchors so a criterion marked 4 with strong evidence lands
+above 63 rather than exactly on it. Skill score = weighted mean of criterion GSE
+values (section 1.5), then the parts are combined (section 1.4).
 
-| Speaking score | < 0.5 | 0.5–1.4 | 1.5–2.4 | 2.5–3.4 | 3.5–4.4 | 4.5–5.4 | ≥ 5.5 |
-|---|---|---|---|---|---|---|---|
-| CEFR | not ratable | A1 | A2 | B1 | B2 | C1 | C2 |
+**Step 2 — GSE to CEFR.** The published Pearson alignment:
 
-This table is **data in `scoring_scales`** (`docs/SCORING.md` section 2.4), not a
-constant in code.
+| CEFR | < A1 | A1 | A2 | A2+ | B1 | B1+ | B2 | B2+ | C1 | C2 |
+|---|---|---|---|---|---|---|---|---|---|---|
+| GSE | 10–21 | 22–29 | 30–35 | 36–42 | 43–50 | 51–58 | 59–66 | 67–75 | 76–84 | 85–90 |
+
+> Verify these boundaries against Pearson's current published alignment before
+> shipping. They live in `scoring_scales` as **data** (`docs/SCORING.md`
+> section 2.4), not as constants in code, exactly so a correction is an admin
+> edit rather than a deploy.
+
+> **Check the licensing before this ships.** GSE is Pearson's scale, and the GSE
+> Learning Objectives — the "can-do" statements that make section 8.2's advice
+> concrete — are Pearson's material. Using the *numbering* to report a score is one
+> thing; republishing their descriptor text inside a commercial product is another.
+> Two safe routes: get written permission, or **write the platform's own can-do
+> descriptors** mapped onto the same numeric bands. The second costs writing time
+> and owes nobody anything. Settle this before the descriptors are embedded
+> everywhere, because unpicking them later is expensive.
+
+**Overall** = weighted mean of the four skill GSE values, converted once at the
+end. Never average CEFR labels — average the GSE numbers and convert once, or
+rounding errors accumulate across four skills.
+
+### 1.7 The two VPET levels
+
+VPET is sat at one of **two levels** (owner, 2026-08-11):
+
+| Level | Targets | Reliable GSE range | Reliable CEFR |
+|---|---|---|---|
+| **Level 1** | B1 and below | **10–50** | pre-A1 · A1 · A2 · A2+ · B1 |
+| **Level 2** | B2 and above | **59–90** | B2 · B2+ · C1 · C2 |
+
+This is a measurement constraint, not a presentation one, and it has teeth:
+
+- **A form never reports outside its own range.** A Level 1 form cannot certify
+  C1 — it contains no items hard enough to distinguish B2 from C1, so a C1 claim
+  from it would be unsupported by evidence. The scoring engine clamps to the
+  level's range and says why.
+- **The GSE 51–58 gap (B1+) belongs to neither level cleanly.** Level 1 reports it
+  as *at or above the ceiling*; Level 2 reports it as *below the floor*. Both are
+  honest; neither pretends to precision it does not have.
+- **Out-of-range results become a recommendation, not a grade.** Ceiling on
+  Level 1 → "you have topped out this level; sit Level 2 to be measured higher."
+  Floor on Level 2 → "this form starts at B2; sit Level 1 for an accurate
+  placement." That is a better learner experience than a meaningless number, and
+  it is also the honest answer.
+
+| Outcome | Level 1 form | Level 2 form |
+|---|---|---|
+| GSE ≥ 48 | **ceiling flag** — recommend Level 2 | normal |
+| GSE ≤ 55 | normal | **floor flag** — recommend Level 1 |
+
+Consequences elsewhere in the platform:
+
+- `tests.level` already exists; the item bank needs items tagged so a Level 1 form
+  never draws Level 2 items. This rides along with the roadmap's "tag items by
+  VPET part" work — the same pass adds the level dimension.
+- Two audio banks in practice: a Level 1 dictation sentence and a Level 2 one are
+  different items, so **section 1.2's ~10,550 characters is per form per level**.
+  Budget for both.
+- The rubrics in section 1.5 are shared, but the **anchors** in section 6.5 are
+  not: a Level 1 anchor set spanning A1–B1 and a Level 2 set spanning B2–C2 are
+  different calibration problems. `rubric_anchors` needs a `level` column.
 
 ---
 
@@ -902,40 +978,115 @@ section 2.1.
 
 ## 8. Score reporting and certificates
 
-**Owner decision (2026-08-11): scores go to the teacher, into a score report, and
-the teacher can export a certificate.** No AI score reaches a candidate directly.
-That single decision settles a lot of design at once.
+### 8.1 Two release policies, not one
 
-### 8.1 What it means downstream
+Two owner decisions sit here and they are not in conflict once separated:
 
-| Consequence | Detail |
+> *"Scores go to the teacher, into a score report, and the teacher can export a
+> certificate."* (2026-08-11)
+> *"After finishing a practice test, show the result report to the candidate
+> straight away."* (2026-08-11)
+
+The reconciliation is a **per-test release policy**. The learner gets their
+feedback immediately; the certificate — the far stronger claim — still passes a
+human.
+
+| | `instant` | `after_review` |
+|---|---|---|
+| Used for | practice tests (the default) | supervised sittings, anything that will bear a certificate |
+| Candidate sees the report | as soon as marking finishes | after a teacher signs off |
+| Teacher score report | still exists, still populated | same |
+| Certificate may be issued | **only after a teacher signs off**, regardless of policy | after sign-off |
+| Attempt states | `submitted → marking → released` | `submitted → marking → awaiting_review → released` |
+
+`tests.release_policy` defaults to `instant` — this is a practice platform, and a
+learner who has just spent 76 minutes should not wait a day to see how they did.
+
+**What instant release costs, and what pays for it.** Removing the human gate puts
+AI error and prompt injection (section 6.8) directly in front of the learner.
+Three things carry that weight:
+
+1. **The report is framed as practice feedback, not a score.** Principle 5 of
+   `docs/SCORING.md` section 2.1. No certificate, no official level claim.
+2. **Flagged answers do not release silently.** `no_speech`, `wrong_language`,
+   `suspected_playback` or a double-marking disagreement shows the learner "this
+   answer needs a teacher to look at it" instead of a fabricated score. The rest
+   of the report still releases.
+3. **A learner can request a review** from the report. That request lands in the
+   same queue as section 6.7, which turns disputes into calibration data
+   (section 6.7) rather than support tickets.
+
+Marking still takes a minute or two, so the report screen polls
+`GET /api/attempts/:id/status` (section 7): auto-marked parts appear at once,
+speaking fills in as the queue drains.
+
+### 8.2 The candidate report — GSE, then how to gain points
+
+The report answers three questions in order, and the third is the one that makes
+the product worth paying for.
+
+**1. Where am I?** Per skill: GSE number, CEFR band, and position within the band.
+Overall the same. Level ceiling or floor flags from section 1.7 shown here, with
+the recommendation to sit the other level when they fire.
+
+```
+Speaking      GSE 55   B1+     ├────────────●───┤ B2 starts at 59
+  fluency         52   B1+
+  pronunciation   49   B1
+  vocabulary      58   B1+
+  grammar         61   B2
+```
+
+**2. What does that mean I can do?** Can-do statements for the band achieved, and
+for the band above — the GSE scale exists precisely to be read this way. A learner
+at GSE 55 speaking sees what B1+ speakers manage and what changes at B2.
+
+**3. How do I gain the next points? — "tips to max score".** This is the part that
+has to be specific, because generic advice ("practise more") is worthless. The
+generator has unusually good material to work from, all of it already produced by
+the marking pipeline:
+
+| Source | Turns into |
 |---|---|
-| The review step is **mandatory**, not a sampling exercise | Sign-off gates release, so every attempt is read by a teacher. The queue prioritisation in section 6.7 still matters — it decides what a teacher reads *first* within an attempt, not which attempts get read at all. |
-| A new `released` state on the attempt | `submitted → marking → awaiting_review → released`. The candidate sees "submitted, being marked" until a teacher releases it. |
-| Marking latency stops being a product problem | Nobody is staring at a spinner waiting for the model, because a human step follows anyway. The queue in section 7 can take minutes without anyone noticing. |
-| Prompt injection drops from serious to nuisance | A candidate talking their way to a high score still has to get that score past a teacher who can read the transcript and the evidence quotes. Section 6.8 still applies — it just no longer sits on the critical path. |
-| Every criterion needs `evidence` | Already required by the schema in section 6.4, and now load-bearing: a teacher reviewing 15 clips per attempt reads the evidence, not the audio. Good evidence quotes are what make the review take three minutes instead of twenty. |
+| Lowest-scoring criteria, ranked | "Pronunciation at 49 is holding your speaking down; every other criterion is above 52" |
+| Distance to the next band boundary | "You need 4 GSE points in speaking to reach B2" |
+| Part H word alignment (section 6.1) | The exact words dropped or mispronounced, across all 10 items |
+| Deterministic metrics (section 6.2) | "Your articulation rate is 95 wpm; B2 speakers typically run 120–140" · "38% of your speaking time was silence" |
+| Part J content coverage | "You retold 3 of 6 key points; the marks are in the detail you skipped" |
+| Model `evidence` quotes (section 6.4) | Concrete lines from their own answer, not abstractions |
+| Wrong answers by item type | "6 of your 8 dictation errors were missing plural or past-tense endings" |
 
-### 8.2 The teacher score report
+Then the platform closes the loop: **link each tip to the study pages that already
+exist**. `/prep/hoc/` has grammar points tagged by CEFR level, 123 linking words by
+function and formality, and the irregular verb tables. A learner told "your
+past-tense endings are costing you dictation marks" should land one click from the
+relevant page at their level. That connection is the difference between a report
+that is read once and a report that is used.
+
+Ranking rule: **sort tips by GSE points recoverable, not by severity.** The most
+broken thing is not always the cheapest to fix, and a learner will act on three
+concrete tips but not on eleven.
+
+### 8.3 The teacher score report
 
 One attempt, one screen:
 
 - **Auto-marked parts (A, C, E, F, G)** — item-level right/wrong, and for part E the
   normalised string comparison that produced it.
-- **AI-marked parts (B, D writing; H, I, J speaking)** — per criterion: score,
-  CEFR level, the model's evidence quote, the transcript, and the measured metrics
+- **AI-marked parts (B, D writing; H, I, J speaking)** — per criterion: GSE value,
+  CEFR band, the model's evidence quote, the transcript, and the measured metrics
   from section 6.2 beside it. Playback of the candidate's audio in place.
 - **Override fields** on every criterion, plus a free-text comment.
 - **Flags surfaced first** — anything from section 6.8, plus double-marking
-  disagreements, sorted to the top of the page rather than buried.
-- **Sign off** — writes `score_reviews`, moves the attempt to `released`, and
-  unlocks certificate export.
+  disagreements and learner-requested reviews, sorted to the top rather than buried.
+- **Sign off** — writes `score_reviews`, releases the attempt if the policy is
+  `after_review`, and unlocks certificate export either way.
 
 A cohort view sits above it: a class or a code batch, one row per attempt, filter
-by status, with CSV export now and the Google Sheets export already in the
-roadmap.
+by status and level, with CSV export now and the Google Sheets export already in
+the roadmap.
 
-### 8.3 The certificate
+### 8.4 The certificate
 
 **The constraint that shapes everything here: this is not a VPET certificate.**
 It is a record of a practice test taken on this platform. Principle 5 of
@@ -957,16 +1108,66 @@ learner to hold.
 **What goes on it**
 
 ```
-Organisation name and logo
+[ logo slot — empty in the template, filled at issue ]
+Organisation name
 "Practice test result"                       ← the framing, in the largest type after the name
 Candidate name (snapshotted at issue)
-VPET practice form, level sat, date taken
-Overall CEFR level
-Per-skill breakdown: listening · reading · writing · speaking
+VPET practice form, LEVEL 1 or LEVEL 2, date taken
+Overall GSE score and CEFR band
+Per-skill breakdown: listening · reading · writing · speaking, GSE + CEFR each
 How it was marked, and the reviewing teacher
 Certificate code + verification URL
 Issue date
 ```
+
+Printing the level on the face is not decoration. A Level 1 certificate reading
+"B1" and a Level 2 certificate reading "B1" mean different things (a ceiling
+result versus a floor result, section 1.7), and a reader has to be able to tell
+them apart.
+
+**The logo slot is empty by default** (owner, 2026-08-11). The certificate template
+ships with no branding baked in; the logo is uploaded in the admin dashboard and
+attached at issue time. This keeps the platform white-label — one deployment can
+serve several centres, each with its own mark, without a code change or a rebuild.
+
+**How the logo is bound.** The export screen asks for two things: the **test code**
+and the logo. Uploading on every export would be tedious, so uploads are saved as
+reusable profiles:
+
+```
+certificate_profiles
+  id
+  test_id            which form this branding applies to (nullable = platform default)
+  org_name
+  logo_key           -> storage.put(ns='brand')
+  signatory_name, signatory_title
+  footer_text
+  version            bumped on every edit; issued certificates pin the version they used
+  updated_by, updated_at
+```
+
+The export flow: pick the test code → the matching profile loads with its logo
+already in place → override or upload a new one on the spot, which saves back to
+the profile. First export of a new form is one upload; every export after that is
+one click.
+
+**Issued certificates pin their branding.** The `certificates` row stores
+`profile_id` and `profile_version`, so reprinting a two-year-old certificate
+reproduces the logo and organisation name it was issued with — not whatever the
+current branding happens to be. A certificate that silently re-brands itself is a
+certificate that cannot be verified against the copy someone is holding.
+
+**Logo upload is a new external-input surface, and it needs the same discipline as
+the audio path** (section 5.3): a third `brand` namespace in `server/storage.js`,
+magic-byte sniffing, a size cap around 2 MB and a pixel-dimension cap.
+
+**Accept PNG and JPEG. Reject SVG.** An SVG is a document that can carry script and
+external references; rendering an admin-uploaded one inside a page is a stored-XSS
+vector and a CSP hole. The convenience of vector artwork is not worth it — ask for
+a 2× PNG instead.
+
+Serve the logo same-origin through the storage adapter like every other asset, so
+the strict CSP (`img-src 'self' data:`) needs no exception.
 
 **How it is produced.** Phase 1: a server-rendered HTML page with `@media print`
 rules; the teacher prints to PDF. No new dependency, no CSP exception, and the
@@ -992,7 +1193,7 @@ the scores, transcripts, rubric evidence and certificate rows do not. What defen
 a certificate is the score record, not the audio — and the score record contains
 no voice.
 
-### 8.4 Schema and API for this section
+### 8.5 Schema and API for this section
 
 ```
 certificates
@@ -1000,31 +1201,54 @@ certificates
   code             public verification code, unguessable, UNIQUE
   attempt_id, user_id
   full_name        as printed, snapshotted at issue
-  test_id, level
-  scores_json      per-skill CEFR + overall, snapshotted
+  test_id, level   1 | 2
+  scores_json      per-skill GSE + CEFR + overall, snapshotted
   marked_by_json   which parts were auto / AI / teacher reviewed
+  profile_id, profile_version   branding pinned at issue (section 8.4)
   issued_by        admins.id — the teacher who signed off
   issued_at
   status           issued | revoked | superseded
   superseded_by, revoke_reason
 
-attempts.status    ... | awaiting_review | released
+certificate_profiles          per-form branding, see section 8.4
+
+tests.release_policy          instant | after_review   (section 8.1)
+tests.level                   1 | 2                    (section 1.7)
+
+attempts.status               ... | awaiting_review | released
 attempts.released_by, attempts.released_at
+attempts.review_requested_at  learner asked for a human look (section 8.1)
+
+attempt_scores.gse            per skill, alongside the CEFR band
+attempt_tips_json             the ranked improvement tips shown to the learner,
+                              stored so the report is reproducible and so the
+                              advice can be evaluated later against real progress
 ```
 
 ```
+GET    /api/me/results/:attemptId              candidate's own report, GSE + tips
+POST   /api/me/results/:attemptId/review       ask for a teacher to look at it
+
 GET    /api/admin/attempts/:id/report          the full score report
-POST   /api/admin/attempts/:id/signoff         record the review, release the result
+POST   /api/admin/attempts/:id/signoff         record the review, release if needed
 POST   /api/admin/attempts/:id/certificate     issue (returns the code)
 POST   /api/admin/certificates/:code/revoke    revoke, optionally superseding
+GET    /api/admin/certificate-profiles         list / create / update branding
+POST   /api/admin/certificate-profiles/:id/logo   logo upload (PNG/JPEG only)
 GET    /admin/certificate/:code                printable HTML certificate
+
 GET    /verify/:code                           public verification page
-GET    /api/me/results/:attemptId              candidate's own released result
 ```
 
 `/verify/:code` is the only public route in this design. It takes no parameters
 beyond the code, returns the same minimal payload for every caller, and needs rate
 limiting like any other guessable-token endpoint.
+
+Storing `attempt_tips_json` is worth the column. It makes an old report
+reproducible when the tip generator changes, and — more usefully — it lets the
+platform ask later whether learners who acted on a tip actually gained the points
+it promised. That is the only honest way to find out whether the advice is any
+good.
 
 ---
 
@@ -1056,7 +1280,10 @@ speech_scores               attempt_media_id, pass ('a'|'b'), provider, model,
 score_reviews               speech_score_id, reviewer_id, criteria_json, overall_cefr,
                             note, at            ← human score; never overwrites the AI row
 rubrics                     per part, versioned (already in SCORING.md 2.4)
-rubric_anchors              rubric_version, part, cefr, transcript, criteria_json, audio_key
+rubric_anchors              rubric_version, part, level (1|2), gse, cefr, transcript,
+                            criteria_json, audio_key
+                            ← level matters: an A1–B1 anchor set and a B2–C2 one are
+                              different calibration problems (section 1.7)
 
 -- Shared
 media_jobs                  the queue from section 7
@@ -1094,6 +1321,8 @@ POST   /internal/jobs/run                      called by Cloud Tasks, OIDC authe
 ```
 
 Every `/api/admin/*` route keeps the existing `requireAdmin` + CSRF protection.
+The reporting, certificate and verification routes are listed with their tables in
+section 8.5.
 
 ---
 
@@ -1221,7 +1450,7 @@ close to biometric data. This is not a later concern.
 
 ## 14. Rollout
 
-Six phases, each independently useful — nothing waits until the end to show value.
+Seven phases, each independently useful — nothing waits until the end to show value.
 
 **Phase 1 — the TTS pipeline.** `audio_script` and `audio_status` columns, the
 ElevenLabs adapter, content hashing, Render/Approve buttons in the question bank,
@@ -1241,27 +1470,33 @@ review screen. Marking synchronously on submit is tolerable if the wait is
 accepted.
 → *Result: completes the roadmap's "AI speaking scoring" item.*
 
-**Phase 4 — reporting and certificates.** The teacher score report, the `signoff`
-and `released` states, the printable certificate page, the `certificates` table and
-the public `/verify/:code` route. Depends on phase 3 and on nothing else, so it can
-run in parallel with phase 5.
-→ *Result: the delivery model the owner chose actually works end to end — a teacher
-can review an attempt, release it and hand the candidate a document.*
+**Phase 4 — the candidate report.** GSE scoring alongside CEFR, the two level
+ranges with ceiling and floor handling, the instant release path, and the ranked
+"tips to max score" generator wired to the existing `/prep/hoc/` study pages.
+→ *Result: the thing a learner actually buys. Ship this before certificates — it
+serves every attempt, while a certificate serves the few that ask for one.*
 
-**Phase 5 — onto Google Cloud.** Cloud SQL Postgres (large, already in the
+**Phase 5 — teacher report and certificates.** The teacher score report, `signoff`
+and `awaiting_review` states, `certificate_profiles` with logo upload, the
+printable certificate page, the `certificates` table and the public `/verify/:code`
+route.
+→ *Result: a teacher can review an attempt, release it and hand over a document
+that is branded per centre and verifiable.*
+
+**Phase 6 — onto Google Cloud.** Cloud SQL Postgres (large, already in the
 roadmap), the GCS driver, the `media_jobs` queue, Cloud Tasks, Cloud Run, Secret
 Manager, CI deploy. The 24-month lifecycle rule on the response bucket lands here.
 → *Result: multiple instances, background work that does not stall, and keys
 managed properly.*
 
-**Phase 6 — calibration.** Benchmark set, anchors, double marking, the AI ↔ human
+**Phase 7 — calibration.** Benchmark set, anchors, double marking, the AI ↔ human
 agreement dashboard, and a model-upgrade procedure.
 → *Result: scores that hold up to an appeal, and model upgrades that do not shift
 the scale.*
 
-Phase 1 is independent of 2 and 3 and can run in parallel. Phase 5 pulls in the
+Phase 1 is independent of 2 and 3 and can run in parallel. Phase 6 pulls in the
 Postgres migration and is by far the most expensive — do not wedge it between 1
-and 4.
+and 5.
 
 ---
 
@@ -1274,14 +1509,18 @@ and 4.
 | 3 | What is the monthly ceiling for TTS and for marking? | Sets `TTS_MONTHLY_CHAR_CAP` and the OpenAI ceiling |
 | 4 | Are human recordings needed for any part? | Real VPET audio is human-voiced; if exact fidelity matters for particular parts, keep the existing manual upload path for those parts |
 | 5 | Who approves audio, who reviews scores, and who may issue a certificate? | Needs a `reviewer` role in the `admins` table distinct from `owner`. Certificate issue is the strongest permission on the platform and probably belongs to a narrower group than score review |
-| 6 | After a teacher signs off, does the candidate see their own result? | Section 8.1 assumes yes — sign-off releases the result to the candidate, with the certificate issued separately. If results are meant to stay teacher-only, the `released` state changes meaning |
-| 7 | What organisation name, logo and wording appear on the certificate? | Section 8.3 fixes what it must **not** say; what it does say is a branding decision, and it has to be settled before the printable page is built |
+| 6 | **Licensing for GSE and its can-do descriptors** (section 1.6) | The scale is Pearson's. Reporting a number on it and republishing their Learning Objective text are different asks. Either get written permission or commission the platform's own descriptors against the same bands — but decide before the descriptors are wired into the report generator, the study pages and the certificate |
+| 7 | Which tests get `release_policy = after_review` rather than the `instant` default? | Section 8.1. Probably any sitting intended to produce a certificate, but that is a product call |
 | 8 | Is the certificate free with the test, or a separate paid item? | Changes whether issuing is a teacher action or a purchase flow, and whether it touches the existing `orders` / `codes` tables |
+| 9 | Does the platform ship a default logo and organisation name, or refuse to issue until a profile exists? | Section 8.4 leaves the slot empty. Refusing is safer — an unbranded certificate looks like a bug, and a placeholder logo on a real document is worse than none |
 
 **Settled so far (2026-08-11).**
 
 | Question | Decision | Where it landed |
 |---|---|---|
 | Part J timing | **3 items × 3 minutes = 9 minutes**, 90 seconds of speech per item | Section 1.3; blueprint default in `server/data/exam-formats.js` |
-| Who sees the scores | **Teacher first**, in a score report, with certificate export | Section 8 |
+| Reporting scale | **GSE 10–90 as the working scale**, CEFR as the label. GSE is what makes "4 points from B2" sayable | Section 1.6 |
+| Exam levels | **Two.** Level 1 measures B1 and below, Level 2 measures B2 and above. Neither reports outside its range | Section 1.7 |
+| Who sees the scores | **The candidate, immediately, for practice tests** — GSE per skill plus ranked tips. The teacher gets the same attempt in a score report; certificates still need sign-off | Section 8.1, 8.2 |
+| Certificate branding | **Logo slot empty in the template.** Uploaded in the admin dashboard, chosen by test code at export, pinned onto the issued certificate | Section 8.4 |
 | Retention of candidate speech | **24 months** | Section 13 |
