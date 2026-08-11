@@ -48,13 +48,14 @@ Queue for this track, in order:
 - [x] VPET blueprint: ten lettered parts A-J, 55 items, in `server/data/exam-formats.js`
 - [x] Family readiness flag: `families.status` = `ready` / `coming_soon`, VPET ready and the other five parked; served by `GET /api/catalog`
 - [x] MP3 upload in the admin question bank: storage adapter (disk + Supabase driver), raw-body upload behind requireAdmin + CSRF with magic-byte validation, player and replace/remove on each item, and per-part audio coverage in the format readiness report
+- [ ] **Google Sign-In** — server-side OAuth 2.0 redirect flow (no external script, so the strict CSP stays intact), linked to the existing student account table; falls back to email + password when `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` are not set
+- [ ] **PWA** — manifest, icons, service worker, offline shell; installable from Chrome on Android without a Play listing
 - [ ] Stop offering non-VPET tests: seeded IELTS/TOEIC tests drop to draft, and the API refuses to publish a test whose family is `coming_soon`
 - [ ] Tag items by VPET part: `questions.part` (A-J) so each part draws from its own pool instead of sharing one skill-wide pool
 - [ ] VPET exam engine: per-part timer, audio playback with a fixed replay count, microphone capture for parts H/I/J, autosave and submit
 - [ ] AI speaking scoring: adapter around an audio-native model, VPET rubric (fluency, pronunciation, vocabulary, grammar, task), score plus written feedback, reviewer override, and a manual-scoring fallback while no API key is set
 - [ ] Auto marking for parts A, C, E, F, G plus the score-to-CEFR conversion in `docs/SCORING.md`
 - [ ] Translate the whole interface to English — 12 student screens, 8 admin screens, every banner and empty state
-- [ ] Google ecosystem fit — needs an owner decision first, see "Việc kiến trúc"
 - [ ] VPET item bank: real items for all ten parts, tagged by part, with audio attached where the part needs it (**content, deliberately last**)
 
 ## Hàng đợi
@@ -120,14 +121,34 @@ hàng cần người dùng quyết:
 
 Routine **không** lấy việc ở mục này.
 
-- [ ] **Google ecosystem fit** (owner asked 2026-08-11, needs a decision before any code). The platform is a Node + Express + SQLite app today. Options, cheapest first:
-  - *Auth*: Google Sign-In on top of the existing account table — students keep one login, no password to reset. Smallest change, biggest day-one win.
-  - *AI*: Gemini for speaking scoring. Already the chosen direction, so this one is settled.
-  - *Storage*: a Google Cloud Storage driver next to the disk and Supabase drivers in `server/storage.js` — the adapter already takes a third driver without touching call sites.
-  - *Hosting*: Cloud Run (container, closest to what runs now) or App Engine. Both need the database to move off local SQLite; Cloud SQL Postgres is the natural target and the Supabase work already proved the schema ports.
-  - *Install on phones*: PWA manifest + service worker, so the webapp installs from Chrome on Android without a Play listing.
-  - *Classroom*: Google Classroom assignment hand-off, only worth it if schools are a target buyer.
-  Decide the scope, then this splits into separate queue items.
+### Google ecosystem — scope settled 2026-08-11
+
+Owner chose the **full** scope: service integrations, hosting on Google Cloud,
+and Classroom / Workspace on top. Sign-In and PWA were pulled forward into the
+VPET queue because they are small and block nothing; everything below is the
+heavy half and waits until the VPET engine works.
+
+One constraint shapes all of it: **the platform runs a strict CSP with no
+external scripts.** That rules out the drop-in Google widgets, so each piece
+below uses the server-side route instead — which is also the more private one.
+
+| Piece | How it fits here |
+|---|---|
+| Sign-In | OAuth 2.0 redirect handled by the server. No `gsi/client` script, no CSP exception. In the VPET queue. |
+| Gemini | Speaking scoring, server-side call with inline audio. Already queued. |
+| Cloud Storage | Third driver in `server/storage.js`; the adapter takes it without touching call sites. |
+| Cloud Run | Container deploy, closest to how the app runs today. |
+| Cloud SQL | SQLite has to go first — see below. |
+| Secret Manager | Every API key moves out of plain environment variables. |
+| Analytics | GA4's script breaks CSP; use the Measurement Protocol from the server instead. |
+| Classroom | Assignment hand-off, and results export to Sheets. |
+
+- [ ] Google Cloud Storage driver in `server/storage.js` — third driver beside disk and Supabase
+- [ ] **Move off SQLite to Cloud SQL Postgres.** The blocker for Cloud Run: local SQLite dies with the container. The Supabase export already proved the schema ports, so the work is rewriting the `q.all/get/run/val` layer to a pooled async client and making every call site await it. Big and invasive — do it in one dedicated pass, not piecemeal.
+- [ ] Containerise + deploy to Cloud Run, with Secret Manager for keys and a CI deploy from the working branch
+- [ ] Google Classroom hand-off: publish a test as an assignment, pull the roster, push scores back
+- [ ] Results export to Google Sheets for teachers
+- [ ] Server-side GA4 Measurement Protocol events, since the GA4 script cannot pass the CSP
 
 - [ ] Lược đồ từ vựng: `vocab_entries` / `vocab_senses` / `vocab_examples` / `vocab_forms` / `collocations` + trình nhập
 - [x] Lược đồ ngữ pháp: `grammar_points` / `grammar_examples` (dựng cùng mục 12 thì, theo đúng đặc tả `docs/LEARNING.md` mục 6; `linking_words` đã dựng cùng mục từ nối)
