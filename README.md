@@ -33,6 +33,7 @@ Lệnh khác:
 | `node scripts/tai-khoan.js xem` | **Vào không được?** Liệt kê tài khoản quản trị và trạng thái học viên demo. Đặt lại bằng `dat-lai-admin` / `dat-lai-student`, mở khoá bằng `mo-khoa`. Trên Windows nhấn đúp `cai-dat\tai-khoan.bat` |
 | `node scripts/test-taikhoan.js` | kiểm thử đường cứu hộ tài khoản (tự phục hồi tài khoản demo, đặt lại mật khẩu quản trị) |
 | `node scripts/test-learn.mjs` | kiểm thử khu tự học: chất lượng dữ liệu động từ bất quy tắc, từ nối và hai nhóm ngữ pháp (nhóm khớp hình thái, ví dụ chứa đúng mục từ, đủ bốn lát cắt, chỗ trống khớp đáp án, đúng hạn mức bậc) + bộ lọc bốn trang |
+| `node scripts/xuat-supabase.mjs --count` | xuất nội dung ra Supabase (SQL hoặc JSON) — xem [Bản sao nội dung trên Supabase](#bản-sao-nội-dung-trên-supabase) |
 | `npm run screenshot:admin` | chụp các màn quản trị |
 | `npm test` | chạy cả bảy bộ kiểm thử |
 
@@ -163,6 +164,48 @@ danh sách nguồn dữ liệu mở có giấy phép rõ ràng.
 
 Cơ cấu và cách chấm điểm của 6 kỳ thi, cùng thiết kế engine chấm, nằm trong
 [`docs/SCORING.md`](docs/SCORING.md).
+
+## Bản sao nội dung trên Supabase
+
+Ứng dụng **vẫn chạy SQLite nhúng** như cũ. Supabase không thay CSDL chạy — nó là bản sao
+chỉ-đọc của phần *nội dung*, để chỗ khác dùng lại được (ứng dụng khác, trang tĩnh, công cụ
+phân tích) mà không phải mở cổng vào máy chủ.
+
+Dự án: `https://lyyykupmtkisppmvslao.supabase.co` — đọc qua PostgREST (`/rest/v1/<bảng>`).
+
+| Bảng | Dòng | Nguồn | Khoá công khai đọc được? |
+|---|---|---|---|
+| `irregular_verbs` | 193 | `server/data/irregular-verbs.js` | có |
+| `linking_words` | 123 | `server/data/linking-words.js` | có |
+| `grammar_points` | 194 | 17 tệp `server/data/grammar-*.js` | có |
+| `grammar_examples` | 3.152 | 17 tệp `server/data/grammar-*.js` | có |
+| `exam_families` | 6 | `data/prep.sqlite` | có |
+| `exam_packages` | 5 | `data/prep.sqlite` | có |
+| `exam_formats` | 11 | `server/data/exam-formats.js` | có |
+| `exam_tests` | 7 | `data/prep.sqlite` | **chỉ đề `published`** (5/7) |
+| `exam_sections` | 20 | `data/prep.sqlite` | **chỉ phần của đề đã phát hành** (16/20) |
+| `exam_questions` | 622 | `data/prep.sqlite` | **không** |
+| `exam_section_items` | 278 | `data/prep.sqlite` | **không** |
+
+Hai bảng cuối bật RLS mà **cố tình không có policy nào**, nên khoá công khai không đọc
+được dòng nào — cột `answer` và `explanation` là đáp án đề thi, lộ ra là hỏng ngân hàng
+câu hỏi. Chỉ service role (tức là qua máy chủ) mới thấy. Trình lint của Supabase báo
+`rls_enabled_no_policy` ở hai bảng này là **đúng ý đồ**, không phải lỗi cần sửa.
+
+Mọi bảng đều chặn ghi qua khoá công khai. **Không** đưa lên Supabase: tài khoản, phiên
+đăng nhập, token, access code, đơn hàng, nhật ký thao tác — dữ liệu người dùng và bí mật
+ở lại máy chủ.
+
+Nạp lại sau khi sửa nội dung:
+
+```bash
+node scripts/xuat-supabase.mjs --ddl              # tạo bảng + RLS (chạy lại vô hại)
+node scripts/xuat-supabase.mjs --data             # toàn bộ INSERT, đã ON CONFLICT DO UPDATE
+node scripts/xuat-supabase.mjs --json exam_questions   # hoặc JSON để nạp qua PostgREST
+```
+
+Chạy lại chỉ cập nhật chứ không nhân đôi. Các bảng lấy từ `data/prep.sqlite` cần chạy
+`npm start` một lần trước để CSDL tồn tại và đã seed.
 
 ## Bản đồ màn hình
 
