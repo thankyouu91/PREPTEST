@@ -64,6 +64,7 @@ const PAGES = [
   { slug: 'hoc-bi-dong',     url: '/prep/hoc/bi-dong/',           auth: true },
   { slug: 'hoc-menh-de',     url: '/prep/hoc/menh-de/',           auth: true },
   { slug: 'hoc-nhan-manh',   url: '/prep/hoc/nhan-manh/',         auth: true },
+  { slug: 'hoc-sac-thai',    url: '/prep/hoc/sac-thai/',          auth: true },
   { slug: 'dashboard-dark',  url: '/prep/',                      auth: true, dark: true },
   { slug: 'landing-dark',    url: '/prep/landing/',              auth: false, dark: true },
   { slug: 'landing-tenant',  url: '/prep/landing/',              auth: false, tenant: 'evergreen' }

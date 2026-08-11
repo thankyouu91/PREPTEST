@@ -687,7 +687,8 @@ function seedGrammar() {
     require('./data/grammar-clauses-b2'),
     require('./data/grammar-clauses-c1c2'),
     require('./data/grammar-emphasis'),
-    require('./data/grammar-emphasis-c2')
+    require('./data/grammar-emphasis-c2'),
+    require('./data/grammar-register')
   ];
   const points = src.flatMap(s => s.points());
   const examples = src.flatMap(s => s.examples());
