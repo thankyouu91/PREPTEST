@@ -115,6 +115,15 @@
   }
   .btn-accent:hover { background: color-mix(in srgb, var(--color-accent) 86%, black); }
   .dark .btn-accent:hover { background: color-mix(in srgb, var(--color-accent) 86%, white); }
+  /* Nút đang ở trạng thái "dừng lại": chỉ dùng cho nút đang ghi âm, nơi mà bấm
+     tiếp là kết thúc chứ không phải bắt đầu. */
+  .btn-danger {
+    background: var(--color-danger);
+    @apply text-white shadow-soft;
+  }
+  .dark .btn-danger { color: #26060e; }
+  .btn-danger:hover { background: color-mix(in srgb, var(--color-danger) 86%, black); }
+  .dark .btn-danger:hover { background: color-mix(in srgb, var(--color-danger) 86%, white); }
   .btn-ghost {
     @apply border border-line bg-card text-ink;
   }
@@ -341,6 +350,27 @@
   .chip[data-family='vpet']  { --exam-c: var(--exam-vpet); }
   .chip[data-family='vept']  { --exam-c: var(--exam-vept); }
   .chip[data-family='ote']   { --exam-c: var(--exam-ote); }
+
+  /* ---- Đồng hồ phần thi ----
+     Số phải đọc được liếc mắt một cái, nên dùng chữ số đều bề ngang: không có
+     tabular-nums thì đồng hồ giật ngang mỗi giây và mắt phải bám theo. */
+  .clock {
+    @apply inline-flex items-center gap-2 rounded-full px-3.5 py-1.5 text-[14px] font-extrabold;
+    font-variant-numeric: tabular-nums;
+    background: color-mix(in srgb, var(--color-primary) 10%, transparent);
+    color: color-mix(in srgb, var(--color-primary) 84%, black);
+  }
+  .dark .clock { color: color-mix(in srgb, var(--color-primary) 72%, white); }
+  /* Dưới một phút: đổi sang màu cảnh báo. Đây là lúc duy nhất đồng hồ nên
+     giành lấy sự chú ý — đổi màu suốt cả bài thì không còn nghĩa gì. */
+  .clock-low {
+    background: color-mix(in srgb, var(--color-danger) 14%, transparent);
+    color: color-mix(in srgb, var(--color-danger) 78%, black);
+  }
+  .dark .clock-low { color: color-mix(in srgb, var(--color-danger) 76%, white); }
+
+  /* Chip của phần đã kết thúc: mờ đi nhưng vẫn bấm xem lại được */
+  .chip[data-done] { opacity: .6; }
 
   /* ---- Điều hướng app shell ---- */
   .nav-item {

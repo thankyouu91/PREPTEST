@@ -198,7 +198,13 @@
             '<button type="button" id="start" class="btn btn-primary btn-lg w-full mt-5">' + PREP.icon('play', 'w-5 h-5') + 'Bắt đầu làm bài</button>' +
             '<button type="button" class="btn btn-ghost btn-md w-full mt-2.5 opacity-55 cursor-not-allowed" aria-disabled="true">Luyện theo từng phần <span class="badge badge-muted ms-1.5">sắp có</span></button>';
           /* Seam engine: // TODO(backend/exam-engine) — thay overlay bằng điều hướng vào bài làm */
-          PREP.qs('#start').addEventListener('click', () => PREP.qs('#soon-modal').classList.add('show'));
+          /* Engine làm bài đã có: nút này mở một lượt thi thật thay vì bảng
+             "sắp ra mắt". Đề chưa có câu hỏi thì vẫn giữ bảng cũ, vì mở một
+             lượt thi rỗng chẳng để làm gì. */
+          PREP.qs('#start').addEventListener('click', () => {
+            if (PREP.itemCount(test) > 0) location.href = '/prep/lam-bai/?test=' + encodeURIComponent(test.id);
+            else PREP.qs('#soon-modal').classList.add('show');
+          });
         } else {
           ac.innerHTML =
             '<p class="flex items-center gap-2.5 font-extrabold"><span class="w-9 h-9 rounded-full bg-brand-soft text-brand-strong inline-flex items-center justify-center">' + PREP.icon('lock', 'w-5 h-5') + '</span>Bài này đang khoá</p>' +

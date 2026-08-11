@@ -152,6 +152,9 @@ app.get('/prep/mua-code/', studentPage('prep/codes/mua-code.html'));
 app.get('/prep/nhap-code/', studentPage('prep/codes/nhap-code.html'));
 app.get('/prep/code-cua-toi/', studentPage('prep/codes/code-cua-toi.html'));
 app.get('/prep/bai-thi/:id/', studentPage('prep/test/index.html'));
+/* Màn làm bài. Guard đăng nhập ở đây; quyền (còn gói, còn lượt) do
+   /api/attempts quyết định, và trang hiện đúng lý do máy chủ trả về. */
+app.get('/prep/lam-bai/', studentPage('prep/exam/index.html'));
 app.get('/prep/tai-khoan/', studentPage('prep/account/index.html'));
 
 /* ------------- Khu tự học: cần gói có quyền -------------

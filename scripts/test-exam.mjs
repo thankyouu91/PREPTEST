@@ -7,6 +7,8 @@
  * Trọng tâm là những thứ KHÔNG được tin vào trình duyệt: đồng hồ từng phần,
  * số lần nghe lại, hạn mức lượt thi, và việc đáp án không bao giờ đi ra ngoài.
  */
+import { chromium } from 'playwright-core';
+
 const BASE = process.env.BASE || 'http://127.0.0.1:3000';
 
 let pass = 0, fail = 0;
@@ -126,6 +128,13 @@ try {
   await student.req('GET', '/api/me');
   r = await student.req('POST', '/api/auth/login', { username: 'student', password: 'Goodmorning01' });
   ok(r.status === 200, 'Đăng nhập học viên', 'status ' + r.status);
+
+  /* CSDL không dựng lại giữa các lần chạy: một lượt bỏ dở của lần trước sẽ chặn
+     lần này. Dọn trước rồi mới thi, để bài test đo engine chứ không đo rác. */
+  const leftover = await student.req('GET', '/api/attempts/current');
+  if (leftover.data && leftover.data.attempt) {
+    await student.req('POST', '/api/attempts/' + leftover.data.attempt.id + '/submit');
+  }
 
   r = await student.req('POST', '/api/attempts', { testId });
   ok(r.status === 201 && r.data.attempt, 'Mở được lượt thi mới', JSON.stringify(r.data).slice(0, 120));
@@ -314,6 +323,74 @@ try {
   ok(afterUnlimited === beforeUnlimited,
     'Gói không giới hạn: mở bài không trừ lượt nào', beforeUnlimited + ' → ' + afterUnlimited);
   if (unlimitedAttempt) await student.req('POST', '/api/attempts/' + unlimitedAttempt + '/submit');
+
+  /* ---------- Màn làm bài lái được engine ---------- */
+  head('Màn làm bài');
+  /* Backend đã kiểm kỹ ở trên; phần này chỉ hỏi một câu: cái màn hình có thật
+     sự lái được engine đó không, hay chỉ vẽ ra trông giống. */
+  const browser = await chromium.launch({
+    executablePath: process.env.CHROMIUM || '/opt/pw-browsers/chromium', args: ['--no-sandbox']
+  });
+  try {
+    const ctx = await browser.newContext();
+    const uiErrors = [];
+    ctx.on('weberror', e => uiErrors.push(String(e.error())));
+    const page = await ctx.newPage();
+    await page.goto(BASE + '/prep/dang-nhap/', { waitUntil: 'networkidle' });
+    await page.fill('#email', 'student');
+    await page.fill('#password', 'Goodmorning01');
+    await page.click('#submit');
+    await page.waitForTimeout(1200);
+
+    await page.goto(BASE + '/prep/lam-bai/?test=' + encodeURIComponent(testId), { waitUntil: 'networkidle' });
+    await page.waitForTimeout(900);
+    ok(await page.locator('#runner').isVisible(), 'Mở màn làm bài từ nút Bắt đầu');
+    ok((await page.locator('#ex-parts button').count()) === 2,
+      'Hiện đủ hai phần', String(await page.locator('#ex-parts button').count()));
+
+    /* Chưa vào phần thì chưa có câu nào — đúng như máy chủ quy định */
+    ok((await page.locator('[data-item]').count()) === 0, 'Chưa vào phần thì chưa hiện câu hỏi');
+    await page.click('#ex-enter');
+    await page.waitForTimeout(900);
+    ok((await page.locator('[data-item]').count()) === 2, 'Vào phần F thì hiện đủ 2 câu',
+      String(await page.locator('[data-item]').count()));
+    const clock = (await page.locator('#ex-clock-text').textContent()).trim();
+    ok(/^\d+:\d\d$/.test(clock), 'Đồng hồ chạy trên màn hình', clock);
+
+    /* Trả lời một câu rồi đợi autosave — không có nút Lưu, nên nếu chỗ này im
+       lặng thì người làm bài không biết bài mình có được giữ hay không. */
+    await page.locator('[data-answer]').first().check();
+    await page.waitForTimeout(1900);
+    ok((await page.locator('#ex-saved').textContent()).trim() === 'Đã lưu',
+      'Tự lưu và báo đã lưu', (await page.locator('#ex-saved').textContent()).trim());
+
+    /* Nghe: bấm một lần thì số lượt còn lại phải giảm theo máy chủ */
+    const playBtn = page.locator('[data-play]').first();
+    const before = (await page.locator('[data-plays]').first().textContent()).trim();
+    await playBtn.click();
+    await page.waitForTimeout(1200);
+    const after = (await page.locator('[data-plays]').first().textContent()).trim();
+    ok(before !== after, 'Bấm Nghe thì số lượt còn lại đổi theo máy chủ', before + ' → ' + after);
+
+    /* Tải lại trang: bài đang làm phải quay lại nguyên trạng, không mất */
+    await page.reload({ waitUntil: 'networkidle' });
+    await page.waitForTimeout(900);
+    ok(await page.locator('#runner').isVisible(), 'Tải lại trang thì vào tiếp bài đang làm');
+    ok(await page.locator('[data-answer]').first().isChecked(), 'Đáp án đã lưu vẫn còn sau khi tải lại');
+
+    /* Nộp bài qua giao diện */
+    await page.click('#ex-submit');
+    await page.waitForTimeout(400);
+    ok(await page.locator('#submit-modal.show').count() === 1, 'Hỏi lại trước khi nộp');
+    await page.click('#sm-go');
+    await page.waitForTimeout(1200);
+    ok(await page.locator('#done').isVisible(), 'Nộp xong hiện màn đã nộp');
+
+    ok(uiErrors.length === 0, 'Không có lỗi JavaScript trên màn làm bài', uiErrors.join(' | '));
+    await ctx.close();
+  } finally {
+    await browser.close();
+  }
 
   /* ---------- Dọn dẹp ---------- */
   await admin.req('DELETE', '/api/admin/tests/' + testId);

@@ -55,6 +55,7 @@ const PAGES = [
   { slug: 'bai-thi',         url: '/prep/bai-thi/vpet-b1-01/',   auth: true, full: true },
   { slug: 'bai-thi-khoa',    url: '/prep/bai-thi/pte-ac-01/',    auth: true },
   { slug: 'tai-khoan',       url: '/prep/tai-khoan/',            auth: true },
+  { slug: 'lam-bai',         url: '/prep/lam-bai/',              auth: true, full: true },
   { slug: 'hoc-dong-tu',     url: '/prep/hoc/dong-tu-bat-quy-tac/', auth: true },
   { slug: 'hoc-tu-noi',      url: '/prep/hoc/tu-noi/',            auth: true },
   { slug: 'hoc-thi',         url: '/prep/hoc/thi/',               auth: true },
