@@ -1067,6 +1067,12 @@ Ranking rule: **sort tips by GSE points recoverable, not by severity.** The most
 broken thing is not always the cheapest to fix, and a learner will act on three
 concrete tips but not on eleven.
 
+**4. Where do I find this again?** The report header carries the **result code**
+(section 8.5) — the same code that will appear on the certificate — and below the
+tips, the learner's GSE line across previous attempts. The code is what makes the
+report a durable record rather than a page that scrolls away, and it is what
+support asks for when someone writes in about a score.
+
 ### 8.3 The teacher score report
 
 One attempt, one screen:
@@ -1199,38 +1205,89 @@ page `/verify/<code>` showing only: the exam, the level, the date, the issuing
 organisation and the status. Nothing else — the verify page is public, so it
 carries the minimum needed to confirm the document is real.
 
-**Reissue, never edit.** Once issued, a certificate is a snapshot. If a score is
-later corrected, the old certificate is `revoked` and a new one issued with a new
-code; the verify page for the old code says so and points at the replacement. A
-certificate whose contents can change silently is worth nothing.
+**Reissue as a new version, under the same code.** Once issued, a certificate is a
+snapshot. If a score is later corrected, the certificate is **reissued as version 2
+under the same result code** rather than getting a new code. The verify page shows
+the current version and says an earlier one was superseded.
+
+This is the better of the two obvious designs. Minting a new code on reissue turns
+the printed copy someone is holding into a dead code — they get "not found", which
+looks identical to holding a forgery. Keeping the code stable means an old printout
+still resolves, and the verify page tells them plainly that a newer version exists
+and what it says. The holder learns something true either way.
 
 **Interaction with the 24-month retention (section 13).** The recordings expire;
 the scores, transcripts, rubric evidence and certificate rows do not. What defends
 a certificate is the score record, not the audio — and the score record contains
 no voice.
 
-### 8.5 Schema and API for this section
+### 8.5 The result code — one identity per result
+
+**Owner decision (2026-08-11): the report and the certificate both carry a code
+that tracks the result on the platform.**
+
+**One code, not two.** The code is minted on the attempt, not on the certificate:
+`attempts.result_code`, generated when the attempt is submitted, stable for the
+life of the result. It appears on the candidate report, on the teacher report and
+on the certificate — the same string in all three places.
+
+Two codes for one result would be a support problem within a month: a learner reads
+out the report code, the teacher searches certificates, nothing matches, and
+neither of them knows which code they are holding. One result, one identity.
+
+**Format.** `R-7QK4-2M8P-XR3D` — the platform's existing code alphabet from
+`makeCode()` in `server/db.js` (31 characters, with `I`, `O`, `0` and `1` removed
+because they are misread when copied off paper), in the same `XXXX-XXXX-XXXX`
+grouping already used for redemption codes.
+
+The `R-` prefix earns its place: support staff and learners will otherwise confuse
+result codes with redemption codes, which look identical and behave nothing alike.
+A glance at the prefix settles it.
+
+Entropy is 31¹² ≈ 7.9 × 10¹⁷, about 59 bits. Enough that the code *is* the access
+control for the public verify page, provided that page is rate limited (below) —
+but it is a bearer token, so treat it as one: never in a URL you would put in an
+email subject, never in an analytics event, never in a log line.
+
+**Three ways in, three levels of detail.** The same code, different answers
+depending on who is asking:
+
+| Who | How | What they see |
+|---|---|---|
+| **Candidate** | signed in, or code + date of birth | The full report: every skill, GSE and CEFR, the ranked tips, transcripts, their own audio, and every attempt they have sat |
+| **Third party** — an employer, a school | `/verify/R-…`, public, no account | Name, exam, level, date, GSE and CEFR per skill, issuing centre, certificate version and status. **Nothing else** |
+| **Teacher / admin** | signed in | Everything above plus the AI evidence, the flags, the review history and the audit trail |
+
+What the public page deliberately does **not** carry: audio, transcripts, email
+address, the improvement tips, or any other attempt by the same learner. It answers
+exactly one question — *is this document real and does it say what it claims* — and
+nothing more. A third party who has been handed a code has been handed one result,
+not a person's history.
+
+**Rate limiting is not optional here.** `/verify/:code` is public and unauthenticated,
+and a successful hit returns a name and a set of scores. Limit per IP, add a
+delay after repeated misses, and treat a burst of misses as an enumeration attempt
+worth logging. The existing brute-force protection on the admin login is the model.
+
+**Tracking across attempts is where GSE pays off a second time.** Each attempt gets
+its own code, and because every result sits on one continuous 10–90 scale, the
+learner's history is a line rather than a list:
 
 ```
-certificates
-  id
-  code             public verification code, unguessable, UNIQUE
-  attempt_id, user_id
-  full_name        as printed, snapshotted at issue
-  test_id, level   1 | 2
-  scores_json      per-skill GSE + CEFR + overall, snapshotted
-  marked_by_json   which parts were auto / AI / teacher reviewed
-  profile_id, profile_version   branding pinned at issue (section 8.4)
-  issued_by        admins.id — the teacher who signed off
-  issued_at
-  status           issued | revoked | superseded
-  superseded_by, revoke_reason
+GSE 47  →  52  →  55  →  61
+B1        B1+    B1+    B2      four attempts, Feb to August
+```
 
-certificate_profiles          per-form branding, see section 8.4
+CEFR bands alone would show "B1, B1, B1, B2" and hide three of the four gains. This
+is the single most motivating screen the platform can show a learner, and it exists
+only because the scale underneath is continuous. It also gives the teacher a cohort
+view — who is moving, who has stalled — from data already being collected.
 
-tests.release_policy          instant | after_review   (section 8.1)
-tests.level                   1 | 2                    (section 1.7)
+### 8.6 Schema and API for this section
 
+```
+attempts.result_code          'R-XXXX-XXXX-XXXX', UNIQUE, minted at submit and
+                              never reissued — the tracking identity (section 8.5)
 attempts.status               ... | awaiting_review | released
 attempts.released_by, attempts.released_at
 attempts.review_requested_at  learner asked for a human look (section 8.1)
@@ -1239,16 +1296,37 @@ attempt_scores.gse            per skill, alongside the CEFR band
 attempt_tips_json             the ranked improvement tips shown to the learner,
                               stored so the report is reproducible and so the
                               advice can be evaluated later against real progress
+
+certificates
+  id
+  attempt_id                  the result code lives on the attempt, not here
+  version                     1, 2, 3 … reissue bumps this, the code stays put
+  full_name                   as printed, snapshotted at issue
+  test_id, level              1 | 2
+  scores_json                 per-skill GSE + CEFR + overall, snapshotted
+  marked_by_json              which parts were auto / AI / teacher reviewed
+  profile_id, profile_version branding pinned at issue (section 8.4)
+  issued_by                   admins.id — the teacher who signed off
+  issued_at
+  status                      issued | revoked | superseded
+  supersedes, revoke_reason
+  UNIQUE (attempt_id, version)
+
+certificate_profiles          per-form branding, see section 8.4
+
+tests.release_policy          instant | after_review   (section 8.1)
+tests.level                   1 | 2                    (section 1.7)
 ```
 
 ```
-GET    /api/me/results/:attemptId              candidate's own report, GSE + tips
-POST   /api/me/results/:attemptId/review       ask for a teacher to look at it
+GET    /api/me/results                         every attempt, with the GSE line
+GET    /api/me/results/:code                   own report by result code, GSE + tips
+POST   /api/me/results/:code/review            ask for a teacher to look at it
 
-GET    /api/admin/attempts/:id/report          the full score report
-POST   /api/admin/attempts/:id/signoff         record the review, release if needed
-POST   /api/admin/attempts/:id/certificate     issue (returns the code)
-POST   /api/admin/certificates/:code/revoke    revoke, optionally superseding
+GET    /api/admin/results/:code                the full score report, by code
+POST   /api/admin/results/:code/signoff        record the review, release if needed
+POST   /api/admin/results/:code/certificate    issue or reissue (bumps the version)
+POST   /api/admin/results/:code/revoke         revoke the current certificate
 GET    /api/admin/certificate-profiles         list / create / update branding
 POST   /api/admin/certificate-profiles/:id/logo   logo upload (PNG/JPEG only)
 GET    /admin/certificate/:code                printable HTML certificate
@@ -1256,9 +1334,14 @@ GET    /admin/certificate/:code                printable HTML certificate
 GET    /verify/:code                           public verification page
 ```
 
+Routing admin and candidate lookups by `result_code` rather than by numeric
+`attempt_id` means the string a learner reads off their report is the string that
+works everywhere — support can paste it straight into the admin search, and nobody
+has to translate between two identifiers.
+
 `/verify/:code` is the only public route in this design. It takes no parameters
-beyond the code, returns the same minimal payload for every caller, and needs rate
-limiting like any other guessable-token endpoint.
+beyond the code, returns the same minimal payload for every caller, and is rate
+limited as described in section 8.5.
 
 Storing `attempt_tips_json` is worth the column. It makes an old report
 reproducible when the tip generator changes, and — more usefully — it lets the
@@ -1539,4 +1622,5 @@ and 5.
 | Exam levels | **Two.** Level 1 measures B1 and below, Level 2 measures B2 and above. Neither reports outside its range | Section 1.7 |
 | Who sees the scores | **The candidate, immediately, for practice tests** — GSE per skill plus ranked tips. The teacher gets the same attempt in a score report; certificates still need sign-off | Section 8.1, 8.2 |
 | Certificate branding | **Logo slot empty in the template.** Uploaded in the admin dashboard, chosen by test code at export, pinned onto the issued certificate | Section 8.4 |
+| Result tracking | **One code per attempt** (`R-XXXX-XXXX-XXXX`), minted at submit, printed on the report and on the certificate, resolvable at three levels of detail. Reissue bumps a version under the same code | Section 8.5 |
 | Retention of candidate speech | **24 months** | Section 13 |

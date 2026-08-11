@@ -52,11 +52,7 @@ function applyLevel1Ceiling() {
   set('.scale-note',
     'Global Scale of English 10–90 · A1 22–29 · A2 30–35 · A2+ 36–42 · B1 43–50 · Level 1 measures to GSE 50');
 
-  set('.code', 'Certificate 4RT9-8B2K-LM7W');
-  const code = document.querySelector('.code');
-  const span = document.createElement('span');
-  span.textContent = ' · verify at preptest.vn/verify/4RT98B2KLM7W';
-  code.appendChild(span);
+  set('.codebox-code', 'R-4RT9-8B2K-LM7W');
 }
 
 const STATES = [
@@ -78,17 +74,22 @@ try {
     await page.waitForTimeout(150);
 
     /* A certificate is a fixed-size sheet, so overflow is a layout bug, not a
-       scroll. The longest state (Level 1 with the ceiling notice) is the one that
-       breaks first, and it is easy to miss by eye — so assert it. */
+       scroll. The longest state (Level 1 with the ceiling notice) breaks first and
+       is easy to miss by eye — so assert it.
+
+       Measure against .inner, whose bottom edge is the sheet's padding edge. The
+       frame sits 4mm outside that, and checking against the frame instead lets
+       content quietly eat the margin and collide with the rule while still
+       reporting clearance. */
     const fit = await page.evaluate(() => {
       const foot = document.querySelector('.foot').getBoundingClientRect();
-      const frame = document.querySelector('.frame').getBoundingClientRect();
-      return { slack: Math.round(frame.bottom - foot.bottom) };
+      const inner = document.querySelector('.inner').getBoundingClientRect();
+      return { slack: Math.round(inner.bottom - foot.bottom) };
     });
     if (fit.slack < 0) {
-      throw new Error(`${state.slug}: content overflows the sheet by ${-fit.slack}px`);
+      throw new Error(`${state.slug}: content overflows the margin by ${-fit.slack}px`);
     }
-    console.log(`  ${state.slug}: ${fit.slack}px clear of the frame`);
+    console.log(`  ${state.slug}: ${fit.slack}px inside the margin`);
 
     const file = path.join(OUT, `${state.slug}.png`);
     await page.locator('.sheet').screenshot({ path: file });
