@@ -241,7 +241,7 @@ try {
 
   /* Hai nhóm phải tách bạch, không lẫn vào nhau */
   const allGrammar = await get('/api/learn/grammar');
-  ok(allGrammar.count === 175, 'Tổng tám nhóm là 175 điểm (' + allGrammar.count + ')');
+  ok(allGrammar.count === 184, 'Tổng tám nhóm là 184 điểm (' + allGrammar.count + ')');
   ok(allGrammar.groups.some(g => g.id === 'tense' && g.count === 12) &&
      allGrammar.groups.some(g => g.id === 'noun' && g.count === 28) &&
      allGrammar.groups.some(g => g.id === 'modal' && g.count === 29) &&
@@ -249,8 +249,8 @@ try {
      allGrammar.groups.some(g => g.id === 'passive' && g.count === 22) &&
      allGrammar.groups.some(g => g.id === 'clause' && g.count === 29) &&
      allGrammar.groups.some(g => g.id === 'emphasis' && g.count === 21) &&
-     allGrammar.groups.some(g => g.id === 'register' && g.count === 14),
-    'Thống kê theo nhóm đúng: tense 12, noun 28, modal 29, conditional 20, passive 22, clause 29, emphasis 21, register 14');
+     allGrammar.groups.some(g => g.id === 'register' && g.count === 23),
+    'Thống kê theo nhóm đúng: tense 12, noun 28, modal 29, conditional 20, passive 22, clause 29, emphasis 21, register 23');
   ok(new Set(allGrammar.points.map(p => p.slug)).size === allGrammar.count,
     'Không có slug trùng giữa các nhóm');
 
@@ -725,17 +725,17 @@ try {
   console.log('\n\x1b[1m== API ngữ pháp (sắc thái, độ trang trọng, rào đón) ==\x1b[0m');
 
   const st = await get('/api/learn/grammar?grp=register');
-  ok(st.count === 14, 'Có 14 điểm bậc A1–B2 (' + st.count + ')');
+  ok(st.count === 23, 'Có 23 điểm bậc A1–C1 (' + st.count + ')');
   const stLevel = st.points.reduce((a, p) => (a[p.level] = (a[p.level] || 0) + 1, a), {});
-  const ST_QUOTA = { A1: 1, A2: 2, B1: 4, B2: 7 };
+  const ST_QUOTA = { A1: 1, A2: 2, B1: 4, B2: 7, C1: 9 };
   const stLech = Object.keys(ST_QUOTA).filter(l => stLevel[l] !== ST_QUOTA[l]);
-  ok(stLech.length === 0, 'Đúng hạn mức A1 1, A2 2, B1 4, B2 7' +
+  ok(stLech.length === 0, 'Đúng hạn mức A1 1, A2 2, B1 4, B2 7, C1 9' +
     (stLech.length ? ' (lệch: ' + stLech.map(l => l + ' ' + (stLevel[l] || 0) + '/' + ST_QUOTA[l]).join(', ') + ')' : ''));
   ok(st.points.every(p => p.counts.example === 6 && p.counts.practice === 10),
     'Mỗi điểm đủ 6 ví dụ và 10 câu luyện');
-  const bacSt = { A1: 1, A2: 2, B1: 3, B2: 4 };
+  const bacSt = { A1: 1, A2: 2, B1: 3, B2: 4, C1: 5 };
   ok(st.points.every((p, i) => i === 0 || bacSt[p.level] >= bacSt[st.points[i - 1].level]),
-    'Danh sách xếp từ bậc thấp lên bậc cao');
+    'Hai tệp A1–B2 và C1 ghép liền mạch, xếp từ bậc thấp lên cao');
 
   /* Nhóm này bàn sắc thái nên phản ví dụ hay là câu ĐÚNG NGỮ PHÁP mà LỆCH GIỌNG.
      Dù vậy note vẫn phải nêu được cách sửa, nếu không học viên chỉ thấy dấu sai mà
@@ -788,6 +788,53 @@ try {
   const phiNgoi = await get('/api/learn/grammar/impersonal-distance');
   ok(phiNgoi.point.useNot.some(u => /one/i.test(u.what + u.why) && /you/i.test(u.what + u.why)),
     'Mục nói phi ngôi cảnh báo không trộn "one" với "you"');
+
+  /* Bậc C1: trục chính là cân liều rào đón, và cặp đối lập với lối phi ngôi bậc B2 */
+  const phamVi = await get('/api/learn/grammar/hedging-scope-quantity');
+  ok(/All Vietnamese people/.test(JSON.stringify(phamVi.point.errors)),
+    'Hạn định phạm vi bắt lỗi khẳng định vống "All Vietnamese people…"');
+  ok(phamVi.point.useNot.some(u => /sự thật/i.test(u.what + u.why)),
+    'Hạn định phạm vi nhắc không hạn định một sự thật đã xác lập');
+
+  const khoanhVung = await get('/api/learn/grammar/hedging-conditions-limits');
+  ok(khoanhVung.point.useNot.some(u => /principal/i.test(u.what + u.why)),
+    'Mục khoanh vùng cảnh báo lỗi chính tả "in principal"');
+
+  const canLieu = await get('/api/learn/grammar/hedging-calibration');
+  ok(canLieu.point.useNot.some(u => /prove/i.test(u.what + u.why)),
+    'Mục cân liều cảnh báo không dùng "prove" cho dữ liệu tương quan');
+  ok(canLieu.point.confuse.some(c => /quá tay/i.test(c.with + c.tell)),
+    'Mục cân liều đối chiếu rào đón đủ liều với rào đón quá tay');
+
+  const nhoTrongThu = await get('/api/learn/grammar/written-request-formulae');
+  ok(nhoTrongThu.point.useNot.some(u => /appreciate/i.test(u.what + u.why) && /\bit\b/i.test(u.what + u.why)),
+    'Lời nhờ trong thư cảnh báo không bỏ "it" trong "I would appreciate it if"');
+
+  const gopY = await get('/api/learn/grammar/softening-criticism');
+  ok(gopY.point.useNot.some(u => /an toàn/i.test(u.what + u.why)),
+    'Góp ý phê bình nêu ngoại lệ: chuyện an toàn thì phải nói thẳng');
+
+  const noiGiam = await get('/api/learn/grammar/understatement-litotes');
+  ok(noiGiam.point.useNot.some(u => /not bad/i.test(u.what + u.why)),
+    'Mục nói giảm cảnh báo "not bad" là khen chứ không phải chê');
+  ok(noiGiam.point.confuse.some(c => {
+    const cau = c.pair.map(x => x.en).join(' ');
+    return /not bad/i.test(cau) && /not very good/i.test(cau);
+  }), 'Mục nói giảm đối chiếu "not bad" với "not very good"');
+
+  const uyenNgu = await get('/api/learn/grammar/euphemism');
+  ok(uyenNgu.point.confuse.some(c => /né tránh/i.test(c.with + c.tell)),
+    'Mục uyển ngữ phân biệt loại tử tế với loại né tránh');
+
+  const vanNoi = await get('/api/learn/grammar/spoken-vs-written-grammar');
+  ok(vanNoi.point.useNot.some(u => /sai/i.test(u.what + u.why)),
+    'Mục ngữ pháp văn nói nhấn rằng các lối này không phải tiếng Anh sai');
+
+  const lapTruong = await get('/api/learn/grammar/stance-markers');
+  ok(/According to me/.test(JSON.stringify(lapTruong.point.errors)),
+    'Mục đánh dấu lập trường bắt lỗi "According to me"');
+  ok(lapTruong.point.confuse.some(c => /phi ngôi/i.test(c.with + c.tell)),
+    'Mục đánh dấu lập trường đối chiếu với lối nói phi ngôi bậc B2');
 
   /* ============ 6. Chất lượng câu luyện của TOÀN BỘ ngữ pháp ============
      Dấu ngoặc trong câu luyện có hai kiểu, phải tách bạch trước khi kiểm:
@@ -851,8 +898,8 @@ try {
     (kyTuLa.length ? ' (' + kyTuLa.length + ' chỗ, ví dụ: ' + kyTuLa[0] + ')' : ''));
   ok(lechDapAn.length === 0, 'Đáp án luôn nằm trong danh sách lựa chọn của câu trắc nghiệm' +
     (lechDapAn.length ? ' (' + lechDapAn.length + ' sai, ví dụ: ' + lechDapAn[0] + ')' : ''));
-  ok(tongLuyen === 12 * 12 + 28 * 10 + 29 * 10 + 20 * 10 + 22 * 10 + 29 * 10 + 21 * 10 + 14 * 10,
-    'Tổng câu luyện toàn khu ngữ pháp là ' + (12 * 12 + 28 * 10 + 29 * 10 + 20 * 10 + 22 * 10 + 29 * 10 + 21 * 10 + 14 * 10) + ' (' + tongLuyen + ')');
+  ok(tongLuyen === 12 * 12 + 28 * 10 + 29 * 10 + 20 * 10 + 22 * 10 + 29 * 10 + 21 * 10 + 23 * 10,
+    'Tổng câu luyện toàn khu ngữ pháp là ' + (12 * 12 + 28 * 10 + 29 * 10 + 20 * 10 + 22 * 10 + 29 * 10 + 21 * 10 + 23 * 10) + ' (' + tongLuyen + ')');
 
   /* ============ 7. Năm trang tự học ============ */
   console.log('\n\x1b[1m== Trang khu tự học ==\x1b[0m');
@@ -1096,7 +1143,7 @@ try {
   /* --- Trang sắc thái, độ trang trọng và rào đón --- */
   await page.goto(BASE + '/prep/hoc/sac-thai/', { waitUntil: 'networkidle' });
   await page.waitForSelector('#list article', { timeout: 10000 });
-  ok(await page.locator('#list article').count() === 14, 'Trang sắc thái hiện đủ 14 mục');
+  ok(await page.locator('#list article').count() === 23, 'Trang sắc thái hiện đủ 23 mục');
 
   await page.click('[data-toggle="indirect-questions"]');
   await page.waitForSelector('#list article[data-slug="indirect-questions"] [data-answer]',
@@ -1111,6 +1158,17 @@ try {
   await page.selectOption('#f-level', 'B2');
   await page.waitForTimeout(300);
   ok(await page.locator('#list article').count() === 7, 'Lọc bậc B2 còn 7 mục');
+
+  await page.selectOption('#f-level', 'C1');
+  await page.waitForTimeout(300);
+  ok(await page.locator('#list article').count() === 9, 'Lọc bậc C1 còn 9 mục');
+
+  /* Mục bậc C1 cuối danh sách 23 mục phải mở được như mục đầu */
+  await page.click('[data-toggle="stance-markers"]');
+  await page.waitForSelector('#list article[data-slug="stance-markers"] [data-answer]',
+    { state: 'attached', timeout: 10000 });
+  ok(await page.locator('article[data-slug="stance-markers"] [data-answer]').count() === 10,
+    'Mục bậc C1 cuối danh sách cũng mở ra đủ 10 câu luyện');
 
   ok(errs.length === 0, 'Không có lỗi JavaScript trên mười trang tự học' +
     (errs.length ? ': ' + errs[0] : ''));
