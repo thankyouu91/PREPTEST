@@ -46,7 +46,22 @@ Nhánh làm việc: `claude/prep-test-platform-design-fpiuqn`
 - [x] Ngữ pháp đảo ngữ – nhấn mạnh – câu chẻ, bậc C2 (7 điểm: đảo toàn phần khác đảo trợ động từ, đưa phân từ và tính từ lên đầu, đảo ngữ sau `as` và `than`, câu chẻ phủ định `It was not until… that`, đảo ngữ với cụm `Not…`, đưa cụm giới từ lên đầu để nối mạch, phủ định nhấn mạnh gián tiếp `far from` / `anything but`) — nhóm này đủ 21/21 điểm
 - [x] Ngữ pháp sắc thái – độ trang trọng – hedging, bậc A1–B2 (14 điểm: nghi thức please/excuse me, làm nhẹ lời chê bằng `a bit`, báo tin không vui `I am afraid`; câu hỏi gián tiếp, câu hỏi đuôi, `quite`/`rather`/`fairly`, nói ước chừng; viết tắt và độ trang trọng, rào đón bằng `seem`/`tend to`, trạng từ rào đón, trạng từ tăng cam kết, cụm động từ khác động từ trang trọng, từ chối cho nhẹ, lối nói phi ngôi)
 - [x] Ngữ pháp sắc thái – độ trang trọng – hedging, bậc C1 (9 điểm: hạn định phạm vi khẳng định, khoanh vùng bằng điều kiện, cân liều rào đón, lời nhờ trong thư công việc, góp ý phê bình cho nhã, nói giảm, uyển ngữ, ngữ pháp của văn nói, đánh dấu lập trường cá nhân) — mục 19 điểm C1–C2 đã tách đôi đúng như ghi chú
-- [ ] Ngữ pháp sắc thái – độ trang trọng – hedging, bậc C2 (10 điểm còn lại theo hạn mức)
+- [x] Ngữ pháp sắc thái – độ trang trọng – hedging, bậc C2 (10 điểm: mỉa mai và châm biếm, hàm ý hội thoại, tiền giả định, phê bình nguồn trong bài học thuật, công thức văn bản chính thức, từ ngữ mang đánh giá ngầm, ngoặc kép giữ khoảng cách, câu rào đón dọn đường, thang xin lỗi, cố ý đổi giọng) — nhóm này đủ 33/33 điểm
+
+#### Ba nhóm ngữ pháp chưa từng vào hàng đợi
+
+Đối chiếu dữ liệu đã dựng với bảng phân bậc `docs/LEARNING.md` mục 2 (tổng 303 điểm):
+hiện có **194/303**. Sáu nhóm đã đủ hạn mức (danh từ 28, khuyết thiếu 29, điều kiện 20,
+bị động 22, mệnh đề 29, sắc thái 33). Còn lại bốn chỗ hụt dưới đây — ba nhóm chưa từng
+có mục nào trong hàng đợi, và nhóm "thì" mới làm 12 thì chứ chưa làm phần phối hợp thì:
+
+- [ ] Ngữ pháp phối hợp thì, 9 điểm còn lại của nhóm "thì" (12 thì đã xong; hạn mức cả nhóm là 21 — phần thiếu là phối hợp thì trong câu nhiều mệnh đề, thì trong mệnh đề tường thuật và tường thuật gián tiếp, thì trong văn kể)
+- [ ] Ngữ pháp tính từ – trạng từ – so sánh, bậc A1–B1 (16 điểm theo hạn mức: A1 5, A2 6, B1 5)
+- [ ] Ngữ pháp tính từ – trạng từ – so sánh, bậc B2–C2 (12 điểm còn lại: B2 5, C1 4, C2 3)
+- [ ] Ngữ pháp giới từ và cụm giới từ, bậc A1–A2 (13 điểm theo hạn mức: A1 6, A2 7)
+- [ ] Ngữ pháp giới từ và cụm giới từ, bậc B1–B2 (13 điểm: B1 7, B2 6)
+- [ ] Ngữ pháp giới từ và cụm giới từ, bậc C1–C2 (9 điểm: C1 5, C2 4)
+- [ ] **Cần người dùng quyết**: nhóm "Liên kết câu, mạch lạc văn bản" (37 điểm trong bảng phân bậc) hiện đã được phục vụ bằng bảng `linking_words` 123 mục, không phải bằng `grammar_points`. Nếu coi bảng từ nối là đủ thì gạch hàng này khỏi hạn mức; nếu muốn có thêm điểm ngữ pháp về mạch lạc văn bản (câu chủ đề, tham chiếu, thay thế, lược bỏ, trật tự thông tin) thì tách thành các mục như trên.
 - [ ] Nhập từ vựng NGSL (~2.800 từ) → `vocab_entries`, gán bậc A1–B1 theo hạng tần suất
 - [ ] Nhập từ vựng NAWL (~960 từ học thuật) + TSL (~1.200 từ TOEIC), gán bậc B2–C1
 - [ ] Nhập câu ví dụ song ngữ Anh–Việt từ Tatoeba, ghép vào từng nghĩa
