@@ -57,7 +57,7 @@ check('Không trả 200 cho trang bị chặn', guarded.status() === 200 && page
 await login('student', 'Goodmorning01');
 check('Đăng nhập thành công vào dashboard', page.url().endsWith('/prep/'), page.url());
 const name = (await page.locator('#greet-name').textContent()).trim();
-check('Hiện đúng tên học viên', name === 'Học viên Demo', name);
+check('Hiện đúng tên học viên', name === 'Demo Student', name);
 await page.waitForTimeout(700);
 const unlocked = await page.locator('#mytests-grid article').count();
 check('Có 1 bài đã mở khoá sẵn (từ code trong CSDL)', unlocked === 1, 'đếm được ' + unlocked);

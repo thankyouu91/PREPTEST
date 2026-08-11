@@ -294,33 +294,41 @@ function ensureSeedAdmin() {
   return { username, password: envPw ? null : password };
 }
 
-/* ------------- Mật khẩu cho tài khoản học viên demo -------------
-   Bản seed tạo user 'student' không có mật khẩu. Ngoài production, đặt sẵn
-   mật khẩu demo để thử luồng đăng nhập; ở production để trống nên không ai
-   đăng nhập được vào tài khoản mẫu.
+/* ------------- The demo student account -------------
+   The seed creates user 'student' with no password. Outside production a demo
+   password is set so the sign-in flow can be exercised; in production it stays
+   empty, so nobody can sign in to the sample account.
 
-   Trước đây hàm này chỉ đặt mật khẩu khi ô pass_hash còn trống, nên hễ mật khẩu
-   bị đổi một lần (đổi tay, hoặc một lần chạy thử cũ) là nó lệch khỏi README
-   vĩnh viễn mà không báo gì — người dùng đọc README rồi đăng nhập không được.
-   Nay ngoài production thì mỗi lần khởi động đều kéo tài khoản demo về đúng
-   trạng thái tài liệu ghi, và in ra một dòng khi thật sự có sửa. */
+   This function once only set the password when pass_hash was empty, so the
+   moment the password drifted from the README — changed by hand, or by an old
+   test run — it stayed wrong forever and said nothing, and someone following
+   the README simply could not sign in. Now, outside production, every boot
+   pulls the demo account back to what the documentation says and prints a line
+   only when something actually changed.
+
+   The display name is reconciled for the same reason, not for tidiness: it is
+   seeded once, it shows in the chrome greeting on every signed-in screen, and
+   an existing data/prep.sqlite would otherwise keep the old value forever no
+   matter what the seed says. */
 const DEMO_STUDENT_PASSWORD = 'Goodmorning01';
+const DEMO_STUDENT_NAME = 'Demo Student';
 
-function ensureDemoStudentPassword() {
+function ensureDemoStudent() {
   if (process.env.NODE_ENV === 'production') return false;
-  const u = q.get("SELECT id, pass_hash, verified, status FROM users WHERE username='student'");
+  const u = q.get("SELECT id, pass_hash, verified, status, name FROM users WHERE username='student'");
   if (!u) return false;
 
-  const dungMatKhau = u.pass_hash && verifyPassword(DEMO_STUDENT_PASSWORD, u.pass_hash);
-  const dungTrangThai = u.verified === 1 && u.status === 'active';
-  if (dungMatKhau && dungTrangThai) return false;
+  const passwordOk = u.pass_hash && verifyPassword(DEMO_STUDENT_PASSWORD, u.pass_hash);
+  const stateOk = u.verified === 1 && u.status === 'active';
+  const nameOk = u.name === DEMO_STUDENT_NAME;
+  if (passwordOk && stateOk && nameOk) return false;
 
-  q.run("UPDATE users SET pass_hash=?, verified=1, status='active' WHERE id=?",
-    hashPassword(DEMO_STUDENT_PASSWORD), u.id);
+  q.run("UPDATE users SET pass_hash=?, verified=1, status='active', name=? WHERE id=?",
+    hashPassword(DEMO_STUDENT_PASSWORD), DEMO_STUDENT_NAME, u.id);
   console.warn(
-    '\n⚠  Tài khoản học viên demo đã lệch khỏi tài liệu, đã đặt lại:' +
+    '\n⚠  The demo student account had drifted from the documentation and was reset:' +
     '\n   student / ' + DEMO_STUDENT_PASSWORD +
-    '\n   (chỉ chạy ngoài production; đặt NODE_ENV=production để tắt hẳn tài khoản demo)\n'
+    '\n   (outside production only; set NODE_ENV=production to disable the demo account entirely)\n'
   );
   return true;
 }
@@ -344,6 +352,6 @@ module.exports = {
   rateLimit, rateLimitPeek, rateLimitNote,
   issueToken, consumeToken,
   requireAdmin, requireOwner, csrfGuard,
-  ensureSeedAdmin, ensureDemoStudentPassword, reportAdminAccounts,
+  ensureSeedAdmin, ensureDemoStudent, reportAdminAccounts,
   DEV_DEFAULT_PASSWORD, DEMO_STUDENT_PASSWORD
 };

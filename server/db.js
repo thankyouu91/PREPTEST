@@ -727,7 +727,7 @@ function seed() {
     const ins = db.prepare(`INSERT INTO users (username,email,name,verified,status,interests_json,created_at)
                             VALUES (?,?,?,?,?,?,?)`);
     const daysAgo = n => new Date(Date.now() - n * 86400000).toISOString();
-    ins.run('student', 'student@vpetprep.vn', 'Học viên Demo', 1, 'active', JSON.stringify(['vpet','ielts']), daysAgo(21));
+    ins.run('student', 'student@vpetprep.vn', 'Demo Student', 1, 'active', JSON.stringify(['vpet','ielts']), daysAgo(21));
     const DEMO = [
       ['thuhang.nt','thuhang.nt@ftu.edu.vn','Nguyễn Thu Hằng',1,['ielts'],14],
       ['khanhqd','khanh.qd@hcmut.edu.vn','Quốc Khánh',1,['toeic','ielts'],11],

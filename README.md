@@ -22,8 +22,13 @@ thi, màn làm bài, màn kết quả, ba màn code, hồ sơ, `_mock.js`, cùng
 `server/exam-api.js` và `server/user-api.js`. Điểm số nay viết theo lối tiếng
 Anh (`7.5` chứ không phải `7,5`); giá tiền vẫn giữ đơn vị đồng.
 
-Còn tiếng Việt: khu quản trị, phần vỏ của mười một trang tự học, và tên hiển thị
-của tài khoản demo — xem hàng đợi trong `docs/ROADMAP.md`.
+Tài khoản demo hiển thị tên **Demo Student**. Tên này được kéo về đúng tài liệu
+ở mỗi lần khởi động ngoài production, cùng lúc với mật khẩu và trạng thái, nên
+một CSDL cũ không giữ mãi tên cũ (`ensureDemoStudent` trong `server/auth.js`).
+
+Còn tiếng Việt: khu quản trị, phần vỏ của mười một trang tự học, và các tệp máy
+chủ dùng chung chưa nằm trong lát cắt nào (`auth.js`, `db.js`, `storage.js`,
+`marking.js`) — xem hàng đợi trong `docs/ROADMAP.md`.
 
 **Nội dung khu tự học giữ nguyên tiếng Việt**: phần nghĩa, ví dụ song ngữ và
 "lỗi người Việt hay mắc" tồn tại để giải thích tiếng Anh bằng tiếng mẹ đẻ của

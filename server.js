@@ -226,7 +226,7 @@ app.use((req, res) =>
 
 /* Tài khoản quản trị khởi tạo + dọn phiên hết hạn định kỳ */
 A.ensureSeedAdmin();
-A.ensureDemoStudentPassword();
+A.ensureDemoStudent();
 setInterval(A.purgeSessions, 30 * 60e3).unref();
 
 app.listen(PORT, () => {
