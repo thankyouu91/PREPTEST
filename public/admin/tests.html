@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Đề thi · Quản trị VPET Prep</title>
+  <title>Tests · VPET Prep admin</title>
   <meta name="robots" content="noindex, nofollow">
   <meta name="theme-color" content="#1c3d8f">
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
@@ -24,9 +24,9 @@
       <div class="flex flex-wrap items-center gap-2.5 mb-6">
         <div class="flex gap-2 flex-wrap" id="filters"></div>
         <label class="relative ms-auto min-w-[200px]">
-          <span class="sr-only">Tìm đề thi</span>
+          <span class="sr-only">Search tests</span>
           <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted pointer-events-none" id="search-icon"></span>
-          <input id="q" type="search" class="input ps-10 py-2.5" placeholder="Tìm theo tên đề…">
+          <input id="q" type="search" class="input ps-10 py-2.5" placeholder="Search by test name…">
         </label>
       </div>
 
@@ -42,23 +42,23 @@
 <script src="/admin/_admin.js"></script>
 <script>
 (async () => {
-  await AD.mount({ title: 'Đề thi', subtitle: 'Tạo thủ công hoặc sinh tự động từ ngân hàng câu hỏi' });
+  await AD.mount({ title: 'Tests', subtitle: 'Create one by hand, or generate it from the question bank' });
   AD.qs('#search-icon').innerHTML = AD.icon('search', 'w-[18px] h-[18px]');
 
   AD.qs('#page-actions').innerHTML =
-    '<button type="button" id="btn-auto" class="btn btn-soft btn-sm">' + AD.icon('wand', 'w-4 h-4') + '<span class="hidden sm:inline">Sinh đề tự động</span></button>' +
-    '<button type="button" id="btn-new" class="btn btn-primary btn-sm">' + AD.icon('plus', 'w-4 h-4') + 'Tạo đề</button>';
+    '<button type="button" id="btn-auto" class="btn btn-soft btn-sm">' + AD.icon('wand', 'w-4 h-4') + '<span class="hidden sm:inline">Generate a test</span></button>' +
+    '<button type="button" id="btn-new" class="btn btn-primary btn-sm">' + AD.icon('plus', 'w-4 h-4') + 'New test</button>';
 
   let families = [];
   try { families = (await AD.get('/catalog')).families; } catch (e) { families = []; }
 
   const state = { family: '', status: '', q: '' };
   AD.qs('#filters').innerHTML =
-    '<button type="button" class="chip" data-f="" aria-pressed="true">Tất cả</button>' +
+    '<button type="button" class="chip" data-f="" aria-pressed="true">All</button>' +
     families.map(f => '<button type="button" class="chip" data-family="' + f.id + '" data-f="' + f.id + '" aria-pressed="false">' + AD.esc(f.name) + '</button>').join('') +
     '<span class="w-px bg-line mx-1 self-stretch"></span>' +
     ['draft', 'published', 'archived'].map(s =>
-      '<button type="button" class="chip" data-s="' + s + '" aria-pressed="false">' + AD.esc(AD.STATUS_VI[s]) + '</button>').join('');
+      '<button type="button" class="chip" data-s="' + s + '" aria-pressed="false">' + AD.esc(AD.STATUS_LABEL[s]) + '</button>').join('');
 
   AD.qs('#filters').addEventListener('click', e => {
     const bf = e.target.closest('[data-f]');
@@ -81,9 +81,9 @@
   });
 
   const statusBadge = s => s === 'published'
-    ? '<span class="badge badge-ok">Đang phát hành</span>'
-    : s === 'draft' ? '<span class="badge badge-hl">Bản nháp</span>'
-    : '<span class="badge badge-muted">Lưu trữ</span>';
+    ? '<span class="badge badge-ok">Published</span>'
+    : s === 'draft' ? '<span class="badge badge-hl">Draft</span>'
+    : '<span class="badge badge-muted">Archived</span>';
 
   async function load() {
     const p = new URLSearchParams();
@@ -93,9 +93,9 @@
     try {
       const { items } = await AD.get('/admin/tests?' + p);
       if (!items.length) {
-        AD.qs('#list').innerHTML = AD.emptyBox('fileText', 'Chưa có đề nào khớp',
-          'Đổi bộ lọc, hoặc tạo đề mới rồi thêm câu hỏi từ ngân hàng.',
-          '<button type="button" class="btn btn-primary btn-md" data-empty-new>Tạo đề đầu tiên</button>');
+        AD.qs('#list').innerHTML = AD.emptyBox('fileText', 'No tests match',
+          'Change the filter, or create a test and add questions from the bank.',
+          '<button type="button" class="btn btn-primary btn-md" data-empty-new>Create the first test</button>');
         const b = AD.qs('[data-empty-new]');
         if (b) b.addEventListener('click', openNew);
         return;
@@ -103,11 +103,11 @@
       AD.qs('#list').innerHTML =
         '<div class="card overflow-hidden"><div class="overflow-x-auto"><table class="w-full text-[14px]">' +
         '<thead><tr class="text-[12px] uppercase tracking-wide text-muted border-b border-line bg-surface">' +
-          '<th class="text-left font-bold px-5 py-3">Đề thi</th>' +
-          '<th class="text-left font-bold px-4 py-3 hidden md:table-cell">Cấu trúc</th>' +
-          '<th class="text-left font-bold px-4 py-3 hidden lg:table-cell">Cập nhật</th>' +
-          '<th class="text-left font-bold px-4 py-3">Trạng thái</th>' +
-          '<th class="px-5 py-3"><span class="sr-only">Thao tác</span></th>' +
+          '<th class="text-left font-bold px-5 py-3">Test</th>' +
+          '<th class="text-left font-bold px-4 py-3 hidden md:table-cell">Structure</th>' +
+          '<th class="text-left font-bold px-4 py-3 hidden lg:table-cell">Updated</th>' +
+          '<th class="text-left font-bold px-4 py-3">Status</th>' +
+          '<th class="px-5 py-3"><span class="sr-only">Actions</span></th>' +
         '</tr></thead><tbody>' +
         items.map(t2 =>
           '<tr class="border-b border-line last:border-0">' +
@@ -116,15 +116,15 @@
                 '<span class="exam-chip shrink-0" data-family="' + t2.familyId + '">' + AD.esc(t2.familyName) + '</span>' +
                 '<span class="min-w-0"><b class="block truncate">' + AD.esc(t2.title) + '</b>' +
                 '<span class="block text-[12.5px] text-muted">' + AD.esc(t2.level) +
-                (t2.buildMode === 'auto' ? ' · sinh tự động' : '') + '</span></span>' +
+                (t2.buildMode === 'auto' ? ' · generated' : '') + '</span></span>' +
               '</div>' +
             '</td>' +
             '<td class="px-4 py-3.5 hidden md:table-cell text-muted font-semibold whitespace-nowrap">' +
-              t2.sections + ' phần · ' + t2.items + ' câu · ' + t2.durationMin + ' phút</td>' +
+              t2.sections + ' parts · ' + t2.items + ' items · ' + t2.durationMin + ' min</td>' +
             '<td class="px-4 py-3.5 hidden lg:table-cell text-muted whitespace-nowrap">' + AD.ago(t2.updatedAt) + '</td>' +
             '<td class="px-4 py-3.5">' + statusBadge(t2.status) + '</td>' +
             '<td class="px-5 py-3.5 text-right whitespace-nowrap">' +
-              '<a href="/admin/de-thi/' + encodeURIComponent(t2.id) + '/" class="btn btn-ghost btn-sm">Mở</a></td>' +
+              '<a href="/admin/de-thi/' + encodeURIComponent(t2.id) + '/" class="btn btn-ghost btn-sm">Open</a></td>' +
           '</tr>').join('') +
         '</tbody></table></div></div>';
     } catch (e) {
@@ -133,26 +133,26 @@
     }
   }
 
-  /* ---------- Tạo đề thủ công ---------- */
+  /* ---------- Create a test by hand ---------- */
   function openNew() {
     const m = AD.modal(
-      '<h3 class="text-lg font-extrabold tracking-tight">Tạo đề mới</h3>' +
-      '<p class="text-muted text-[14px] mt-1.5">Đề tạo ra ở trạng thái nháp. Thêm phần và câu hỏi rồi mới phát hành.</p>' +
+      '<h3 class="text-lg font-extrabold tracking-tight">New test</h3>' +
+      '<p class="text-muted text-[14px] mt-1.5">A new test starts as a draft. Add parts and questions before you publish it.</p>' +
       '<form id="nf" class="grid gap-4 mt-5" novalidate>' +
-        '<div><label class="label" for="n-family">Kỳ thi</label>' +
+        '<div><label class="label" for="n-family">Exam</label>' +
           '<select class="input" id="n-family">' + families.map(f => '<option value="' + f.id + '">' + AD.esc(f.name) + '</option>').join('') + '</select></div>' +
-        '<div><label class="label" for="n-title">Tên đề</label>' +
+        '<div><label class="label" for="n-title">Test name</label>' +
           '<input class="input" id="n-title" placeholder="VD: IELTS Academic Mock 03"></div>' +
         '<div class="grid grid-cols-2 gap-4">' +
-          '<div><label class="label" for="n-level">Độ khó</label>' +
+          '<div><label class="label" for="n-level">Level</label>' +
             '<select class="input" id="n-level">' + ['A1','A2','B1','B2','C1','C2'].map(l => '<option>' + l + '</option>').join('') + '</select></div>' +
-          '<div><label class="label" for="n-dur">Thời lượng (phút)</label>' +
+          '<div><label class="label" for="n-dur">Duration (minutes)</label>' +
             '<input class="input" id="n-dur" type="number" min="0" max="600" value="0"></div>' +
         '</div>' +
         '<div class="banner banner-error" id="nf-err"><span id="nf-err-text"></span></div>' +
         '<div class="flex gap-2.5 mt-1">' +
-          '<button type="submit" class="btn btn-primary btn-md flex-1">Tạo đề</button>' +
-          '<button type="button" data-close class="btn btn-ghost btn-md">Huỷ</button></div>' +
+          '<button type="submit" class="btn btn-primary btn-md flex-1">Create</button>' +
+          '<button type="button" data-close class="btn btn-ghost btn-md">Cancel</button></div>' +
       '</form>');
     m.el.querySelector('#n-level').value = 'B1';
     m.el.querySelector('#nf').addEventListener('submit', async ev => {
@@ -175,53 +175,53 @@
   }
   AD.qs('#btn-new').addEventListener('click', openNew);
 
-  /* ---------- Sinh đề tự động ---------- */
+  /* ---------- Generate a test ---------- */
   const DEFAULT_BP = {
-    listening: { name: 'Listening', type: 'Trắc nghiệm', items: 20, minutes: 30 },
-    reading:   { name: 'Reading',   type: 'Đọc hiểu',    items: 20, minutes: 40 },
-    writing:   { name: 'Writing',   type: 'Tự luận',     items: 2,  minutes: 40 },
-    speaking:  { name: 'Speaking',  type: 'Ghi âm',      items: 3,  minutes: 12 }
+    listening: { name: 'Listening', type: 'Multiple choice', items: 20, minutes: 30 },
+    reading:   { name: 'Reading',   type: 'Comprehension',  items: 20, minutes: 40 },
+    writing:   { name: 'Writing',   type: 'Essay',          items: 2,  minutes: 40 },
+    speaking:  { name: 'Speaking',  type: 'Recorded',       items: 3,  minutes: 12 }
   };
 
   function openAuto() {
     const skills = ['listening', 'reading', 'writing', 'speaking'];
     const m = AD.modal(
-      '<h3 class="text-lg font-extrabold tracking-tight">Sinh đề tự động</h3>' +
-      '<p class="text-muted text-[14px] mt-1.5 leading-relaxed">Hệ thống bốc ngẫu nhiên câu hỏi từ ngân hàng theo cấu trúc bạn khai báo. Đề sinh ra là bản nháp, bạn duyệt rồi mới phát hành.</p>' +
+      '<h3 class="text-lg font-extrabold tracking-tight">Generate a test</h3>' +
+      '<p class="text-muted text-[14px] mt-1.5 leading-relaxed">Questions are drawn at random from the bank, following the structure you set out. The result is a draft: review it before publishing.</p>' +
       '<div class="grid gap-4 mt-5">' +
         '<div class="grid grid-cols-2 gap-4">' +
-          '<div><label class="label" for="a-family">Kỳ thi</label>' +
+          '<div><label class="label" for="a-family">Exam</label>' +
             '<select class="input" id="a-family">' + families.map(f => '<option value="' + f.id + '">' + AD.esc(f.name) + '</option>').join('') + '</select></div>' +
-          '<div><label class="label" for="a-level">Độ khó</label>' +
+          '<div><label class="label" for="a-level">Level</label>' +
             '<select class="input" id="a-level">' + ['A2','B1','B2','C1'].map(l => '<option>' + l + '</option>').join('') + '</select></div>' +
         '</div>' +
-        '<div><label class="label" for="a-title">Tên đề <span class="font-medium text-muted">(để trống sẽ tự đặt)</span></label>' +
-          '<input class="input" id="a-title" placeholder="Tự động đặt theo kỳ thi và ngày"></div>' +
+        '<div><label class="label" for="a-title">Test name <span class="font-medium text-muted">(left blank, one is chosen for you)</span></label>' +
+          '<input class="input" id="a-title" placeholder="Named after the exam and the date"></div>' +
         '<div>' +
-          '<p class="label">Cấu trúc đề</p>' +
+          '<p class="label">Test structure</p>' +
           '<div class="grid gap-2" id="a-bp">' +
             skills.map(s =>
               '<div class="flex items-center gap-2.5 rounded-xl border border-line px-3 py-2.5" data-skill="' + s + '">' +
                 '<input type="checkbox" class="w-4 h-4 rounded accent-[color:var(--color-accent)] shrink-0" data-on ' +
-                  (s === 'listening' || s === 'reading' ? 'checked' : '') + ' aria-label="Bật phần ' + AD.SKILL_VI[s] + '">' +
-                '<span class="font-semibold text-[14px] w-14 shrink-0">' + AD.SKILL_VI[s] + '</span>' +
-                '<label class="sr-only" for="items-' + s + '">Số câu phần ' + AD.SKILL_VI[s] + '</label>' +
+                  (s === 'listening' || s === 'reading' ? 'checked' : '') + ' aria-label="Enable the ' + AD.SKILL_LABEL[s] + ' part">' +
+                '<span class="font-semibold text-[14px] w-14 shrink-0">' + AD.SKILL_LABEL[s] + '</span>' +
+                '<label class="sr-only" for="items-' + s + '">Item count for ' + AD.SKILL_LABEL[s] + '</label>' +
                 '<input id="items-' + s + '" class="input py-1.5 w-20 text-center" type="number" min="1" max="200" data-items value="' + DEFAULT_BP[s].items + '">' +
-                '<span class="text-[13px] text-muted">câu</span>' +
-                '<label class="sr-only" for="min-' + s + '">Số phút phần ' + AD.SKILL_VI[s] + '</label>' +
+                '<span class="text-[13px] text-muted">items</span>' +
+                '<label class="sr-only" for="min-' + s + '">Minutes for ' + AD.SKILL_LABEL[s] + '</label>' +
                 '<input id="min-' + s + '" class="input py-1.5 w-20 text-center ms-auto" type="number" min="0" max="600" data-min value="' + DEFAULT_BP[s].minutes + '">' +
-                '<span class="text-[13px] text-muted">phút</span>' +
+                '<span class="text-[13px] text-muted">min</span>' +
                 '<span class="text-[12px] font-bold w-20 text-right" data-avail>—</span>' +
               '</div>').join('') +
           '</div>' +
         '</div>' +
         '<label class="flex items-center gap-2.5 text-[14px] font-medium text-muted">' +
           '<input type="checkbox" id="a-strict" class="w-4 h-4 rounded accent-[color:var(--color-accent)]">' +
-          'Chỉ lấy câu đúng độ khó đã chọn</label>' +
+          'Only draw items at the chosen level</label>' +
         '<div class="banner banner-error" id="a-err"><span id="a-err-text"></span></div>' +
         '<div class="flex gap-2.5">' +
-          '<button type="button" id="a-go" class="btn btn-primary btn-md flex-1">' + AD.icon('wand', 'w-4 h-4') + 'Sinh đề</button>' +
-          '<button type="button" data-close class="btn btn-ghost btn-md">Huỷ</button></div>' +
+          '<button type="button" id="a-go" class="btn btn-primary btn-md flex-1">' + AD.icon('wand', 'w-4 h-4') + 'Generate</button>' +
+          '<button type="button" data-close class="btn btn-ghost btn-md">Cancel</button></div>' +
       '</div>', { wide: true });
 
     const fam = m.el.querySelector('#a-family'), lvl = m.el.querySelector('#a-level');
@@ -237,7 +237,7 @@
           const have = strict ? a.exact : a.total;
           const want = +row.querySelector('[data-items]').value || 0;
           const el = row.querySelector('[data-avail]');
-          el.textContent = 'có ' + have;
+          el.textContent = have + ' available';
           el.className = 'text-[12px] font-bold w-20 text-right ' +
             (row.querySelector('[data-on]').checked && have < want ? 'text-danger' : 'text-muted');
         });
@@ -261,13 +261,13 @@
           };
         });
       if (!blueprint.length) {
-        m.el.querySelector('#a-err-text').textContent = 'Chọn ít nhất một phần cho đề.';
+        m.el.querySelector('#a-err-text').textContent = 'Choose at least one part for the test.';
         err.classList.add('show');
         return;
       }
       const btn = m.el.querySelector('#a-go');
       btn.disabled = true;
-      btn.innerHTML = AD.icon('loader', 'w-4 h-4 animate-spin-slow') + 'Đang bốc câu hỏi';
+      btn.innerHTML = AD.icon('loader', 'w-4 h-4 animate-spin-slow') + 'Drawing questions';
       try {
         const t2 = await AD.post('/admin/tests/generate', {
           familyId: fam.value, level: lvl.value,
@@ -278,10 +278,10 @@
         location.href = '/admin/de-thi/' + encodeURIComponent(t2.id) + '/';
       } catch (e2) {
         btn.disabled = false;
-        btn.innerHTML = AD.icon('wand', 'w-4 h-4') + 'Sinh đề';
+        btn.innerHTML = AD.icon('wand', 'w-4 h-4') + 'Generate';
         const sh = e2.data && e2.data.shortages;
         m.el.querySelector('#a-err-text').innerHTML = AD.esc(e2.message) +
-          (sh ? '<br>' + sh.map(s => '· ' + AD.esc(s.section) + ': cần ' + s.need + ', ngân hàng có ' + s.have).join('<br>') : '');
+          (sh ? '<br>' + sh.map(s => '· ' + AD.esc(s.section) + ': needs ' + s.need + ', bank has ' + s.have).join('<br>') : '');
         err.classList.add('show');
       }
     });

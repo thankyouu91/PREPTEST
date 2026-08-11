@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Xây đề · Quản trị VPET Prep</title>
+  <title>Test builder · VPET Prep admin</title>
   <meta name="robots" content="noindex, nofollow">
   <meta name="theme-color" content="#1c3d8f">
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
@@ -20,7 +20,7 @@
 <div id="app" data-active="tests" class="min-h-[100dvh]">
   <main id="main">
     <div class="max-w-[1240px] mx-auto px-4 sm:px-6 lg:px-8 pt-6 pb-10">
-      <a href="/admin/de-thi/" class="inline-flex items-center gap-1.5 text-sm font-bold text-muted hover:text-ink transition mb-5" id="back">Danh sách đề</a>
+      <a href="/admin/de-thi/" class="inline-flex items-center gap-1.5 text-sm font-bold text-muted hover:text-ink transition mb-5" id="back">Back to the test list</a>
       <div id="page">
         <div class="card p-5 grid gap-3.5">
           <div class="skeleton h-7 w-1/2"></div><div class="skeleton h-5 w-1/3"></div><div class="skeleton h-40 w-full"></div>
@@ -33,7 +33,7 @@
 <script src="/admin/_admin.js"></script>
 <script>
 (async () => {
-  await AD.mount({ title: 'Xây đề', subtitle: 'Chỉnh cấu trúc và chọn câu hỏi cho từng phần' });
+  await AD.mount({ title: 'Test builder', subtitle: 'Adjust the structure and choose questions for each part' });
   AD.qs('#back').insertAdjacentHTML('afterbegin', AD.icon('chevronLeft', 'w-4 h-4'));
 
   const m = location.pathname.match(/\/admin\/de-thi\/([^/]+)\/?/);
@@ -44,8 +44,8 @@
   async function load() {
     try {
       T = await AD.get('/admin/tests/' + encodeURIComponent(testId));
-      /* Bảng phần thi của kỳ này, để phần thêm tay cũng gắn được chữ cái —
-         không có chữ cái thì lần bốc lại sau sẽ bốc trong cả kỹ năng. */
+      /* This exam's part table, so a hand-added part can carry a letter too — without
+      one, a later reshuffle draws from the whole skill instead of the part. */
       if (!FAM_PARTS) {
         try {
           const cat = await AD.get('/catalog');
@@ -60,21 +60,21 @@
   }
 
   const statusBadge = s => s === 'published'
-    ? '<span class="badge badge-ok">Đang phát hành</span>'
-    : s === 'draft' ? '<span class="badge badge-hl">Bản nháp</span>'
-    : '<span class="badge badge-muted">Lưu trữ</span>';
+    ? '<span class="badge badge-ok">Published</span>'
+    : s === 'draft' ? '<span class="badge badge-hl">Draft</span>'
+    : '<span class="badge badge-muted">Archived</span>';
 
   function render() {
-    document.title = T.title + ' · Quản trị VPET Prep';
+    document.title = T.title + ' · VPET Prep admin';
 
     const readiness = T.sections.length
-      ? T.sections.filter(s => s.items.length).length + '/' + T.sections.length + ' phần đã có câu hỏi'
-      : 'chưa có phần nào';
+      ? T.sections.filter(s => s.items.length).length + '/' + T.sections.length + ' parts have questions'
+      : 'no parts yet';
 
     AD.qs('#page-actions').innerHTML =
       (T.status === 'published'
-        ? '<button type="button" id="btn-unpublish" class="btn btn-ghost btn-sm">Gỡ phát hành</button>'
-        : '<button type="button" id="btn-publish" class="btn btn-primary btn-sm">' + AD.icon('check', 'w-4 h-4') + 'Phát hành</button>');
+        ? '<button type="button" id="btn-unpublish" class="btn btn-ghost btn-sm">Unpublish</button>'
+        : '<button type="button" id="btn-publish" class="btn btn-primary btn-sm">' + AD.icon('check', 'w-4 h-4') + 'Publish</button>');
 
     AD.qs('#page').innerHTML =
       '<header class="flex flex-wrap items-start gap-4">' +
@@ -83,23 +83,23 @@
             '<span class="exam-chip" data-family="' + T.familyId + '">' + AD.esc(T.familyId.toUpperCase()) + '</span>' +
             '<span class="badge badge-muted">' + AD.esc(T.level) + '</span>' +
             statusBadge(T.status) +
-            (T.buildMode === 'auto' ? '<span class="badge badge-muted">Sinh tự động</span>' : '') +
+            (T.buildMode === 'auto' ? '<span class="badge badge-muted">Generated</span>' : '') +
           '</div>' +
           '<h2 class="text-2xl font-extrabold tracking-tight mt-3">' + AD.esc(T.title) + '</h2>' +
           '<p class="text-[14px] font-semibold text-muted mt-2">' +
-            T.sections.length + ' phần · ' + T.totalItems + ' câu · ' + T.durationMin + ' phút · ' + readiness + '</p>' +
+            T.sections.length + ' parts · ' + T.totalItems + ' items · ' + T.durationMin + ' min · ' + readiness + '</p>' +
         '</div>' +
-        '<button type="button" id="btn-meta" class="btn btn-ghost btn-md ms-auto">' + AD.icon('edit', 'w-4 h-4') + 'Sửa thông tin</button>' +
+        '<button type="button" id="btn-meta" class="btn btn-ghost btn-md ms-auto">' + AD.icon('edit', 'w-4 h-4') + 'Edit details</button>' +
       '</header>' +
 
       '<div class="grid gap-5 mt-7" id="sections"></div>' +
 
       '<button type="button" id="btn-add-section" class="card card-locked card-hover w-full p-5 mt-5 flex items-center justify-center gap-2.5 font-bold text-[15px]">' +
-        AD.icon('plus', 'w-5 h-5') + 'Thêm phần thi</button>';
+        AD.icon('plus', 'w-5 h-5') + 'Add a part</button>';
 
     AD.qs('#sections').innerHTML = T.sections.length
       ? T.sections.map(sectionCard).join('')
-      : '<div class="card p-10 text-center"><p class="text-muted text-[15px]">Đề chưa có phần nào. Thêm phần đầu tiên để bắt đầu.</p></div>';
+      : '<div class="card p-10 text-center"><p class="text-muted text-[15px]">This test has no parts yet. Add the first one to get started.</p></div>';
 
     wire();
   }
@@ -112,13 +112,13 @@
             '<span class="min-w-0 flex-1">' +
               '<span class="block text-[14px] leading-snug">' + AD.esc(it.prompt) + '</span>' +
               '<span class="block text-[12px] text-muted font-semibold mt-1">' +
-                AD.esc(AD.TYPE_VI[it.type] || it.type) + ' · ' + AD.esc(it.level) +
-                (it.status !== 'active' ? ' · <span class="text-danger">câu đã ngưng dùng</span>' : '') + '</span>' +
+                AD.esc(AD.TYPE_LABEL[it.type] || it.type) + ' · ' + AD.esc(it.level) +
+                (it.status !== 'active' ? ' · <span class="text-danger">item withdrawn</span>' : '') + '</span>' +
             '</span>' +
             '<button type="button" class="p-1.5 rounded-full text-muted hover:text-danger transition shrink-0" ' +
-              'data-del-item="' + it.itemId + '" aria-label="Bỏ câu này khỏi phần">' + AD.icon('x', 'w-4 h-4') + '</button>' +
+              'data-del-item="' + it.itemId + '" aria-label="Remove this item from the part">' + AD.icon('x', 'w-4 h-4') + '</button>' +
           '</li>').join('')
-      : '<li class="py-6 text-center text-[14px] text-muted">Phần này chưa có câu hỏi nào.</li>';
+      : '<li class="py-6 text-center text-[14px] text-muted">This part has no questions yet.</li>';
 
     return '<section class="card overflow-hidden" data-section="' + s.id + '">' +
       '<div class="flex flex-wrap items-center gap-3 px-5 py-4 border-b border-line bg-surface">' +
@@ -126,15 +126,15 @@
           AD.icon('layers', 'w-[18px] h-[18px]') + '</span>' +
         '<span class="min-w-0">' +
           '<b class="block">' + AD.esc(s.name) +
-            (s.part ? ' <span class="badge badge-ok align-middle">Phần ' + AD.esc(s.part) + '</span>' : '') + '</b>' +
+            (s.part ? ' <span class="badge badge-ok align-middle">Part ' + AD.esc(s.part) + '</span>' : '') + '</b>' +
           '<span class="block text-[12.5px] text-muted font-semibold">' +
-            AD.esc(AD.SKILL_VI[s.skill] || s.skill) + ' · ' + AD.esc(s.type) + ' · ' + s.minutes + ' phút · ' +
-            s.items.length + ' câu</span>' +
+            AD.esc(AD.SKILL_LABEL[s.skill] || s.skill) + ' · ' + AD.esc(s.type) + ' · ' + s.minutes + ' min · ' +
+            s.items.length + ' items</span>' +
         '</span>' +
         '<div class="ms-auto flex flex-wrap gap-2">' +
-          '<button type="button" class="btn btn-soft btn-sm" data-pick="' + s.id + '">' + AD.icon('plus', 'w-4 h-4') + 'Chọn câu</button>' +
-          '<button type="button" class="btn btn-ghost btn-sm" data-shuffle="' + s.id + '">' + AD.icon('shuffle', 'w-4 h-4') + '<span class="hidden sm:inline">Bốc lại</span></button>' +
-          '<button type="button" class="btn btn-ghost btn-sm text-danger" data-del-section="' + s.id + '" aria-label="Xoá phần ' + AD.esc(s.name) + '">' + AD.icon('trash', 'w-4 h-4') + '</button>' +
+          '<button type="button" class="btn btn-soft btn-sm" data-pick="' + s.id + '">' + AD.icon('plus', 'w-4 h-4') + 'Choose items</button>' +
+          '<button type="button" class="btn btn-ghost btn-sm" data-shuffle="' + s.id + '">' + AD.icon('shuffle', 'w-4 h-4') + '<span class="hidden sm:inline">Redraw</span></button>' +
+          '<button type="button" class="btn btn-ghost btn-sm text-danger" data-del-section="' + s.id + '" aria-label="Delete the part ' + AD.esc(s.name) + '">' + AD.icon('trash', 'w-4 h-4') + '</button>' +
         '</div>' +
       '</div>' +
       '<ul class="px-5 py-1 max-h-[340px] overflow-y-auto">' + rows + '</ul>' +
@@ -160,29 +160,29 @@
   async function setStatus(status) {
     try {
       await AD.post('/admin/tests/' + encodeURIComponent(testId) + '/status', { status });
-      AD.toast(status === 'published' ? 'Đề đã phát hành cho học viên' : 'Đã chuyển về bản nháp');
+      AD.toast(status === 'published' ? 'The test is published to students' : 'Moved back to draft');
       await load();
     } catch (e) { AD.toast(e.message, 'error'); }
   }
 
   function editMeta() {
     const mm = AD.modal(
-      '<h3 class="text-lg font-extrabold tracking-tight">Thông tin đề</h3>' +
+      '<h3 class="text-lg font-extrabold tracking-tight">Test details</h3>' +
       '<div class="grid gap-4 mt-5">' +
-        '<div><label class="label" for="e-title">Tên đề</label><input class="input" id="e-title" value="' + AD.esc(T.title) + '"></div>' +
+        '<div><label class="label" for="e-title">Test name</label><input class="input" id="e-title" value="' + AD.esc(T.title) + '"></div>' +
         '<div class="grid grid-cols-2 gap-4">' +
-          '<div><label class="label" for="e-level">Độ khó</label><select class="input" id="e-level">' +
+          '<div><label class="label" for="e-level">Level</label><select class="input" id="e-level">' +
             ['A1','A2','B1','B2','C1','C2'].map(l => '<option ' + (l === T.level ? 'selected' : '') + '>' + l + '</option>').join('') + '</select></div>' +
-          '<div><label class="label" for="e-dur">Thời lượng (phút)</label>' +
+          '<div><label class="label" for="e-dur">Duration (minutes)</label>' +
             '<input class="input" id="e-dur" type="number" min="0" max="600" value="' + T.durationMin + '"></div>' +
         '</div>' +
-        '<div><label class="label" for="e-scoring">Cách tính điểm</label>' +
-          '<input class="input" id="e-scoring" value="' + AD.esc(T.scoring) + '" placeholder="VD: Band 0-9, làm tròn 0.5"></div>' +
-        '<div><label class="label" for="e-guide">Hướng dẫn (mỗi dòng một ý)</label>' +
+        '<div><label class="label" for="e-scoring">How it is marked</label>' +
+          '<input class="input" id="e-scoring" value="' + AD.esc(T.scoring) + '" placeholder="e.g. Band 0-9, rounded to 0.5"></div>' +
+        '<div><label class="label" for="e-guide">Instructions (one per line)</label>' +
           '<textarea class="input" id="e-guide" rows="4">' + AD.esc((T.guide || []).join('\n')) + '</textarea></div>' +
         '<div class="banner banner-error" id="e-err"><span id="e-err-text"></span></div>' +
-        '<div class="flex gap-2.5"><button type="button" id="e-save" class="btn btn-primary btn-md flex-1">Lưu</button>' +
-          '<button type="button" data-close class="btn btn-ghost btn-md">Huỷ</button></div>' +
+        '<div class="flex gap-2.5"><button type="button" id="e-save" class="btn btn-primary btn-md flex-1">Save</button>' +
+          '<button type="button" data-close class="btn btn-ghost btn-md">Cancel</button></div>' +
       '</div>');
     mm.el.querySelector('#e-save').addEventListener('click', async () => {
       const err = mm.el.querySelector('#e-err');
@@ -195,7 +195,7 @@
           scoring: mm.el.querySelector('#e-scoring').value,
           guide: mm.el.querySelector('#e-guide').value.split('\n').map(s => s.trim()).filter(Boolean)
         });
-        mm.close(); AD.toast('Đã lưu thông tin đề'); await load();
+        mm.close(); AD.toast('Test details saved'); await load();
       } catch (e) {
         mm.el.querySelector('#e-err-text').textContent = e.message;
         err.classList.add('show');
@@ -206,34 +206,34 @@
   function addSection() {
     const skills = ['listening', 'reading', 'writing', 'speaking'];
     const mm = AD.modal(
-      '<h3 class="text-lg font-extrabold tracking-tight">Thêm phần thi</h3>' +
+      '<h3 class="text-lg font-extrabold tracking-tight">Add a part</h3>' +
       '<div class="grid gap-4 mt-5">' +
-        '<div><label class="label" for="s-name">Tên phần</label><input class="input" id="s-name" placeholder="VD: Listening"></div>' +
+        '<div><label class="label" for="s-name">Part name</label><input class="input" id="s-name" placeholder="VD: Listening"></div>' +
         '<div class="grid grid-cols-2 gap-4">' +
-          '<div><label class="label" for="s-skill">Kỹ năng</label><select class="input" id="s-skill">' +
-            skills.map(s => '<option value="' + s + '">' + AD.SKILL_VI[s] + '</option>').join('') + '</select></div>' +
-          '<div><label class="label" for="s-min">Thời lượng (phút)</label>' +
+          '<div><label class="label" for="s-skill">Skill</label><select class="input" id="s-skill">' +
+            skills.map(s => '<option value="' + s + '">' + AD.SKILL_LABEL[s] + '</option>').join('') + '</select></div>' +
+          '<div><label class="label" for="s-min">Duration (minutes)</label>' +
             '<input class="input" id="s-min" type="number" min="0" max="600" value="30"></div>' +
         '</div>' +
         ((FAM_PARTS && FAM_PARTS.length)
-          ? '<div><label class="label" for="s-part">Phần thi</label><select class="input" id="s-part">' +
-              '<option value="">— không gắn phần —</option>' +
+          ? '<div><label class="label" for="s-part">Blueprint part</label><select class="input" id="s-part">' +
+              '<option value="">— no part —</option>' +
               FAM_PARTS.map(p2 => '<option value="' + AD.esc(p2.part) + '">' + AD.esc(p2.name) + '</option>').join('') +
-            '</select><p class="help mt-1.5">Gắn phần thì lần bốc lại sau chỉ bốc câu của đúng phần đó.</p></div>'
+            '</select><p class="help mt-1.5">With a part attached, a later reshuffle draws only from that part.</p></div>'
           : '') +
-        '<div><label class="label" for="s-type">Dạng câu mô tả cho học viên</label>' +
-          '<input class="input" id="s-type" value="Trắc nghiệm"></div>' +
+        '<div><label class="label" for="s-type">Item type, as described to the student</label>' +
+          '<input class="input" id="s-type" value="Multiple choice"></div>' +
         '<div class="banner banner-error" id="s-err"><span id="s-err-text"></span></div>' +
-        '<div class="flex gap-2.5"><button type="button" id="s-save" class="btn btn-primary btn-md flex-1">Thêm phần</button>' +
-          '<button type="button" data-close class="btn btn-ghost btn-md">Huỷ</button></div>' +
+        '<div class="flex gap-2.5"><button type="button" id="s-save" class="btn btn-primary btn-md flex-1">Add part</button>' +
+          '<button type="button" data-close class="btn btn-ghost btn-md">Cancel</button></div>' +
       '</div>');
     const nameEl = mm.el.querySelector('#s-name'), skillEl = mm.el.querySelector('#s-skill');
     const partEl = mm.el.querySelector('#s-part');
     skillEl.addEventListener('change', () => {
       if (!nameEl.value) nameEl.placeholder = 'VD: ' + skillEl.options[skillEl.selectedIndex].text;
     });
-    /* Chọn phần thì điền sẵn tên và kỹ năng theo blueprint — gõ lại bằng tay
-       chỉ tạo cơ hội cho phần A mang kỹ năng của phần C. */
+    /* Choosing a part fills in the name and skill from the blueprint — retyping them
+    by hand only creates a chance for part A to carry part C's skill. */
     if (partEl) partEl.addEventListener('change', () => {
       const p2 = FAM_PARTS.find(x => x.part === partEl.value);
       if (!p2) return;
@@ -251,7 +251,7 @@
           minutes: +mm.el.querySelector('#s-min').value || 0,
           part: partEl ? partEl.value : ''
         });
-        mm.close(); AD.toast('Đã thêm phần thi'); await load();
+        mm.close(); AD.toast('Part added'); await load();
       } catch (e) {
         mm.el.querySelector('#s-err-text').textContent = e.message;
         err.classList.add('show');
@@ -261,41 +261,41 @@
 
   async function delSection(sid) {
     const s = T.sections.find(x => x.id === sid);
-    if (!await AD.confirm('Xoá phần thi?', 'Phần "' + s.name + '" và ' + s.items.length +
-      ' câu đã gắn sẽ bị gỡ khỏi đề. Câu hỏi vẫn còn trong ngân hàng.', 'Xoá phần')) return;
-    try { await AD.del('/admin/sections/' + sid); AD.toast('Đã xoá phần thi'); await load(); }
+    if (!await AD.confirm('Delete this part?', 'The part "' + s.name + '" and its ' + s.items.length +
+      ' attached items will be removed from the test. The questions stay in the bank.', 'Delete')) return;
+    try { await AD.del('/admin/sections/' + sid); AD.toast('Part deleted'); await load(); }
     catch (e) { AD.toast(e.message, 'error'); }
   }
 
   async function reshuffle(sid) {
     const s = T.sections.find(x => x.id === sid);
-    if (!await AD.confirm('Bốc lại câu hỏi?', 'Toàn bộ ' + s.items.length + ' câu của phần "' + s.name +
-      '" sẽ được thay bằng câu khác lấy ngẫu nhiên từ ngân hàng.', 'Bốc lại')) return;
-    try { const r = await AD.post('/admin/sections/' + sid + '/reshuffle'); AD.toast('Đã bốc lại ' + r.count + ' câu'); await load(); }
+    if (!await AD.confirm('Redraw the questions?', 'All ' + s.items.length + ' items in the part "' + s.name +
+      '" will be replaced by others drawn at random from the bank.', 'Redraw')) return;
+    try { const r = await AD.post('/admin/sections/' + sid + '/reshuffle'); AD.toast('Redrew ' + r.count + ' items'); await load(); }
     catch (e) { AD.toast(e.message, 'error'); }
   }
 
-  /* ---------- Chọn câu hỏi từ ngân hàng ---------- */
+  /* ---------- Choosing questions from the bank ---------- */
   function pickQuestions(sid) {
     const s = T.sections.find(x => x.id === sid);
     const already = new Set(s.items.map(i => i.questionId));
     const chosen = new Set();
 
     const mm = AD.modal(
-      '<h3 class="text-lg font-extrabold tracking-tight">Chọn câu cho phần ' + AD.esc(s.name) + '</h3>' +
-      '<p class="text-muted text-[13.5px] mt-1.5">Chỉ hiện câu cùng kỳ thi và cùng kỹ năng với phần này.</p>' +
+      '<h3 class="text-lg font-extrabold tracking-tight">Choose items for ' + AD.esc(s.name) + '</h3>' +
+      '<p class="text-muted text-[13.5px] mt-1.5">Only items from the same exam and skill as this part are shown.</p>' +
       '<div class="flex flex-wrap gap-2 mt-4">' +
-        '<label class="sr-only" for="p-q">Tìm câu hỏi</label>' +
-        '<input class="input flex-1 min-w-[160px] py-2" id="p-q" type="search" placeholder="Tìm trong nội dung câu…">' +
-        '<label class="sr-only" for="p-level">Lọc độ khó</label>' +
-        '<select class="input w-auto py-2" id="p-level"><option value="">Mọi độ khó</option>' +
+        '<label class="sr-only" for="p-q">Search questions</label>' +
+        '<input class="input flex-1 min-w-[160px] py-2" id="p-q" type="search" placeholder="Search the item text…">' +
+        '<label class="sr-only" for="p-level">Filter by level</label>' +
+        '<select class="input w-auto py-2" id="p-level"><option value="">Any level</option>' +
           ['A1','A2','B1','B2','C1','C2'].map(l => '<option>' + l + '</option>').join('') + '</select>' +
       '</div>' +
       '<div id="p-list" class="mt-4 max-h-[46vh] overflow-y-auto grid gap-1.5"></div>' +
       '<div class="flex items-center gap-2.5 mt-5 pt-4 border-t border-line">' +
-        '<span class="text-[13.5px] font-bold text-muted" id="p-count">Đã chọn 0</span>' +
-        '<button type="button" id="p-add" class="btn btn-primary btn-md ms-auto" disabled>Thêm vào phần</button>' +
-        '<button type="button" data-close class="btn btn-ghost btn-md">Đóng</button>' +
+        '<span class="text-[13.5px] font-bold text-muted" id="p-count">0 selected</span>' +
+        '<button type="button" id="p-add" class="btn btn-primary btn-md ms-auto" disabled>Add to the part</button>' +
+        '<button type="button" data-close class="btn btn-ghost btn-md">Close</button>' +
       '</div>', { wide: true });
 
     const listEl = mm.el.querySelector('#p-list');
@@ -303,7 +303,7 @@
     const addBtn = mm.el.querySelector('#p-add');
 
     const sync = () => {
-      countEl.textContent = 'Đã chọn ' + chosen.size;
+      countEl.textContent = chosen.size + ' selected';
       addBtn.disabled = chosen.size === 0;
     };
 
@@ -319,7 +319,7 @@
         const free = items.filter(i => !already.has(i.id));
         if (!free.length) {
           listEl.innerHTML = '<p class="text-center text-[14px] text-muted py-8">' +
-            (items.length ? 'Mọi câu khớp bộ lọc đều đã có trong phần này.' : 'Ngân hàng chưa có câu nào khớp.') + '</p>';
+            (items.length ? 'Every item matching the filter is already in this part.' : 'The bank has no matching items.') + '</p>';
           return;
         }
         listEl.innerHTML = free.map(i =>
@@ -329,10 +329,10 @@
             '<span class="min-w-0">' +
               '<span class="block text-[14px] leading-snug">' + AD.esc(i.prompt) + '</span>' +
               '<span class="block text-[12px] text-muted font-semibold mt-1">' +
-                AD.esc(AD.TYPE_VI[i.type] || i.type) + ' · ' + AD.esc(i.level) + '</span>' +
+                AD.esc(AD.TYPE_LABEL[i.type] || i.type) + ' · ' + AD.esc(i.level) + '</span>' +
             '</span>' +
           '</label>').join('') +
-          (total > free.length ? '<p class="text-[12.5px] text-muted text-center pt-2">Hiện ' + free.length + ' câu đầu, lọc thêm để thu hẹp.</p>' : '');
+          (total > free.length ? '<p class="text-[12.5px] text-muted text-center pt-2">Showing the first ' + free.length + ' items; filter further to narrow it down.</p>' : '');
         AD.qsa('[data-qid]', listEl).forEach(cb => cb.addEventListener('change', () => {
           const id = +cb.getAttribute('data-qid');
           if (cb.checked) chosen.add(id); else chosen.delete(id);
@@ -349,15 +349,15 @@
 
     addBtn.addEventListener('click', async () => {
       addBtn.disabled = true;
-      addBtn.innerHTML = AD.icon('loader', 'w-4 h-4 animate-spin-slow') + 'Đang thêm';
+      addBtn.innerHTML = AD.icon('loader', 'w-4 h-4 animate-spin-slow') + 'Adding';
       try {
         const r = await AD.post('/admin/sections/' + sid + '/items', { questionIds: [...chosen] });
         mm.close();
-        AD.toast('Đã thêm ' + r.added + ' câu' + (r.skipped ? ', bỏ qua ' + r.skipped : ''));
+        AD.toast('Added ' + r.added + ' items' + (r.skipped ? ', skipped ' + r.skipped : ''));
         await load();
       } catch (e) {
         addBtn.disabled = false;
-        addBtn.textContent = 'Thêm vào phần';
+        addBtn.textContent = 'Add to the part';
         AD.toast(e.message, 'error');
       }
     });

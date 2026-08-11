@@ -1,10 +1,10 @@
 /* ============================================================
-   Khu quản trị — tiện ích dùng chung: API client, chrome, format, icon.
-   Tự chứa, không phụ thuộc mã phía học viên.
+   The admin area — shared helpers: API client, chrome, formatting, icons.
+   Self-contained; it depends on none of the student-side code.
    ============================================================ */
 
 const AD = {
-  /* ---------- API client: tự gắn CSRF, tự xử lý 401 ---------- */
+  /* ---------- API client: attaches CSRF, handles 401 itself ---------- */
   csrf() {
     const m = document.cookie.match(/(?:^|;\s*)prep_csrf=([^;]+)/);
     return m ? decodeURIComponent(m[1]) : '';
@@ -25,7 +25,7 @@ const AD = {
     const ct = res.headers.get('content-type') || '';
     const data = ct.includes('json') ? await res.json() : await res.text();
     if (!res.ok) {
-      const err = new Error((data && data.error) || ('Lỗi ' + res.status));
+      const err = new Error((data && data.error) || ('Error ' + res.status));
       err.status = res.status;
       err.data = data;
       throw err;
@@ -50,7 +50,7 @@ const AD = {
     const ct = res.headers.get('content-type') || '';
     const data = ct.includes('json') ? await res.json() : await res.text();
     if (!res.ok) {
-      const err = new Error((data && data.error) || ('Lỗi ' + res.status));
+      const err = new Error((data && data.error) || ('Error ' + res.status));
       err.status = res.status;
       throw err;
     }
@@ -75,10 +75,10 @@ const AD = {
   ago(iso) {
     if (!iso) return '—';
     const s = (Date.now() - new Date(iso)) / 1000;
-    if (s < 60) return 'vừa xong';
-    if (s < 3600) return Math.floor(s / 60) + ' phút trước';
-    if (s < 86400) return Math.floor(s / 3600) + ' giờ trước';
-    if (s < 30 * 86400) return Math.floor(s / 86400) + ' ngày trước';
+    if (s < 60) return 'just now';
+    if (s < 3600) return Math.floor(s / 60) + ' minutes ago';
+    if (s < 86400) return Math.floor(s / 3600) + ' hours ago';
+    if (s < 30 * 86400) return Math.floor(s / 86400) + ' days ago';
     return this.date(iso);
   },
   daysUntil(iso) { return iso ? Math.ceil((new Date(iso) - Date.now()) / 86400000) : null; },
@@ -89,9 +89,9 @@ const AD = {
   qs(sel, root) { return (root || document).querySelector(sel); },
   qsa(sel, root) { return Array.from((root || document).querySelectorAll(sel)); },
 
-  SKILL_VI: { listening: 'Nghe', reading: 'Đọc', writing: 'Viết', speaking: 'Nói' },
-  TYPE_VI: { mcq: 'Trắc nghiệm', gap: 'Điền từ', essay: 'Tự luận', speaking: 'Ghi âm' },
-  STATUS_VI: { draft: 'Bản nháp', published: 'Đang phát hành', archived: 'Lưu trữ' },
+  SKILL_LABEL: { listening: 'Listening', reading: 'Reading', writing: 'Writing', speaking: 'Speaking' },
+  TYPE_LABEL: { mcq: 'Multiple choice', gap: 'Gap fill', essay: 'Essay', speaking: 'Recorded' },
+  STATUS_LABEL: { draft: 'Draft', published: 'Published', archived: 'Archived' },
 
   /* ---------- Icon (Lucide, stroke 1.9, currentColor) ---------- */
   icon(name, cls) {
@@ -137,13 +137,13 @@ const AD = {
 
   /* ---------- Chrome: sidebar + topbar ---------- */
   NAV: [
-    { key: 'reports', label: 'Báo cáo', icon: 'gauge', href: '/admin/' },
-    { key: 'tests', label: 'Đề thi', icon: 'fileText', href: '/admin/de-thi/' },
-    { key: 'formats', label: 'Format đề', icon: 'layers', href: '/admin/format/' },
-    { key: 'bank', label: 'Ngân hàng câu hỏi', icon: 'database', href: '/admin/ngan-hang/' },
-    { key: 'users', label: 'Học viên', icon: 'users', href: '/admin/hoc-vien/' },
+    { key: 'reports', label: 'Reports', icon: 'gauge', href: '/admin/' },
+    { key: 'tests', label: 'Tests', icon: 'fileText', href: '/admin/de-thi/' },
+    { key: 'formats', label: 'Formats', icon: 'layers', href: '/admin/format/' },
+    { key: 'bank', label: 'Question bank', icon: 'database', href: '/admin/ngan-hang/' },
+    { key: 'users', label: 'Students', icon: 'users', href: '/admin/hoc-vien/' },
     { key: 'codes', label: 'Code', icon: 'ticket', href: '/admin/code/' },
-    { key: 'settings', label: 'Quản trị', icon: 'settings', href: '/admin/quan-tri/' }
+    { key: 'settings', label: 'Administration', icon: 'settings', href: '/admin/quan-tri/' }
   ],
 
   async mount(opts) {
@@ -160,23 +160,23 @@ const AD = {
       this.icon(n.icon, 'w-5 h-5 shrink-0') + '<span>' + n.label + '</span></a>').join('');
 
     app.insertAdjacentHTML('afterbegin',
-      '<aside class="hidden lg:flex flex-col fixed inset-y-0 left-0 w-[264px] z-40 border-r border-line bg-card px-5 py-6" aria-label="Điều hướng quản trị">' +
+      '<aside class="hidden lg:flex flex-col fixed inset-y-0 left-0 w-[264px] z-40 border-r border-line bg-card px-5 py-6" aria-label="Admin navigation">' +
         '<a href="/admin/" class="flex items-center gap-3 px-1.5 mb-8">' +
           '<span class="inline-flex items-center justify-center rounded-xl text-white panel-brand w-11 h-11">' + this.icon('cap', 'w-6 h-6') + '</span>' +
           '<span class="leading-tight"><span class="block font-extrabold tracking-tight text-[17px]">VPET Prep</span>' +
-          '<span class="block text-xs text-muted font-medium">Khu quản trị</span></span>' +
+          '<span class="block text-xs text-muted font-medium">Admin area</span></span>' +
         '</a>' +
         '<nav class="grid gap-1.5">' + nav + '</nav>' +
-        '<a href="/prep/landing/" class="nav-item mt-6">' + this.icon('external', 'w-5 h-5 shrink-0') + '<span>Xem trang học viên</span></a>' +
+        '<a href="/prep/landing/" class="nav-item mt-6">' + this.icon('external', 'w-5 h-5 shrink-0') + '<span>View the student site</span></a>' +
         '<div class="mt-auto pt-6 grid gap-4">' +
-          '<button type="button" data-dark class="btn btn-ghost btn-sm" aria-label="Bật tắt chế độ tối"><span data-dark-icon></span><span data-dark-label>Chế độ tối</span></button>' +
+          '<button type="button" data-dark class="btn btn-ghost btn-sm" aria-label="Toggle dark mode"><span data-dark-icon></span><span data-dark-label>Dark mode</span></button>' +
           '<div class="flex items-center gap-3 border-t border-line pt-4 px-1">' +
             '<span class="w-10 h-10 rounded-full bg-brand-soft text-brand-strong font-bold text-sm inline-flex items-center justify-center">' + this.esc(initials) + '</span>' +
             '<span class="min-w-0 flex-1 leading-tight">' +
               '<span class="block text-sm font-bold truncate">' + this.esc(admin.name) + '</span>' +
-              '<span class="block text-xs text-muted truncate">' + this.esc(admin.role === 'owner' ? 'Chủ tài khoản' : 'Biên tập') + '</span>' +
+              '<span class="block text-xs text-muted truncate">' + this.esc(admin.role === 'owner' ? 'Owner' : 'Editor') + '</span>' +
             '</span>' +
-            '<button type="button" data-logout class="p-2 rounded-full text-muted hover:text-danger transition" aria-label="Đăng xuất">' + this.icon('logout', 'w-5 h-5') + '</button>' +
+            '<button type="button" data-logout class="p-2 rounded-full text-muted hover:text-danger transition" aria-label="Sign out">' + this.icon('logout', 'w-5 h-5') + '</button>' +
           '</div>' +
         '</div>' +
       '</aside>');
@@ -190,10 +190,10 @@ const AD = {
             (opts.subtitle ? '<p class="text-[12.5px] text-muted font-medium truncate">' + this.esc(opts.subtitle) + '</p>' : '') +
           '</div>' +
           '<div class="ms-auto flex items-center gap-2" id="page-actions"></div>' +
-          '<button type="button" data-dark class="p-2.5 rounded-full text-muted hover:text-ink transition lg:hidden" aria-label="Bật tắt chế độ tối"><span data-dark-icon></span></button>' +
+          '<button type="button" data-dark class="p-2.5 rounded-full text-muted hover:text-ink transition lg:hidden" aria-label="Toggle dark mode"><span data-dark-icon></span></button>' +
         '</div>' +
       '</header>' +
-      '<nav class="lg:hidden flex gap-1.5 overflow-x-auto no-scrollbar border-b border-line bg-card px-4 py-2.5" aria-label="Điều hướng">' +
+      '<nav class="lg:hidden flex gap-1.5 overflow-x-auto no-scrollbar border-b border-line bg-card px-4 py-2.5" aria-label="Navigation">' +
         this.NAV.map(n => '<a href="' + n.href + '" class="chip shrink-0" ' +
           (n.key === active ? 'aria-pressed="true"' : '') + '>' + n.label + '</a>').join('') +
       '</nav>');
@@ -216,7 +216,7 @@ const AD = {
   syncDark() {
     const dark = document.documentElement.classList.contains('dark');
     this.qsa('[data-dark-icon]').forEach(el => { el.innerHTML = this.icon(dark ? 'sun' : 'moon', 'w-5 h-5'); });
-    this.qsa('[data-dark-label]').forEach(el => { el.textContent = dark ? 'Chế độ sáng' : 'Chế độ tối'; });
+    this.qsa('[data-dark-label]').forEach(el => { el.textContent = dark ? 'Light mode' : 'Dark mode'; });
   },
 
   /* ---------- Toast ---------- */
@@ -240,7 +240,7 @@ const AD = {
     setTimeout(() => t.remove(), type === 'error' ? 4700 : 3100);
   },
 
-  /* ---------- Modal đơn giản ---------- */
+  /* ---------- A simple modal ---------- */
   modal(html, opts) {
     opts = opts || {};
     const back = document.createElement('div');
@@ -265,15 +265,15 @@ const AD = {
         '<h3 class="text-lg font-extrabold tracking-tight">' + this.esc(title) + '</h3>' +
         '<p class="text-muted text-[15px] leading-relaxed mt-2">' + this.esc(message) + '</p>' +
         '<div class="flex gap-2.5 mt-6"><button type="button" data-yes class="btn btn-primary btn-md flex-1">' +
-        this.esc(confirmLabel || 'Xác nhận') + '</button>' +
-        '<button type="button" data-close class="btn btn-ghost btn-md flex-1">Huỷ</button></div>');
+        this.esc(confirmLabel || 'Confirm') + '</button>' +
+        '<button type="button" data-close class="btn btn-ghost btn-md flex-1">Cancel</button></div>');
       m.el.querySelector('[data-yes]').addEventListener('click', () => { m.close(); resolve(true); });
       m.el.addEventListener('click', e => { if (e.target === m.el) resolve(false); });
       this.qsa('[data-close]', m.el).forEach(b => b.addEventListener('click', () => resolve(false)));
     });
   },
 
-  /* ---------- Khối rỗng / lỗi dùng chung ---------- */
+  /* ---------- Shared empty and error blocks ---------- */
   emptyBox(icon, title, desc, actionHtml) {
     return '<div class="card p-10 text-center">' +
       '<span class="w-14 h-14 rounded-full bg-brand-soft text-brand-strong inline-flex items-center justify-center mx-auto">' +
@@ -288,9 +288,9 @@ const AD = {
     return '<div class="card p-8 text-center border-[color:var(--color-danger)]">' +
       '<span class="w-12 h-12 rounded-full inline-flex items-center justify-center mx-auto text-danger bg-[color:var(--color-card)] border border-line">' +
         this.icon('alert', 'w-6 h-6') + '</span>' +
-      '<h3 class="font-extrabold tracking-tight mt-3.5">Không tải được dữ liệu</h3>' +
+      '<h3 class="font-extrabold tracking-tight mt-3.5">The data could not be loaded</h3>' +
       '<p class="text-muted text-[14.5px] mt-1.5">' + this.esc(msg) + '</p>' +
-      (retryId ? '<button type="button" id="' + retryId + '" class="btn btn-ghost btn-md mt-5">Thử lại</button>' : '') +
+      (retryId ? '<button type="button" id="' + retryId + '" class="btn btn-ghost btn-md mt-5">Try again</button>' : '') +
       '</div>';
   },
 
@@ -302,7 +302,7 @@ const AD = {
   }
 };
 
-/* Boot dark mode sớm cho mọi trang admin */
+/* Boot dark mode early on every admin page */
 (function () {
   try {
     const t = localStorage.getItem('prep.theme');

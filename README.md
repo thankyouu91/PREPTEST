@@ -43,7 +43,13 @@ sẽ bị ngân hàng đề VPET thay toàn bộ.
 mười một format, nhãn từng khối, ghi chú từng phần và phần tài liệu của tệp.
 Số câu và số phút giữ nguyên từng con số — đây là bất biến, không phải văn bản.
 
-Còn tiếng Việt: khu quản trị — xem hàng đợi trong `docs/ROADMAP.md`.
+**Tám màn quản trị** đã sang tiếng Anh: đăng nhập, báo cáo, đề thi, trình xây
+đề, ngân hàng câu hỏi, format, học viên, code, quản trị, cùng chrome dùng chung.
+Tên cột CSV khi nhập hàng loạt (`ky_thi`, `ky_nang`, `do_kho`, …) giữ nguyên —
+đó là hợp đồng định dạng, đổi tên là đổi chức năng chứ không phải dịch.
+
+Còn tiếng Việt: các thông báo `/api/admin/*` trong `server/api.js` — xem hàng
+đợi trong `docs/ROADMAP.md`.
 
 **Nội dung khu tự học giữ nguyên tiếng Việt**: phần nghĩa, ví dụ song ngữ và
 "lỗi người Việt hay mắc" tồn tại để giải thích tiếng Anh bằng tiếng mẹ đẻ của

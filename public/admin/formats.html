@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Format đề chuẩn · Quản trị VPET Prep</title>
+  <title>Standard formats · VPET Prep admin</title>
   <meta name="robots" content="noindex, nofollow">
   <meta name="theme-color" content="#1c3d8f">
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
@@ -22,28 +22,28 @@
     <div class="max-w-[1240px] mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-10">
 
       <section class="max-w-[70ch] mb-6">
-        <h2 class="text-2xl font-extrabold tracking-tight">Format đề chuẩn</h2>
+        <h2 class="text-2xl font-extrabold tracking-tight">Standard paper formats</h2>
         <p class="text-muted text-[15px] leading-relaxed mt-2">
-          Cấu trúc đề thật của từng kỳ thi. Chọn format là sinh được đề đúng số câu,
-          đúng thời lượng, đúng dạng câu — không phải gõ tay blueprint.
-          Cột <b class="text-ink">ngân hàng</b> cho biết còn thiếu bao nhiêu câu trước khi bấm sinh đề.
+          The real structure of each exam. Pick a format and the generator produces a paper with the
+          right item count, timing and item types — no blueprint typed in by hand.
+          The <b class="text-ink">bank</b> column says how many items are still missing before you can generate.
         </p>
       </section>
 
       <div class="flex flex-wrap items-center gap-2.5 mb-6">
         <label class="flex items-center gap-2 text-[13.5px] font-semibold text-muted">
-          Kỳ thi
-          <select id="f-family" class="input w-auto py-2"><option value="">Tất cả</option></select>
+          Exam
+          <select id="f-family" class="input w-auto py-2"><option value="">All</option></select>
         </label>
         <label class="flex items-center gap-2 text-[13.5px] font-semibold text-muted">
-          Bậc
+          Level
           <select id="f-level" class="input w-auto py-2">
             <option>A2</option><option selected>B1</option><option>B2</option><option>C1</option>
           </select>
         </label>
         <label class="flex items-center gap-2 text-[13.5px] font-semibold text-muted">
           <input type="checkbox" id="f-strict" class="w-4 h-4 rounded accent-[color:var(--color-accent)]">
-          Chỉ đếm câu đúng bậc
+          Count only items at this level
         </label>
         <span id="count" class="text-[13px] font-semibold text-muted ms-auto"></span>
       </div>
@@ -59,35 +59,35 @@
 
 <script src="/admin/_admin.js"></script>
 <script>
-AD.mount({ title: 'Format đề chuẩn' }).then(async () => {
-  const KIND = { full: 'Trọn bài', module: 'Một kỹ năng', mini: 'Rút gọn' };
-  const SKILL_VI = { listening: 'Nghe', reading: 'Đọc', writing: 'Viết', speaking: 'Nói' };
+AD.mount({ title: 'Standard paper formats' }).then(async () => {
+  const KIND = { full: 'Whole paper', module: 'One skill', mini: 'Shortened' };
+  const SKILL_LABEL = { listening: 'Listening', reading: 'Reading', writing: 'Writing', speaking: 'Speaking' };
 
-  /* Nạp danh sách kỳ thi cho bộ lọc */
+  /* Load the exam list for the filter */
   try {
     const cat = await (await fetch('/api/catalog', { credentials: 'same-origin' })).json();
-    AD.qs('#f-family').innerHTML = '<option value="">Tất cả</option>' +
+    AD.qs('#f-family').innerHTML = '<option value="">All</option>' +
       cat.families.map(f => '<option value="' + f.id + '">' + AD.esc(f.name) + '</option>').join('');
-  } catch (e) { /* để nguyên "Tất cả" */ }
+  } catch (e) { /* leave it as "All" */ }
 
-  /* Một khối trong format: số câu, thời lượng, độ phủ ngân hàng, chi tiết các part */
+  /* One block of a format: item count, timing, bank coverage, and the parts inside it */
   function sectionRow(s) {
     const b = s.bank;
     const ok = b.short === 0;
     return '<div class="rounded-xl border border-line p-3.5">' +
       '<div class="flex flex-wrap items-center gap-2">' +
-        '<span class="badge badge-muted">' + SKILL_VI[s.skill] + '</span>' +
+        '<span class="badge badge-muted">' + SKILL_LABEL[s.skill] + '</span>' +
         '<b class="text-[14.5px]">' + AD.esc(s.name) + '</b>' +
-        '<span class="text-[13px] text-muted">' + s.items + ' câu · ' + s.minutes + ' phút</span>' +
+        '<span class="text-[13px] text-muted">' + s.items + ' items · ' + s.minutes + ' min</span>' +
         '<span class="badge ' + (ok ? 'badge-ok' : 'badge-hl') + ' ms-auto">' +
-          (ok ? 'ngân hàng đủ (' + b.have + ')' : 'thiếu ' + b.short + ' câu') +
+          (ok ? 'bank is sufficient (' + b.have + ')' : b.short + ' items short') +
         '</span>' +
       '</div>' +
       (s.parts.length
         ? '<ul class="grid gap-1 mt-3 text-[13px] text-muted">' +
             s.parts.map(p =>
               '<li class="flex gap-2"><b class="text-ink shrink-0 w-[9rem]">' + AD.esc(p.label) + '</b>' +
-              '<span class="shrink-0 w-14">' + p.items + ' câu</span>' +
+              '<span class="shrink-0 w-14">' + p.items + ' items</span>' +
               '<span class="min-w-0">' + AD.esc(p.note) + '</span></li>').join('') +
           '</ul>'
         : '') +
@@ -102,21 +102,21 @@ AD.mount({ title: 'Format đề chuẩn' }).then(async () => {
             '<span class="exam-chip" data-family="' + f.familyId + '">' + AD.esc(f.familyName) + '</span>' +
             '<span class="badge badge-muted">' + KIND[f.kind] + '</span>' +
             '<span class="badge ' + (f.ready ? 'badge-ok' : 'badge-hl') + '">' +
-              (f.ready ? 'Sinh đề được ngay' : 'Còn thiếu ' + f.shortBy + ' câu') + '</span>' +
+              (f.ready ? 'Ready to generate' : f.shortBy + ' items short') + '</span>' +
           '</div>' +
           '<h3 class="text-lg font-extrabold tracking-tight mt-2.5">' + AD.esc(f.name) + '</h3>' +
           '<p class="text-[13.5px] font-semibold text-muted mt-1">' +
-            f.totalItems + ' câu · ' + f.totalMinutes + ' phút · ' + AD.esc(f.scoring) + '</p>' +
+            f.totalItems + ' items · ' + f.totalMinutes + ' min · ' + AD.esc(f.scoring) + '</p>' +
         '</div>' +
         '<div class="flex gap-2 ms-auto">' +
-          '<button type="button" class="btn btn-ghost btn-sm" data-detail="' + f.id + '">Chi tiết</button>' +
+          '<button type="button" class="btn btn-ghost btn-sm" data-detail="' + f.id + '">Details</button>' +
           '<button type="button" class="btn btn-primary btn-sm" data-make="' + f.id + '"' +
-            (f.ready ? '' : ' disabled title="Ngân hàng câu hỏi chưa đủ"') + '>Sinh đề</button>' +
+            (f.ready ? '' : ' disabled title="Not enough questions in the bank"') + '>Generate</button>' +
         '</div>' +
       '</div>' +
       '<div class="grid gap-2.5 mt-4">' + f.sections.map(sectionRow).join('') + '</div>' +
       (f.notes && f.notes.length
-        ? '<details class="mt-4"><summary class="text-[13.5px] font-bold text-brand-strong cursor-pointer">Lưu ý học thuật</summary>' +
+        ? '<details class="mt-4"><summary class="text-[13.5px] font-bold text-brand-strong cursor-pointer">Notes on the exam</summary>' +
           '<ul class="grid gap-1.5 mt-2.5 text-[13.5px] text-muted">' +
             f.notes.map(n => '<li class="flex gap-2"><span class="text-accent-strong">·</span><span>' + AD.esc(n) + '</span></li>').join('') +
           '</ul></details>'
@@ -135,18 +135,18 @@ AD.mount({ title: 'Format đề chuẩn' }).then(async () => {
         '&level=' + encodeURIComponent(lvl) + '&strict=' + strict);
       formats = r.formats;
       AD.qs('#count').textContent = formats.length + ' format · ' +
-        formats.filter(f => f.ready).length + ' sinh được ngay';
+        formats.filter(f => f.ready).length + ' ready to generate';
       AD.qs('#list').innerHTML = formats.map(card).join('');
     } catch (e) {
       AD.qs('#list').innerHTML = '<div class="card p-8 text-center"><p class="text-muted">' +
-        AD.esc(e.message || 'Không tải được danh sách format.') + '</p></div>';
+        AD.esc(e.message || 'The format list could not be loaded.') + '</p></div>';
     }
   }
 
   ['#f-family', '#f-level', '#f-strict'].forEach(sel =>
     AD.qs(sel).addEventListener('change', load));
 
-  /* Sinh đề từ format: gửi thẳng sections làm blueprint */
+  /* Generate from a format: the sections go straight over as the blueprint */
   AD.qs('#list').addEventListener('click', async e => {
     const mk = e.target.closest('[data-make]');
     if (mk) return makeTest(mk);
@@ -159,15 +159,15 @@ AD.mount({ title: 'Format đề chuẩn' }).then(async () => {
     if (!f) return;
     AD.modal(
       '<h3 class="text-lg font-extrabold tracking-tight">' + AD.esc(f.name) + '</h3>' +
-      '<p class="text-[13.5px] text-muted mt-1">' + f.totalItems + ' câu · ' + f.totalMinutes +
-        ' phút · dùng cho bậc ' + f.levels.join(', ') + '</p>' +
-      '<p class="label mt-5 mb-2">Hướng dẫn hiện cho học viên</p>' +
+      '<p class="text-[13.5px] text-muted mt-1">' + f.totalItems + ' items · ' + f.totalMinutes +
+        ' min · for levels ' + f.levels.join(', ') + '</p>' +
+      '<p class="label mt-5 mb-2">Instructions shown to the student</p>' +
       '<ul class="grid gap-1.5 text-[13.5px] text-muted">' +
         f.guide.map(g => '<li class="flex gap-2"><span class="text-accent-strong">·</span><span>' + AD.esc(g) + '</span></li>').join('') +
       '</ul>' +
-      '<p class="label mt-5 mb-2">Cách chấm</p>' +
+      '<p class="label mt-5 mb-2">How it is marked</p>' +
       '<p class="text-[13.5px] text-muted">' + AD.esc(f.scoring) + '</p>' +
-      '<p class="help mt-4">Chi tiết cơ cấu và quy đổi điểm nằm trong docs/SCORING.md.</p>',
+      '<p class="help mt-4">The full structure and score conversion live in docs/SCORING.md.</p>',
       { wide: true });
   }
 
@@ -176,7 +176,7 @@ AD.mount({ title: 'Format đề chuẩn' }).then(async () => {
     if (!f) return;
     const lvl = AD.qs('#f-level').value;
     btn.disabled = true;
-    btn.innerHTML = AD.icon('loader', 'w-4 h-4 animate-spin-slow') + 'Đang bốc câu';
+    btn.innerHTML = AD.icon('loader', 'w-4 h-4 animate-spin-slow') + 'Drawing items';
     try {
       const t = await AD.post('/admin/tests/generate', {
         familyId: f.familyId,
@@ -193,9 +193,9 @@ AD.mount({ title: 'Format đề chuẩn' }).then(async () => {
       location.href = '/admin/de-thi/' + encodeURIComponent(t.id) + '/';
     } catch (err) {
       btn.disabled = false;
-      btn.textContent = 'Sinh đề';
+      btn.textContent = 'Generate';
       const sh = err.data && err.data.shortages;
-      AD.toast(err.message + (sh ? ' — ' + sh.map(s => s.section + ' thiếu ' + (s.need - s.have)).join(', ') : ''), 'error');
+      AD.toast(err.message + (sh ? ' — ' + sh.map(s => s.section + ' short by ' + (s.need - s.have)).join(', ') : ''), 'error');
     }
   }
 

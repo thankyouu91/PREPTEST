@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Tổng quan · Quản trị VPET Prep</title>
+  <title>Overview · VPET Prep admin</title>
   <meta name="robots" content="noindex, nofollow">
   <meta name="theme-color" content="#1c3d8f">
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
@@ -22,13 +22,13 @@
   <main id="main">
     <div class="max-w-[1240px] mx-auto px-4 sm:px-6 lg:px-8 pt-8" id="page">
 
-      <!-- Chọn kỳ báo cáo -->
+      <!-- Reporting period -->
       <div class="flex flex-wrap items-center gap-3">
-        <span class="text-[13px] font-bold text-muted">Kỳ báo cáo</span>
-        <div id="period" class="flex gap-1.5" role="group" aria-label="Chọn kỳ báo cáo">
-          <button type="button" class="chip" data-days="7">7 ngày</button>
-          <button type="button" class="chip" data-days="30" aria-current="page">30 ngày</button>
-          <button type="button" class="chip" data-days="90">90 ngày</button>
+        <span class="text-[13px] font-bold text-muted">Period</span>
+        <div id="period" class="flex gap-1.5" role="group" aria-label="Choose the reporting period">
+          <button type="button" class="chip" data-days="7">7 days</button>
+          <button type="button" class="chip" data-days="30" aria-current="page">30 days</button>
+          <button type="button" class="chip" data-days="90">90 days</button>
         </div>
         <span id="period-note" class="text-[12.5px] text-muted font-medium ms-auto"></span>
       </div>
@@ -50,15 +50,15 @@
 <script src="/admin/_admin.js"></script>
 <script>
 (async () => {
-  await AD.mount({ title: 'Tổng quan', subtitle: 'Việc cần làm, tăng trưởng, phễu học viên và nội dung' });
+  await AD.mount({ title: 'Overview', subtitle: 'What needs doing, growth, the student funnel and the content' });
 
-  const KY = { 7: '7 ngày', 30: '30 ngày', 90: '90 ngày' };
+  const KY = { 7: '7 days', 30: '30 days', 90: '90 days' };
   let days = 30;
 
-  /* ---------- Ô chỉ số, kèm so sánh với kỳ trước ---------- */
+  /* ---------- A metric tile, with a comparison against the previous period ---------- */
   function delta(k) {
     if (k.delta === null) {
-      return '<span class="text-[12.5px] text-muted font-semibold">kỳ trước chưa có số</span>';
+      return '<span class="text-[12.5px] text-muted font-semibold">no figure for the previous period</span>';
     }
     const len = k.delta === 0 ? 'khong' : (k.delta > 0 ? 'tang' : 'giam');
     const mui = k.delta > 0 ? '▲' : (k.delta < 0 ? '▼' : '■');
@@ -80,12 +80,12 @@
       '</div>' +
     '</div>';
 
-  /* ---------- Biểu đồ cột (SVG nội bộ, không thư viện) ---------- */
+  /* ---------- Bar chart (inline SVG, no library) ---------- */
   function chart(series, key, color) {
     const w = 720, h = 170, pad = 26, n = series.length;
     const max = Math.max(1, ...series.map(s => s[key]));
     const bw = (w - pad * 2) / n;
-    const buoc = Math.max(1, Math.round(n / 6));   // 90 ngày thì nhãn thưa ra
+    const buoc = Math.max(1, Math.round(n / 6));   // at 90 days the labels thin out
     const bars = series.map((s, i) => {
       const bh = Math.round((s[key] / max) * (h - pad * 2));
       const x = pad + i * bw + bw * 0.18;
@@ -99,15 +99,15 @@
         ? '<text x="' + (pad + i * bw + bw / 2).toFixed(1) + '" y="' + (h - 8) + '" text-anchor="middle" ' +
           'font-size="10" fill="var(--color-muted)">' + s.day.slice(8) + '/' + s.day.slice(5, 7) + '</text>'
         : '').join('');
-    return '<svg viewBox="0 0 ' + w + ' ' + h + '" class="w-full" role="img" aria-label="Biểu đồ hoạt động theo ngày">' +
+    return '<svg viewBox="0 0 ' + w + ' ' + h + '" class="w-full" role="img" aria-label="Daily activity chart">' +
       '<line x1="' + pad + '" y1="' + (h - pad) + '" x2="' + (w - pad) + '" y2="' + (h - pad) +
       '" stroke="var(--color-border)" stroke-width="1.5"/>' + bars + labels +
-      '<text x="' + pad + '" y="16" font-size="11" font-weight="700" fill="var(--color-muted)">Cao nhất: ' + max + '</text>' +
+      '<text x="' + pad + '" y="16" font-size="11" font-weight="700" fill="var(--color-muted)">Peak: ' + max + '</text>' +
       '</svg>';
   }
 
-  /* ---------- Việc cần làm ---------- */
-  const SEV_NHAN = { cao: 'Khẩn', vua: 'Nên làm', thap: 'Dọn dẹp' };
+  /* ---------- What needs doing ---------- */
+  const SEV_NHAN = { cao: 'Urgent', vua: 'Worth doing', thap: 'Tidy-up' };
   const SEV_BADGE = { cao: 'badge-danger', vua: 'badge-hl', thap: 'badge-muted' };
 
   function todoList(todo) {
@@ -115,7 +115,7 @@
       return '<div class="flex items-start gap-3">' +
         '<span class="w-9 h-9 rounded-full bg-accent-soft text-accent-strong shrink-0 inline-flex items-center justify-center">' +
           AD.icon('check', 'w-[18px] h-[18px]') + '</span>' +
-        '<p class="text-[14.5px] text-muted leading-relaxed">Không có việc nào đang chờ. Nội dung đủ, code còn hạn, học viên không ai bị kẹt.</p>' +
+        '<p class="text-[14.5px] text-muted leading-relaxed">Nothing is waiting. The content is complete, the codes are in date, and no student is stuck.</p>' +
       '</div>';
     }
     return '<ul class="grid gap-3">' + todo.map(t =>
@@ -130,7 +130,7 @@
       '</li>').join('') + '</ul>';
   }
 
-  /* ---------- Phễu học viên ---------- */
+  /* ---------- The student funnel ---------- */
   function funnelBlock(funnel) {
     const dau = funnel[0].value || 1;
     return '<ul class="grid gap-3.5">' + funnel.map((s, i) => {
@@ -146,13 +146,13 @@
           '<div class="h-full rounded-full bg-brand funnel-bar" data-w="' + rong + '"></div>' +
         '</div>' +
         (roi > 0
-          ? '<p class="text-[12px] text-muted font-medium mt-1">rơi mất ' + AD.num(roi) + ' ở bước này</p>'
+          ? '<p class="text-[12px] text-muted font-medium mt-1">' + AD.num(roi) + ' lost at this step</p>'
           : '') +
       '</li>';
     }).join('') + '</ul>';
   }
 
-  /* ---------- Vẽ lại toàn trang theo kỳ đang chọn ---------- */
+  /* ---------- Redraw the whole page for the chosen period ---------- */
   async function render() {
     AD.qs('#loading').hidden = false;
     AD.qs('#content').hidden = true;
@@ -169,7 +169,7 @@
     }
 
     const nhan = KY[days];
-    AD.qs('#period-note').textContent = 'So với ' + nhan + ' liền trước';
+    AD.qs('#period-note').textContent = 'Against the previous ' + nhan;
 
     const famRows = d.byFamily.map(f =>
       '<tr class="border-b border-line last:border-0">' +
@@ -182,7 +182,7 @@
         '<td class="px-4 py-3.5 text-right font-bold">' + AD.num(f.unlocks) + '</td>' +
         '<td class="px-5 py-3.5 text-right font-bold">' + AD.num(f.interested) +
           (f.interested > 0 && f.published === 0
-            ? ' <span class="badge badge-danger">chưa có đề</span>'
+            ? ' <span class="badge badge-danger">no papers yet</span>'
             : '') + '</td>' +
       '</tr>').join('');
 
@@ -190,10 +190,10 @@
       ? '<ul class="grid gap-2.5">' + d.revenueByPackage.map(g =>
           '<li class="flex items-center gap-3 text-[14px]">' +
             '<span class="min-w-0 flex-1 truncate font-semibold">' + AD.esc(g.name) + '</span>' +
-            '<span class="text-muted font-semibold shrink-0">' + g.orders + ' đơn</span>' +
+            '<span class="text-muted font-semibold shrink-0">' + g.orders + ' orders</span>' +
             '<b class="shrink-0 w-24 text-right">' + AD.vnd(g.amount) + '</b>' +
           '</li>').join('') + '</ul>'
-      : '<p class="text-[14px] text-muted">Chưa có đơn nào trong ' + nhan + ' qua.</p>';
+      : '<p class="text-[14px] text-muted">No orders in the last ' + nhan + '.</p>';
 
     const recent = d.recent.length
       ? '<ul class="grid gap-3">' + d.recent.map(r =>
@@ -204,7 +204,7 @@
               '<span class="block text-muted text-[12.5px] mt-0.5">' + AD.esc(r.admin_name || '—') +
               ' · ' + AD.ago(r.at) + '</span></span>' +
           '</li>').join('') + '</ul>'
-      : '<p class="text-[14px] text-muted">Chưa có thao tác nào được ghi nhận.</p>';
+      : '<p class="text-[14px] text-muted">No actions have been recorded.</p>';
 
     const tongUsers = d.series.reduce((a, s) => a + s.users, 0);
     const tongRedeems = d.series.reduce((a, s) => a + s.redeems, 0);
@@ -212,57 +212,57 @@
 
     AD.qs('#content').innerHTML =
       '<div class="grid sm:grid-cols-2 xl:grid-cols-4 gap-5">' +
-        stat('Học viên mới', AD.num(d.kpi.users.value), d.kpi.users,
-          'tổng ' + AD.num(d.users.total) + ' · ' + d.users.verified + ' đã xác thực', 'users') +
-        stat('Code kích hoạt', AD.num(d.kpi.redeems.value), d.kpi.redeems,
-          d.codes.unused + ' chưa dùng', 'ticket', 'accent') +
+        stat('New students', AD.num(d.kpi.users.value), d.kpi.users,
+          AD.num(d.users.total) + ' in total · ' + d.users.verified + ' verified', 'users') +
+        stat('Codes activated', AD.num(d.kpi.redeems.value), d.kpi.redeems,
+          d.codes.unused + ' unused', 'ticket', 'accent') +
         stat('Doanh thu', AD.vnd(d.kpi.revenue.value), d.kpi.revenue,
-          d.kpi.orders.value + ' đơn trong kỳ', 'wallet', 'accent') +
-        stat('Nội dung', AD.num(d.content.published), null,
-          'đề đang phát hành · ' + d.content.draft + ' nháp · ' + AD.num(d.content.questions) + ' câu hỏi', 'fileText') +
+          d.kpi.orders.value + ' orders this period', 'wallet', 'accent') +
+        stat('Content', AD.num(d.content.published), null,
+          'published · ' + d.content.draft + ' draft · ' + AD.num(d.content.questions) + ' questions', 'fileText') +
       '</div>' +
 
-      /* Hai cột xếp chồng độc lập nhau. Nếu để cả sáu thẻ trong một lưới thì
-         các thẻ phải canh theo hàng, thẻ ngắn bên này sẽ chừa ra một khoảng
-         trống bằng chiều cao thẻ dài bên kia. */
-      /* Hai cột xếp chồng ĐỘC LẬP nhau. Nếu để cả sáu thẻ chung một lưới thì
-         chúng phải canh theo hàng: thẻ ngắn bên này chừa ra khoảng trống đúng
-         bằng chiều cao thẻ dài bên kia. Tách hai cột thì mỗi bên tự dồn lên. */
+      /* The two columns stack independently. With all six cards in one grid they
+      would have to line up in rows, and a short card on one side would leave
+      a gap the height of the tall card opposite. */
+      /* The two columns stack INDEPENDENTLY. With all six cards in one grid they would
+         have to line up in rows: a short card on one side would leave a gap exactly
+         the height of the tall card opposite. Split in two, each side closes up. */
       '<div class="grid lg:grid-cols-12 gap-6 mt-6 items-start">' +
 
-        /* ---- Cột trái: điều hành ---- */
+        /* ---- Left column: running the place ---- */
         '<div class="lg:col-span-5 grid gap-6 content-start">' +
 
           '<section class="card p-6" aria-labelledby="h-todo">' +
             '<div class="flex flex-wrap items-baseline gap-2 mb-4">' +
-              '<h2 id="h-todo" class="text-lg font-extrabold tracking-tight">Việc cần làm</h2>' +
-              (soKhan ? '<span class="badge badge-danger">' + soKhan + ' khẩn</span>' : '') +
+              '<h2 id="h-todo" class="text-lg font-extrabold tracking-tight">What needs doing</h2>' +
+              (soKhan ? '<span class="badge badge-danger">' + soKhan + ' urgent</span>' : '') +
             '</div>' + todoList(d.todo) +
           '</section>' +
 
           '<section class="card p-6" aria-labelledby="h-funnel">' +
-            '<h2 id="h-funnel" class="text-lg font-extrabold tracking-tight">Phễu học viên</h2>' +
-            '<p class="text-[13.5px] text-muted mt-1 mb-4">Tỷ lệ tính trên tổng số đã đăng ký</p>' +
+            '<h2 id="h-funnel" class="text-lg font-extrabold tracking-tight">Student funnel</h2>' +
+            '<p class="text-[13.5px] text-muted mt-1 mb-4">Percentages are of everyone who registered</p>' +
             funnelBlock(d.funnel) +
           '</section>' +
 
           '<section class="card p-6" aria-labelledby="h-pkg">' +
             '<div class="flex items-baseline gap-3 mb-4">' +
-              '<h2 id="h-pkg" class="text-lg font-extrabold tracking-tight">Doanh thu theo gói</h2>' +
-              '<a href="/admin/quan-tri/" class="ms-auto text-[13px] font-bold text-brand-strong hover:underline">Sửa giá</a>' +
+              '<h2 id="h-pkg" class="text-lg font-extrabold tracking-tight">Revenue by plan</h2>' +
+              '<a href="/admin/quan-tri/" class="ms-auto text-[13px] font-bold text-brand-strong hover:underline">Edit prices</a>' +
             '</div>' + goi +
           '</section>' +
 
         '</div>' +
 
-        /* ---- Cột phải: số liệu ---- */
+        /* ---- Right column: the numbers ---- */
         '<div class="lg:col-span-7 grid gap-6 content-start">' +
 
           '<section class="card p-6" aria-labelledby="h-chart">' +
             '<div class="flex flex-wrap items-baseline gap-3">' +
-              '<h2 id="h-chart" class="text-lg font-extrabold tracking-tight">Hoạt động ' + nhan + '</h2>' +
-              '<div class="ms-auto flex gap-1.5" role="group" aria-label="Chọn chỉ số">' +
-                '<button type="button" class="chip" data-metric="users" aria-pressed="true">Học viên (' + tongUsers + ')</button>' +
+              '<h2 id="h-chart" class="text-lg font-extrabold tracking-tight">Activity over ' + nhan + '</h2>' +
+              '<div class="ms-auto flex gap-1.5" role="group" aria-label="Choose a metric">' +
+                '<button type="button" class="chip" data-metric="users" aria-pressed="true">Students (' + tongUsers + ')</button>' +
                 '<button type="button" class="chip" data-metric="redeems" aria-pressed="false">Code (' + tongRedeems + ')</button>' +
                 '<button type="button" class="chip" data-metric="revenue" aria-pressed="false">Doanh thu</button>' +
               '</div>' +
@@ -271,22 +271,22 @@
           '</section>' +
 
           '<section class="card overflow-hidden" aria-labelledby="h-fam">' +
-            '<h2 id="h-fam" class="text-lg font-extrabold tracking-tight px-6 pt-6 pb-4">Cung và cầu theo kỳ thi</h2>' +
+            '<h2 id="h-fam" class="text-lg font-extrabold tracking-tight px-6 pt-6 pb-4">Supply and demand by exam</h2>' +
             '<div class="overflow-x-auto"><table class="w-full text-[14px]">' +
               '<thead><tr class="text-[12px] uppercase tracking-wide text-muted border-y border-line bg-surface">' +
-                '<th class="text-left font-bold px-5 py-3">Kỳ thi</th>' +
-                '<th class="text-right font-bold px-4 py-3">Đề phát hành</th>' +
-                '<th class="text-right font-bold px-4 py-3">Câu hỏi</th>' +
-                '<th class="text-right font-bold px-4 py-3">Code đã dùng</th>' +
-                '<th class="text-right font-bold px-5 py-3">Quan tâm</th>' +
+                '<th class="text-left font-bold px-5 py-3">Exam</th>' +
+                '<th class="text-right font-bold px-4 py-3">Published</th>' +
+                '<th class="text-right font-bold px-4 py-3">Questions</th>' +
+                '<th class="text-right font-bold px-4 py-3">Codes used</th>' +
+                '<th class="text-right font-bold px-5 py-3">Following</th>' +
               '</tr></thead><tbody>' + famRows + '</tbody>' +
             '</table></div>' +
           '</section>' +
 
           '<section class="card p-6" aria-labelledby="h-recent">' +
             '<div class="flex items-baseline gap-3 mb-4">' +
-              '<h2 id="h-recent" class="text-lg font-extrabold tracking-tight">Thao tác gần đây</h2>' +
-              '<a href="/admin/quan-tri/#nhat-ky" class="ms-auto text-[13px] font-bold text-brand-strong hover:underline">Nhật ký</a>' +
+              '<h2 id="h-recent" class="text-lg font-extrabold tracking-tight">Recent actions</h2>' +
+              '<a href="/admin/quan-tri/#nhat-ky" class="ms-auto text-[13px] font-bold text-brand-strong hover:underline">Audit log</a>' +
             '</div>' + recent +
           '</section>' +
 
@@ -296,7 +296,7 @@
     AD.qs('#loading').hidden = true;
     AD.qs('#content').hidden = false;
 
-    // Bề rộng thanh phễu đặt bằng CSS custom property, không dùng style="" (CSP chặn)
+    // The funnel bar width goes through a CSS custom property, never style="" (blocked by CSP)
     AD.qsa('.funnel-bar').forEach(b => b.style.setProperty('--w', b.getAttribute('data-w') + '%'));
 
     const mau = { users: 'var(--color-primary)', redeems: 'var(--color-accent)', revenue: 'var(--color-primary)' };
