@@ -173,6 +173,35 @@ Quản trị (đều cần phiên + CSRF): `/api/admin/reports` (nhận `?days=7
 `/api/admin/codes` (+ `/export`, `/:id/revoke`), `/api/admin/batches`, `/api/admin/settings`,
 `/api/admin/packages/:id`, `/api/admin/password`, `/api/admin/audit`.
 
+## Cài như ứng dụng (PWA)
+
+Nền tảng cài được thẳng từ Chrome trên Android — không cần lên Play Store. Trên
+máy tính, Chrome hiện nút cài ở thanh địa chỉ.
+
+- `public/manifest.webmanifest` — tên, màu, lối tắt tới Thư viện đề và Khu tự học.
+- `public/icons/` — sinh từ `public/favicon.svg` bằng `npm run icons`, gồm bản
+  **maskable** (Android cắt icon theo hình của launcher, nên phần mark phải nằm
+  gọn trong 80% ở giữa, nền lấp đầy khung).
+- `public/sw.js` — service worker.
+- `/prep/offline/` — màn hiện khi mất mạng.
+
+**Service worker cố tình cache rất ít**, vì bộ nhớ đệm trên máy dùng chung là
+chỗ đáp án rò ra:
+
+| Loại | Xử lý | Vì sao |
+|---|---|---|
+| `/api/**` | không đụng tới | Câu hỏi, đáp án, audio và phiên đăng nhập đều ở đây. Đáp án nằm lại trong cache sẽ sống lâu hơn cái phiên được phép xem nó |
+| Trang HTML | không cache | Trang nằm sau guard đăng nhập và trả `no-store`; cache lại là đưa bản chụp màn hình đã đăng nhập cho người dùng máy tiếp theo |
+| `/admin/**`, `/auth/**` | không đụng tới | Khu quản trị chạy online; OAuth phải đi thẳng ra mạng |
+| CSS, JS, font, icon | cache, nền tự làm mới | Không mang dữ liệu người dùng nào |
+
+Bộ kiểm thử soi đúng chỗ này: sau khi service worker chạy, nó liệt kê toàn bộ
+cache và bắt buộc không có mục nào thuộc `/api`, cũng không có trang HTML nào
+ngoài trang offline.
+
+Đổi nhận diện thương hiệu thì chạy lại `npm run icons` — nguồn duy nhất vẫn là
+`favicon.svg`, mọi kích thước sinh lại theo.
+
 ## Đăng nhập bằng Google
 
 Học viên đăng nhập bằng Google hoặc bằng email + mật khẩu như cũ. Chưa cấu hình

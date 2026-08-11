@@ -178,6 +178,67 @@ await page.click('#submit');
 await page.waitForTimeout(1200);
 check('Tài khoản demo vẫn đăng nhập được sau toàn bộ bài test', page.url().endsWith('/prep/'), page.url());
 
+/* ---------------- PWA ----------------
+   Ba câu hỏi: cài đặt được không, service worker có chạy không, và — quan
+   trọng nhất — nó có cache nhầm thứ không được cache không. Bộ nhớ đệm trên
+   máy dùng chung là chỗ đáp án đề thi rò ra. */
+{
+  const mres = await fetch(BASE + '/manifest.webmanifest');
+  const mtype = mres.headers.get('content-type') || '';
+  const man = await mres.json().catch(() => null);
+  check('Manifest phục vụ đúng kiểu nội dung', mres.status === 200 && mtype.includes('manifest+json'), mtype);
+  check('Manifest đủ trường để Chrome cho cài',
+    !!man && man.name && man.start_url && man.display === 'standalone' &&
+    (man.icons || []).some(i => /(^|\s)512x512(\s|$)/.test(i.sizes)) &&
+    (man.icons || []).some(i => String(i.purpose).includes('maskable')),
+    JSON.stringify(man && man.icons));
+
+  const swres = await fetch(BASE + '/sw.js');
+  check('Service worker phục vụ ở gốc với phạm vi toàn site',
+    swres.status === 200 && swres.headers.get('service-worker-allowed') === '/',
+    'status ' + swres.status);
+
+  for (const icon of ['icon-192', 'icon-512', 'maskable-512']) {
+    const r = await fetch(BASE + '/icons/' + icon + '.png');
+    check('Icon ' + icon + ' tải được', r.status === 200 && (r.headers.get('content-type') || '').includes('image/png'));
+  }
+
+  const off = await fetch(BASE + '/prep/offline/');
+  check('Trang offline mở được khi chưa đăng nhập', off.status === 200, 'status ' + off.status);
+
+  /* Chạy trong ngữ cảnh riêng: đăng ký service worker rồi soi đúng những gì
+     nó đã cache. */
+  const swCtx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+  const swPage = await swCtx.newPage();
+  await swPage.goto(BASE + '/prep/landing/', { waitUntil: 'load' });
+  const ready = await swPage.evaluate(() =>
+    navigator.serviceWorker.ready.then(r => !!r.active).catch(() => false));
+  check('Service worker đăng ký và hoạt động', ready === true, String(ready));
+
+  await swPage.goto(BASE + '/prep/landing/', { waitUntil: 'load' });
+  await swPage.waitForTimeout(800);
+  const cached = await swPage.evaluate(async () => {
+    const names = await caches.keys();
+    const urls = [];
+    for (const n of names) {
+      const keys = await (await caches.open(n)).keys();
+      keys.forEach(r => urls.push(r.url));
+    }
+    return urls;
+  });
+  check('Có cache vỏ ứng dụng để dùng offline', cached.length > 0, String(cached.length));
+  check('Không cache bất cứ thứ gì dưới /api — đáp án đề thi không nằm trong bộ nhớ đệm',
+    !cached.some(u => new URL(u).pathname.startsWith('/api/')),
+    cached.filter(u => u.includes('/api/'))[0] || '');
+  check('Không cache trang HTML nào ngoài trang offline',
+    cached.every(u => {
+      const p = new URL(u).pathname;
+      return p === '/prep/offline/' || /\.[a-z0-9]+$/i.test(p);
+    }),
+    cached.filter(u => { const p = new URL(u).pathname; return p !== '/prep/offline/' && !/\.[a-z0-9]+$/i.test(p); })[0] || '');
+  await swCtx.close();
+}
+
 await browser.close();
 
 check('Không có lỗi console / CSP', errors.length === 0, errors[0] || '');

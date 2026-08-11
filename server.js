@@ -118,6 +118,9 @@ function guestPage(file) {
 
 app.get('/', (req, res) => res.redirect('/prep/landing/'));
 app.get('/prep/landing/', serveHtmlWithNonce('prep/landing/index.html'));
+/* Shown by the service worker when a navigation cannot reach the network.
+   Public: the point of it is to work with no session and no radio. */
+app.get('/prep/offline/', serveHtmlWithNonce('prep/offline.html'));
 app.get('/prep/dang-ky/', guestPage('prep/auth/dang-ky.html'));
 app.get('/prep/dang-nhap/', guestPage('prep/auth/dang-nhap.html'));
 app.get('/prep/quen-mat-khau/', guestPage('prep/auth/quen-mat-khau.html'));
@@ -160,6 +163,23 @@ app.get('/prep/hoc/bi-dong/', studentPage('prep/learn/bi-dong.html'));
 app.get('/prep/hoc/menh-de/', studentPage('prep/learn/menh-de.html'));
 app.get('/prep/hoc/nhan-manh/', studentPage('prep/learn/nhan-manh.html'));
 app.get('/prep/hoc/sac-thai/', studentPage('prep/learn/sac-thai.html'));
+
+/* ---------------- PWA ----------------
+   The worker is served from the root so its scope covers the whole site, and
+   with no-cache so a deploy is picked up on the next visit rather than being
+   pinned for a day by HTTP caching. */
+app.get('/sw.js', (req, res) => {
+  res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Service-Worker-Allowed', '/');
+  res.sendFile(path.join(PUB, 'sw.js'));
+});
+
+app.get('/manifest.webmanifest', (req, res) => {
+  res.setHeader('Content-Type', 'application/manifest+json; charset=utf-8');
+  res.setHeader('Cache-Control', 'public, max-age=3600');
+  res.sendFile(path.join(PUB, 'manifest.webmanifest'));
+});
 
 /* ---------------- Static (CSS/JS/SVG/ảnh) ----------------
    Chặn *.html tĩnh để HTML không bao giờ thoát khỏi vòng chèn nonce. */

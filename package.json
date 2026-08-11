@@ -10,7 +10,8 @@
     "screenshot": "node scripts/screenshot.mjs",
     "screenshot:admin": "node scripts/shot-admin.mjs",
     "test": "node scripts/test-taikhoan.js && node scripts/test-admin.mjs && node scripts/test-auth.mjs && node scripts/test-catalog.mjs && node scripts/test-user-api.mjs && node scripts/test-learn.mjs && node scripts/audit.mjs",
-    "verify": "bash scripts/verify.sh"
+    "verify": "bash scripts/verify.sh",
+    "icons": "node scripts/make-icons.mjs"
   },
   "dependencies": {
     "express": "^4.21.2"

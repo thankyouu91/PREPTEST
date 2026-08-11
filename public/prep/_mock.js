@@ -675,3 +675,18 @@ const PrepAuth = {
     });
   }
 };
+
+/* ---------------- Service worker ----------------
+   Registered from here rather than from _chrome.js because this file is the
+   one script every student page loads, including the public landing page.
+   _chrome.js only ships on pages behind the auth guard, and an app that can
+   only be installed after signing in is not installable in any useful sense.
+
+   Failure is swallowed on purpose: the worker adds installability and an
+   offline screen, so a browser that refuses it must still get a working app.
+   Admin screens load neither file and stay online-only. */
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', function () {
+    navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch(function () {});
+  });
+}
