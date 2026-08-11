@@ -16,13 +16,18 @@ Owner decision (2026-08-11): **build the VPET practice suite before anything
 else.** Every other exam family is parked as `coming_soon`; nothing else gets
 built for them until VPET is done.
 
-Three standing decisions that shape the work:
+Four standing decisions that shape the work:
 
 | Decision | Choice |
 |---|---|
-| Speaking scoring | Audio-native model (Gemini / GPT-4o audio): the MP3 goes straight to the model, no separate transcription step |
-| Audio storage | Storage adapter with two drivers — local disk for dev, Supabase Storage for production |
+| Exam audio | **ElevenLabs TTS, rendered at authoring time**, never during a live exam. Full design in [`docs/VOICE.md`](VOICE.md) |
+| Speaking scoring | **OpenAI**: audio-native for parts I and J, ASR plus deterministic word matching for part H. Provider sits behind an adapter, so Gemini or Azure can replace it without touching the engine |
+| Audio storage | Storage adapter with two drivers — local disk for dev, Supabase Storage for production; a Google Cloud Storage driver is queued |
 | Interface language | **English everywhere** — UI copy, code, identifiers, comments, data and AI prompts |
+
+Speaking and audio allocation across the ten parts — how many files to render, how
+many clips come back, and how H, I and J combine into the Speaking band — is
+worked out in [`docs/VOICE.md`](VOICE.md) sections 1 and 2.
 
 The official VPET blueprint, already in `server/data/exam-formats.js`, is fixed
 at 55 items and must not be changed:
@@ -52,8 +57,9 @@ Queue for this track, in order:
 - [ ] **PWA** — manifest, icons, service worker, offline shell; installable from Chrome on Android without a Play listing
 - [ ] Stop offering non-VPET tests: seeded IELTS/TOEIC tests drop to draft, and the API refuses to publish a test whose family is `coming_soon`
 - [ ] Tag items by VPET part: `questions.part` (A-J) so each part draws from its own pool instead of sharing one skill-wide pool
-- [ ] VPET exam engine: per-part timer, audio playback with a fixed replay count, microphone capture for parts H/I/J, autosave and submit
-- [ ] AI speaking scoring: adapter around an audio-native model, VPET rubric (fluency, pronunciation, vocabulary, grammar, task), score plus written feedback, reviewer override, and a manual-scoring fallback while no API key is set
+- [ ] **ElevenLabs TTS pipeline** ([`docs/VOICE.md`](VOICE.md) §4): `audio_script` / `audio_status` / `audio_voice_id` / `audio_hash` columns, provider adapter calling `mp3_44100_128` straight into the existing storage adapter, content hashing so nothing renders twice, Render / Re-render / Approve in the question bank, character quota and monthly cap. `audioReadyCount()` tightens from `audio_key IS NOT NULL` to `audio_status = 'approved'`, so no form ships with audio nobody has heard
+- [ ] VPET exam engine: per-part timer, audio playback with a fixed replay count, microphone capture for parts H/I/J, autosave and submit. Capture is 16 kHz mono WAV via `AudioWorklet`, not `MediaRecorder` ([`docs/VOICE.md`](VOICE.md) §5.1), uploaded per item with an IndexedDB safety copy
+- [ ] AI speaking scoring ([`docs/VOICE.md`](VOICE.md) §6): deterministic metrics layer first, then the OpenAI adapter — ASR plus word matching for part H, audio-native with strict `json_schema` output for parts I and J, per-part rubrics and weights, reviewer override, and a manual-scoring fallback while no API key is set
 - [ ] Auto marking for parts A, C, E, F, G plus the score-to-CEFR conversion in `docs/SCORING.md`
 - [ ] Translate the whole interface to English — 12 student screens, 8 admin screens, every banner and empty state
 - [ ] VPET item bank: real items for all ten parts, tagged by part, with audio attached where the part needs it (**content, deliberately last**)
@@ -135,16 +141,18 @@ below uses the server-side route instead — which is also the more private one.
 | Piece | How it fits here |
 |---|---|
 | Sign-In | OAuth 2.0 redirect handled by the server. No `gsi/client` script, no CSP exception. In the VPET queue. |
-| Gemini | Speaking scoring, server-side call with inline audio. Already queued. |
-| Cloud Storage | Third driver in `server/storage.js`; the adapter takes it without touching call sites. |
+| Speaking scoring | Now OpenAI rather than Gemini, behind the provider adapter in [`docs/VOICE.md`](VOICE.md) §3 so either can be swapped in. Already queued. |
+| Cloud Storage | Third driver in `server/storage.js`; the adapter takes it without touching call sites. Two buckets — exam audio keeps forever, candidate speech expires ([`docs/VOICE.md`](VOICE.md) §12). |
 | Cloud Run | Container deploy, closest to how the app runs today. |
+| Cloud Tasks | Pushes queued render and scoring jobs to `/internal/jobs/run`. Needed because Cloud Run throttles CPU after the response is sent, which stalls an in-process worker ([`docs/VOICE.md`](VOICE.md) §7). |
 | Cloud SQL | SQLite has to go first — see below. |
 | Secret Manager | Every API key moves out of plain environment variables. |
 | Analytics | GA4's script breaks CSP; use the Measurement Protocol from the server instead. |
 | Classroom | Assignment hand-off, and results export to Sheets. |
 
-- [ ] Google Cloud Storage driver in `server/storage.js` — third driver beside disk and Supabase
-- [ ] **Move off SQLite to Cloud SQL Postgres.** The blocker for Cloud Run: local SQLite dies with the container. The Supabase export already proved the schema ports, so the work is rewriting the `q.all/get/run/val` layer to a pooled async client and making every call site await it. Big and invasive — do it in one dedicated pass, not piecemeal.
+- [ ] Google Cloud Storage driver in `server/storage.js` — third driver beside disk and Supabase, plus the `exam` / `response` namespace split ([`docs/VOICE.md`](VOICE.md) §5.3)
+- [ ] **Move off SQLite to Cloud SQL Postgres.** The blocker for Cloud Run: local SQLite dies with the container. The Supabase export already proved the schema ports, so the work is rewriting the `q.all/get/run/val` layer to a pooled async client and making every call site await it. Big and invasive — do it in one dedicated pass, not piecemeal. Also the blocker for a shared job queue, since `media_jobs` needs a database several instances can claim from.
+- [ ] `media_jobs` queue plus Cloud Tasks push delivery — one queue serving both TTS rendering and speech scoring, with lease-based claim, unique idempotency keys so nothing is billed twice, and dead jobs surfaced in the admin area ([`docs/VOICE.md`](VOICE.md) §7)
 - [ ] Containerise + deploy to Cloud Run, with Secret Manager for keys and a CI deploy from the working branch
 - [ ] Google Classroom hand-off: publish a test as an assignment, pull the roster, push scores back
 - [ ] Results export to Google Sheets for teachers
