@@ -82,52 +82,52 @@ function vstepSections() {
 function vpetSections() {
   return [
     {
-      name: 'Part A - Sentence Completion', skill: 'writing', type: 'Type the missing word',
+      name: 'Part A - Sentence Completion', part: 'A', skill: 'writing', type: 'Type the missing word',
       items: 10, minutes: 10, types: ['gap'],
       parts: [{ label: 'A1-A10', items: 10, note: 'One word missing per sentence; grammar and collocation in context.' }]
     },
     {
-      name: 'Part B - Passage Reconstruction', skill: 'writing', type: 'Read, then rewrite from memory',
+      name: 'Part B - Passage Reconstruction', part: 'B', skill: 'writing', type: 'Read, then rewrite from memory',
       items: 3, minutes: 9, types: ['essay'],
       parts: [{ label: 'B1-B3', items: 3, note: 'Passage shown for a short time, then hidden; rebuild it in your own words.' }]
     },
     {
-      name: 'Part C - Reading Comprehension', skill: 'reading', type: 'Multiple choice',
+      name: 'Part C - Reading Comprehension', part: 'C', skill: 'reading', type: 'Multiple choice',
       items: 3, minutes: 6, types: ['mcq'],
       parts: [{ label: 'C1-C3', items: 3, note: 'Short passages, one question each.' }]
     },
     {
-      name: 'Part D - E-Mail Writing', skill: 'writing', type: 'Two emails',
+      name: 'Part D - E-Mail Writing', part: 'D', skill: 'writing', type: 'Two emails',
       items: 2, minutes: 18, types: ['essay'],
       parts: [{ label: 'D1-D2', items: 2, note: 'Reply to a prompt in a set register; graded on task, tone and accuracy.' }]
     },
     {
-      name: 'Part E - Dictation', skill: 'listening', type: 'Type what you hear',
+      name: 'Part E - Dictation', part: 'E', skill: 'listening', type: 'Type what you hear',
       items: 8, minutes: 6, types: ['gap'], needsAudio: true,
       parts: [{ label: 'E1-E8', items: 8, note: 'One sentence per item, played a fixed number of times. Needs audio.' }]
     },
     {
-      name: 'Part F - Response Selection', skill: 'listening', type: 'Multiple choice',
+      name: 'Part F - Response Selection', part: 'F', skill: 'listening', type: 'Multiple choice',
       items: 8, minutes: 4, types: ['mcq'], needsAudio: true,
       parts: [{ label: 'F1-F8', items: 8, note: 'Hear a prompt, pick the natural reply. Needs audio.' }]
     },
     {
-      name: 'Part G - Passage Comprehension', skill: 'listening', type: 'Multiple choice',
+      name: 'Part G - Passage Comprehension', part: 'G', skill: 'listening', type: 'Multiple choice',
       items: 6, minutes: 6, types: ['mcq'], needsAudio: true,
       parts: [{ label: 'G1-G6', items: 6, note: 'Longer spoken passages with comprehension questions. Needs audio.' }]
     },
     {
-      name: 'Part H - Repeat', skill: 'speaking', type: 'Say the sentence back',
+      name: 'Part H - Repeat', part: 'H', skill: 'speaking', type: 'Say the sentence back',
       items: 10, minutes: 4, types: ['speaking'], needsAudio: true,
       parts: [{ label: 'H1-H10', items: 10, note: 'Repeat each sentence exactly. Scores pronunciation and fluency. Needs audio.' }]
     },
     {
-      name: 'Part I - Speaking Situations', skill: 'speaking', type: 'Respond to a situation',
+      name: 'Part I - Speaking Situations', part: 'I', skill: 'speaking', type: 'Respond to a situation',
       items: 2, minutes: 4, types: ['speaking'],
       parts: [{ label: 'I1-I2', items: 2, note: 'Speak for up to a minute in the register the situation calls for.' }]
     },
     {
-      name: 'Part J - Story Retellings', skill: 'speaking', type: 'Retell what you heard',
+      name: 'Part J - Story Retellings', part: 'J', skill: 'speaking', type: 'Retell what you heard',
       items: 3, minutes: 6, types: ['speaking'], needsAudio: true,
       parts: [{ label: 'J1-J3', items: 3, note: 'Listen to a short story, then retell it in your own words. Needs audio.' }]
     }
@@ -505,4 +505,28 @@ function inconsistencies() {
   return out;
 }
 
-module.exports = { FORMATS, totalItems, totalMinutes, inconsistencies };
+/** The lettered parts a family's items can be tagged with, in blueprint order.
+    Empty for a family whose format has no part table, which is every family
+    except VPET today. The API validates against this rather than a hardcoded
+    A-J list, so the blueprint stays the single source of truth. */
+function partsOf(familyId) {
+  const out = [];
+  for (const f of FORMATS) {
+    if (f.familyId !== familyId) continue;
+    for (const s of f.sections) if (s.part && !out.includes(s.part)) out.push(s.part);
+  }
+  return out;
+}
+
+/** The blueprint section that owns a part letter — used to describe a part in
+    the interface without repeating its name in a second place. */
+function sectionOfPart(familyId, part) {
+  for (const f of FORMATS) {
+    if (f.familyId !== familyId) continue;
+    const s = f.sections.find(x => x.part === part);
+    if (s) return s;
+  }
+  return null;
+}
+
+module.exports = { FORMATS, totalItems, totalMinutes, inconsistencies, partsOf, sectionOfPart };

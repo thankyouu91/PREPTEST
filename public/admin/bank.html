@@ -45,6 +45,10 @@
             <option value="mcq">Trắc nghiệm</option><option value="gap">Điền từ</option>
             <option value="essay">Tự luận</option><option value="speaking">Ghi âm</option>
           </select>
+          <label class="sr-only" for="f-part">Lọc phần thi</label>
+          <select id="f-part" class="input w-auto py-2.5" hidden>
+            <option value="">Mọi phần</option>
+          </select>
           <label class="sr-only" for="f-status">Lọc trạng thái</label>
           <select id="f-status" class="input w-auto py-2.5">
             <option value="active">Đang dùng</option>
@@ -76,21 +80,41 @@
   let families = [];
   try { families = (await AD.get('/catalog')).families; } catch (e) {}
 
-  const state = { family: '', skill: '', level: '', type: '', status: 'active', q: '', offset: 0, limit: 25 };
+  const state = { family: '', skill: '', level: '', type: '', part: '', status: 'active', q: '', offset: 0, limit: 25 };
 
   AD.qs('#fam-chips').innerHTML =
     '<button type="button" class="chip shrink-0" data-f="" aria-pressed="true">Mọi kỳ thi</button>' +
     families.map(f => '<button type="button" class="chip shrink-0" data-family="' + f.id + '" data-f="' + f.id + '" aria-pressed="false">' + AD.esc(f.name) + '</button>').join('');
+  /* Bộ lọc phần thi chỉ có nghĩa khi đang xem một kỳ thi có bảng phần: "mọi kỳ
+     thi" thì chữ A của VPET và chữ A của kỳ khác không cùng một thứ. */
+  function renderPartFilter() {
+    const sel = AD.qs('#f-part');
+    const fam = families.find(f => f.id === state.family);
+    const list = (fam && fam.parts) || [];
+    if (!list.length) {
+      sel.hidden = true;
+      if (state.part) { state.part = ''; }
+      return;
+    }
+    sel.hidden = false;
+    sel.innerHTML = '<option value="">Mọi phần</option>' +
+      '<option value="none">Chưa gắn phần</option>' +
+      list.map(p2 => '<option value="' + AD.esc(p2.part) + '"' +
+        (p2.part === state.part ? ' selected' : '') + '>' + AD.esc(p2.name) + '</option>').join('');
+  }
+
   AD.qs('#fam-chips').addEventListener('click', e => {
     const b = e.target.closest('[data-f]');
     if (!b) return;
-    state.family = b.getAttribute('data-f'); state.offset = 0;
+    state.family = b.getAttribute('data-f'); state.part = ''; state.offset = 0;
     AD.qsa('[data-f]').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+    renderPartFilter();
     load();
   });
-  ['skill', 'level', 'type', 'status'].forEach(k => AD.qs('#f-' + k).addEventListener('change', e => {
+  ['skill', 'level', 'type', 'part', 'status'].forEach(k => AD.qs('#f-' + k).addEventListener('change', e => {
     state[k] = e.target.value; state.offset = 0; load();
   }));
+  renderPartFilter();
   let t = null;
   AD.qs('#q').addEventListener('input', e => {
     state.q = e.target.value.trim(); state.offset = 0;
@@ -99,7 +123,7 @@
 
   async function load() {
     const p = new URLSearchParams({ limit: state.limit, offset: state.offset });
-    ['family', 'skill', 'level', 'type', 'status', 'q'].forEach(k => { if (state[k]) p.set(k, state[k]); });
+    ['family', 'skill', 'level', 'type', 'part', 'status', 'q'].forEach(k => { if (state[k]) p.set(k, state[k]); });
     try {
       const r = await AD.get('/admin/questions?' + p);
       AD.qs('#count').textContent = r.total
@@ -206,6 +230,13 @@
           '<span class="badge badge-muted">' + AD.esc(AD.SKILL_VI[i.skill] || i.skill) + '</span>' +
           '<span class="badge badge-muted">' + AD.esc(i.level) + '</span>' +
           '<span class="badge badge-muted">' + AD.esc(AD.TYPE_VI[i.type] || i.type) + '</span>' +
+          /* Kỳ thi có bảng phần mà câu chưa gắn phần thì nói thẳng: câu đó
+             không nằm trong pool nào cả, sinh đề sẽ không bao giờ bốc tới. */
+          (((fam && fam.parts && fam.parts.length) || i.part)
+            ? (i.part
+                ? '<span class="badge badge-ok">Phần ' + AD.esc(i.part) + '</span>'
+                : '<span class="badge badge-hl">Chưa gắn phần</span>')
+            : '') +
           (i.status === 'retired' ? '<span class="badge badge-hl">Đã ngưng</span>' : '') +
         '</span>' +
         '<span class="block text-[14.5px] leading-snug">' + AD.esc(i.prompt) + '</span>' +
@@ -227,7 +258,7 @@
   /* ---------- Thêm / sửa câu ---------- */
   function openEditor(item) {
     const isNew = !item;
-    const d = item || { familyId: families[0] && families[0].id, skill: 'listening', level: 'B1', type: 'mcq', prompt: '', options: ['', '', '', ''], answer: '', explanation: '', tags: [] };
+    const d = item || { familyId: families[0] && families[0].id, skill: 'listening', level: 'B1', type: 'mcq', part: '', prompt: '', options: ['', '', '', ''], answer: '', explanation: '', tags: [] };
     const mm = AD.modal(
       '<h3 class="text-lg font-extrabold tracking-tight">' + (isNew ? 'Thêm câu hỏi' : 'Sửa câu hỏi') + '</h3>' +
       '<div class="grid gap-4 mt-5">' +
@@ -241,6 +272,12 @@
           '<div><label class="label" for="q-type">Dạng câu</label><select class="input" id="q-type">' +
             ['mcq','gap','essay','speaking'].map(t2 => '<option value="' + t2 + '"' + (t2 === d.type ? ' selected' : '') + '>' + AD.TYPE_VI[t2] + '</option>').join('') + '</select></div>' +
         '</div>' +
+        /* Phần thi chỉ hiện với kỳ thi có bảng phần. Chọn phần thì kỹ năng và
+           dạng câu phải theo phần đó — máy chủ từ chối nếu lệch, nên ở đây đặt
+           luôn cho khớp thay vì để người nhập đoán. */
+        '<div id="q-part-box" hidden><label class="label" for="q-part">Phần thi</label>' +
+          '<select class="input" id="q-part"></select>' +
+          '<p class="help mt-1.5">Câu không gắn phần sẽ không nằm trong pool của phần nào, nên không sinh đề được.</p></div>' +
         '<div><label class="label" for="q-prompt">Nội dung câu hỏi</label>' +
           '<textarea class="input" id="q-prompt" rows="3">' + AD.esc(d.prompt) + '</textarea></div>' +
         '<div id="q-mcq">' +
@@ -258,6 +295,31 @@
     const typeEl = mm.el.querySelector('#q-type');
     const optWrap = mm.el.querySelector('#q-options');
     const mcqBox = mm.el.querySelector('#q-mcq');
+    const famEl = mm.el.querySelector('#q-family');
+    const skillEl = mm.el.querySelector('#q-skill');
+    const partEl = mm.el.querySelector('#q-part');
+    const partBox = mm.el.querySelector('#q-part-box');
+
+    /** Danh sách phần của kỳ thi đang chọn, lấy từ blueprint qua /catalog */
+    const partsOf = famId => ((families.find(f => f.id === famId) || {}).parts) || [];
+
+    function renderParts() {
+      const list = partsOf(famEl.value);
+      partBox.hidden = !list.length;
+      if (!list.length) { partEl.innerHTML = ''; return; }
+      partEl.innerHTML = '<option value="">— chưa gắn phần —</option>' +
+        list.map(p2 => '<option value="' + AD.esc(p2.part) + '"' +
+          (p2.part === d.part ? ' selected' : '') + '>' + AD.esc(p2.name) + '</option>').join('');
+    }
+    /* Chọn phần thì kéo kỹ năng và dạng câu theo — phần A là Viết/điền từ, có
+       chọn kiểu khác cũng bị máy chủ từ chối. */
+    function syncFromPart() {
+      const p2 = partsOf(famEl.value).find(x => x.part === partEl.value);
+      if (!p2) return;
+      if (p2.skill) skillEl.value = p2.skill;
+      if (p2.types && p2.types.length && !p2.types.includes(typeEl.value)) typeEl.value = p2.types[0];
+      syncType();
+    }
 
     function renderOptions() {
       const opts = (d.options && d.options.length ? d.options : ['', '', '', '']).slice(0, 6);
@@ -272,8 +334,10 @@
     function syncType() {
       mcqBox.hidden = typeEl.value !== 'mcq';
     }
-    renderOptions(); syncType();
+    renderOptions(); syncType(); renderParts();
     typeEl.addEventListener('change', syncType);
+    famEl.addEventListener('change', renderParts);
+    partEl.addEventListener('change', syncFromPart);
 
     mm.el.querySelector('#q-save').addEventListener('click', async () => {
       const err = mm.el.querySelector('#q-err');
@@ -286,6 +350,7 @@
         skill: mm.el.querySelector('#q-skill').value,
         level: mm.el.querySelector('#q-level').value,
         type: typeEl.value,
+        part: partBox.hidden ? '' : partEl.value,
         prompt: mm.el.querySelector('#q-prompt').value,
         explanation: mm.el.querySelector('#q-exp').value,
         options: typeEl.value === 'mcq' ? options : [],
@@ -332,7 +397,7 @@
     return rows.filter(r => r.some(cell => cell.trim() !== ''));
   }
 
-  const CSV_COLS = ['ky_thi','ky_nang','do_kho','dang_cau','noi_dung',
+  const CSV_COLS = ['ky_thi','ky_nang','do_kho','dang_cau','phan_thi','noi_dung',
                     'phuong_an_1','phuong_an_2','phuong_an_3','phuong_an_4','dap_an','giai_thich'];
   const SKILL_ALIAS = { nghe:'listening', doc:'reading', viet:'writing', noi:'speaking',
                         listening:'listening', reading:'reading', writing:'writing', speaking:'speaking' };
@@ -351,6 +416,10 @@
     const skill = SKILL_ALIAS[norm(get('ky_nang'))];
     const level = get('do_kho').toUpperCase();
     const type = TYPE_ALIAS[norm(get('dang_cau'))];
+    /* Chữ cái phần thi: bỏ trống với kỳ thi không có bảng phần. Máy chủ mới là
+       nơi kiểm tra chữ cái có thật và có khớp kỹ năng hay không — ở đây chỉ
+       chuẩn hoá về chữ hoa để "a" và "A" cùng vào một chỗ. */
+    const part = get('phan_thi').trim().toUpperCase();
     const prompt = get('noi_dung');
     const options = ['phuong_an_1','phuong_an_2','phuong_an_3','phuong_an_4'].map(get).filter(Boolean);
     const answer = get('dap_an');
@@ -365,7 +434,7 @@
       if (!options.includes(answer)) return { error: 'Đáp án phải trùng một trong các phương án.' };
     }
     return {
-      item: { familyId, skill, level, type, prompt,
+      item: { familyId, skill, level, type, part, prompt,
               options: type === 'mcq' ? options : [],
               answer: type === 'mcq' ? answer : '',
               explanation: get('giai_thich'), tags: ['nhập csv'] }
@@ -390,7 +459,8 @@
       /* ----- Tab CSV ----- */
       '<div role="tabpanel" id="pn-csv" aria-labelledby="tb-csv" class="grid gap-4 mt-5">' +
         '<div class="card bg-brand-soft border-0 p-4">' +
-          '<p class="text-[13.5px] leading-relaxed">Cột theo thứ tự: <b>ky_thi, ky_nang, do_kho, dang_cau, noi_dung, phuong_an_1..4, dap_an, giai_thich</b>. ' +
+          '<p class="text-[13.5px] leading-relaxed">Cột theo thứ tự: <b>ky_thi, ky_nang, do_kho, dang_cau, phan_thi, noi_dung, phuong_an_1..4, dap_an, giai_thich</b>. ' +
+          'Cột <b>phan_thi</b> là chữ cái phần thi (VPET: A–J), để trống với kỳ thi chưa có bảng phần. ' +
             'Kỹ năng nhận cả tiếng Việt (nghe, đọc, viết, nói) lẫn tiếng Anh.</p>' +
           '<a href="/api/admin/questions/template.csv" class="btn btn-soft btn-sm mt-3">' +
             AD.icon('download', 'w-4 h-4') + 'Tải tệp CSV mẫu</a>' +
@@ -399,7 +469,7 @@
           '<input class="input py-2" id="c-file" type="file" accept=".csv,text/csv"></div>' +
         '<div><label class="label" for="c-text">Hoặc dán trực tiếp nội dung CSV</label>' +
           '<textarea class="input font-mono text-[12.5px]" id="c-text" rows="6" spellcheck="false" ' +
-            'placeholder="ky_thi,ky_nang,do_kho,dang_cau,noi_dung,..."></textarea></div>' +
+            'placeholder="ky_thi,ky_nang,do_kho,dang_cau,phan_thi,noi_dung,..."></textarea></div>' +
         '<button type="button" id="c-preview" class="btn btn-ghost btn-md">Xem trước</button>' +
         '<div id="c-result"></div>' +
       '</div>' +

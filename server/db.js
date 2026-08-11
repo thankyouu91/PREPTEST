@@ -343,6 +343,22 @@ addColumnIfMissing('questions', 'audio_key', 'TEXT');
 addColumnIfMissing('questions', 'audio_bytes', 'INTEGER');
 addColumnIfMissing('questions', 'audio_at', 'TEXT');
 
+/* Which lettered VPET part an item belongs to (A-J), or NULL for families that
+   have no part table. Skill alone cannot separate them: parts B and D are both
+   writing essays, F and G are both listening multiple choice, H and J are both
+   spoken answers to audio. Drawing those from one skill-wide pool builds an
+   exam that looks right and asks the wrong things - a "repeat this sentence"
+   item landing in "retell the story". The letter is what keeps each part
+   drawing from its own pool. */
+addColumnIfMissing('questions', 'part', 'TEXT');
+db.exec('CREATE INDEX IF NOT EXISTS idx_q_part ON questions (family_id, part, status)');
+
+/* A section on a built test remembers which lettered part it is, so re-drawing
+   its items later pulls from the same pool the generator used. Reading the
+   letter back out of the section name would break the moment an admin renames
+   it, which they are free to do. */
+addColumnIfMissing('sections', 'part', 'TEXT');
+
 /* ============================== TIỆN ÍCH ============================== */
 const nowISO = () => new Date().toISOString();
 const jparse = (s, fb) => { try { return JSON.parse(s); } catch (e) { return fb; } };

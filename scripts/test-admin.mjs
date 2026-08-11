@@ -191,9 +191,14 @@ const run = async () => {
   r = await call('GET', '/api/admin/questions/template.csv');
   const csvLines = String(r.data).replace(/^\ufeff/, '').split('\r\n');
   check('Tải được CSV mẫu có tiêu đề đúng',
-    r.status === 200 && csvLines[0].startsWith('ky_thi,ky_nang,do_kho,dang_cau,noi_dung'),
-    csvLines[0] && csvLines[0].slice(0, 50));
+    r.status === 200 && csvLines[0].startsWith('ky_thi,ky_nang,do_kho,dang_cau,phan_thi,noi_dung'),
+    csvLines[0] && csvLines[0].slice(0, 60));
   check('CSV mẫu có dòng ví dụ', csvLines.length >= 4, 'dòng ' + csvLines.length);
+  /* Mẫu phải cho thấy cách điền cột phần thi, nếu không người dùng chỉ biết là
+     có cột đó mà không biết viết gì vào. */
+  check('CSV mẫu có ví dụ VPET đã gắn phần',
+    csvLines.some(l => /^vpet,/.test(l) && /,[A-J],/.test(l)),
+    csvLines.find(l => /^vpet,/.test(l)) || 'không có dòng vpet');
 
   /* 8. Đề thi: tạo thủ công → thêm phần → gắn câu → phát hành */
   r = await call('POST', '/api/admin/tests', {
@@ -292,6 +297,118 @@ const run = async () => {
   check('Từ chối cấp mã không chọn gói', r.status === 400, 'status ' + r.status);
   r = await call('POST', '/api/admin/codes', { planId: 'khong-co-goi-nay', unlockType: 'family', unlockRef: 'vpet', qty: 1 });
   check('Từ chối gói không có thật', r.status === 400, 'status ' + r.status);
+
+  /* ---- Gắn nhãn phần thi VPET (A-J) ---- */
+  console.log('\n\x1b[1m== Nhãn phần thi VPET ==\x1b[0m');
+
+  /* Kỹ năng không tách nổi các phần: B và D đều là Viết/tự luận, F và G đều là
+     Nghe/trắc nghiệm, H và J đều là Nói. Không có chữ cái thì hai phần khác
+     nhau dùng chung một pool. */
+  r = await call('POST', '/api/admin/questions', {
+    familyId: 'vpet', skill: 'writing', level: 'B1', type: 'gap', part: 'A',
+    prompt: 'Kiểm thử phần A: She has lived here ____ 2019.', answer: 'since'
+  });
+  check('Tạo câu VPET có gắn phần A', r.status === 201, 'status ' + r.status);
+  const partAId = r.data.id;
+
+  r = await call('POST', '/api/admin/questions', {
+    familyId: 'vpet', skill: 'writing', level: 'B1', type: 'essay', part: 'D',
+    prompt: 'Kiểm thử phần D: viết thư trả lời lời mời họp.'
+  });
+  check('Tạo câu VPET phần D (cùng kỹ năng Viết, khác phần)', r.status === 201, 'status ' + r.status);
+  const partDId = r.data.id;
+
+  r = await call('GET', '/api/admin/questions?family=vpet&part=A');
+  check('Lọc theo phần chỉ trả câu của đúng phần đó',
+    r.data.items.length > 0 && r.data.items.every(x => x.part === 'A'),
+    JSON.stringify(r.data.items.map(x => x.part)));
+  check('Câu phần D không lọt vào danh sách phần A',
+    !r.data.items.some(x => x.id === partDId));
+
+  r = await call('GET', '/api/admin/questions?family=vpet&part=none');
+  check('Lọc "chưa gắn phần" tìm được câu còn thiếu nhãn',
+    r.data.items.every(x => x.part === null),
+    JSON.stringify(r.data.items.slice(0, 3).map(x => x.part)));
+
+  /* Chữ cái phải có thật, phải khớp kỹ năng và dạng câu của phần đó — sai thì
+     câu nằm nhầm pool và chỉ lộ ra khi thí sinh gặp nó giữa bài thi. */
+  r = await call('POST', '/api/admin/questions', {
+    familyId: 'vpet', skill: 'writing', level: 'B1', type: 'gap', part: 'Z',
+    prompt: 'Kiểm thử phần không có thật.'
+  });
+  check('Từ chối chữ cái phần không có trong blueprint', r.status === 400, 'status ' + r.status);
+
+  r = await call('POST', '/api/admin/questions', {
+    familyId: 'vpet', skill: 'speaking', level: 'B1', type: 'speaking', part: 'C',
+    prompt: 'Kiểm thử phần C nhưng khai kỹ năng Nói.'
+  });
+  check('Từ chối phần lệch kỹ năng (C là Đọc)', r.status === 400, 'status ' + r.status);
+
+  r = await call('POST', '/api/admin/questions', {
+    familyId: 'vpet', skill: 'writing', level: 'B1', type: 'essay', part: 'A',
+    prompt: 'Kiểm thử phần A nhưng khai dạng tự luận.'
+  });
+  check('Từ chối phần lệch dạng câu (A chỉ nhận điền từ)', r.status === 400, 'status ' + r.status);
+
+  r = await call('POST', '/api/admin/questions', {
+    familyId: 'ielts', skill: 'reading', level: 'B1', type: 'mcq', part: 'A',
+    options: ['a', 'b'], answer: 'a',
+    prompt: 'Kiểm thử gắn phần cho kỳ thi không có bảng phần.'
+  });
+  check('Từ chối gắn phần cho kỳ thi chưa có bảng phần', r.status === 400, 'status ' + r.status);
+
+  /* Báo cáo độ phủ phải tách theo từng phần: tổng theo kỹ năng che mất việc
+     phần này thừa còn phần kia trắng. */
+  r = await call('GET', '/api/admin/questions/availability?family=vpet&level=B1');
+  const parts = r.data.parts || [];
+  check('Báo cáo khả dụng tách theo 10 phần VPET', parts.length === 10, 'thấy ' + parts.length);
+  const pa = parts.find(x => x.part === 'A');
+  check('Phần A đếm đúng số câu cần và số câu đang có',
+    pa && pa.need === 10 && pa.total >= 1, JSON.stringify(pa));
+  check('Báo cáo đếm riêng số câu chưa gắn phần', typeof r.data.untagged === 'number',
+    String(r.data.untagged));
+
+  /* Format readiness cũng phải đi qua pool theo phần, nếu không nó hứa đủ câu
+     trong khi trình sinh đề bốc không ra. */
+  r = await call('GET', '/api/admin/exam-formats?familyId=vpet');
+  const vf = r.data.formats.find(f => f.familyId === 'vpet');
+  const secA = vf.sections.find(x => x.part === 'A');
+  const secB = vf.sections.find(x => x.part === 'B');
+  check('Mỗi phần trong báo cáo format mang chữ cái của nó',
+    vf.sections.filter(x => x.part).length === 10, String(vf.sections.filter(x => x.part).length));
+  check('Phần A đếm theo pool riêng của phần A', secA && secA.bank.total >= 1, JSON.stringify(secA && secA.bank));
+  check('Phần B không mượn câu của phần A dù cùng kỹ năng Viết',
+    secB && secB.bank.total === 0, JSON.stringify(secB && secB.bank));
+
+  /* Sinh đề phải báo thiếu theo phần, không phải theo kỹ năng */
+  r = await call('POST', '/api/admin/tests/generate', {
+    familyId: 'vpet', level: 'B1',
+    blueprint: [{ name: 'Part B - Passage Reconstruction', part: 'B', skill: 'writing', type: 'Viết lại', items: 3, minutes: 9, types: ['essay'] }]
+  });
+  check('Sinh đề báo thiếu đúng phần B, không lấy câu phần khác',
+    r.status === 409 && r.data.shortages[0].part === 'B', JSON.stringify(r.data.shortages || r.data));
+
+  /* Section nhớ chữ cái của nó, nếu không lần bốc lại sau sẽ bốc trong cả kỹ
+     năng và kéo câu của phần khác vào. */
+  r = await call('POST', '/api/admin/tests', {
+    familyId: 'vpet', title: 'Đề kiểm thử nhãn phần', level: 'B1', durationMin: 30
+  });
+  const partTestId = r.data.id;
+  r = await call('POST', '/api/admin/tests/' + partTestId + '/sections', {
+    name: 'Part A - Sentence Completion', skill: 'writing', type: 'Điền từ', minutes: 10, part: 'A'
+  });
+  check('Thêm phần thi có gắn chữ cái', r.status === 201, 'status ' + r.status);
+  r = await call('GET', '/api/admin/tests/' + partTestId);
+  check('Đề trả về chữ cái của phần', r.data.sections[0].part === 'A', String(r.data.sections[0].part));
+
+  r = await call('POST', '/api/admin/tests/' + partTestId + '/sections', {
+    name: 'Phần sai', skill: 'writing', type: 'Điền từ', minutes: 10, part: 'Z'
+  });
+  check('Từ chối chữ cái phần không có thật khi thêm phần', r.status === 400, 'status ' + r.status);
+  await call('DELETE', '/api/admin/tests/' + partTestId);
+
+  await call('POST', '/api/admin/questions/' + partAId + '/status', { status: 'retired' });
+  await call('POST', '/api/admin/questions/' + partDId + '/status', { status: 'retired' });
 
   r = await call('GET', '/api/admin/codes?batch=' + batchId);
   check('Liệt kê mã theo lô', r.data.total === 5, 'total ' + r.data.total);

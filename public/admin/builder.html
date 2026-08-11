@@ -39,10 +39,19 @@
   const m = location.pathname.match(/\/admin\/de-thi\/([^/]+)\/?/);
   const testId = m ? decodeURIComponent(m[1]) : '';
   let T = null;
+  let FAM_PARTS = null;
 
   async function load() {
     try {
       T = await AD.get('/admin/tests/' + encodeURIComponent(testId));
+      /* Bảng phần thi của kỳ này, để phần thêm tay cũng gắn được chữ cái —
+         không có chữ cái thì lần bốc lại sau sẽ bốc trong cả kỹ năng. */
+      if (!FAM_PARTS) {
+        try {
+          const cat = await AD.get('/catalog');
+          FAM_PARTS = ((cat.families.find(f => f.id === T.familyId) || {}).parts) || [];
+        } catch (e) { FAM_PARTS = []; }
+      }
       render();
     } catch (e) {
       AD.qs('#page').innerHTML = AD.errorBox(e.message, 'retry');
@@ -116,7 +125,8 @@
         '<span class="w-9 h-9 rounded-xl bg-brand-soft text-brand-strong inline-flex items-center justify-center shrink-0">' +
           AD.icon('layers', 'w-[18px] h-[18px]') + '</span>' +
         '<span class="min-w-0">' +
-          '<b class="block">' + AD.esc(s.name) + '</b>' +
+          '<b class="block">' + AD.esc(s.name) +
+            (s.part ? ' <span class="badge badge-ok align-middle">Phần ' + AD.esc(s.part) + '</span>' : '') + '</b>' +
           '<span class="block text-[12.5px] text-muted font-semibold">' +
             AD.esc(AD.SKILL_VI[s.skill] || s.skill) + ' · ' + AD.esc(s.type) + ' · ' + s.minutes + ' phút · ' +
             s.items.length + ' câu</span>' +
@@ -205,6 +215,12 @@
           '<div><label class="label" for="s-min">Thời lượng (phút)</label>' +
             '<input class="input" id="s-min" type="number" min="0" max="600" value="30"></div>' +
         '</div>' +
+        ((FAM_PARTS && FAM_PARTS.length)
+          ? '<div><label class="label" for="s-part">Phần thi</label><select class="input" id="s-part">' +
+              '<option value="">— không gắn phần —</option>' +
+              FAM_PARTS.map(p2 => '<option value="' + AD.esc(p2.part) + '">' + AD.esc(p2.name) + '</option>').join('') +
+            '</select><p class="help mt-1.5">Gắn phần thì lần bốc lại sau chỉ bốc câu của đúng phần đó.</p></div>'
+          : '') +
         '<div><label class="label" for="s-type">Dạng câu mô tả cho học viên</label>' +
           '<input class="input" id="s-type" value="Trắc nghiệm"></div>' +
         '<div class="banner banner-error" id="s-err"><span id="s-err-text"></span></div>' +
@@ -212,8 +228,17 @@
           '<button type="button" data-close class="btn btn-ghost btn-md">Huỷ</button></div>' +
       '</div>');
     const nameEl = mm.el.querySelector('#s-name'), skillEl = mm.el.querySelector('#s-skill');
+    const partEl = mm.el.querySelector('#s-part');
     skillEl.addEventListener('change', () => {
       if (!nameEl.value) nameEl.placeholder = 'VD: ' + skillEl.options[skillEl.selectedIndex].text;
+    });
+    /* Chọn phần thì điền sẵn tên và kỹ năng theo blueprint — gõ lại bằng tay
+       chỉ tạo cơ hội cho phần A mang kỹ năng của phần C. */
+    if (partEl) partEl.addEventListener('change', () => {
+      const p2 = FAM_PARTS.find(x => x.part === partEl.value);
+      if (!p2) return;
+      if (p2.skill) skillEl.value = p2.skill;
+      if (!nameEl.value) nameEl.value = p2.name;
     });
     mm.el.querySelector('#s-save').addEventListener('click', async () => {
       const err = mm.el.querySelector('#s-err');
@@ -223,7 +248,8 @@
           name: nameEl.value || skillEl.options[skillEl.selectedIndex].text,
           skill: skillEl.value,
           type: mm.el.querySelector('#s-type').value,
-          minutes: +mm.el.querySelector('#s-min').value || 0
+          minutes: +mm.el.querySelector('#s-min').value || 0,
+          part: partEl ? partEl.value : ''
         });
         mm.close(); AD.toast('Đã thêm phần thi'); await load();
       } catch (e) {

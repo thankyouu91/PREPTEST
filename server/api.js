@@ -317,13 +317,17 @@ router.get('/admin/questions', (req, res) => {
   if (req.query.type) add('type = ?', str(req.query.type, 20));
   if (req.query.status) add('status = ?', str(req.query.status, 20));
   if (req.query.q) add('prompt LIKE ?', '%' + str(req.query.q, 80) + '%');
+  /* part=none finds the items that still have no letter — the pile an admin has
+     to work through before a VPET test can be generated at all. */
+  if (req.query.part === 'none') where.push('part IS NULL');
+  else if (req.query.part) add('part = ?', str(req.query.part, 2).toUpperCase());
 
   const limit = clamp(int(req.query.limit, 30), 1, 200);
   const offset = clamp(int(req.query.offset, 0), 0, 1e6);
   const sql = 'FROM questions WHERE ' + where.join(' AND ');
   const total = q.val('SELECT COUNT(*) c ' + sql, ...args);
   const rows = q.all(
-    `SELECT id, family_id, skill, level, type, prompt, options_json, answer, explanation, tags_json, status, created_at,
+    `SELECT id, family_id, skill, level, type, part, prompt, options_json, answer, explanation, tags_json, status, created_at,
             audio_key, audio_bytes, audio_at
        ${sql} ORDER BY id DESC LIMIT ? OFFSET ?`, ...args, limit, offset);
 
@@ -331,6 +335,7 @@ router.get('/admin/questions', (req, res) => {
     total, limit, offset,
     items: rows.map(r => ({
       id: r.id, familyId: r.family_id, skill: r.skill, level: r.level, type: r.type,
+      part: r.part || null,
       prompt: r.prompt, options: jparse(r.options_json, []), answer: r.answer,
       explanation: r.explanation, tags: jparse(r.tags_json, []), status: r.status, createdAt: r.created_at,
       /* The key itself never leaves the server - the browser only needs to know
@@ -359,8 +364,33 @@ function readQuestion(body) {
     if (!options.includes(answer)) return { err: 'Đáp án phải là một trong các phương án đã nhập.' };
   }
   const tags = Array.isArray(body.tags) ? body.tags.map(t => str(t, 30)).filter(Boolean).slice(0, 10) : [];
+
+  /* The lettered part, for families whose format has a part table. Validated
+     against the blueprint rather than a hardcoded A-J, and cross-checked
+     against the skill the part actually tests: a speaking item filed under
+     Part C would sit in the pool for a reading part and never be spotted until
+     a candidate met it mid-exam. */
+  const partsAllowed = EXAM_FORMATS.partsOf(familyId);
+  const part = str(body.part, 2).toUpperCase();
+  if (part) {
+    if (!partsAllowed.length) {
+      return { err: 'Kỳ thi này chưa có bảng phần thi để gắn nhãn.' };
+    }
+    if (!partsAllowed.includes(part)) {
+      return { err: 'Phần không hợp lệ. Kỳ thi này có các phần: ' + partsAllowed.join(', ') + '.' };
+    }
+    const sec = EXAM_FORMATS.sectionOfPart(familyId, part);
+    if (sec && sec.skill !== skill) {
+      return { err: 'Phần ' + part + ' thuộc kỹ năng ' + sec.skill + ', không phải ' + skill + '.' };
+    }
+    if (sec && Array.isArray(sec.types) && sec.types.length && !sec.types.includes(type)) {
+      return { err: 'Phần ' + part + ' chỉ nhận dạng câu: ' + sec.types.join(', ') + '.' };
+    }
+  }
+
   return {
     familyId, skill, level, type, prompt, options, answer,
+    part: part || null,
     explanation: str(body.explanation, 2000), tags
   };
 }
@@ -369,11 +399,11 @@ router.post('/admin/questions', (req, res) => {
   const d = readQuestion(req.body || {});
   if (d.err) return bad(res, d.err);
   const r = q.run(
-    `INSERT INTO questions (family_id,skill,level,type,prompt,options_json,answer,explanation,tags_json,status,created_at,created_by)
-     VALUES (?,?,?,?,?,?,?,?,?,'active',?,?)`,
-    d.familyId, d.skill, d.level, d.type, d.prompt, JSON.stringify(d.options), d.answer,
+    `INSERT INTO questions (family_id,skill,level,type,part,prompt,options_json,answer,explanation,tags_json,status,created_at,created_by)
+     VALUES (?,?,?,?,?,?,?,?,?,?,'active',?,?)`,
+    d.familyId, d.skill, d.level, d.type, d.part, d.prompt, JSON.stringify(d.options), d.answer,
     d.explanation, JSON.stringify(d.tags), nowISO(), req.admin.id);
-  audit(req, 'question.create', 'questions/' + r.lastInsertRowid, { family: d.familyId, skill: d.skill });
+  audit(req, 'question.create', 'questions/' + r.lastInsertRowid, { family: d.familyId, skill: d.skill, part: d.part });
   res.status(201).json({ id: Number(r.lastInsertRowid) });
 });
 
@@ -382,9 +412,9 @@ router.put('/admin/questions/:id', (req, res) => {
   if (!q.val('SELECT 1 FROM questions WHERE id=?', id)) return res.status(404).json({ error: 'Không tìm thấy câu hỏi.' });
   const d = readQuestion(req.body || {});
   if (d.err) return bad(res, d.err);
-  q.run(`UPDATE questions SET family_id=?, skill=?, level=?, type=?, prompt=?, options_json=?, answer=?, explanation=?, tags_json=?
+  q.run(`UPDATE questions SET family_id=?, skill=?, level=?, type=?, part=?, prompt=?, options_json=?, answer=?, explanation=?, tags_json=?
           WHERE id=?`,
-    d.familyId, d.skill, d.level, d.type, d.prompt, JSON.stringify(d.options), d.answer,
+    d.familyId, d.skill, d.level, d.type, d.part, d.prompt, JSON.stringify(d.options), d.answer,
     d.explanation, JSON.stringify(d.tags), id);
   audit(req, 'question.update', 'questions/' + id, {});
   res.json({ ok: true });
@@ -479,11 +509,11 @@ router.post('/admin/questions/bulk', (req, res) => {
 
   tx(() => {
     const ins = require('./db').db.prepare(
-      `INSERT INTO questions (family_id,skill,level,type,prompt,options_json,answer,explanation,tags_json,status,created_at,created_by)
-       VALUES (?,?,?,?,?,?,?,?,?,'active',?,?)`);
+      `INSERT INTO questions (family_id,skill,level,type,part,prompt,options_json,answer,explanation,tags_json,status,created_at,created_by)
+       VALUES (?,?,?,?,?,?,?,?,?,?,'active',?,?)`);
     const at = nowISO();
     for (const d of ok) {
-      ins.run(d.familyId, d.skill, d.level, d.type, d.prompt, JSON.stringify(d.options),
+      ins.run(d.familyId, d.skill, d.level, d.type, d.part, d.prompt, JSON.stringify(d.options),
         d.answer, d.explanation, JSON.stringify(d.tags), at, req.admin.id);
     }
   });
@@ -496,11 +526,14 @@ router.post('/admin/questions/bulk', (req, res) => {
 router.get('/admin/questions/template.csv', (req, res) => {
   const fam = q.get('SELECT id FROM families ORDER BY sort LIMIT 1');
   const famId = fam ? fam.id : 'ielts';
+  /* Cột phan_thi để trống với kỳ thi không có bảng phần; với VPET thì bắt buộc,
+     vì câu không có chữ cái sẽ không nằm trong pool của phần nào cả. */
   const rows = [
-    'ky_thi,ky_nang,do_kho,dang_cau,noi_dung,phuong_an_1,phuong_an_2,phuong_an_3,phuong_an_4,dap_an,giai_thich',
-    `${famId},reading,B1,mcq,"Chọn từ đồng nghĩa với ""rapid"".",quick,slow,heavy,quiet,quick,"Rapid nghĩa là nhanh."`,
-    `${famId},listening,B2,gap,"Nghe và điền số còn thiếu: The train leaves at ____.",,,,,,`,
-    `${famId},writing,B2,essay,"Some people think exams should be replaced by coursework. Discuss.",,,,,,`
+    'ky_thi,ky_nang,do_kho,dang_cau,phan_thi,noi_dung,phuong_an_1,phuong_an_2,phuong_an_3,phuong_an_4,dap_an,giai_thich',
+    `${famId},reading,B1,mcq,,"Chọn từ đồng nghĩa với ""rapid"".",quick,slow,heavy,quiet,quick,"Rapid nghĩa là nhanh."`,
+    `${famId},listening,B2,gap,,"Nghe và điền số còn thiếu: The train leaves at ____.",,,,,,`,
+    'vpet,reading,B1,mcq,C,"Đọc đoạn văn rồi chọn ý đúng.",A,B,C,D,A,"Câu VPET phải ghi rõ phần: C là Reading Comprehension."',
+    'vpet,writing,B1,gap,A,"Điền một từ còn thiếu: She has lived here ____ 2019.",,,,,since,"Phần A là Sentence Completion."'
   ];
   res.setHeader('Content-Type', 'text/csv; charset=utf-8');
   res.setHeader('Content-Disposition', 'attachment; filename="mau-cau-hoi.csv"');
@@ -525,20 +558,51 @@ router.get('/admin/questions/availability', (req, res) => {
       total: (any.find(r => r.skill === s) || {}).total || 0
     };
   }
-  res.json({ family, level, availability: out });
+  /* Với kỳ thi có bảng phần thi, tổng theo kỹ năng không nói lên điều gì: 20
+     câu Nói có thể toàn của phần H mà phần I và J trắng. Trả về từng phần một,
+     kèm số câu format cần, để màn hình chỉ đúng chỗ đang thiếu. */
+  const parts = EXAM_FORMATS.partsOf(family).map(letter => {
+    const sec = EXAM_FORMATS.sectionOfPart(family, letter) || {};
+    const bank = bankCount(family, sec.skill, sec.types, level, letter);
+    return {
+      part: letter, name: sec.name || letter, skill: sec.skill || '',
+      need: sec.items || 0, needsAudio: !!sec.needsAudio,
+      exact: bank.exact, total: bank.total,
+      short: Math.max(0, (sec.items || 0) - bank.total)
+    };
+  });
+  /* Câu chưa gắn phần: không thuộc pool nào, nên phải đếm riêng chứ không im
+     lặng biến mất khỏi báo cáo. */
+  const untagged = EXAM_FORMATS.partsOf(family).length
+    ? q.val("SELECT COUNT(*) c FROM questions WHERE family_id=? AND status='active' AND part IS NULL", family)
+    : 0;
+  res.json({ family, level, availability: out, parts, untagged });
 });
 
 /* ======================= FORMAT ĐỀ CHUẨN =======================
    Bộ format đề của từng kỳ thi + phân tích ngân hàng câu hỏi có đủ để
    sinh đề theo format đó chưa. Admin chọn format thay vì gõ tay blueprint. */
 
-/** Đếm câu dùng được cho một khối: đúng kỳ thi, kỹ năng, dạng câu cho phép */
-function bankCount(familyId, skill, types, level) {
+/* One pool definition, used by the counters and by the generator, so what the
+   readiness report promises is exactly what the generator can draw from. A
+   section that names a lettered part draws only from items carrying that
+   letter: skill and type cannot separate parts B and D (both writing essays),
+   F and G (both listening multiple choice) or H and J (both spoken answers to
+   audio), so without the letter those parts share one pool and an exam gets
+   built that looks right and asks the wrong things. */
+function poolWhere(familyId, skill, types, part) {
   const t = Array.isArray(types) && types.length ? types.filter(x => QTYPES.includes(x)) : QTYPES;
   const holes = t.map(() => '?').join(',');
+  let sql = `family_id=? AND skill=? AND type IN (${holes}) AND status='active'`;
   const args = [familyId, skill, ...t];
-  const base = `SELECT COUNT(*) c FROM questions
-                 WHERE family_id=? AND skill=? AND type IN (${holes}) AND status='active'`;
+  if (part) { sql += ' AND part=?'; args.push(part); }
+  return { sql, args };
+}
+
+/** Đếm câu dùng được cho một khối: đúng kỳ thi, kỹ năng, dạng câu, phần thi */
+function bankCount(familyId, skill, types, level, part) {
+  const { sql, args } = poolWhere(familyId, skill, types, part);
+  const base = 'SELECT COUNT(*) c FROM questions WHERE ' + sql;
   return {
     total: q.val(base, ...args),
     exact: level ? q.val(base + ' AND level=?', ...args, level) : 0
@@ -547,13 +611,9 @@ function bankCount(familyId, skill, types, level) {
 
 /** Same pool as bankCount, but only the items that already have an MP3.
     A VPET audio part cannot be generated from items that have no sound. */
-function audioReadyCount(familyId, skill, types, level) {
-  const t = Array.isArray(types) && types.length ? types.filter(x => QTYPES.includes(x)) : QTYPES;
-  const holes = t.map(() => '?').join(',');
-  const args = [familyId, skill, ...t];
-  const base = `SELECT COUNT(*) c FROM questions
-                 WHERE family_id=? AND skill=? AND type IN (${holes}) AND status='active'
-                   AND audio_key IS NOT NULL`;
+function audioReadyCount(familyId, skill, types, level, part) {
+  const { sql, args } = poolWhere(familyId, skill, types, part);
+  const base = 'SELECT COUNT(*) c FROM questions WHERE ' + sql + ' AND audio_key IS NOT NULL';
   return {
     total: q.val(base, ...args),
     exact: level ? q.val(base + ' AND level=?', ...args, level) : 0
@@ -571,14 +631,15 @@ router.get('/admin/exam-formats', (req, res) => {
     .map(f => {
       const fam = q.get('SELECT name, status FROM families WHERE id=?', f.familyId);
       const sections = f.sections.map(s => {
-        const bank = bankCount(f.familyId, s.skill, s.types, level);
+        const bank = bankCount(f.familyId, s.skill, s.types, level, s.part);
         const have = strict ? bank.exact : bank.total;
         /* Audio parts are only buildable from items that carry an MP3, so they
            get their own shortfall alongside the plain bank count. */
-        const withAudio = s.needsAudio ? audioReadyCount(f.familyId, s.skill, s.types, level) : null;
+        const withAudio = s.needsAudio ? audioReadyCount(f.familyId, s.skill, s.types, level, s.part) : null;
         const haveAudio = withAudio ? (strict ? withAudio.exact : withAudio.total) : 0;
         return {
-          name: s.name, skill: s.skill, type: s.type, items: s.items, minutes: s.minutes,
+          name: s.name, part: s.part || null,
+          skill: s.skill, type: s.type, items: s.items, minutes: s.minutes,
           types: s.types || [], parts: s.parts || [], needsAudio: !!s.needsAudio,
           bank: { have, exact: bank.exact, total: bank.total, need: s.items, short: Math.max(0, s.items - have) },
           audio: s.needsAudio
@@ -612,14 +673,15 @@ function testDetail(id) {
   if (!t) return null;
   const sections = q.all('SELECT * FROM sections WHERE test_id=? ORDER BY sort, id', id).map(s => {
     const items = q.all(
-      `SELECT si.id item_id, si.sort, qs.id, qs.prompt, qs.type, qs.level, qs.skill, qs.status
+      `SELECT si.id item_id, si.sort, qs.id, qs.prompt, qs.type, qs.level, qs.skill, qs.status, qs.part
          FROM section_items si JOIN questions qs ON qs.id = si.question_id
         WHERE si.section_id=? ORDER BY si.sort, si.id`, s.id);
     return {
-      id: s.id, name: s.name, skill: s.skill, type: s.type, minutes: s.minutes, sort: s.sort,
+      id: s.id, name: s.name, part: s.part || null,
+      skill: s.skill, type: s.type, minutes: s.minutes, sort: s.sort,
       items: items.map(i => ({
         itemId: i.item_id, questionId: i.id, prompt: i.prompt,
-        type: i.type, level: i.level, skill: i.skill, status: i.status
+        type: i.type, level: i.level, skill: i.skill, status: i.status, part: i.part || null
       }))
     };
   });
@@ -745,11 +807,19 @@ router.post('/admin/tests/:id/sections', (req, res) => {
   const skill = str(b.skill, 20);
   if (name.length < 2) return bad(res, 'Tên phần quá ngắn.');
   if (!SKILLS.includes(skill)) return bad(res, 'Kỹ năng không hợp lệ.');
+  /* Gắn chữ cái phần thi nếu kỳ thi này có bảng phần — để lần bốc lại sau còn
+     biết bốc trong đúng phần nào. */
+  const fam = q.val('SELECT family_id FROM tests WHERE id=?', id);
+  const allowed = EXAM_FORMATS.partsOf(fam);
+  const part = str(b.part, 2).toUpperCase();
+  if (part && !allowed.includes(part)) {
+    return bad(res, 'Phần không hợp lệ. Kỳ thi này có các phần: ' + (allowed.join(', ') || 'không có') + '.');
+  }
   const sort = (q.val('SELECT COALESCE(MAX(sort),-1) s FROM sections WHERE test_id=?', id)) + 1;
-  const r = q.run('INSERT INTO sections (test_id,name,skill,type,minutes,sort) VALUES (?,?,?,?,?,?)',
-    id, name, skill, str(b.type, 100) || 'Trắc nghiệm', clamp(int(b.minutes, 0), 0, 600), sort);
+  const r = q.run('INSERT INTO sections (test_id,name,skill,type,minutes,sort,part) VALUES (?,?,?,?,?,?,?)',
+    id, name, skill, str(b.type, 100) || 'Trắc nghiệm', clamp(int(b.minutes, 0), 0, 600), sort, part || null);
   q.run('UPDATE tests SET updated_at=? WHERE id=?', nowISO(), id);
-  audit(req, 'section.create', 'tests/' + id, { section: name });
+  audit(req, 'section.create', 'tests/' + id, { section: name, part: part || null });
   res.status(201).json({ id: Number(r.lastInsertRowid) });
 });
 
@@ -836,21 +906,24 @@ router.post('/admin/tests/generate', (req, res) => {
     const want = clamp(int(sec.items, 0), 1, 200);
     if (!SKILLS.includes(skill)) return bad(res, 'Kỹ năng không hợp lệ: ' + skill);
 
-    // Format chuẩn khai báo dạng câu cho phép (vd TOEIC Part 5 chỉ nhận mcq);
-    // không khai thì nhận mọi dạng như trước.
-    const wantTypes = Array.isArray(sec.types) && sec.types.length
-      ? sec.types.filter(x => QTYPES.includes(x)) : QTYPES;
-    const holes = wantTypes.map(() => '?').join(',');
+    /* Format chuẩn khai báo dạng câu cho phép (vd TOEIC Part 5 chỉ nhận mcq);
+       không khai thì nhận mọi dạng như trước. Khai cả chữ cái phần thi thì chỉ
+       bốc trong đúng phần đó — cùng một pool cho hai phần khác nhau là cách
+       chắc chắn nhất để dựng ra một đề trông đúng mà hỏi sai. */
+    const part = EXAM_FORMATS.partsOf(familyId).includes(str(sec.part, 2).toUpperCase())
+      ? str(sec.part, 2).toUpperCase() : '';
+    const { sql: poolSql, args: poolArgs } = poolWhere(familyId, skill, sec.types, part);
     const pool = strict
-      ? q.all(`SELECT id FROM questions WHERE family_id=? AND skill=? AND level=?
-                 AND type IN (${holes}) AND status='active'`, familyId, skill, level, ...wantTypes)
-      : q.all(`SELECT id, (level=?) exact FROM questions WHERE family_id=? AND skill=?
-                 AND type IN (${holes}) AND status='active' ORDER BY exact DESC`,
-              level, familyId, skill, ...wantTypes);
+      ? q.all(`SELECT id FROM questions WHERE ${poolSql} AND level=?`, ...poolArgs, level)
+      : q.all(`SELECT id, (level=?) exact FROM questions WHERE ${poolSql} ORDER BY exact DESC`,
+              level, ...poolArgs);
 
     const avail = pool.filter(r => !usedIds.has(r.id));
     if (avail.length < want) {
-      shortages.push({ section: str(sec.name, 100) || skill, skill, need: want, have: avail.length });
+      shortages.push({
+        section: str(sec.name, 100) || skill, skill, part: part || null,
+        need: want, have: avail.length
+      });
       continue;
     }
     // Xáo trong nhóm ưu tiên: giữ thứ tự exact trước, trộn ngẫu nhiên trong từng nhóm
@@ -859,7 +932,7 @@ router.post('/admin/tests/generate', (req, res) => {
     const shuffle = arr => arr.map(v => [Math.random(), v]).sort((a, c) => a[0] - c[0]).map(v => v[1]);
     const chosen = shuffle(exact).concat(shuffle(other)).slice(0, want);
     chosen.forEach(r => usedIds.add(r.id));
-    picked.push({ sec, ids: chosen.map(r => r.id) });
+    picked.push({ sec, part, ids: chosen.map(r => r.id) });
   }
 
   if (shortages.length) {
@@ -883,9 +956,9 @@ router.post('/admin/tests/generate', (req, res) => {
       at, at, req.admin.id);
 
     picked.forEach((p, i) => {
-      q.run('INSERT INTO sections (test_id,name,skill,type,minutes,sort) VALUES (?,?,?,?,?,?)',
+      q.run('INSERT INTO sections (test_id,name,skill,type,minutes,sort,part) VALUES (?,?,?,?,?,?,?)',
         id, str(p.sec.name, 100) || p.sec.skill, str(p.sec.skill, 20),
-        str(p.sec.type, 100) || 'Trắc nghiệm', clamp(int(p.sec.minutes, 0), 0, 600), i);
+        str(p.sec.type, 100) || 'Trắc nghiệm', clamp(int(p.sec.minutes, 0), 0, 600), i, p.part || null);
       const sid = q.val('SELECT id FROM sections WHERE test_id=? ORDER BY id DESC LIMIT 1', id);
       p.ids.forEach((qid, j) =>
         q.run('INSERT OR IGNORE INTO section_items (section_id,question_id,sort) VALUES (?,?,?)', sid, qid, j));
@@ -905,10 +978,21 @@ router.post('/admin/sections/:sid/reshuffle', (req, res) => {
   const want = q.val('SELECT COUNT(*) c FROM section_items WHERE section_id=?', sid);
   if (!want) return bad(res, 'Phần này chưa có câu nào để bốc lại.');
 
+  /* Bốc lại phải bốc trong đúng cái pool mà trình sinh đề đã dùng. Trước đây
+     chỗ này chỉ lọc theo kỹ năng: bốc lại một phần Nói của VPET có thể kéo câu
+     của phần Nói khác vào, và một phần Đọc trắc nghiệm có thể nhận câu điền
+     từ. Chữ cái phần thi lưu trên section cho biết phải bốc ở đâu, và blueprint
+     cho biết phần đó nhận dạng câu nào. */
+  const blueprint = s.part ? EXAM_FORMATS.sectionOfPart(t.family_id, s.part) : null;
+  const { sql: poolSql, args: poolArgs } = poolWhere(
+    t.family_id, s.skill, blueprint ? blueprint.types : null, s.part || '');
   const pool = q.all(
-    `SELECT id, (level=?) exact FROM questions WHERE family_id=? AND skill=? AND status='active' ORDER BY exact DESC`,
-    t.level, t.family_id, s.skill);
-  if (pool.length < want) return bad(res, 'Ngân hàng chỉ còn ' + pool.length + ' câu, không đủ ' + want + ' câu.');
+    `SELECT id, (level=?) exact FROM questions WHERE ${poolSql} ORDER BY exact DESC`,
+    t.level, ...poolArgs);
+  if (pool.length < want) {
+    return bad(res, 'Ngân hàng' + (s.part ? ' phần ' + s.part : '') + ' chỉ còn ' + pool.length +
+      ' câu, không đủ ' + want + ' câu.');
+  }
 
   const shuffle = arr => arr.map(v => [Math.random(), v]).sort((a, c) => a[0] - c[0]).map(v => v[1]);
   const chosen = shuffle(pool.filter(r => r.exact)).concat(shuffle(pool.filter(r => !r.exact))).slice(0, want);
@@ -1240,7 +1324,14 @@ router.get('/catalog', (req, res) => {
     id: f.id, name: f.name, sub: f.sub, format: f.format, skills: jparse(f.skills_json, []),
     /* 'ready' means the family has a working blueprint and can hold tests;
        'coming_soon' families are listed but cannot be bought or opened. */
-    status: f.status || 'ready'
+    status: f.status || 'ready',
+    /* Lettered parts this family's items are filed under, empty for a format
+       with no part table. The bank screen builds its part picker from this
+       rather than carrying its own copy of the VPET table. */
+    parts: EXAM_FORMATS.partsOf(f.id).map(letter => {
+      const sec = EXAM_FORMATS.sectionOfPart(f.id, letter) || {};
+      return { part: letter, name: sec.name || letter, skill: sec.skill || '', types: sec.types || [] };
+    })
   }));
   const tests = q.all("SELECT * FROM tests WHERE status='published' ORDER BY family_id, id").map(t => {
     const sections = q.all('SELECT * FROM sections WHERE test_id=? ORDER BY sort, id', t.id).map(s => ({
