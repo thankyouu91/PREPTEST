@@ -103,22 +103,22 @@ function vpetSections() {
     },
     {
       name: 'Part E - Dictation', skill: 'listening', type: 'Type what you hear',
-      items: 8, minutes: 6, types: ['gap'],
+      items: 8, minutes: 6, types: ['gap'], needsAudio: true,
       parts: [{ label: 'E1-E8', items: 8, note: 'One sentence per item, played a fixed number of times. Needs audio.' }]
     },
     {
       name: 'Part F - Response Selection', skill: 'listening', type: 'Multiple choice',
-      items: 8, minutes: 4, types: ['mcq'],
+      items: 8, minutes: 4, types: ['mcq'], needsAudio: true,
       parts: [{ label: 'F1-F8', items: 8, note: 'Hear a prompt, pick the natural reply. Needs audio.' }]
     },
     {
       name: 'Part G - Passage Comprehension', skill: 'listening', type: 'Multiple choice',
-      items: 6, minutes: 6, types: ['mcq'],
+      items: 6, minutes: 6, types: ['mcq'], needsAudio: true,
       parts: [{ label: 'G1-G6', items: 6, note: 'Longer spoken passages with comprehension questions. Needs audio.' }]
     },
     {
       name: 'Part H - Repeat', skill: 'speaking', type: 'Say the sentence back',
-      items: 10, minutes: 4, types: ['speaking'],
+      items: 10, minutes: 4, types: ['speaking'], needsAudio: true,
       parts: [{ label: 'H1-H10', items: 10, note: 'Repeat each sentence exactly. Scores pronunciation and fluency. Needs audio.' }]
     },
     {
@@ -128,7 +128,7 @@ function vpetSections() {
     },
     {
       name: 'Part J - Story Retellings', skill: 'speaking', type: 'Retell what you heard',
-      items: 3, minutes: 6, types: ['speaking'],
+      items: 3, minutes: 6, types: ['speaking'], needsAudio: true,
       parts: [{ label: 'J1-J3', items: 3, note: 'Listen to a short story, then retell it in your own words. Needs audio.' }]
     }
   ];

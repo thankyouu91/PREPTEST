@@ -37,6 +37,26 @@ const AD = {
   put(p, body) { return this.api(p, { method: 'PUT', body: body || {} }); },
   del(p) { return this.api(p, { method: 'DELETE' }); },
 
+  /* Send one file as the raw request body. Not multipart on purpose: the
+     server reads the bytes directly, so neither side needs a parser and the
+     platform keeps its no-new-dependency rule. */
+  async upload(path, file) {
+    const res = await fetch('/api' + path, {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'X-CSRF-Token': this.csrf(), 'Content-Type': file.type || 'application/octet-stream' },
+      body: file
+    });
+    const ct = res.headers.get('content-type') || '';
+    const data = ct.includes('json') ? await res.json() : await res.text();
+    if (!res.ok) {
+      const err = new Error((data && data.error) || ('Lỗi ' + res.status));
+      err.status = res.status;
+      throw err;
+    }
+    return data;
+  },
+
   /* ---------- Format ---------- */
   vnd(n) { return (n || 0).toLocaleString('vi-VN') + 'đ'; },
   num(n) { return (n || 0).toLocaleString('vi-VN'); },

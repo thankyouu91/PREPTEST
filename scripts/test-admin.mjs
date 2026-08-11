@@ -349,6 +349,82 @@ const run = async () => {
   const gone = await call('GET', '/api/admin/tests/' + testId);
   check('Xoá được đề kiểm thử', gone.status === 404, 'status ' + gone.status);
 
+  /* 16b. Audio cho câu hỏi (VPET phần E, F, G, H, J)
+     Gửi thẳng byte thô chứ không multipart — server đọc nguyên body. */
+  async function sendAudio(id, buf, o) {
+    o = o || {};
+    const headers = { 'Accept': 'application/json', 'Content-Type': o.type || 'audio/mpeg' };
+    if (jar.size) headers.Cookie = cookieHeader();
+    if (!o.noCsrf) {
+      const t = jar.get('prep_csrf');
+      if (t) headers['X-CSRF-Token'] = decodeURIComponent(t);
+    }
+    const res = await fetch(BASE + '/api/admin/questions/' + id + '/audio', { method: 'POST', headers, body: buf });
+    absorb(res);
+    const ct = res.headers.get('content-type') || '';
+    return { status: res.status, data: ct.includes('json') ? await res.json().catch(() => null) : null };
+  }
+
+  /* Đủ để qua phép kiểm định dạng: tệp MP3 thật mở đầu bằng "ID3" hoặc bằng
+     frame sync 11 bit. Phép kiểm nhìn đúng chỗ đó chứ không tin content-type. */
+  const mp3 = Buffer.concat([Buffer.from('ID3\x03\x00\x00\x00\x00\x00\x00', 'binary'), Buffer.alloc(2048, 7)]);
+  const notAudio = Buffer.from('MZ\x90\x00 this is an executable, not a song', 'binary');
+
+  r = await call('POST', '/api/admin/questions', {
+    familyId: 'vpet', skill: 'listening', level: 'B1', type: 'mcq',
+    prompt: 'Audio fixture question', options: ['a', 'b', 'c', 'd'], answer: 'a'
+  });
+  const audioQid = r.data && r.data.id;
+  check('Tạo được câu hỏi để gắn audio', !!audioQid, 'status ' + r.status);
+
+  r = await sendAudio(audioQid, mp3);
+  check('Tải lên được MP3 hợp lệ', r.status === 201 && r.data && r.data.bytes === mp3.length,
+    'status ' + r.status + ' ' + JSON.stringify(r.data));
+
+  r = await sendAudio(audioQid, notAudio);
+  check('Từ chối tệp giả danh audio/mpeg', r.status === 400, 'status ' + r.status);
+
+  r = await sendAudio(audioQid, mp3, { noCsrf: true });
+  check('Tải lên không có CSRF bị chặn', r.status === 403, 'status ' + r.status);
+
+  r = await sendAudio(audioQid, mp3, { type: 'application/pdf' });
+  check('Từ chối content-type không phải audio', r.status === 400 || r.status === 415, 'status ' + r.status);
+
+  {
+    const res = await fetch(BASE + '/api/admin/questions/' + audioQid + '/audio', { headers: { Cookie: cookieHeader() } });
+    const buf = Buffer.from(await res.arrayBuffer());
+    check('Tải về đúng nguyên byte đã lưu',
+      res.status === 200 && res.headers.get('content-type') === 'audio/mpeg' && buf.equals(mp3),
+      'status ' + res.status + ' len ' + buf.length);
+    check('Audio đề thi không được cache chung', /no-store/.test(res.headers.get('cache-control') || ''),
+      res.headers.get('cache-control'));
+  }
+
+  r = await call('GET', '/api/admin/questions?family=vpet&skill=listening&limit=200');
+  check('Danh sách câu hỏi báo có audio nhưng không lộ khoá lưu trữ',
+    (r.data.items || []).some(x => x.id === audioQid && x.hasAudio && x.audioBytes === mp3.length) &&
+    !JSON.stringify(r.data).includes('audio_key'),
+    'không thấy cờ hasAudio');
+
+  r = await call('GET', '/api/admin/exam-formats?familyId=vpet');
+  {
+    const list = Array.isArray(r.data) ? r.data : (r.data.items || r.data.formats || []);
+    const vpet = list.find(f => f.id === 'vpet-full');
+    check('Format VPET đúng 55 câu, 10 phần', !!vpet && vpet.totalItems === 55 && vpet.sections.length === 10,
+      vpet ? vpet.totalItems + ' câu / ' + vpet.sections.length + ' phần' : 'không thấy format');
+    const audioParts = vpet ? vpet.sections.filter(s => s.needsAudio) : [];
+    check('Năm phần cần audio được đánh dấu', audioParts.length === 5, audioParts.length + ' phần');
+    check('Báo thiếu audio khi ngân hàng chưa đủ tệp',
+      !!vpet && vpet.audioShortBy > 0 && vpet.ready === false, vpet ? String(vpet.audioShortBy) : '-');
+  }
+
+  r = await call('DELETE', '/api/admin/questions/' + audioQid + '/audio');
+  check('Gỡ được audio', r.status === 200, 'status ' + r.status);
+  {
+    const res = await fetch(BASE + '/api/admin/questions/' + audioQid + '/audio', { headers: { Cookie: cookieHeader() } });
+    check('Gỡ xong thì không tải về được nữa', res.status === 404, 'status ' + res.status);
+  }
+
   /* 17. Đăng xuất huỷ phiên */
   r = await call('POST', '/api/admin/logout');
   check('Đăng xuất', r.status === 200);

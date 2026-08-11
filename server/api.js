@@ -11,6 +11,7 @@ const express = require('express');
 const { q, tx, nowISO, jparse, makeCode, audit } = require('./db');
 const A = require('./auth');
 const EXAM_FORMATS = require('./data/exam-formats');
+const storage = require('./storage');
 const LINKING = require('./data/linking-words');
 
 const router = express.Router();
@@ -319,7 +320,8 @@ router.get('/admin/questions', (req, res) => {
   const sql = 'FROM questions WHERE ' + where.join(' AND ');
   const total = q.val('SELECT COUNT(*) c ' + sql, ...args);
   const rows = q.all(
-    `SELECT id, family_id, skill, level, type, prompt, options_json, answer, explanation, tags_json, status, created_at
+    `SELECT id, family_id, skill, level, type, prompt, options_json, answer, explanation, tags_json, status, created_at,
+            audio_key, audio_bytes, audio_at
        ${sql} ORDER BY id DESC LIMIT ? OFFSET ?`, ...args, limit, offset);
 
   res.json({
@@ -327,7 +329,10 @@ router.get('/admin/questions', (req, res) => {
     items: rows.map(r => ({
       id: r.id, familyId: r.family_id, skill: r.skill, level: r.level, type: r.type,
       prompt: r.prompt, options: jparse(r.options_json, []), answer: r.answer,
-      explanation: r.explanation, tags: jparse(r.tags_json, []), status: r.status, createdAt: r.created_at
+      explanation: r.explanation, tags: jparse(r.tags_json, []), status: r.status, createdAt: r.created_at,
+      /* The key itself never leaves the server - the browser only needs to know
+         whether a file is attached, and how big it is. */
+      hasAudio: !!r.audio_key, audioBytes: r.audio_bytes || 0, audioAt: r.audio_at || null
     }))
   });
 });
@@ -390,6 +395,68 @@ router.post('/admin/questions/:id/status', (req, res) => {
   const r = q.run('UPDATE questions SET status=? WHERE id=?', status, id);
   if (!r.changes) return res.status(404).json({ error: 'Không tìm thấy câu hỏi.' });
   audit(req, 'question.status', 'questions/' + id, { status });
+  res.json({ ok: true });
+});
+
+/* ==================== Question audio (VPET parts E, F, G, H, J) ====================
+   The body arrives as raw bytes rather than multipart: the browser can send a
+   File straight through fetch, which means no multipart parser and therefore
+   no new dependency. express.json above ignores audio content types, so the
+   raw parser here is the first thing to touch the body.
+
+   Both routes sit under the router-wide requireAdmin + csrfGuard. */
+const audioBody = express.raw({ type: storage.ACCEPTED_MIME, limit: storage.MAX_BYTES });
+
+router.post('/admin/questions/:id/audio', audioBody, async (req, res) => {
+  const id = int(req.params.id, 0);
+  const row = q.get('SELECT id, audio_key FROM questions WHERE id=?', id);
+  if (!row) return res.status(404).json({ error: 'Không tìm thấy câu hỏi.' });
+
+  const buf = Buffer.isBuffer(req.body) ? req.body : null;
+  const why = storage.validate(buf, req.get('content-type'));
+  if (why) return bad(res, why);
+
+  try {
+    const saved = await storage.put(buf, req.get('content-type'));
+    /* Replacing an existing file: write the new key first, then drop the old
+       one. If the delete fails the row still points at a file that exists. */
+    const old = row.audio_key;
+    q.run('UPDATE questions SET audio_key=?, audio_bytes=?, audio_at=? WHERE id=?',
+      saved.key, saved.bytes, nowISO(), id);
+    if (old && old !== saved.key) await storage.remove(old).catch(() => {});
+    audit(req, 'question.audio.upload', 'questions/' + id, { bytes: saved.bytes, driver: saved.driver });
+    res.status(201).json({ ok: true, bytes: saved.bytes, driver: saved.driver });
+  } catch (e) {
+    if (e.code === 'INVALID_AUDIO') return bad(res, e.message);
+    console.error('[audio] upload failed', e);
+    res.status(502).json({ error: 'Không lưu được tệp âm thanh. Kiểm tra cấu hình lưu trữ.' });
+  }
+});
+
+router.get('/admin/questions/:id/audio', async (req, res) => {
+  const row = q.get('SELECT audio_key, audio_bytes FROM questions WHERE id=?', int(req.params.id, 0));
+  if (!row || !row.audio_key) return res.status(404).json({ error: 'Câu hỏi chưa có tệp âm thanh.' });
+  try {
+    const file = await storage.get(row.audio_key);
+    res.set('Content-Type', 'audio/mpeg')
+      .set('Content-Length', String(file.body.length))
+      /* Exam audio must not sit in a shared cache: it is answer material. */
+      .set('Cache-Control', 'private, no-store')
+      .send(file.body);
+  } catch (e) {
+    console.error('[audio] read failed', e);
+    res.status(502).json({ error: 'Không đọc được tệp âm thanh.' });
+  }
+});
+
+router.delete('/admin/questions/:id/audio', async (req, res) => {
+  const id = int(req.params.id, 0);
+  const row = q.get('SELECT audio_key FROM questions WHERE id=?', id);
+  if (!row) return res.status(404).json({ error: 'Không tìm thấy câu hỏi.' });
+  if (!row.audio_key) return res.json({ ok: true });
+  q.run('UPDATE questions SET audio_key=NULL, audio_bytes=NULL, audio_at=NULL WHERE id=?', id);
+  await storage.remove(row.audio_key).catch(() => {});
+  audit(req, 'question.audio.delete', 'questions/' + id, {});
   res.json({ ok: true });
 });
 
@@ -475,6 +542,21 @@ function bankCount(familyId, skill, types, level) {
   };
 }
 
+/** Same pool as bankCount, but only the items that already have an MP3.
+    A VPET audio part cannot be generated from items that have no sound. */
+function audioReadyCount(familyId, skill, types, level) {
+  const t = Array.isArray(types) && types.length ? types.filter(x => QTYPES.includes(x)) : QTYPES;
+  const holes = t.map(() => '?').join(',');
+  const args = [familyId, skill, ...t];
+  const base = `SELECT COUNT(*) c FROM questions
+                 WHERE family_id=? AND skill=? AND type IN (${holes}) AND status='active'
+                   AND audio_key IS NOT NULL`;
+  return {
+    total: q.val(base, ...args),
+    exact: level ? q.val(base + ' AND level=?', ...args, level) : 0
+  };
+}
+
 router.get('/admin/exam-formats', (req, res) => {
   const familyId = str(req.query.familyId, 20);
   const level = LEVELS.includes(str(req.query.level, 5).toUpperCase())
@@ -488,21 +570,32 @@ router.get('/admin/exam-formats', (req, res) => {
       const sections = f.sections.map(s => {
         const bank = bankCount(f.familyId, s.skill, s.types, level);
         const have = strict ? bank.exact : bank.total;
+        /* Audio parts are only buildable from items that carry an MP3, so they
+           get their own shortfall alongside the plain bank count. */
+        const withAudio = s.needsAudio ? audioReadyCount(f.familyId, s.skill, s.types, level) : null;
+        const haveAudio = withAudio ? (strict ? withAudio.exact : withAudio.total) : 0;
         return {
           name: s.name, skill: s.skill, type: s.type, items: s.items, minutes: s.minutes,
-          types: s.types || [], parts: s.parts || [],
-          bank: { have, exact: bank.exact, total: bank.total, need: s.items, short: Math.max(0, s.items - have) }
+          types: s.types || [], parts: s.parts || [], needsAudio: !!s.needsAudio,
+          bank: { have, exact: bank.exact, total: bank.total, need: s.items, short: Math.max(0, s.items - have) },
+          audio: s.needsAudio
+            ? { have: haveAudio, need: s.items, short: Math.max(0, s.items - haveAudio) }
+            : null
         };
       });
       const short = sections.reduce((a, s) => a + s.bank.short, 0);
+      const audioShort = sections.reduce((a, s) => a + (s.audio ? s.audio.short : 0), 0);
       return {
         id: f.id, familyId: f.familyId, familyName: fam ? fam.name : f.familyId,
         name: f.name, kind: f.kind, levels: f.levels,
         scoring: f.scoring, guide: f.guide, notes: f.notes,
         totalItems: EXAM_FORMATS.totalItems(f), totalMinutes: EXAM_FORMATS.totalMinutes(f),
         sections,
-        ready: short === 0,               // ngân hàng đủ để sinh đề ngay
-        shortBy: short                    // còn thiếu bao nhiêu câu
+        /* Ready means the bank can fill every part AND every audio part has
+           enough items with sound attached. */
+        ready: short === 0 && audioShort === 0,
+        shortBy: short,                   // còn thiếu bao nhiêu câu
+        audioShortBy: audioShort          // còn thiếu bao nhiêu câu có MP3
       };
     });
 

@@ -118,6 +118,7 @@
       AD.qsa('[data-edit]').forEach(b => b.addEventListener('click', () => {
         openEditor(r.items.find(x => x.id === +b.getAttribute('data-edit')));
       }));
+      bindAudio();
       AD.qsa('[data-toggle]').forEach(b => b.addEventListener('click', async () => {
         const id = +b.getAttribute('data-toggle');
         const to = b.getAttribute('data-to');
@@ -144,6 +145,58 @@
     }
   }
 
+  /* VPET plays audio in parts E, F, G, H and J, so listening and speaking
+     items can carry one MP3 each. Other skills never need sound, so the
+     control only appears where it makes sense. */
+  const NEEDS_AUDIO = ['listening', 'speaking'];
+
+  function audioBlock(i) {
+    if (!NEEDS_AUDIO.includes(i.skill)) return '';
+    const kb = i.audioBytes ? Math.max(1, Math.round(i.audioBytes / 1024)) : 0;
+    /* Cache-bust on the upload timestamp: replacing a file must not leave the
+       browser playing the old one. */
+    const src = '/api/admin/questions/' + i.id + '/audio?v=' + encodeURIComponent(i.audioAt || '');
+    return '<span class="block mt-2.5 pt-2.5 border-t border-line">' +
+      (i.hasAudio
+        ? '<span class="flex flex-wrap items-center gap-2">' +
+            '<audio controls preload="none" class="h-9 max-w-full" src="' + src + '"></audio>' +
+            '<span class="badge badge-muted">MP3 · ' + kb + ' KB</span>' +
+            '<label class="btn btn-ghost btn-sm cursor-pointer">Replace' +
+              '<input type="file" accept="audio/mpeg" class="sr-only" data-audio-file="' + i.id + '">' +
+            '</label>' +
+            '<button type="button" class="btn btn-ghost btn-sm" data-audio-del="' + i.id + '">Remove</button>' +
+          '</span>'
+        : '<span class="flex flex-wrap items-center gap-2">' +
+            '<span class="badge badge-hl">No audio</span>' +
+            '<label class="btn btn-ghost btn-sm cursor-pointer">Attach MP3' +
+              '<input type="file" accept="audio/mpeg" class="sr-only" data-audio-file="' + i.id + '">' +
+            '</label>' +
+          '</span>') +
+    '</span>';
+  }
+
+  /* Wired once per render, same as the edit and retire buttons. */
+  function bindAudio() {
+    AD.qsa('[data-audio-file]').forEach(inp => inp.addEventListener('change', async () => {
+      const file = inp.files && inp.files[0];
+      if (!file) return;
+      const id = inp.getAttribute('data-audio-file');
+      try {
+        await AD.upload('/admin/questions/' + id + '/audio', file);
+        AD.toast('Audio attached');
+        load();
+      } catch (e) {
+        AD.toast(e.message, 'error');
+        inp.value = '';
+      }
+    }));
+    AD.qsa('[data-audio-del]').forEach(b => b.addEventListener('click', async () => {
+      const id = b.getAttribute('data-audio-del');
+      try { await AD.del('/admin/questions/' + id + '/audio'); AD.toast('Audio removed'); load(); }
+      catch (e) { AD.toast(e.message, 'error'); }
+    }));
+  }
+
   function card(i) {
     const fam = families.find(f => f.id === i.familyId);
     return '<article class="card p-4 flex items-start gap-3.5' + (i.status === 'retired' ? ' opacity-60' : '') + '">' +
@@ -160,6 +213,7 @@
           ? '<span class="block text-[12.5px] text-muted mt-1.5">' +
               i.options.map(o => (o === i.answer ? '<b class="text-accent-strong">' + AD.esc(o) + '</b>' : AD.esc(o))).join(' · ') + '</span>'
           : '') +
+        audioBlock(i) +
       '</span>' +
       '<span class="flex flex-col gap-1.5 shrink-0">' +
         '<button type="button" class="p-2 rounded-full text-muted hover:text-ink transition" data-edit="' + i.id + '" aria-label="Sửa câu hỏi">' + AD.icon('edit', 'w-4 h-4') + '</button>' +

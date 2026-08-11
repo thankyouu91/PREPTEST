@@ -40,16 +40,22 @@ at 55 items and must not be changed:
 | I | Speaking Situations | 2 | speaking | |
 | J | Story Retellings | 3 | speaking | yes |
 
+**Platform before content** (owner, 2026-08-11): build frontend and backend
+first; real exam items come last, once the machinery that carries them works.
+
 Queue for this track, in order:
 
 - [x] VPET blueprint: ten lettered parts A-J, 55 items, in `server/data/exam-formats.js`
 - [x] Family readiness flag: `families.status` = `ready` / `coming_soon`, VPET ready and the other five parked; served by `GET /api/catalog`
-- [ ] MP3 upload in the admin question bank: storage adapter (disk + Supabase driver), upload endpoint behind requireAdmin + CSRF, audio player on each question, and a per-part check that every audio question has a file
+- [x] MP3 upload in the admin question bank: storage adapter (disk + Supabase driver), raw-body upload behind requireAdmin + CSRF with magic-byte validation, player and replace/remove on each item, and per-part audio coverage in the format readiness report
 - [ ] Stop offering non-VPET tests: seeded IELTS/TOEIC tests drop to draft, and the API refuses to publish a test whose family is `coming_soon`
-- [ ] Translate the whole interface to English — 12 student screens, 8 admin screens, every banner and empty state
-- [ ] VPET item bank: real items for all ten parts, tagged by part, with audio attached where the part needs it
-- [ ] AI speaking scoring: adapter around an audio-native model, VPET rubric (fluency, pronunciation, vocabulary, grammar, task), score plus written feedback, reviewer override, and a manual-scoring fallback while no API key is set
+- [ ] Tag items by VPET part: `questions.part` (A-J) so each part draws from its own pool instead of sharing one skill-wide pool
 - [ ] VPET exam engine: per-part timer, audio playback with a fixed replay count, microphone capture for parts H/I/J, autosave and submit
+- [ ] AI speaking scoring: adapter around an audio-native model, VPET rubric (fluency, pronunciation, vocabulary, grammar, task), score plus written feedback, reviewer override, and a manual-scoring fallback while no API key is set
+- [ ] Auto marking for parts A, C, E, F, G plus the score-to-CEFR conversion in `docs/SCORING.md`
+- [ ] Translate the whole interface to English — 12 student screens, 8 admin screens, every banner and empty state
+- [ ] Google ecosystem fit — needs an owner decision first, see "Việc kiến trúc"
+- [ ] VPET item bank: real items for all ten parts, tagged by part, with audio attached where the part needs it (**content, deliberately last**)
 
 ## Hàng đợi
 
@@ -113,6 +119,15 @@ hàng cần người dùng quyết:
 ## Việc kiến trúc
 
 Routine **không** lấy việc ở mục này.
+
+- [ ] **Google ecosystem fit** (owner asked 2026-08-11, needs a decision before any code). The platform is a Node + Express + SQLite app today. Options, cheapest first:
+  - *Auth*: Google Sign-In on top of the existing account table — students keep one login, no password to reset. Smallest change, biggest day-one win.
+  - *AI*: Gemini for speaking scoring. Already the chosen direction, so this one is settled.
+  - *Storage*: a Google Cloud Storage driver next to the disk and Supabase drivers in `server/storage.js` — the adapter already takes a third driver without touching call sites.
+  - *Hosting*: Cloud Run (container, closest to what runs now) or App Engine. Both need the database to move off local SQLite; Cloud SQL Postgres is the natural target and the Supabase work already proved the schema ports.
+  - *Install on phones*: PWA manifest + service worker, so the webapp installs from Chrome on Android without a Play listing.
+  - *Classroom*: Google Classroom assignment hand-off, only worth it if schools are a target buyer.
+  Decide the scope, then this splits into separate queue items.
 
 - [ ] Lược đồ từ vựng: `vocab_entries` / `vocab_senses` / `vocab_examples` / `vocab_forms` / `collocations` + trình nhập
 - [x] Lược đồ ngữ pháp: `grammar_points` / `grammar_examples` (dựng cùng mục 12 thì, theo đúng đặc tả `docs/LEARNING.md` mục 6; `linking_words` đã dựng cùng mục từ nối)

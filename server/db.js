@@ -319,6 +319,13 @@ function addColumnIfMissing(table, column, definition) {
    coming_soon so the catalogue can show them without offering tests. */
 addColumnIfMissing('families', 'status', "TEXT NOT NULL DEFAULT 'ready'");
 
+/* VPET parts E, F, G, H and J play an MP3 to the candidate, so a question can
+   own one audio file. Only the storage key lives here — the bytes are in
+   whichever storage driver is configured (see server/storage.js). */
+addColumnIfMissing('questions', 'audio_key', 'TEXT');
+addColumnIfMissing('questions', 'audio_bytes', 'INTEGER');
+addColumnIfMissing('questions', 'audio_at', 'TEXT');
+
 /* ============================== TIỆN ÍCH ============================== */
 const nowISO = () => new Date().toISOString();
 const jparse = (s, fb) => { try { return JSON.parse(s); } catch (e) { return fb; } };

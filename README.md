@@ -54,7 +54,7 @@ nếu chưa có tài khoản nào và cũng không có `ADMIN_PASSWORD`.
 | Đề thi | `/admin/de-thi/` | Danh sách, lọc theo kỳ thi và trạng thái, tạo thủ công, **sinh đề tự động** |
 | Format đề | `/admin/format/` | 11 format chuẩn của 6 kỳ thi, phân tích độ phủ ngân hàng, **sinh đề một chạm** |
 | Xây đề | `/admin/de-thi/:id/` | Sửa thông tin, thêm/xoá phần, chọn câu từ ngân hàng, bốc lại cả phần, phát hành |
-| Ngân hàng câu hỏi | `/admin/ngan-hang/` | Lọc đa tiêu chí, thêm/sửa câu, ngưng dùng, **nhập hàng loạt từ CSV** (tải mẫu, xem trước, báo lỗi từng dòng) hoặc JSON |
+| Ngân hàng câu hỏi | `/admin/ngan-hang/` | Lọc đa tiêu chí, thêm/sửa câu, ngưng dùng, **nhập hàng loạt từ CSV** (tải mẫu, xem trước, báo lỗi từng dòng) hoặc JSON, **gắn MP3 cho câu Nghe / Nói** (nghe thử ngay trong danh sách, thay hoặc gỡ) |
 | Học viên | `/admin/hoc-vien/` | Tìm kiếm, xem code và đơn, ghi chú, khoá/mở, đánh dấu xác thực, cấp code |
 | Code | `/admin/code/` | Lô code, cấp theo lô hoặc cho một học viên, thu hồi, xuất CSV |
 | Quản trị | `/admin/quan-tri/` | Thương hiệu, giá gói, đổi mật khẩu, nhật ký thao tác |
@@ -106,6 +106,38 @@ bốc (`types`) nên trình sinh đề không lấy nhầm câu tự luận vào
 **Phân tích độ phủ**: trước khi bấm sinh đề, mỗi khối hiện ngay ngân hàng đang có
 bao nhiêu câu dùng được so với số cần. Thiếu thì nút Sinh đề khoá lại và ghi rõ
 thiếu bao nhiêu — không để admin bấm rồi mới báo lỗi.
+
+### Tệp âm thanh cho câu hỏi
+
+VPET có năm phần phát MP3 (E, F, G, H, J) nên mỗi câu Nghe hoặc Nói gắn được một
+tệp. Tải lên ngay trong màn Ngân hàng câu hỏi; nghe thử, thay tệp khác hoặc gỡ
+đều tại chỗ.
+
+Nơi lưu do biến môi trường quyết định, không phải sửa mã:
+
+| Biến | Mặc định | Việc |
+|---|---|---|
+| `AUDIO_STORAGE` | `disk` | `disk` lưu vào `data/uploads/audio`; `supabase` đẩy lên Supabase Storage |
+| `AUDIO_DIR` | `data/uploads/audio` | thư mục cho driver đĩa |
+| `SUPABASE_URL`, `SUPABASE_SERVICE_KEY` | — | bắt buộc khi dùng driver Supabase |
+| `SUPABASE_AUDIO_BUCKET` | `exam-audio` | tên bucket |
+
+Đĩa hợp cho lúc phát triển (không cần khoá, chạy ngay) nhưng container dựng lại
+là mất; production dùng Supabase. Thêm driver thứ ba (ví dụ Google Cloud Storage)
+chỉ cần viết thêm một object trong `server/storage.js`, chỗ gọi không phải sửa.
+
+**Kiểm tra khi nhận tệp** — đây là chỗ duy nhất nền tảng nhận file từ ngoài:
+
+- Tên tệp của client **không bao giờ được dùng**; khoá lưu trữ do server sinh ngẫu nhiên.
+- Không chỉ tin `Content-Type`: server đọc mấy byte đầu, phải là `ID3` hoặc frame
+  sync của MP3 thì mới nhận. Đổi tên `evil.exe` thành `song.mp3` không lọt.
+- Chặn trên 10 MB trước khi ghi bất cứ đâu.
+- Upload và gỡ đều qua `requireAdmin` + CSRF và đều ghi nhật ký thao tác.
+- Khi trả tệp về đặt `Cache-Control: private, no-store` — audio đề thi là đáp án,
+  không để nằm trong cache dùng chung.
+
+Màn **Format đề** báo luôn phần nào còn thiếu MP3: một phần cần audio chỉ tính là
+sẵn sàng khi số câu **có tệp** đủ cho phần đó, nên không sinh ra đề nghe câm.
 
 ### Sinh đề: tự động và thủ công
 
