@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Động từ bất quy tắc · VPET Prep</title>
-  <meta name="description" content="Bảng động từ bất quy tắc V1 V2 V3 đầy đủ, có phiên âm Anh Mỹ, nghĩa tiếng Việt, ví dụ và phát âm.">
+  <title>Irregular verbs · VPET Prep</title>
+  <meta name="description" content="The full V1 V2 V3 irregular verb table, with British and American phonetics, Vietnamese glosses, examples and pronunciation.">
   <meta name="theme-color" content="#1c3d8f">
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <link rel="manifest" href="/manifest.webmanifest">
@@ -27,7 +27,7 @@
     <div class="max-w-shell mx-auto px-4 sm:px-6 lg:px-10 pb-6">
 
       <section class="mt-8 max-w-[68ch]">
-        <h2 class="text-2xl sm:text-[28px] font-extrabold tracking-tight">Động từ bất quy tắc</h2>
+        <h2 class="text-2xl sm:text-[28px] font-extrabold tracking-tight">Irregular verbs</h2>
         <p class="text-muted text-[15px] leading-relaxed mt-2">
           Tra theo cột nào cũng được — gõ <b class="text-ink">went</b> ra <b class="text-ink">go</b>,
           gõ <b class="text-ink">quên</b> ra <b class="text-ink">forget</b>.
@@ -35,41 +35,41 @@
         </p>
       </section>
 
-      <nav class="flex gap-2 overflow-x-auto no-scrollbar mt-6 -mx-1 px-1" aria-label="Mục tự học">
-        <a href="/prep/hoc/dong-tu-bat-quy-tac/" class="chip shrink-0" aria-current="page">Động từ bất quy tắc</a>
-        <a href="/prep/hoc/tu-noi/" class="chip shrink-0">Từ nối</a>
-        <a href="/prep/hoc/thi/" class="chip shrink-0">Thì, phối hợp thì</a>
-        <a href="/prep/hoc/danh-tu/" class="chip shrink-0">Danh từ, mạo từ</a>
-        <a href="/prep/hoc/tinh-tu/" class="chip shrink-0">Tính từ, trạng từ</a>
-        <a href="/prep/hoc/khuyet-thieu/" class="chip shrink-0">Khuyết thiếu</a>
-        <a href="/prep/hoc/dieu-kien/" class="chip shrink-0">Câu điều kiện</a>
-        <a href="/prep/hoc/bi-dong/" class="chip shrink-0">Bị động, tường thuật</a>
-        <a href="/prep/hoc/menh-de/" class="chip shrink-0">Mệnh đề</a>
-        <a href="/prep/hoc/nhan-manh/" class="chip shrink-0">Đảo ngữ, nhấn mạnh</a>
-        <a href="/prep/hoc/sac-thai/" class="chip shrink-0">Sắc thái, trang trọng</a>
+      <nav class="flex gap-2 overflow-x-auto no-scrollbar mt-6 -mx-1 px-1" aria-label="Self-study topics">
+        <a href="/prep/hoc/dong-tu-bat-quy-tac/" class="chip shrink-0" aria-current="page">Irregular verbs</a>
+        <a href="/prep/hoc/tu-noi/" class="chip shrink-0">Linking words</a>
+        <a href="/prep/hoc/thi/" class="chip shrink-0">Tenses</a>
+        <a href="/prep/hoc/danh-tu/" class="chip shrink-0">Nouns and articles</a>
+        <a href="/prep/hoc/tinh-tu/" class="chip shrink-0">Adjectives and adverbs</a>
+        <a href="/prep/hoc/khuyet-thieu/" class="chip shrink-0">Modal verbs</a>
+        <a href="/prep/hoc/dieu-kien/" class="chip shrink-0">Conditionals</a>
+        <a href="/prep/hoc/bi-dong/" class="chip shrink-0">Passive and reported speech</a>
+        <a href="/prep/hoc/menh-de/" class="chip shrink-0">Clauses</a>
+        <a href="/prep/hoc/nhan-manh/" class="chip shrink-0">Inversion and emphasis</a>
+        <a href="/prep/hoc/sac-thai/" class="chip shrink-0">Register and hedging</a>
       </nav>
 
-      <!-- Thanh lọc + chọn giọng -->
+      <!-- Filter bar + voice picker -->
       <div class="sticky top-16 z-20 mt-6 border-y border-line bg-[color:var(--color-surface)]/90 backdrop-blur-md">
         <div class="py-3.5 grid gap-3">
           <div class="flex flex-wrap gap-2.5">
-            <label class="relative flex-1 min-w-[210px]" aria-label="Tìm động từ">
+            <label class="relative flex-1 min-w-[210px]" aria-label="Search verbs">
               <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted pointer-events-none">
                 <svg viewBox="0 0 24 24" class="w-[18px] h-[18px]" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
               </span>
-              <input id="q" type="search" class="input ps-10 py-2.5" placeholder="go, went, gone hoặc nghĩa tiếng Việt…">
+              <input id="q" type="search" class="input ps-10 py-2.5" placeholder="go, went, gone, or the Vietnamese meaning…">
             </label>
-            <select id="f-level" class="input w-full sm:w-auto py-2.5" aria-label="Lọc theo bậc">
-              <option value="">Bậc: tất cả</option>
+            <select id="f-level" class="input w-full sm:w-auto py-2.5" aria-label="Filter by level">
+              <option value="">Level: all</option>
               <option>A1</option><option>A2</option><option>B1</option>
               <option>B2</option><option>C1</option><option>C2</option>
             </select>
-            <select id="f-group" class="input w-full sm:w-auto py-2.5" aria-label="Lọc theo nhóm biến đổi">
-              <option value="">Nhóm: tất cả</option>
-              <option value="aaa">Ba dạng giống nhau</option>
+            <select id="f-group" class="input w-full sm:w-auto py-2.5" aria-label="Filter by change pattern">
+              <option value="">Pattern: all</option>
+              <option value="aaa">All three the same</option>
               <option value="aba">V1 = V3</option>
               <option value="abb">V2 = V3</option>
-              <option value="abc">Ba dạng khác nhau</option>
+              <option value="abc">All three different</option>
             </select>
           </div>
           <div class="flex flex-wrap items-center gap-3">
@@ -79,11 +79,11 @@
         </div>
       </div>
 
-      <!-- Máy không có giọng tiếng Anh -->
+      <!-- The machine has no English voice -->
       <div id="tts-warn" hidden class="mt-5">
         <div class="banner banner-warn show" role="status">
           <svg viewBox="0 0 24 24" class="w-5 h-5 shrink-0 mt-0.5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>
-          <span>Thiết bị này chưa có giọng đọc tiếng Anh nên không phát âm được. Cột phiên âm IPA vẫn dùng để tra được nhé.</span>
+          <span>This device has no English voice installed, so nothing can be read aloud. The IPA column is still there to read from.</span>
         </div>
       </div>
 
@@ -95,34 +95,34 @@
         <div class="skeleton h-7 w-10/12"></div>
       </div>
 
-      <!-- Bảng (desktop) -->
+      <!-- Table (desktop) -->
       <div id="table-wrap" hidden class="card mt-6 overflow-hidden hidden lg:block">
         <table class="w-full text-[14.5px]">
           <thead>
             <tr class="text-left text-[12.5px] uppercase tracking-wide text-muted border-b border-line">
-              <th class="font-bold px-5 py-4">V1 — nguyên thể</th>
-              <th class="font-bold px-4 py-4">V2 — quá khứ</th>
-              <th class="font-bold px-4 py-4">V3 — phân từ II</th>
+              <th class="font-bold px-5 py-4">V1 — base form</th>
+              <th class="font-bold px-4 py-4">V2 — past simple</th>
+              <th class="font-bold px-4 py-4">V3 — past participle</th>
               <th class="font-bold px-4 py-4">V-ing</th>
-              <th class="font-bold px-4 py-4">Nghĩa</th>
-              <th class="font-bold px-5 py-4 text-right">Bậc</th>
+              <th class="font-bold px-4 py-4">Meaning</th>
+              <th class="font-bold px-5 py-4 text-right">Level</th>
             </tr>
           </thead>
           <tbody id="tbody"></tbody>
         </table>
       </div>
 
-      <!-- Thẻ (mobile) -->
+      <!-- Cards (mobile) -->
       <div id="cards" hidden class="grid gap-4 mt-6 lg:hidden"></div>
 
-      <!-- Không tìm thấy -->
+      <!-- Nothing found -->
       <div id="empty" hidden class="card p-10 mt-6 text-center">
         <span class="w-14 h-14 rounded-full bg-brand-soft text-brand-strong inline-flex items-center justify-center mx-auto">
           <svg viewBox="0 0 24 24" class="w-7 h-7" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
         </span>
-        <h3 class="font-extrabold text-lg tracking-tight mt-4">Không tìm thấy động từ nào</h3>
-        <p class="text-muted text-[15px] mt-1.5">Thử gõ ít ký tự hơn, hoặc xoá bộ lọc để xem toàn bộ bảng.</p>
-        <button type="button" id="clear" class="btn btn-ghost btn-md mt-6">Xoá bộ lọc</button>
+        <h3 class="font-extrabold text-lg tracking-tight mt-4">No verbs found</h3>
+        <p class="text-muted text-[15px] mt-1.5">Type fewer characters, or clear the filter to see the whole table.</p>
+        <button type="button" id="clear" class="btn btn-ghost btn-md mt-6">Clear filter</button>
       </div>
     </div>
   </main>
@@ -134,22 +134,22 @@
 <script src="/prep/learn/_tts.js"></script>
 <script>
   PREP.boot({ auth: true }).then(() => {
-    PrepChrome.mount({ title: 'Động từ bất quy tắc' });
+    PrepChrome.mount({ title: 'Irregular verbs' });
 
     const GROUP_LABEL = {
-      aaa: 'Ba dạng giống nhau',
+      aaa: 'All three the same',
       aba: 'V1 = V3',
       abb: 'V2 = V3',
-      abc: 'Ba dạng khác nhau'
+      abc: 'All three different'
     };
 
     let all = [];
     const state = { q: '', level: '', group: '' };
 
-    /* Một dạng động từ: bấm để nghe, kèm nhãn cho trình đọc màn hình */
+    /* One verb form: tap to hear it, with a label for screen readers */
     const form = (word, label) =>
       '<button type="button" class="tts-word font-bold" data-say="' + PREP.esc(word) + '" ' +
-        'aria-label="Phát âm ' + label + ': ' + PREP.esc(word) + '">' + PREP.esc(word) + '</button>';
+        'aria-label="Pronounce the ' + label + ' of ' + PREP.esc(word) + '">' + PREP.esc(word) + '</button>';
 
     const ipaCell = v => {
       const ipa = PrepTTS.accent() === 'uk' ? v.ipaUk : v.ipaUs;
@@ -162,9 +162,9 @@
 
     function row(v) {
       return '<tr class="border-b border-line last:border-0 align-top">' +
-        '<td class="px-5 py-4">' + form(v.v1, 'nguyên thể') + ipaCell(v) + noteChip(v) + '</td>' +
-        '<td class="px-4 py-4">' + form(v.v2, 'quá khứ') + '</td>' +
-        '<td class="px-4 py-4">' + form(v.v3, 'phân từ hai') + '</td>' +
+        '<td class="px-5 py-4">' + form(v.v1, 'base form') + ipaCell(v) + noteChip(v) + '</td>' +
+        '<td class="px-4 py-4">' + form(v.v2, 'past simple') + '</td>' +
+        '<td class="px-4 py-4">' + form(v.v3, 'past participle') + '</td>' +
         '<td class="px-4 py-4 text-muted">' + PREP.esc(v.ving) + '</td>' +
         '<td class="px-4 py-4">' +
           '<span class="font-semibold">' + PREP.esc(v.vi) + '</span>' +
@@ -182,13 +182,13 @@
         '<div class="flex items-center gap-2 mb-3">' +
           '<span class="badge badge-muted">' + v.level + '</span>' +
           '<span class="text-[12px] font-bold text-muted">' + GROUP_LABEL[v.group] + '</span>' +
-          '<button type="button" class="ms-auto btn btn-ghost btn-sm" data-say="' + PREP.esc(v.v1) + '" aria-label="Phát âm ' + PREP.esc(v.v1) + '">' +
+          '<button type="button" class="ms-auto btn btn-ghost btn-sm" data-say="' + PREP.esc(v.v1) + '" aria-label="Pronounce ' + PREP.esc(v.v1) + '">' +
             PREP.icon('headphones', 'w-4 h-4') + '</button>' +
         '</div>' +
         '<div class="grid grid-cols-3 gap-2 text-center">' +
           ['V1', 'V2', 'V3'].map((lab, i) =>
-            // min-w-0 + break-words: từ dài như "misunderstood" phải xuống dòng
-            // trong cột hẹp thay vì đẩy tràn cả trang ở 360px
+            // min-w-0 + break-words: a long word like "misunderstood" must wrap inside a
+            // narrow column rather than pushing the whole page wide at 360px
             '<div class="min-w-0 rounded-xl bg-brand-soft px-2 py-2.5">' +
               '<span class="block text-[11px] font-bold uppercase tracking-wide text-muted">' + lab + '</span>' +
               '<span class="block text-[14px] break-words">' + form([v.v1, v.v2, v.v3][i], lab) + '</span>' +
@@ -215,7 +215,7 @@
         return [v.v1, v.v2, v.v3, v.ving, v.vi].some(x => String(x).toLowerCase().includes(kw));
       });
 
-      PREP.qs('#result-count').textContent = list.length + '/' + all.length + ' động từ';
+      PREP.qs('#result-count').textContent = list.length + '/' + all.length + ' verbs';
       const none = list.length === 0;
       PREP.qs('#empty').toggleAttribute('hidden', !none);
       PREP.qs('#table-wrap').toggleAttribute('hidden', none);
@@ -226,7 +226,7 @@
       PREP.qs('#cards').innerHTML = list.map(card).join('');
     }
 
-    /* Bộ lọc */
+    /* Filters */
     PREP.qs('#q').addEventListener('input', e => { state.q = e.target.value; render(); });
     PREP.qs('#f-level').addEventListener('change', e => { state.level = e.target.value; render(); });
     PREP.qs('#f-group').addEventListener('change', e => { state.group = e.target.value; render(); });
@@ -236,22 +236,22 @@
       render();
     });
 
-    /* Phát âm: nhấn từ, bôi đen để nghe, chọn giọng Anh/Mỹ */
+    /* Pronunciation: tap a word, select text to hear it, pick British or American */
     PrepTTS.onUnavailable = () => PREP.qs('#tts-warn').removeAttribute('hidden');
     PrepTTS.bindClicks(document);
     PrepTTS.init().then(() => {
-      PrepTTS.mountControls(PREP.qs('#tts-controls'), render);   // đổi giọng → đổi cột IPA
+      PrepTTS.mountControls(PREP.qs('#tts-controls'), render);   // changing voice changes the IPA column
       PrepTTS.bindSelection(PREP.qs('#main'));
       if (!PrepTTS.available()) PREP.qs('#tts-warn').removeAttribute('hidden');
     });
 
-    /* Dữ liệu */
+    /* Data */
     PrepApi.get('/api/learn/irregular-verbs').then(res => {
       PREP.qs('#skeleton').classList.add('hidden');
       if (!res.ok) {
         PREP.qs('#empty').removeAttribute('hidden');
-        PREP.qs('#empty').querySelector('h3').textContent = 'Không tải được bảng động từ';
-        PREP.qs('#empty').querySelector('p').textContent = PrepApi.err(res, 'Thử tải lại trang giúp mình nhé.');
+        PREP.qs('#empty').querySelector('h3').textContent = 'The verb table could not be loaded';
+        PREP.qs('#empty').querySelector('p').textContent = PrepApi.err(res, 'Please try reloading the page.');
         return;
       }
       all = res.data.verbs || [];

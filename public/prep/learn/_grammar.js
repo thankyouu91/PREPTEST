@@ -1,39 +1,39 @@
 /**
- * PrepGrammar — khối tra cứu ngữ pháp dùng chung cho mọi nhóm điểm ngữ pháp
- * (thì, danh từ – mạo từ – lượng từ, khuyết thiếu, bị động…).
+ * PrepGrammar — the shared grammar reference block, used by every group of
+ * grammar points (tenses, nouns and articles, modals, the passive…).
  *
- * Trang gọi PrepGrammar.mount({ grp, unit, signalsLabel, confuseLabel }); phần
- * markup khung (thanh lọc, skeleton, #list, #empty) do trang tự dựng theo đúng
- * các id dưới đây. Nhờ vậy thêm một nhóm ngữ pháp mới chỉ tốn một tệp HTML mỏng
- * chứ không phải chép lại toàn bộ phần vẽ chi tiết.
+ * A page calls PrepGrammar.mount({ grp, unit, signalsLabel, confuseLabel }); the
+ * surrounding markup (filter bar, skeleton, #list, #empty) is the page's own, built
+ * against the ids below. That way a new grammar group costs one thin HTML file
+ * rather than a copy of the whole detail renderer.
  *
- * Cần có sẵn: PREP (_mock.js), PrepApi, PrepTTS (_tts.js).
+ * Requires: PREP (_mock.js), PrepApi, PrepTTS (_tts.js).
  *
- * Id bắt buộc trong trang: #list #empty #skeleton #f-level #result-count #clear
+ * Ids the page must provide: #list #empty #skeleton #f-level #result-count #clear
  */
 const PrepGrammar = {
   /**
    * @param {object} o
-   * @param {string} o.grp           mã nhóm, ví dụ 'tense' | 'noun'
-   * @param {string} o.unit          đơn vị đếm hiện ở góc phải, ví dụ 'thì'
-   * @param {string} [o.signalsLabel]  nhãn khối chip gợi nhớ
-   * @param {string} [o.confuseLabel]  nhãn khối phân biệt
-   * @param {string} [o.emptyTitle]    tiêu đề khi lọc không ra gì
+   * @param {string} o.grp           group code, e.g. 'tense' | 'noun'
+   * @param {string} o.unit          the counting noun shown top right, e.g. 'tenses'
+   * @param {string} [o.signalsLabel]  heading for the recognition-cue chips
+   * @param {string} [o.confuseLabel]  heading for the tell-them-apart block
+   * @param {string} [o.emptyTitle]    heading when the filter matches nothing
    */
   mount(o) {
     const grp = o.grp;
-    const unit = o.unit || 'mục';
-    const signalsLabel = o.signalsLabel || 'Dấu hiệu nhận biết';
-    const confuseLabel = o.confuseLabel || 'Phân biệt với mục dễ nhầm';
+    const unit = o.unit || 'items';
+    const signalsLabel = o.signalsLabel || 'Recognition cues';
+    const confuseLabel = o.confuseLabel || 'Telling it apart from similar items';
 
     let all = [];
-    const open = new Set();      // slug đang mở
-    const detail = new Map();    // slug → chi tiết đã tải
+    const open = new Set();      // slugs currently expanded
+    const detail = new Map();    // slug → detail already fetched
     const state = { level: '' };
 
     const $ = sel => PREP.qs(sel);
 
-    /* ---------- Khối chi tiết ---------- */
+    /* ---------- The detail block ---------- */
 
     function formulaBlock(f) {
       if (!f) return '';
@@ -71,39 +71,39 @@ const PrepGrammar = {
             '</div></div>'
         : '';
 
-      const useWhen = listBlock('Dùng khi nào', p.useWhen, u =>
+      const useWhen = listBlock('When to use it', p.useWhen, u =>
         '<li class="flex gap-2 text-[14px]">' +
           '<span class="text-ok-ink shrink-0" aria-hidden="true">•</span>' +
           '<span>' + PREP.esc(u) + '</span></li>');
 
-      const useNot = listBlock('KHÔNG dùng khi nào', p.useNot, u =>
+      const useNot = listBlock('When NOT to use it', p.useNot, u =>
         '<li class="rounded-xl border border-line px-3.5 py-3">' +
           '<p class="text-[14px] font-semibold">' + PREP.esc(u.what) + '</p>' +
           '<p class="text-[13px] text-muted font-medium mt-1">' + PREP.esc(u.why) + '</p></li>');
 
       const confuse = listBlock(confuseLabel, p.confuse, c =>
         '<li class="rounded-xl border border-line px-3.5 py-3">' +
-          '<p class="text-[14px] font-semibold">Với ' + PREP.esc(c.with) + '</p>' +
+          '<p class="text-[14px] font-semibold">Against ' + PREP.esc(c.with) + '</p>' +
           '<p class="text-[13px] text-muted font-medium mt-1">' + PREP.esc(c.tell) + '</p>' +
           '<div class="grid sm:grid-cols-2 gap-2.5 mt-2.5">' +
             c.pair.map(s => '<div class="rounded-lg bg-brand-soft px-3 py-2.5">' +
               sentence(s.en, s.vi) + '</div>').join('') +
           '</div></li>');
 
-      const errors = listBlock('Lỗi người Việt hay mắc', p.errors, e =>
+      const errors = listBlock('Mistakes Vietnamese learners make', p.errors, e =>
         '<li class="rounded-xl border border-line px-3.5 py-3">' +
-          '<p class="text-[14px]"><span class="badge badge-danger">Sai</span> ' +
+          '<p class="text-[14px]"><span class="badge badge-danger">Wrong</span> ' +
             '<span class="line-through text-muted">' + PREP.esc(e.wrong) + '</span></p>' +
-          '<p class="text-[14px] mt-1.5"><span class="badge badge-ok">Đúng</span> ' +
+          '<p class="text-[14px] mt-1.5"><span class="badge badge-ok">Right</span> ' +
             PrepTTS.wordify(e.right) + '</p>' +
           '<p class="text-[13px] text-muted font-medium mt-1.5">' + PREP.esc(e.why) + '</p></li>');
 
-      const examples = listBlock('Câu ví dụ', d.examples, x =>
+      const examples = listBlock('Examples', d.examples, x =>
         '<li class="rounded-xl px-3.5 py-3 ' +
             (x.ok ? 'bg-brand-soft' : 'border border-danger-line bg-danger-soft') + '">' +
           '<div class="flex items-start gap-2">' +
             '<span class="badge ' + (x.ok ? 'badge-ok' : 'badge-danger') + ' shrink-0">' +
-              (x.ok ? 'Đúng' : 'Sai') + '</span>' +
+              (x.ok ? 'Right' : 'Wrong') + '</span>' +
             '<div class="min-w-0">' + sentence(x.en, x.vi) + '</div></div>' +
           (x.note ? '<p class="text-[13px] text-muted font-medium mt-1.5">' + PREP.esc(x.note) + '</p>' : '') +
         '</li>');
@@ -111,9 +111,9 @@ const PrepGrammar = {
       const practice = d.practice.length
         ? '<div class="mt-5">' +
             '<div class="flex flex-wrap items-center gap-3">' +
-              '<h4 class="font-extrabold text-[15px] tracking-tight">Luyện tập</h4>' +
+              '<h4 class="font-extrabold text-[15px] tracking-tight">Practice</h4>' +
               '<button type="button" class="btn btn-ghost btn-sm" data-reveal="' + PREP.esc(p.slug) + '">' +
-                'Hiện tất cả đáp án</button>' +
+                'Show every answer</button>' +
             '</div>' +
             '<ol class="grid gap-2 mt-2.5">' + d.practice.map((x, i) =>
               '<li class="rounded-xl border border-line px-3.5 py-3">' +
@@ -121,7 +121,7 @@ const PrepGrammar = {
                   PREP.esc(x.en) + '</p>' +
                 '<p class="text-[13px] text-muted italic mt-0.5">' + PREP.esc(x.vi) + '</p>' +
                 '<p class="text-[14px] mt-1.5" data-answer hidden>' +
-                  '<span class="badge badge-ok">Đáp án</span> ' +
+                  '<span class="badge badge-ok">Answer</span> ' +
                   '<b class="text-ok-ink">' + PREP.esc(x.answer) + '</b></p>' +
               '</li>').join('') +
             '</ol></div>'
@@ -132,7 +132,7 @@ const PrepGrammar = {
         '</div>';
     }
 
-    /* ---------- Danh sách ---------- */
+    /* ---------- The list ---------- */
 
     function card(p) {
       const isOpen = open.has(p.slug);
@@ -148,13 +148,13 @@ const PrepGrammar = {
             '<span class="block text-[13px] text-muted font-semibold mt-0.5">' + PREP.esc(p.nameEn) + '</span>' +
             '<span class="block text-[14px] mt-1.5">' + PREP.esc(p.summary) + '</span>' +
             '<span class="block text-[13px] text-muted font-medium mt-1.5">' +
-              p.counts.example + ' ví dụ · ' + p.counts.practice + ' câu luyện</span>' +
+              p.counts.example + ' examples · ' + p.counts.practice + ' practice items</span>' +
           '</span>' +
           PREP.icon('chevronDown', 'w-5 h-5 shrink-0 text-muted mt-1 transition-transform' +
             (isOpen ? ' rotate-180' : '')) +
         '</button>' +
         (isOpen
-          ? (d ? detailHtml(d) : '<p class="text-[14px] text-muted font-medium mt-4">Đang tải…</p>')
+          ? (d ? detailHtml(d) : '<p class="text-[14px] text-muted font-medium mt-4">Loading…</p>')
           : '') +
         '</article>';
     }
@@ -168,7 +168,7 @@ const PrepGrammar = {
       $('#list').innerHTML = list.map(card).join('');
     }
 
-    /* ---------- Sự kiện ---------- */
+    /* ---------- Events ---------- */
 
     $('#list').addEventListener('click', e => {
       const reveal = e.target.closest('[data-reveal]');
@@ -176,7 +176,7 @@ const PrepGrammar = {
         const art = reveal.closest('article');
         const hidden = art.querySelectorAll('[data-answer][hidden]').length > 0;
         art.querySelectorAll('[data-answer]').forEach(el => el.toggleAttribute('hidden', !hidden));
-        reveal.textContent = hidden ? 'Ẩn đáp án' : 'Hiện tất cả đáp án';
+        reveal.textContent = hidden ? 'Hide the answers' : 'Show every answer';
         return;
       }
       const t = e.target.closest('[data-toggle]');
@@ -201,14 +201,14 @@ const PrepGrammar = {
       render();
     });
 
-    /* ---------- Nạp ---------- */
+    /* ---------- Loading ---------- */
 
     PrepTTS.onUnavailable = () => $('#tts-warn').removeAttribute('hidden');
     PrepTTS.init();
     PrepTTS.mountControls($('#tts-controls'));
     PrepTTS.bindSelection($('#main'));
-    // Uỷ quyền một lần trên #list — bên trong vẽ lại bao nhiêu lần cũng không
-    // cần gắn thêm listener.
+    // Delegated once on #list — however many times the inside is redrawn, no
+    // further listeners are needed.
     PrepTTS.bindClicks($('#list'));
 
     PrepApi.get('/api/learn/grammar?grp=' + encodeURIComponent(grp)).then(res => {
@@ -216,9 +216,9 @@ const PrepGrammar = {
       if (!PrepTTS.available()) $('#tts-warn').removeAttribute('hidden');
       if (!res.ok) {
         $('#empty').removeAttribute('hidden');
-        $('#empty').querySelector('h3').textContent = 'Không tải được danh sách';
+        $('#empty').querySelector('h3').textContent = 'The list could not be loaded';
         $('#empty').querySelector('p').textContent =
-          PrepApi.err(res, 'Thử tải lại trang giúp mình nhé.');
+          PrepApi.err(res, 'Please try reloading the page.');
         return;
       }
       all = res.data.points;

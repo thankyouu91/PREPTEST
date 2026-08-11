@@ -1125,9 +1125,9 @@ try {
   ok(await card.locator('[data-answer]:not([hidden])').count() === 0, 'Đáp án ẩn cho tới khi bấm hiện');
 
   const body = await card.innerText();
-  ok(/KHÔNG dùng khi nào/.test(body), 'Chi tiết có mục "KHÔNG dùng khi nào"');
-  ok(/Phân biệt với chỗ dễ nhầm/.test(body), 'Chi tiết có mục phân biệt');
-  ok(/Lỗi người Việt hay mắc/.test(body), 'Chi tiết có mục lỗi hay mắc');
+  ok(/When NOT to use it/.test(body), 'Chi tiết có mục "KHÔNG dùng khi nào"');
+  ok(/Telling it apart from similar tenses/.test(body), 'Chi tiết có mục phân biệt');
+  ok(/Mistakes Vietnamese learners make/.test(body), 'Chi tiết có mục lỗi hay mắc');
 
   await card.locator('[data-reveal]').click();
   await page.waitForTimeout(250);
@@ -1162,9 +1162,9 @@ try {
   const nCard = page.locator('article[data-slug="article-a-an"]');
   ok(await nCard.locator('[data-answer]').count() === 10, 'Mở ra thấy đủ 10 câu luyện');
   const nBody = await nCard.innerText();
-  ok(/Ghi nhớ nhanh/.test(nBody), 'Nhãn khối chip đổi theo nhóm thành "Ghi nhớ nhanh"');
-  ok(/Phân biệt với mục dễ nhầm/.test(nBody), 'Nhãn khối phân biệt đổi theo nhóm');
-  ok(/KHÔNG dùng khi nào/.test(nBody), 'Vẫn có mục "KHÔNG dùng khi nào"');
+  ok(/Quick reminders/.test(nBody), 'Nhãn khối chip đổi theo nhóm thành "Quick reminders"');
+  ok(/Telling it apart from similar items/.test(nBody), 'Nhãn khối phân biệt đổi theo nhóm');
+  ok(/When NOT to use it/.test(nBody), 'Vẫn có mục "KHÔNG dùng khi nào"');
 
   await nCard.locator('[data-reveal]').click();
   await page.waitForTimeout(250);
@@ -1369,17 +1369,17 @@ try {
      tầm nhìn, và nút mũi tên kéo thật. */
   await page.setViewportSize({ width: 700, height: 900 });
   await page.goto(BASE + '/prep/hoc/sac-thai/', { waitUntil: 'networkidle' });
-  await page.waitForSelector('nav[aria-label="Mục tự học"]', { timeout: 10000 });
+  await page.waitForSelector('nav[aria-label="Self-study topics"]', { timeout: 10000 });
 
-  ok(await page.locator('.navscroll nav[aria-label="Mục tự học"]').count() === 1,
+  ok(await page.locator('.navscroll nav[aria-label="Self-study topics"]').count() === 1,
     'Hàng chip được bọc trong khung có thanh kéo');
-  ok(await page.locator('nav[aria-label="Mục tự học"].navscroll-track').count() === 1,
+  ok(await page.locator('nav[aria-label="Self-study topics"].navscroll-track').count() === 1,
     'Hàng chip đổi sang thanh cuộn nhìn thấy được');
 
   const traiSau = () => page.evaluate(
-    () => document.querySelector('nav[aria-label="Mục tự học"]').scrollLeft);
+    () => document.querySelector('nav[aria-label="Self-study topics"]').scrollLeft);
   const tranNgang = await page.evaluate(() => {
-    const n = document.querySelector('nav[aria-label="Mục tự học"]');
+    const n = document.querySelector('nav[aria-label="Self-study topics"]');
     return n.scrollWidth - n.clientWidth;
   });
   ok(tranNgang > 0, 'Ở khung hẹp thì hàng chip thật sự tràn ngang (' + tranNgang + 'px)');
@@ -1392,7 +1392,7 @@ try {
      trí cuộn — và trên trang còn một [aria-current] nữa ở thanh điều hướng
      chính, ở khung hẹp thì thanh đó thu lại nên kết quả sai hẳn ý định. */
   const chipTronTam = await page.evaluate(() => {
-    const nav = document.querySelector('nav[aria-label="Mục tự học"]');
+    const nav = document.querySelector('nav[aria-label="Self-study topics"]');
     const chip = nav.querySelector('[aria-current="page"]');
     if (!chip) return false;
     const n = nav.getBoundingClientRect(), c = chip.getBoundingClientRect();
@@ -1408,7 +1408,7 @@ try {
   ok(await traiSau() < truocKhiLui, 'Bấm nút lùi thì hàng chip kéo về bên trái thật');
 
   /* Về đầu hàng thì nút lùi tự ẩn, nút tiến hiện lên */
-  await page.evaluate(() => { document.querySelector('nav[aria-label="Mục tự học"]').scrollLeft = 0; });
+  await page.evaluate(() => { document.querySelector('nav[aria-label="Self-study topics"]').scrollLeft = 0; });
   await page.waitForTimeout(300);
   ok(await page.locator('.navscroll-prev').isHidden(), 'Về đầu hàng thì nút lùi tự ẩn');
   ok(await page.locator('.navscroll-next').isVisible(), 'Nút tiến hiện khi còn mục bị che bên phải');

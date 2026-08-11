@@ -26,9 +26,16 @@ Tài khoản demo hiển thị tên **Demo Student**. Tên này được kéo v�
 ở mỗi lần khởi động ngoài production, cùng lúc với mật khẩu và trạng thái, nên
 một CSDL cũ không giữ mãi tên cũ (`ensureDemoStudent` trong `server/auth.js`).
 
-Còn tiếng Việt: khu quản trị, phần vỏ của mười một trang tự học, và các tệp máy
-chủ dùng chung chưa nằm trong lát cắt nào (`auth.js`, `db.js`, `storage.js`,
-`marking.js`) — xem hàng đợi trong `docs/ROADMAP.md`.
+**Mười một trang tự học** đã đổi phần vỏ sang tiếng Anh: tiêu đề, hàng chip, bộ
+lọc, trạng thái rỗng, tiêu đề cột, và các nhãn khối do `_grammar.js` dựng (When
+to use it, When NOT to use it, Mistakes Vietnamese learners make, Examples,
+Practice). Phần **giảng giải vẫn nguyên tiếng Việt**: đoạn dẫn mỗi trang và mọi
+thứ đọc từ CSDL. Một thẻ giờ có tiêu đề tiếng Anh, nội dung tiếng Việt — đúng
+hình dạng của một cuốn tra cứu song ngữ.
+
+Còn tiếng Việt: khu quản trị và các tệp máy chủ dùng chung chưa nằm trong lát
+cắt nào (`auth.js`, `db.js`, `storage.js`, `marking.js`) — xem hàng đợi trong
+`docs/ROADMAP.md`.
 
 **Nội dung khu tự học giữ nguyên tiếng Việt**: phần nghĩa, ví dụ song ngữ và
 "lỗi người Việt hay mắc" tồn tại để giải thích tiếng Anh bằng tiếng mẹ đẻ của
