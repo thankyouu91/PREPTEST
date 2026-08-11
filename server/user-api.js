@@ -45,9 +45,9 @@ function logUser(req, action, username, meta) {
 
 /** Quy tắc mật khẩu: tối thiểu 8 ký tự, có cả chữ và số. */
 function passwordProblem(pw) {
-  if (typeof pw !== 'string' || pw.length < 8) return 'Mật khẩu cần ít nhất 8 ký tự.';
-  if (pw.length > 200) return 'Mật khẩu quá dài.';
-  if (!/[A-Za-z]/.test(pw) || !/\d/.test(pw)) return 'Mật khẩu cần có cả chữ và số.';
+  if (typeof pw !== 'string' || pw.length < 8) return 'Password needs at least 8 characters.';
+  if (pw.length > 200) return 'That password is too long.';
+  if (!/[A-Za-z]/.test(pw) || !/\d/.test(pw)) return 'Password needs both letters and numbers.';
   return null;
 }
 
@@ -126,20 +126,20 @@ router.post('/auth/register', (req, res) => {
      ký từ đúng một địa chỉ 127.0.0.1, nên scripts/verify.sh đặt biến này lên cao
      để bước sau không bị bước trước chặn. Production không đặt biến ⇒ vẫn là 5. */
   const wait = A.rateLimitPeek(rlKey, REGISTER_PER_HOUR, 3600e3);
-  if (wait) return res.status(429).json({ error: 'Bạn đã tạo nhiều tài khoản liên tiếp. Thử lại sau ' + Math.ceil(wait / 60) + ' phút.' });
+  if (wait) return res.status(429).json({ error: 'You have created several accounts in a row. Try again in ' + Math.ceil(wait / 60) + ' minutes.' });
 
   const b = req.body || {};
   const name = str(b.name, 80);
   const email = str(b.email, 160).toLowerCase();
   const password = typeof b.password === 'string' ? b.password : '';
 
-  if (!name) return bad(res, 'Nhập họ tên của bạn.');
-  if (!EMAIL_RE.test(email)) return bad(res, 'Email chưa đúng định dạng.');
+  if (!name) return bad(res, 'Please enter your full name.');
+  if (!EMAIL_RE.test(email)) return bad(res, 'That email address is not valid.');
   const pwErr = passwordProblem(password);
   if (pwErr) return bad(res, pwErr);
 
   if (q.get('SELECT id FROM users WHERE email=? OR username=?', email, email)) {
-    return res.status(409).json({ error: 'Email này đã được đăng ký. Thử đăng nhập hoặc dùng email khác.' });
+    return res.status(409).json({ error: 'That email is already registered. Try signing in, or use another address.' });
   }
 
   q.run(`INSERT INTO users (username,email,name,pass_hash,verified,status,interests_json,created_at)
@@ -161,12 +161,12 @@ router.post('/auth/login', (req, res) => {
   const b = req.body || {};
   const identifier = str(b.username, 160).toLowerCase();
   const password = typeof b.password === 'string' ? b.password : '';
-  if (!identifier || !password) return bad(res, 'Nhập tên đăng nhập và mật khẩu.');
+  if (!identifier || !password) return bad(res, 'Enter your username and password.');
 
   const key = A.throttleKey(req, 'user:' + identifier);
   const lockedFor = A.isLocked(key);
   if (lockedFor) {
-    return res.status(429).json({ error: 'Sai quá nhiều lần. Thử lại sau ' + Math.ceil(lockedFor / 60) + ' phút.' });
+    return res.status(429).json({ error: 'Too many failed attempts. Try again in ' + Math.ceil(lockedFor / 60) + ' minutes.' });
   }
 
   const user = q.get('SELECT * FROM users WHERE lower(username)=? OR lower(email)=?', identifier, identifier);
@@ -177,7 +177,7 @@ router.post('/auth/login', (req, res) => {
   if (user && !user.pass_hash) {
     logUser(req, 'user.login.google_only', user.username);
     return res.status(409).json({
-      error: 'Tài khoản này đăng nhập bằng Google. Bấm "Tiếp tục với Google", hoặc dùng "Quên mật khẩu" để đặt mật khẩu riêng.',
+      error: 'This account signs in with Google. Use "Continue with Google", or set a password of your own through "Forgot password".',
       useGoogle: true
     });
   }
@@ -188,11 +188,11 @@ router.post('/auth/login', (req, res) => {
   if (!user || !ok) {
     A.noteFailure(key);
     logUser(req, 'user.login.failed', identifier);
-    return res.status(401).json({ error: 'Tài khoản hoặc mật khẩu không đúng. Kiểm tra lại giúp mình nhé.' });
+    return res.status(401).json({ error: 'That username or password is not right. Please check and try again.' });
   }
   if (user.status !== 'active') {
     logUser(req, 'user.login.locked', user.username);
-    return res.status(403).json({ error: 'Tài khoản đang tạm khoá. Liên hệ trung tâm của bạn để mở lại.' });
+    return res.status(403).json({ error: 'This account is locked. Contact your centre to reopen it.' });
   }
 
   A.clearFailures(key);
@@ -289,7 +289,7 @@ router.post('/auth/logout', A.csrfGuard, (req, res) => {
 router.post('/auth/verify/send', A.requireUser, A.csrfGuard, (req, res) => {
   if (req.user.verified) return res.json({ ok: true, alreadyVerified: true });
   const wait = A.rateLimit('verify-send|' + req.user.id, 3, 3600e3);
-  if (wait) return res.status(429).json({ error: 'Đã gửi khá nhiều lần. Thử lại sau ' + Math.ceil(wait / 60) + ' phút.' });
+  if (wait) return res.status(429).json({ error: 'That has been sent a few times already. Try again in ' + Math.ceil(wait / 60) + ' minutes.' });
 
   const link = deliverLink('verify', req.user, A.issueToken(req.user.id, 'verify'));
   logUser(req, 'user.verify.send', req.user.username);
@@ -299,7 +299,7 @@ router.post('/auth/verify/send', A.requireUser, A.csrfGuard, (req, res) => {
 /* Không cần đăng nhập: người dùng có thể mở liên kết ở trình duyệt khác. */
 router.post('/auth/verify', (req, res) => {
   const userId = A.consumeToken(str((req.body || {}).token, 400), 'verify');
-  if (!userId) return bad(res, 'Liên kết xác thực không hợp lệ hoặc đã hết hạn. Gửi lại giúp mình nhé.');
+  if (!userId) return bad(res, 'That verification link is invalid or has expired. Please request a new one.');
   q.run('UPDATE users SET verified=1 WHERE id=?', userId);
   const u = q.get('SELECT username FROM users WHERE id=?', userId);
   logUser(req, 'user.verify.done', u ? u.username : userId);
@@ -309,10 +309,10 @@ router.post('/auth/verify', (req, res) => {
 /* ===================== Quên / đặt lại mật khẩu ===================== */
 router.post('/auth/forgot', (req, res) => {
   const email = str((req.body || {}).email, 160).toLowerCase();
-  if (!EMAIL_RE.test(email)) return bad(res, 'Email chưa đúng định dạng.');
+  if (!EMAIL_RE.test(email)) return bad(res, 'That email address is not valid.');
 
   const wait = A.rateLimit('forgot|' + (req.ip || '?'), 5, 3600e3);
-  if (wait) return res.status(429).json({ error: 'Bạn đã yêu cầu nhiều lần. Thử lại sau ' + Math.ceil(wait / 60) + ' phút.' });
+  if (wait) return res.status(429).json({ error: 'You have asked for that several times. Try again in ' + Math.ceil(wait / 60) + ' minutes.' });
 
   const user = q.get('SELECT * FROM users WHERE lower(email)=?', email);
   let link;
@@ -331,7 +331,7 @@ router.post('/auth/reset', (req, res) => {
   if (pwErr) return bad(res, pwErr);
 
   const userId = A.consumeToken(str(b.token, 400), 'reset');
-  if (!userId) return bad(res, 'Liên kết đặt lại không hợp lệ hoặc đã hết hạn. Gửi lại yêu cầu giúp mình nhé.');
+  if (!userId) return bad(res, 'That reset link is invalid or has expired. Please request a new one.');
 
   q.run('UPDATE users SET pass_hash=? WHERE id=?', A.hashPassword(password), userId);
   A.dropUserSessions(userId);                       // mọi thiết bị cũ phải đăng nhập lại
@@ -375,8 +375,8 @@ router.patch('/me', A.requireUser, A.csrfGuard, (req, res) => {
   const b = req.body || {};
   const name = str(b.name, 80);
   const email = str(b.email, 160).toLowerCase();
-  if (!name) return bad(res, 'Nhập họ tên của bạn.');
-  if (!EMAIL_RE.test(email)) return bad(res, 'Email chưa đúng định dạng.');
+  if (!name) return bad(res, 'Please enter your full name.');
+  if (!EMAIL_RE.test(email)) return bad(res, 'That email address is not valid.');
 
   const taken = q.get('SELECT id FROM users WHERE lower(email)=? AND id<>?', email, req.user.id);
   if (taken) return res.status(409).json({ error: 'Email này đã thuộc về tài khoản khác.' });
@@ -405,7 +405,7 @@ router.post('/me/password', A.requireUser, A.csrfGuard, (req, res) => {
   const key = A.throttleKey(req, 'pw:' + req.user.username);
   const lockedFor = A.isLocked(key);
   if (lockedFor) {
-    return res.status(429).json({ error: 'Sai quá nhiều lần. Thử lại sau ' + Math.ceil(lockedFor / 60) + ' phút.' });
+    return res.status(429).json({ error: 'Too many failed attempts. Try again in ' + Math.ceil(lockedFor / 60) + ' minutes.' });
   }
 
   const row = q.get('SELECT pass_hash FROM users WHERE id=?', req.user.id);

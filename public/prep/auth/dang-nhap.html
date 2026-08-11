@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Đăng nhập · VPET Prep</title>
-  <meta name="description" content="Đăng nhập VPET Prep để tiếp tục luyện thi thử.">
+  <title>Sign in · VPET Prep</title>
+  <meta name="description" content="Sign in to VPET Prep and carry on practising.">
   <meta name="theme-color" content="#1c3d8f">
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <link rel="manifest" href="/manifest.webmanifest">
@@ -25,9 +25,9 @@
 
 <div class="min-h-[100dvh] grid lg:grid-cols-2">
 
-  <!-- ===== Cột form ===== -->
+  <!-- ===== Form column ===== -->
   <div class="flex flex-col px-4 sm:px-10 py-7">
-    <a href="/prep/landing/" class="flex items-center gap-2.5 self-start" aria-label="Về trang giới thiệu">
+    <a href="/prep/landing/" class="flex items-center gap-2.5 self-start" aria-label="Back to the home page">
       <span class="inline-flex items-center justify-center rounded-xl text-white panel-brand w-9 h-9">
         <svg viewBox="0 0 24 24" class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21.4 10.9a1 1 0 0 0 0-1.8L12.8 5.2a2 2 0 0 0-1.6 0L2.6 9.1a1 1 0 0 0 0 1.8l8.6 3.9a2 2 0 0 0 1.6 0Z"/><path d="M22 10.5V16"/><path d="M6 12.5V16a6 3 0 0 0 12 0v-3.5"/></svg>
       </span>
@@ -35,8 +35,8 @@
     </a>
 
     <div class="w-full max-w-md mx-auto my-auto py-10">
-      <h1 class="text-3xl font-extrabold tracking-tight rise">Mừng bạn quay lại</h1>
-      <p class="text-muted text-[15px] leading-relaxed mt-2 rise rise-1">Đăng nhập để tiếp tục luyện đề của bạn.</p>
+      <h1 class="text-3xl font-extrabold tracking-tight rise">Welcome back</h1>
+      <p class="text-muted text-[15px] leading-relaxed mt-2 rise rise-1">Sign in to pick up where you left off.</p>
 
       <div id="form-banner" class="banner banner-error mt-6" role="alert" aria-live="polite">
         <svg viewBox="0 0 24 24" class="w-5 h-5 shrink-0 mt-0.5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>
@@ -45,27 +45,27 @@
 
       <form id="f" class="grid gap-5 mt-7" novalidate>
         <div>
-          <label class="label" for="email">Tên đăng nhập hoặc email</label>
+          <label class="label" for="email">Username or email</label>
           <input class="input" id="email" name="username" type="text" autocomplete="username"
-                 spellcheck="false" placeholder="student hoặc ban@truong.edu.vn" required>
-          <p class="field-error" id="err-email">Nhập tên đăng nhập hoặc email của bạn.</p>
+                 spellcheck="false" placeholder="student or ban@truong.edu.vn" required>
+          <p class="field-error" id="err-email">Enter your username or email.</p>
         </div>
         <div>
           <div class="flex items-baseline justify-between mb-1.5">
-            <label class="label mb-0" for="password">Mật khẩu</label>
-            <a href="/prep/quen-mat-khau/" class="text-[13px] font-bold text-brand-strong hover:underline">Quên mật khẩu?</a>
+            <label class="label mb-0" for="password">Password</label>
+            <a href="/prep/quen-mat-khau/" class="text-[13px] font-bold text-brand-strong hover:underline">Forgot password?</a>
           </div>
           <div class="relative">
-            <input class="input pe-12" id="password" name="password" type="password" autocomplete="current-password" placeholder="Mật khẩu của bạn" required>
-            <button type="button" id="toggle-pass" class="absolute inset-y-0 right-0 px-3.5 text-muted hover:text-ink transition" aria-label="Hiện mật khẩu" aria-pressed="false"></button>
+            <input class="input pe-12" id="password" name="password" type="password" autocomplete="current-password" placeholder="Your password" required>
+            <button type="button" id="toggle-pass" class="absolute inset-y-0 right-0 px-3.5 text-muted hover:text-ink transition" aria-label="Show password" aria-pressed="false"></button>
           </div>
-          <p class="field-error" id="err-password">Nhập mật khẩu để đăng nhập.</p>
+          <p class="field-error" id="err-password">Enter your password.</p>
         </div>
         <label class="flex items-center gap-3 text-[14px] font-medium text-muted select-none">
           <input type="checkbox" id="remember" checked class="w-4 h-4 rounded accent-[color:var(--color-accent)]">
-          Ghi nhớ đăng nhập trên máy này
+          Stay signed in on this device
         </label>
-        <button type="submit" id="submit" class="btn btn-primary btn-lg w-full mt-1">Đăng nhập</button>
+        <button type="submit" id="submit" class="btn btn-primary btn-lg w-full mt-1">Sign in</button>
       </form>
 
       <!-- Hidden until /api/me reports the Google provider as configured, so a
@@ -75,7 +75,7 @@
       <div id="oauth-block" hidden>
         <div class="flex items-center gap-3 mt-6" aria-hidden="true">
           <span class="h-px flex-1 bg-[color:var(--color-line)]"></span>
-          <span class="text-[13px] font-bold text-muted">hoặc</span>
+          <span class="text-[13px] font-bold text-muted">or</span>
           <span class="h-px flex-1 bg-[color:var(--color-line)]"></span>
         </div>
         <a id="google-btn" class="btn btn-soft btn-lg w-full mt-4" href="/auth/google">
@@ -85,41 +85,41 @@
             <path fill="#FBBC05" d="M5.3 14.3a7.1 7.1 0 0 1 0-4.6v-3.1h-4a12 12 0 0 0 0 10.8l4-3.1z"/>
             <path fill="#EA4335" d="M12 4.8c1.8 0 3.4.6 4.6 1.8l3.4-3.4A12 12 0 0 0 1.3 6.6l4 3.1A7.2 7.2 0 0 1 12 4.8z"/>
           </svg>
-          Tiếp tục với Google
+          Continue with Google
         </a>
       </div>
 
       <p class="text-[14.5px] font-medium text-muted mt-7">
-        Chưa có tài khoản? <a href="/prep/dang-ky/" class="font-bold text-brand-strong hover:underline">Đăng ký miễn phí</a>
+        No account yet? <a href="/prep/dang-ky/" class="font-bold text-brand-strong hover:underline">Create a free account</a>
       </p>
 
-      <!-- Tài khoản demo: chỉ tồn tại ở bản dựng giao diện này -->
+      <!-- Demo account: exists only in this interface build -->
       <div class="card bg-brand-soft border-0 p-4 mt-7">
-        <p class="text-[12.5px] font-bold uppercase tracking-wide text-muted">Tài khoản demo</p>
+        <p class="text-[12.5px] font-bold uppercase tracking-wide text-muted">Demo account</p>
         <p class="flex flex-wrap items-center gap-x-5 gap-y-1 mt-2 text-[14px]">
-          <span>Tên đăng nhập <b class="font-extrabold">student</b></span>
-          <span>Mật khẩu <b class="font-extrabold">Goodmorning01</b></span>
+          <span>Username <b class="font-extrabold">student</b></span>
+          <span>Password <b class="font-extrabold">Goodmorning01</b></span>
         </p>
-        <button type="button" id="fill-demo" class="btn btn-soft btn-sm mt-3">Điền sẵn tài khoản demo</button>
+        <button type="button" id="fill-demo" class="btn btn-soft btn-sm mt-3">Fill in the demo account</button>
       </div>
-      <p class="text-[12px] text-muted/75 mt-4">Tài khoản demo chỉ có ở bản chạy thử, không tồn tại trên môi trường thật.</p>
+      <p class="text-[12px] text-muted/75 mt-4">The demo account exists only in the trial build, never in production.</p>
     </div>
   </div>
 
-  <!-- ===== Panel thương hiệu ===== -->
+  <!-- ===== Brand panel ===== -->
   <aside class="hidden lg:flex flex-col justify-between panel-brand text-white p-12 xl:p-16" aria-hidden="true">
     <div class="max-w-md">
-      <h2 class="text-3xl xl:text-4xl font-extrabold tracking-tight leading-tight text-balance">Bài luyện của bạn vẫn đang đợi.</h2>
-      <p class="text-white/85 text-[15.5px] leading-relaxed mt-4 max-w-[40ch]">Tiến độ, code đã kích hoạt và phân tích kỹ năng đều nằm trong tài khoản của bạn.</p>
+      <h2 class="text-3xl xl:text-4xl font-extrabold tracking-tight leading-tight text-balance">Your practice is waiting.</h2>
+      <p class="text-white/85 text-[15.5px] leading-relaxed mt-4 max-w-[40ch]">Progress, activated codes and skill breakdowns all live in your account.</p>
     </div>
     <div class="card bg-white/10 border-white/15 p-6 max-w-md backdrop-blur-sm">
       <div class="flex items-center gap-2 mb-4">
         <span class="exam-chip" data-family="toeic">TOEIC</span>
-        <span class="badge badge-ok ms-auto">Đã mở khoá</span>
+        <span class="badge badge-ok ms-auto">Unlocked</span>
       </div>
       <p class="font-bold">TOEIC Listening &amp; Reading 01</p>
-      <p class="text-[13px] text-white/70 font-semibold mt-1">Tiếp tục từ Part 5</p>
-      <span class="btn btn-on-brand btn-sm mt-4 pointer-events-none">Tiếp tục luyện</span>
+      <p class="text-[13px] text-white/70 font-semibold mt-1">Resume from Part 5</p>
+      <span class="btn btn-on-brand btn-sm mt-4 pointer-events-none">Keep practising</span>
     </div>
   </aside>
 </div>
@@ -139,7 +139,7 @@
     const show = pass.type === 'password';
     pass.type = show ? 'text' : 'password';
     tg.setAttribute('aria-pressed', String(show));
-    tg.setAttribute('aria-label', show ? 'Ẩn mật khẩu' : 'Hiện mật khẩu');
+    tg.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
     setEye(show);
   });
 
@@ -163,19 +163,19 @@
   {
     const why = new URLSearchParams(location.search).get('oauth');
     const SAY = {
-      cancelled: 'Bạn đã huỷ đăng nhập bằng Google.',
-      state: 'Phiên đăng nhập Google đã quá hạn. Bấm lại giúp mình nhé.',
-      unverified: 'Địa chỉ email của tài khoản Google này chưa được xác thực.',
-      locked: 'Tài khoản đang tạm khoá. Liên hệ trung tâm của bạn để mở lại.',
-      disabled: 'Đăng nhập bằng Google chưa được bật trên hệ thống này.'
+      cancelled: 'You cancelled the Google sign-in.',
+      state: 'That Google sign-in expired. Please press the button again.',
+      unverified: 'The email address on this Google account is not verified.',
+      locked: 'This account is locked. Contact your centre to reopen it.',
+      disabled: 'Google sign-in is not enabled on this system.'
     };
     if (why) {
-      PREP.qs('#form-banner-text').textContent = SAY[why] || 'Đăng nhập bằng Google không thành công. Thử lại hoặc dùng mật khẩu.';
+      PREP.qs('#form-banner-text').textContent = SAY[why] || 'Google sign-in did not go through. Try again, or use your password.';
       PREP.qs('#form-banner').classList.add('show');
     }
   }
 
-  /* Điền nhanh tài khoản demo */
+  /* Fill in the demo account */
   PREP.qs('#fill-demo').addEventListener('click', () => {
     PREP.qs('#email').value = 'student';
     pass.value = 'Goodmorning01';
@@ -185,7 +185,7 @@
     PREP.qs('#submit').focus();
   });
 
-  /* Submit — POST /api/auth/login, phiên nằm ở cookie prep_user */
+  /* Submit — POST /api/auth/login; the session lives in the prep_user cookie */
   const f = PREP.qs('#f'), btn = PREP.qs('#submit');
   const banner = PREP.qs('#form-banner'), bannerText = PREP.qs('#form-banner-text');
   const mark = (id, bad) => {
@@ -199,17 +199,17 @@
     banner.classList.remove('show');
     const id = PREP.qs('#email').value.trim();
     let bad = false;
-    // Chấp nhận tên đăng nhập (>= 3 ký tự) hoặc email đúng định dạng
+    // Accept a username (3+ characters) or a well-formed email
     const idOk = id.includes('@') ? PREP.validEmail(id) : id.length >= 3;
     mark('email', !idOk); bad = bad || !idOk;
     mark('password', !pass.value); bad = bad || !pass.value;
     if (bad) return;
 
     btn.disabled = true;
-    btn.innerHTML = PREP.icon('loader', 'w-5 h-5 animate-spin-slow') + 'Đang đăng nhập';
+    btn.innerHTML = PREP.icon('loader', 'w-5 h-5 animate-spin-slow') + 'Signing in';
     PrepAuth.login(id, pass.value).then(res => {
       if (!res.ok) {
-        btn.disabled = false; btn.textContent = 'Đăng nhập';
+        btn.disabled = false; btn.textContent = 'Sign in';
         bannerText.textContent = res.error;
         banner.classList.add('show');
         pass.value = '';

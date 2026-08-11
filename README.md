@@ -13,6 +13,17 @@ Cơ chế truy cập: đăng ký tài khoản → mua/nhập code → mở khoá
 > Danh mục đọc từ `GET /api/catalog`; tài khoản học viên có đăng ký / đăng nhập / xác thực
 > email / đặt lại mật khẩu thật với phiên cookie. Kích hoạt code còn ở phía client.
 
+## Ngôn ngữ giao diện
+
+Đang chuyển sang tiếng Anh theo từng mảng. Xong: năm màn tài khoản (đăng nhập,
+đăng ký, quên/đặt lại mật khẩu, xác thực email) và thông báo `/api/auth/*` đi kèm.
+Còn tiếng Việt: trang giới thiệu, khu học viên đã đăng nhập, khu quản trị —
+xem hàng đợi trong `docs/ROADMAP.md`.
+
+**Nội dung khu tự học giữ nguyên tiếng Việt**: phần nghĩa, ví dụ song ngữ và
+"lỗi người Việt hay mắc" tồn tại để giải thích tiếng Anh bằng tiếng mẹ đẻ của
+người học; dịch sang tiếng Anh là bỏ đi chính công dụng của chúng.
+
 ## Chạy thử
 
 ```bash
