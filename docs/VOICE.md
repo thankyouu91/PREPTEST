@@ -1105,6 +1105,22 @@ an official certificate is a liability for the business and a fraud risk for
 whoever receives it. Labelled honestly, it is a genuinely useful thing for a
 learner to hold.
 
+**Mockup.** [`docs/mockups/certificate.html`](mockups/certificate.html), rendered by
+`node scripts/shot-certificate.mjs` into three states:
+
+| Image | State |
+|---|---|
+| `docs/screenshots/certificate-issued.png` | what a candidate receives once branding is uploaded |
+| `docs/screenshots/certificate-blank-logo.png` | the template as it ships, logo slot empty |
+| `docs/screenshots/certificate-level1-ceiling.png` | a Level 1 result at the ceiling, carrying the recommendation instead of a level the form cannot support |
+
+The mockup is a visual reference, not the shipping template — it is not wired to
+any data. Its job is to settle what prose argues badly: where the empty logo slot
+sits, how much room the level indicator needs, and whether GSE and CEFR can share a
+line without crowding. The render script asserts the sheet does not overflow,
+because a certificate is a fixed-size document and the longest state (Level 1 with
+the ceiling notice) breaks first and is easy to miss by eye.
+
 **What goes on it**
 
 ```

@@ -1,0 +1,351 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>VPET practice test result — certificate mockup</title>
+<!--
+  Certificate mockup for docs/VOICE.md section 8.4.
+
+  A visual reference only: it is not wired to any data and is not the shipping
+  template. What it is for is settling the things that are hard to argue about in
+  prose — where the empty logo slot sits, how much room the level indicator needs,
+  whether GSE and CEFR can share a line without crowding.
+
+  Three things on this page are design decisions, not decoration:
+
+  1. The logo slot is empty in the template. Branding is uploaded per form in the
+     admin dashboard and pinned onto the issued certificate.
+  2. "Practice test result" is the largest type after the candidate's name, and the
+     awarding body appears nowhere as issuer. This document must never read as an
+     official VPET certificate.
+  3. The level is printed on the face. "B1" from a Level 1 form and "B1" from a
+     Level 2 form mean different things, and a reader has to be able to tell.
+
+  Render:  node scripts/shot-certificate.mjs
+  Tokens follow src/tailwind.css; the font is the self-hosted Plus Jakarta Sans,
+  Vietnamese subset included, so diacritics in candidate names render properly.
+-->
+<style>
+  @font-face { font-family: 'Plus Jakarta Sans'; font-style: normal; font-weight: 400;
+    font-display: block; src: url(../../public/fonts/pjs-400-vietnamese.woff2) format('woff2'); }
+  @font-face { font-family: 'Plus Jakarta Sans'; font-style: normal; font-weight: 500;
+    font-display: block; src: url(../../public/fonts/pjs-500-vietnamese.woff2) format('woff2'); }
+  @font-face { font-family: 'Plus Jakarta Sans'; font-style: normal; font-weight: 600;
+    font-display: block; src: url(../../public/fonts/pjs-600-vietnamese.woff2) format('woff2'); }
+  @font-face { font-family: 'Plus Jakarta Sans'; font-style: normal; font-weight: 700;
+    font-display: block; src: url(../../public/fonts/pjs-700-vietnamese.woff2) format('woff2'); }
+  @font-face { font-family: 'Plus Jakarta Sans'; font-style: normal; font-weight: 800;
+    font-display: block; src: url(../../public/fonts/pjs-800-vietnamese.woff2) format('woff2'); }
+
+  :root {
+    --primary: #1c3d8f;
+    --accent:  #0e8577;
+    --ink:     #111a33;
+    --muted:   #57627a;
+    --line:    #e4e8f1;
+    --paper:   #ffffff;
+    --hl:      #ffc94d;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+    color: var(--ink);
+    background: #eef0f6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* A4 landscape. Fixed physical size so the print path and the screenshot path
+     produce the same layout. */
+  .sheet {
+    width: 297mm; height: 210mm; overflow: hidden;
+    background: var(--paper);
+    position: relative;
+    padding: 12mm;
+    display: flex; flex-direction: column;
+  }
+
+  /* Two rules rather than a decorative border: a certificate should look
+     administered, not celebratory. */
+  .frame {
+    position: absolute; inset: 8mm;
+    border: 1.6px solid var(--primary);
+  }
+  .frame::after {
+    content: ''; position: absolute; inset: 2.2mm;
+    border: 0.6px solid color-mix(in srgb, var(--primary) 32%, white);
+  }
+
+  /* A single accent band across the head. Carries the tenant colour without
+     making the document look like marketing. */
+  .band {
+    position: absolute; left: 8mm; right: 8mm; top: 8mm; height: 4mm;
+    background: linear-gradient(90deg, var(--primary) 0%, var(--primary) 62%, var(--accent) 62%, var(--accent) 100%);
+  }
+
+  .inner { position: relative; z-index: 1; display: flex; flex-direction: column; height: 100%; padding: 3mm 9mm 0; }
+
+  /* ---------------- head ---------------- */
+  .head { text-align: center; }
+
+  /* The empty state is the template's real state, so it is drawn deliberately
+     rather than left as a gap: a dashed slot, sized to the artwork it expects. */
+  .logo {
+    width: 22mm; height: 22mm; margin: 0 auto 3.5mm;
+    display: grid; place-items: center;
+  }
+  .logo-slot {
+    width: 100%; height: 100%;
+    border: 1.4px dashed color-mix(in srgb, var(--primary) 38%, white);
+    border-radius: 2mm;
+    display: grid; place-items: center;
+    text-align: center;
+    color: color-mix(in srgb, var(--primary) 55%, white);
+    font-size: 7.2pt; font-weight: 600; line-height: 1.35; letter-spacing: .02em;
+    padding: 2mm;
+  }
+  .logo-mark { width: 100%; height: 100%; object-fit: contain; }
+  body.has-logo .logo-slot { display: none; }
+  body:not(.has-logo) .logo-mark { display: none; }
+
+  .org {
+    font-size: 12.5pt; font-weight: 700; letter-spacing: .16em; text-transform: uppercase;
+    color: var(--primary);
+  }
+  body:not(.has-logo) .org { color: color-mix(in srgb, var(--primary) 45%, white); }
+
+  .title {
+    margin-top: 5mm;
+    font-size: 28pt; font-weight: 800; letter-spacing: -.015em; line-height: 1.05;
+  }
+  .disclaimer {
+    margin: 2mm auto 0; max-width: 168mm;
+    font-size: 8pt; font-weight: 500; line-height: 1.45; color: var(--muted);
+  }
+  .disclaimer strong { color: var(--ink); font-weight: 700; }
+
+  /* ---------------- candidate ---------------- */
+  .awarded {
+    margin-top: 5mm; text-align: center;
+    font-size: 9pt; font-weight: 600; letter-spacing: .14em; text-transform: uppercase;
+    color: var(--muted);
+  }
+  .name {
+    margin-top: 2mm; text-align: center;
+    font-size: 25pt; font-weight: 700; letter-spacing: -.01em;
+    color: var(--primary);
+  }
+  .name-rule { width: 88mm; height: 1px; background: var(--line); margin: 3mm auto 0; }
+
+  .exam {
+    margin-top: 4mm; text-align: center;
+    font-size: 10pt; font-weight: 600; color: var(--ink);
+  }
+  .exam .sep { color: var(--line); margin: 0 2.5mm; }
+  .level-tag {
+    display: inline-block; padding: .8mm 2.6mm; border-radius: 1mm;
+    background: var(--primary); color: #fff;
+    font-size: 8.6pt; font-weight: 800; letter-spacing: .1em;
+  }
+  .exam-note { margin-top: 1.6mm; font-size: 8.4pt; font-weight: 500; color: var(--muted); }
+
+  /* ---------------- scores ---------------- */
+  .scores {
+    margin-top: 5mm;
+    display: grid; grid-template-columns: 62mm 1fr; gap: 0 9mm; align-items: stretch;
+  }
+
+  .overall {
+    border: 1.4px solid var(--primary); border-radius: 2mm;
+    padding: 5mm 4mm; text-align: center;
+    display: flex; flex-direction: column; justify-content: center;
+  }
+  .overall-label {
+    font-size: 8.2pt; font-weight: 700; letter-spacing: .18em; text-transform: uppercase;
+    color: var(--muted);
+  }
+  .overall-gse {
+    margin-top: 1.5mm;
+    font-size: 38pt; font-weight: 800; line-height: 1; letter-spacing: -.03em;
+    color: var(--primary);
+  }
+  .overall-gse span { font-size: 11pt; font-weight: 700; letter-spacing: .1em; vertical-align: 5mm; color: var(--muted); }
+  .overall-cefr {
+    margin-top: 2.5mm;
+    font-size: 15pt; font-weight: 800; letter-spacing: .06em;
+    color: var(--accent);
+  }
+
+  .skills { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0; }
+  .skill {
+    padding: 5mm 3mm; text-align: center;
+    border-left: 1px solid var(--line);
+  }
+  .skill:first-child { border-left: 0; }
+  .skill-name {
+    font-size: 8.2pt; font-weight: 700; letter-spacing: .12em; text-transform: uppercase;
+    color: var(--muted);
+  }
+  .skill-gse {
+    margin-top: 1.5mm;
+    font-size: 22pt; font-weight: 800; line-height: 1; letter-spacing: -.02em;
+    color: var(--ink);
+  }
+  .skill-gse span { font-size: 8pt; font-weight: 700; color: var(--muted); vertical-align: 2.8mm; letter-spacing: .06em; }
+  .skill-cefr {
+    margin-top: 2mm; display: inline-block;
+    padding: .7mm 2.4mm; border-radius: 1mm;
+    background: color-mix(in srgb, var(--accent) 12%, white);
+    color: var(--accent);
+    font-size: 9pt; font-weight: 800; letter-spacing: .05em;
+  }
+
+  /* The scale legend does real work: without it "GSE 64" is a number with no
+     frame of reference, and the certificate has no room for a paragraph. */
+  .scale-note {
+    grid-column: 1 / -1; margin-top: 4mm;
+    font-size: 7.8pt; font-weight: 500; color: var(--muted); text-align: center;
+  }
+
+  /* ---------------- ceiling / floor notice ---------------- */
+  .notice {
+    margin-top: 5mm;
+    border-left: 2.4px solid var(--hl);
+    background: color-mix(in srgb, var(--hl) 16%, white);
+    padding: 2.5mm 4mm;
+    font-size: 8.6pt; font-weight: 600; line-height: 1.5; color: var(--ink);
+  }
+  body:not(.has-notice) .notice { display: none; }
+
+  /* ---------------- foot ---------------- */
+  .foot {
+    margin-top: auto; padding-top: 3.5mm;
+    border-top: 1px solid var(--line);
+    display: grid; grid-template-columns: 1fr auto; gap: 8mm; align-items: end;
+  }
+  .marking { font-size: 8pt; font-weight: 500; line-height: 1.6; color: var(--muted); max-width: 150mm; }
+  .marking b { color: var(--ink); font-weight: 700; }
+  .code {
+    margin-top: 2mm;
+    font-size: 8.4pt; font-weight: 700; letter-spacing: .06em; color: var(--ink);
+  }
+  .code span { font-weight: 500; color: var(--muted); letter-spacing: 0; }
+
+  .sign { text-align: center; min-width: 56mm; }
+  .sign-line { height: 1px; background: var(--ink); margin-bottom: 1.8mm; }
+  .sign-name { font-size: 9.4pt; font-weight: 700; }
+  .sign-role { font-size: 7.8pt; font-weight: 500; color: var(--muted); margin-top: .6mm; }
+  .issued { font-size: 7.8pt; font-weight: 500; color: var(--muted); margin-top: 2.5mm; }
+
+  @page { size: A4 landscape; margin: 0; }
+  @media print { html, body { background: #fff; } .sheet { box-shadow: none; } }
+</style>
+</head>
+<body class="has-logo">
+<div class="sheet">
+  <div class="band"></div>
+  <div class="frame"></div>
+
+  <div class="inner">
+    <div class="head">
+      <div class="logo">
+        <div class="logo-slot">LOGO<br>UPLOADED<br>PER FORM</div>
+        <!-- Placeholder artwork for the filled state. A fictional centre: this page
+             must not carry any real organisation's mark. -->
+        <svg class="logo-mark" viewBox="0 0 100 100" role="img" aria-label="Sample centre mark">
+          <circle cx="50" cy="50" r="46" fill="none" stroke="#1c3d8f" stroke-width="4"/>
+          <path d="M50 20 L74 34 L74 62 L50 76 L26 62 L26 34 Z" fill="#1c3d8f" opacity=".1"/>
+          <path d="M50 20 L74 34 L74 62 L50 76 L26 62 L26 34 Z" fill="none" stroke="#0e8577" stroke-width="3.4"/>
+          <text x="50" y="58" text-anchor="middle" font-family="Plus Jakarta Sans, sans-serif"
+                font-size="26" font-weight="800" fill="#1c3d8f">AB</text>
+        </svg>
+      </div>
+      <div class="org">ABC Language Centre</div>
+
+      <h1 class="title">Practice Test Result</h1>
+      <p class="disclaimer">
+        This document records a <strong>practice test taken on the PrepTest platform</strong>.
+        It is not an official VPET certificate and is not issued by any awarding body.
+      </p>
+    </div>
+
+    <div class="awarded">This is to certify that</div>
+    <div class="name">Nguyễn Ngọc Anh</div>
+    <div class="name-rule"></div>
+
+    <div class="exam">
+      VPET Practice Test
+      <span class="sep">·</span>
+      <span class="level-tag">LEVEL 2</span>
+      <span class="sep">·</span>
+      Form VPET-L2-014
+      <span class="sep">·</span>
+      Taken 8 August 2026
+    </div>
+    <div class="exam-note">Level 2 measures B2 and above. Level 1 measures B1 and below.</div>
+
+    <div class="scores">
+      <div class="overall">
+        <div class="overall-label">Overall</div>
+        <div class="overall-gse"><span>GSE</span>64</div>
+        <div class="overall-cefr">CEFR B2</div>
+      </div>
+
+      <div class="skills">
+        <div class="skill">
+          <div class="skill-name">Listening</div>
+          <div class="skill-gse"><span>GSE</span>67</div>
+          <div class="skill-cefr">B2+</div>
+        </div>
+        <div class="skill">
+          <div class="skill-name">Reading</div>
+          <div class="skill-gse"><span>GSE</span>66</div>
+          <div class="skill-cefr">B2</div>
+        </div>
+        <div class="skill">
+          <div class="skill-name">Writing</div>
+          <div class="skill-gse"><span>GSE</span>61</div>
+          <div class="skill-cefr">B2</div>
+        </div>
+        <div class="skill">
+          <div class="skill-name">Speaking</div>
+          <div class="skill-gse"><span>GSE</span>62</div>
+          <div class="skill-cefr">B2</div>
+        </div>
+      </div>
+
+      <div class="scale-note">
+        Global Scale of English 10–90 · B1 43–50 · B1+ 51–58 · B2 59–66 · B2+ 67–75 · C1 76–84 · C2 85–90
+      </div>
+    </div>
+
+    <div class="notice">
+      This result sits at the ceiling of Level 1, which cannot measure above B1.
+      Sit Level 2 to be placed accurately at B2 or higher.
+    </div>
+
+    <div class="foot">
+      <div>
+        <div class="marking">
+          <b>How this was marked.</b> Reading and Listening were marked automatically.
+          Writing and Speaking were marked by AI against the VPET rubric and reviewed by the
+          teacher named opposite, who may amend any score.
+        </div>
+        <div class="code">
+          Certificate 7QK4-2M8P-XR3D
+          <span>· verify at preptest.vn/verify/7QK42M8PXR3D</span>
+        </div>
+      </div>
+
+      <div class="sign">
+        <div class="sign-line"></div>
+        <div class="sign-name">Trần Minh Hòa</div>
+        <div class="sign-role">Reviewing teacher</div>
+        <div class="issued">Issued 11 August 2026</div>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>
