@@ -1,66 +1,66 @@
 /**
- * Bộ format đề chuẩn cho từng kỳ thi — phần "kiến thức học thuật" của nền tảng.
+ * The standard paper formats for each exam — the platform's "subject knowledge".
  *
- * Mỗi format mô tả đúng cấu trúc đề thật: có bao nhiêu phần, mỗi phần bao nhiêu
- * câu, bao nhiêu phút, dạng câu nào, chấm theo thang gì. Admin chọn format là
- * trình sinh đề tự động có sẵn blueprint chuẩn, không phải gõ tay từng con số.
+ * Each format describes the real paper: how many sections, how many items and
+ * minutes in each, which item types, and what it is marked on. Choosing a format
+ * gives the generator a correct blueprint instead of numbers typed in by hand.
  *
- * Cấu trúc một format:
- *   id          mã duy nhất
- *   familyId    thuộc kỳ thi nào
- *   name        tên hiển thị
- *   kind        'full' (trọn bài) | 'module' (một kỹ năng) | 'mini' (rút gọn để luyện)
- *   levels      các bậc dùng được
- *   scoring     mô tả thang điểm
- *   guide       hướng dẫn hiện ở màn chuẩn bị
- *   sections[]  các KHỐI CÓ ĐỒNG HỒ RIÊNG — đây chính là blueprint gửi cho
+ * The shape of a format:
+ *   id          unique code
+ *   familyId    which exam family it belongs to
+ *   name        display name
+ *   kind        'full' (whole paper) | 'module' (one skill) | 'mini' (a short practice cut)
+ *   levels      the levels it can be used at
+ *   scoring     a description of the marking scale
+ *   guide       the instructions shown on the pre-start screen
+ *   sections[]  the SEPARATELY TIMED BLOCKS — this is the blueprint sent to
  *               POST /api/admin/tests/generate
- *     name, skill, type (nhãn), items, minutes, types[] (lọc dạng câu khi bốc)
- *     parts[]   chi tiết bên trong khối, chỉ để hiển thị và giải thích thiết kế
- *   notes[]     lưu ý học thuật: vì sao chia như vậy, bẫy hay gặp
+ *     name, skill, type (a label), items, minutes, types[] (which item types to draw)
+ *     parts[]   what is inside the block; for display and to explain the design
+ *   notes[]     notes on the exam itself: why it splits this way, and the usual traps
  *
- * Nguồn: tài liệu công bố của từng tổ chức khảo thí; VEPT/VPET theo định dạng
- * VSTEP.3-5 (Thông tư 01/2014/TT-BGDĐT). Xem docs/SCORING.md.
+ * Sources: each examining body's published documentation; VEPT and VPET follow the
+ * VSTEP.3-5 format (Circular 01/2014/TT-BGDĐT). See docs/SCORING.md.
  */
 'use strict';
 
-/* Định dạng VSTEP dùng chung cho VEPT và VPET — hai chứng chỉ nội địa cùng khung */
+/* The VSTEP format, shared by VEPT and VPET — two domestic certificates on one framework */
 function vstepSections() {
   return [
     {
-      name: 'Listening', skill: 'listening', type: 'Trắc nghiệm', items: 35, minutes: 40,
+      name: 'Listening', skill: 'listening', type: 'Multiple choice', items: 35, minutes: 40,
       types: ['mcq'],
       parts: [
-        { label: 'Part 1', items: 8, note: 'Thông báo, hướng dẫn ngắn — nghe một lần' },
-        { label: 'Part 2', items: 12, note: 'Hội thoại giữa hai người' },
-        { label: 'Part 3', items: 15, note: 'Bài nói, bài giảng dài' }
+        { label: 'Part 1', items: 8, note: 'Announcements and short instructions — played once' },
+        { label: 'Part 2', items: 12, note: 'A conversation between two people' },
+        { label: 'Part 3', items: 15, note: 'Longer talks and lectures' }
       ]
     },
     {
-      name: 'Reading', skill: 'reading', type: 'Đọc hiểu 4 bài', items: 40, minutes: 60,
+      name: 'Reading', skill: 'reading', type: 'Four passages', items: 40, minutes: 60,
       types: ['mcq'],
       parts: [
-        { label: 'Passage 1', items: 10, note: 'Chủ đề đời sống, độ khó thấp nhất' },
-        { label: 'Passage 2', items: 10, note: 'Chủ đề xã hội' },
-        { label: 'Passage 3', items: 10, note: 'Chủ đề khoa học phổ thông' },
-        { label: 'Passage 4', items: 10, note: 'Chủ đề học thuật, độ khó cao nhất' }
+        { label: 'Passage 1', items: 10, note: 'Everyday topics, the easiest of the four' },
+        { label: 'Passage 2', items: 10, note: 'Social topics' },
+        { label: 'Passage 3', items: 10, note: 'Popular science' },
+        { label: 'Passage 4', items: 10, note: 'Academic topics, the hardest of the four' }
       ]
     },
     {
-      name: 'Writing', skill: 'writing', type: 'Hai bài viết', items: 2, minutes: 60,
+      name: 'Writing', skill: 'writing', type: 'Two written tasks', items: 2, minutes: 60,
       types: ['essay'],
       parts: [
-        { label: 'Task 1', items: 1, note: 'Thư hoặc email khoảng 120 từ, ~20 phút' },
-        { label: 'Task 2', items: 1, note: 'Bài luận khoảng 250 từ, ~40 phút' }
+        { label: 'Task 1', items: 1, note: 'A letter or email of about 120 words, ~20 minutes' },
+        { label: 'Task 2', items: 1, note: 'An essay of about 250 words, ~40 minutes' }
       ]
     },
     {
-      name: 'Speaking', skill: 'speaking', type: 'Ba phần, ghi âm', items: 3, minutes: 12,
+      name: 'Speaking', skill: 'speaking', type: 'Three parts, recorded', items: 3, minutes: 12,
       types: ['speaking'],
       parts: [
-        { label: 'Part 1', items: 1, note: 'Tương tác xã hội, 3–4 phút' },
-        { label: 'Part 2', items: 1, note: 'Thảo luận giải pháp, 4 phút' },
-        { label: 'Part 3', items: 1, note: 'Phát triển chủ đề, 5 phút' }
+        { label: 'Part 1', items: 1, note: 'Social interaction, 3–4 minutes' },
+        { label: 'Part 2', items: 1, note: 'Discussing a solution, 4 minutes' },
+        { label: 'Part 3', items: 1, note: 'Developing a topic, 5 minutes' }
       ]
     }
   ];
@@ -148,24 +148,24 @@ const VPET_NOTES = [
 ];
 
 const VSTEP_GUIDE = [
-  'Mỗi kỹ năng chấm 0–10, làm tròn tới 0,5. Điểm tổng là trung bình cộng bốn kỹ năng.',
-  'Từ 4,0 đến 5,5 đạt Bậc 3 (B1) · 6,0 đến 8,0 đạt Bậc 4 (B2) · 8,5 trở lên đạt Bậc 5 (C1).',
-  'Phần Nghe chỉ phát một lần, hãy đọc lướt câu hỏi trước khi bắt đầu.'
+  'Each skill is marked 0–10, rounded to 0.5. The overall mark is the mean of the four.',
+  '4.0 to 5.5 is Bậc 3 (B1) · 6.0 to 8.0 is Bậc 4 (B2) · 8.5 and above is Bậc 5 (C1).',
+  'The Listening audio plays once only, so skim the questions before you start.'
 ];
 
 const VSTEP_NOTES = [
-  'Bốn kỹ năng thi liên tục, tổng khoảng 180 phút.',
-  'Đọc xếp độ khó tăng dần qua bốn bài — đừng dồn thời gian cho bài đầu.',
-  'Viết Task 2 chiếm trọng số lớn hơn Task 1 khi quy điểm kỹ năng Viết.'
+  'The four skills are sat back to back, about 180 minutes in all.',
+  'Reading gets harder across the four passages — do not spend the time on the first.',
+  'Writing Task 2 carries more weight than Task 1 in the Writing mark.'
 ];
 
 const FORMATS = [
   /* ------------------------- VEPT ------------------------- */
   {
     id: 'vept-full', familyId: 'vept', kind: 'full',
-    name: 'VEPT 4 kỹ năng (chuẩn VSTEP.3-5)',
+    name: 'VEPT four skills (VSTEP.3-5 format)',
     levels: ['B1', 'B2', 'C1'],
-    scoring: 'Theo thang CEFR A1-C2, quy đổi từng kỹ năng',
+    scoring: 'On the CEFR A1-C2 scale, converted per skill',
     guide: VSTEP_GUIDE, notes: VSTEP_NOTES, sections: vstepSections()
   },
 
@@ -189,90 +189,90 @@ const FORMATS = [
   /* ------------------------ IELTS ------------------------- */
   {
     id: 'ielts-academic-full', familyId: 'ielts', kind: 'full',
-    name: 'IELTS Academic — trọn 4 kỹ năng',
+    name: 'IELTS Academic — all four skills',
     levels: ['B1', 'B2', 'C1', 'C2'],
-    scoring: 'Band 0-9, làm tròn 0.5',
+    scoring: 'Band 0-9, rounded to 0.5',
     guide: [
-      'Phần Nghe chỉ phát một lần. Bản máy tính không có thời gian chép đáp án riêng.',
-      'Writing Task 2 tính trọng số gấp đôi Task 1 khi ra band kỹ năng Viết.',
-      'Điểm tổng là trung bình bốn kỹ năng, làm tròn: lẻ 0,25 lên 0,5; lẻ 0,75 lên số nguyên.'
+      'The Listening audio plays once only. The computer version gives no separate transfer time.',
+      'Writing Task 2 counts double Task 1 towards the Writing band.',
+      'The overall band is the mean of the four skills: a .25 rounds up to .5, a .75 rounds up to the whole.'
     ],
     notes: [
-      'Nghe và Đọc đều 40 câu, quy từ điểm thô sang band bằng bảng riêng cho từng kỹ năng.',
-      'Đọc Academic khó hơn General Training ở cùng điểm thô — bảng quy đổi khác nhau.',
-      'Không trừ điểm câu sai, tuyệt đối không bỏ trống.'
+      'Listening and Reading are 40 items each, converted from raw score to band by a table of their own.',
+      'Academic Reading is harder than General Training at the same raw score — the conversion tables differ.',
+      'Nothing is deducted for a wrong answer, so never leave one blank.'
     ],
     sections: [
       {
-        name: 'Listening', skill: 'listening', type: 'Trắc nghiệm + điền từ', items: 40, minutes: 30,
+        name: 'Listening', skill: 'listening', type: 'Multiple choice + gap fill', items: 40, minutes: 30,
         types: ['mcq', 'gap'],
         parts: [
-          { label: 'Part 1', items: 10, note: 'Hội thoại đời sống giữa hai người — thường điền form' },
-          { label: 'Part 2', items: 10, note: 'Độc thoại tình huống đời sống' },
-          { label: 'Part 3', items: 10, note: 'Thảo luận học thuật, tối đa bốn người' },
-          { label: 'Part 4', items: 10, note: 'Bài giảng học thuật — khó nhất, không nghỉ giữa chừng' }
+          { label: 'Part 1', items: 10, note: 'An everyday conversation between two people — usually filling in a form' },
+          { label: 'Part 2', items: 10, note: 'A monologue in an everyday situation' },
+          { label: 'Part 3', items: 10, note: 'An academic discussion, up to four speakers' },
+          { label: 'Part 4', items: 10, note: 'An academic lecture — the hardest, with no break in it' }
         ]
       },
       {
-        name: 'Reading', skill: 'reading', type: 'Đọc hiểu học thuật', items: 40, minutes: 60,
+        name: 'Reading', skill: 'reading', type: 'Academic reading', items: 40, minutes: 60,
         types: ['mcq', 'gap'],
         parts: [
-          { label: 'Passage 1', items: 13, note: 'Bài dễ nhất, nên xong trong 17 phút' },
-          { label: 'Passage 2', items: 13, note: 'Độ khó trung bình' },
-          { label: 'Passage 3', items: 14, note: 'Lập luận trừu tượng, khó nhất' }
+          { label: 'Passage 1', items: 13, note: 'The easiest; aim to finish it in 17 minutes' },
+          { label: 'Passage 2', items: 13, note: 'Middling difficulty' },
+          { label: 'Passage 3', items: 14, note: 'Abstract argument, the hardest' }
         ]
       },
       {
         name: 'Writing', skill: 'writing', type: 'Task 1 + Task 2', items: 2, minutes: 60,
         types: ['essay'],
         parts: [
-          { label: 'Task 1', items: 1, note: 'Mô tả biểu đồ hoặc quy trình, tối thiểu 150 từ, ~20 phút' },
-          { label: 'Task 2', items: 1, note: 'Bài luận quan điểm, tối thiểu 250 từ, ~40 phút' }
+          { label: 'Task 1', items: 1, note: 'Describe a chart or a process, at least 150 words, ~20 minutes' },
+          { label: 'Task 2', items: 1, note: 'An opinion essay, at least 250 words, ~40 minutes' }
         ]
       },
       {
-        name: 'Speaking', skill: 'speaking', type: '3 part, ghi âm', items: 3, minutes: 14,
+        name: 'Speaking', skill: 'speaking', type: 'Three parts, recorded', items: 3, minutes: 14,
         types: ['speaking'],
         parts: [
-          { label: 'Part 1', items: 1, note: 'Hỏi đáp về bản thân, 4–5 phút' },
-          { label: 'Part 2', items: 1, note: 'Nói dài 2 phút theo cue card, có 1 phút chuẩn bị' },
-          { label: 'Part 3', items: 1, note: 'Thảo luận sâu chủ đề Part 2, 4–5 phút' }
+          { label: 'Part 1', items: 1, note: 'Questions about yourself, 4–5 minutes' },
+          { label: 'Part 2', items: 1, note: 'Two minutes from a cue card, with one minute to prepare' },
+          { label: 'Part 3', items: 1, note: 'A deeper discussion of the Part 2 topic, 4–5 minutes' }
         ]
       }
     ]
   },
   {
     id: 'ielts-listening-module', familyId: 'ielts', kind: 'module',
-    name: 'IELTS — luyện riêng kỹ năng Nghe',
+    name: 'IELTS — Listening practice on its own',
     levels: ['A2', 'B1', 'B2', 'C1'],
-    scoring: 'Band 0-9 cho riêng kỹ năng Nghe',
-    guide: ['Luyện riêng một kỹ năng, không tính điểm tổng.'],
-    notes: ['Dùng để luyện tập trung; đề đủ 40 câu như bài thật.'],
+    scoring: 'Band 0-9 for Listening alone',
+    guide: ['One skill on its own; no overall mark is calculated.'],
+    notes: ['For focused practice; the paper has the full 40 items of the real thing.'],
     sections: [{
-      name: 'Listening', skill: 'listening', type: 'Trắc nghiệm + điền từ', items: 40, minutes: 30,
+      name: 'Listening', skill: 'listening', type: 'Multiple choice + gap fill', items: 40, minutes: 30,
       types: ['mcq', 'gap'],
       parts: [
-        { label: 'Part 1', items: 10, note: 'Hội thoại đời sống' },
-        { label: 'Part 2', items: 10, note: 'Độc thoại đời sống' },
-        { label: 'Part 3', items: 10, note: 'Thảo luận học thuật' },
-        { label: 'Part 4', items: 10, note: 'Bài giảng học thuật' }
+        { label: 'Part 1', items: 10, note: 'An everyday conversation' },
+        { label: 'Part 2', items: 10, note: 'An everyday monologue' },
+        { label: 'Part 3', items: 10, note: 'An academic discussion' },
+        { label: 'Part 4', items: 10, note: 'An academic lecture' }
       ]
     }]
   },
   {
     id: 'ielts-reading-module', familyId: 'ielts', kind: 'module',
-    name: 'IELTS Academic — luyện riêng kỹ năng Đọc',
+    name: 'IELTS Academic — Reading practice on its own',
     levels: ['A2', 'B1', 'B2', 'C1'],
-    scoring: 'Band 0-9 cho riêng kỹ năng Đọc',
-    guide: ['Luyện riêng một kỹ năng, không tính điểm tổng.'],
-    notes: ['Phân bổ 20 phút cho mỗi bài đọc.'],
+    scoring: 'Band 0-9 for Reading alone',
+    guide: ['One skill on its own; no overall mark is calculated.'],
+    notes: ['Allow 20 minutes per passage.'],
     sections: [{
-      name: 'Reading', skill: 'reading', type: 'Đọc hiểu học thuật', items: 40, minutes: 60,
+      name: 'Reading', skill: 'reading', type: 'Academic reading', items: 40, minutes: 60,
       types: ['mcq', 'gap'],
       parts: [
-        { label: 'Passage 1', items: 13, note: 'Dễ nhất' },
-        { label: 'Passage 2', items: 13, note: 'Trung bình' },
-        { label: 'Passage 3', items: 14, note: 'Khó nhất' }
+        { label: 'Passage 1', items: 13, note: 'The easiest' },
+        { label: 'Passage 2', items: 13, note: 'Middling' },
+        { label: 'Passage 3', items: 14, note: 'The hardest' }
       ]
     }]
   },
@@ -280,69 +280,69 @@ const FORMATS = [
   /* ------------------------ TOEIC ------------------------- */
   {
     id: 'toeic-lr-full', familyId: 'toeic', kind: 'full',
-    name: 'TOEIC Listening & Reading — đề đầy đủ 200 câu',
+    name: 'TOEIC Listening & Reading — the full 200-item paper',
     levels: ['A2', 'B1', 'B2', 'C1'],
-    scoring: 'Thang 10-990 (mỗi phần 5-495)',
+    scoring: 'Scale 10-990 (5-495 per section)',
     guide: [
-      'Không trừ điểm câu sai — không bao giờ bỏ trống, hết giờ thì đoán.',
-      'Phần Nghe 45 phút phát liên tục, không tua lại.',
-      'Phần Đọc dùng chung 75 phút cho cả Part 5, 6, 7 — tự phân bổ.'
+      'Nothing is deducted for a wrong answer — never leave one blank; guess when time runs short.',
+      'Listening runs for 45 minutes without a break and cannot be rewound.',
+      'Reading shares 75 minutes across Parts 5, 6 and 7 — pace it yourself.'
     ],
     notes: [
-      'Part 7 chiếm 54/100 câu phần Đọc, nên làm Part 5 và 6 thật nhanh để dành thời gian.',
-      'Điểm thô quy sang thang bằng bảng equating riêng từng đề; bảng của nền tảng là tham chiếu.',
-      'Đề đầy đủ cần 200 câu trong ngân hàng — kiểm tra độ phủ trước khi sinh.'
+      'Part 7 is 54 of the 100 Reading items, so move fast through Parts 5 and 6 to buy time for it.',
+      'Raw scores convert through an equating table specific to each paper; the platform table is a reference.',
+      'A full paper needs 200 items in the bank — check coverage before generating one.'
     ],
     sections: [
       {
-        name: 'Listening', skill: 'listening', type: 'Part 1-4, trắc nghiệm', items: 100, minutes: 45,
+        name: 'Listening', skill: 'listening', type: 'Parts 1-4, multiple choice', items: 100, minutes: 45,
         types: ['mcq'],
         parts: [
-          { label: 'Part 1', items: 6, note: 'Mô tả tranh, 4 phương án' },
-          { label: 'Part 2', items: 25, note: 'Hỏi – đáp, 3 phương án, không in trên đề' },
-          { label: 'Part 3', items: 39, note: '13 hội thoại × 3 câu' },
-          { label: 'Part 4', items: 30, note: '10 bài nói ngắn × 3 câu' }
+          { label: 'Part 1', items: 6, note: 'Describe a photograph, four options' },
+          { label: 'Part 2', items: 25, note: 'Question and response, three options, not printed on the paper' },
+          { label: 'Part 3', items: 39, note: '13 conversations × 3 items' },
+          { label: 'Part 4', items: 30, note: '10 short talks × 3 items' }
         ]
       },
       {
-        name: 'Reading', skill: 'reading', type: 'Part 5-7, trắc nghiệm', items: 100, minutes: 75,
+        name: 'Reading', skill: 'reading', type: 'Parts 5-7, multiple choice', items: 100, minutes: 75,
         types: ['mcq'],
         parts: [
-          { label: 'Part 5', items: 30, note: 'Điền câu chưa hoàn chỉnh — ngữ pháp và từ vựng' },
-          { label: 'Part 6', items: 16, note: '4 đoạn văn × 4 chỗ trống, có câu điền nguyên câu' },
-          { label: 'Part 7', items: 54, note: '29 câu đoạn đơn + 25 câu đoạn đôi/ba' }
+          { label: 'Part 5', items: 30, note: 'Incomplete sentences — grammar and vocabulary' },
+          { label: 'Part 6', items: 16, note: '4 texts × 4 gaps, one of which takes a whole sentence' },
+          { label: 'Part 7', items: 54, note: '29 single-passage items + 25 double and triple passage items' }
         ]
       }
     ]
   },
   {
     id: 'toeic-lr-mini', familyId: 'toeic', kind: 'mini',
-    name: 'TOEIC L&R — bản rút gọn 100 câu (luyện nhanh)',
+    name: 'TOEIC L&R — a 100-item short cut for quick practice',
     levels: ['A2', 'B1', 'B2'],
-    scoring: 'Thang tham chiếu, quy đổi ước lượng từ nửa đề',
-    guide: ['Bản rút gọn một nửa để luyện trong khoảng 60 phút.'],
+    scoring: 'A reference scale, estimated from half a paper',
+    guide: ['Half the paper, for practice in about 60 minutes.'],
     notes: [
-      'Giữ đúng tỉ lệ dạng câu của đề thật, chỉ giảm một nửa số lượng.',
-      'Điểm chỉ mang tính tham khảo vì bảng quy đổi thật dựa trên đủ 200 câu.'
+      'Keeps the mix of item types the real paper has, at half the count.',
+      'The mark is indicative only, because the real conversion table assumes all 200 items.'
     ],
     sections: [
       {
-        name: 'Listening', skill: 'listening', type: 'Part 1-4 rút gọn', items: 50, minutes: 23,
+        name: 'Listening', skill: 'listening', type: 'Parts 1-4, shortened', items: 50, minutes: 23,
         types: ['mcq'],
         parts: [
-          { label: 'Part 1', items: 3, note: 'Mô tả tranh' },
-          { label: 'Part 2', items: 13, note: 'Hỏi – đáp' },
-          { label: 'Part 3', items: 19, note: 'Hội thoại' },
-          { label: 'Part 4', items: 15, note: 'Bài nói ngắn' }
+          { label: 'Part 1', items: 3, note: 'Describe a photograph' },
+          { label: 'Part 2', items: 13, note: 'Question and response' },
+          { label: 'Part 3', items: 19, note: 'Conversations' },
+          { label: 'Part 4', items: 15, note: 'Short talks' }
         ]
       },
       {
-        name: 'Reading', skill: 'reading', type: 'Part 5-7 rút gọn', items: 50, minutes: 38,
+        name: 'Reading', skill: 'reading', type: 'Parts 5-7, shortened', items: 50, minutes: 38,
         types: ['mcq'],
         parts: [
-          { label: 'Part 5', items: 15, note: 'Điền câu' },
-          { label: 'Part 6', items: 8, note: 'Điền đoạn văn' },
-          { label: 'Part 7', items: 27, note: 'Đọc hiểu' }
+          { label: 'Part 5', items: 15, note: 'Incomplete sentences' },
+          { label: 'Part 6', items: 8, note: 'Text completion' },
+          { label: 'Part 7', items: 27, note: 'Reading comprehension' }
         ]
       }
     ]
@@ -351,32 +351,32 @@ const FORMATS = [
     id: 'toeic-sw', familyId: 'toeic', kind: 'full',
     name: 'TOEIC Speaking & Writing',
     levels: ['B1', 'B2', 'C1'],
-    scoring: 'Mỗi bài 0-200; Nói 8 mức, Viết 9 mức',
+    scoring: '0-200 for each paper; Speaking has 8 levels, Writing 9',
     guide: [
-      'Bài Nói ghi âm trực tiếp, mỗi câu có thời gian chuẩn bị riêng.',
-      'Bài Viết gõ trên máy, không có công cụ kiểm chính tả.'
+      'Speaking is recorded live, and each item has its own preparation time.',
+      'Writing is typed, with no spell checker.'
     ],
-    notes: ['Chấm theo rubric từng dạng câu, không phải đúng/sai.'],
+    notes: ['Marked against a rubric per item type, not right or wrong.'],
     sections: [
       {
-        name: 'Speaking', skill: 'speaking', type: '11 câu, ghi âm', items: 11, minutes: 20,
+        name: 'Speaking', skill: 'speaking', type: '11 items, recorded', items: 11, minutes: 20,
         types: ['speaking'],
         parts: [
-          { label: 'Đọc to', items: 2, note: 'Read a text aloud' },
-          { label: 'Mô tả tranh', items: 1, note: 'Describe a picture' },
-          { label: 'Trả lời câu hỏi', items: 3, note: 'Respond to questions' },
-          { label: 'Trả lời theo thông tin cho sẵn', items: 3, note: 'Dùng lịch, chương trình' },
-          { label: 'Đề xuất giải pháp', items: 1, note: 'Propose a solution' },
-          { label: 'Nêu ý kiến', items: 1, note: 'Express an opinion' }
+          { label: 'Read aloud', items: 2, note: 'Read a text aloud' },
+          { label: 'Describe a picture', items: 1, note: 'Describe a picture' },
+          { label: 'Respond to questions', items: 3, note: 'Respond to questions' },
+          { label: 'Respond using given information', items: 3, note: 'Working from a schedule or programme' },
+          { label: 'Propose a solution', items: 1, note: 'Propose a solution' },
+          { label: 'Express an opinion', items: 1, note: 'Express an opinion' }
         ]
       },
       {
-        name: 'Writing', skill: 'writing', type: '8 câu, gõ máy', items: 8, minutes: 60,
+        name: 'Writing', skill: 'writing', type: '8 items, typed', items: 8, minutes: 60,
         types: ['essay'],
         parts: [
-          { label: 'Viết câu theo tranh', items: 5, note: 'Dùng đúng hai từ cho sẵn' },
-          { label: 'Trả lời email', items: 2, note: 'Mỗi bài 10 phút' },
-          { label: 'Bài luận quan điểm', items: 1, note: '~300 từ, 30 phút' }
+          { label: 'Write a sentence from a picture', items: 5, note: 'Using exactly the two words given' },
+          { label: 'Respond to an email', items: 2, note: '10 minutes each' },
+          { label: 'Opinion essay', items: 1, note: '~300 words, 30 minutes' }
         ]
       }
     ]
@@ -385,54 +385,54 @@ const FORMATS = [
   /* ------------------------- PTE -------------------------- */
   {
     id: 'pte-academic-full', familyId: 'pte', kind: 'full',
-    name: 'PTE Academic — trọn bài, chấm máy',
+    name: 'PTE Academic — the whole paper, machine marked',
     levels: ['B1', 'B2', 'C1'],
-    scoring: 'Thang 10-90, chấm máy toàn phần',
+    scoring: 'Scale 10-90, marked entirely by machine',
     guide: [
-      'Nói to, rõ, đều nhịp — máy chấm ưu tiên độ trôi chảy hơn giọng bản xứ.',
-      'Một số dạng nhiều đáp án CÓ TRỪ ĐIỂM khi chọn sai, khác hẳn TOEIC.',
-      'Không quay lại câu đã nộp, cân nhắc kỹ trước khi bấm Next.'
+      'Speak up, clearly and evenly — the marker rewards fluency over a native accent.',
+      'Some multiple-answer items DO deduct marks for a wrong pick, unlike TOEIC.',
+      'You cannot return to a submitted item, so think before pressing Next.'
     ],
     notes: [
-      'Chấm tích hợp: một câu đóng góp điểm cho nhiều kỹ năng cùng lúc.',
-      'Nhiều dạng cho điểm thành phần, không phải đúng/sai nhị phân.',
-      'Báo cáo thêm enabling skills: ngữ pháp, độ trôi chảy, phát âm, chính tả, từ vựng, mạch văn.'
+      'Integrated marking: one item can contribute to several skills at once.',
+      'Many item types award partial credit rather than a binary right or wrong.',
+      'The report adds enabling skills: grammar, fluency, pronunciation, spelling, vocabulary and coherence.'
     ],
     sections: [
       {
-        name: 'Speaking & Writing', skill: 'speaking', type: '7 dạng câu, ghi âm + gõ', items: 28, minutes: 62,
+        name: 'Speaking & Writing', skill: 'speaking', type: '7 task types, recorded + typed', items: 28, minutes: 62,
         types: ['speaking', 'essay'],
         parts: [
-          { label: 'Read Aloud', items: 6, note: 'Tính cả Đọc lẫn Nói' },
-          { label: 'Repeat Sentence', items: 10, note: 'Tính cả Nghe lẫn Nói' },
-          { label: 'Describe Image', items: 3, note: 'Chỉ tính Nói' },
-          { label: 'Re-tell Lecture', items: 2, note: 'Tính cả Nghe lẫn Nói' },
-          { label: 'Answer Short Question', items: 5, note: 'Tính cả Nghe lẫn Nói' },
-          { label: 'Summarize Written Text', items: 1, note: 'Tính cả Đọc lẫn Viết' },
-          { label: 'Essay', items: 1, note: '200–300 từ, 20 phút' }
+          { label: 'Read Aloud', items: 6, note: 'Counts towards both Reading and Speaking' },
+          { label: 'Repeat Sentence', items: 10, note: 'Counts towards both Listening and Speaking' },
+          { label: 'Describe Image', items: 3, note: 'Counts towards Speaking only' },
+          { label: 'Re-tell Lecture', items: 2, note: 'Counts towards both Listening and Speaking' },
+          { label: 'Answer Short Question', items: 5, note: 'Counts towards both Listening and Speaking' },
+          { label: 'Summarize Written Text', items: 1, note: 'Counts towards both Reading and Writing' },
+          { label: 'Essay', items: 1, note: '200–300 words, 20 minutes' }
         ]
       },
       {
-        name: 'Reading', skill: 'reading', type: '5 dạng câu', items: 15, minutes: 30,
+        name: 'Reading', skill: 'reading', type: '5 task types', items: 15, minutes: 30,
         types: ['mcq', 'gap'],
         parts: [
-          { label: 'Fill in the Blanks', items: 6, note: 'Kéo thả và chọn đáp án' },
-          { label: 'Multiple Choice', items: 4, note: 'Dạng nhiều đáp án có trừ điểm' },
-          { label: 'Re-order Paragraphs', items: 2, note: 'Chấm theo cặp liền kề đúng' },
-          { label: 'Reading Comprehension', items: 3, note: 'Đoạn dài, chọn một đáp án' }
+          { label: 'Fill in the Blanks', items: 6, note: 'Drag and drop, and choose from a list' },
+          { label: 'Multiple Choice', items: 4, note: 'The multiple-answer variant deducts for a wrong pick' },
+          { label: 'Re-order Paragraphs', items: 2, note: 'Marked on correctly adjacent pairs' },
+          { label: 'Reading Comprehension', items: 3, note: 'A long passage, one answer' }
         ]
       },
       {
-        name: 'Listening', skill: 'listening', type: '8 dạng câu', items: 17, minutes: 35,
+        name: 'Listening', skill: 'listening', type: '8 task types', items: 17, minutes: 35,
         types: ['mcq', 'gap', 'essay'],
         parts: [
-          { label: 'Summarize Spoken Text', items: 2, note: '50–70 từ, tính cả Nghe lẫn Viết' },
-          { label: 'Multiple Choice', items: 3, note: 'Có dạng trừ điểm' },
-          { label: 'Fill in the Blanks', items: 2, note: 'Gõ từ nghe được' },
-          { label: 'Highlight Correct Summary', items: 2, note: 'Chọn đoạn tóm tắt đúng' },
-          { label: 'Select Missing Word', items: 2, note: 'Đoán từ cuối bị cắt' },
-          { label: 'Highlight Incorrect Words', items: 3, note: 'Có trừ điểm khi chọn nhầm' },
-          { label: 'Write from Dictation', items: 3, note: 'Chấm theo số từ đúng' }
+          { label: 'Summarize Spoken Text', items: 2, note: '50–70 words; counts towards both Listening and Writing' },
+          { label: 'Multiple Choice', items: 3, note: 'One variant deducts for a wrong pick' },
+          { label: 'Fill in the Blanks', items: 2, note: 'Type the words you hear' },
+          { label: 'Highlight Correct Summary', items: 2, note: 'Pick the summary that matches' },
+          { label: 'Select Missing Word', items: 2, note: 'Work out the final word, which is cut off' },
+          { label: 'Highlight Incorrect Words', items: 3, note: 'Deducts for a wrong pick' },
+          { label: 'Write from Dictation', items: 3, note: 'Marked on the number of correct words' }
         ]
       }
     ]
@@ -441,56 +441,56 @@ const FORMATS = [
   /* -------------------------- OTE ------------------------- */
   {
     id: 'ote-listening', familyId: 'ote', kind: 'module',
-    name: 'Oxford Test of English — module Nghe',
+    name: 'Oxford Test of English — Listening module',
     levels: ['A2', 'B1', 'B2'],
-    scoring: 'CEFR (dưới A2 / A2 / B1 / B2) kèm điểm 51-140',
-    guide: ['Thi theo module, không bắt buộc thi đủ bốn kỹ năng.'],
+    scoring: 'CEFR (below A2 / A2 / B1 / B2) with a score of 51-140',
+    guide: ['Taken module by module; there is no requirement to sit all four skills.'],
     notes: [
-      'Bài thật chạy thích ứng: độ khó câu sau phụ thuộc câu trước.',
-      'Nền tảng hiện sinh đề cố định; chấm thích ứng nằm trong hàng đợi phát triển.'
+      'The real test is adaptive: how hard an item is depends on the one before it.',
+      'The platform generates fixed papers for now; adaptive marking is on the roadmap.'
     ],
     sections: [{
-      name: 'Listening', skill: 'listening', type: 'Thích ứng, 4 phần', items: 20, minutes: 30,
+      name: 'Listening', skill: 'listening', type: 'Adaptive, four parts', items: 20, minutes: 30,
       types: ['mcq'],
       parts: [
-        { label: 'Part 1', items: 6, note: 'Đoạn ngắn độc lập' },
-        { label: 'Part 2', items: 4, note: 'Độc thoại, điền thông tin' },
-        { label: 'Part 3', items: 6, note: 'Ghép người nói với ý' },
-        { label: 'Part 4', items: 4, note: 'Hội thoại dài' }
+        { label: 'Part 1', items: 6, note: 'Short, unconnected extracts' },
+        { label: 'Part 2', items: 4, note: 'A monologue; fill in the information' },
+        { label: 'Part 3', items: 6, note: 'Match each speaker to an idea' },
+        { label: 'Part 4', items: 4, note: 'A long conversation' }
       ]
     }]
   },
   {
     id: 'ote-reading', familyId: 'ote', kind: 'module',
-    name: 'Oxford Test of English — module Đọc',
+    name: 'Oxford Test of English — Reading module',
     levels: ['A2', 'B1', 'B2'],
-    scoring: 'CEFR (dưới A2 / A2 / B1 / B2) kèm điểm 51-140',
-    guide: ['Thi theo module, không bắt buộc thi đủ bốn kỹ năng.'],
-    notes: ['Bài thật chạy thích ứng theo từng câu trả lời.'],
+    scoring: 'CEFR (below A2 / A2 / B1 / B2) with a score of 51-140',
+    guide: ['Taken module by module; there is no requirement to sit all four skills.'],
+    notes: ['The real test adapts to each answer as it is given.'],
     sections: [{
-      name: 'Reading', skill: 'reading', type: 'Thích ứng, 4 phần', items: 22, minutes: 35,
+      name: 'Reading', skill: 'reading', type: 'Adaptive, four parts', items: 22, minutes: 35,
       types: ['mcq', 'gap'],
       parts: [
-        { label: 'Part 1', items: 6, note: 'Đoạn ngắn, chọn ý đúng' },
-        { label: 'Part 2', items: 6, note: 'Ghép đoạn với tiêu đề' },
-        { label: 'Part 3', items: 6, note: 'Đọc hiểu chi tiết' },
-        { label: 'Part 4', items: 4, note: 'Điền từ vào đoạn văn' }
+        { label: 'Part 1', items: 6, note: 'Short texts; pick the right idea' },
+        { label: 'Part 2', items: 6, note: 'Match each text to a heading' },
+        { label: 'Part 3', items: 6, note: 'Detailed comprehension' },
+        { label: 'Part 4', items: 4, note: 'Fill the gaps in a text' }
       ]
     }]
   }
 ];
 
-/** Tổng số câu của một format */
+/** The total item count of a format */
 function totalItems(f) {
   return f.sections.reduce((s, x) => s + x.items, 0);
 }
 
-/** Tổng thời lượng của một format */
+/** The total running time of a format */
 function totalMinutes(f) {
   return f.sections.reduce((s, x) => s + x.minutes, 0);
 }
 
-/** Kiểm tra tính nhất quán: tổng items của parts phải khớp items của section */
+/** Consistency check: the parts' item counts must add up to the section's */
 function inconsistencies() {
   const out = [];
   for (const f of FORMATS) {
@@ -498,7 +498,7 @@ function inconsistencies() {
       if (!Array.isArray(s.parts) || !s.parts.length) continue;
       const sum = s.parts.reduce((a, p) => a + p.items, 0);
       if (sum !== s.items) {
-        out.push(`${f.id} · ${s.name}: tổng parts ${sum} ≠ items ${s.items}`);
+        out.push(`${f.id} · ${s.name}: parts total ${sum} ≠ items ${s.items}`);
       }
     }
   }

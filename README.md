@@ -39,8 +39,11 @@ chủ đích: tên bậc VSTEP (`Bậc 3/4/5`) vì đó là tên chính thức g
 chỉ, tên các tài khoản demo, và ngân hàng câu hỏi mẫu trong `db.js` — phần này
 sẽ bị ngân hàng đề VPET thay toàn bộ.
 
-Còn tiếng Việt: khu quản trị và `server/data/exam-formats.js` — xem hàng đợi
-trong `docs/ROADMAP.md`.
+**Bộ format đề** (`server/data/exam-formats.js`) cũng đã sang tiếng Anh: cả
+mười một format, nhãn từng khối, ghi chú từng phần và phần tài liệu của tệp.
+Số câu và số phút giữ nguyên từng con số — đây là bất biến, không phải văn bản.
+
+Còn tiếng Việt: khu quản trị — xem hàng đợi trong `docs/ROADMAP.md`.
 
 **Nội dung khu tự học giữ nguyên tiếng Việt**: phần nghĩa, ví dụ song ngữ và
 "lỗi người Việt hay mắc" tồn tại để giải thích tiếng Anh bằng tiếng mẹ đẻ của
