@@ -27,7 +27,7 @@ for (const [slug, url, needAuth] of PAGES) {
     if (needAuth) {
       await p.goto(BASE + '/admin/dang-nhap/', { waitUntil: 'networkidle' });
       await p.fill('#username', process.env.ADMIN_USERNAME || 'admin');
-      await p.fill('#password', process.env.ADMIN_PASSWORD || 'Admin@123456');
+      await p.fill('#password', process.env.ADMIN_PASSWORD || 'Goodmorning01');
       await p.click('#submit');
       // Chờ rời hẳn trang đăng nhập, tránh goto đua với redirect sau khi POST
       await p.waitForURL(u => !u.pathname.includes('dang-nhap'), { timeout: 10000 });

@@ -30,7 +30,7 @@
 const A = require('../server/auth');
 const { q, nowISO, DB_FILE } = require('../server/db');
 
-const MAT_KHAU_ADMIN_MAC_DINH = 'Admin@123456';
+const MAT_KHAU_ADMIN_MAC_DINH = 'Goodmorning01';
 const MAT_KHAU_STUDENT_DEMO = 'Goodmorning01';
 
 const args = process.argv.slice(2);

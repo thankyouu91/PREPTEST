@@ -22,12 +22,14 @@
     <div class="max-w-[1240px] mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-10">
       <div role="tablist" aria-label="Mục quản trị" class="flex gap-2 overflow-x-auto no-scrollbar border-b border-line mb-7 -mx-1 px-1">
         <button role="tab" id="tab-general" aria-controls="p-general" aria-selected="true" class="tabbtn">Nền tảng</button>
+        <button role="tab" id="tab-keys" aria-controls="p-keys" aria-selected="false" class="tabbtn">Khoá API</button>
         <button role="tab" id="tab-packages" aria-controls="p-packages" aria-selected="false" class="tabbtn">Gói bán</button>
         <button role="tab" id="tab-account" aria-controls="p-account" aria-selected="false" class="tabbtn">Tài khoản quản trị</button>
         <button role="tab" id="tab-audit" aria-controls="p-audit" aria-selected="false" class="tabbtn">Nhật ký</button>
       </div>
 
       <section role="tabpanel" id="p-general" aria-labelledby="tab-general"><div class="skeleton h-40 w-full rounded-2xl"></div></section>
+      <section role="tabpanel" id="p-keys" aria-labelledby="tab-keys" hidden></section>
       <section role="tabpanel" id="p-packages" aria-labelledby="tab-packages" hidden></section>
       <section role="tabpanel" id="p-account" aria-labelledby="tab-account" hidden></section>
       <section role="tabpanel" id="p-audit" aria-labelledby="tab-audit" hidden></section>
@@ -40,7 +42,7 @@
 (async () => {
   const me = await AD.mount({ title: 'Quản trị', subtitle: 'Cấu hình nền tảng, gói bán và nhật ký thao tác' });
 
-  const tabs = [['tab-general','p-general'],['tab-packages','p-packages'],['tab-account','p-account'],['tab-audit','p-audit']];
+  const tabs = [['tab-general','p-general'],['tab-keys','p-keys'],['tab-packages','p-packages'],['tab-account','p-account'],['tab-audit','p-audit']];
   tabs.forEach(([tid, pid]) => AD.qs('#' + tid).addEventListener('click', () => {
     tabs.forEach(([t2, p2]) => {
       const on = t2 === tid;
@@ -48,6 +50,7 @@
       AD.qs('#' + p2).toggleAttribute('hidden', !on);
     });
     if (pid === 'p-audit') loadAudit();
+    if (pid === 'p-keys') loadKeys();
     history.replaceState(null, '', pid === 'p-audit' ? '#nhat-ky' : location.pathname);
   }));
 
@@ -185,6 +188,143 @@
 
   /* ---------------- Nhật ký ---------------- */
   let auditLoaded = false;
+  /* ---------------- Khoá API ----------------
+     Hai nhà cung cấp: ElevenLabs dựng audio đề, OpenAI soạn đề và chấm Nói.
+
+     Khoá thật KHÔNG bao giờ đi xuống trình duyệt. Server chỉ trả về chuỗi che
+     kèm 4 ký tự cuối — đủ để phân biệt hai khoá, vô dụng với người chặn được
+     đường truyền. Ô nhập luôn rỗng khi mở màn hình: gõ vào đó là thay khoá,
+     không phải sửa khoá cũ. */
+  async function loadKeys() {
+    const box = AD.qs('#p-keys');
+    box.innerHTML = AD.skeletonRows(2);
+    let data;
+    try {
+      data = await AD.get('/admin/integrations');
+    } catch (e) {
+      box.innerHTML = AD.errorBox(e.message);
+      return;
+    }
+
+    const card = p => {
+      const fromEnv = p.source === 'env';
+      const quota = p.quota
+        ? '<p class="text-[13px] text-muted mt-1">Còn <b class="text-ink">' + AD.num(p.quota.remaining) +
+          '</b> / ' + AD.num(p.quota.limit) + ' ký tự trong kỳ này' +
+          (p.quota.tier ? ' · gói ' + AD.esc(p.quota.tier) : '') + '</p>'
+        : (p.quotaError ? '<p class="text-[13px] text-danger mt-1">' + AD.esc(p.quotaError) + '</p>' : '');
+
+      return '<article class="card p-6 sm:p-7 grid gap-4 content-start" data-provider="' + AD.esc(p.name) + '">' +
+        '<div class="flex items-start justify-between gap-3">' +
+          '<div>' +
+            '<h2 class="text-lg font-extrabold tracking-tight">' + AD.esc(p.label) + '</h2>' +
+            '<p class="text-[13px] text-muted mt-0.5">' +
+              (p.name === 'elevenlabs'
+                ? 'Dựng tệp MP3 cho các part có audio (E, F, G, H, J).'
+                : 'Soạn kịch bản và câu hỏi, chấm phần Nói.') +
+            '</p>' +
+          '</div>' +
+          (p.configured
+            ? '<span class="badge badge-ok shrink-0">Đã cấu hình</span>'
+            : '<span class="badge badge-hl shrink-0">Chưa có khoá</span>') +
+        '</div>' +
+
+        (p.configured
+          ? '<div class="rounded-xl bg-surface border border-line px-4 py-3">' +
+              '<div class="flex items-center justify-between gap-3 flex-wrap">' +
+                '<code class="text-[14px] font-bold tracking-wider">' + AD.esc(p.masked) + '</code>' +
+                '<span class="text-[12px] text-muted">' +
+                  (fromEnv ? 'từ biến môi trường ' + AD.esc(p.envVar) : 'nhập ở dashboard') +
+                '</span>' +
+              '</div>' + quota +
+            '</div>'
+          : '') +
+
+        /* Khoá đặt bằng biến môi trường thì khoá luôn ô nhập. Để admin gõ vào
+           một ô không có tác dụng gì là cách chắc chắn nhất để mất một buổi
+           chiều đi tìm lý do khoá mới không ăn. */
+        (fromEnv
+          ? '<p class="text-[13px] text-muted">Khoá này do môi trường quyết định nên không sửa được ở đây. ' +
+            'Bỏ <code>' + AD.esc(p.envVar) + '</code> nếu muốn quản lý bằng dashboard.</p>'
+          : '<label class="grid gap-1.5">' +
+              '<span class="text-[13px] font-semibold">' +
+                (p.configured ? 'Thay bằng khoá mới' : 'Dán khoá API') +
+              '</span>' +
+              '<input class="input font-mono text-[13px]" type="password" autocomplete="off" spellcheck="false" ' +
+                'placeholder="' + (p.name === 'elevenlabs' ? 'sk_…' : 'sk-…') + '" data-key>' +
+            '</label>') +
+
+        '<div class="flex flex-wrap gap-2">' +
+          (fromEnv ? '' : '<button type="button" class="btn btn-primary btn-md" data-save>Lưu khoá</button>') +
+          (p.configured ? '<button type="button" class="btn btn-soft btn-md" data-test>Kiểm tra kết nối</button>' : '') +
+          (p.configured && !fromEnv ? '<button type="button" class="btn btn-ghost btn-md" data-clear>Gỡ khoá</button>' : '') +
+        '</div>' +
+        '<p class="text-[13px] hidden" data-result></p>' +
+      '</article>';
+    };
+
+    box.innerHTML =
+      '<div class="grid gap-6 lg:grid-cols-2">' + data.providers.map(card).join('') + '</div>' +
+      '<div class="card p-6 mt-6 grid gap-2">' +
+        '<h2 class="text-base font-extrabold tracking-tight">Khoá được lưu thế nào</h2>' +
+        '<p class="text-[14px] text-muted leading-relaxed">' +
+          'Khoá được mã hoá AES-256-GCM trước khi ghi xuống CSDL, và chìa khoá mã hoá nằm ngoài CSDL ' +
+          '(<code>APP_SECRET</code>, hoặc tệp <code>data/.app-secret</code> khi chạy thử). ' +
+          'Bản sao lưu CSDL rơi ra ngoài thì vẫn chưa dùng được. ' +
+          'Biến môi trường luôn thắng giá trị lưu ở đây, nên khi lên Google Cloud có thể chuyển sang ' +
+          'Secret Manager mà không phải đụng vào dashboard.' +
+        '</p>' +
+        '<p class="text-[14px] text-muted leading-relaxed">' +
+          'Model đang ghim: TTS <code>' + AD.esc(data.models.tts) + '</code> · ' +
+          'soạn đề <code>' + AD.esc(data.models.items) + '</code>.' +
+        '</p>' +
+      '</div>';
+
+    AD.qsa('[data-provider]').forEach(el => {
+      const name = el.getAttribute('data-provider');
+      const out = el.querySelector('[data-result]');
+      const say = (msg, bad) => {
+        out.textContent = msg;
+        out.className = 'text-[13px] ' + (bad ? 'text-danger' : 'text-okay') + ' font-semibold';
+      };
+
+      const save = el.querySelector('[data-save]');
+      if (save) save.addEventListener('click', async () => {
+        const input = el.querySelector('[data-key]');
+        const key = (input.value || '').trim();
+        if (!key) return say('Chưa dán khoá nào.', true);
+        save.disabled = true;
+        try {
+          await AD.put('/admin/integrations/' + name, { key });
+          input.value = '';
+          AD.toast('Đã lưu khoá');
+          loadKeys();
+        } catch (e) { say(e.message, true); }
+        finally { save.disabled = false; }
+      });
+
+      const test = el.querySelector('[data-test]');
+      if (test) test.addEventListener('click', async () => {
+        test.disabled = true;
+        say('Đang kiểm tra…');
+        out.className = 'text-[13px] text-muted font-semibold';
+        try {
+          const r = await AD.post('/admin/integrations/' + name + '/test', {});
+          say('Kết nối tốt — ' + r.detail);
+        } catch (e) { say(e.message, true); }
+        finally { test.disabled = false; }
+      });
+
+      const clear = el.querySelector('[data-clear]');
+      if (clear) clear.addEventListener('click', async () => {
+        if (!await AD.confirm('Gỡ khoá?',
+          'Các chức năng dùng khoá này sẽ ngừng hoạt động cho tới khi dán khoá mới.', 'Gỡ khoá')) return;
+        try { await AD.del('/admin/integrations/' + name); AD.toast('Đã gỡ khoá'); loadKeys(); }
+        catch (e) { say(e.message, true); }
+      });
+    });
+  }
+
   async function loadAudit() {
     if (auditLoaded) return;
     auditLoaded = true;

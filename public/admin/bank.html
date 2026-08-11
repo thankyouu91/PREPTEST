@@ -118,7 +118,7 @@
       AD.qsa('[data-edit]').forEach(b => b.addEventListener('click', () => {
         openEditor(r.items.find(x => x.id === +b.getAttribute('data-edit')));
       }));
-      bindAudio();
+      bindAudio(r.items);
       AD.qsa('[data-toggle]').forEach(b => b.addEventListener('click', async () => {
         const id = +b.getAttribute('data-toggle');
         const to = b.getAttribute('data-to');
@@ -150,33 +150,139 @@
      control only appears where it makes sense. */
   const NEEDS_AUDIO = ['listening', 'speaking'];
 
+  /* Trạng thái audio quyết định câu hỏi có được vào đề hay không: chỉ
+     'approved' mới được tính trong báo cáo độ phủ, nên nhãn phải nói rõ chứ
+     không để "có tệp" trông giống "đã duyệt". */
+  const AUDIO_STATE = {
+    none:       { label: 'Chưa có audio',  cls: 'badge-hl' },
+    ready:      { label: 'Chờ nghe duyệt', cls: 'badge-hl' },
+    approved:   { label: 'Đã duyệt',       cls: 'badge-ok' },
+    failed:     { label: 'Dựng lỗi',       cls: 'badge-danger' },
+    generating: { label: 'Đang dựng…',     cls: 'badge-muted' }
+  };
+
   function audioBlock(i) {
     if (!NEEDS_AUDIO.includes(i.skill)) return '';
     const kb = i.audioBytes ? Math.max(1, Math.round(i.audioBytes / 1024)) : 0;
     /* Cache-bust on the upload timestamp: replacing a file must not leave the
        browser playing the old one. */
     const src = '/api/admin/questions/' + i.id + '/audio?v=' + encodeURIComponent(i.audioAt || '');
+    const st = AUDIO_STATE[i.audioStatus] || AUDIO_STATE.none;
+
     return '<span class="block mt-2.5 pt-2.5 border-t border-line">' +
-      (i.hasAudio
-        ? '<span class="flex flex-wrap items-center gap-2">' +
-            '<audio controls preload="none" class="h-9 max-w-full" src="' + src + '"></audio>' +
-            '<span class="badge badge-muted">MP3 · ' + kb + ' KB</span>' +
-            '<label class="btn btn-ghost btn-sm cursor-pointer">Replace' +
-              '<input type="file" accept="audio/mpeg" class="sr-only" data-audio-file="' + i.id + '">' +
-            '</label>' +
-            '<button type="button" class="btn btn-ghost btn-sm" data-audio-del="' + i.id + '">Remove</button>' +
-          '</span>'
-        : '<span class="flex flex-wrap items-center gap-2">' +
-            '<span class="badge badge-hl">No audio</span>' +
-            '<label class="btn btn-ghost btn-sm cursor-pointer">Attach MP3' +
-              '<input type="file" accept="audio/mpeg" class="sr-only" data-audio-file="' + i.id + '">' +
-            '</label>' +
-          '</span>') +
+      '<span class="flex flex-wrap items-center gap-2">' +
+        '<span class="badge ' + st.cls + '">' + st.label + '</span>' +
+        (i.hasAudio
+          ? '<audio controls preload="none" class="h-9 max-w-full" src="' + src + '"></audio>' +
+            '<span class="badge badge-muted">MP3 · ' + kb + ' KB</span>'
+          : '') +
+        /* Dựng bằng ElevenLabs là đường chính; tải tệp lên bằng tay vẫn giữ
+           nguyên cho những part cần giọng người thật. */
+        '<button type="button" class="btn btn-soft btn-sm" data-tts="' + i.id + '">' +
+          (i.audioScript ? 'Kịch bản &amp; dựng audio' : 'Viết kịch bản') + '</button>' +
+        (i.audioStatus === 'ready'
+          ? '<button type="button" class="btn btn-primary btn-sm" data-tts-ok="' + i.id + '">Duyệt</button>' : '') +
+        (i.audioStatus === 'approved'
+          ? '<button type="button" class="btn btn-ghost btn-sm" data-tts-undo="' + i.id + '">Bỏ duyệt</button>' : '') +
+        '<label class="btn btn-ghost btn-sm cursor-pointer">' + (i.hasAudio ? 'Thay tệp' : 'Tải MP3') +
+          '<input type="file" accept="audio/mpeg" class="sr-only" data-audio-file="' + i.id + '">' +
+        '</label>' +
+        (i.hasAudio
+          ? '<button type="button" class="btn btn-ghost btn-sm" data-audio-del="' + i.id + '">Gỡ</button>' : '') +
+      '</span>' +
     '</span>';
   }
 
+  /* ---------- Kịch bản audio + dựng bằng ElevenLabs ----------
+     Xem trước chạy hoàn toàn ở server nhưng không gọi nhà cung cấp: tác giả
+     thấy chỗ ngắt nghỉ và số ký tự sẽ bị tính tiền TRƯỚC khi tiêu ký tự nào. */
+  function openScript(item) {
+    const m = AD.modal(
+      '<h3 class="text-lg font-extrabold tracking-tight">Kịch bản audio</h3>' +
+      '<p class="text-[13px] text-muted mt-1 leading-relaxed">' +
+        'Ký hiệu ngắt nghỉ: <b>,</b> <b>;</b> <b>:</b> nghỉ ngắn · <b>.</b> <b>!</b> <b>?</b> nghỉ dài · ' +
+        '<b>_</b> cách một đoạn 1,5 giây (viết <code>_2s</code> nếu cần chính xác).' +
+      '</p>' +
+      '<label class="grid gap-1.5 mt-4"><span class="text-[13px] font-semibold">Lời đọc</span>' +
+        '<textarea id="sc-text" rows="7" class="input font-mono text-[13px] leading-relaxed" ' +
+          'placeholder="The meeting starts at nine. _ Please bring your notes."></textarea></label>' +
+      '<label class="grid gap-1.5 mt-3"><span class="text-[13px] font-semibold">Giọng đọc</span>' +
+        '<select id="sc-voice" class="input"><option value="">Đang tải danh sách giọng…</option></select></label>' +
+      '<div id="sc-stats" class="text-[13px] text-muted mt-3"></div>' +
+      '<p id="sc-err" class="text-[13px] text-danger font-semibold mt-2 hidden"></p>' +
+      '<div class="flex flex-wrap gap-2 mt-5">' +
+        '<button type="button" id="sc-save" class="btn btn-soft btn-md">Lưu kịch bản</button>' +
+        '<button type="button" id="sc-render" class="btn btn-primary btn-md">Dựng MP3</button>' +
+        '<button type="button" data-close class="btn btn-ghost btn-md ms-auto">Đóng</button>' +
+      '</div>', { wide: true });
+
+    const el = s => m.el.querySelector(s);
+    el('#sc-text').value = item.audioScript || '';
+
+    const fail = msg => {
+      const p = el('#sc-err');
+      p.textContent = msg;
+      p.classList.toggle('hidden', !msg);
+    };
+
+    /* Giọng lấy từ tài khoản ElevenLabs thật. Chưa có khoá thì nói thẳng ở đây
+       chứ không để người dùng bấm Dựng rồi mới biết. */
+    AD.get('/admin/tts/voices').then(({ voices }) => {
+      el('#sc-voice').innerHTML = voices.length
+        ? voices.map(v => '<option value="' + AD.esc(v.voiceId) + '"' +
+            (v.voiceId === item.audioVoiceId ? ' selected' : '') + '>' +
+            AD.esc(v.name) + (v.accent ? ' · ' + AD.esc(v.accent) : '') + '</option>').join('')
+        : '<option value="">Tài khoản chưa có giọng nào</option>';
+    }).catch(e => {
+      el('#sc-voice').innerHTML = '<option value="">' + AD.esc(e.message) + '</option>';
+    });
+
+    let timer = null;
+    const preview = () => {
+      const script = el('#sc-text').value.trim();
+      if (!script) { el('#sc-stats').textContent = ''; return; }
+      AD.post('/admin/script/preview', { script }).then(r => {
+        const secs = (r.stats.estimatedMs / 1000).toFixed(1);
+        el('#sc-stats').innerHTML =
+          '<b class="text-ink">' + AD.num(r.stats.chars) + '</b> ký tự chữ · ' +
+          '<b class="text-ink">' + AD.num(r.stats.billedChars) + '</b> ký tự bị tính tiền · ' +
+          r.stats.breaks + ' chỗ nghỉ · ước lượng <b class="text-ink">' + secs + ' giây</b>' +
+          (r.stats.capped
+            ? '<br><span class="text-danger font-semibold">Quá nhiều chỗ nghỉ nên hệ thống bỏ thẻ ngắt và ' +
+              'để model tự ngắt theo dấu câu — chia kịch bản thành nhiều câu hỏi thì chuẩn hơn.</span>'
+            : '');
+      }).catch(() => {});
+    };
+    el('#sc-text').addEventListener('input', () => { clearTimeout(timer); timer = setTimeout(preview, 350); });
+    preview();
+
+    const body = () => ({ script: el('#sc-text').value.trim(), voiceId: el('#sc-voice').value });
+
+    el('#sc-save').addEventListener('click', async () => {
+      fail('');
+      try {
+        const r = await AD.put('/admin/questions/' + item.id + '/script', body());
+        AD.toast(r.invalidated ? 'Đã lưu — audio cũ cần dựng và duyệt lại' : 'Đã lưu kịch bản');
+        m.close(); load();
+      } catch (e) { fail(e.message); }
+    });
+
+    el('#sc-render').addEventListener('click', async () => {
+      fail('');
+      const btn = el('#sc-render');
+      btn.disabled = true;
+      btn.textContent = 'Đang dựng…';
+      try {
+        const r = await AD.post('/admin/questions/' + item.id + '/tts', body());
+        AD.toast(r.reused ? 'Kịch bản không đổi — dùng lại tệp cũ' : 'Đã dựng xong, nghe thử rồi duyệt');
+        m.close(); load();
+      } catch (e) { fail(e.message); }
+      finally { btn.disabled = false; btn.textContent = 'Dựng MP3'; }
+    });
+  }
+
   /* Wired once per render, same as the edit and retire buttons. */
-  function bindAudio() {
+  function bindAudio(items) {
     AD.qsa('[data-audio-file]').forEach(inp => inp.addEventListener('change', async () => {
       const file = inp.files && inp.files[0];
       if (!file) return;
@@ -194,6 +300,23 @@
       const id = b.getAttribute('data-audio-del');
       try { await AD.del('/admin/questions/' + id + '/audio'); AD.toast('Audio removed'); load(); }
       catch (e) { AD.toast(e.message, 'error'); }
+    }));
+
+    AD.qsa('[data-tts]').forEach(b => b.addEventListener('click', () => {
+      const item = items.find(x => String(x.id) === b.getAttribute('data-tts'));
+      if (item) openScript(item);
+    }));
+    AD.qsa('[data-tts-ok]').forEach(b => b.addEventListener('click', async () => {
+      try {
+        await AD.post('/admin/questions/' + b.getAttribute('data-tts-ok') + '/tts/approve', {});
+        AD.toast('Đã duyệt audio'); load();
+      } catch (e) { AD.toast(e.message, 'error'); }
+    }));
+    AD.qsa('[data-tts-undo]').forEach(b => b.addEventListener('click', async () => {
+      try {
+        await AD.post('/admin/questions/' + b.getAttribute('data-tts-undo') + '/tts/unapprove', {});
+        AD.toast('Đã bỏ duyệt, câu này tạm rời khỏi kho dựng đề'); load();
+      } catch (e) { AD.toast(e.message, 'error'); }
     }));
   }
 

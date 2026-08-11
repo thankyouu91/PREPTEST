@@ -310,9 +310,13 @@ CREATE INDEX IF NOT EXISTS idx_audit_at  ON audit (at DESC);
    old shape and every query touching that column would throw. Each entry
    below is checked against the live table and applied only when missing, so
    the same code boots a fresh database and an old one. */
+/** Returns true when the column was actually added, so a one-off backfill can
+    run exactly once instead of on every boot. */
 function addColumnIfMissing(table, column, definition) {
   const have = db.prepare(`PRAGMA table_info(${table})`).all().some(c => c.name === column);
-  if (!have) db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
+  if (have) return false;
+  db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
+  return true;
 }
 
 /* Only one exam family is buildable right now; the rest are parked as
@@ -325,6 +329,66 @@ addColumnIfMissing('families', 'status', "TEXT NOT NULL DEFAULT 'ready'");
 addColumnIfMissing('questions', 'audio_key', 'TEXT');
 addColumnIfMissing('questions', 'audio_bytes', 'INTEGER');
 addColumnIfMissing('questions', 'audio_at', 'TEXT');
+
+/* Audio is authored rather than recorded: an author writes a script with the
+   pause markup in server/script-markup.js, the platform renders it, somebody
+   listens, and only then can the item enter a form. See docs/VOICE.md 4.
+
+   audio_script is what is spoken, which is not the same text as `prompt` — for
+   part F the prompt shows the answer options while the audio is the opening
+   line, and for part G the prompt is the question while the audio is the whole
+   passage. */
+addColumnIfMissing('questions', 'audio_script', 'TEXT');
+addColumnIfMissing('questions', 'audio_voice_id', 'TEXT');
+/* sha256 over script + voice + model + settings + seed. Equal hash means the
+   render would be byte-for-byte the same request, so it is skipped and the
+   existing file reused — nothing is paid for twice. */
+addColumnIfMissing('questions', 'audio_hash', 'TEXT');
+/* Facts a candidate should retain, used when marking a part J retelling. */
+addColumnIfMissing('questions', 'key_points_json', "TEXT NOT NULL DEFAULT '[]'");
+/* Which VPET part (A-J) an item belongs to, so each part draws from its own
+   pool instead of sharing one skill-wide pool. */
+addColumnIfMissing('questions', 'part', 'TEXT');
+
+const addedAudioStatus = addColumnIfMissing(
+  'questions', 'audio_status', "TEXT NOT NULL DEFAULT 'none'");
+/* none → queued → generating → ready → approved, or failed.
+   Items that already had a hand-uploaded file predate this column; whoever
+   uploaded one had listened to it, so they start approved rather than dropping
+   out of every form the next time the readiness report runs. Guarded on the
+   column having just been created — re-running it on every boot would undo an
+   author who deliberately sent a rendered item back for another listen. */
+if (addedAudioStatus) {
+  db.exec("UPDATE questions SET audio_status='approved' WHERE audio_key IS NOT NULL");
+}
+
+/* One row per call to the TTS provider: what was sent, what came back, what it
+   cost. This is the audit trail behind every audio file in the bank — when an
+   item sounds wrong, this says which voice, which model and which script
+   produced it, and a reviewer can compare it against the current script. */
+db.exec(`
+CREATE TABLE IF NOT EXISTS tts_renders (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  question_id INTEGER NOT NULL REFERENCES questions(id) ON DELETE CASCADE,
+  hash TEXT NOT NULL,
+  provider TEXT NOT NULL DEFAULT 'elevenlabs',
+  voice_id TEXT NOT NULL,
+  model_id TEXT NOT NULL,
+  settings_json TEXT NOT NULL DEFAULT '{}',
+  seed INTEGER,
+  script TEXT NOT NULL,
+  chars INTEGER NOT NULL DEFAULT 0,
+  storage_key TEXT,
+  bytes INTEGER NOT NULL DEFAULT 0,
+  ms INTEGER NOT NULL DEFAULT 0,
+  status TEXT NOT NULL DEFAULT 'ok',
+  error TEXT,
+  created_by INTEGER REFERENCES admins(id),
+  created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_tts_q    ON tts_renders (question_id, id DESC);
+CREATE INDEX IF NOT EXISTS idx_tts_hash ON tts_renders (hash);
+`);
 
 /* ============================== TIỆN ÍCH ============================== */
 const nowISO = () => new Date().toISOString();

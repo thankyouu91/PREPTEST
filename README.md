@@ -42,7 +42,7 @@ Lệnh khác:
 Truy cập `/admin/`. Dữ liệu nằm trong SQLite nhúng (`node:sqlite`, không cần dependency native),
 file `data/prep.sqlite` tự tạo và seed ở lần chạy đầu — thư mục `data/` không đưa vào git.
 
-Tài khoản quản trị khởi tạo: `admin` / `Admin@123456` (in ra console kèm cảnh báo).
+Tài khoản quản trị khởi tạo: `admin` / `Goodmorning01` (in ra console kèm cảnh báo).
 Đặt `ADMIN_PASSWORD` để dùng mật khẩu khác; ở `NODE_ENV=production` server **từ chối khởi động**
 nếu chưa có tài khoản nào và cũng không có `ADMIN_PASSWORD`.
 
@@ -135,6 +135,68 @@ chỉ cần viết thêm một object trong `server/storage.js`, chỗ gọi kh�
 - Upload và gỡ đều qua `requireAdmin` + CSRF và đều ghi nhật ký thao tác.
 - Khi trả tệp về đặt `Cache-Control: private, no-store` — audio đề thi là đáp án,
   không để nằm trong cache dùng chung.
+
+### Dựng audio bằng ElevenLabs
+
+Thu tay từng câu không nhân lên được khi ngân hàng lên vài nghìn câu, nên audio
+đề được **dựng từ kịch bản**: tác giả viết lời đọc, nền tảng gọi ElevenLabs, ai
+đó nghe, rồi mới duyệt. Thiết kế đầy đủ ở [`docs/VOICE.md`](docs/VOICE.md).
+
+**Ký hiệu ngắt nghỉ** — ba ký tự điều khiển nhịp đọc, viết ngay trong lời đọc:
+
+| Ký hiệu | Ngắt | Mặc định |
+|---|---|---|
+| `,` `;` `:` `"` | ngắn | 0,25 giây |
+| `.` `!` `?` | dài, cuối câu | 0,6 giây |
+| `_` | cách một đoạn | 1,5 giây (`_2s` hoặc `_800ms` nếu cần chính xác) |
+
+Dấu câu **được giữ nguyên** trong lời đọc — bỏ đi là lấy mất tín hiệu ngữ điệu
+mà model đọc tốt nhất. Nền tảng giữ dấu **và** chèn thêm một khoảng nghỉ cố
+định, nên câu vẫn ra câu mà độ dài khoảng nghỉ thì lần nào cũng như lần nào. Đó
+mới là điểm chính: hai thí sinh cùng một đề phải nghe đúng một file giống nhau.
+
+Riêng `_` không phải dấu câu nên bị gỡ khỏi lời đọc và thay hẳn bằng khoảng lặng.
+
+> **Nháy đơn `'` không phải ký hiệu ngắt.** Nó trùng ký tự với dấu lược trong
+> `don't`, `it's` — coi nó là ngắt thì mọi từ rút gọn trong ngân hàng đề đều vỡ
+> làm đôi. Cần nghỉ ở chỗ có nháy thì gõ dấu phẩy.
+
+Trong màn **Ngân hàng câu hỏi**, nút *Kịch bản & dựng audio* mở ô soạn lời đọc,
+hiện ngay số ký tự sẽ bị tính tiền và ước lượng thời lượng **trước khi** gọi API.
+Dựng xong nghe thử tại chỗ, rồi bấm *Duyệt*.
+
+**Chỉ câu đã duyệt mới được tính** trong báo cáo độ phủ — "có tệp" khác "đã có
+người nghe", và máy đọc sai tên riêng là chuyện xảy ra thật.
+
+Băm nội dung (`sha256` của lời đọc + giọng + model + tham số) khiến bấm Dựng lại
+trên một câu chưa sửa gì thì dùng lại tệp cũ, không tốn thêm ký tự nào.
+
+### Khoá API
+
+Hai khoá, nhập trong **Quản trị → Khoá API**:
+
+| Nhà cung cấp | Việc |
+|---|---|
+| ElevenLabs | dựng MP3 cho part E, F, G, H, J |
+| OpenAI | soạn kịch bản, soạn câu hỏi, chấm phần Nói |
+
+Khoá được mã hoá AES-256-GCM trước khi ghi xuống CSDL; chìa khoá mã hoá nằm
+**ngoài** CSDL (`APP_SECRET`, hoặc `data/.app-secret` mode 0600 khi chạy thử),
+nên một bản sao lưu CSDL rơi ra ngoài vẫn chưa dùng được.
+
+Biến môi trường luôn thắng giá trị lưu trong dashboard, nên khi lên Google Cloud
+chuyển sang Secret Manager là xong, không phải đụng vào dữ liệu:
+
+| Biến | Việc |
+|---|---|
+| `APP_SECRET` | chìa khoá mã hoá các khoá API. **Bắt buộc đặt ở production** |
+| `ELEVENLABS_API_KEY` | đặt thì dashboard chỉ hiển thị, không sửa được |
+| `ELEVENLABS_MODEL` | ghim model TTS, mặc định `eleven_multilingual_v2` |
+| `OPENAI_API_KEY` | như trên |
+| `OPENAI_ITEM_MODEL` | ghim model soạn đề, mặc định `gpt-4o` |
+
+Không đặt khoá nào thì nền tảng vẫn chạy bình thường — chỉ là các nút cần khoá
+báo rõ còn thiếu gì, chứ không đổ lỗi 500.
 
 Màn **Format đề** báo luôn phần nào còn thiếu MP3: một phần cần audio chỉ tính là
 sẵn sàng khi số câu **có tệp** đủ cho phần đó, nên không sinh ra đề nghe câm.

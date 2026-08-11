@@ -321,7 +321,7 @@ router.get('/admin/questions', (req, res) => {
   const total = q.val('SELECT COUNT(*) c ' + sql, ...args);
   const rows = q.all(
     `SELECT id, family_id, skill, level, type, prompt, options_json, answer, explanation, tags_json, status, created_at,
-            audio_key, audio_bytes, audio_at
+            audio_key, audio_bytes, audio_at, audio_script, audio_status, audio_voice_id, part
        ${sql} ORDER BY id DESC LIMIT ? OFFSET ?`, ...args, limit, offset);
 
   res.json({
@@ -332,7 +332,11 @@ router.get('/admin/questions', (req, res) => {
       explanation: r.explanation, tags: jparse(r.tags_json, []), status: r.status, createdAt: r.created_at,
       /* The key itself never leaves the server - the browser only needs to know
          whether a file is attached, and how big it is. */
-      hasAudio: !!r.audio_key, audioBytes: r.audio_bytes || 0, audioAt: r.audio_at || null
+      hasAudio: !!r.audio_key, audioBytes: r.audio_bytes || 0, audioAt: r.audio_at || null,
+      /* The script is the author's source text, not answer material the way the
+         rendered audio is, so the bank screen gets it in full. */
+      audioScript: r.audio_script || '', audioStatus: r.audio_status || 'none',
+      audioVoiceId: r.audio_voice_id || '', part: r.part || null
     }))
   });
 });
@@ -421,7 +425,9 @@ router.post('/admin/questions/:id/audio', audioBody, async (req, res) => {
     /* Replacing an existing file: write the new key first, then drop the old
        one. If the delete fails the row still points at a file that exists. */
     const old = row.audio_key;
-    q.run('UPDATE questions SET audio_key=?, audio_bytes=?, audio_at=? WHERE id=?',
+    /* Uploading a file by hand is its own approval: whoever picked it listened
+       to it first. A rendered file is different — nobody has heard that yet. */
+    q.run("UPDATE questions SET audio_key=?, audio_bytes=?, audio_at=?, audio_status='approved' WHERE id=?",
       saved.key, saved.bytes, nowISO(), id);
     if (old && old !== saved.key) await storage.remove(old).catch(() => {});
     audit(req, 'question.audio.upload', 'questions/' + id, { bytes: saved.bytes, driver: saved.driver });
@@ -454,7 +460,7 @@ router.delete('/admin/questions/:id/audio', async (req, res) => {
   const row = q.get('SELECT audio_key FROM questions WHERE id=?', id);
   if (!row) return res.status(404).json({ error: 'Không tìm thấy câu hỏi.' });
   if (!row.audio_key) return res.json({ ok: true });
-  q.run('UPDATE questions SET audio_key=NULL, audio_bytes=NULL, audio_at=NULL WHERE id=?', id);
+  q.run("UPDATE questions SET audio_key=NULL, audio_bytes=NULL, audio_at=NULL, audio_status='none', audio_hash=NULL WHERE id=?", id);
   await storage.remove(row.audio_key).catch(() => {});
   audit(req, 'question.audio.delete', 'questions/' + id, {});
   res.json({ ok: true });
@@ -542,15 +548,18 @@ function bankCount(familyId, skill, types, level) {
   };
 }
 
-/** Same pool as bankCount, but only the items that already have an MP3.
-    A VPET audio part cannot be generated from items that have no sound. */
+/** Same pool as bankCount, but only the items whose audio has been approved.
+    A VPET audio part cannot be generated from items that have no sound — and
+    "has a file" is not the same as "somebody has listened to it". A synthetic
+    voice mangling a proper noun is caught at the approval step, so that is the
+    step this gate counts. See docs/VOICE.md 4.6. */
 function audioReadyCount(familyId, skill, types, level) {
   const t = Array.isArray(types) && types.length ? types.filter(x => QTYPES.includes(x)) : QTYPES;
   const holes = t.map(() => '?').join(',');
   const args = [familyId, skill, ...t];
   const base = `SELECT COUNT(*) c FROM questions
                  WHERE family_id=? AND skill=? AND type IN (${holes}) AND status='active'
-                   AND audio_key IS NOT NULL`;
+                   AND audio_key IS NOT NULL AND audio_status='approved'`;
   return {
     total: q.val(base, ...args),
     exact: level ? q.val(base + ' AND level=?', ...args, level) : 0

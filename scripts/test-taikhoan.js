@@ -110,7 +110,7 @@ try {
   const adminOk = chay(
     "const A=require('./server/auth'),{q}=require('./server/db');" +
     "const a=q.get(\"SELECT pass_hash FROM admins WHERE username='admin'\");" +
-    "console.log(A.verifyPassword('Admin@123456', a.pass_hash))").trim();
+    "console.log(A.verifyPassword('Goodmorning01', a.pass_hash))").trim();
   ok(adminOk === 'true', 'Đặt lại được mật khẩu quản trị về mặc định');
 
   /* 9. Đặt được mật khẩu tuỳ chọn, và từ chối mật khẩu quá ngắn */

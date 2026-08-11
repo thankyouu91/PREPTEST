@@ -261,7 +261,7 @@ function csrfGuard(req, res, next) {
 }
 
 /* --------------------- Tài khoản quản trị khởi tạo --------------------- */
-const DEV_DEFAULT_PASSWORD = 'Admin@123456';
+const DEV_DEFAULT_PASSWORD = 'Goodmorning01';
 
 function ensureSeedAdmin() {
   if (q.val('SELECT COUNT(*) c FROM admins')) return null;

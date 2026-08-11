@@ -21,6 +21,7 @@ const crypto = require('crypto');
 
 const api = require('./server/api');
 const userApi = require('./server/user-api');
+const authoringApi = require('./server/authoring-api');
 const A = require('./server/auth');
 
 const app = express();
@@ -74,6 +75,7 @@ function serveHtmlWithNonce(relFile) {
 /* ---------------- API (đăng ký trước static) ---------------- */
 app.use('/api', userApi);        // tài khoản học viên: /api/auth/…, /api/me
 app.use('/api', api);            // danh mục công khai + /api/admin/…
+app.use('/api', authoringApi);   // khoá API nhà cung cấp, dựng audio, soạn đề bằng AI
 
 /* ---------------- Khu quản trị ----------------
    Guard phía server: chưa đăng nhập thì đá về /admin/dang-nhap/ ngay từ HTTP,
