@@ -17,13 +17,15 @@
 
 /* ---------------- Danh mục 6 nhóm kỳ thi (dự phòng) ---------------- */
 // Màu badge của từng kỳ nằm trong CSS (--exam-*), cố định, không đổi theo tenant.
+// status: 'ready' = blueprint is live and tests can be published;
+//         'coming_soon' = listed only, nothing to buy or open yet.
 const PREP_FAMILIES = [
-  { id: 'vept',  name: 'VEPT',  sub: 'Chứng chỉ VEPT 4 kỹ năng',                 format: '4 kỹ năng theo chuẩn CEFR' },
-  { id: 'vpet',  name: 'VPET',  sub: 'Chứng chỉ VPET 4 kỹ năng',                 format: '4 kỹ năng theo chuẩn CEFR' },
-  { id: 'ote',   name: 'OTE',   sub: 'Oxford Test of English',                    format: 'Adaptive 4 module, CEFR A2-B2' },
-  { id: 'toeic', name: 'TOEIC', sub: 'Test of English for International Communication', format: 'L&R / S&W, thang điểm 990' },
-  { id: 'ielts', name: 'IELTS', sub: 'International English Language Testing System',   format: '4 kỹ năng, band 0-9' },
-  { id: 'pte',   name: 'PTE',   sub: 'Pearson Test of English',                   format: 'Thi trên máy, chấm AI, thang 10-90' }
+  { id: 'vpet',  name: 'VPET',  sub: 'Vietnam Proficiency English Test',          format: 'Parts A-J, 55 items, AI scored speaking', status: 'ready' },
+  { id: 'vept',  name: 'VEPT',  sub: 'Vietnam English Proficiency Test',          format: '4 skills, CEFR aligned', status: 'coming_soon' },
+  { id: 'ote',   name: 'OTE',   sub: 'Oxford Test of English',                    format: 'Adaptive, 4 modules, CEFR A2-B2', status: 'coming_soon' },
+  { id: 'toeic', name: 'TOEIC', sub: 'Test of English for International Communication', format: 'L&R / S&W, 990 point scale', status: 'coming_soon' },
+  { id: 'ielts', name: 'IELTS', sub: 'International English Language Testing System',   format: '4 skills, band 0-9', status: 'coming_soon' },
+  { id: 'pte',   name: 'PTE',   sub: 'Pearson Test of English',                   format: 'Computer based, AI scored, 10-90 scale', status: 'coming_soon' }
 ];
 
 /* ---------------- Bài thi thử (CHƯA có nội dung đề) ----------------

@@ -64,13 +64,40 @@ nếu chưa có tài khoản nào và cũng không có `ADMIN_PASSWORD`.
 `/admin/format/` giữ cấu trúc đề thật của cả 6 kỳ thi — dữ liệu nằm trong
 `server/data/exam-formats.js`, không hardcode trong giao diện.
 
-| Kỳ thi | Format |
-|---|---|
-| VEPT · VPET | 4 kỹ năng chuẩn VSTEP.3-5 — 80 câu, 172 phút |
-| IELTS | Academic trọn bài (85 câu, 164 phút) + luyện riêng Nghe / Đọc |
-| TOEIC | L&R đầy đủ 200 câu (120 phút), L&R rút gọn 100 câu, Speaking & Writing |
-| PTE | Academic trọn bài, 3 khối, 127 phút |
-| OTE | Module Nghe và module Đọc (thi từng module) |
+| Kỳ thi | Trạng thái | Format |
+|---|---|---|
+| **VPET** | **đang xây** | 10 phần A–J, 55 câu — xem bảng dưới |
+| VEPT | chưa sẵn sàng | 4 kỹ năng chuẩn VSTEP.3-5 — 80 câu, 172 phút |
+| IELTS | chưa sẵn sàng | Academic trọn bài (85 câu, 164 phút) + luyện riêng Nghe / Đọc |
+| TOEIC | chưa sẵn sàng | L&R đầy đủ 200 câu (120 phút), L&R rút gọn 100 câu, Speaking & Writing |
+| PTE | chưa sẵn sàng | Academic trọn bài, 3 khối, 127 phút |
+| OTE | chưa sẵn sàng | Module Nghe và module Đọc (thi từng module) |
+
+**Nền tảng đang tập trung vào VPET.** Năm kỳ thi còn lại mang cờ
+`families.status = 'coming_soon'`: vẫn hiện trong danh mục nhưng chưa mở bán và
+chưa dựng đề. Cờ này nằm trong CSDL, trả ra ở `GET /api/catalog`, đổi được bằng
+cách sửa `FAMILIES` trong `server/db.js` — bảng `families` được đồng bộ lại mỗi
+lần khởi động.
+
+#### Format VPET — 10 phần, 55 câu
+
+| Phần | Task | Số câu | Kỹ năng | Cần MP3 |
+|---|---|---:|---|---|
+| A | Sentence Completion | 10 | writing | |
+| B | Passage Reconstruction | 3 | writing | |
+| C | Reading Comprehension | 3 | reading | |
+| D | E-Mail Writing | 2 | writing | |
+| E | Dictation | 8 | listening | có |
+| F | Response Selection | 8 | listening | có |
+| G | Passage Comprehension | 6 | listening | có |
+| H | Repeat | 10 | speaking | có |
+| I | Speaking Situations | 2 | speaking | |
+| J | Story Retellings | 3 | speaking | có |
+
+Số câu từng phần là **cố định theo bảng chính thức**, không được đổi. Số phút là
+mặc định của nền tảng (tổng 73 phút) vì bảng gốc không công bố thời lượng — admin
+sửa được trên từng đề mà không đụng vào blueprint. Phần Nói (H, I, J) sẽ do AI
+chấm; xem hàng đợi VPET trong [`docs/ROADMAP.md`](docs/ROADMAP.md).
 
 Mỗi format khai báo tới **từng part**: Part 1 của TOEIC 6 câu mô tả tranh, Part 7
 54 câu đọc hiểu, IELTS Reading Passage 3 khó nhất 14 câu… kèm dạng câu được phép

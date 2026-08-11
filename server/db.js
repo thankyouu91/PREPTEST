@@ -304,6 +304,21 @@ CREATE INDEX IF NOT EXISTS idx_sec_test  ON sections (test_id, sort);
 CREATE INDEX IF NOT EXISTS idx_audit_at  ON audit (at DESC);
 `);
 
+/* ============================ MIGRATIONS ============================
+   CREATE TABLE IF NOT EXISTS never adds a column to a table that already
+   exists, so databases created before a column was introduced would keep the
+   old shape and every query touching that column would throw. Each entry
+   below is checked against the live table and applied only when missing, so
+   the same code boots a fresh database and an old one. */
+function addColumnIfMissing(table, column, definition) {
+  const have = db.prepare(`PRAGMA table_info(${table})`).all().some(c => c.name === column);
+  if (!have) db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
+}
+
+/* Only one exam family is buildable right now; the rest are parked as
+   coming_soon so the catalogue can show them without offering tests. */
+addColumnIfMissing('families', 'status', "TEXT NOT NULL DEFAULT 'ready'");
+
 /* ============================== TIỆN ÍCH ============================== */
 const nowISO = () => new Date().toISOString();
 const jparse = (s, fb) => { try { return JSON.parse(s); } catch (e) { return fb; } };
@@ -340,13 +355,15 @@ function audit(req, action, target, meta) {
 }
 
 /* ============================== SEED ============================== */
+/* VPET is the only family being built right now; every other family is parked
+   as coming_soon. Columns: id, name, sub, format, skills, sort, status. */
 const FAMILIES = [
-  ['vept',  'VEPT',  'Chứng chỉ VEPT 4 kỹ năng',  '4 kỹ năng theo chuẩn CEFR', ['listening','reading','writing','speaking'], 1],
-  ['vpet',  'VPET',  'Chứng chỉ VPET 4 kỹ năng',  '4 kỹ năng theo chuẩn CEFR', ['listening','reading','writing','speaking'], 2],
-  ['ote',   'OTE',   'Oxford Test of English',    'Adaptive 4 module, CEFR A2-B2', ['listening','reading','writing','speaking'], 3],
-  ['toeic', 'TOEIC', 'Test of English for International Communication', 'L&R / S&W, thang điểm 990', ['listening','reading'], 4],
-  ['ielts', 'IELTS', 'International English Language Testing System',   '4 kỹ năng, band 0-9', ['listening','reading','writing','speaking'], 5],
-  ['pte',   'PTE',   'Pearson Test of English',   'Thi trên máy, chấm AI, thang 10-90', ['listening','reading','writing','speaking'], 6]
+  ['vpet',  'VPET',  'Vietnam Proficiency English Test', 'Parts A-J, 55 items, AI scored speaking', ['listening','reading','writing','speaking'], 1, 'ready'],
+  ['vept',  'VEPT',  'Vietnam English Proficiency Test', '4 skills, CEFR aligned', ['listening','reading','writing','speaking'], 2, 'coming_soon'],
+  ['ote',   'OTE',   'Oxford Test of English',    'Adaptive, 4 modules, CEFR A2-B2', ['listening','reading','writing','speaking'], 3, 'coming_soon'],
+  ['toeic', 'TOEIC', 'Test of English for International Communication', 'L&R / S&W, 990 point scale', ['listening','reading'], 4, 'coming_soon'],
+  ['ielts', 'IELTS', 'International English Language Testing System',   '4 skills, band 0-9', ['listening','reading','writing','speaking'], 5, 'coming_soon'],
+  ['pte',   'PTE',   'Pearson Test of English',   'Computer based, AI scored, 10-90 scale', ['listening','reading','writing','speaking'], 6, 'coming_soon']
 ];
 
 const SEED_TESTS = [
@@ -497,10 +514,20 @@ function seedQuestions() {
 function seed() {
   const at = nowISO();
 
-  if (!q.val('SELECT COUNT(*) c FROM families')) {
-    const ins = db.prepare('INSERT INTO families (id,name,sub,format,skills_json,sort) VALUES (?,?,?,?,?,?)');
-    for (const [id, name, sub, format, skills, sort] of FAMILIES) {
-      ins.run(id, name, sub, format, JSON.stringify(skills), sort);
+  /* Families are reference data: nothing in the admin UI edits them, so the
+     table is reconciled with FAMILIES on every boot. That keeps an existing
+     database in step when a family is renamed or parked as coming_soon,
+     instead of only ever seeding an empty table. */
+  const insFam = db.prepare(
+    'INSERT INTO families (id,name,sub,format,skills_json,sort,status) VALUES (?,?,?,?,?,?,?)');
+  const updFam = db.prepare(
+    'UPDATE families SET name=?, sub=?, format=?, skills_json=?, sort=?, status=? WHERE id=?');
+  for (const [id, name, sub, format, skills, sort, status] of FAMILIES) {
+    const skillsJson = JSON.stringify(skills);
+    if (q.val('SELECT 1 FROM families WHERE id=?', id)) {
+      updFam.run(name, sub, format, skillsJson, sort, status, id);
+    } else {
+      insFam.run(id, name, sub, format, skillsJson, sort, status);
     }
   }
 

@@ -1098,7 +1098,10 @@ router.get('/admin/audit', (req, res) => {
    không phải sửa markup. // TODO(frontend): thay _mock.js bằng endpoint này */
 router.get('/catalog', (req, res) => {
   const families = q.all('SELECT * FROM families ORDER BY sort').map(f => ({
-    id: f.id, name: f.name, sub: f.sub, format: f.format, skills: jparse(f.skills_json, [])
+    id: f.id, name: f.name, sub: f.sub, format: f.format, skills: jparse(f.skills_json, []),
+    /* 'ready' means the family has a working blueprint and can hold tests;
+       'coming_soon' families are listed but cannot be bought or opened. */
+    status: f.status || 'ready'
   }));
   const tests = q.all("SELECT * FROM tests WHERE status='published' ORDER BY family_id, id").map(t => {
     const sections = q.all('SELECT * FROM sections WHERE test_id=? ORDER BY sort, id', t.id).map(s => ({

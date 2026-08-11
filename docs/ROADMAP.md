@@ -10,6 +10,47 @@ Hai hàng đợi tách riêng:
 
 Nhánh làm việc: `claude/prep-test-platform-design-fpiuqn`
 
+## VPET first — current priority
+
+Owner decision (2026-08-11): **build the VPET practice suite before anything
+else.** Every other exam family is parked as `coming_soon`; nothing else gets
+built for them until VPET is done.
+
+Three standing decisions that shape the work:
+
+| Decision | Choice |
+|---|---|
+| Speaking scoring | Audio-native model (Gemini / GPT-4o audio): the MP3 goes straight to the model, no separate transcription step |
+| Audio storage | Storage adapter with two drivers — local disk for dev, Supabase Storage for production |
+| Interface language | **English everywhere** — UI copy, code, identifiers, comments, data and AI prompts |
+
+The official VPET blueprint, already in `server/data/exam-formats.js`, is fixed
+at 55 items and must not be changed:
+
+| Part | Task | Items | Skill | Needs audio |
+|---|---|---:|---|---|
+| A | Sentence Completion | 10 | writing | |
+| B | Passage Reconstruction | 3 | writing | |
+| C | Reading Comprehension | 3 | reading | |
+| D | E-Mail Writing | 2 | writing | |
+| E | Dictation | 8 | listening | yes |
+| F | Response Selection | 8 | listening | yes |
+| G | Passage Comprehension | 6 | listening | yes |
+| H | Repeat | 10 | speaking | yes |
+| I | Speaking Situations | 2 | speaking | |
+| J | Story Retellings | 3 | speaking | yes |
+
+Queue for this track, in order:
+
+- [x] VPET blueprint: ten lettered parts A-J, 55 items, in `server/data/exam-formats.js`
+- [x] Family readiness flag: `families.status` = `ready` / `coming_soon`, VPET ready and the other five parked; served by `GET /api/catalog`
+- [ ] MP3 upload in the admin question bank: storage adapter (disk + Supabase driver), upload endpoint behind requireAdmin + CSRF, audio player on each question, and a per-part check that every audio question has a file
+- [ ] Stop offering non-VPET tests: seeded IELTS/TOEIC tests drop to draft, and the API refuses to publish a test whose family is `coming_soon`
+- [ ] Translate the whole interface to English — 12 student screens, 8 admin screens, every banner and empty state
+- [ ] VPET item bank: real items for all ten parts, tagged by part, with audio attached where the part needs it
+- [ ] AI speaking scoring: adapter around an audio-native model, VPET rubric (fluency, pronunciation, vocabulary, grammar, task), score plus written feedback, reviewer override, and a manual-scoring fallback while no API key is set
+- [ ] VPET exam engine: per-part timer, audio playback with a fixed replay count, microphone capture for parts H/I/J, autosave and submit
+
 ## Hàng đợi
 
 - [x] Frontend giai đoạn 1: 12 màn học viên, token white-label, dark mode, CSP nghiêm ngặt
