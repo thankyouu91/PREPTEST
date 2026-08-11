@@ -283,7 +283,7 @@
           
           <h3 class="font-extrabold text-lg tracking-tight">Starter</h3>
           <p class="text-muted text-sm leading-relaxed mt-1 max-w-[34ch]">Mười lượt thi đủ để biết mình đang ở đâu.</p>
-          <p class="mt-5"><b class="text-3xl font-extrabold tracking-tight">499.000đ</b><span class="text-muted text-sm font-semibold"> / 3 tháng</span></p>
+          <p class="mt-5"><b class="text-3xl font-extrabold tracking-tight" data-plan-price>499.000đ</b><span class="text-muted text-sm font-semibold"> / <span data-plan-months>3</span> tháng</span></p>
           <ul class="grid gap-2.5 mt-6 text-[14.5px] font-medium text-muted">
             <li class="flex gap-2.5"><span class="text-accent-strong mt-0.5"><svg viewBox="0 0 24 24" class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></span><span>10 lượt thi VPET đầy đủ</span></li>
             <li class="flex gap-2.5"><span class="text-accent-strong mt-0.5"><svg viewBox="0 0 24 24" class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></span><span>Điểm và bậc CEFR sau mỗi lượt</span></li>
@@ -298,7 +298,7 @@
           <span class="badge badge-hl absolute top-5 end-5">Phổ biến nhất</span>
           <h3 class="font-extrabold text-lg tracking-tight">Plus</h3>
           <p class="text-muted text-sm leading-relaxed mt-1 max-w-[34ch]">Luyện không phải đếm lượt, và có gì để học giữa hai lần thi.</p>
-          <p class="mt-5"><b class="text-3xl font-extrabold tracking-tight">799.000đ</b><span class="text-muted text-sm font-semibold"> / 6 tháng</span></p>
+          <p class="mt-5"><b class="text-3xl font-extrabold tracking-tight" data-plan-price>799.000đ</b><span class="text-muted text-sm font-semibold"> / <span data-plan-months>6</span> tháng</span></p>
           <ul class="grid gap-2.5 mt-6 text-[14.5px] font-medium text-muted">
             <li class="flex gap-2.5"><span class="text-accent-strong mt-0.5"><svg viewBox="0 0 24 24" class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></span><span>Thi VPET không giới hạn lượt</span></li>
             <li class="flex gap-2.5"><span class="text-accent-strong mt-0.5"><svg viewBox="0 0 24 24" class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></span><span>Mở toàn bộ khu tự học: từ vựng, ngữ pháp, từ nối, phát âm</span></li>
@@ -312,7 +312,7 @@
           
           <h3 class="font-extrabold text-lg tracking-tight">Pro</h3>
           <p class="text-muted text-sm leading-relaxed mt-1 max-w-[34ch]">Trọn một năm, cho kỳ thi còn xa.</p>
-          <p class="mt-5"><b class="text-3xl font-extrabold tracking-tight">1.399.000đ</b><span class="text-muted text-sm font-semibold"> / 12 tháng</span></p>
+          <p class="mt-5"><b class="text-3xl font-extrabold tracking-tight" data-plan-price>1.399.000đ</b><span class="text-muted text-sm font-semibold"> / <span data-plan-months>12</span> tháng</span></p>
           <ul class="grid gap-2.5 mt-6 text-[14.5px] font-medium text-muted">
             <li class="flex gap-2.5"><span class="text-accent-strong mt-0.5"><svg viewBox="0 0 24 24" class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></span><span>Thi VPET không giới hạn lượt</span></li>
             <li class="flex gap-2.5"><span class="text-accent-strong mt-0.5"><svg viewBox="0 0 24 24" class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></span><span>Mở toàn bộ khu tự học</span></li>
@@ -493,36 +493,74 @@
      hai lần: chọn gói, rồi lại chọn nút. Giờ chọn thẻ là xong, một nút duy
      nhất bên dưới đi theo lựa chọn đó. */
   {
-    const plans = PREP.qsa('.plan');
+    const allPlans = PREP.qsa('.plan');
     const cta = PREP.qs('#plan-cta');
     const ctaName = PREP.qs('#plan-cta-name');
     const ctaNote = PREP.qs('#plan-cta-note');
-    const NOTE = {
-      'starter-3m': '499.000đ cho 3 tháng luyện',
-      'plus-6m': '799.000đ cho 6 tháng luyện',
-      'pro-12m': '1.399.000đ cho 12 tháng luyện'
-    };
 
-    function choose(btn) {
-      plans.forEach(p => p.setAttribute('aria-pressed', String(p === btn)));
-      const id = btn.getAttribute('data-plan');
-      cta.href = '/prep/dang-ky/?plan=' + encodeURIComponent(id);
-      ctaName.textContent = btn.querySelector('h3').textContent.trim();
-      ctaNote.textContent = NOTE[id] || '';
+    /* Thẻ nào bị ẩn (gói đã gỡ khỏi bảng giá) thì không tham gia chọn nữa. */
+    const shown = () => allPlans.filter(p => !p.hasAttribute('hidden'));
+
+    /* Dòng ghi chú dưới nút dựng lại từ chính con số đang hiện trên thẻ, nên
+       không thể lệch giá với thẻ — dù giá đến từ máy chủ hay từ số dự phòng. */
+    function noteOf(btn) {
+      const price = PREP.qs('[data-plan-price]', btn);
+      const months = PREP.qs('[data-plan-months]', btn);
+      if (!price || !months) return '';
+      return price.textContent.trim() + ' cho ' + months.textContent.trim() + ' tháng luyện';
     }
 
-    plans.forEach(btn => btn.addEventListener('click', () => choose(btn)));
+    function choose(btn) {
+      allPlans.forEach(p => p.setAttribute('aria-pressed', String(p === btn)));
+      cta.href = '/prep/dang-ky/?plan=' + encodeURIComponent(btn.getAttribute('data-plan'));
+      ctaName.textContent = btn.querySelector('h3').textContent.trim();
+      ctaNote.textContent = noteOf(btn);
+    }
+
+    allPlans.forEach(btn => btn.addEventListener('click', () => choose(btn)));
 
     /* Mũi tên trái phải đi giữa các gói — bảng giá là một nhóm lựa chọn nên
        bàn phím phải đi được như một nhóm, không phải tab qua từng thẻ rồi đoán. */
-    plans.forEach((btn, i) => btn.addEventListener('keydown', ev => {
+    allPlans.forEach(btn => btn.addEventListener('keydown', ev => {
       const step = ev.key === 'ArrowRight' ? 1 : ev.key === 'ArrowLeft' ? -1 : 0;
       if (!step) return;
       ev.preventDefault();
-      const next = plans[(i + step + plans.length) % plans.length];
+      const list = shown();
+      const i = list.indexOf(btn);
+      if (i < 0) return;
+      const next = list[(i + step + list.length) % list.length];
       next.focus();
       choose(next);
     }));
+
+    /* ---- Giá lấy từ bảng giá máy chủ công bố ----
+       Giá là dữ liệu, không phải chữ viết trên tường. Mọi màn khác đã đọc từ
+       server/data/plans.js; mặt tiền mà vẫn gõ tay thì lần đổi giá tới sẽ có
+       một trang nói sai. Số gõ sẵn trong HTML ở lại làm bản dự phòng: API im
+       thì hiện giá cũ, còn hơn hiện ô trống ở đúng chỗ người ta cần đọc. */
+    PREP.boot().then(() => {
+      const list = PrepState.plans();
+      if (!list.length) return;
+      allPlans.forEach(card => {
+        const p = list.find(x => x.id === card.getAttribute('data-plan'));
+        if (!p) {
+          /* Gói không còn bán thì gỡ hẳn thẻ: để lại một thẻ bấm được dẫn tới
+             gói không tồn tại còn tệ hơn là thiếu một cột. */
+          card.setAttribute('hidden', '');
+          return;
+        }
+        const price = PREP.qs('[data-plan-price]', card);
+        const months = PREP.qs('[data-plan-months]', card);
+        if (price) price.textContent = PREP.vnd(p.price);
+        if (months) months.textContent = String(p.months);
+      });
+      /* Nếu thẻ đang chọn vừa bị gỡ, chọn lại thẻ đầu tiên còn hiện — nút
+         hành động không được trỏ vào chỗ không còn gì. */
+      const list2 = shown();
+      if (!list2.length) return;
+      const current = list2.find(p => p.getAttribute('aria-pressed') === 'true');
+      choose(current || list2[0]);
+    });
   }
 
   /* Reveal-on-scroll tinh tế (tự tắt theo prefers-reduced-motion trong CSS) */

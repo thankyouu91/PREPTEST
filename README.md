@@ -28,7 +28,7 @@ Lệnh khác:
 | `node scripts/audit.mjs` | audit tràn ngang, tương phản WCAG AA, nút xuống dòng, chiều cao nav (light + dark, 5 bề rộng) |
 | `node scripts/test-auth.mjs` | kiểm thử luồng tài khoản trên giao diện: đăng ký, đăng nhập, guard, xác thực email, đặt lại mật khẩu |
 | `node scripts/test-admin.mjs` | kiểm thử API quản trị: phiên, CSRF, phân quyền, CRUD, sinh đề, cấp code |
-| `node scripts/test-catalog.mjs` | kiểm thử trang học viên đọc `/api/catalog` + nhánh dự phòng khi API hỏng |
+| `node scripts/test-catalog.mjs` | kiểm thử trang học viên đọc `/api/catalog` + nhánh dự phòng khi API hỏng, và bảng giá ở trang giới thiệu đọc từ `plans.js` (đổi giá ở máy chủ thì trang phải đổi theo) |
 | `node scripts/test-user-api.mjs` | kiểm thử API tài khoản học viên: đăng ký, đăng nhập, xác thực email, đặt lại mật khẩu, CSRF, chống dò |
 | `node scripts/tai-khoan.js xem` | **Vào không được?** Liệt kê tài khoản quản trị và trạng thái học viên demo. Đặt lại bằng `dat-lai-admin` / `dat-lai-student`, mở khoá bằng `mo-khoa`. Trên Windows nhấn đúp `cai-dat\tai-khoan.bat` |
 | `node scripts/test-taikhoan.js` | kiểm thử đường cứu hộ tài khoản (tự phục hồi tài khoản demo, đặt lại mật khẩu quản trị) |
