@@ -16,12 +16,14 @@ Owner decision (2026-08-11): **build the VPET practice suite before anything
 else.** Every other exam family is parked as `coming_soon`; nothing else gets
 built for them until VPET is done.
 
-Four standing decisions that shape the work:
+Six standing decisions that shape the work:
 
 | Decision | Choice |
 |---|---|
 | Exam audio | **ElevenLabs TTS, rendered at authoring time**, never during a live exam. Full design in [`docs/VOICE.md`](VOICE.md) |
 | Speaking scoring | **OpenAI**: audio-native for parts I and J, ASR plus deterministic word matching for part H. Provider sits behind an adapter, so Gemini or Azure can replace it without touching the engine |
+| Score delivery | **Teacher first.** AI scores land in a teacher score report, never in front of a candidate. The teacher signs off, releases the result and can export a certificate ([`docs/VOICE.md`](VOICE.md) §8) |
+| Candidate audio retention | **24 months**, enforced by a bucket lifecycle rule. Scores and transcripts outlive the recordings |
 | Audio storage | Storage adapter with two drivers — local disk for dev, Supabase Storage for production; a Google Cloud Storage driver is queued |
 | Interface language | **English everywhere** — UI copy, code, identifiers, comments, data and AI prompts |
 
@@ -60,6 +62,7 @@ Queue for this track, in order:
 - [ ] **ElevenLabs TTS pipeline** ([`docs/VOICE.md`](VOICE.md) §4): `audio_script` / `audio_status` / `audio_voice_id` / `audio_hash` columns, provider adapter calling `mp3_44100_128` straight into the existing storage adapter, content hashing so nothing renders twice, Render / Re-render / Approve in the question bank, character quota and monthly cap. `audioReadyCount()` tightens from `audio_key IS NOT NULL` to `audio_status = 'approved'`, so no form ships with audio nobody has heard
 - [ ] VPET exam engine: per-part timer, audio playback with a fixed replay count, microphone capture for parts H/I/J, autosave and submit. Capture is 16 kHz mono WAV via `AudioWorklet`, not `MediaRecorder` ([`docs/VOICE.md`](VOICE.md) §5.1), uploaded per item with an IndexedDB safety copy
 - [ ] AI speaking scoring ([`docs/VOICE.md`](VOICE.md) §6): deterministic metrics layer first, then the OpenAI adapter — ASR plus word matching for part H, audio-native with strict `json_schema` output for parts I and J, per-part rubrics and weights, reviewer override, and a manual-scoring fallback while no API key is set
+- [ ] **Teacher score report and certificates** ([`docs/VOICE.md`](VOICE.md) §8): one screen per attempt with item-level auto-marking, AI criteria plus evidence and transcript, per-criterion override and sign-off; `awaiting_review` / `released` states; a printable certificate page (HTML + print CSS, no new dependency), the `certificates` table and a public `/verify/:code` page. The certificate states plainly that it records a practice result on this platform and carries no awarding-body branding
 - [ ] Auto marking for parts A, C, E, F, G plus the score-to-CEFR conversion in `docs/SCORING.md`
 - [ ] Translate the whole interface to English — 12 student screens, 8 admin screens, every banner and empty state
 - [ ] VPET item bank: real items for all ten parts, tagged by part, with audio attached where the part needs it (**content, deliberately last**)
@@ -142,7 +145,7 @@ below uses the server-side route instead — which is also the more private one.
 |---|---|
 | Sign-In | OAuth 2.0 redirect handled by the server. No `gsi/client` script, no CSP exception. In the VPET queue. |
 | Speaking scoring | Now OpenAI rather than Gemini, behind the provider adapter in [`docs/VOICE.md`](VOICE.md) §3 so either can be swapped in. Already queued. |
-| Cloud Storage | Third driver in `server/storage.js`; the adapter takes it without touching call sites. Two buckets — exam audio keeps forever, candidate speech expires ([`docs/VOICE.md`](VOICE.md) §12). |
+| Cloud Storage | Third driver in `server/storage.js`; the adapter takes it without touching call sites. Two buckets — exam audio keeps forever, candidate speech expires ([`docs/VOICE.md`](VOICE.md) §13). |
 | Cloud Run | Container deploy, closest to how the app runs today. |
 | Cloud Tasks | Pushes queued render and scoring jobs to `/internal/jobs/run`. Needed because Cloud Run throttles CPU after the response is sent, which stalls an in-process worker ([`docs/VOICE.md`](VOICE.md) §7). |
 | Cloud SQL | SQLite has to go first — see below. |

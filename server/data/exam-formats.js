@@ -127,9 +127,13 @@ function vpetSections() {
       parts: [{ label: 'I1-I2', items: 2, note: 'Speak for up to a minute in the register the situation calls for.' }]
     },
     {
+      /* Three minutes per story (owner, 2026-08-11): about 64 s of playback, 20 s
+         to think, 90 s of speaking. The long speaking window is deliberate — part J
+         carries the heaviest weight in the Speaking band, and a 90 s sample is a far
+         steadier basis for a rubric judgement than a 45 s one. See docs/VOICE.md. */
       name: 'Part J - Story Retellings', skill: 'speaking', type: 'Retell what you heard',
-      items: 3, minutes: 6, types: ['speaking'], needsAudio: true,
-      parts: [{ label: 'J1-J3', items: 3, note: 'Listen to a short story, then retell it in your own words. Needs audio.' }]
+      items: 3, minutes: 9, types: ['speaking'], needsAudio: true,
+      parts: [{ label: 'J1-J3', items: 3, note: 'Listen to a short story, then retell it in your own words. Three minutes per story. Needs audio.' }]
     }
   ];
 }

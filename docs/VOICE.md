@@ -57,6 +57,14 @@ read this one:
    Principles 4 and 5 of `docs/SCORING.md` section 2.1 apply unchanged:
    explainable, and never presented as a real exam result.
 
+**Delivery model (owner, 2026-08-11): AI scores go to a teacher, never straight to
+the candidate.** The teacher reviews, signs off, releases the result, and can
+export a certificate (section 8). This makes the human review step mandatory
+rather than a spot check, takes marking latency off the critical path entirely,
+and demotes prompt injection from a serious risk to a nuisance — but it also
+raises the bar on the certificate itself, which must never read as an official
+VPET document.
+
 **What does not change.** The current architecture is right where it needs to be:
 the storage adapter (`server/storage.js`), the strict CSP with no external
 scripts, the audit log, the `audio_key` column on `questions`. This design
@@ -137,34 +145,45 @@ Reading this table:
 
 | Part | Clips | Seconds/clip | **Total seconds** | WAV 16k mono | Marking path | Relative cost |
 |---|---:|---:|---:|---:|---|---|
-| H Repeat | 10 | 8 | **80** | 2.6 MB | ASR + pure word match | low |
+| H Repeat | 10 | 8 | **80** | 2.5 MB | ASR + pure word match | low |
 | I Speaking Situations | 2 | 60 | **120** | 3.8 MB | audio-native + rubric | high |
-| J Story Retellings | 3 | 45 | **135** | 4.3 MB | audio-native + rubric + source | high |
-| **One attempt** | **15** | | **335 (≈ 5.6 min)** | **≈ 10.7 MB** | | |
+| J Story Retellings | 3 | 90 | **270** | 8.4 MB | audio-native + rubric + source | high |
+| **One attempt** | **15** | | **470 (≈ 7.8 min)** | **≈ 14.7 MB** | | |
 
 Reading this table:
 
-- **80 of the 335 seconds (24%) take the cheap ASR path** because part H is split
+- **80 of the 470 seconds (17%) take the cheap ASR path** because part H is split
   out. Sending all three parts to the audio-native model would grow the expensive
-  slice by about 31% while making part H *less* accurate.
-- **The audio-native slice is 255 seconds per attempt**; turning on double marking
-  (section 6.6) makes it 510 seconds of audio the model must listen to per
+  slice by about 21% while making part H *less* accurate.
+- **The audio-native slice is 390 seconds per attempt**; turning on double marking
+  (section 6.6) makes it 780 seconds of audio the model must listen to per
   attempt. This is the single largest cost variable on the platform — cap it from
   day one.
-- 10.7 MB per attempt: 1,000 attempts a month ≈ 10.7 GB. Cheap on GCS, but it is
-  why the response bucket needs a deletion lifecycle (section 12).
+- 14.7 MB per attempt: 1,000 attempts a month ≈ 14.7 GB, held for two years
+  (section 13) ≈ 350 GB at steady state. Cheap on GCS, but it is exactly why the
+  response bucket needs a deletion lifecycle rather than good intentions.
+- Largest single file: 90 s × 32 KB ≈ 2.9 MB, comfortably inside the 15 MB
+  namespace cap in section 5.3.
 
-Checked against the per-part clocks declared in `server/data/exam-formats.js`:
+Checked against the per-part clocks in `server/data/exam-formats.js`:
 
-| Part | Default minutes | Audio played | Candidate speaks | Left over (reading, prep, transitions) |
+| Part | Minutes | Audio played | Candidate speaks | Left over (reading, prep, transitions) |
 |---|---:|---:|---:|---:|
 | H | 4 (240 s) | 56 s | 80 s | 104 s |
 | I | 4 (240 s) | 30 s | 120 s | 90 s |
-| J | 6 (360 s) | 193 s | 135 s | **32 s** |
+| J | **9 (540 s)** | 193 s | 270 s | 77 s |
 
-Part J is tight. Either raise it to 7 minutes or shorten the stories to about 120
-words. **This number has to be settled before content authoring starts**, because
-story length drives both the clock and the TTS cost.
+**Part J is 3 items at 3 minutes each** (owner, 2026-08-11), so the blueprint
+default moves from 6 to 9 minutes and the full VPET form runs 76 minutes instead
+of 73. Each J item breaks down as: story playback 64 s → 20 s preparation →
+**90 s speaking** → 6 s transition.
+
+The extra time goes to the candidate, not to a longer story. Stories stay at
+about 150 words for two reasons: story length drives TTS cost (section 1.2) and
+retelling difficulty, whereas a longer *speech sample* directly improves marking
+reliability — and part J carries the heaviest weight in the band (section 1.4).
+Three 90-second samples is a solid basis for a rubric judgement; three 45-second
+ones is thin.
 
 ### 1.4 How the three speaking parts combine into the Speaking band
 
@@ -578,7 +597,7 @@ const NAMESPACES = {
 Two reasons to separate them rather than merge one allowlist:
 
 1. **Different lifecycles.** Exam audio lives as long as the item bank. Candidate
-   speech is personal data with a retention limit (section 12).
+   speech is personal data with a retention limit (section 13).
 2. **Different entry points.** Exam audio is uploaded only by admins, behind
    `requireAdmin` + CSRF. Candidate audio is uploaded by **candidates** — a much
    wider attack surface, so it must be constrained by attempt: only while the
@@ -774,9 +793,12 @@ The platform's headline quality metric, shown in the admin area: *share of AI
 scores within one level of the human score*, broken down by part and criterion. A
 drop in that number is the earliest warning that something has broken.
 
-Prioritise the review queue rather than reviewing everything: flagged answers
-first, then double-marking disagreements, then scores near a level boundary, then
-appeals, then a random ~5% sample.
+Because every attempt is reviewed before release (section 8), the queue ordering
+decides what a teacher reads *first* within an attempt, not which attempts get
+looked at: flagged answers, then double-marking disagreements, then scores near a
+level boundary, then everything else. That ordering is what keeps a review to a
+few minutes — the teacher's attention lands where the AI is least sure, and skims
+where it agrees with itself.
 
 ### 6.8 Anti-cheating and prompt injection
 
@@ -878,7 +900,135 @@ section 2.1.
 
 ---
 
-## 8. Schema additions
+## 8. Score reporting and certificates
+
+**Owner decision (2026-08-11): scores go to the teacher, into a score report, and
+the teacher can export a certificate.** No AI score reaches a candidate directly.
+That single decision settles a lot of design at once.
+
+### 8.1 What it means downstream
+
+| Consequence | Detail |
+|---|---|
+| The review step is **mandatory**, not a sampling exercise | Sign-off gates release, so every attempt is read by a teacher. The queue prioritisation in section 6.7 still matters — it decides what a teacher reads *first* within an attempt, not which attempts get read at all. |
+| A new `released` state on the attempt | `submitted → marking → awaiting_review → released`. The candidate sees "submitted, being marked" until a teacher releases it. |
+| Marking latency stops being a product problem | Nobody is staring at a spinner waiting for the model, because a human step follows anyway. The queue in section 7 can take minutes without anyone noticing. |
+| Prompt injection drops from serious to nuisance | A candidate talking their way to a high score still has to get that score past a teacher who can read the transcript and the evidence quotes. Section 6.8 still applies — it just no longer sits on the critical path. |
+| Every criterion needs `evidence` | Already required by the schema in section 6.4, and now load-bearing: a teacher reviewing 15 clips per attempt reads the evidence, not the audio. Good evidence quotes are what make the review take three minutes instead of twenty. |
+
+### 8.2 The teacher score report
+
+One attempt, one screen:
+
+- **Auto-marked parts (A, C, E, F, G)** — item-level right/wrong, and for part E the
+  normalised string comparison that produced it.
+- **AI-marked parts (B, D writing; H, I, J speaking)** — per criterion: score,
+  CEFR level, the model's evidence quote, the transcript, and the measured metrics
+  from section 6.2 beside it. Playback of the candidate's audio in place.
+- **Override fields** on every criterion, plus a free-text comment.
+- **Flags surfaced first** — anything from section 6.8, plus double-marking
+  disagreements, sorted to the top of the page rather than buried.
+- **Sign off** — writes `score_reviews`, moves the attempt to `released`, and
+  unlocks certificate export.
+
+A cohort view sits above it: a class or a code batch, one row per attempt, filter
+by status, with CSV export now and the Google Sheets export already in the
+roadmap.
+
+### 8.3 The certificate
+
+**The constraint that shapes everything here: this is not a VPET certificate.**
+It is a record of a practice test taken on this platform. Principle 5 of
+`docs/SCORING.md` section 2.1 — never promise a real exam score — matters far more
+on a printable, shareable document than it does on a results screen. Concretely:
+
+- The document states on its face that it records a **practice test result on the
+  PrepTest platform**, with the awarding body named nowhere as issuer.
+- No official mark, logo, seal or wording belonging to the real awarding body.
+- It says how it was marked: automatic marking for Reading and Listening, AI
+  marking reviewed by a named teacher for Writing and Speaking.
+- The teacher who signed off is named, and the issuing organisation is named.
+
+That is not legal caution for its own sake — a document that could be mistaken for
+an official certificate is a liability for the business and a fraud risk for
+whoever receives it. Labelled honestly, it is a genuinely useful thing for a
+learner to hold.
+
+**What goes on it**
+
+```
+Organisation name and logo
+"Practice test result"                       ← the framing, in the largest type after the name
+Candidate name (snapshotted at issue)
+VPET practice form, level sat, date taken
+Overall CEFR level
+Per-skill breakdown: listening · reading · writing · speaking
+How it was marked, and the reviewing teacher
+Certificate code + verification URL
+Issue date
+```
+
+**How it is produced.** Phase 1: a server-rendered HTML page with `@media print`
+rules; the teacher prints to PDF. No new dependency, no CSP exception, and the
+self-hosted Plus Jakarta Sans already ships a Vietnamese subset so diacritics in
+candidate names render correctly. Phase 2, only if certificates must be generated
+in bulk or emailed without a human pressing print: headless-browser PDF rendering
+as a **separate** Cloud Run job, keeping the ~300 MB browser image out of the web
+service.
+
+**Verification.** A certificate that cannot be checked is a certificate that can be
+edited in an image editor. Each one carries an unguessable `code` and a public
+page `/verify/<code>` showing only: the exam, the level, the date, the issuing
+organisation and the status. Nothing else — the verify page is public, so it
+carries the minimum needed to confirm the document is real.
+
+**Reissue, never edit.** Once issued, a certificate is a snapshot. If a score is
+later corrected, the old certificate is `revoked` and a new one issued with a new
+code; the verify page for the old code says so and points at the replacement. A
+certificate whose contents can change silently is worth nothing.
+
+**Interaction with the 24-month retention (section 13).** The recordings expire;
+the scores, transcripts, rubric evidence and certificate rows do not. What defends
+a certificate is the score record, not the audio — and the score record contains
+no voice.
+
+### 8.4 Schema and API for this section
+
+```
+certificates
+  id
+  code             public verification code, unguessable, UNIQUE
+  attempt_id, user_id
+  full_name        as printed, snapshotted at issue
+  test_id, level
+  scores_json      per-skill CEFR + overall, snapshotted
+  marked_by_json   which parts were auto / AI / teacher reviewed
+  issued_by        admins.id — the teacher who signed off
+  issued_at
+  status           issued | revoked | superseded
+  superseded_by, revoke_reason
+
+attempts.status    ... | awaiting_review | released
+attempts.released_by, attempts.released_at
+```
+
+```
+GET    /api/admin/attempts/:id/report          the full score report
+POST   /api/admin/attempts/:id/signoff         record the review, release the result
+POST   /api/admin/attempts/:id/certificate     issue (returns the code)
+POST   /api/admin/certificates/:code/revoke    revoke, optionally superseding
+GET    /admin/certificate/:code                printable HTML certificate
+GET    /verify/:code                           public verification page
+GET    /api/me/results/:attemptId              candidate's own released result
+```
+
+`/verify/:code` is the only public route in this design. It takes no parameters
+beyond the code, returns the same minimal payload for every caller, and needs rate
+limiting like any other guessable-token endpoint.
+
+---
+
+## 9. Schema additions
 
 These extend `docs/SCORING.md` section 2.4 rather than replacing it.
 
@@ -918,7 +1068,7 @@ Migration note: `server/db.js` already has `addColumnIfMissing()`, so the four n
 
 ---
 
-## 9. API surface
+## 10. API surface
 
 ```
 # Admin — TTS
@@ -947,7 +1097,7 @@ Every `/api/admin/*` route keeps the existing `requireAdmin` + CSRF protection.
 
 ---
 
-## 10. Google Cloud infrastructure
+## 11. Google Cloud infrastructure
 
 This matches the "Google ecosystem" scope already settled in the roadmap.
 
@@ -1000,7 +1150,7 @@ on the day a provider goes down the platform should degrade, not die.
 
 ---
 
-## 11. Cost
+## 12. Cost
 
 No specific prices are copied into this document, because price lists change and a
 copied figure is wrong three months later. What matters is the **shape** of the
@@ -1016,8 +1166,8 @@ keeps that number low).
 This cost **does not grow with attempts**. When the item bank stops growing, the
 ElevenLabs bill drops to near zero.
 
-**OpenAI — paid per attempt.** The detailed table is in section 1.3: **335 seconds
-of audio per attempt**, of which 255 seconds take the expensive audio-native path
+**OpenAI — paid per attempt.** The detailed table is in section 1.3: **470 seconds
+of audio per attempt**, of which 390 seconds take the expensive audio-native path
 and 80 seconds the cheap ASR path. Two things dominate:
 
 - **Audio input tokens cost several times more than text tokens.** This is exactly
@@ -1033,7 +1183,7 @@ changed without a deploy.
 
 ---
 
-## 12. Security and personal data
+## 13. Security and personal data
 
 Candidate speech is **personal data**, and under several legal frameworks sits
 close to biometric data. This is not a later concern.
@@ -1042,11 +1192,17 @@ close to biometric data. This is not a later concern.
    plainly: the recording is made for marking, it is sent to a third-party AI
    service for that purpose, how long it is kept, and how to request deletion.
    Record the consent with a timestamp.
-2. **Retention.** Pick a period (suggested 12 months for candidate speech, or 24 if
-   it must support appeals) and **enforce it with a bucket lifecycle rule**, not by
-   remembering to run a cleanup script.
+2. **Retention is 24 months** (owner, 2026-08-11), counted from the attempt date
+   and **enforced with a bucket lifecycle rule**, not by remembering to run a
+   cleanup script. Two years is the right length here because the platform issues
+   certificates (section 8): the recording that supports a certificate must
+   outlive any challenge to it. Say the period explicitly in the consent notice.
+   Scores, transcripts and rubric evidence in the database are **not** deleted with
+   the audio — they are what a certificate is defended with, and they contain no
+   voice. Only the recordings expire.
 3. **Account deletion deletes the audio.** Cascade: `attempt_media` → delete the
-   stored object.
+   stored object. A certificate already issued keeps its score row and its
+   verification entry; the recording behind it goes.
 4. **Send no identifying information to the AI providers.** The prompt carries the
    audio, the task and the rubric — no name, no email, no candidate number.
 5. **Check each provider's data-retention policy** and enable zero-retention mode
@@ -1063,9 +1219,9 @@ close to biometric data. This is not a later concern.
 
 ---
 
-## 13. Rollout
+## 14. Rollout
 
-Five phases, each independently useful — nothing waits until the end to show value.
+Six phases, each independently useful — nothing waits until the end to show value.
 
 **Phase 1 — the TTS pipeline.** `audio_script` and `audio_status` columns, the
 ElevenLabs adapter, content hashing, Render/Approve buttons in the question bank,
@@ -1085,31 +1241,47 @@ review screen. Marking synchronously on submit is tolerable if the wait is
 accepted.
 → *Result: completes the roadmap's "AI speaking scoring" item.*
 
-**Phase 4 — onto Google Cloud.** Cloud SQL Postgres (large, already in the
+**Phase 4 — reporting and certificates.** The teacher score report, the `signoff`
+and `released` states, the printable certificate page, the `certificates` table and
+the public `/verify/:code` route. Depends on phase 3 and on nothing else, so it can
+run in parallel with phase 5.
+→ *Result: the delivery model the owner chose actually works end to end — a teacher
+can review an attempt, release it and hand the candidate a document.*
+
+**Phase 5 — onto Google Cloud.** Cloud SQL Postgres (large, already in the
 roadmap), the GCS driver, the `media_jobs` queue, Cloud Tasks, Cloud Run, Secret
-Manager, CI deploy.
+Manager, CI deploy. The 24-month lifecycle rule on the response bucket lands here.
 → *Result: multiple instances, background work that does not stall, and keys
 managed properly.*
 
-**Phase 5 — calibration.** Benchmark set, anchors, double marking, the AI ↔ human
+**Phase 6 — calibration.** Benchmark set, anchors, double marking, the AI ↔ human
 agreement dashboard, and a model-upgrade procedure.
 → *Result: scores that hold up to an appeal, and model upgrades that do not shift
 the scale.*
 
-Phase 1 is independent of 2 and 3 and can run in parallel. Phase 4 pulls in the
-Postgres migration and is the most expensive — do not wedge it between 1 and 3.
+Phase 1 is independent of 2 and 3 and can run in parallel. Phase 5 pulls in the
+Postgres migration and is by far the most expensive — do not wedge it between 1
+and 4.
 
 ---
 
-## 14. Decisions needed from the owner
+## 15. Decisions needed from the owner
 
 | # | Question | Why it has to be settled early |
 |---|---|---|
 | 1 | May synthetic voices be used on paid exam forms, or only on free practice material? | Determines the ElevenLabs plan tier and the terms of use |
-| 2 | How long is candidate speech retained? | Sets the bucket lifecycle rule and the privacy policy wording |
-| 3 | Are AI scores shown directly to candidates, or only after a teacher review? | Determines the product flow and the staffing cost |
-| 4 | Buy a dedicated pronunciation-scoring service for part H? | An LLM judges pronunciation reasonably well, but phoneme-level assessment is markedly more accurate from specialists (Azure Pronunciation Assessment, SpeechAce). The adapter in section 3 allows adding one without touching the engine — but it is worth knowing now whether the need exists |
-| 5 | What is the monthly ceiling for TTS and for marking? | Sets `TTS_MONTHLY_CHAR_CAP` and the OpenAI ceiling |
-| 6 | Are human recordings needed for any part? | Real VPET audio is human-voiced; if exact fidelity matters for particular parts, keep the existing manual upload path for those parts |
-| 7 | Who approves audio and who overrides scores? | Requires a new `reviewer` role in the `admins` table, distinct from `owner` |
-| 8 | Is part J 6 minutes or 7? (see section 1.3) | Story length drives both the per-part clock and the TTS cost, and content authoring cannot start until it is fixed |
+| 2 | Buy a dedicated pronunciation-scoring service for part H? | An LLM judges pronunciation reasonably well, but phoneme-level assessment is markedly more accurate from specialists (Azure Pronunciation Assessment, SpeechAce). The adapter in section 3 allows adding one without touching the engine — but it is worth knowing now whether the need exists |
+| 3 | What is the monthly ceiling for TTS and for marking? | Sets `TTS_MONTHLY_CHAR_CAP` and the OpenAI ceiling |
+| 4 | Are human recordings needed for any part? | Real VPET audio is human-voiced; if exact fidelity matters for particular parts, keep the existing manual upload path for those parts |
+| 5 | Who approves audio, who reviews scores, and who may issue a certificate? | Needs a `reviewer` role in the `admins` table distinct from `owner`. Certificate issue is the strongest permission on the platform and probably belongs to a narrower group than score review |
+| 6 | After a teacher signs off, does the candidate see their own result? | Section 8.1 assumes yes — sign-off releases the result to the candidate, with the certificate issued separately. If results are meant to stay teacher-only, the `released` state changes meaning |
+| 7 | What organisation name, logo and wording appear on the certificate? | Section 8.3 fixes what it must **not** say; what it does say is a branding decision, and it has to be settled before the printable page is built |
+| 8 | Is the certificate free with the test, or a separate paid item? | Changes whether issuing is a teacher action or a purchase flow, and whether it touches the existing `orders` / `codes` tables |
+
+**Settled so far (2026-08-11).**
+
+| Question | Decision | Where it landed |
+|---|---|---|
+| Part J timing | **3 items × 3 minutes = 9 minutes**, 90 seconds of speech per item | Section 1.3; blueprint default in `server/data/exam-formats.js` |
+| Who sees the scores | **Teacher first**, in a score report, with certificate export | Section 8 |
+| Retention of candidate speech | **24 months** | Section 13 |
