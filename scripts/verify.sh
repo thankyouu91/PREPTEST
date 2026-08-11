@@ -26,7 +26,10 @@ node scripts/test-taikhoan.js || fail=1
 step "Khởi động server"
 pkill -f 'node server\.js' 2>/dev/null || true
 sleep 0.5
-node server.js > /tmp/prep-verify-server.log 2>&1 &
+# Cả suite lẫn bước chụp ảnh đều đăng ký tài khoản từ 127.0.0.1, nên ngưỡng 5
+# tài khoản/giờ của production sẽ khiến bước chạy sau bị bước trước chặn — đỏ vì
+# thứ tự chứ không vì lỗi thật. Chỉ nới ở đây, không nới trong mã nguồn.
+REGISTER_PER_HOUR=200 node server.js > /tmp/prep-verify-server.log 2>&1 &
 SERVER_PID=$!
 cleanup() { kill "$SERVER_PID" 2>/dev/null || true; }
 trap cleanup EXIT
@@ -51,6 +54,9 @@ node scripts/test-catalog.mjs || fail=1
 
 step "Kiểm thử API tài khoản học viên"
 node scripts/test-user-api.mjs || fail=1
+
+step "Kiểm thử engine làm bài (lượt thi, đồng hồ, nghe lại, hạn mức)"
+node scripts/test-exam.mjs || fail=1
 
 step "Kiểm thử khu tự học (động từ bất quy tắc, từ nối)"
 node scripts/test-learn.mjs || fail=1

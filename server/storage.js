@@ -31,10 +31,19 @@ const crypto = require('node:crypto');
    about 2.8 MB. Anything bigger is a mistake or an attack. */
 const MAX_BYTES = 10 * 1024 * 1024;
 
-/* MP3 only for now. The VPET audio parts are all short spoken clips and one
-   format keeps the player, the storage and the AI scoring path simple. */
+/* Prompt audio is MP3 only: those files are uploaded by an admin who can save
+   in whatever format is asked for, and one format keeps the player, the storage
+   and the AI scoring path simple. */
 const ACCEPTED_MIME = ['audio/mpeg', 'audio/mp3'];
 const EXTENSION = 'mp3';
+
+/* Candidate recordings are a different problem. A browser records with
+   MediaRecorder, which produces WebM/Opus or Ogg/Opus — no browser encodes MP3,
+   and converting server side would mean shipping ffmpeg. Gemini reads all three
+   containers, so the recording is stored as produced and handed to the model as
+   it is; refusing them would simply mean nobody can answer a speaking part.
+   Sniffed on content like everything else, never on the declared type. */
+const RECORDING_MIME = ['audio/webm', 'audio/ogg', 'audio/mp4', 'audio/mpeg', 'audio/mp3'];
 
 const DRIVER = (process.env.AUDIO_STORAGE || 'disk').toLowerCase();
 const DISK_ROOT = process.env.AUDIO_DIR || path.join(process.cwd(), 'data', 'uploads', 'audio');
@@ -54,6 +63,22 @@ function looksLikeMp3(buf) {
   if (!buf || buf.length < 3) return false;
   if (buf[0] === 0x49 && buf[1] === 0x44 && buf[2] === 0x33) return true;      // "ID3"
   return buf[0] === 0xFF && (buf[1] & 0xE0) === 0xE0;                          // frame sync
+}
+
+/**
+ * Is this one of the containers a browser actually records into?
+ *
+ * WebM and Matroska both open with the EBML magic 1A 45 DF A3; Ogg opens with
+ * the four bytes "OggS"; an MP4/M4A has "ftyp" at offset 4. MP3 counts too, for
+ * a client that manages to produce one.
+ */
+function looksLikeRecording(buf) {
+  if (!buf || buf.length < 12) return false;
+  if (looksLikeMp3(buf)) return true;
+  if (buf[0] === 0x1A && buf[1] === 0x45 && buf[2] === 0xDF && buf[3] === 0xA3) return true;   // EBML
+  if (buf[0] === 0x4F && buf[1] === 0x67 && buf[2] === 0x67 && buf[3] === 0x53) return true;   // "OggS"
+  if (buf.slice(4, 8).toString('latin1') === 'ftyp') return true;                              // MP4/M4A
+  return false;
 }
 
 /** Reject anything we would not want to store, with a reason worth showing. */
@@ -158,6 +183,31 @@ async function put(buf, mime) {
   return { key, bytes: buf.length, driver: pickDriver().name };
 }
 
+/**
+ * Store a candidate's spoken answer.
+ *
+ * Same keys, same drivers, same size cap as prompt audio — only the accepted
+ * containers differ, because this side of the platform takes what the browser
+ * can produce rather than what an admin was asked to upload.
+ */
+async function putRecording(buf, mime) {
+  if (!buf || !buf.length) { const e = new Error('Empty upload'); e.code = 'INVALID_AUDIO'; throw e; }
+  if (buf.length > MAX_BYTES) {
+    const e = new Error(`File is larger than ${Math.round(MAX_BYTES / 1024 / 1024)} MB`);
+    e.code = 'INVALID_AUDIO'; throw e;
+  }
+  const declared = String(mime || '').toLowerCase().split(';')[0].trim();
+  if (declared && !RECORDING_MIME.includes(declared)) {
+    const e = new Error('Unsupported recording format'); e.code = 'INVALID_AUDIO'; throw e;
+  }
+  if (!looksLikeRecording(buf)) {
+    const e = new Error('File does not look like an audio recording'); e.code = 'INVALID_AUDIO'; throw e;
+  }
+  const key = newKey();
+  await pickDriver().put(buf, key);
+  return { key, bytes: buf.length, driver: pickDriver().name };
+}
+
 /** Read one audio file back as a Buffer. */
 async function get(key) {
   if (!safeKey(key)) { const e = new Error('Bad audio key'); e.code = 'INVALID_KEY'; throw e; }
@@ -171,8 +221,8 @@ async function remove(key) {
 }
 
 module.exports = {
-  MAX_BYTES, ACCEPTED_MIME, EXTENSION,
-  put, get, remove,
+  MAX_BYTES, ACCEPTED_MIME, RECORDING_MIME, EXTENSION,
+  put, putRecording, get, remove,
   validate, looksLikeMp3, safeKey, newKey,
   driverName: () => pickDriver().name
 };

@@ -33,6 +33,9 @@ const bad = (res, msg) => res.status(400).json({ error: msg });
 const str = (v, max) => (typeof v === 'string' ? v.trim().slice(0, max || 200) : '');
 const isProd = () => process.env.NODE_ENV === 'production';
 
+/** Số tài khoản mở được mỗi giờ từ một địa chỉ. Xem chú thích ở /auth/register. */
+const REGISTER_PER_HOUR = Math.max(1, parseInt(process.env.REGISTER_PER_HOUR, 10) || 5);
+
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
 /** Ghi nhật ký cho hành động của học viên (không phải quản trị viên nào cả) */
@@ -116,7 +119,13 @@ function ordersOf(userId) {
 router.post('/auth/register', (req, res) => {
   // Chỉ trừ lượt khi TẠO ĐƯỢC tài khoản: dữ liệu sai hay email trùng không tiêu tốn hạn mức
   const rlKey = 'register|' + (req.ip || '?');
-  const wait = A.rateLimitPeek(rlKey, 5, 3600e3);
+  /* Năm tài khoản mỗi giờ mỗi địa chỉ. Mặc định này áp dụng ở mọi nơi, kể cả
+     máy chạy thử — không có nhánh "ngoài production thì nới ra", vì một ngưỡng
+     chỉ tồn tại trên giấy khi chạy thật là ngưỡng không ai kiểm được.
+     REGISTER_PER_HOUR chỉ dành cho bộ kiểm thử: cả suite lẫn ảnh nghiệm thu đăng
+     ký từ đúng một địa chỉ 127.0.0.1, nên scripts/verify.sh đặt biến này lên cao
+     để bước sau không bị bước trước chặn. Production không đặt biến ⇒ vẫn là 5. */
+  const wait = A.rateLimitPeek(rlKey, REGISTER_PER_HOUR, 3600e3);
   if (wait) return res.status(429).json({ error: 'Bạn đã tạo nhiều tài khoản liên tiếp. Thử lại sau ' + Math.ceil(wait / 60) + ' phút.' });
 
   const b = req.body || {};

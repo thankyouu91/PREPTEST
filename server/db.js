@@ -293,6 +293,40 @@ CREATE TABLE IF NOT EXISTS audit (
   at TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS attempts (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL REFERENCES users(id),
+  test_id TEXT NOT NULL REFERENCES tests(id),
+  code_id INTEGER REFERENCES codes(id),         -- which purchase paid for this sitting
+  status TEXT NOT NULL DEFAULT 'in_progress',   -- in_progress | submitted
+  started_at TEXT NOT NULL,
+  submitted_at TEXT,
+  updated_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS attempt_parts (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  attempt_id INTEGER NOT NULL REFERENCES attempts(id) ON DELETE CASCADE,
+  section_id INTEGER NOT NULL REFERENCES sections(id),
+  part TEXT,
+  started_at TEXT,                              -- NULL until the candidate enters it
+  ends_at TEXT,                                 -- stamped from started_at + minutes
+  closed_at TEXT,
+  UNIQUE (attempt_id, section_id)
+);
+
+CREATE TABLE IF NOT EXISTS attempt_answers (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  attempt_id INTEGER NOT NULL REFERENCES attempts(id) ON DELETE CASCADE,
+  question_id INTEGER NOT NULL REFERENCES questions(id),
+  section_id INTEGER NOT NULL REFERENCES sections(id),
+  answer TEXT NOT NULL DEFAULT '',
+  audio_key TEXT,                               -- spoken answer, in the storage adapter
+  replays_used INTEGER NOT NULL DEFAULT 0,
+  updated_at TEXT NOT NULL,
+  UNIQUE (attempt_id, question_id)
+);
+
 CREATE TABLE IF NOT EXISTS settings (
   key TEXT PRIMARY KEY,
   value TEXT NOT NULL
@@ -302,6 +336,8 @@ CREATE INDEX IF NOT EXISTS idx_q_filter  ON questions (family_id, skill, level, 
 CREATE INDEX IF NOT EXISTS idx_codes_st  ON codes (status, expires_at);
 CREATE INDEX IF NOT EXISTS idx_sec_test  ON sections (test_id, sort);
 CREATE INDEX IF NOT EXISTS idx_audit_at  ON audit (at DESC);
+CREATE INDEX IF NOT EXISTS idx_att_user  ON attempts (user_id, status);
+CREATE INDEX IF NOT EXISTS idx_att_ans   ON attempt_answers (attempt_id);
 `);
 
 /* ============================ MIGRATIONS ============================

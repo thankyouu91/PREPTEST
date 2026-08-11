@@ -5,7 +5,8 @@ Giao diện nền tảng luyện thi thử (mock test) cho 6 nhóm chứng chỉ
 Cơ chế truy cập: đăng ký tài khoản → mua/nhập code → mở khoá bài thi.
 
 > **Phạm vi hiện tại: khu học viên và khu quản trị đều chạy trên backend thật.**
-> Chưa có engine làm bài, chưa chấm điểm.
+> Engine làm bài đã có phần máy chủ (mở lượt thi, đồng hồ từng phần, nghe lại có hạn,
+> ghi âm, nộp bài, trừ lượt theo gói); màn làm bài cho học viên và phần chấm điểm chưa có.
 > Danh mục đọc từ `GET /api/catalog`; tài khoản học viên có đăng ký / đăng nhập / xác thực
 > email / đặt lại mật khẩu thật với phiên cookie. Kích hoạt code còn ở phía client.
 
@@ -32,6 +33,7 @@ Lệnh khác:
 | `node scripts/test-user-api.mjs` | kiểm thử API tài khoản học viên: đăng ký, đăng nhập, xác thực email, đặt lại mật khẩu, CSRF, chống dò |
 | `node scripts/tai-khoan.js xem` | **Vào không được?** Liệt kê tài khoản quản trị và trạng thái học viên demo. Đặt lại bằng `dat-lai-admin` / `dat-lai-student`, mở khoá bằng `mo-khoa`. Trên Windows nhấn đúp `cai-dat\tai-khoan.bat` |
 | `node scripts/test-taikhoan.js` | kiểm thử đường cứu hộ tài khoản (tự phục hồi tài khoản demo, đặt lại mật khẩu quản trị) |
+| `node scripts/test-exam.mjs` | kiểm thử engine làm bài: mở/nối lại lượt thi, đồng hồ từng phần, số lần nghe lại đếm ở máy chủ, ghi âm câu trả lời, nộp bài, hạn mức lượt của gói Starter, và **đáp án không lọt ra trình duyệt** |
 | `node scripts/test-learn.mjs` | kiểm thử khu tự học: chất lượng dữ liệu động từ bất quy tắc, từ nối và hai nhóm ngữ pháp (nhóm khớp hình thái, ví dụ chứa đúng mục từ, đủ bốn lát cắt, chỗ trống khớp đáp án, đúng hạn mức bậc) + bộ lọc bốn trang |
 | `node scripts/xuat-supabase.mjs --count` | xuất nội dung ra Supabase (SQL hoặc JSON) — xem [Bản sao nội dung trên Supabase](#bản-sao-nội-dung-trên-supabase) |
 | `npm run screenshot:admin` | chụp các màn quản trị |
