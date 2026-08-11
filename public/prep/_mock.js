@@ -268,6 +268,15 @@ const PREP = {
 
   vnd(n) { return n.toLocaleString('vi-VN') + 'đ'; },
 
+  /** Nhãn kỹ năng. Cùng bốn giá trị máy chủ dùng, để một chỗ đổi là đổi hết. */
+  SKILL_VI: { listening: 'Nghe', reading: 'Đọc', writing: 'Viết', speaking: 'Nói' },
+
+  /** Điểm thang 10 bước 0,5 — dấu phẩy thập phân theo cách viết tiếng Việt. */
+  diem(n) {
+    if (n == null) return '–';
+    return (Math.round(n * 2) / 2).toFixed(1).replace('.', ',');
+  },
+
   /* Số ngày còn lại tới mốc ISO (âm = đã qua) */
   daysUntil(iso) {
     const d = new Date(iso);

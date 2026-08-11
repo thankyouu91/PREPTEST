@@ -8,7 +8,8 @@ Cơ chế truy cập: đăng ký tài khoản → mua/nhập code → mở khoá
 > Engine làm bài đã chạy được đầu-cuối: mở lượt thi, đồng hồ từng phần, nghe lại có
 > hạn, ghi âm phần nói, tự lưu, nộp bài, trừ lượt theo gói — màn làm bài ở `/prep/lam-bai/`.
 > Chấm điểm: trắc nghiệm và điền từ chấm ngay khi nộp, quy đổi thang 10 và bậc
-> VSTEP; Viết và Nói để trạng thái chờ chấm. Màn kết quả cho học viên chưa dựng.
+> VSTEP; Viết và Nói để trạng thái chờ chấm. Màn kết quả ở `/prep/ket-qua/:id/`,
+> chi tiết tới từng câu với gói Plus trở lên, rút gọn với gói Starter.
 > Danh mục đọc từ `GET /api/catalog`; tài khoản học viên có đăng ký / đăng nhập / xác thực
 > email / đặt lại mật khẩu thật với phiên cookie. Kích hoạt code còn ở phía client.
 

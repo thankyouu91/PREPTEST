@@ -440,7 +440,60 @@ try {
     ok(await page.locator('#done').isVisible(), 'Nộp xong hiện màn đã nộp');
 
     ok(uiErrors.length === 0, 'Không có lỗi JavaScript trên màn làm bài', uiErrors.join(' | '));
+
+    /* ---- Màn kết quả ---- */
+    head('Màn kết quả');
+    const uiAttempt = (await (await page.request.get(BASE + '/api/attempts')).json())
+      .items.find(a => a.status === 'submitted');
+    await page.goto(BASE + '/prep/ket-qua/' + uiAttempt.id + '/', { waitUntil: 'networkidle' });
+    await page.waitForTimeout(800);
+    ok(await page.locator('#report').isVisible(), 'Mở được màn kết quả');
+    ok(await page.locator('#r-skills article').count() > 0, 'Hiện điểm từng kỹ năng');
+    ok(await page.locator('#r-parts article').count() > 0, 'Hiện bảng bóc tách từng phần');
+    /* Chưa chấm đủ bốn kỹ năng: điểm tổng phải để gạch ngang, không phải một
+       con số nửa vời trông như kết quả cuối cùng. */
+    ok((await page.locator('#r-overall').textContent()).trim() === '–',
+      'Chưa chấm đủ thì điểm tổng để trống, không bịa số',
+      (await page.locator('#r-overall').textContent()).trim());
+    ok(await page.locator('#r-pending').isVisible(), 'Nói rõ Viết và Nói còn chờ chấm');
+    ok(!(await page.locator('#r-upgrade').isVisible()), 'Gói Plus không thấy bảng mời nâng gói');
+    const body = await page.locator('#r-parts').innerText();
+    ok(/Đúng|Sai|Bỏ trống/.test(body), 'Mỗi câu có dấu đúng / sai / bỏ trống');
+
+    /* Lượt chưa nộp: không phải lỗi, mà là việc còn dở — phải dẫn về làm tiếp. */
+    const running = await page.request.post(BASE + '/api/attempts', {
+      data: { testId }, headers: { 'X-CSRF-Token': await page.evaluate(() => PrepApi.csrf()) }
+    });
+    const runningId = (await running.json()).attempt.id;
+    await page.goto(BASE + '/prep/ket-qua/' + runningId + '/', { waitUntil: 'networkidle' });
+    await page.waitForTimeout(700);
+    ok(await page.locator('#none').isVisible(), 'Lượt chưa nộp thì chưa có kết quả');
+    ok((await page.locator('#none-cta').getAttribute('href')) === '/prep/lam-bai/',
+      'Và dẫn thẳng về chỗ làm tiếp', await page.locator('#none-cta').getAttribute('href'));
+    await page.request.post(BASE + '/api/attempts/' + runningId + '/submit', {
+      headers: { 'X-CSRF-Token': await page.evaluate(() => PrepApi.csrf()) }
+    });
+
+    ok(uiErrors.length === 0, 'Không có lỗi JavaScript trên màn kết quả', uiErrors.join(' | '));
     await ctx.close();
+
+    /* Gói Starter: màn kết quả rút gọn, kèm lý do. Đây là chỗ chính sách gói
+       hiện ra cho người dùng thấy, nên phải kiểm trên chính màn hình. */
+    const ctx2 = await browser.newContext();
+    const page2 = await ctx2.newPage();
+    await page2.goto(BASE + '/prep/dang-nhap/', { waitUntil: 'networkidle' });
+    await page2.fill('#email', cappedEmail);
+    await page2.fill('#password', 'Matkhau12345');
+    await page2.click('#submit');
+    await page2.waitForTimeout(1200);
+    const cappedDone = (await (await page2.request.get(BASE + '/api/attempts')).json())
+      .items.find(a => a.status === 'submitted');
+    await page2.goto(BASE + '/prep/ket-qua/' + cappedDone.id + '/', { waitUntil: 'networkidle' });
+    await page2.waitForTimeout(800);
+    ok(await page2.locator('#report').isVisible(), 'Gói Starter vẫn xem được kết quả');
+    ok(await page2.locator('#r-upgrade').isVisible(), 'Gói Starter thấy bảng giải thích vì sao báo cáo ngắn');
+    ok(!(await page2.locator('#r-parts-box').isVisible()), 'Gói Starter không có bảng bóc tách từng câu');
+    await ctx2.close();
   } finally {
     await browser.close();
   }

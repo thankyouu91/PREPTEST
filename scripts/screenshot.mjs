@@ -56,6 +56,7 @@ const PAGES = [
   { slug: 'bai-thi-khoa',    url: '/prep/bai-thi/pte-ac-01/',    auth: true },
   { slug: 'tai-khoan',       url: '/prep/tai-khoan/',            auth: true },
   { slug: 'lam-bai',         url: '/prep/lam-bai/',              auth: true, full: true },
+  { slug: 'ket-qua',         url: '/prep/ket-qua/:done/',        auth: true, full: true },
   { slug: 'hoc-dong-tu',     url: '/prep/hoc/dong-tu-bat-quy-tac/', auth: true },
   { slug: 'hoc-tu-noi',      url: '/prep/hoc/tu-noi/',            auth: true },
   { slug: 'hoc-thi',         url: '/prep/hoc/thi/',               auth: true },
@@ -103,7 +104,28 @@ const run = async () => {
   const problems = [];
   const freshAccount = await makeFreshAccount(browser);
 
-  for (const p of PAGES.filter(x => !only || x.slug === only)) {
+  /* Màn kết quả cần một lượt thi có thật của tài khoản demo — gắn cứng một id
+     thì ảnh nghiệm thu sẽ chụp đúng cái màn "không tìm thấy". Hỏi máy chủ. */
+  let doneAttempt = null;
+  {
+    const probe = await browser.newContext();
+    await apiLogin(probe, DEMO.id, DEMO.pw);
+    const list = await probe.request.get(BASE + '/api/attempts');
+    if (list.ok()) {
+      const hit = ((await list.json()).items || []).find(a => a.status === 'submitted');
+      if (hit) doneAttempt = hit.id;
+    }
+    await probe.close();
+  }
+
+  const pages = PAGES
+    .map(x => (x.url.includes(':done')
+      ? (doneAttempt ? Object.assign({}, x, { url: x.url.replace(':done', doneAttempt) }) : null)
+      : x))
+    .filter(Boolean);
+  if (!doneAttempt) console.log('   (bỏ qua ảnh màn kết quả: chưa có lượt thi nào đã nộp)');
+
+  for (const p of pages.filter(x => !only || x.slug === only)) {
     for (const [dev, vp] of [['desktop', { width: 1440, height: 900 }], ['mobile', { width: 390, height: 844 }]]) {
       // ignoreHTTPSErrors: CA của agent-proxy không nằm trong NSS store của Chromium
       // (chỉ ảnh hưởng harness chụp ảnh cục bộ, không liên quan sản phẩm)

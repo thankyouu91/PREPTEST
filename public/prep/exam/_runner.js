@@ -115,6 +115,10 @@ const PrepRunner = {
     PREP.qs('#done-count').textContent = summary
       ? 'Bạn đã trả lời ' + summary.answered + '/' + summary.total + ' câu.'
       : 'Bài này đã nộp trước đó.';
+    /* Nộp xong thì việc tiếp theo là xem kết quả, nên nút chính dẫn thẳng tới
+       đó thay vì đẩy người ta về thư viện tự đi tìm. */
+    const link = PREP.qs('#done-result');
+    if (link && this.attempt) link.href = '/prep/ket-qua/' + this.attempt.id + '/';
     this.stopClock();
   },
 

@@ -155,6 +155,9 @@ app.get('/prep/bai-thi/:id/', studentPage('prep/test/index.html'));
 /* Màn làm bài. Guard đăng nhập ở đây; quyền (còn gói, còn lượt) do
    /api/attempts quyết định, và trang hiện đúng lý do máy chủ trả về. */
 app.get('/prep/lam-bai/', studentPage('prep/exam/index.html'));
+/* Kết quả một lượt thi. Mã lượt nằm trên đường dẫn; quyền xem do
+   /api/attempts/:id/result quyết định — lượt của người khác trả 404. */
+app.get('/prep/ket-qua/:id/', studentPage('prep/exam/ket-qua.html'));
 app.get('/prep/tai-khoan/', studentPage('prep/account/index.html'));
 
 /* ------------- Khu tự học: cần gói có quyền -------------

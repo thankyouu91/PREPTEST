@@ -25,7 +25,7 @@ const GUEST_URLS = ['/prep/landing/', '/prep/dang-ky/', '/prep/dang-nhap/', '/pr
 const URLS = GUEST_URLS.concat([
   '/prep/', '/prep/thu-vien/', '/prep/thu-vien/?family=vept', '/prep/mua-code/', '/prep/nhap-code/',
   '/prep/code-cua-toi/', '/prep/bai-thi/vpet-b1-01/', '/prep/bai-thi/pte-ac-01/', '/prep/tai-khoan/',
-  '/prep/lam-bai/',
+  '/prep/lam-bai/', '/prep/ket-qua/:done/',
   '/prep/hoc/dong-tu-bat-quy-tac/', '/prep/hoc/tu-noi/', '/prep/hoc/thi/', '/prep/hoc/danh-tu/', '/prep/hoc/tinh-tu/', '/prep/hoc/khuyet-thieu/', '/prep/hoc/dieu-kien/', '/prep/hoc/bi-dong/', '/prep/hoc/menh-de/', '/prep/hoc/nhan-manh/', '/prep/hoc/sac-thai/'
 ]);
 const WIDTHS = [360, 390, 768, 1024, 1440];
@@ -57,8 +57,28 @@ const run = async () => {
   const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' });
   const issues = [];
 
+  /* Màn kết quả cần một lượt thi CÓ THẬT của tài khoản demo. Gắn cứng id thì
+     lượt đó có thể không tồn tại hay thuộc người khác, API trả 404, và audit đỏ
+     vì dữ liệu chứ không vì giao diện. Hỏi máy chủ một lần rồi thay vào. */
+  let doneAttempt = null;
+  {
+    const probe = await browser.newContext();
+    await probe.request.post(BASE + '/api/auth/login', { data: { username: DEMO.id, password: DEMO.pw } });
+    const list = await probe.request.get(BASE + '/api/attempts');
+    if (list.ok()) {
+      const items = (await list.json()).items || [];
+      const hit = items.find(a => a.status === 'submitted');
+      if (hit) doneAttempt = hit.id;
+    }
+    await probe.close();
+  }
+  const urls = URLS
+    .map(u => (u.includes(':done') ? (doneAttempt ? u.replace(':done', doneAttempt) : null) : u))
+    .filter(Boolean);
+  if (!doneAttempt) console.log('   (bỏ qua màn kết quả: tài khoản demo chưa có lượt thi nào đã nộp)');
+
   for (const dark of [false, true]) {
-    for (const url of URLS) {
+    for (const url of urls) {
       for (const w of WIDTHS) {
         const ctx = await browser.newContext({ viewport: { width: w, height: 900 }, locale: 'vi-VN' });
         const page = await ctx.newPage();
