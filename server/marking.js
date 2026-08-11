@@ -14,12 +14,12 @@
  *
  * Two rules from that document shape everything here:
  *
- *   · "Chấm được phần nào trả phần đó" — multiple choice and gap-fill are marked
+ *   · "Return whatever can be marked" — multiple choice and gap-fill are marked
  *     the moment the paper is handed in; writing and speaking are left pending
  *     for the AI/reviewer pass and the skill is flagged rather than scored as
  *     zero. Scoring an unmarked essay as zero would be a lie that looks like a
  *     result.
- *   · "Luôn giải thích được" — every item keeps earned, max and a note, so a
+ *   · "Always explicable" — every item keeps earned, max and a note, so a
  *     disputed score can be traced back to the item that caused it.
  *
  * Marking is re-runnable on purpose. It reads the stored answers and overwrites
@@ -30,7 +30,7 @@
 
 const { q, tx, nowISO } = require('./db');
 
-/** Dạng câu máy chấm được ngay. Còn lại chờ rubric (AI hoặc người). */
+/** Item types a machine can mark outright. The rest wait for a rubric (AI or human). */
 const AUTO_TYPES = ['mcq', 'gap'];
 
 /**
@@ -51,7 +51,7 @@ const BANDS = [
   { min: 3.5, band: 'Bậc 3', cefr: 'B1' }
 ];
 
-/** Bậc tương ứng với điểm tổng; null nghĩa là chưa đạt mức cấp chứng chỉ. */
+/** The band for an overall mark; null means below the level a certificate is issued at. */
 function toBand(score) {
   if (score == null) return null;
   const hit = BANDS.find(b => score >= b.min);
@@ -63,9 +63,9 @@ function toBand(score) {
  * ------------------------------------------------------------------ */
 
 /**
- * Chuẩn hoá chuỗi trước khi so: bỏ khoảng trắng thừa, không phân biệt hoa
- * thường, bỏ dấu câu ở hai đầu. Người gõ thêm một dấu chấm không phải là người
- * trả lời sai.
+ * Normalise a string before comparing: collapse whitespace, ignore case, strip
+ * punctuation from both ends. Someone who typed an extra full stop has not given a
+ * wrong answer.
  */
 function norm(s) {
   return String(s == null ? '' : s)
@@ -79,26 +79,26 @@ function norm(s) {
  * Mark one item.
  *
  * Returns null when the type is not machine-markable — the caller must treat
- * that as "chưa chấm", never as zero.
+ * that as "not yet marked", never as zero.
  */
 function markItem(question, answerText) {
   if (!AUTO_TYPES.includes(question.type)) return null;
 
   const given = norm(answerText);
-  if (!given) return { earned: 0, max: 1, note: 'Bỏ trống' };
+  if (!given) return { earned: 0, max: 1, note: 'Left blank' };
 
   if (question.type === 'mcq') {
     const ok = given === norm(question.answer);
-    return { earned: ok ? 1 : 0, max: 1, note: ok ? 'Đúng' : 'Sai' };
+    return { earned: ok ? 1 : 0, max: 1, note: ok ? 'Correct' : 'Wrong' };
   }
 
-  /* gap: đáp án có thể khai nhiều biến thể cách nhau bằng '|' (color|colour).
-     Một biến thể khớp là đúng — đây là chính tả khác nhau của cùng một câu trả
-     lời, không phải hai câu trả lời khác nhau. */
+  /* gap: an answer key may list variants separated by '|' (color|colour).
+     Matching any one of them is correct — these are spellings of the same answer,
+     not two different answers. */
   const variants = String(question.answer || '').split('|').map(norm).filter(Boolean);
-  if (!variants.length) return { earned: 0, max: 1, note: 'Câu hỏi chưa có đáp án' };
+  if (!variants.length) return { earned: 0, max: 1, note: 'This item has no answer key' };
   const ok = variants.includes(given);
-  return { earned: ok ? 1 : 0, max: 1, note: ok ? 'Đúng' : 'Sai' };
+  return { earned: ok ? 1 : 0, max: 1, note: ok ? 'Correct' : 'Wrong' };
 }
 
 /* ------------------------------------------------------------------ *
@@ -106,16 +106,16 @@ function markItem(question, answerText) {
  * ------------------------------------------------------------------ */
 
 /**
- * VPET dùng quy đổi `linear` (docs/SCORING.md §2.2): raw/max × 10, làm tròn tới
- * 0,5. Không có câu nào thì không có điểm — trả null chứ không trả 0, vì 0 là
- * một kết quả còn "chưa có gì để chấm" thì không.
+ * VPET uses the `linear` conversion (docs/SCORING.md §2.2): raw/max × 10, rounded to
+ * 0.5. No items means no mark — this returns null rather than 0, because 0 is a
+ * result and "there was nothing to mark" is not.
  */
 function linearScale(earned, max) {
   if (!max) return null;
   return Math.round((earned / max) * 10 * 2) / 2;
 }
 
-/** Trung bình cộng các kỹ năng, làm tròn 0,5 (docs/SCORING.md §1.1). */
+/** The mean of the skill marks, rounded to 0.5 (docs/SCORING.md §1.1). */
 function meanHalf(values) {
   const list = values.filter(v => typeof v === 'number');
   if (!list.length) return null;
@@ -136,9 +136,9 @@ function markAttempt(attemptId) {
   const att = q.get('SELECT * FROM attempts WHERE id=?', attemptId);
   if (!att) return null;
 
-  /* Mọi câu của đề, kèm câu trả lời đã lưu (nếu có). LEFT JOIN chứ không JOIN:
-     câu bỏ trống vẫn phải được tính vào mẫu số, nếu không thì bỏ trống càng
-     nhiều điểm càng cao. */
+  /* Every item in the paper, with its stored answer if there is one. LEFT JOIN, not
+     JOIN: a blank item still belongs in the denominator, or leaving more blank would
+     raise the mark. */
   const rows = q.all(
     `SELECT si.question_id, ap.section_id, s.skill,
             qs.type, qs.answer,
@@ -161,7 +161,7 @@ function markAttempt(attemptId) {
 
       const mark = markItem({ type: r.type, answer: r.answer }, r.given);
       if (!mark) {
-        /* Viết và Nói: chờ rubric. Đếm riêng để biết kỹ năng này chưa xong. */
+        /* Writing and Speaking: waiting on a rubric. Counted separately so we know the skill is unfinished. */
         bucket.pending += 1;
         continue;
       }
@@ -169,9 +169,9 @@ function markAttempt(attemptId) {
       bucket.max += mark.max;
       bucket.marked += 1;
 
-      /* Chỉ ghi dấu vết cho câu đã có dòng trả lời. Câu bỏ trống hoàn toàn
-         không có dòng nào; nó vẫn vào mẫu số ở trên, và không cần tạo ra một
-         dòng rỗng chỉ để ghi "0 điểm". */
+      /* Only leave a trail for items that already have an answer row. A wholly blank
+         item has no row at all; it still counts in the denominator above, and there
+         is no reason to create an empty row just to record "0". */
       if (r.answer_id) {
         q.run('UPDATE attempt_answers SET earned=?, max_score=?, mark_note=?, marked_at=? WHERE id=?',
           mark.earned, mark.max, mark.note, at, r.answer_id);
@@ -191,8 +191,8 @@ function markAttempt(attemptId) {
         attemptId, skill, b.earned, b.max, value, 'linear', b.pending, at);
     }
 
-    /* Điểm tổng chỉ có nghĩa khi cả bốn kỹ năng đã chấm xong. Trung bình của
-       hai kỹ năng rồi gọi nó là "điểm tổng" là một con số sai đội lốt kết quả. */
+    /* An overall mark only means anything once all four skills are marked. Averaging
+    two of them and calling it the total is a wrong number in the costume of a result. */
     const allSkills = [...bySkill.values()];
     const complete = allSkills.length > 0 && allSkills.every(b => !b.pending);
     q.run(
@@ -210,7 +210,7 @@ function markAttempt(attemptId) {
  * The report for one sitting.
  *
  * `detailed` decides how much comes back, and it is the caller's job to pass
- * what the buyer's plan allows: Starter bought "report bình thường thang điểm",
+ * what the buyer's plan allows: Starter bought the ordinary mark-and-band report,
  * so it gets the score and the band; from Plus up the per-part breakdown and
  * the per-item trace come with it.
  */
@@ -226,9 +226,9 @@ function resultOf(attemptId, detailed) {
     testId: att.test_id,
     status: att.status,
     submittedAt: att.submitted_at,
-    /* Nói rõ đây là điểm tham chiếu khi luyện, không phải điểm thi thật
-       (docs/SCORING.md §2.1 nguyên tắc 5). */
-    disclaimer: 'Điểm tham chiếu khi luyện tập, không phải điểm thi thật.',
+    /* Say plainly that this is a practice reference mark, not a real exam result
+       (docs/SCORING.md §2.1, principle 5). */
+    disclaimer: 'A reference mark for practice, not a real exam result.',
     overall: overall ? overall.scaled : null,
     pending: !overall || !!overall.pending,
     band: overall ? toBand(overall.scaled) : null,
@@ -256,23 +256,23 @@ function resultOf(attemptId, detailed) {
            JOIN questions qs ON qs.id = si.question_id
            LEFT JOIN attempt_answers aa ON aa.attempt_id=? AND aa.question_id=si.question_id
           WHERE si.section_id=? ORDER BY si.sort, si.id`, attemptId, p.section_id);
-      /* Điểm tối đa suy ra từ DẠNG CÂU, không phải từ dòng đã lưu. Câu bỏ trống
-         hoàn toàn thì không có dòng attempt_answers nào, nên lấy theo dòng đã
-         lưu sẽ làm nó biến mất khỏi mẫu số: phần hiện "1/1" trong khi kỹ năng
-         chấm 5,0 — bỏ trống càng nhiều thì phần trông càng hoàn hảo. */
+      /* The maximum comes from the ITEM TYPE, not from the stored row. A wholly blank
+         item has no attempt_answers row, so reading the maximum off the row makes it
+         vanish from the denominator: the part reads "1/1" while the skill scores 5.0
+         — the more you leave blank, the more perfect the part looks. */
       const marked = items.map(i => {
         const auto = AUTO_TYPES.includes(i.type);
         return {
           questionId: i.question_id,
           type: i.type,
           prompt: i.prompt,
-          /* Câu trả lời của chính học viên trả lại được; đáp án đúng thì KHÔNG:
-             đề còn dùng lại cho lượt sau và cho người khác. */
+          /* The candidate's own answer can go back out; the answer key must NOT:
+          the paper is reused for later sittings and for other people. */
           given: i.given || '',
           hasRecording: !!i.audio_key,
           earned: auto ? (i.earned == null ? 0 : i.earned) : null,
           max: auto ? 1 : null,
-          note: i.mark_note || (auto ? 'Bỏ trống' : 'Chờ chấm')
+          note: i.mark_note || (auto ? 'Left blank' : 'Awaiting marking')
         };
       });
       return {

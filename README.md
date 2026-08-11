@@ -33,9 +33,14 @@ Practice). Phần **giảng giải vẫn nguyên tiếng Việt**: đoạn dẫn
 thứ đọc từ CSDL. Một thẻ giờ có tiêu đề tiếng Anh, nội dung tiếng Việt — đúng
 hình dạng của một cuốn tra cứu song ngữ.
 
-Còn tiếng Việt: khu quản trị và các tệp máy chủ dùng chung chưa nằm trong lát
-cắt nào (`auth.js`, `db.js`, `storage.js`, `marking.js`) — xem hàng đợi trong
-`docs/ROADMAP.md`.
+**Các tệp máy chủ dùng chung** cũng đã sang tiếng Anh: `auth.js`, `marking.js`,
+phần mã của `db.js` (`storage.js` vốn đã là tiếng Anh). Giữ nguyên tiếng Việt có
+chủ đích: tên bậc VSTEP (`Bậc 3/4/5`) vì đó là tên chính thức ghi trên chứng
+chỉ, tên các tài khoản demo, và ngân hàng câu hỏi mẫu trong `db.js` — phần này
+sẽ bị ngân hàng đề VPET thay toàn bộ.
+
+Còn tiếng Việt: khu quản trị và `server/data/exam-formats.js` — xem hàng đợi
+trong `docs/ROADMAP.md`.
 
 **Nội dung khu tự học giữ nguyên tiếng Việt**: phần nghĩa, ví dụ song ngữ và
 "lỗi người Việt hay mắc" tồn tại để giải thích tiếng Anh bằng tiếng mẹ đẻ của

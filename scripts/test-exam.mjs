@@ -283,7 +283,7 @@ try {
 
   /* Tài khoản demo cầm gói Plus nên được xem bảng chi tiết. */
   ok(result.detailed === true, 'Gói Plus xem được báo cáo chi tiết', JSON.stringify(result.detailed));
-  ok(/tham chiếu/.test(result.disclaimer || ''),
+  ok(/reference mark/.test(result.disclaimer || ''),
     'Kết quả ghi rõ đây là điểm luyện tập, không phải điểm thi thật', result.disclaimer);
 
   const listen = (result.skills || []).find(x => x.skill === 'listening');
