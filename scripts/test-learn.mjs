@@ -283,16 +283,17 @@ try {
 
   /* Hai nhóm phải tách bạch, không lẫn vào nhau */
   const allGrammar = await get('/api/learn/grammar');
-  ok(allGrammar.count === 203, 'Tổng tám nhóm là 203 điểm (' + allGrammar.count + ')');
+  ok(allGrammar.count === 219, 'Tổng chín nhóm là 219 điểm (' + allGrammar.count + ')');
   ok(allGrammar.groups.some(g => g.id === 'tense' && g.count === 21) &&
      allGrammar.groups.some(g => g.id === 'noun' && g.count === 28) &&
+     allGrammar.groups.some(g => g.id === 'adjadv' && g.count === 16) &&
      allGrammar.groups.some(g => g.id === 'modal' && g.count === 29) &&
      allGrammar.groups.some(g => g.id === 'conditional' && g.count === 20) &&
      allGrammar.groups.some(g => g.id === 'passive' && g.count === 22) &&
      allGrammar.groups.some(g => g.id === 'clause' && g.count === 29) &&
      allGrammar.groups.some(g => g.id === 'emphasis' && g.count === 21) &&
      allGrammar.groups.some(g => g.id === 'register' && g.count === 33),
-    'Thống kê theo nhóm đúng: tense 21, noun 28, modal 29, conditional 20, passive 22, clause 29, emphasis 21, register 33');
+    'Thống kê theo nhóm đúng: tense 21, noun 28, adjadv 16, modal 29, conditional 20, passive 22, clause 29, emphasis 21, register 33');
   ok(new Set(allGrammar.points.map(p => p.slug)).size === allGrammar.count,
     'Không có slug trùng giữa các nhóm');
 
@@ -365,6 +366,83 @@ try {
   const nomin = await get('/api/learn/grammar/nominalisation');
   ok(nomin.point.useNot.some(u => /lạm dụng|cả đoạn/i.test(u.what + u.why)),
     'Mục danh từ hoá cảnh báo lạm dụng, không chỉ dạy cách dùng');
+
+  /* ============ 4b. Ngữ pháp: tính từ, trạng từ, so sánh ============ */
+  console.log('\n\x1b[1m== API ngữ pháp (tính từ, trạng từ, so sánh) ==\x1b[0m');
+
+  const tt = await get('/api/learn/grammar?grp=adjadv');
+  ok(tt.count === 16, 'Có đủ 16 điểm bậc A1–B1 (' + tt.count + ')');
+  ok(tt.points.every(p => p.grp === 'adjadv'), 'Lọc theo nhóm trả đúng nhóm');
+
+  /* Hạn mức cả nhóm là A1 5 · A2 6 · B1 5 · B2 5 · C1 4 · C2 3 = 28. Lượt này
+     mới làm A1–B1 nên B2–C2 phải bằng 0: chốt chặn cho việc soạn đúng phần
+     đã nhận, không lấn sang phần của lượt sau. */
+  const ttLevel = tt.points.reduce((a, p) => (a[p.level] = (a[p.level] || 0) + 1, a), {});
+  const TT_QUOTA = { A1: 5, A2: 6, B1: 5, B2: 0, C1: 0, C2: 0 };
+  const ttLech = Object.keys(TT_QUOTA).filter(l => (ttLevel[l] || 0) !== TT_QUOTA[l]);
+  ok(ttLech.length === 0, 'Đúng hạn mức A1 5, A2 6, B1 5 và chưa lấn sang B2–C2' +
+    (ttLech.length ? ' (lệch: ' + ttLech.map(l => l + ' ' + (ttLevel[l] || 0) + '/' + TT_QUOTA[l]).join(', ') + ')' : ''));
+
+  const ttSap = tt.points.every((p, i) => i === 0 || bacSo[p.level] >= bacSo[tt.points[i - 1].level]);
+  ok(ttSap, 'Danh sách xếp từ bậc thấp lên bậc cao');
+  ok(tt.points.every(p => formRows(p).length >= 2), 'Mọi điểm có ít nhất hai dòng công thức');
+  ok(tt.points.every(p => p.counts.example === 6), 'Mỗi điểm có đúng 6 câu ví dụ');
+  ok(tt.points.every(p => p.counts.practice === 10), 'Mỗi điểm có đúng 10 câu luyện tập');
+
+  let ttEx = 0, ttPr = 0;
+  const ttFlaws = [];
+  for (const p of tt.points) {
+    const d = await get('/api/learn/grammar/' + p.slug);
+    ttEx += d.examples.length;
+    ttPr += d.practice.length;
+
+    if (!d.point.useWhen.length) ttFlaws.push(p.slug + ': thiếu "dùng khi nào"');
+    if (!d.point.useNot.length) ttFlaws.push(p.slug + ': thiếu "KHÔNG dùng khi nào"');
+    if (!d.point.confuse.length) ttFlaws.push(p.slug + ': thiếu phần phân biệt');
+    if (!d.point.errors.length) ttFlaws.push(p.slug + ': thiếu lỗi hay mắc');
+    if (d.point.useNot.some(u => !u.what || !u.why)) ttFlaws.push(p.slug + ': mục "không dùng" thiếu lý do');
+    if (d.point.errors.some(e => !e.wrong || !e.right || !e.why)) ttFlaws.push(p.slug + ': lỗi thiếu câu sửa hoặc lý do');
+    if (d.point.confuse.some(c => !c.with || !c.tell || !c.pair || c.pair.length !== 2)) {
+      ttFlaws.push(p.slug + ': cặp phân biệt không đủ hai câu');
+    }
+    if (d.examples.some(x => !x.en || !x.vi)) ttFlaws.push(p.slug + ': ví dụ thiếu song ngữ');
+    if (d.practice.some(x => !x.en || !x.vi || !x.answer)) ttFlaws.push(p.slug + ': câu luyện thiếu nghĩa Việt hoặc đáp án');
+    if (d.examples.some(x => !x.ok && !x.note)) ttFlaws.push(p.slug + ': phản ví dụ không có cách sửa');
+    if (d.examples.filter(x => !x.ok).length < 2) ttFlaws.push(p.slug + ': chưa đủ hai phản ví dụ');
+
+    const lech = d.practice.filter(x =>
+      (x.en.match(/___/g) || []).length !== x.answer.split('…').length);
+    if (lech.length) ttFlaws.push(p.slug + ': ' + lech.length + ' câu luyện lệch chỗ trống/đáp án');
+  }
+  ok(ttEx === 96, 'Tổng 96 câu ví dụ (' + ttEx + ')');
+  ok(ttPr === 160, 'Tổng 160 câu luyện tập (' + ttPr + ')');
+  ok(ttFlaws.length === 0, 'Mọi điểm đủ lát cắt và dữ liệu sạch' +
+    (ttFlaws.length ? ' — ' + ttFlaws.slice(0, 6).join('; ') : ''));
+
+  /* Soi đúng bốn chỗ người Việt sai nhiều nhất của nhóm này */
+  const viTriTinhTu = await get('/api/learn/grammar/adj-position');
+  ok(viTriTinhTu.point.formula.note && /tiếng Việt/i.test(viTriTinhTu.point.formula.note),
+    'Mục vị trí tính từ nói rõ trật tự tiếng Việt ngược với tiếng Anh');
+  ok(viTriTinhTu.point.useNot.some(u => /-s|số nhiều/i.test(u.what + u.why)),
+    'Mục vị trí tính từ cảnh báo tính từ không thêm -s');
+
+  const canBe = await get('/api/learn/grammar/adj-need-be');
+  ok(canBe.point.errors.some(e => /I hungry/i.test(e.wrong)),
+    'Mục "phải có be" lấy đúng lỗi kinh điển "I hungry"');
+
+  const edIng = await get('/api/learn/grammar/adj-ed-ing');
+  ok(edIng.point.formula.note && /boring/i.test(edIng.point.formula.note),
+    'Mục -ed/-ing cảnh báo "I am boring" là tự nhận mình nhạt');
+  ok(edIng.point.confuse.some(c => c.pair.some(x => /is bored/i.test(x.en)) && c.pair.some(x => /is boring/i.test(x.en))),
+    'Mục -ed/-ing đặt "He is bored" cạnh "He is boring" để đối chiếu');
+
+  const trangTu = await get('/api/learn/grammar/adv-manner-ly');
+  ok(trangTu.point.confuse.some(c => /hardly/i.test(c.with)),
+    'Mục trạng từ cách thức bẫy "hard" khác "hardly"');
+
+  const ghep = await get('/api/learn/grammar/compound-adjective');
+  ok(ghep.point.errors.some(e => /five-years-old/i.test(e.wrong)),
+    'Mục tính từ ghép bắt đúng lỗi "a five-years-old boy"');
 
   /* ============ 5. Ngữ pháp: động từ khuyết thiếu ============ */
   console.log('\n\x1b[1m== API ngữ pháp (động từ khuyết thiếu) ==\x1b[0m');
@@ -983,8 +1061,8 @@ try {
     (kyTuLa.length ? ' (' + kyTuLa.length + ' chỗ, ví dụ: ' + kyTuLa[0] + ')' : ''));
   ok(lechDapAn.length === 0, 'Đáp án luôn nằm trong danh sách lựa chọn của câu trắc nghiệm' +
     (lechDapAn.length ? ' (' + lechDapAn.length + ' sai, ví dụ: ' + lechDapAn[0] + ')' : ''));
-  ok(tongLuyen === 12 * 12 + 9 * 10 + 28 * 10 + 29 * 10 + 20 * 10 + 22 * 10 + 29 * 10 + 21 * 10 + 33 * 10,
-    'Tổng câu luyện toàn khu ngữ pháp là ' + (12 * 12 + 9 * 10 + 28 * 10 + 29 * 10 + 20 * 10 + 22 * 10 + 29 * 10 + 21 * 10 + 33 * 10) + ' (' + tongLuyen + ')');
+  ok(tongLuyen === 12 * 12 + 9 * 10 + 28 * 10 + 16 * 10 + 29 * 10 + 20 * 10 + 22 * 10 + 29 * 10 + 21 * 10 + 33 * 10,
+    'Tổng câu luyện toàn khu ngữ pháp là ' + (12 * 12 + 9 * 10 + 28 * 10 + 16 * 10 + 29 * 10 + 20 * 10 + 22 * 10 + 29 * 10 + 21 * 10 + 33 * 10) + ' (' + tongLuyen + ')');
 
   /* ============ 7. Năm trang tự học ============ */
   console.log('\n\x1b[1m== Trang khu tự học ==\x1b[0m');
@@ -1095,6 +1173,27 @@ try {
   await page.selectOption('#f-level', 'A1');
   await page.waitForTimeout(300);
   ok(await page.locator('#list article').count() === 8, 'Lọc bậc A1 còn 8 mục');
+
+  /* --- Trang tính từ, trạng từ, so sánh --- */
+  await page.goto(BASE + '/prep/hoc/tinh-tu/', { waitUntil: 'networkidle' });
+  await page.waitForSelector('#list article', { timeout: 10000 });
+  ok(await page.locator('#list article').count() === 16, 'Trang tính từ hiện đủ 16 mục');
+
+  await page.click('[data-toggle="adj-ed-ing"]');
+  await page.waitForSelector('#list article[data-slug="adj-ed-ing"] [data-answer]',
+    { state: 'attached', timeout: 10000 });
+  const ttCard = page.locator('article[data-slug="adj-ed-ing"]');
+  ok(await ttCard.locator('[data-answer]').count() === 10, 'Mở ra thấy đủ 10 câu luyện');
+  ok(/bored/i.test(await ttCard.innerText()), 'Chi tiết hiện đúng nội dung mục -ed/-ing');
+
+  /* Nhóm này chưa có mục nào ở bậc C2 nên phải ra trạng thái rỗng */
+  await page.selectOption('#f-level', 'C2');
+  await page.waitForTimeout(300);
+  ok(await page.locator('#empty:not([hidden])').count() === 1,
+    'Bậc chưa soạn thì hiện trạng thái rỗng');
+  await page.click('#clear');
+  await page.waitForTimeout(300);
+  ok(await page.locator('#list article').count() === 16, 'Nút "Xoá bộ lọc" đưa về đủ 16 mục');
 
   /* --- Trang động từ khuyết thiếu --- */
   await page.goto(BASE + '/prep/hoc/khuyet-thieu/', { waitUntil: 'networkidle' });
@@ -1315,7 +1414,7 @@ try {
   ok(await page.locator('.navscroll-next').isVisible(), 'Nút tiến hiện khi còn mục bị che bên phải');
   await page.setViewportSize({ width: 1280, height: 900 });
 
-  ok(errs.length === 0, 'Không có lỗi JavaScript trên mười trang tự học' +
+  ok(errs.length === 0, 'Không có lỗi JavaScript trên mười một trang tự học' +
     (errs.length ? ': ' + errs[0] : ''));
 
   await ctx.close();

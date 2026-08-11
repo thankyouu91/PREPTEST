@@ -59,6 +59,7 @@ const PAGES = [
   { slug: 'hoc-tu-noi',      url: '/prep/hoc/tu-noi/',            auth: true },
   { slug: 'hoc-thi',         url: '/prep/hoc/thi/',               auth: true },
   { slug: 'hoc-danh-tu',     url: '/prep/hoc/danh-tu/',           auth: true },
+  { slug: 'hoc-tinh-tu',     url: '/prep/hoc/tinh-tu/',           auth: true },
   { slug: 'hoc-khuyet-thieu',url: '/prep/hoc/khuyet-thieu/',      auth: true },
   { slug: 'hoc-dieu-kien',   url: '/prep/hoc/dieu-kien/',         auth: true },
   { slug: 'hoc-bi-dong',     url: '/prep/hoc/bi-dong/',           auth: true },

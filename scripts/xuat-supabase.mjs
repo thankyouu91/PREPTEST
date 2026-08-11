@@ -35,7 +35,7 @@ const require = createRequire(import.meta.url);
 
 const NGU_PHAP = [
   'grammar-tenses', 'grammar-tenses-sequence',
-  'grammar-nouns', 'grammar-nouns-b1c2',
+  'grammar-nouns', 'grammar-nouns-b1c2', 'grammar-adjectives',
   'grammar-modals', 'grammar-modals-b2c2',
   'grammar-conditionals', 'grammar-conditionals-c1c2',
   'grammar-passive-reported', 'grammar-passive-reported-c1c2',

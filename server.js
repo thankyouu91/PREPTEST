@@ -151,6 +151,7 @@ app.get('/prep/hoc/dong-tu-bat-quy-tac/', studentPage('prep/learn/dong-tu-bat-qu
 app.get('/prep/hoc/tu-noi/', studentPage('prep/learn/tu-noi.html'));
 app.get('/prep/hoc/thi/', studentPage('prep/learn/thi.html'));
 app.get('/prep/hoc/danh-tu/', studentPage('prep/learn/danh-tu.html'));
+app.get('/prep/hoc/tinh-tu/', studentPage('prep/learn/tinh-tu.html'));
 app.get('/prep/hoc/khuyet-thieu/', studentPage('prep/learn/khuyet-thieu.html'));
 app.get('/prep/hoc/dieu-kien/', studentPage('prep/learn/dieu-kien.html'));
 app.get('/prep/hoc/bi-dong/', studentPage('prep/learn/bi-dong.html'));

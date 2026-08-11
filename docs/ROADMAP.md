@@ -48,16 +48,16 @@ Nhánh làm việc: `claude/prep-test-platform-design-fpiuqn`
 - [x] Ngữ pháp sắc thái – độ trang trọng – hedging, bậc C1 (9 điểm: hạn định phạm vi khẳng định, khoanh vùng bằng điều kiện, cân liều rào đón, lời nhờ trong thư công việc, góp ý phê bình cho nhã, nói giảm, uyển ngữ, ngữ pháp của văn nói, đánh dấu lập trường cá nhân) — mục 19 điểm C1–C2 đã tách đôi đúng như ghi chú
 - [x] Ngữ pháp sắc thái – độ trang trọng – hedging, bậc C2 (10 điểm: mỉa mai và châm biếm, hàm ý hội thoại, tiền giả định, phê bình nguồn trong bài học thuật, công thức văn bản chính thức, từ ngữ mang đánh giá ngầm, ngoặc kép giữ khoảng cách, câu rào đón dọn đường, thang xin lỗi, cố ý đổi giọng) — nhóm này đủ 33/33 điểm
 
-#### Hai nhóm ngữ pháp chưa từng vào hàng đợi
+#### Phần ngữ pháp còn thiếu so với bảng phân bậc
 
 Đối chiếu dữ liệu đã dựng với bảng phân bậc `docs/LEARNING.md` mục 2 (tổng 303 điểm):
-hiện có **203/303**. Tám nhóm đã đủ hạn mức (thì 21, danh từ 28, khuyết thiếu 29,
-điều kiện 20, bị động 22, mệnh đề 29, đảo ngữ 21, sắc thái 33). Còn lại hai nhóm chưa
-từng có mục nào trong hàng đợi — tính từ/trạng từ/so sánh (28 điểm) và giới từ (35 điểm)
-— cộng một hàng cần người dùng quyết:
+hiện có **219/303**. Tám nhóm đã đủ hạn mức (thì 21, danh từ 28, khuyết thiếu 29,
+điều kiện 20, bị động 22, mệnh đề 29, đảo ngữ 21, sắc thái 33). Nhóm tính từ – trạng từ –
+so sánh đang làm dở: 16/28 điểm. Còn nhóm giới từ (35 điểm) chưa có mục nào, cộng một
+hàng cần người dùng quyết:
 
 - [x] Ngữ pháp phối hợp thì, 9 điểm còn lại của nhóm "thì" (A1 1 · A2 1 · B1 1 · B2 2 · C1 2 · C2 2: chia thì cả hai vế sau `and`/`but`, thì sau `before`/`after`, bộ ba thì kể chuyện quá khứ, giữ mốc thì nhất quán trong đoạn và lỗi trôi thì, tương lai nhìn từ quá khứ, ba thì hoàn thành quanh mốc quy chiếu, thì trong bài viết học thuật, hiện tại lịch sử, điều khiển đoạn hồi tưởng) — nhóm này đủ 21/21 điểm. Phần lùi thì khi tường thuật lời người khác vẫn thuộc nhóm "Bị động, tường thuật", không làm lại ở đây
-- [ ] Ngữ pháp tính từ – trạng từ – so sánh, bậc A1–B1 (16 điểm theo hạn mức: A1 5, A2 6, B1 5)
+- [x] Ngữ pháp tính từ – trạng từ – so sánh, bậc A1–B1 (16 điểm: vị trí tính từ, tính từ phải có `be`, trạng từ tần suất, so sánh hơn và nhất với tính từ ngắn; `more`/`the most`, so sánh bất quy tắc, `as … as`, trạng từ cách thức và bẫy `hard`/`hardly`, tính từ `-ed` khác `-ing`, `too`/`enough`; trật tự nhiều tính từ, bổ nghĩa cho so sánh, so sánh kép, vị trí trạng từ, tính từ ghép) — dựng thêm trang `/prep/hoc/tinh-tu/` cho nhóm mới
 - [ ] Ngữ pháp tính từ – trạng từ – so sánh, bậc B2–C2 (12 điểm còn lại: B2 5, C1 4, C2 3)
 - [ ] Ngữ pháp giới từ và cụm giới từ, bậc A1–A2 (13 điểm theo hạn mức: A1 6, A2 7)
 - [ ] Ngữ pháp giới từ và cụm giới từ, bậc B1–B2 (13 điểm: B1 7, B2 6)
