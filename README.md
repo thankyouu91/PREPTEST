@@ -16,9 +16,14 @@ Cơ chế truy cập: đăng ký tài khoản → mua/nhập code → mở khoá
 ## Ngôn ngữ giao diện
 
 Đang chuyển sang tiếng Anh theo từng mảng. Xong: **toàn bộ phần trước khi đăng
-nhập** — trang giới thiệu và năm màn tài khoản, kèm thông báo `/api/auth/*`.
-Còn tiếng Việt: khu học viên đã đăng nhập và khu quản trị — xem hàng đợi trong
-`docs/ROADMAP.md`. Giá tiền giữ đơn vị đồng.
+nhập** (trang giới thiệu, năm màn tài khoản, thông báo `/api/auth/*`) và **khu
+học viên đã đăng nhập** — chrome dùng chung, trang chủ, thư viện, chi tiết bài
+thi, màn làm bài, màn kết quả, ba màn code, hồ sơ, `_mock.js`, cùng
+`server/exam-api.js` và `server/user-api.js`. Điểm số nay viết theo lối tiếng
+Anh (`7.5` chứ không phải `7,5`); giá tiền vẫn giữ đơn vị đồng.
+
+Còn tiếng Việt: khu quản trị, phần vỏ của mười một trang tự học, và tên hiển thị
+của tài khoản demo — xem hàng đợi trong `docs/ROADMAP.md`.
 
 **Nội dung khu tự học giữ nguyên tiếng Việt**: phần nghĩa, ví dụ song ngữ và
 "lỗi người Việt hay mắc" tồn tại để giải thích tiếng Anh bằng tiếng mẹ đẻ của

@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Chi tiết bài thi · VPET Prep</title>
-  <meta name="description" content="Cấu trúc bài thi thử: các phần, dạng câu hỏi, thời lượng và hướng dẫn làm bài.">
+  <title>Test detail · VPET Prep</title>
+  <meta name="description" content="The structure of a mock test: its parts, question types, timing and instructions.">
   <meta name="theme-color" content="#1c3d8f">
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <link rel="manifest" href="/manifest.webmanifest">
@@ -26,7 +26,7 @@
   <main id="main">
     <div class="max-w-shell mx-auto px-4 sm:px-6 lg:px-10 pb-6">
 
-      <!-- Loading: chờ GET /api/catalog -->
+      <!-- Loading: waiting on GET /api/catalog -->
       <div id="t-loading" class="mt-10 grid lg:grid-cols-3 gap-6" aria-hidden="true">
         <div class="lg:col-span-2">
           <div class="flex gap-2 mb-5"><div class="skeleton h-6 w-16"></div><div class="skeleton h-6 w-10"></div></div>
@@ -50,16 +50,16 @@
         <span class="w-14 h-14 rounded-full bg-brand-soft text-brand-strong inline-flex items-center justify-center mx-auto">
           <svg viewBox="0 0 24 24" class="w-7 h-7" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>
         </span>
-        <h2 class="text-xl font-extrabold tracking-tight mt-4">Không tìm thấy bài thi</h2>
-        <p class="text-muted text-[15px] mt-1.5">Bài thi không tồn tại hoặc đã được gỡ khỏi thư viện.</p>
-        <a href="/prep/thu-vien/" class="btn btn-primary btn-md mt-6">Về thư viện</a>
+        <h2 class="text-xl font-extrabold tracking-tight mt-4">Test not found</h2>
+        <p class="text-muted text-[15px] mt-1.5">This test does not exist, or it has been taken out of the library.</p>
+        <a href="/prep/thu-vien/" class="btn btn-primary btn-md mt-6">Back to the library</a>
       </section>
 
       <div id="page" hidden>
-        <nav class="mt-7" aria-label="Đường dẫn">
+        <nav class="mt-7" aria-label="Breadcrumb">
           <a href="/prep/thu-vien/" class="inline-flex items-center gap-1.5 text-sm font-bold text-muted hover:text-ink transition">
             <svg viewBox="0 0 24 24" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
-            Thư viện đề
+            Test library
           </a>
         </nav>
 
@@ -70,15 +70,15 @@
         </header>
 
         <div class="grid lg:grid-cols-12 gap-6 mt-8">
-          <!-- Cột phải: trạng thái + hành động (lên đầu trên mobile) -->
+          <!-- Right column: status + actions (moves to the top on mobile) -->
           <aside class="lg:col-span-4 lg:order-2">
             <div class="card p-6 lg:sticky lg:top-24" id="action-card"></div>
           </aside>
 
-          <!-- Cột trái: cấu trúc + hướng dẫn -->
+          <!-- Left column: structure + instructions -->
           <div class="lg:col-span-8 lg:order-1 grid gap-6 content-start">
             <section class="card p-6 sm:p-7" aria-labelledby="h-structure">
-              <h3 id="h-structure" class="font-extrabold tracking-tight text-lg">Cấu trúc bài thi</h3>
+              <h3 id="h-structure" class="font-extrabold tracking-tight text-lg">Test structure</h3>
               <div id="sections" class="mt-5 grid gap-1"></div>
               <div class="flex flex-wrap items-center gap-x-6 gap-y-2 border-t border-line mt-5 pt-5 text-[14px] font-bold">
                 <span id="t-total"></span>
@@ -87,7 +87,7 @@
             </section>
 
             <section class="card p-6 sm:p-7" aria-labelledby="h-guide">
-              <h3 id="h-guide" class="font-extrabold tracking-tight text-lg">Hướng dẫn và lưu ý</h3>
+              <h3 id="h-guide" class="font-extrabold tracking-tight text-lg">Instructions and notes</h3>
               <ul id="guide" class="grid gap-3.5 mt-5"></ul>
             </section>
           </div>
@@ -97,19 +97,19 @@
   </main>
 </div>
 
-<!-- Overlay: engine làm bài chưa nối (seam) -->
+<!-- Overlay: the sitting engine is not wired in here (seam) -->
 <div id="soon-modal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="soon-title">
   <div class="modal-panel text-center">
     <span class="w-16 h-16 rounded-full bg-brand-soft text-brand-strong inline-flex items-center justify-center mx-auto">
       <svg viewBox="0 0 24 24" class="w-8 h-8" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z"/></svg>
     </span>
-    <h3 id="soon-title" class="text-xl font-extrabold tracking-tight mt-5">Bài thi sẽ sớm ra mắt</h3>
+    <h3 id="soon-title" class="text-xl font-extrabold tracking-tight mt-5">This test is coming soon</h3>
     <p class="text-muted text-[15px] leading-relaxed mt-2">
-      Đề đang được đội biên soạn hoàn thiện. Khi phát hành, bài sẽ tự mở trong tài khoản của bạn.
+      The writing team is still finishing the paper. When it is released it opens in your account automatically.
     </p>
     <div class="grid gap-2.5 mt-6">
-      <button type="button" id="notify-me" class="btn btn-primary btn-md w-full">Báo tôi khi đề sẵn sàng</button>
-      <button type="button" data-close class="btn btn-ghost btn-md w-full">Đã hiểu</button>
+      <button type="button" id="notify-me" class="btn btn-primary btn-md w-full">Tell me when it is ready</button>
+      <button type="button" data-close class="btn btn-ghost btn-md w-full">Got it</button>
     </div>
   </div>
 </div>
@@ -118,9 +118,9 @@
 <script src="/prep/_chrome.js"></script>
 <script>
   PREP.boot({ auth: true }).then(() => {
-    PrepChrome.mount({ title: 'Chi tiết bài thi' });
+    PrepChrome.mount({ title: 'Test detail' });
 
-    /* Lấy id từ path /prep/bai-thi/:id/ rồi tra trong danh mục thật (GET /api/catalog) */
+    /* Take the id out of /prep/bai-thi/:id/ and look it up in the real catalogue (GET /api/catalog) */
     const m = location.pathname.match(/\/prep\/bai-thi\/([^/]+)\/?/);
 
     PREP.loadCatalog().then(res => {
@@ -136,7 +136,7 @@
         const unlocked = PrepState.isUnlocked(test);
         document.title = test.title + ' · VPET Prep';
 
-        /* Ghi nhận đã xem cấu trúc bài này (dashboard dùng cho checklist "Bước tiếp theo") */
+        /* Record that this test's structure has been seen (the dashboard "Next steps" checklist reads it) */
         const st = PrepState.load();
         st.seenTestIds = st.seenTestIds || [];
         if (!st.seenTestIds.includes(test.id)) {
@@ -147,19 +147,19 @@
         PREP.qs('#head-chips').innerHTML =
           '<span class="exam-chip" data-family="' + fam.id + '">' + fam.name + '</span>' +
           '<span class="badge badge-muted">' + test.level + '</span>' +
-          (test.comingSoon ? '<span class="badge badge-hl">Sắp có</span>' : '') +
-          (unlocked ? '<span class="badge badge-ok">Đã mở khoá</span>' : '');
+          (test.comingSoon ? '<span class="badge badge-hl">Coming soon</span>' : '') +
+          (unlocked ? '<span class="badge badge-ok">Unlocked</span>' : '');
         PREP.qs('#t-title').textContent = test.title;
 
-        /* 0 câu = admin chưa nhập đề cho phần đó; nói thẳng thay vì hiện "0 câu" */
+        /* 0 items = nothing entered for that part yet; say so instead of showing "0 items" */
         const totalQ = PREP.itemCount(test);
         PREP.qs('#t-meta').innerHTML =
-          '<span class="inline-flex items-center gap-1.5">' + PREP.icon('layers', 'w-[18px] h-[18px]') + test.sections.length + ' phần</span>' +
-          '<span class="inline-flex items-center gap-1.5">' + PREP.icon('clock', 'w-[18px] h-[18px]') + test.durationMin + ' phút</span>' +
+          '<span class="inline-flex items-center gap-1.5">' + PREP.icon('layers', 'w-[18px] h-[18px]') + test.sections.length + ' parts</span>' +
+          '<span class="inline-flex items-center gap-1.5">' + PREP.icon('clock', 'w-[18px] h-[18px]') + test.durationMin + ' min</span>' +
           '<span class="inline-flex items-center gap-1.5">' + PREP.icon('list', 'w-[18px] h-[18px]') +
-            (totalQ ? totalQ + ' câu hỏi' : 'đề đang biên soạn') + '</span>';
+            (totalQ ? totalQ + ' questions' : 'paper being written') + '</span>';
 
-        /* Các phần thi */
+        /* The parts */
         const skillIcon = name => {
           const n = name.toLowerCase();
           if (n.includes('listen')) return 'headphones';
@@ -174,13 +174,13 @@
               '<b class="block font-bold text-[15px]">' + PREP.esc(s.name) + '</b>' +
               '<span class="block text-[13px] text-muted font-medium mt-0.5">' + PREP.esc(s.type) + '</span>' +
             '</span>' +
-            '<span class="text-right shrink-0 text-[13.5px] font-bold">' + (s.items ? s.items + ' câu' : '—') +
-              '<span class="block text-muted font-semibold">' + s.minutes + ' phút</span>' +
+            '<span class="text-right shrink-0 text-[13.5px] font-bold">' + (s.items ? s.items + ' items' : '—') +
+              '<span class="block text-muted font-semibold">' + s.minutes + ' min</span>' +
             '</span>' +
           '</div>').join('');
         PREP.qs('#t-total').textContent = totalQ
-          ? 'Tổng: ' + totalQ + ' câu, ' + test.durationMin + ' phút'
-          : 'Tổng: ' + test.durationMin + ' phút · câu hỏi đang được biên soạn';
+          ? 'Total: ' + totalQ + ' items, ' + test.durationMin + ' min'
+          : 'Total: ' + test.durationMin + ' min · items still being written';
         PREP.qs('#t-scoring').innerHTML = PREP.icon('award', 'w-[18px] h-[18px]') + PREP.esc(test.scoring);
 
         PREP.qs('#guide').innerHTML = test.guide.map(g =>
@@ -189,39 +189,39 @@
             '<span>' + PREP.esc(g) + '</span>' +
           '</li>').join('');
 
-        /* Thẻ hành động */
+        /* Action card */
         const ac = PREP.qs('#action-card');
         if (unlocked) {
           ac.innerHTML =
-            '<p class="flex items-center gap-2.5 font-extrabold"><span class="w-9 h-9 rounded-full bg-accent-soft text-accent-strong inline-flex items-center justify-center">' + PREP.icon('unlock', 'w-5 h-5') + '</span>Bạn đã mở khoá bài này</p>' +
-            '<p class="text-muted text-[14px] leading-relaxed mt-3">Trạng thái: <b class="text-ink">chưa bắt đầu</b>. Kết quả và tiến độ sẽ lưu tại đây sau mỗi lần luyện.</p>' +
-            '<button type="button" id="start" class="btn btn-primary btn-lg w-full mt-5">' + PREP.icon('play', 'w-5 h-5') + 'Bắt đầu làm bài</button>' +
-            '<button type="button" class="btn btn-ghost btn-md w-full mt-2.5 opacity-55 cursor-not-allowed" aria-disabled="true">Luyện theo từng phần <span class="badge badge-muted ms-1.5">sắp có</span></button>';
-          /* Seam engine: // TODO(backend/exam-engine) — thay overlay bằng điều hướng vào bài làm */
-          /* Engine làm bài đã có: nút này mở một lượt thi thật thay vì bảng
-             "sắp ra mắt". Đề chưa có câu hỏi thì vẫn giữ bảng cũ, vì mở một
-             lượt thi rỗng chẳng để làm gì. */
+            '<p class="flex items-center gap-2.5 font-extrabold"><span class="w-9 h-9 rounded-full bg-accent-soft text-accent-strong inline-flex items-center justify-center">' + PREP.icon('unlock', 'w-5 h-5') + '</span>You have unlocked this test</p>' +
+            '<p class="text-muted text-[14px] leading-relaxed mt-3">Status: <b class="text-ink">not started</b>. Your marks and progress are kept here after every sitting.</p>' +
+            '<button type="button" id="start" class="btn btn-primary btn-lg w-full mt-5">' + PREP.icon('play', 'w-5 h-5') + 'Start the test</button>' +
+            '<button type="button" class="btn btn-ghost btn-md w-full mt-2.5 opacity-55 cursor-not-allowed" aria-disabled="true">Practise part by part <span class="badge badge-muted ms-1.5">coming soon</span></button>';
+          /* Engine seam: // TODO(backend/exam-engine) — replace the overlay with navigation into the sitting */
+          /* The sitting engine exists now: this button opens a real attempt rather
+             than the "coming soon" panel. A paper with no items keeps the old
+             panel, because opening an empty sitting achieves nothing. */
           PREP.qs('#start').addEventListener('click', () => {
             if (PREP.itemCount(test) > 0) location.href = '/prep/lam-bai/?test=' + encodeURIComponent(test.id);
             else PREP.qs('#soon-modal').classList.add('show');
           });
         } else {
           ac.innerHTML =
-            '<p class="flex items-center gap-2.5 font-extrabold"><span class="w-9 h-9 rounded-full bg-brand-soft text-brand-strong inline-flex items-center justify-center">' + PREP.icon('lock', 'w-5 h-5') + '</span>Bài này đang khoá</p>' +
-            '<p class="text-muted text-[14px] leading-relaxed mt-3">Kích hoạt code của bài này hoặc gói ' + fam.name + ' để bắt đầu luyện.</p>' +
-            '<a href="/prep/nhap-code/?test=' + test.id + '" class="btn btn-accent btn-lg w-full mt-5">Mở khoá bằng code</a>' +
-            '<a href="/prep/mua-code/" class="btn btn-ghost btn-md w-full mt-2.5">Xem gói code</a>' +
-            '<button type="button" class="btn btn-primary btn-lg w-full mt-5 opacity-45" disabled>' + PREP.icon('play', 'w-5 h-5') + 'Bắt đầu làm bài</button>';
+            '<p class="flex items-center gap-2.5 font-extrabold"><span class="w-9 h-9 rounded-full bg-brand-soft text-brand-strong inline-flex items-center justify-center">' + PREP.icon('lock', 'w-5 h-5') + '</span>This test is locked</p>' +
+            '<p class="text-muted text-[14px] leading-relaxed mt-3">Activate a code for this test, or a ' + fam.name + ' plan, to start practising.</p>' +
+            '<a href="/prep/nhap-code/?test=' + test.id + '" class="btn btn-accent btn-lg w-full mt-5">Unlock with a code</a>' +
+            '<a href="/prep/mua-code/" class="btn btn-ghost btn-md w-full mt-2.5">See the code plans</a>' +
+            '<button type="button" class="btn btn-primary btn-lg w-full mt-5 opacity-45" disabled>' + PREP.icon('play', 'w-5 h-5') + 'Start the test</button>';
         }
 
-        /* Modal sắp ra mắt */
+        /* Coming-soon modal */
         const modal = PREP.qs('#soon-modal');
         PREP.qsa('[data-close]', modal).forEach(b => b.addEventListener('click', () => modal.classList.remove('show')));
         modal.addEventListener('click', e => { if (e.target === modal) modal.classList.remove('show'); });
         document.addEventListener('keydown', e => { if (e.key === 'Escape') modal.classList.remove('show'); });
         PREP.qs('#notify-me').addEventListener('click', () => {
           modal.classList.remove('show');
-          PrepChrome.toast('Sẽ báo bạn qua email khi đề phát hành');
+          PrepChrome.toast('We will email you when the paper is released');
           /* TODO(backend): POST /api/notify-me { testId } */
         });
       }

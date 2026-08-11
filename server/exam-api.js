@@ -15,7 +15,7 @@
  *   · A sitting is charged against the buyer's plan here, once, at the start.
  *
  * What is deliberately NOT here: marking. Scoring lives in its own pass
- * (docs/SCORING.md, tầng 1-3) and runs over the saved answers after submit, so
+ * (docs/SCORING.md, tiers 1-3) and runs over the saved answers after submit, so
  * a marking change never needs the candidate to sit the test again.
  */
 'use strict';
@@ -155,11 +155,11 @@ router.post('/attempts', A.requireUser, A.csrfGuard, (req, res) => {
     "SELECT * FROM attempts WHERE user_id=? AND status='in_progress' ORDER BY id DESC LIMIT 1",
     req.user.id);
   if (running) {
-    /* Một lúc chỉ một bài đang làm: mở bài khác trong khi bài cũ còn dở là cách
-       chắc chắn để mất bài đang làm mà không ai biết. */
+    /* One sitting at a time: opening another while one is unfinished is a reliable
+    way to lose the first without anyone noticing. */
     if (testId && running.test_id !== testId) {
       return res.status(409).json({
-        error: 'Bạn đang có một bài thi chưa nộp. Nộp hoặc kết thúc bài đó trước khi mở bài mới.',
+        error: 'You have a test that has not been handed in. Hand it in or finish it before opening another.',
         attemptId: running.id, testId: running.test_id
       });
     }
@@ -167,33 +167,34 @@ router.post('/attempts', A.requireUser, A.csrfGuard, (req, res) => {
   }
 
   const test = q.get("SELECT * FROM tests WHERE id=? AND status='published'", testId);
-  if (!test) return res.status(404).json({ error: 'Không tìm thấy bài thi đang mở.' });
+  if (!test) return res.status(404).json({ error: 'No such published test.' });
   const fam = q.get('SELECT status FROM families WHERE id=?', test.family_id);
   if (fam && fam.status === 'coming_soon') {
-    return bad(res, 'Kỳ thi này chưa mở.');
+    return bad(res, 'This exam is not open yet.');
   }
 
   const ent = entitlementOf(req.user.id);
   if (!ent) {
-    return res.status(403).json({ error: 'Bạn chưa có gói còn hiệu lực. Nhập code để bắt đầu luyện.', need: 'plan' });
+    return res.status(403).json({ error: 'You have no plan in force. Enter a code to start practising.', need: 'plan' });
   }
   if (ent.attemptsLeft !== null && ent.attemptsLeft <= 0) {
     return res.status(403).json({
-      error: 'Bạn đã dùng hết ' + ent.attemptsLimit + ' lượt thi của gói. Nâng gói để luyện không giới hạn.',
+      error: 'You have used all ' + ent.attemptsLimit + ' sittings your plan allows. Move up a plan to practise without a cap.',
       need: 'attempts'
     });
   }
 
   const sections = q.all('SELECT * FROM sections WHERE test_id=? ORDER BY sort, id', test.id);
-  if (!sections.length) return bad(res, 'Đề này chưa có phần nào.');
+  if (!sections.length) return bad(res, 'This paper has no parts yet.');
   const itemCount = q.val(
     `SELECT COUNT(*) c FROM section_items si JOIN sections s ON s.id=si.section_id WHERE s.test_id=?`, test.id);
-  if (!itemCount) return bad(res, 'Đề này chưa có câu hỏi nào.');
+  if (!itemCount) return bad(res, 'This paper has no questions yet.');
 
-  /* Tính vào đúng mã đã trả tiền cho lượt này: hạn mức thuộc về lần mua, không
-     thuộc về tài khoản. Ai cầm hai mã có hạn mức thì trừ vào mã còn chỗ, chứ
-     không dồn hết vào mã đầu tiên — tổng vẫn đúng nhưng con số trên từng mã sẽ
-     vô nghĩa, và đó chính là con số hiện ra ở màn "Code của tôi". */
+  /* Charge the code that actually paid for this sitting: the cap belongs to the
+  purchase, not to the account. Someone holding two capped codes is charged
+  the one with room left rather than always the first — the total would still
+  be right, but the per-code number would be meaningless, and that is exactly
+  the number shown on the "My codes" screen. */
   const liveCodes = q.all(
     `SELECT * FROM codes
       WHERE user_id=? AND status='redeemed' AND plan_id IS NOT NULL
@@ -203,8 +204,8 @@ router.post('/attempts', A.requireUser, A.csrfGuard, (req, res) => {
     .filter(x => x.plan);
   const capped = liveCodes.filter(x => x.plan.attempts !== PLANS.UNLIMITED);
   const chargeable = capped.find(x => (x.row.attempts_used || 0) < x.plan.attempts) || null;
-  /* Mã ghi lên lượt thi là mã đã trả tiền cho nó — với gói không giới hạn thì
-     không có gì để trừ, nhưng vẫn cần biết lượt này thuộc lần mua nào. */
+  /* The code stamped on a sitting is the one that paid for it — an uncapped plan
+  has nothing to decrement, but which purchase it belongs to still matters. */
   const chargeCode = (chargeable && chargeable.row) || (liveCodes[0] && liveCodes[0].row) || null;
 
   const at = nowISO();
@@ -219,8 +220,8 @@ router.post('/attempts', A.requireUser, A.csrfGuard, (req, res) => {
       q.run('INSERT INTO attempt_parts (attempt_id,section_id,part) VALUES (?,?,?)',
         attemptId, s.id, s.part || null);
     }
-    /* Chỉ trừ lượt khi gói có giới hạn. Gói không giới hạn vẫn ghi nhận số lượt
-       đã dùng để báo cáo, nhưng không có gì để hết. */
+    /* Only decrement when the plan is capped. An uncapped plan still records how
+       many sittings were used, for reporting, but has nothing to run out of. */
     if (ent.attemptsLimit !== null && chargeable) {
       q.run('UPDATE codes SET attempts_used = attempts_used + 1 WHERE id=?', chargeable.row.id);
     }
@@ -230,7 +231,7 @@ router.post('/attempts', A.requireUser, A.csrfGuard, (req, res) => {
   res.status(201).json({ resumed: false, attempt: attemptState(att) });
 });
 
-/** Bài đang làm dở, nếu có — dùng để mở lại sau khi đóng trình duyệt. */
+/** The unfinished sitting, if there is one — used to resume after closing the browser. */
 router.get('/attempts/current', A.requireUser, (req, res) => {
   const att = q.get(
     "SELECT * FROM attempts WHERE user_id=? AND status='in_progress' ORDER BY id DESC LIMIT 1",
@@ -241,7 +242,7 @@ router.get('/attempts/current', A.requireUser, (req, res) => {
 
 router.get('/attempts/:id', A.requireUser, (req, res) => {
   const att = ownAttempt(req);
-  if (!att) return res.status(404).json({ error: 'Không tìm thấy lượt thi.' });
+  if (!att) return res.status(404).json({ error: 'No such sitting.' });
   res.set('Cache-Control', 'no-store').json({ attempt: attemptState(att) });
 });
 
@@ -257,16 +258,16 @@ router.get('/attempts/:id', A.requireUser, (req, res) => {
  */
 router.post('/attempts/:id/parts/:sectionId/start', A.requireUser, A.csrfGuard, (req, res) => {
   const att = ownAttempt(req);
-  if (!att) return res.status(404).json({ error: 'Không tìm thấy lượt thi.' });
-  if (att.status !== 'in_progress') return bad(res, 'Lượt thi này đã nộp.');
+  if (!att) return res.status(404).json({ error: 'No such sitting.' });
+  if (att.status !== 'in_progress') return bad(res, 'This sitting has been handed in.');
 
   const sectionId = int(req.params.sectionId, 0);
   const row = q.get('SELECT * FROM attempt_parts WHERE attempt_id=? AND section_id=?', att.id, sectionId);
-  if (!row) return res.status(404).json({ error: 'Không tìm thấy phần thi trong lượt này.' });
-  if (row.closed_at) return bad(res, 'Phần này đã kết thúc.');
+  if (!row) return res.status(404).json({ error: 'No such part in this sitting.' });
+  if (row.closed_at) return bad(res, 'This part has finished.');
   if (row.started_at) {
-    /* Vào lại phần đang mở là chuyện bình thường (tải lại trang, mất mạng);
-       nhưng không được cấp đồng hồ mới. */
+    /* Re-entering an open part is perfectly normal (a page reload, a dropped
+       connection); it must never grant a fresh clock. */
     return res.json({ sectionId, startedAt: row.started_at, endsAt: row.ends_at, secondsLeft: secondsLeft(row) });
   }
 
@@ -278,14 +279,14 @@ router.post('/attempts/:id/parts/:sectionId/start', A.requireUser, A.csrfGuard, 
   res.json({ sectionId, startedAt: at.toISOString(), endsAt: ends, secondsLeft: minutes ? minutes * 60 : null });
 });
 
-/** Kết thúc sớm một phần — không quay lại được, đúng như phòng thi thật. */
+/** Finish a part early — no going back, exactly as in the real room. */
 router.post('/attempts/:id/parts/:sectionId/close', A.requireUser, A.csrfGuard, (req, res) => {
   const att = ownAttempt(req);
-  if (!att) return res.status(404).json({ error: 'Không tìm thấy lượt thi.' });
-  if (att.status !== 'in_progress') return bad(res, 'Lượt thi này đã nộp.');
+  if (!att) return res.status(404).json({ error: 'No such sitting.' });
+  if (att.status !== 'in_progress') return bad(res, 'This sitting has been handed in.');
   const sectionId = int(req.params.sectionId, 0);
   const row = q.get('SELECT * FROM attempt_parts WHERE attempt_id=? AND section_id=?', att.id, sectionId);
-  if (!row) return res.status(404).json({ error: 'Không tìm thấy phần thi trong lượt này.' });
+  if (!row) return res.status(404).json({ error: 'No such part in this sitting.' });
   if (row.closed_at) return res.json({ ok: true, closedAt: row.closed_at });
   const at = nowISO();
   q.run('UPDATE attempt_parts SET closed_at=? WHERE id=?', at, row.id);
@@ -297,7 +298,7 @@ router.post('/attempts/:id/parts/:sectionId/close', A.requireUser, A.csrfGuard, 
  * Autosave
  * ------------------------------------------------------------------ */
 
-/** Câu hỏi có thật trong lượt này không, và đang ở phần nào */
+/** Whether a question really belongs to this sitting, and which part it is in */
 function itemOf(attemptId, questionId) {
   return q.get(
     `SELECT si.section_id, ap.* FROM section_items si
@@ -315,11 +316,11 @@ function itemOf(attemptId, questionId) {
  */
 router.patch('/attempts/:id/answers', A.requireUser, A.csrfGuard, (req, res) => {
   const att = ownAttempt(req);
-  if (!att) return res.status(404).json({ error: 'Không tìm thấy lượt thi.' });
-  if (att.status !== 'in_progress') return bad(res, 'Lượt thi này đã nộp, không sửa được nữa.');
+  if (!att) return res.status(404).json({ error: 'No such sitting.' });
+  if (att.status !== 'in_progress') return bad(res, 'This sitting has been handed in and cannot be changed.');
 
   const list = Array.isArray(req.body && req.body.answers) ? req.body.answers.slice(0, 200) : null;
-  if (!list || !list.length) return bad(res, 'Không có đáp án nào để lưu.');
+  if (!list || !list.length) return bad(res, 'There are no answers to save.');
 
   const saved = [];
   const rejected = [];
@@ -357,21 +358,21 @@ router.patch('/attempts/:id/answers', A.requireUser, A.csrfGuard, (req, res) => 
  */
 router.get('/attempts/:id/items/:questionId/audio', A.requireUser, async (req, res) => {
   const att = ownAttempt(req);
-  if (!att) return res.status(404).json({ error: 'Không tìm thấy lượt thi.' });
-  if (att.status !== 'in_progress') return res.status(403).json({ error: 'Lượt thi này đã nộp.' });
+  if (!att) return res.status(404).json({ error: 'No such sitting.' });
+  if (att.status !== 'in_progress') return res.status(403).json({ error: 'This sitting has been handed in.' });
 
   const questionId = int(req.params.questionId, 0);
   const item = itemOf(att.id, questionId);
-  if (!item) return res.status(404).json({ error: 'Câu hỏi không thuộc lượt thi này.' });
-  if (!partOpen(item)) return res.status(403).json({ error: 'Phần này đã hết giờ.' });
+  if (!item) return res.status(404).json({ error: 'That question is not part of this sitting.' });
+  if (!partOpen(item)) return res.status(403).json({ error: 'Time is up for this part.' });
 
   const qs = q.get('SELECT audio_key FROM questions WHERE id=?', questionId);
-  if (!qs || !qs.audio_key) return res.status(404).json({ error: 'Câu này không có tệp âm thanh.' });
+  if (!qs || !qs.audio_key) return res.status(404).json({ error: 'This item has no audio file.' });
 
   const row = q.get('SELECT * FROM attempt_answers WHERE attempt_id=? AND question_id=?', att.id, questionId);
   const used = row ? row.replays_used : 0;
   if (used >= DEFAULT_REPLAYS) {
-    return res.status(429).json({ error: 'Bạn đã nghe đủ số lần cho câu này.', replaysLeft: 0 });
+    return res.status(429).json({ error: 'You have used every replay for this item.', replaysLeft: 0 });
   }
 
   let file;
@@ -379,11 +380,11 @@ router.get('/attempts/:id/items/:questionId/audio', A.requireUser, async (req, r
     file = await storage.get(qs.audio_key);
   } catch (e) {
     console.error('[exam] audio read failed', e);
-    return res.status(502).json({ error: 'Không đọc được tệp âm thanh.' });
+    return res.status(502).json({ error: 'The audio file could not be read.' });
   }
 
-  /* Chỉ trừ lượt nghe khi đã chắc chắn đọc được tệp: hỏng ổ đĩa mà vẫn trừ thì
-     thí sinh mất lượt vì lỗi của hệ thống. */
+  /* Only spend a replay once the file has definitely been read: charging for a
+  disk failure costs the candidate a replay for the system's mistake. */
   const at = nowISO();
   q.run(
     `INSERT INTO attempt_answers (attempt_id,question_id,section_id,replays_used,updated_at)
@@ -393,27 +394,27 @@ router.get('/attempts/:id/items/:questionId/audio', A.requireUser, async (req, r
 
   res.set('Content-Type', 'audio/mpeg')
     .set('Content-Length', String(file.body.length))
-    /* Đề thi là tài liệu có đáp án: không được nằm trong cache dùng chung, và
-       cache riêng cũng không, vì cache lại là một lần nghe không bị đếm. */
+    /* An exam paper carries its own answers: it must not sit in a shared cache, nor
+       a private one, because a cached copy is a replay that was never counted. */
     .set('Cache-Control', 'private, no-store')
     .set('X-Replays-Left', String(Math.max(0, DEFAULT_REPLAYS - used - 1)))
     .send(file.body);
 });
 
-/** Ghi âm câu trả lời (phần H, I, J). Bytes đi thẳng, không qua multipart. */
+/** A recorded answer (parts H, I, J). Raw bytes, no multipart. */
 router.post('/attempts/:id/items/:questionId/recording',
   A.requireUser, A.csrfGuard, answerAudioBody, async (req, res) => {
     const att = ownAttempt(req);
-    if (!att) return res.status(404).json({ error: 'Không tìm thấy lượt thi.' });
-    if (att.status !== 'in_progress') return bad(res, 'Lượt thi này đã nộp.');
+    if (!att) return res.status(404).json({ error: 'No such sitting.' });
+    if (att.status !== 'in_progress') return bad(res, 'This sitting has been handed in.');
 
     const questionId = int(req.params.questionId, 0);
     const item = itemOf(att.id, questionId);
-    if (!item) return res.status(404).json({ error: 'Câu hỏi không thuộc lượt thi này.' });
-    if (!partOpen(item)) return res.status(403).json({ error: 'Phần này đã hết giờ.' });
+    if (!item) return res.status(404).json({ error: 'That question is not part of this sitting.' });
+    if (!partOpen(item)) return res.status(403).json({ error: 'Time is up for this part.' });
 
     const body = req.body;
-    if (!body || !body.length) return bad(res, 'Không nhận được dữ liệu ghi âm.');
+    if (!body || !body.length) return bad(res, 'No recording data was received.');
 
     let stored;
     try {
@@ -421,7 +422,7 @@ router.post('/attempts/:id/items/:questionId/recording',
     } catch (e) {
       if (e && e.code === 'INVALID_AUDIO') return bad(res, e.message);
       console.error('[exam] recording save failed', e);
-      return res.status(502).json({ error: 'Không lưu được bản ghi âm.' });
+      return res.status(502).json({ error: 'The recording could not be saved.' });
     }
 
     const at = nowISO();
@@ -432,7 +433,7 @@ router.post('/attempts/:id/items/:questionId/recording',
        VALUES (?,?,?,?,?)
        ON CONFLICT(attempt_id,question_id) DO UPDATE SET audio_key=excluded.audio_key, updated_at=excluded.updated_at`,
       att.id, questionId, item.section_id, stored.key, at);
-    /* Thu lại thì bản cũ không còn ai trỏ tới — xoá để không tích rác trong kho. */
+    /* On a re-record nothing points at the old file — delete it rather than letting the store fill with orphans. */
     if (prev && prev.audio_key) await storage.remove(prev.audio_key).catch(() => {});
 
     res.status(201).json({ ok: true, bytes: body.length, savedAt: at });
@@ -451,7 +452,7 @@ router.post('/attempts/:id/items/:questionId/recording',
  */
 router.post('/attempts/:id/submit', A.requireUser, A.csrfGuard, (req, res) => {
   const att = ownAttempt(req);
-  if (!att) return res.status(404).json({ error: 'Không tìm thấy lượt thi.' });
+  if (!att) return res.status(404).json({ error: 'No such sitting.' });
   if (att.status === 'submitted') {
     return res.json({ ok: true, alreadySubmitted: true, submittedAt: att.submitted_at });
   }
@@ -461,9 +462,10 @@ router.post('/attempts/:id/submit', A.requireUser, A.csrfGuard, (req, res) => {
     q.run('UPDATE attempt_parts SET closed_at=? WHERE attempt_id=? AND closed_at IS NULL', at, att.id);
     q.run("UPDATE attempts SET status='submitted', submitted_at=?, updated_at=? WHERE id=?", at, at, att.id);
   });
-  /* Chấm ngay phần máy chấm được (trắc nghiệm, điền từ). Viết và Nói để lại
-     trạng thái chờ — chấm chúng thành 0 điểm là một lời nói dối trông giống
-     kết quả. Chấm chạy lại được nên sửa bộ chấm không cần thi lại. */
+  /* Mark what a machine can mark straight away (multiple choice, gap fill).
+  Writing and Speaking are left pending — marking them zero is a lie wearing
+  the costume of a result. Marking re-runs, so fixing the marker never means
+  sitting the test again. */
   marking.markAttempt(att.id);
 
   const answered = q.val(
@@ -477,29 +479,30 @@ router.post('/attempts/:id/submit', A.requireUser, A.csrfGuard, (req, res) => {
 });
 
 /**
- * Kết quả một lượt thi.
+ * The result of one sitting.
  *
- * Mức chi tiết theo gói đã mua, và quyết định đó nằm ở máy chủ: gói Starter mua
- * "report bình thường thang điểm" nên nhận điểm và bậc; từ Plus trở lên mới có
- * bảng bóc tách từng phần và từng câu. Ẩn ở giao diện thì ai xem mã nguồn cũng
- * gỡ được, nên phần dữ liệu ấy không được rời khỏi đây.
+ * How much detail depends on the plan bought, and that decision belongs on the
+ * server: Starter buys "the ordinary mark-and-band report", so it gets the mark and
+ * the band; Plus and above get the part-by-part and item-by-item breakdown. Hiding
+ * it in the interface is undone by anyone who opens the page source, so that data
+ * must not leave here at all.
  */
 router.get('/attempts/:id/result', A.requireUser, (req, res) => {
   const att = ownAttempt(req);
-  if (!att) return res.status(404).json({ error: 'Không tìm thấy lượt thi.' });
+  if (!att) return res.status(404).json({ error: 'No such sitting.' });
   if (att.status !== 'submitted') {
-    return res.status(409).json({ error: 'Lượt thi này chưa nộp nên chưa có kết quả.' });
+    return res.status(409).json({ error: 'This sitting has not been handed in, so there is no result yet.' });
   }
   const ent = entitlementOf(req.user.id);
   const detailed = !!(ent && ent.features && ent.features.detailedReport);
   const out = marking.resultOf(att.id, detailed);
-  if (!out) return res.status(404).json({ error: 'Không tìm thấy lượt thi.' });
-  /* Nói thẳng vì sao báo cáo ngắn, thay vì để người dùng tưởng hệ thống hỏng. */
-  if (!detailed) out.upgradeHint = 'Bảng phân tích từng phần có ở gói Plus trở lên.';
+  if (!out) return res.status(404).json({ error: 'No such sitting.' });
+  /* Say plainly why the report is short, rather than letting it look like a fault. */
+  if (!detailed) out.upgradeHint = 'The part-by-part breakdown comes with Plus and above.';
   res.set('Cache-Control', 'no-store').json(out);
 });
 
-/** Lịch sử các lượt đã làm — màn tiến độ đọc cái này. */
+/** The history of past sittings — the progress screen reads this. */
 router.get('/attempts', A.requireUser, (req, res) => {
   const rows = q.all(
     `SELECT a.*, t.title FROM attempts a LEFT JOIN tests t ON t.id = a.test_id

@@ -84,7 +84,7 @@ check('Kích hoạt code: màn hình đi tới trạng thái thành công',
    trạng thái, nên kiểm chính chữ hiện ra chứ không chỉ kiểm hộp có hiện. */
 const okTitle = (await page.locator('#ok-title').textContent()).trim();
 check('Nói đúng việc vừa xảy ra: mở khoá mới, hoặc mã đã có hiệu lực từ trước',
-  okTitle === 'Mở khoá thành công!' || okTitle === 'Mã này đang có hiệu lực', okTitle);
+  okTitle === 'Unlocked.' || okTitle === 'This code is already active', okTitle);
 check('Không hiện lỗi khi kích hoạt thành công',
   !(await page.locator('#code-err').evaluate(el => el.classList.contains('show'))));
 

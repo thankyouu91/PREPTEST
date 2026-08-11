@@ -414,7 +414,7 @@ try {
        lặng thì người làm bài không biết bài mình có được giữ hay không. */
     await page.locator('[data-answer]').first().check();
     await page.waitForTimeout(1900);
-    ok((await page.locator('#ex-saved').textContent()).trim() === 'Đã lưu',
+    ok((await page.locator('#ex-saved').textContent()).trim() === 'Saved',
       'Tự lưu và báo đã lưu', (await page.locator('#ex-saved').textContent()).trim());
 
     /* Nghe: bấm một lần thì số lượt còn lại phải giảm theo máy chủ */
@@ -458,7 +458,7 @@ try {
     ok(await page.locator('#r-pending').isVisible(), 'Nói rõ Viết và Nói còn chờ chấm');
     ok(!(await page.locator('#r-upgrade').isVisible()), 'Gói Plus không thấy bảng mời nâng gói');
     const body = await page.locator('#r-parts').innerText();
-    ok(/Đúng|Sai|Bỏ trống/.test(body), 'Mỗi câu có dấu đúng / sai / bỏ trống');
+    ok(/Correct|Wrong|Left blank/.test(body), 'Mỗi câu có dấu đúng / sai / bỏ trống');
 
     /* Lượt chưa nộp: không phải lỗi, mà là việc còn dở — phải dẫn về làm tiếp. */
     const running = await page.request.post(BASE + '/api/attempts', {

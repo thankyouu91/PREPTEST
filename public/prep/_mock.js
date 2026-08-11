@@ -1,22 +1,21 @@
 /* ============================================================
-   VPET Prep — DỮ LIỆU + TRẠNG THÁI PHÍA HỌC VIÊN
+   VPET Prep — STUDENT-SIDE DATA + STATE
    ------------------------------------------------------------
-   Danh mục (kỳ thi / bài thi / gói code) nay đọc thật từ
-   `GET /api/catalog`. Các mảng PREP_* bên dưới chỉ còn là
-   DỮ LIỆU DỰ PHÒNG: dùng khi chưa gọi API xong hoặc khi máy chủ
-   không trả lời, để trang không bao giờ trắng.
+   The catalogue (families / tests / code plans) is now read for real from
+   `GET /api/catalog`. The PREP_* arrays below are only FALLBACK DATA:
+   used while the API call is in flight, or when the server does not
+   answer, so a page is never blank.
 
-   Tài khoản học viên cũng đã có backend thật: `PrepAuth` gọi
-   `/api/auth/…`, `PrepState` lấy hồ sơ và quyền mở khoá từ `/api/me`.
+   Student accounts have a real backend too: `PrepAuth` calls
+   `/api/auth/…`, and `PrepState` takes the profile and entitlements from `/api/me`.
 
-   Trang bắt đầu bằng `PREP.boot({ auth: true })` — nạp danh mục và phiên
-   song song, rồi mới render. `PrepState.load()` sau đó đọc đồng bộ.
+   A page starts with `PREP.boot({ auth: true })` — catalogue and session load in
+   parallel, then it renders. `PrepState.load()` reads synchronously after that.
 
-   // TODO(backend): kích hoạt code còn ở client cho tới khi có POST /api/redeem
    ============================================================ */
 
-/* ---------------- Danh mục 6 nhóm kỳ thi (dự phòng) ---------------- */
-// Màu badge của từng kỳ nằm trong CSS (--exam-*), cố định, không đổi theo tenant.
+/* ---------------- The six exam families (fallback) ---------------- */
+// Each family's badge colour lives in CSS (--exam-*), fixed, not per tenant.
 // status: 'ready' = blueprint is live and tests can be published;
 //         'coming_soon' = listed only, nothing to buy or open yet.
 const PREP_FAMILIES = [
@@ -28,25 +27,25 @@ const PREP_FAMILIES = [
   { id: 'pte',   name: 'PTE',   sub: 'Pearson Test of English',                   format: 'Computer based, AI scored, 10-90 scale', status: 'coming_soon' }
 ];
 
-/* ---------------- Bài thi thử (CHƯA có nội dung đề) ----------------
-   comingSoon = true: admin chưa nhập đề — chỉ có "format descriptor"
-   để render màn pre-start. Engine làm bài nối ở giai đoạn sau.        */
+/* ---------------- Mock tests (NO paper content yet) ----------------
+   comingSoon = true: nothing entered yet — only a "format descriptor"
+   for rendering the pre-start screen.                                 */
 const PREP_TESTS = [
   {
-    id: 'vpet-b1-01', familyId: 'vpet', title: 'VPET 4 kỹ năng B1', level: 'B1',
+    id: 'vpet-b1-01', familyId: 'vpet', title: 'VPET four skills B1', level: 'B1',
     durationMin: 112, comingSoon: true,
     skills: ['listening', 'reading', 'writing', 'speaking'],
     sections: [
-      { name: 'Listening', type: 'Trắc nghiệm', items: 20, minutes: 25 },
-      { name: 'Reading',   type: 'Trắc nghiệm', items: 25, minutes: 35 },
-      { name: 'Writing',   type: 'Tự luận',     items: 2,  minutes: 40 },
-      { name: 'Speaking',  type: 'Ghi âm',      items: 3,  minutes: 12 }
+      { name: 'Listening', type: 'Multiple choice', items: 20, minutes: 25 },
+      { name: 'Reading',   type: 'Multiple choice', items: 25, minutes: 35 },
+      { name: 'Writing',   type: 'Essay',           items: 2,  minutes: 40 },
+      { name: 'Speaking',  type: 'Recorded',        items: 3,  minutes: 12 }
     ],
-    scoring: 'Theo thang CEFR A1-C2, quy đổi từng kỹ năng',
+    scoring: 'On the CEFR A1-C2 scale, converted per skill',
     guide: [
-      'Chuẩn bị tai nghe và micro trước khi vào phần Nghe / Nói.',
-      'Mỗi phần có đồng hồ riêng, hết giờ hệ thống tự chuyển phần.',
-      'Bài Viết và Nói được chấm tự động, trả kết quả kèm nhận xét.'
+      'Have headphones and a microphone ready before the Listening / Speaking parts.',
+      'Each part has its own clock; when it runs out the system moves on.',
+      'Writing and Speaking are marked automatically and come back with comments.'
     ]
   },
   {
@@ -54,16 +53,16 @@ const PREP_TESTS = [
     durationMin: 164, comingSoon: true,
     skills: ['listening', 'reading', 'writing', 'speaking'],
     sections: [
-      { name: 'Listening', type: 'Trắc nghiệm + điền từ', items: 40, minutes: 30 },
-      { name: 'Reading',   type: 'Đọc hiểu học thuật',    items: 40, minutes: 60 },
+      { name: 'Listening', type: 'Multiple choice + gap fill', items: 40, minutes: 30 },
+      { name: 'Reading',   type: 'Academic reading',          items: 40, minutes: 60 },
       { name: 'Writing',   type: 'Task 1 + Task 2',       items: 2,  minutes: 60 },
-      { name: 'Speaking',  type: '3 part, ghi âm',        items: 3,  minutes: 14 }
+      { name: 'Speaking',  type: '3 parts, recorded',         items: 3,  minutes: 14 }
     ],
-    scoring: 'Band 0-9, làm tròn 0.5',
+    scoring: 'Band 0-9, rounded to 0.5',
     guide: [
-      'Phần Nghe chỉ phát 1 lần, hãy đọc trước câu hỏi.',
-      'Writing Task 2 chiếm 2/3 điểm phần Viết.',
-      'Speaking mô phỏng phỏng vấn 3 part, trả lời theo đồng hồ.'
+      'The Listening audio plays once only, so read the questions first.',
+      'Writing Task 2 carries two thirds of the Writing mark.',
+      'Speaking mirrors the three-part interview, answered against the clock.'
     ]
   },
   {
@@ -71,16 +70,16 @@ const PREP_TESTS = [
     durationMin: 164, comingSoon: true,
     skills: ['listening', 'reading', 'writing', 'speaking'],
     sections: [
-      { name: 'Listening', type: 'Trắc nghiệm + điền từ', items: 40, minutes: 30 },
-      { name: 'Reading',   type: 'Đọc hiểu học thuật',    items: 40, minutes: 60 },
+      { name: 'Listening', type: 'Multiple choice + gap fill', items: 40, minutes: 30 },
+      { name: 'Reading',   type: 'Academic reading',          items: 40, minutes: 60 },
       { name: 'Writing',   type: 'Task 1 + Task 2',       items: 2,  minutes: 60 },
-      { name: 'Speaking',  type: '3 part, ghi âm',        items: 3,  minutes: 14 }
+      { name: 'Speaking',  type: '3 parts, recorded',         items: 3,  minutes: 14 }
     ],
-    scoring: 'Band 0-9, làm tròn 0.5',
+    scoring: 'Band 0-9, rounded to 0.5',
     guide: [
-      'Đề nâng cao: từ vựng học thuật dày hơn Mock 01.',
-      'Phân bổ 20 phút cho mỗi passage phần Đọc.',
-      'Speaking part 3 hỏi sâu quan điểm, luyện trả lời có cấu trúc.'
+      'A harder paper: denser academic vocabulary than Mock 01.',
+      'Allow 20 minutes per Reading passage.',
+      'Speaking part 3 probes your opinions, so practise structured answers.'
     ]
   },
   {
@@ -88,14 +87,14 @@ const PREP_TESTS = [
     durationMin: 120, comingSoon: true,
     skills: ['listening', 'reading'],
     sections: [
-      { name: 'Listening', type: 'Part 1-4, trắc nghiệm', items: 100, minutes: 45 },
-      { name: 'Reading',   type: 'Part 5-7, trắc nghiệm', items: 100, minutes: 75 }
+      { name: 'Listening', type: 'Parts 1-4, multiple choice', items: 100, minutes: 45 },
+      { name: 'Reading',   type: 'Parts 5-7, multiple choice', items: 100, minutes: 75 }
     ],
-    scoring: 'Thang 10-990 (mỗi phần 5-495)',
+    scoring: 'Scale 10-990 (5-495 per section)',
     guide: [
-      'Không có điểm trừ, đừng bỏ trống câu nào.',
-      'Part 7 chiếm nhiều thời gian nhất, làm Part 5-6 thật nhanh.',
-      'Đồng hồ chung cho cả phần Đọc, tự phân bổ thời gian.'
+      'There is no penalty for a wrong answer, so never leave one blank.',
+      'Part 7 takes the longest, so move quickly through Parts 5-6.',
+      'One clock covers the whole Reading section; pace yourself.'
     ]
   },
   {
@@ -103,14 +102,14 @@ const PREP_TESTS = [
     durationMin: 120, comingSoon: true,
     skills: ['listening', 'reading'],
     sections: [
-      { name: 'Listening', type: 'Part 1-4, trắc nghiệm', items: 100, minutes: 45 },
-      { name: 'Reading',   type: 'Part 5-7, trắc nghiệm', items: 100, minutes: 75 }
+      { name: 'Listening', type: 'Parts 1-4, multiple choice', items: 100, minutes: 45 },
+      { name: 'Reading',   type: 'Parts 5-7, multiple choice', items: 100, minutes: 75 }
     ],
-    scoring: 'Thang 10-990 (mỗi phần 5-495)',
+    scoring: 'Scale 10-990 (5-495 per section)',
     guide: [
-      'Đề mô phỏng độ khó kỳ thi thật từ 2024 trở lại đây.',
-      'Luyện kỹ dạng đoạn đôi / đoạn ba ở Part 7.',
-      'Nghe bằng tai nghe để đúng điều kiện phòng thi.'
+      'Pitched at the difficulty of the real exam from 2024 onwards.',
+      'Practise the double and triple passage sets in Part 7.',
+      'Listen on headphones to match exam-room conditions.'
     ]
   },
   {
@@ -118,59 +117,58 @@ const PREP_TESTS = [
     durationMin: 127, comingSoon: true,
     skills: ['speaking', 'writing', 'reading', 'listening'],
     sections: [
-      { name: 'Speaking & Writing', type: '7 dạng câu, ghi âm + gõ', items: 28, minutes: 62 },
-      { name: 'Reading',            type: '5 dạng câu',              items: 15, minutes: 30 },
-      { name: 'Listening',          type: '8 dạng câu',              items: 17, minutes: 35 }
+      { name: 'Speaking & Writing', type: '7 task types, recorded + typed', items: 28, minutes: 62 },
+      { name: 'Reading',            type: '5 task types',                  items: 15, minutes: 30 },
+      { name: 'Listening',          type: '8 task types',                  items: 17, minutes: 35 }
     ],
-    scoring: 'Thang 10-90, chấm máy toàn phần',
+    scoring: 'Scale 10-90, marked entirely by machine',
     guide: [
-      'Nói to, rõ, đều nhịp: máy chấm ưu tiên fluency.',
-      'Read Aloud và Repeat Sentence chiếm trọng số lớn.',
-      'Không quay lại câu đã nộp, cân nhắc trước khi bấm Next.'
+      'Speak up, clearly and evenly: the marker rewards fluency.',
+      'Read Aloud and Repeat Sentence carry a lot of weight.',
+      'You cannot go back to a submitted item, so think before pressing Next.'
     ]
   }
-  // VEPT và OTE: chưa có bài — thư viện sẽ hiện empty state "đang biên soạn".
+  // VEPT and OTE: no tests yet — the library shows its "being written" empty state.
 ];
 
-/* ---------------- Gói code (màn Mua code) ----------------
-   Giá là GIÁ MINH HOẠ cho demo giao diện.
-   // TODO(backend/payment): nối VNPay/MoMo, tạo đơn + sinh code thật */
+/* ---------------- Code bundles (the buy screen) ----------------
+   These prices are ILLUSTRATIVE, for the interface demo.
+   // TODO(backend/payment): wire up VNPay/MoMo, create orders + real codes */
 const PREP_PACKAGES = [
   {
-    id: 'pk-single', name: '1 bài thi thử', price: 49000, familyId: null,
-    desc: 'Mở khoá 1 bài thi thử bất kỳ đang có trong thư viện.',
-    perks: ['Chọn bài khi kích hoạt code', 'Hạn dùng 6 tháng', 'Làm lại không giới hạn trong hạn']
+    id: 'pk-single', name: 'One mock test', price: 49000, familyId: null,
+    desc: 'Unlocks any one mock test currently in the library.',
+    perks: ['Pick the test when you activate the code', 'Valid for 6 months', 'Unlimited retakes within the term']
   },
   {
-    id: 'pk-vpet', name: 'Gói VPET', price: 129000, familyId: 'vpet',
-    desc: 'Mọi bài VPET hiện có + bài mới khi admin phát hành.',
-    perks: ['Toàn bộ bài VPET', 'Cập nhật đề mới miễn phí', 'Hạn dùng 12 tháng']
+    id: 'pk-vpet', name: 'VPET bundle', price: 129000, familyId: 'vpet',
+    desc: 'Every VPET test there is, plus new ones as they are published.',
+    perks: ['Every VPET test', 'New papers at no extra cost', 'Valid for 12 months']
   },
   {
-    id: 'pk-toeic', name: 'Gói TOEIC', price: 179000, familyId: 'toeic',
-    desc: 'Trọn bộ TOEIC Listening & Reading, kèm đề mới.',
-    perks: ['Toàn bộ bài TOEIC', 'Cập nhật đề mới miễn phí', 'Hạn dùng 12 tháng']
+    id: 'pk-toeic', name: 'TOEIC bundle', price: 179000, familyId: 'toeic',
+    desc: 'The full TOEIC Listening & Reading set, new papers included.',
+    perks: ['Every TOEIC test', 'New papers at no extra cost', 'Valid for 12 months']
   },
   {
-    id: 'pk-ielts', name: 'Gói IELTS', price: 199000, familyId: 'ielts',
-    desc: 'Trọn bộ IELTS Academic, kèm đề mới khi phát hành.',
-    perks: ['Toàn bộ bài IELTS', 'Cập nhật đề mới miễn phí', 'Hạn dùng 12 tháng']
+    id: 'pk-ielts', name: 'IELTS bundle', price: 199000, familyId: 'ielts',
+    desc: 'The full IELTS Academic set, new papers included as they land.',
+    perks: ['Every IELTS test', 'New papers at no extra cost', 'Valid for 12 months']
   },
   {
-    id: 'pk-combo', name: 'Combo 2 kỳ thi', price: 329000, familyId: null, featured: true,
-    desc: 'Chọn 2 kỳ thi bất kỳ, mở khoá toàn bộ bài của cả hai.',
-    perks: ['2 kỳ thi tuỳ chọn', 'Tiết kiệm 49.000đ so với mua lẻ gói', 'Hạn dùng 12 tháng']
+    id: 'pk-combo', name: 'Two-exam combo', price: 329000, familyId: null, featured: true,
+    desc: 'Pick any two exams and unlock every test in both.',
+    perks: ['Any two exams', 'Saves 49.000đ against two separate bundles', 'Valid for 12 months']
   }
 ];
 
-/* ---------------- Code demo để thử luồng redeem ----------------
-   // TODO(backend): kiểm tra code phía server (chống dò mã / abuse)  */
+/* ---------------- Demo codes for trying the redeem flow ---------------- */
 const PREP_DEMO_CODES = {
   'VPET-B1MK-24TR': { unlocks: { testId: 'vpet-b1-01' },  expiresAt: '2026-12-31', status: 'valid' },
   'IELT-AC12-96HD': { unlocks: { familyId: 'ielts' },     expiresAt: '2026-10-15', status: 'valid' },
   'TOEC-LR20-26CB': { unlocks: { familyId: 'toeic' },     expiresAt: '2027-02-28', status: 'valid' },
-  'PREP-HHAN-2025': { unlocks: { familyId: 'pte' },       expiresAt: '2025-12-31', status: 'valid' },   // đã quá hạn → lỗi "hết hạn"
-  'PREP-DUNG-ROI1': { unlocks: { testId: 'ielts-ac-01' }, expiresAt: '2026-12-31', status: 'used' }     // → lỗi "đã dùng"
+  'PREP-HHAN-2025': { unlocks: { familyId: 'pte' },       expiresAt: '2025-12-31', status: 'valid' },   // past its date → the "expired" error
+  'PREP-DUNG-ROI1': { unlocks: { testId: 'ielts-ac-01' }, expiresAt: '2026-12-31', status: 'used' }     // → the "already used" error
 };
 
 /* ---------------- Tenant (white-label demo) ---------------- */
@@ -181,7 +179,7 @@ const PREP_TENANTS = [
 ];
 
 /* ============================================================
-   PREP — tiện ích chung
+   PREP — shared helpers
    ============================================================ */
 const PREP = {
   families: PREP_FAMILIES,
@@ -189,37 +187,37 @@ const PREP = {
   packages: PREP_PACKAGES,
   tenants: PREP_TENANTS,
 
-  /* 'fallback' khi còn dùng mảng tĩnh, 'api' khi đã đọc được /api/catalog */
+  /* 'fallback' while the static arrays are in use, 'api' once /api/catalog has been read */
   catalogSource: 'fallback',
   _catalogPromise: null,
 
-  /* Đọc danh mục thật từ server. Gọi nhiều lần cũng chỉ fetch một lần.
-     Luôn resolve { ok, error } — lỗi mạng không làm vỡ trang, chỉ giữ dữ liệu dự phòng. */
+  /* Read the real catalogue from the server. Calling it repeatedly still fetches once.
+     Always resolves { ok, error } — a network failure keeps the fallback data rather than breaking the page. */
   loadCatalog() {
     if (this._catalogPromise) return this._catalogPromise;
     this._catalogPromise = fetch('/api/catalog', {
       credentials: 'same-origin', headers: { Accept: 'application/json' }
     })
       .then(r => {
-        if (!r.ok) throw new Error('Máy chủ trả về ' + r.status);
+        if (!r.ok) throw new Error('The server returned ' + r.status);
         return r.json();
       })
       .then(d => {
         if (!d || !Array.isArray(d.families) || !Array.isArray(d.tests)) {
-          throw new Error('Dữ liệu danh mục không đúng định dạng');
+          throw new Error('The catalogue data is not in the expected shape');
         }
         if (d.families.length) this.families = d.families;
-        this.tests = d.tests;                                   // rỗng là hợp lệ: chưa phát hành đề nào
+        this.tests = d.tests;                                   // empty is valid: nothing published yet
         if (Array.isArray(d.packages) && d.packages.length) this.packages = d.packages;
         this.catalogSource = 'api';
         return { ok: true };
       })
-      .catch(err => ({ ok: false, error: err && err.message ? err.message : 'Không tải được danh mục' }));
+      .catch(err => ({ ok: false, error: err && err.message ? err.message : 'Could not load the catalogue' }));
     return this._catalogPromise;
   },
 
-  /* Dải cảnh báo khi không đọc được danh mục (trang vẫn render dữ liệu dự phòng).
-     Gọi ngay sau loadCatalog(); không làm gì nếu tải thành công. */
+  /* A warning strip for when the catalogue could not be read (the page still renders
+     the fallback). Call straight after loadCatalog(); a no-op when the load succeeded. */
   catalogWarning(res) {
     if (!res || res.ok || document.getElementById('catalog-warning')) return;
     const host = document.getElementById('main') || document.body;
@@ -229,8 +227,8 @@ const PREP = {
     box.innerHTML =
       '<div class="banner banner-warn show" role="alert">' +
         this.icon('alert', 'w-5 h-5 shrink-0 mt-0.5') +
-        '<span>Chưa đọc được danh mục mới nhất từ máy chủ, đang hiển thị bản lưu sẵn. ' +
-          '<button type="button" class="underline font-bold" data-catalog-retry>Tải lại trang</button>' +
+        '<span>The latest catalogue could not be read from the server, so a saved copy is being shown. ' +
+          '<button type="button" class="underline font-bold" data-catalog-retry>Reload the page</button>' +
         '</span>' +
       '</div>';
     host.prepend(box);
@@ -241,15 +239,15 @@ const PREP = {
   test(id) { return this.tests.find(t => t.id === id); },
   testsOf(familyId) { return this.tests.filter(t => t.familyId === familyId); },
 
-  /* Tổng số câu của một bài; 0 nghĩa là admin chưa nhập câu hỏi */
+  /* Total items in a test; 0 means no questions have been entered */
   itemCount(t) { return (t.sections || []).reduce((s, x) => s + (x.items || 0), 0); },
 
   _bootPromise: null,
 
-  /* Khởi động một trang: nạp danh mục + phiên học viên song song.
-     Truyền { auth: true } cho trang bắt buộc đăng nhập — nếu không có phiên thì
-     chuyển sang màn đăng nhập và KHÔNG resolve, để trang không render dở dang.
-     (Guard chính nằm ở server; đây là lớp đỡ thứ hai cho HTML đã nằm trong cache.) */
+  /* Boot a page: load the catalogue and the student session in parallel.
+     Pass { auth: true } on a page that requires signing in — with no session it
+     redirects to sign-in and does NOT resolve, so the page never half-renders.
+     (The real guard is on the server; this is the second layer, for cached HTML.) */
   boot(opts) {
     opts = opts || {};
     if (!this._bootPromise) {
@@ -268,28 +266,28 @@ const PREP = {
 
   vnd(n) { return n.toLocaleString('vi-VN') + 'đ'; },
 
-  /** Nhãn kỹ năng. Cùng bốn giá trị máy chủ dùng, để một chỗ đổi là đổi hết. */
-  SKILL_VI: { listening: 'Nghe', reading: 'Đọc', writing: 'Viết', speaking: 'Nói' },
+  /** Skill labels. The same four values the server uses, in one place so one edit changes them everywhere. */
+  SKILL_LABEL: { listening: 'Listening', reading: 'Reading', writing: 'Writing', speaking: 'Speaking' },
 
-  /** Điểm thang 10 bước 0,5 — dấu phẩy thập phân theo cách viết tiếng Việt. */
-  diem(n) {
+  /** A mark out of 10 in steps of 0.5. */
+  score(n) {
     if (n == null) return '–';
-    return (Math.round(n * 2) / 2).toFixed(1).replace('.', ',');
+    return (Math.round(n * 2) / 2).toFixed(1);
   },
 
-  /* Số ngày còn lại tới mốc ISO (âm = đã qua) */
+  /* Days remaining until an ISO date (negative = already past) */
   daysUntil(iso) {
     const d = new Date(iso);
     if (isNaN(d)) return null;
     return Math.ceil((d - new Date()) / 86400000);
   },
-  /* "hôm nay" / "3 ngày trước" / "12/08/2026" */
+  /* "today" / "3 days ago" / "12/08/2026" */
   timeAgo(iso) {
     const diff = -this.daysUntil(iso);
     if (diff === null) return '';
-    if (diff <= 0) return 'hôm nay';
-    if (diff === 1) return 'hôm qua';
-    if (diff < 30) return diff + ' ngày trước';
+    if (diff <= 0) return 'today';
+    if (diff === 1) return 'yesterday';
+    if (diff < 30) return diff + ' days ago';
     return this.fmtDate(iso);
   },
   fmtDate(iso) {
@@ -308,17 +306,17 @@ const PREP = {
   qsa(sel, root) { return Array.from((root || document).querySelectorAll(sel)); },
   validEmail(s) { return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(s.trim()); },
 
-  /* Chấm độ mạnh mật khẩu 0-4 (client-side, chỉ để gợi ý UI) */
+  /* Password strength 0-4 (client-side, only a hint for the interface) */
   passStrength(p) {
     let n = 0;
     if (p.length >= 8) n++;
     if (p.length >= 12) n++;
     if (/[A-Z]/.test(p) && /[a-z]/.test(p)) n++;
     if (/\d/.test(p) || /[^A-Za-z0-9]/.test(p)) n++;
-    return n; // 0-1 yếu · 2 trung bình · 3 khá · 4 mạnh
+    return n; // 0-1 weak · 2 fair · 3 good · 4 strong
   },
 
-  /* Icon inline SVG (Lucide, stroke 1.9, currentColor) — một bộ duy nhất */
+  /* Inline SVG icons (Lucide, stroke 1.9, currentColor) — one set only */
   icon(name, cls) {
     const paths = {
       home: '<path d="M3 9.5 12 3l9 6.5V20a1.5 1.5 0 0 1-1.5 1.5H15V14a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v7.5H4.5A1.5 1.5 0 0 1 3 20Z"/>',
@@ -369,7 +367,7 @@ const PREP = {
     return '<svg class="' + (cls || 'w-5 h-5') + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + (paths[name] || '') + '</svg>';
   },
 
-  /* Confetti nhẹ khi redeem thành công (tôn trọng prefers-reduced-motion) */
+  /* A little confetti on a successful redeem (respects prefers-reduced-motion) */
   confetti() {
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     const css = getComputedStyle(document.documentElement);
@@ -414,9 +412,9 @@ const PrepTheme = {
 
 
 /* ============================================================
-   PrepApi — gọi API tài khoản học viên (/api/auth/…, /api/me)
-   Tự gắn token CSRF từ cookie prep_csrf cho mọi request thay đổi dữ liệu.
-   Luôn resolve { ok, status, data } — lỗi mạng không ném ra ngoài.
+   PrepApi — calls the student account API (/api/auth/…, /api/me)
+   Attaches the CSRF token from the prep_csrf cookie to every state-changing request.
+   Always resolves { ok, status, data } — a network failure never throws out.
    ============================================================ */
 const PrepApi = {
   csrf() {
@@ -436,31 +434,29 @@ const PrepApi = {
       body: body === undefined ? undefined : JSON.stringify(body)
     })
       .then(r => r.json().catch(() => ({})).then(data => ({ ok: r.ok, status: r.status, data })))
-      .catch(() => ({ ok: false, status: 0, data: { error: 'Không kết nối được máy chủ. Kiểm tra mạng rồi thử lại.' } }));
+      .catch(() => ({ ok: false, status: 0, data: { error: 'Could not reach the server. Check your connection and try again.' } }));
   },
 
   get(p) { return this.req('GET', p); },
   post(p, b) { return this.req('POST', p, b === undefined ? {} : b); },
   patch(p, b) { return this.req('PATCH', p, b); },
 
-  /* Lấy câu lỗi để hiện cho người dùng, có câu dự phòng khi server không nói gì */
+  /* The error message to show, with a fallback for when the server said nothing */
   err(res, fallback) {
-    return (res && res.data && res.data.error) || fallback || 'Có lỗi xảy ra, thử lại giúp mình nhé.';
+    return (res && res.data && res.data.error) || fallback || 'Something went wrong. Please try again.';
   }
 };
 
 /* ============================================================
-   PrepState — trạng thái học viên
+   PrepState — student state
    ------------------------------------------------------------
-   Danh tính, quyền mở khoá, code và đơn hàng lấy từ GET /api/me.
-   Phần CHƯA có API còn nằm ở localStorage theo từng tài khoản:
-     · seenTestIds  — đã xem cấu trúc bài nào (checklist ở trang chủ)
-     · notif        — tuỳ chọn nhận thông báo
-     · lớp phủ code — mã kích hoạt / mua thử phía client
-   // TODO(backend): lớp phủ code biến mất khi có POST /api/redeem
-   // TODO(backend): seenTestIds và notif chuyển sang API user-state
+   Identity, entitlements, codes and orders come from GET /api/me.
+   What has NO API yet still sits in localStorage, per account:
+     · seenTestIds — which test structures have been looked at (the home checklist)
+     · notif       — notification preferences
+   // TODO(backend): move seenTestIds and notif to a user-state API
 
-   fetch() gọi mạng (một lần mỗi trang); load() đọc bản đã gộp, đồng bộ.
+   fetch() goes to the network (once per page); load() reads the merged copy, synchronously.
    ============================================================ */
 const PrepState = {
   KEY: 'prep.local.v1',
@@ -468,7 +464,7 @@ const PrepState = {
   _merged: null,
   _promise: null,
 
-  /* ---------- Lớp phủ cục bộ, tách theo tài khoản ---------- */
+  /* ---------- The local overlay, kept per account ---------- */
   _allLocal() {
     try { return JSON.parse(localStorage.getItem(this.KEY)) || {}; }
     catch (e) { return {}; }
@@ -487,11 +483,11 @@ const PrepState = {
     try { localStorage.setItem(this.KEY, JSON.stringify(all)); } catch (e) {}
   },
 
-  /* ---------- Nạp từ server rồi gộp với lớp phủ ---------- */
+  /* ---------- Load from the server, then merge the overlay on top ---------- */
   fetch() {
     if (this._promise) return this._promise;
     this._promise = PrepApi.get('/api/me').then(res => {
-      // 200 kèm user: null nghĩa là chưa đăng nhập — không phải lỗi
+      // a 200 with user: null means not signed in — not an error
       this._server = res.ok ? res.data : null;
       this._rebuild();
       return this._merged;
@@ -500,8 +496,8 @@ const PrepState = {
   },
 
   _rebuild() {
-    /* Bảng giá về cả khi chưa đăng nhập — màn bán hàng cần nó trước khi có
-       tài khoản, nên giữ riêng chứ không nằm trong bản gộp của học viên. */
+    /* The price list comes back even when signed out — the sales screens need it
+    before there is an account, so it is kept separate from the merged profile. */
     this._plans = (this._server && this._server.plans) || [];
     if (!this._server || !this._server.user) { this._merged = null; return; }
     const s = this._server;
@@ -514,8 +510,8 @@ const PrepState = {
         name: s.user.name, email: s.user.email,
         verified: !!s.user.verified, interests: s.user.interests || []
       },
-      /* Quyền do máy chủ quyết, không gộp với lớp phủ cục bộ: sửa được ở
-         trình duyệt thì phân quyền không còn nghĩa gì. */
+      /* Entitlements are decided by the server and never merged with the local
+      overlay: if the browser can edit them, they mean nothing. */
       entitlement: s.entitlement || null,
       unlockedTestIds: uniq((s.unlockedTestIds || []).concat(L.extraTestIds)),
       unlockedFamilyIds: uniq((s.unlockedFamilyIds || []).concat(L.extraFamilyIds)),
@@ -527,36 +523,36 @@ const PrepState = {
     };
   },
 
-  /** Bản đã gộp; null khi chưa đăng nhập. Gọi sau PREP.boot(). */
+  /** The merged copy; null when signed out. Call after PREP.boot(). */
   load() { return this._merged; },
   user() { return this._merged && this._merged.user; },
 
-  /* ---------- Phân quyền theo gói ----------
-     Ba câu hỏi mà mọi màn đều phải hỏi trước khi vẽ: đang dùng gói nào, có
-     được vào phần này không, còn bao nhiêu lượt thi. Câu trả lời chỉ đến từ
-     máy chủ; ở đây chỉ đọc lại cho gọn. Giao diện làm mờ dựa trên các hàm này,
-     nhưng máy chủ vẫn chặn độc lập — làm mờ chỉ là phép lịch sự, không phải
-     hàng rào. */
+  /* ---------- Entitlements by plan ----------
+     The three questions every screen asks before it draws: which plan is in
+     force, is this area allowed, how many sittings are left. The answers come
+     from the server only; these are just tidy readers. The interface dims things
+     using them, but the server refuses independently — dimming is a courtesy,
+     not a fence. */
 
-  /** Quyền đang có, hoặc null khi chưa có gói nào còn hiệu lực. */
+  /** The entitlement in force, or null when no plan is live. */
   entitlement() { return (this._merged && this._merged.entitlement) || null; },
 
-  /** Bảng giá do máy chủ công bố (có cả khi chưa đăng nhập). */
+  /** The price list as published by the server (available signed out too). */
   plans() { return this._plans || []; },
 
-  /** Có được vào một phần tính phí không: can('selfStudy'), can('detailedReport'). */
+  /** Whether a paid area is allowed: can('selfStudy'), can('detailedReport'). */
   can(feature) {
     const e = this.entitlement();
     return !!(e && e.features && e.features[feature]);
   },
 
-  /** Còn bao nhiêu lượt thi; null nghĩa là không giới hạn. */
+  /** Sittings remaining; null means uncapped. */
   attemptsLeft() {
     const e = this.entitlement();
     return e ? e.attemptsLeft : 0;
   },
 
-  /** Ghi các phần còn ở cục bộ. Phần thuộc server phải đi qua API riêng. */
+  /** Write the parts still held locally. Server-owned parts go through their own API. */
   save(s) {
     if (!s || !s.account) return;
     this._saveLocal(s.account, {
@@ -567,10 +563,10 @@ const PrepState = {
     this._merged = s;
   },
 
-  /** Quên dữ liệu trong bộ nhớ (dùng khi đăng xuất) */
+  /** Forget what is held in memory (used on sign-out) */
   reset() { this._server = null; this._merged = null; this._promise = null; },
 
-  /* --- Mở khoá --- */
+  /* --- Unlocking --- */
   isUnlocked(test) {
     const s = this._merged;
     if (!s) return false;
@@ -581,120 +577,121 @@ const PrepState = {
     return PREP.tests.filter(t => this.isUnlocked(t));
   },
 
-  /* --- Kích hoạt code ---
-     Gọi thẳng máy chủ. Trước đây việc này làm ở trình duyệt, nhưng luật "một
-     mã chỉ dùng cho một tài khoản" không thể ép ở đây được: dữ liệu nằm trong
-     localStorage thì sửa được, và hai máy khác nhau không nhìn thấy nhau. */
+  /* --- Activating a code ---
+  Straight to the server. This used to happen in the browser, but the rule
+  "one code, one account" cannot be enforced here: localStorage is editable,
+  and two machines cannot see each other. */
   async redeem(codeRaw) {
     const code = String(codeRaw || '').trim().toUpperCase();
-    if (!code) return { ok: false, error: 'Nhập mã kích hoạt của bạn.' };
+    if (!code) return { ok: false, error: 'Enter your activation code.' };
     try {
-      /* Đi qua PrepApi thay vì tự gọi fetch: token CSRF và việc nuốt lỗi mạng
-         đã có sẵn ở đó. Bản trước tự gọi fetch và lấy token bằng PREP.csrf() —
-         hàm ấy nằm ở PrepApi chứ không phải PREP, nên MỌI lần kích hoạt đều
-         ném TypeError và rơi vào nhánh "mất kết nối" bên dưới, kể cả khi mạng
-         hoàn toàn bình thường. */
+      /* Go through PrepApi rather than calling fetch directly: the CSRF token and
+         the swallowing of network errors already live there. An earlier version
+         called fetch itself and took the token with PREP.csrf() — that function
+         is on PrepApi, not PREP, so EVERY activation threw a TypeError and fell
+         into the "connection lost" branch below, even on a perfect connection. */
       const res = await PrepApi.post('/api/redeem', { code });
       const data = res.data || {};
-      if (!res.ok) return { ok: false, error: data.error || 'Không kích hoạt được mã. Thử lại sau nhé.' };
-      /* Quyền vừa đổi nên phải nạp lại hồ sơ: fetch() nhớ kết quả cũ trong
-         _promise, xoá đi thì lần gọi sau mới thực sự hỏi lại máy chủ. */
+      if (!res.ok) return { ok: false, error: data.error || 'That code could not be activated. Please try again.' };
+      /* Entitlements just changed, so the profile must be reloaded: fetch() keeps
+      the old result in _promise, and clearing it is what makes the next
+      call actually ask the server again. */
       this._promise = null;
       await this.fetch();
       return { ok: true, already: !!data.already, plan: data.plan, entitlement: data.entitlement };
     } catch (e) {
-      return { ok: false, error: 'Mất kết nối tới máy chủ. Kiểm tra mạng rồi thử lại.' };
+      return { ok: false, error: 'Lost contact with the server. Check your connection and try again.' };
     }
   },
 
-  /* Mô tả một mã thành chữ. Mã bây giờ mang một GÓI theo thời hạn, nên tên gói
-     là câu trả lời đúng; phần unlocks chỉ dùng cho mã cũ cấp trước khi đổi mô
-     hình, và cho dữ liệu chưa gắn gói. */
+  /* Describe a code in words. A code now carries a time-limited PLAN, so the plan
+  name is the right answer; `unlocks` is only for codes issued before the model
+  changed, and for data with no plan attached. */
   codeLabel(c) {
-    if (c && c.plan) return 'Gói ' + c.plan.name + ' · ' + c.plan.months + ' tháng';
+    if (c && c.plan) return c.plan.name + ' plan · ' + c.plan.months + ' months';
     return this.unlockLabel((c && c.unlocks) || {});
   },
 
-  /* Mô tả một quyền mở khoá thành chữ (mô hình cũ theo bài / theo kỳ thi) */
+  /* Describe an unlock in words (the older per-test / per-family model) */
   unlockLabel(unlocks) {
-    if (!unlocks) return 'Gói bài thi';
+    if (!unlocks) return 'Test bundle';
     if (unlocks.testId) {
       const t = PREP.test(unlocks.testId);
       return t ? t.title : unlocks.testId;
     }
     if (unlocks.familyId) {
       const f = PREP.family(unlocks.familyId);
-      return 'Trọn bộ ' + (f ? f.name : unlocks.familyId);
+      return 'All of ' + (f ? f.name : unlocks.familyId);
     }
     if (unlocks.bundle) {
       return 'Combo ' + unlocks.bundle.map(id => (PREP.family(id) || { name: id }).name).join(' + ');
     }
-    return 'Gói bài thi';
+    return 'Test bundle';
   },
 
-  /* demoPurchase() đã bỏ. Nó sinh mã ngay trong trình duyệt và cất vào
-     localStorage; từ khi kích hoạt mã do máy chủ xử lý, những mã đó không tồn
-     tại ở đâu cả nên nhập vào chỉ nhận về "mã không tồn tại". Một nút tạo ra
-     thứ chắc chắn hỏng thì tệ hơn là không có nút.
-     // TODO(backend/payment): đơn thật + cổng VNPay/MoMo, code sinh phía server */
+  /* demoPurchase() is gone. It minted codes in the browser and kept them in
+     localStorage; now that the server handles redemption those codes exist
+     nowhere, so entering one only ever returned "no such code". A button that
+     produces something guaranteed to fail is worse than no button.
+     // TODO(backend/payment): real orders + VNPay/MoMo, codes minted server-side */
 };
 
 /* ============================================================
-   PrepAuth — tài khoản học viên qua API thật (/api/auth/…)
-   Mọi hàm đều bất đồng bộ và trả { ok, error, … }.
-   Mật khẩu chỉ đi một chiều lên server, client không bao giờ giữ.
+   PrepAuth — student accounts over the real API (/api/auth/…)
+   Every function is async and returns { ok, error, … }.
+   Passwords only travel up to the server; the client never keeps one.
    ============================================================ */
 const PrepAuth = {
-  /** POST /api/auth/register — trả { ok, error, verifyLink } */
+  /** POST /api/auth/register — returns { ok, error, verifyLink } */
   register({ name, email, password, interests }) {
     return PrepApi.post('/api/auth/register', { name, email, password, interests })
       .then(res => {
-        if (!res.ok) return { ok: false, error: PrepApi.err(res, 'Không tạo được tài khoản.') };
+        if (!res.ok) return { ok: false, error: PrepApi.err(res, 'The account could not be created.') };
         PrepState.reset();
         return { ok: true, verifyLink: res.data.verifyLink };
       });
   },
 
-  /** POST /api/auth/login — nhận tên đăng nhập hoặc email */
+  /** POST /api/auth/login — accepts a username or an email */
   login(identifier, password) {
     return PrepApi.post('/api/auth/login', { username: identifier, password })
       .then(res => {
-        if (!res.ok) return { ok: false, error: PrepApi.err(res, 'Đăng nhập không thành công.') };
+        if (!res.ok) return { ok: false, error: PrepApi.err(res, 'Sign-in failed.') };
         PrepState.reset();
         return { ok: true };
       });
   },
 
-  /** POST /api/me/password — đổi mật khẩu, các thiết bị khác bị đăng xuất */
+  /** POST /api/me/password — change the password; other devices are signed out */
   changePassword(currentPw, newPw) {
     return PrepApi.post('/api/me/password', { current: currentPw, next: newPw })
-      .then(res => res.ok ? { ok: true } : { ok: false, error: PrepApi.err(res, 'Không đổi được mật khẩu.') });
+      .then(res => res.ok ? { ok: true } : { ok: false, error: PrepApi.err(res, 'The password could not be changed.') });
   },
 
-  /** POST /api/auth/verify — đổi token trong liên kết email lấy trạng thái đã xác thực */
+  /** POST /api/auth/verify — exchange the token from the email link for verified status */
   verify(token) {
     return PrepApi.post('/api/auth/verify', { token })
-      .then(res => res.ok ? { ok: true } : { ok: false, error: PrepApi.err(res, 'Liên kết không hợp lệ.') });
+      .then(res => res.ok ? { ok: true } : { ok: false, error: PrepApi.err(res, 'That link is not valid.') });
   },
 
-  /** POST /api/auth/verify/send — gửi lại liên kết xác thực */
+  /** POST /api/auth/verify/send — send the verification link again */
   resendVerify() {
     return PrepApi.post('/api/auth/verify/send')
       .then(res => res.ok ? { ok: true, verifyLink: res.data.verifyLink }
-                          : { ok: false, error: PrepApi.err(res, 'Chưa gửi lại được.') });
+                          : { ok: false, error: PrepApi.err(res, 'It could not be sent again.') });
   },
 
-  /** POST /api/auth/forgot — luôn trả ok để không lộ email nào có trong hệ thống */
+  /** POST /api/auth/forgot — always returns ok, so it never reveals which emails exist */
   forgot(email) {
     return PrepApi.post('/api/auth/forgot', { email })
       .then(res => res.ok ? { ok: true, resetLink: res.data.resetLink }
-                          : { ok: false, error: PrepApi.err(res, 'Không gửi được yêu cầu.') });
+                          : { ok: false, error: PrepApi.err(res, 'The request could not be sent.') });
   },
 
-  /** POST /api/auth/reset — đặt lại mật khẩu bằng token trong email */
+  /** POST /api/auth/reset — reset the password using the token from the email */
   reset(token, password) {
     return PrepApi.post('/api/auth/reset', { token, password })
-      .then(res => res.ok ? { ok: true } : { ok: false, error: PrepApi.err(res, 'Không đặt lại được mật khẩu.') });
+      .then(res => res.ok ? { ok: true } : { ok: false, error: PrepApi.err(res, 'The password could not be reset.') });
   },
 
   logout() {

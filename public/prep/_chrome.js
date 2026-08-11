@@ -1,31 +1,32 @@
 /* ============================================================
-   VPET Prep — CHROME dùng chung cho các trang trong app
+   VPET Prep — shared chrome for the signed-in pages
    (sidebar desktop · topbar · bottom-nav mobile · dark mode ·
     tenant switcher white-label · toast)
 
-   Trang dùng shell khai báo:
+   A page using the shell declares:
      <div id="app" data-active="home|library|learn|codes|progress|account">
-       <main id="main"> ...nội dung... </main>
+       <main id="main"> ...content... </main>
      </div>
-   rồi gọi PrepChrome.mount({ title: 'Tên trang' }).
+   then calls PrepChrome.mount({ title: 'Page title' }).
    ============================================================ */
 
 const PrepChrome = {
-  /* `feature` đánh dấu mục chỉ mở từ một gói trở lên. Không có quyền thì mục
-     vẫn hiện — để người ta biết nền tảng có gì — nhưng bị làm mờ, gắn ổ khoá
-     và trỏ sang bảng giá thay vì dẫn vào một trang sẽ bị máy chủ đá ra. */
+  /* `feature` marks an entry that only opens from a given plan upwards. Without
+     the entitlement the entry still shows — so people know the platform has it —
+     but dimmed, padlocked and pointed at the price list rather than into a page
+     the server will bounce them out of. */
   NAV: [
-    { key: 'home',     label: 'Trang chủ',   icon: 'home',    href: '/prep/' },
-    { key: 'library',  label: 'Thư viện',    icon: 'library', href: '/prep/thu-vien/' },
-    { key: 'learn',    label: 'Tự học',      icon: 'book',    href: '/prep/hoc/dong-tu-bat-quy-tac/',
+    { key: 'home',     label: 'Home',        icon: 'home',    href: '/prep/' },
+    { key: 'library',  label: 'Library',     icon: 'library', href: '/prep/thu-vien/' },
+    { key: 'learn',    label: 'Self-study',  icon: 'book',    href: '/prep/hoc/dong-tu-bat-quy-tac/',
       feature: 'selfStudy', lockedHref: '/prep/mua-code/?locked=self-study',
-      lockedHint: 'Khu tự học mở từ gói Plus' },
-    { key: 'codes',    label: 'Code của tôi', icon: 'ticket', href: '/prep/code-cua-toi/' },
-    { key: 'progress', label: 'Tiến độ',     icon: 'chart',   href: '/prep/#tien-do' },
-    { key: 'account',  label: 'Hồ sơ',       icon: 'user',    href: '/prep/tai-khoan/' }
+      lockedHint: 'Self-study opens from the Plus plan' },
+    { key: 'codes',    label: 'My codes',    icon: 'ticket', href: '/prep/code-cua-toi/' },
+    { key: 'progress', label: 'Progress',    icon: 'chart',   href: '/prep/#tien-do' },
+    { key: 'account',  label: 'Profile',     icon: 'user',    href: '/prep/tai-khoan/' }
   ],
 
-  /** Mục điều hướng đã tính sẵn trạng thái khoá. */
+  /** Navigation entries with their locked state already resolved. */
   navItems() {
     return this.NAV.map(n => {
       const locked = !!n.feature && !PrepState.can(n.feature);
@@ -49,7 +50,7 @@ const PrepChrome = {
     const main = PREP.qs('#main');
     if (!app || !main) return;
     const active = app.getAttribute('data-active') || 'home';
-    const user = PrepState.user() || { name: 'Học viên', email: '' };
+    const user = PrepState.user() || { name: 'Student', email: '' };
     const initials = user.name.trim().split(/\s+/).map(w => w[0]).slice(-2).join('').toUpperCase() || 'HV';
 
     /* ---------- Sidebar (desktop) ---------- */
@@ -68,19 +69,19 @@ const PrepChrome = {
     ).join('');
 
     const aside =
-      '<aside class="hidden lg:flex flex-col fixed inset-y-0 left-0 w-[268px] z-40 border-r border-line bg-card px-5 py-6" aria-label="Điều hướng chính">' +
+      '<aside class="hidden lg:flex flex-col fixed inset-y-0 left-0 w-[268px] z-40 border-r border-line bg-card px-5 py-6" aria-label="Main navigation">' +
         '<a href="/prep/" class="flex items-center gap-3 px-1.5 mb-8">' +
           this.brandHTML('w-11 h-11') +
           '<span class="leading-tight"><span data-brand-name class="block font-extrabold tracking-tight text-[17px]">' + PREP.esc(this.tenantName()) + '</span>' +
-          '<span class="block text-xs text-muted font-medium">Luyện thi thử chứng chỉ</span></span>' +
+          '<span class="block text-xs text-muted font-medium">Certificate mock tests</span></span>' +
         '</a>' +
         '<nav class="grid gap-1.5" aria-label="Menu">' + nav + '</nav>' +
-        '<a href="/prep/nhap-code/" class="btn btn-soft btn-md mt-6 justify-start gap-3">' + PREP.icon('plus', 'w-5 h-5') + 'Nhập code mở khoá</a>' +
+        '<a href="/prep/nhap-code/" class="btn btn-soft btn-md mt-6 justify-start gap-3">' + PREP.icon('plus', 'w-5 h-5') + 'Enter an unlock code</a>' +
         '<div class="mt-auto pt-6 grid gap-4">' +
           '<div class="flex items-center gap-2">' +
-            '<button type="button" data-dark-toggle class="btn btn-ghost btn-sm flex-1" aria-label="Bật tắt chế độ tối"><span data-dark-icon></span><span data-dark-label>Chế độ tối</span></button>' +
+            '<button type="button" data-dark-toggle class="btn btn-ghost btn-sm flex-1" aria-label="Toggle dark mode"><span data-dark-icon></span><span data-dark-label>Dark mode</span></button>' +
             '<div class="relative">' +
-              '<button type="button" data-tenant-btn class="btn btn-ghost btn-sm" aria-label="Đổi thương hiệu tenant" aria-haspopup="true" aria-expanded="false">' + PREP.icon('palette', 'w-4 h-4') + '</button>' +
+              '<button type="button" data-tenant-btn class="btn btn-ghost btn-sm" aria-label="Switch tenant branding" aria-haspopup="true" aria-expanded="false">' + PREP.icon('palette', 'w-4 h-4') + '</button>' +
               '<div data-tenant-menu hidden class="absolute bottom-11 right-0 w-52 card p-2 z-50"></div>' +
             '</div>' +
           '</div>' +
@@ -90,7 +91,7 @@ const PrepChrome = {
               '<span class="block text-sm font-bold truncate">' + PREP.esc(user.name) + '</span>' +
               '<span class="block text-xs text-muted truncate">' + PREP.esc(user.email) + '</span>' +
             '</span>' +
-            '<button type="button" data-logout class="p-2 rounded-full text-muted hover:text-danger transition" aria-label="Đăng xuất">' + PREP.icon('logout', 'w-5 h-5') + '</button>' +
+            '<button type="button" data-logout class="p-2 rounded-full text-muted hover:text-danger transition" aria-label="Sign out">' + PREP.icon('logout', 'w-5 h-5') + '</button>' +
           '</div>' +
         '</div>' +
       '</aside>';
@@ -102,16 +103,16 @@ const PrepChrome = {
           '<a href="/prep/" class="lg:hidden flex items-center gap-2.5 mr-1">' + this.brandHTML('w-9 h-9') + '</a>' +
           '<h1 class="text-[17px] sm:text-lg font-extrabold tracking-tight truncate">' + PREP.esc(opts.title || '') + '</h1>' +
           '<div class="ml-auto flex items-center gap-2">' +
-            '<a href="/prep/nhap-code/" class="btn btn-soft btn-sm hidden sm:inline-flex">' + PREP.icon('ticket', 'w-4 h-4') + 'Nhập code</a>' +
-            '<button type="button" data-dark-toggle class="p-2.5 rounded-full text-muted hover:text-ink transition" aria-label="Bật tắt chế độ tối"><span data-dark-icon></span></button>' +
-            '<a href="/prep/tai-khoan/" class="w-9 h-9 rounded-full bg-brand-soft text-brand-strong font-bold text-[13px] inline-flex items-center justify-center" aria-label="Tài khoản">' + PREP.esc(initials) + '</a>' +
+            '<a href="/prep/nhap-code/" class="btn btn-soft btn-sm hidden sm:inline-flex">' + PREP.icon('ticket', 'w-4 h-4') + 'Enter code</a>' +
+            '<button type="button" data-dark-toggle class="p-2.5 rounded-full text-muted hover:text-ink transition" aria-label="Toggle dark mode"><span data-dark-icon></span></button>' +
+            '<a href="/prep/tai-khoan/" class="w-9 h-9 rounded-full bg-brand-soft text-brand-strong font-bold text-[13px] inline-flex items-center justify-center" aria-label="Account">' + PREP.esc(initials) + '</a>' +
           '</div>' +
         '</div>' +
       '</header>';
 
     /* ---------- Bottom nav (mobile) ---------- */
     const bottom =
-      '<nav class="lg:hidden fixed bottom-0 inset-x-0 z-40 border-t border-line bg-card/95 backdrop-blur-md pb-[env(safe-area-inset-bottom)]" aria-label="Điều hướng dưới">' +
+      '<nav class="lg:hidden fixed bottom-0 inset-x-0 z-40 border-t border-line bg-card/95 backdrop-blur-md pb-[env(safe-area-inset-bottom)]" aria-label="Bottom navigation">' +
         '<div class="flex">' +
         items.map(n =>
           '<a href="' + n.url + '" class="bottom-item' + (n.locked ? ' is-locked' : '') + '" ' +
@@ -132,7 +133,7 @@ const PrepChrome = {
     main.insertAdjacentHTML('afterbegin', topbar);
     main.classList.add('lg:pl-[268px]', 'pb-24', 'lg:pb-12', 'min-h-[100dvh]');
 
-    /* ---------- Hành vi ---------- */
+    /* ---------- Behaviour ---------- */
     this.syncDarkUI();
     PREP.qsa('[data-dark-toggle]').forEach(b => b.addEventListener('click', () => {
       PrepTheme.toggleDark();
@@ -145,7 +146,7 @@ const PrepChrome = {
     const tMenu = PREP.qs('[data-tenant-menu]');
     if (tBtn && tMenu) {
       const render = () => {
-        tMenu.innerHTML = '<p class="px-2.5 pt-1 pb-2 text-[11px] font-bold uppercase tracking-wide text-muted">Thương hiệu (demo)</p>' +
+        tMenu.innerHTML = '<p class="px-2.5 pt-1 pb-2 text-[11px] font-bold uppercase tracking-wide text-muted">Branding (demo)</p>' +
           PREP.tenants.map(t =>
             '<button type="button" data-tenant-opt="' + t.id + '" class="w-full flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-semibold hover:bg-brand-soft transition text-left">' +
               '<span class="w-2.5 h-2.5 rounded-full ' + (PrepTheme.tenant() === t.id ? 'bg-accent' : 'bg-line') + '"></span>' + PREP.esc(t.name) +
@@ -174,10 +175,10 @@ const PrepChrome = {
   syncDarkUI() {
     const dark = PrepTheme.isDark();
     PREP.qsa('[data-dark-icon]').forEach(el => { el.innerHTML = PREP.icon(dark ? 'sun' : 'moon', 'w-5 h-5'); });
-    PREP.qsa('[data-dark-label]').forEach(el => { el.textContent = dark ? 'Chế độ sáng' : 'Chế độ tối'; });
+    PREP.qsa('[data-dark-label]').forEach(el => { el.textContent = dark ? 'Light mode' : 'Dark mode'; });
   },
 
-  /* Toast nhỏ dùng chung */
+  /* Small shared toast */
   toast(msg, type) {
     let holder = PREP.qs('#toast-holder');
     if (!holder) {

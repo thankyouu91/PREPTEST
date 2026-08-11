@@ -12,7 +12,7 @@ const LOCAL_OVERLAY = {
     seenTestIds: [], generatedCodes: {},
     extraCodes: [{ code: 'IELT-AC12-96HD', unlocks: { familyId: 'ielts' }, redeemedAt: '2026-08-05T14:00:00Z', expiresAt: '2026-10-15', status: 'active' }],
     extraTestIds: [], extraFamilyIds: ['ielts'],
-    extraOrders: [{ id: 'DH26080101', packageId: 'pk-vpet', name: 'Gói VPET', amount: 129000, at: '2026-08-01T09:28:00Z', status: 'demo', code: 'ABCD-EFGH-JKLM' }],
+    extraOrders: [{ id: 'DH26080101', packageId: 'pk-vpet', name: 'VPET bundle', amount: 129000, at: '2026-08-01T09:28:00Z', status: 'demo', code: 'ABCD-EFGH-JKLM' }],
     notif: { newTests: true, reminder: true, promo: false }
   }
 };

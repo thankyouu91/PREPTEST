@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Code của tôi · VPET Prep</title>
-  <meta name="description" content="Danh sách code đã kích hoạt: quyền mở khoá, ngày kích hoạt, hạn dùng.">
+  <title>My codes · VPET Prep</title>
+  <meta name="description" content="Your activated codes: what they unlock, when they were activated and when they expire.">
   <meta name="theme-color" content="#1c3d8f">
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <link rel="manifest" href="/manifest.webmanifest">
@@ -28,32 +28,32 @@
 
       <section class="mt-8 flex flex-wrap items-end gap-3">
         <div>
-          <h2 class="text-2xl sm:text-[28px] font-extrabold tracking-tight">Code của tôi</h2>
+          <h2 class="text-2xl sm:text-[28px] font-extrabold tracking-tight">My codes</h2>
           <p class="text-muted text-[15px] mt-1.5" id="code-count"></p>
         </div>
         <div class="ms-auto flex gap-2.5">
-          <a href="/prep/nhap-code/" class="btn btn-primary btn-md">Nhập code</a>
+          <a href="/prep/nhap-code/" class="btn btn-primary btn-md">Enter code</a>
           <a href="/prep/mua-code/" class="btn btn-ghost btn-md">Mua code</a>
         </div>
       </section>
 
-      <!-- Loading skeleton dạng bảng -->
+      <!-- Table-shaped loading skeleton -->
       <div id="codes-loading" class="card mt-7 p-5 grid gap-4">
         <div class="skeleton h-6 w-full"></div>
         <div class="skeleton h-6 w-11/12"></div>
         <div class="skeleton h-6 w-full"></div>
       </div>
 
-      <!-- Bảng desktop -->
+      <!-- Desktop table -->
       <div id="codes-table-wrap" hidden class="card mt-7 overflow-hidden hidden md:block">
         <table class="w-full text-[14.5px]">
           <thead>
             <tr class="text-left text-[12.5px] uppercase tracking-wide text-muted border-b border-line">
-              <th class="font-bold px-6 py-4">Mã</th>
-              <th class="font-bold px-4 py-4">Gói</th>
-              <th class="font-bold px-4 py-4">Kích hoạt</th>
-              <th class="font-bold px-4 py-4">Hạn dùng</th>
-              <th class="font-bold px-6 py-4 text-right">Trạng thái</th>
+              <th class="font-bold px-6 py-4">Code</th>
+              <th class="font-bold px-4 py-4">Plan</th>
+              <th class="font-bold px-4 py-4">Activated</th>
+              <th class="font-bold px-4 py-4">Expires</th>
+              <th class="font-bold px-6 py-4 text-right">Status</th>
             </tr>
           </thead>
           <tbody id="codes-tbody"></tbody>
@@ -76,12 +76,12 @@
             <rect x="40" y="74" width="40" height="9" rx="4.5" fill="color-mix(in srgb, var(--color-primary) 22%, transparent)"/>
           </svg>
           <div class="text-center sm:text-left mt-6 sm:mt-0">
-            <h3 class="font-extrabold text-[17px] tracking-tight">Chưa có code nào được kích hoạt</h3>
+            <h3 class="font-extrabold text-[17px] tracking-tight">No codes activated yet</h3>
             <p class="text-muted text-[15px] leading-relaxed mt-1.5 max-w-[46ch]">
-              Nhận code từ trường, trung tâm hoặc mua trực tiếp. Kích hoạt xong, quyền mở khoá sẽ nằm ở đây.
+              Get a code from your school or centre, or buy one directly. Once it is activated, what it unlocks shows up here.
             </p>
             <div class="flex flex-wrap justify-center sm:justify-start gap-2.5 mt-5">
-              <a href="/prep/nhap-code/" class="btn btn-primary btn-md">Nhập code</a>
+              <a href="/prep/nhap-code/" class="btn btn-primary btn-md">Enter code</a>
               <a href="/prep/mua-code/" class="btn btn-ghost btn-md">Mua code</a>
             </div>
           </div>
@@ -95,35 +95,35 @@
 <script src="/prep/_chrome.js"></script>
 <script>
   PREP.boot({ auth: true }).then(() => {
-    PrepChrome.mount({ title: 'Code của tôi' });
+    PrepChrome.mount({ title: 'My codes' });
 
-    /* Code đã kích hoạt: phần trong CSDL đến từ GET /api/me, phần kích hoạt ở
-       client nằm trong lớp phủ cục bộ. // TODO(backend): gộp khi có POST /api/redeem */
+    /* Activated codes: the stored ones come from GET /api/me, anything activated in
+       the browser sits in a local overlay on top. */
     const s = PrepState.load();
     const codes = (s.myCodes || []).slice().sort((a, b) => new Date(b.redeemedAt) - new Date(a.redeemedAt));
 
     const stChip = c => {
-      if (new Date(c.expiresAt) < new Date()) return '<span class="badge badge-muted">Hết hạn</span>';
-      return '<span class="badge badge-ok">Đang hoạt động</span>';
+      if (new Date(c.expiresAt) < new Date()) return '<span class="badge badge-muted">Expired</span>';
+      return '<span class="badge badge-ok">Active</span>';
     };
     const codeCell = (c, i) =>
       '<span class="inline-flex items-center gap-1.5 font-bold tracking-wide">' +
         '<span data-code-text="' + i + '">' + PREP.maskCode(c.code) + '</span>' +
-        '<button type="button" class="p-1 rounded-full text-muted hover:text-ink transition" data-code-eye="' + i + '" aria-label="Hiện mã đầy đủ" aria-pressed="false">' + PREP.icon('eye', 'w-4 h-4') + '</button>' +
-        '<button type="button" class="p-1 rounded-full text-muted hover:text-ink transition" data-code-copy="' + i + '" aria-label="Sao chép mã">' + PREP.icon('copy', 'w-4 h-4') + '</button>' +
+        '<button type="button" class="p-1 rounded-full text-muted hover:text-ink transition" data-code-eye="' + i + '" aria-label="Show the full code" aria-pressed="false">' + PREP.icon('eye', 'w-4 h-4') + '</button>' +
+        '<button type="button" class="p-1 rounded-full text-muted hover:text-ink transition" data-code-copy="' + i + '" aria-label="Copy code">' + PREP.icon('copy', 'w-4 h-4') + '</button>' +
       '</span>';
 
-    /* Tên quyền mở khoá lấy từ danh mục thật, nên đợi GET /api/catalog */
+    /* What a code unlocks is named from the real catalogue, so this waits on GET /api/catalog */
     PREP.loadCatalog().then(res => {
       PREP.catalogWarning(res);
       PREP.qs('#codes-loading').classList.add('hidden');
 
       if (!codes.length) {
         PREP.qs('#codes-empty').removeAttribute('hidden');
-        PREP.qs('#code-count').textContent = 'Chưa có code nào';
+        PREP.qs('#code-count').textContent = 'No codes yet';
         return;
       }
-      PREP.qs('#code-count').textContent = codes.length + ' code đã kích hoạt';
+      PREP.qs('#code-count').textContent = codes.length + ' codes activated';
 
       PREP.qs('#codes-tbody').innerHTML = codes.map((c, i) =>
         '<tr class="border-b border-line last:border-0">' +
@@ -140,13 +140,13 @@
           '<div class="flex items-center justify-between gap-3">' + codeCell(c, i) + stChip(c) + '</div>' +
           '<p class="font-semibold mt-3">' + PREP.esc(PrepState.codeLabel(c)) + '</p>' +
           '<p class="flex gap-4 text-[13px] font-medium text-muted mt-2">' +
-            '<span>Kích hoạt: ' + PREP.fmtDate(c.redeemedAt) + '</span>' +
-            '<span>Hạn: ' + PREP.fmtDate(c.expiresAt) + '</span>' +
+            '<span>Activated: ' + PREP.fmtDate(c.redeemedAt) + '</span>' +
+            '<span>Expires: ' + PREP.fmtDate(c.expiresAt) + '</span>' +
           '</p>' +
         '</article>').join('');
       PREP.qs('#codes-cards').removeAttribute('hidden');
 
-      /* Hiện/ẩn + copy mã */
+      /* Show/hide + copy the code */
       PREP.qsa('[data-code-eye]').forEach(b => b.addEventListener('click', () => {
         const i = b.getAttribute('data-code-eye');
         const on = b.getAttribute('aria-pressed') === 'true';
@@ -154,14 +154,14 @@
         PREP.qsa('[data-code-eye="' + i + '"]').forEach(x => {
           x.setAttribute('aria-pressed', String(!on));
           x.innerHTML = PREP.icon(on ? 'eye' : 'eyeOff', 'w-4 h-4');
-          x.setAttribute('aria-label', on ? 'Hiện mã đầy đủ' : 'Ẩn mã');
+          x.setAttribute('aria-label', on ? 'Show the full code' : 'Hide the code');
         });
       }));
       PREP.qsa('[data-code-copy]').forEach(b => b.addEventListener('click', () => {
         const i = b.getAttribute('data-code-copy');
         navigator.clipboard && navigator.clipboard.writeText(codes[i].code)
-          .then(() => PrepChrome.toast('Đã sao chép mã'))
-          .catch(() => PrepChrome.toast('Không sao chép được', 'error'));
+          .then(() => PrepChrome.toast('Code copied'))
+          .catch(() => PrepChrome.toast('Could not copy', 'error'));
       }));
     });
   });

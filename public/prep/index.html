@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Trang chủ · VPET Prep</title>
-  <meta name="description" content="Bảng điều khiển học viên: bài thi đã mở khoá, tiến độ chuẩn bị, code và hoạt động gần đây.">
+  <title>Home · VPET Prep</title>
+  <meta name="description" content="The student dashboard: unlocked tests, how ready you are, your codes and recent activity.">
   <meta name="theme-color" content="#1c3d8f">
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <link rel="manifest" href="/manifest.webmanifest">
@@ -13,7 +13,7 @@
   <link rel="stylesheet" href="/tailwind-built.css">
   <style>body{font-family:'Plus Jakarta Sans',system-ui,sans-serif}</style>
   <script>
-    /* Boot: dark mode + tenant trước khi paint (tránh nháy màu) */
+    /* Boot: dark mode + tenant before paint (avoids a colour flash) */
     (function(){try{
       var t=localStorage.getItem('prep.theme');
       if(t==='dark'||(!t&&matchMedia('(prefers-color-scheme: dark)').matches))document.documentElement.classList.add('dark');
@@ -27,27 +27,27 @@
   <main id="main">
     <div class="max-w-shell mx-auto px-4 sm:px-6 lg:px-10">
 
-      <!-- ===== Lời chào + hành động nhanh ===== -->
+      <!-- ===== Greeting + quick actions ===== -->
       <section class="mt-8 lg:mt-10 flex flex-wrap items-end gap-4 rise">
         <div class="min-w-0">
-          <p class="text-sm font-semibold text-muted" id="greet-time">Chào bạn,</p>
-          <h2 class="text-2xl sm:text-[28px] font-extrabold tracking-tight mt-0.5" id="greet-name">Học viên</h2>
+          <p class="text-sm font-semibold text-muted" id="greet-time">Hello,</p>
+          <h2 class="text-2xl sm:text-[28px] font-extrabold tracking-tight mt-0.5" id="greet-name">Student</h2>
         </div>
         <div class="ms-auto flex flex-wrap gap-2.5">
-          <a href="/prep/nhap-code/" class="btn btn-ghost btn-md">Nhập code</a>
-          <a href="/prep/thu-vien/" class="btn btn-primary btn-md">Vào thư viện đề</a>
+          <a href="/prep/nhap-code/" class="btn btn-ghost btn-md">Enter code</a>
+          <a href="/prep/thu-vien/" class="btn btn-primary btn-md">Go to the library</a>
         </div>
       </section>
 
-      <!-- Nhắc xác thực email (chỉ hiện khi tài khoản chưa xác thực) -->
+      <!-- Verify-email reminder (only shown while the account is unverified) -->
       <a href="/prep/xac-thuc-email/" id="verify-nudge" hidden
          class="card card-hover flex items-center gap-3.5 px-5 py-4 mt-5 border-[color:var(--color-hl)]">
         <span class="w-10 h-10 rounded-xl shrink-0 inline-flex items-center justify-center bg-hl-soft text-hl-ink">
           <svg viewBox="0 0 24 24" class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="16" x="2" y="4" rx="2.5"/><path d="m22 7-9 5.6a2 2 0 0 1-2 0L2 7"/></svg>
         </span>
         <span class="min-w-0 flex-1">
-          <b class="block text-[15px] font-bold">Xác thực email để bảo vệ tài khoản</b>
-          <span class="block text-[13.5px] text-muted mt-0.5">Mở email và bấm liên kết xác thực, hoặc gửi lại liên kết.</span>
+          <b class="block text-[15px] font-bold">Verify your email to protect your account</b>
+          <span class="block text-[13.5px] text-muted mt-0.5">Open the email and follow the verification link, or have it sent again.</span>
         </span>
         <span class="text-muted shrink-0" aria-hidden="true">
           <svg viewBox="0 0 24 24" class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg>
@@ -56,12 +56,12 @@
 
       <div class="grid lg:grid-cols-12 gap-6 mt-6">
 
-        <!-- =================== CỘT TRÁI =================== -->
+        <!-- =================== LEFT COLUMN =================== -->
         <div class="lg:col-span-8 grid gap-6 content-start">
 
-          <!-- Ưu tiên hôm nay -->
+          <!-- Today's focus -->
           <section aria-labelledby="h-focus">
-            <h3 id="h-focus" class="sr-only">Ưu tiên hôm nay</h3>
+            <h3 id="h-focus" class="sr-only">Today's focus</h3>
 
             <!-- loading -->
             <div id="focus-loading" class="card p-6 sm:p-7" aria-hidden="true">
@@ -75,12 +75,12 @@
             <div id="focus" hidden></div>
           </section>
 
-          <!-- Bài thi của bạn -->
+          <!-- Your tests -->
           <section aria-labelledby="h-mytests">
             <div class="flex items-baseline gap-3 mb-4">
-              <h3 id="h-mytests" class="text-lg font-extrabold tracking-tight">Bài thi của bạn</h3>
+              <h3 id="h-mytests" class="text-lg font-extrabold tracking-tight">Your tests</h3>
               <span id="mytests-count" class="text-sm font-semibold text-muted"></span>
-              <a href="/prep/thu-vien/" class="ms-auto text-[13.5px] font-bold text-brand-strong hover:underline shrink-0">Xem tất cả</a>
+              <a href="/prep/thu-vien/" class="ms-auto text-[13.5px] font-bold text-brand-strong hover:underline shrink-0">See all</a>
             </div>
 
             <div id="mytests-loading" class="grid sm:grid-cols-2 gap-4" aria-hidden="true">
@@ -100,7 +100,7 @@
 
             <div id="mytests-grid" class="grid sm:grid-cols-2 gap-4" hidden></div>
 
-            <!-- Empty: chưa mở khoá bài nào -->
+            <!-- Empty: nothing unlocked yet -->
             <div id="mytests-empty" hidden class="card p-8 sm:p-10 text-center sm:text-left">
               <div class="sm:flex items-center gap-8">
                 <svg viewBox="0 0 160 120" class="w-40 mx-auto sm:mx-0 shrink-0" aria-hidden="true" fill="none">
@@ -115,24 +115,24 @@
                   </g>
                 </svg>
                 <div class="min-w-0 mt-5 sm:mt-0">
-                  <h4 class="font-extrabold text-[17px] tracking-tight">Bạn chưa mở khoá bài thi nào</h4>
+                  <h4 class="font-extrabold text-[17px] tracking-tight">You have not unlocked any tests yet</h4>
                   <p class="text-muted text-[15px] leading-relaxed mt-1.5 max-w-[46ch]">
-                    Nhập code có sẵn để mở khoá ngay, hoặc xem thư viện để chọn bài phù hợp với kỳ thi bạn nhắm tới.
+                    Enter a code you already have to unlock one now, or browse the library and pick a test that matches the exam you are aiming at.
                   </p>
                   <div class="flex flex-wrap justify-center sm:justify-start gap-2.5 mt-5">
-                    <a href="/prep/nhap-code/" class="btn btn-primary btn-md">Nhập code mở khoá</a>
-                    <a href="/prep/thu-vien/" class="btn btn-ghost btn-md">Xem thư viện</a>
+                    <a href="/prep/nhap-code/" class="btn btn-primary btn-md">Enter an unlock code</a>
+                    <a href="/prep/thu-vien/" class="btn btn-ghost btn-md">Browse the library</a>
                   </div>
                 </div>
               </div>
             </div>
           </section>
 
-          <!-- Kết quả luyện tập (engine chưa nối → empty state trung thực) -->
+          <!-- Practice results (engine not wired in here yet → an honest empty state) -->
           <section class="card p-6 sm:p-7" aria-labelledby="h-results">
             <div class="flex items-baseline gap-3">
-              <h3 id="h-results" class="text-lg font-extrabold tracking-tight">Kết quả luyện tập</h3>
-              <span class="badge badge-hl ms-auto">Sắp có</span>
+              <h3 id="h-results" class="text-lg font-extrabold tracking-tight">Practice results</h3>
+              <span class="badge badge-hl ms-auto">Coming soon</span>
             </div>
             <div class="flex flex-col sm:flex-row items-center gap-6 mt-6">
               <svg viewBox="0 0 150 96" class="w-36 shrink-0" aria-hidden="true" fill="none">
@@ -144,38 +144,38 @@
                 <path d="M26 34c14-12 30 6 46-10s34 2 48-8" stroke="var(--color-accent)" stroke-width="3" stroke-linecap="round" stroke-dasharray="5 8" opacity=".65"/>
               </svg>
               <div class="text-center sm:text-left">
-                <h4 class="font-bold text-[16px]">Chưa có lần làm bài nào</h4>
+                <h4 class="font-bold text-[16px]">No sittings yet</h4>
                 <p class="text-muted text-[14.5px] leading-relaxed mt-1.5 max-w-[52ch]">
-                  Điểm từng phần và phân tích 4 kỹ năng sẽ hiện ở đây sau lần nộp bài đầu tiên.
-                  Đề đang được biên soạn, mình sẽ báo bạn khi bài mở.
+                  Part-by-part marks and the four-skill breakdown appear here after your first hand-in.
+                  The papers are still being written; we will tell you when one opens.
                 </p>
               </div>
             </div>
           </section>
 
-          <!-- Code + hoạt động (đặt ở cột trái để hai cột cân nhau) -->
+          <!-- Codes + activity (kept in the left column so the two columns balance) -->
           <div class="grid sm:grid-cols-2 gap-6">
             <section class="card p-6" aria-labelledby="h-codes">
               <div class="flex items-baseline gap-3">
-                <h3 id="h-codes" class="font-extrabold tracking-tight">Code đang hoạt động</h3>
-                <a href="/prep/code-cua-toi/" class="ms-auto text-[13px] font-bold text-brand-strong hover:underline shrink-0">Quản lý</a>
+                <h3 id="h-codes" class="font-extrabold tracking-tight">Active codes</h3>
+                <a href="/prep/code-cua-toi/" class="ms-auto text-[13px] font-bold text-brand-strong hover:underline shrink-0">Manage</a>
               </div>
               <div id="codes-box" class="mt-4"></div>
             </section>
 
             <section class="card p-6" aria-labelledby="h-activity">
-              <h3 id="h-activity" class="font-extrabold tracking-tight">Hoạt động gần đây</h3>
+              <h3 id="h-activity" class="font-extrabold tracking-tight">Recent activity</h3>
               <div id="activity-box" class="mt-4"></div>
             </section>
           </div>
         </div>
 
-        <!-- =================== CỘT PHẢI =================== -->
+        <!-- =================== RIGHT COLUMN =================== -->
         <div class="lg:col-span-4 grid gap-6 content-start">
 
-          <!-- Tiến độ -->
+          <!-- Progress -->
           <section id="tien-do" class="card p-6 scroll-mt-24" aria-labelledby="h-progress">
-            <h3 id="h-progress" class="font-extrabold tracking-tight">Tiến độ của bạn</h3>
+            <h3 id="h-progress" class="font-extrabold tracking-tight">Your progress</h3>
             <div class="flex items-center gap-6 mt-5">
               <div class="relative w-[104px] h-[104px] shrink-0">
                 <svg viewBox="0 0 104 104" class="w-full h-full -rotate-90">
@@ -185,45 +185,45 @@
                 </svg>
                 <span class="absolute inset-0 flex flex-col items-center justify-center">
                   <b id="ring-num" class="text-xl font-extrabold leading-none">0/0</b>
-                  <span class="text-[10.5px] font-semibold text-muted mt-1">bài mở khoá</span>
+                  <span class="text-[10.5px] font-semibold text-muted mt-1">tests unlocked</span>
                 </span>
               </div>
               <p class="text-sm text-muted leading-relaxed" id="progress-note">
-                Mở khoá bài thi để bắt đầu theo dõi tiến độ luyện tập.
+                Unlock a test to start tracking how your practice is going.
               </p>
             </div>
             <div class="border-t border-line mt-5 pt-5">
-              <p class="text-[12.5px] font-bold uppercase tracking-wide text-muted mb-3.5">Kỹ năng đã có bài luyện</p>
+              <p class="text-[12.5px] font-bold uppercase tracking-wide text-muted mb-3.5">Skills with practice available</p>
               <div class="grid gap-3.5" id="skill-meters"></div>
             </div>
           </section>
 
-          <!-- Bước tiếp theo (checklist từ trạng thái thật của tài khoản) -->
+          <!-- Next steps (a checklist built from the account's real state) -->
           <section class="card p-6" aria-labelledby="h-steps">
             <div class="flex items-baseline gap-3">
-              <h3 id="h-steps" class="font-extrabold tracking-tight">Bước tiếp theo</h3>
+              <h3 id="h-steps" class="font-extrabold tracking-tight">Next steps</h3>
               <span id="steps-count" class="ms-auto text-[13px] font-bold text-muted"></span>
             </div>
             <div class="meter mt-3.5"><i id="steps-bar"></i></div>
             <ul class="grid gap-1 mt-4" id="steps-list"></ul>
           </section>
 
-          <!-- CTA mua thêm code -->
+          <!-- Buy-more-codes call to action -->
           <section class="panel-brand rounded-2xl p-6 text-white shadow-soft-lg relative overflow-hidden" aria-labelledby="h-buy">
             <span class="absolute -right-7 -bottom-8 opacity-15 pointer-events-none" aria-hidden="true">
               <svg viewBox="0 0 24 24" class="w-40 h-40" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M2 9.5a2.5 2.5 0 0 1 0 5V17a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2.5a2.5 2.5 0 0 1 0-5V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z"/></svg>
             </span>
-            <h3 id="h-buy" class="font-extrabold tracking-tight text-lg">Cần thêm bài luyện?</h3>
-            <p class="text-sm leading-relaxed mt-1.5 text-white/85 max-w-[34ch]">Ba gói luyện theo thời hạn: 3, 6 hoặc 12 tháng. Kích hoạt code là vào luyện ngay.</p>
-            <a href="/prep/mua-code/" class="btn btn-on-brand btn-md mt-5">Mua thêm code</a>
+            <h3 id="h-buy" class="font-extrabold tracking-tight text-lg">Need more practice?</h3>
+            <p class="text-sm leading-relaxed mt-1.5 text-white/85 max-w-[34ch]">Three time-limited plans: 3, 6 or 12 months. Activate a code and you are practising straight away.</p>
+            <a href="/prep/mua-code/" class="btn btn-on-brand btn-md mt-5">Buy more codes</a>
           </section>
         </div>
       </div>
 
-      <!-- ===== Khám phá theo kỳ thi ===== -->
+      <!-- ===== Explore by exam ===== -->
       <section class="mt-12 mb-4" aria-labelledby="h-explore">
         <div class="flex items-baseline gap-3 mb-4">
-          <h3 id="h-explore" class="text-lg font-extrabold tracking-tight">Khám phá theo kỳ thi</h3>
+          <h3 id="h-explore" class="text-lg font-extrabold tracking-tight">Explore by exam</h3>
           <span id="explore-note" class="text-sm font-semibold text-muted"></span>
         </div>
         <div id="family-grid" class="grid grid-cols-2 md:grid-cols-3 gap-4"></div>
@@ -235,58 +235,59 @@
 <script src="/prep/_mock.js"></script>
 <script src="/prep/_chrome.js"></script>
 <script>
-  /* Guard chính ở server (studentPage); boot() là lớp đỡ thứ hai */
+  /* The real guard is on the server (studentPage); boot() is the second layer */
   PREP.boot({ auth: true }).then(() => {
-    PrepChrome.mount({ title: 'Trang chủ' });
+    PrepChrome.mount({ title: 'Home' });
 
     const s = PrepState.load();
     const user = s.user;
     const codes = (s.myCodes || []).slice();
     const seen = s.seenTestIds || [];
-    let mine = [];                  // bài đã mở khoá — chỉ tính được sau khi có danh mục
+    let mine = [];                  // unlocked tests — not computable until the catalogue is in
 
-    /* ---------- Lời chào ---------- */
+    /* ---------- Greeting ---------- */
     const h = new Date().getHours();
-    PREP.qs('#greet-time').textContent = h < 11 ? 'Chào buổi sáng,' : h < 18 ? 'Chào buổi chiều,' : 'Chào buổi tối,';
+    PREP.qs('#greet-time').textContent = h < 11 ? 'Good morning,' : h < 18 ? 'Good afternoon,' : 'Good evening,';
     PREP.qs('#greet-name').textContent = user.name;
     if (!user.verified) PREP.qs('#verify-nudge').removeAttribute('hidden');
 
-    /* ---------- Thẻ bài thi dùng chung ---------- */
+    /* ---------- Shared test card ---------- */
     function testCard(t) {
       const fam = PREP.family(t.familyId);
       return '<article class="card card-hover p-5 flex flex-col">' +
         '<div class="flex items-center gap-2 mb-3.5">' +
           '<span class="exam-chip" data-family="' + fam.id + '">' + fam.name + '</span>' +
           '<span class="badge badge-muted">' + t.level + '</span>' +
-          (t.comingSoon ? '<span class="badge badge-hl ms-auto">Sắp có</span>' : '') +
+          (t.comingSoon ? '<span class="badge badge-hl ms-auto">Coming soon</span>' : '') +
         '</div>' +
         '<h4 class="font-bold text-[16px] leading-snug">' + PREP.esc(t.title) + '</h4>' +
         '<p class="flex items-center gap-4 text-[13px] font-semibold text-muted mt-2 mb-5">' +
-          '<span class="inline-flex items-center gap-1.5">' + PREP.icon('layers', 'w-4 h-4') + t.sections.length + ' phần</span>' +
-          '<span class="inline-flex items-center gap-1.5">' + PREP.icon('clock', 'w-4 h-4') + t.durationMin + ' phút</span>' +
+          '<span class="inline-flex items-center gap-1.5">' + PREP.icon('layers', 'w-4 h-4') + t.sections.length + ' parts</span>' +
+          '<span class="inline-flex items-center gap-1.5">' + PREP.icon('clock', 'w-4 h-4') + t.durationMin + ' min</span>' +
         '</p>' +
         '<a href="/prep/bai-thi/' + t.id + '/" class="btn btn-soft btn-md mt-auto w-full">' +
-          PREP.icon('play', 'w-4 h-4') + 'Vào chuẩn bị</a>' +
+          PREP.icon('play', 'w-4 h-4') + 'Start preparing</a>' +
       '</article>';
     }
 
-    /* ---------- Ưu tiên hôm nay ----------
-       Ưu tiên bài mở khoá mà bạn CHƯA xem cấu trúc; nếu xem hết thì lấy bài đầu tiên. */
+    /* ---------- Today's focus ----------
+       Prefer an unlocked test whose structure you have NOT looked at yet; once you
+       have seen them all, fall back to the first. */
     function renderFocus() {
       const box = PREP.qs('#focus');
       if (!mine.length) {
-        // Chưa có bài nào → dẫn thẳng tới nhập code
+        // Nothing unlocked → send them straight to the code form
         box.innerHTML =
           '<div class="panel-brand rounded-2xl p-6 sm:p-8 text-white shadow-soft-lg relative overflow-hidden">' +
             '<span class="absolute -right-10 -top-12 opacity-10 pointer-events-none" aria-hidden="true">' +
               '<svg viewBox="0 0 24 24" class="w-56 h-56" fill="none" stroke="currentColor" stroke-width="1"><rect width="18" height="11" x="3" y="11" rx="2.5"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>' +
             '</span>' +
-            '<p class="text-[12.5px] font-bold uppercase tracking-wide text-white/70">Bắt đầu từ đây</p>' +
-            '<h3 class="text-2xl font-extrabold tracking-tight mt-2 max-w-[24ch]">Mở khoá bài đầu tiên của bạn</h3>' +
-            '<p class="text-white/85 text-[15px] leading-relaxed mt-2 max-w-[46ch]">Có code từ trường hoặc trung tâm? Nhập vào là dùng được ngay. Chưa có thì xem bảng giá.</p>' +
+            '<p class="text-[12.5px] font-bold uppercase tracking-wide text-white/70">Start here</p>' +
+            '<h3 class="text-2xl font-extrabold tracking-tight mt-2 max-w-[24ch]">Unlock your first test</h3>' +
+            '<p class="text-white/85 text-[15px] leading-relaxed mt-2 max-w-[46ch]">Got a code from your school or centre? Enter it and it works immediately. If not, have a look at the price list.</p>' +
             '<div class="flex flex-wrap gap-2.5 mt-6">' +
-              '<a href="/prep/nhap-code/" class="btn btn-on-brand btn-lg">Nhập code</a>' +
-              '<a href="/prep/mua-code/" class="btn btn-outline-brand btn-lg">Xem bảng giá</a>' +
+              '<a href="/prep/nhap-code/" class="btn btn-on-brand btn-lg">Enter code</a>' +
+              '<a href="/prep/mua-code/" class="btn btn-outline-brand btn-lg">See the price list</a>' +
             '</div>' +
           '</div>';
         return;
@@ -299,35 +300,35 @@
         '<div class="card p-6 sm:p-7 relative overflow-hidden">' +
           '<span class="absolute inset-y-0 left-0 w-1.5 bg-accent" aria-hidden="true"></span>' +
           '<div class="flex items-baseline gap-3">' +
-            '<p class="text-[12.5px] font-bold uppercase tracking-wide text-muted">Ưu tiên hôm nay</p>' +
-            '<span class="badge badge-ok ms-auto">Đã mở khoá</span>' +
+            '<p class="text-[12.5px] font-bold uppercase tracking-wide text-muted">Today\'s focus</p>' +
+            '<span class="badge badge-ok ms-auto">Unlocked</span>' +
           '</div>' +
           '<div class="flex items-center gap-2 mt-4">' +
             '<span class="exam-chip" data-family="' + fam.id + '">' + fam.name + '</span>' +
             '<span class="badge badge-muted">' + t.level + '</span>' +
-            (t.comingSoon ? '<span class="badge badge-hl">Đề sắp phát hành</span>' : '') +
+            (t.comingSoon ? '<span class="badge badge-hl">Paper coming soon</span>' : '') +
           '</div>' +
           '<h3 class="text-xl sm:text-2xl font-extrabold tracking-tight mt-3">' + PREP.esc(t.title) + '</h3>' +
           '<p class="text-muted text-[15px] leading-relaxed mt-2 max-w-[52ch]">' +
             (isNew
-              ? 'Bạn chưa xem cấu trúc bài này. Nắm trước số phần, thời lượng và dạng câu để vào phòng thi không bỡ ngỡ.'
-              : 'Xem lại cấu trúc và hướng dẫn trước khi đề mở làm bài.') +
+              ? 'You have not looked at this test\'s structure yet. Knowing the parts, the timing and the question types in advance is what stops the real room feeling strange.'
+              : 'Go back over the structure and the instructions before the paper opens.') +
           '</p>' +
           '<p class="flex flex-wrap items-center gap-x-5 gap-y-2 text-[13.5px] font-semibold text-muted mt-4">' +
-            '<span class="inline-flex items-center gap-1.5">' + PREP.icon('layers', 'w-4 h-4') + t.sections.length + ' phần</span>' +
-            '<span class="inline-flex items-center gap-1.5">' + PREP.icon('clock', 'w-4 h-4') + t.durationMin + ' phút</span>' +
-            (totalQ ? '<span class="inline-flex items-center gap-1.5">' + PREP.icon('list', 'w-4 h-4') + totalQ + ' câu</span>' : '') +
+            '<span class="inline-flex items-center gap-1.5">' + PREP.icon('layers', 'w-4 h-4') + t.sections.length + ' parts</span>' +
+            '<span class="inline-flex items-center gap-1.5">' + PREP.icon('clock', 'w-4 h-4') + t.durationMin + ' min</span>' +
+            (totalQ ? '<span class="inline-flex items-center gap-1.5">' + PREP.icon('list', 'w-4 h-4') + totalQ + ' items</span>' : '') +
           '</p>' +
           '<div class="flex flex-wrap gap-2.5 mt-6">' +
-            '<a href="/prep/bai-thi/' + t.id + '/" class="btn btn-primary btn-lg">' + PREP.icon('play', 'w-5 h-5') + 'Xem cấu trúc bài</a>' +
-            '<a href="/prep/thu-vien/?family=' + fam.id + '" class="btn btn-ghost btn-lg">Bài ' + fam.name + ' khác</a>' +
+            '<a href="/prep/bai-thi/' + t.id + '/" class="btn btn-primary btn-lg">' + PREP.icon('play', 'w-5 h-5') + 'See the structure</a>' +
+            '<a href="/prep/thu-vien/?family=' + fam.id + '" class="btn btn-ghost btn-lg">Other ' + fam.name + ' tests</a>' +
           '</div>' +
         '</div>';
     }
 
-    /* ---------- Tải danh mục thật rồi dựng mọi phần phụ thuộc ----------
-       Danh mục: GET /api/catalog. Tiến độ cá nhân vẫn ở localStorage.
-       // TODO(backend): gộp thành GET /api/me/dashboard khi có API học viên */
+    /* ---------- Load the real catalogue, then build everything that hangs off it ----------
+       Catalogue: GET /api/catalog. Personal progress still lives in localStorage.
+       // TODO(backend): fold into GET /api/me/dashboard once the student API has it */
     PREP.loadCatalog().then(res => {
       PREP.catalogWarning(res);
       mine = PrepState.unlockedTests();
@@ -339,22 +340,22 @@
       PREP.qs('#mytests-loading').classList.add('hidden');
       if (mine.length) {
         const shown = mine.slice(0, 4);
-        // Lưới 2 cột: nếu lẻ ô thì lấp bằng thẻ mời mở khoá thêm (không để ô trống)
+        // Two-column grid: an odd count is filled with an unlock-more card, not a hole
         const filler = shown.length % 2 === 1
           ? '<a href="/prep/thu-vien/" class="card card-locked card-hover p-5 flex flex-col items-center justify-center text-center gap-2.5 min-h-[168px]">' +
               '<span class="w-11 h-11 rounded-full bg-brand-soft text-brand-strong inline-flex items-center justify-center">' + PREP.icon('plus', 'w-5 h-5') + '</span>' +
-              '<b class="font-bold text-[15px]">Mở khoá thêm bài</b>' +
-              '<span class="text-[13px] text-muted font-medium max-w-[24ch]">Còn ' + (PREP.tests.length - mine.length) + ' bài trong thư viện đang chờ bạn</span>' +
+              '<b class="font-bold text-[15px]">Unlock more tests</b>' +
+              '<span class="text-[13px] text-muted font-medium max-w-[24ch]">' + (PREP.tests.length - mine.length) + ' more tests in the library are waiting for you</span>' +
             '</a>'
           : '';
         PREP.qs('#mytests-grid').innerHTML = shown.map(testCard).join('') + filler;
         PREP.qs('#mytests-grid').removeAttribute('hidden');
-        PREP.qs('#mytests-count').textContent = mine.length + ' bài đã mở khoá';
+        PREP.qs('#mytests-count').textContent = mine.length + ' tests unlocked';
       } else {
         PREP.qs('#mytests-empty').removeAttribute('hidden');
       }
 
-      /* ---------- Ring tiến độ ---------- */
+      /* ---------- Progress ring ---------- */
       const total = PREP.tests.length;
       PREP.qs('#ring-num').textContent = mine.length + '/' + total;
       const C = 282.7;
@@ -363,30 +364,30 @@
       });
       if (mine.length) {
         PREP.qs('#progress-note').textContent =
-          'Bạn đã sẵn sàng với ' + mine.length + ' trên ' + total + ' bài hiện có. Đề sẽ mở làm ngay khi phát hành.';
+          'You are set up with ' + mine.length + ' of the ' + total + ' tests available. Each paper opens the moment it is released.';
       }
 
-      /* ---------- Độ phủ kỹ năng ---------- */
-      const SKILLS = [['listening','Nghe','headphones'],['reading','Đọc','book'],['writing','Viết','pen'],['speaking','Nói','mic']];
+      /* ---------- Skill coverage ---------- */
+      const SKILLS = [['listening','Listening','headphones'],['reading','Reading','book'],['writing','Writing','pen'],['speaking','Speaking','mic']];
       PREP.qs('#skill-meters').innerHTML = SKILLS.map(([k, vi, ic]) => {
         const n = mine.filter(t => t.skills.includes(k)).length;
         const max = PREP.tests.filter(t => t.skills.includes(k)).length || 1;
         return '<div>' +
           '<div class="flex items-center justify-between text-[13px] font-semibold mb-1.5">' +
             '<span class="inline-flex items-center gap-2 text-muted">' + PREP.icon(ic, 'w-4 h-4') + vi + '</span>' +
-            '<span>' + n + ' bài</span>' +
+            '<span>' + n + ' tests</span>' +
           '</div>' +
           '<div class="meter"><i data-w="' + Math.round(n / max * 100) + '"></i></div>' +
         '</div>';
       }).join('');
 
-      /* ---------- Bước tiếp theo (checklist) ---------- */
+      /* ---------- Next steps (checklist) ---------- */
       const steps = [
-        { done: true, label: 'Tạo tài khoản', href: null },
-        { done: !!user.verified, label: 'Xác thực email', href: '/prep/xac-thuc-email/' },
-        { done: (user.interests || []).length > 0, label: 'Chọn kỳ thi quan tâm', href: '/prep/tai-khoan/' },
-        { done: codes.length > 0, label: 'Kích hoạt code đầu tiên', href: '/prep/nhap-code/' },
-        { done: seen.length > 0, label: 'Xem cấu trúc một bài thi', href: '/prep/thu-vien/' }
+        { done: true, label: 'Create an account', href: null },
+        { done: !!user.verified, label: 'Verify your email', href: '/prep/xac-thuc-email/' },
+        { done: (user.interests || []).length > 0, label: 'Choose the exams you care about', href: '/prep/tai-khoan/' },
+        { done: codes.length > 0, label: 'Activate your first code', href: '/prep/nhap-code/' },
+        { done: seen.length > 0, label: 'Look at one test\'s structure', href: '/prep/thu-vien/' }
       ];
       const doneN = steps.filter(x => x.done).length;
       PREP.qs('#steps-count').textContent = doneN + '/' + steps.length;
@@ -403,7 +404,7 @@
           : '<li><a href="' + x.href + '" class="flex items-center gap-3 py-2 rounded-lg transition hover:bg-brand-soft px-1.5 -mx-1.5">' + row + '</a></li>';
       }).join('');
 
-      /* ---------- Code đang hoạt động ---------- */
+      /* ---------- Active codes ---------- */
       const activeCodes = codes
         .filter(c => PREP.daysUntil(c.expiresAt) >= 0)
         .sort((a, b) => PREP.daysUntil(a.expiresAt) - PREP.daysUntil(b.expiresAt));
@@ -417,17 +418,17 @@
                 '<b class="block text-[14px] font-bold truncate">' + PREP.esc(PrepState.codeLabel(c)) + '</b>' +
                 '<span class="block text-[12.5px] text-muted font-medium">' + PREP.maskCode(c.code) + '</span>' +
               '</span>' +
-              '<span class="badge shrink-0 ' + (warn ? 'badge-hl' : 'badge-muted') + '">còn ' + left + ' ngày</span>' +
+              '<span class="badge shrink-0 ' + (warn ? 'badge-hl' : 'badge-muted') + '">' + left + ' days left</span>' +
             '</div>';
           }).join('')
-        : '<p class="text-[14px] text-muted leading-relaxed">Chưa có code nào đang hoạt động.</p>' +
-          '<a href="/prep/nhap-code/" class="btn btn-soft btn-md w-full mt-4">Nhập code</a>';
+        : '<p class="text-[14px] text-muted leading-relaxed">No codes are active.</p>' +
+          '<a href="/prep/nhap-code/" class="btn btn-soft btn-md w-full mt-4">Enter code</a>';
 
-      /* ---------- Hoạt động gần đây (từ code + đơn có thật) ---------- */
+      /* ---------- Recent activity (from real codes and orders) ---------- */
       const events = []
         .concat(codes.map(c => ({
           at: c.redeemedAt, icon: 'unlock',
-          text: 'Kích hoạt code, mở khoá ' + PrepState.codeLabel(c)
+          text: 'Activated a code, unlocking ' + PrepState.codeLabel(c)
         })))
         .concat((s.orders || []).map(o => ({
           at: o.at, icon: 'receipt', text: 'Mua ' + o.name + ' · ' + PREP.vnd(o.amount)
@@ -443,31 +444,31 @@
                 '<span class="block text-[12.5px] text-muted font-medium mt-0.5">' + PREP.timeAgo(e.at) + '</span>' +
               '</span>' +
             '</li>').join('') + '</ul>'
-        : '<p class="text-[14px] text-muted leading-relaxed">Chưa có hoạt động nào. Kích hoạt code là mốc đầu tiên của bạn.</p>';
+        : '<p class="text-[14px] text-muted leading-relaxed">Nothing has happened yet. Activating a code is your first milestone.</p>';
 
-      /* ---------- Khám phá theo kỳ thi (ưu tiên kỳ thi bạn quan tâm) ---------- */
+      /* ---------- Explore by exam (the ones you follow come first) ---------- */
       const interests = user.interests || [];
       const fams = PREP.families.slice().sort((a, b) =>
         (interests.includes(b.id) ? 1 : 0) - (interests.includes(a.id) ? 1 : 0));
-      PREP.qs('#explore-note').textContent = interests.length ? 'Kỳ thi bạn quan tâm xếp trước' : '';
+      PREP.qs('#explore-note').textContent = interests.length ? 'The exams you follow are listed first' : '';
       PREP.qs('#family-grid').innerHTML = fams.map(f => {
         const n = PREP.testsOf(f.id).length;
         const openN = PREP.testsOf(f.id).filter(t => PrepState.isUnlocked(t)).length;
         return '<a href="/prep/thu-vien/?family=' + f.id + '" class="card card-hover p-5 group">' +
           '<div class="flex items-center gap-2">' +
             '<span class="exam-chip" data-family="' + f.id + '">' + f.name + '</span>' +
-            (interests.includes(f.id) ? '<span class="badge badge-ok">Đang theo</span>' : '') +
+            (interests.includes(f.id) ? '<span class="badge badge-ok">Following</span>' : '') +
           '</div>' +
           '<p class="text-[13.5px] text-muted leading-relaxed mt-3 min-h-[40px]">' + PREP.esc(f.format) + '</p>' +
           '<p class="flex items-center justify-between text-sm font-bold mt-3">' +
-            (n ? '<span>' + (openN ? openN + '/' + n + ' bài đã mở' : n + ' bài thi thử') + '</span>'
-               : '<span class="badge badge-hl">Sắp có</span>') +
+            (n ? '<span>' + (openN ? openN + '/' + n + ' unlocked' : n + ' mock tests') + '</span>'
+               : '<span class="badge badge-hl">Coming soon</span>') +
             '<span class="text-accent-strong opacity-0 group-hover:opacity-100 transition">' + PREP.icon('arrowRight', 'w-5 h-5') + '</span>' +
           '</p>' +
         '</a>';
       }).join('');
 
-      /* Chạy hoạt ảnh cho mọi thanh đo sau khi render */
+      /* Animate every meter bar once rendering is done */
       PREP.qsa('.meter > i[data-w]').forEach(el => {
         requestAnimationFrame(() => el.style.setProperty('--w', el.getAttribute('data-w') + '%'));
       });

@@ -1,21 +1,21 @@
 /**
- * API tài khoản học viên — /api/auth/… và /api/me.
+ * The student account API — /api/auth/… and /api/me.
  *
- * Nguyên tắc bảo mật:
- * - Mật khẩu băm bằng scrypt như khu quản trị, không bao giờ trả về client.
- * - Phiên qua cookie prep_user HttpOnly + SameSite=Strict; DB chỉ giữ bản băm token.
- * - Mọi route thay đổi dữ liệu trên phiên đã đăng nhập đều qua csrfGuard.
- *   Riêng register/login/forgot/reset chưa có phiên nên không kiểm CSRF (giống
- *   /api/admin/login): cookie SameSite=Strict cộng với việc bắt buộc thân JSON
- *   khiến biểu mẫu chéo site không dựng được request hợp lệ.
- * - Không tiết lộ email nào đã đăng ký: quên mật khẩu luôn trả cùng một câu trả lời.
- * - Chống dò: đăng nhập khoá tạm theo IP + tài khoản; đăng ký và gửi lại email
- *   giới hạn theo IP.
+ * Security rules:
+ * - Passwords are hashed with scrypt as on the admin side, and never sent to the client.
+ * - Sessions ride a prep_user HttpOnly + SameSite=Strict cookie; the database keeps only the token hash.
+ * - Every state-changing route on a signed-in session goes through csrfGuard.
+ *   register/login/forgot/reset have no session yet, so they skip the CSRF check
+ *   (as /api/admin/login does): a SameSite=Strict cookie plus a required JSON body
+ *   means a cross-site form cannot build a valid request.
+ * - Never reveal which emails are registered: forgot-password always answers the same way.
+ * - Against guessing: sign-in locks temporarily per IP + account; registration and
+ *   resends are rate-limited per IP.
  *
- * Gửi email: hệ thống chưa nối dịch vụ mail. Liên kết xác thực / đặt lại được
- * ghi ra console máy chủ, và CHỈ ngoài production mới trả kèm trong response để
- * chạy thử được luồng.
- * // TODO(backend/mail): nối SMTP hoặc dịch vụ gửi mail, bỏ devLink khỏi response.
+ * Email: no mail service is wired in yet. Verification / reset links are written to
+ * the server console, and ONLY outside production are they returned in the response
+ * so the flow can be exercised.
+ * // TODO(backend/mail): wire up SMTP or a mail service, and drop devLink from the response.
  */
 'use strict';
 const express = require('express');
@@ -28,22 +28,22 @@ const { entitlementOf } = require('./entitlements');
 const router = express.Router();
 router.use(express.json({ limit: '256kb' }));
 
-/* ============================ Trợ giúp ============================ */
+/* ============================ Helpers ============================ */
 const bad = (res, msg) => res.status(400).json({ error: msg });
 const str = (v, max) => (typeof v === 'string' ? v.trim().slice(0, max || 200) : '');
 const isProd = () => process.env.NODE_ENV === 'production';
 
-/** Số tài khoản mở được mỗi giờ từ một địa chỉ. Xem chú thích ở /auth/register. */
+/** Accounts creatable per hour from one address. See the note at /auth/register. */
 const REGISTER_PER_HOUR = Math.max(1, parseInt(process.env.REGISTER_PER_HOUR, 10) || 5);
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
-/** Ghi nhật ký cho hành động của học viên (không phải quản trị viên nào cả) */
+/** Log a student's action (no administrator is involved) */
 function logUser(req, action, username, meta) {
-  audit({ ip: req.ip, admin: { id: null, username: 'học viên' } }, action, 'users/' + username, meta || {});
+  audit({ ip: req.ip, admin: { id: null, username: 'student' } }, action, 'users/' + username, meta || {});
 }
 
-/** Quy tắc mật khẩu: tối thiểu 8 ký tự, có cả chữ và số. */
+/** Password rule: at least 8 characters, with both letters and digits. */
 function passwordProblem(pw) {
   if (typeof pw !== 'string' || pw.length < 8) return 'Password needs at least 8 characters.';
   if (pw.length > 200) return 'That password is too long.';
@@ -51,23 +51,23 @@ function passwordProblem(pw) {
   return null;
 }
 
-/** Lọc danh sách kỳ thi quan tâm về đúng các id có thật */
+/** Narrow the followed-exams list down to ids that actually exist */
 function cleanInterests(v) {
   if (!Array.isArray(v)) return [];
   const valid = new Set(q.all('SELECT id FROM families').map(f => f.id));
   return [...new Set(v.filter(x => typeof x === 'string' && valid.has(x)))].slice(0, 10);
 }
 
-/** Ghi liên kết ra log; ngoài production trả về để client tự mở được. */
+/** Write the link to the log; outside production return it so the client can open it. */
 function deliverLink(kind, user, token) {
   const path = kind === 'verify' ? '/prep/xac-thuc-email/?token=' : '/prep/dat-lai-mat-khau/?token=';
   const link = path + encodeURIComponent(token);
-  const label = kind === 'verify' ? 'xác thực email' : 'đặt lại mật khẩu';
-  console.log(`[mail] Liên kết ${label} cho ${user.email}: ${link}`);
+  const label = kind === 'verify' ? 'email verification' : 'password reset';
+  console.log(`[mail] ${label} link for ${user.email}: ${link}`);
   return isProd() ? undefined : link;
 }
 
-/** Hồ sơ trả về client — không bao giờ kèm pass_hash */
+/** The profile sent to the client — never carries pass_hash */
 function profileOf(userId) {
   const u = q.get('SELECT * FROM users WHERE id=?', userId);
   if (!u) return null;
@@ -78,7 +78,7 @@ function profileOf(userId) {
   };
 }
 
-/** Quyền mở khoá của học viên, suy ra từ các code đã kích hoạt */
+/** What a student may open, derived from the codes they have activated */
 function accessOf(userId) {
   const rows = q.all(
     "SELECT * FROM codes WHERE user_id=? AND status='redeemed' ORDER BY redeemed_at DESC", userId);
@@ -88,16 +88,16 @@ function accessOf(userId) {
     const refs = String(c.unlock_ref).split(',').filter(Boolean);
     if (c.unlock_type === 'test') refs.forEach(r => testIds.add(r));
     else refs.forEach(r => familyIds.add(r));
-    /* Cái quyết định một mã còn dùng được hay không là hạn TRUY CẬP
-       (access_expires_at, đếm từ lúc kích hoạt), không phải hạn kích hoạt
-       (expires_at, hạn chót phải nhập mã trước ngày đó). Trước đây chỉ có cái
-       thứ hai nên mã đã kích hoạt trông như hết hạn sai thời điểm. */
+    /* What decides whether a code is still usable is the ACCESS expiry
+       (access_expires_at, counted from activation), not the activation deadline
+       (expires_at, the date by which it must be entered). Only the second used to
+       exist, so an activated code appeared to expire at the wrong moment. */
     const until = c.access_expires_at || c.expires_at;
     const plan = PLANS.byId(c.plan_id);
     return {
       code: c.code,
-      /* Mã mang một GÓI. unlocks giữ lại cho dữ liệu cũ và cho màn hình nào
-         còn đọc nó, nhưng plan mới là thứ nên hiện ra. */
+      /* A code carries a PLAN. `unlocks` is kept for older data and for any screen
+         still reading it, but the plan is what should be shown. */
       plan: plan ? { id: plan.id, name: plan.name, months: plan.months } : null,
       unlocks: c.unlock_type === 'test' ? { testId: refs[0] }
              : c.unlock_type === 'family' ? { familyId: refs[0] }
@@ -115,16 +115,17 @@ function ordersOf(userId) {
     .map(o => ({ id: 'DH' + o.id, packageId: o.package_id, name: o.name, amount: o.amount, at: o.created_at, status: o.status }));
 }
 
-/* ============================ Đăng ký ============================ */
+/* ============================ Registration ============================ */
 router.post('/auth/register', (req, res) => {
-  // Chỉ trừ lượt khi TẠO ĐƯỢC tài khoản: dữ liệu sai hay email trùng không tiêu tốn hạn mức
+  // Only spend an allowance when an account is actually CREATED: bad input or a duplicate email costs nothing
   const rlKey = 'register|' + (req.ip || '?');
-  /* Năm tài khoản mỗi giờ mỗi địa chỉ. Mặc định này áp dụng ở mọi nơi, kể cả
-     máy chạy thử — không có nhánh "ngoài production thì nới ra", vì một ngưỡng
-     chỉ tồn tại trên giấy khi chạy thật là ngưỡng không ai kiểm được.
-     REGISTER_PER_HOUR chỉ dành cho bộ kiểm thử: cả suite lẫn ảnh nghiệm thu đăng
-     ký từ đúng một địa chỉ 127.0.0.1, nên scripts/verify.sh đặt biến này lên cao
-     để bước sau không bị bước trước chặn. Production không đặt biến ⇒ vẫn là 5. */
+  /* Five accounts per hour per address. This default applies everywhere, test
+     machines included — there is no "loosen it outside production" branch, because
+     a threshold that only exists on paper when it runs for real is a threshold
+     nobody can check. REGISTER_PER_HOUR exists for the test suite alone: the suite
+     and the screenshot pass both register from the single address 127.0.0.1, so
+     scripts/verify.sh raises it to stop one step blocking the next. Production sets
+     no variable ⇒ it stays 5. */
   const wait = A.rateLimitPeek(rlKey, REGISTER_PER_HOUR, 3600e3);
   if (wait) return res.status(429).json({ error: 'You have created several accounts in a row. Try again in ' + Math.ceil(wait / 60) + ' minutes.' });
 
@@ -156,7 +157,7 @@ router.post('/auth/register', (req, res) => {
   res.status(201).json({ ok: true, user: profileOf(user.id), verifyLink: devLink });
 });
 
-/* =========================== Đăng nhập =========================== */
+/* =========================== Sign-in =========================== */
 router.post('/auth/login', (req, res) => {
   const b = req.body || {};
   const identifier = str(b.username, 160).toLowerCase();
@@ -182,9 +183,9 @@ router.post('/auth/login', (req, res) => {
     });
   }
 
-  // Vẫn băm một lần khi không có tài khoản để thời gian phản hồi không lộ thông tin
+  // Still hash once when there is no account, so response time gives nothing away
   const ok = user ? A.verifyPassword(password, user.pass_hash)
-                  : A.verifyPassword(password, A.hashPassword('không-tồn-tại'));
+                  : A.verifyPassword(password, A.hashPassword('does-not-exist'));
   if (!user || !ok) {
     A.noteFailure(key);
     logUser(req, 'user.login.failed', identifier);
@@ -202,39 +203,40 @@ router.post('/auth/login', (req, res) => {
   res.json({ ok: true, user: profileOf(user.id) });
 });
 
-/* ======================= Kích hoạt code =======================
-   Chuyển hẳn về máy chủ. Luật "một code chỉ dùng cho một tài khoản" không thể
-   ép ở trình duyệt: mã nằm trong localStorage thì ai cũng sửa được, và hai
-   máy khác nhau không nhìn thấy nhau. */
+/* ======================= Activating a code =======================
+   Moved wholly to the server. The rule "one code, one account" cannot be enforced
+   in the browser: a code in localStorage is editable by anyone, and two machines
+   cannot see each other. */
 router.post('/redeem', A.requireUser, A.csrfGuard, (req, res) => {
   const raw = str(req.body && req.body.code, 40).toUpperCase().trim();
-  if (!raw) return bad(res, 'Nhập mã kích hoạt của bạn.');
+  if (!raw) return bad(res, 'Enter your activation code.');
 
-  /* Mã là chuỗi ngắn nên đoán mò là có thật. Giới hạn theo IP + tài khoản,
-     đếm cả lần sai lẫn lần đúng để không ai quét được cả dải mã. */
+  /* Codes are short strings, so guessing is a real risk. Rate-limit per IP +
+     account, counting hits as well as misses so nobody can sweep the range. */
   const wait = A.rateLimit('redeem:' + A.throttleKey(req, 'u' + req.user.id), 12, 10 * 60 * 1000);
   if (wait) {
-    return res.status(429).json({ error: 'Thử quá nhiều lần. Chờ ' + Math.ceil(wait / 60) + ' phút rồi nhập lại.' });
+    return res.status(429).json({ error: 'Too many attempts. Wait ' + Math.ceil(wait / 60) + ' minutes and try again.' });
   }
 
   const code = q.get('SELECT * FROM codes WHERE code=?', raw);
-  /* Cùng một câu trả lời cho "không có mã này" và "mã của người khác": nói
-     khác nhau là để lộ mã nào có thật cho người đang dò. */
+  /* The same answer for "no such code" and "somebody else's code": answering
+  differently tells whoever is probing which codes are real. */
   if (!code || code.status === 'revoked') {
     logUser(req, 'user.redeem.unknown', req.user.username, { code: raw });
-    return res.status(404).json({ error: 'Mã không tồn tại hoặc đã bị thu hồi. Kiểm tra lại từng ký tự nhé.' });
+    return res.status(404).json({ error: 'No such code, or it has been withdrawn. Check it character by character.' });
   }
   if (code.status === 'redeemed') {
-    /* Mã của người khác thì dừng ở đây: một mã một tài khoản. */
+    /* Somebody else's code stops here: one code, one account. */
     if (code.user_id !== req.user.id) {
       logUser(req, 'user.redeem.taken', req.user.username, { code: raw });
       return res.status(409).json({
-        error: 'Mã này đã được kích hoạt ở một tài khoản khác. Mỗi mã chỉ dùng cho một tài khoản.'
+        error: 'This code has already been activated on another account. Each code works for one account only.'
       });
     }
-    /* Mã của chính mình thì không phải lỗi — nhập lại mã đã dùng là chuyện
-       thường (đổi máy, quên là đã kích hoạt). Trả về đúng quyền đang có và
-       KHÔNG gia hạn: nếu cộng thêm tháng thì nhập lại mãi là dùng vĩnh viễn. */
+    /* Your own code is not an error — re-entering one you already used is ordinary
+       (a new machine, or forgetting you activated it). Return the entitlement as it
+       stands and do NOT extend it: adding months each time would make re-entering
+       it forever a permanent subscription. */
     const own = PLANS.byId(code.plan_id);
     logUser(req, 'user.redeem.again', req.user.username, { code: raw });
     return res.json({
@@ -245,17 +247,17 @@ router.post('/redeem', A.requireUser, A.csrfGuard, (req, res) => {
     });
   }
   if (code.expires_at && code.expires_at <= nowISO()) {
-    return res.status(410).json({ error: 'Mã đã quá hạn kích hoạt.' });
+    return res.status(410).json({ error: 'This code is past its activation deadline.' });
   }
 
   const plan = PLANS.byId(code.plan_id);
   if (!plan) {
     logUser(req, 'user.redeem.noplan', req.user.username, { code: raw });
-    return res.status(409).json({ error: 'Mã này chưa gắn gói nào. Liên hệ trung tâm của bạn để được cấp lại.' });
+    return res.status(409).json({ error: 'This code has no plan attached. Ask your centre to issue a replacement.' });
   }
 
-  /* Thời hạn tính từ LÚC KÍCH HOẠT, không phải lúc bán: mua tháng Giêng mà
-     tháng Ba mới dùng thì tháng Ba mới bắt đầu đếm. */
+  /* The term runs from ACTIVATION, not from sale: bought in January and first used
+  in March means the clock starts in March. */
   const start = new Date();
   const until = new Date(start);
   until.setMonth(until.getMonth() + plan.months);
@@ -264,10 +266,10 @@ router.post('/redeem', A.requireUser, A.csrfGuard, (req, res) => {
     `UPDATE codes SET status='redeemed', user_id=?, redeemed_at=?, access_expires_at=?
       WHERE id=? AND status='unused'`,
     req.user.id, start.toISOString(), until.toISOString(), code.id);
-  /* Ràng buộc status='unused' ngay trong câu UPDATE: hai người bấm cùng lúc
-     thì chỉ một người thắng, người kia thấy 0 dòng đổi. */
+  /* The status='unused' condition sits inside the UPDATE itself: with two
+  simultaneous presses only one wins, and the other sees 0 rows changed. */
   if (!r.changes) {
-    return res.status(409).json({ error: 'Mã vừa được kích hoạt ở tài khoản khác.' });
+    return res.status(409).json({ error: 'That code was just activated on another account.' });
   }
 
   logUser(req, 'user.redeem', req.user.username, { code: raw, plan: plan.id });
@@ -285,7 +287,7 @@ router.post('/auth/logout', A.csrfGuard, (req, res) => {
   res.json({ ok: true });
 });
 
-/* ======================= Xác thực email ======================= */
+/* ======================= Email verification ======================= */
 router.post('/auth/verify/send', A.requireUser, A.csrfGuard, (req, res) => {
   if (req.user.verified) return res.json({ ok: true, alreadyVerified: true });
   const wait = A.rateLimit('verify-send|' + req.user.id, 3, 3600e3);
@@ -296,7 +298,7 @@ router.post('/auth/verify/send', A.requireUser, A.csrfGuard, (req, res) => {
   res.json({ ok: true, verifyLink: link });
 });
 
-/* Không cần đăng nhập: người dùng có thể mở liên kết ở trình duyệt khác. */
+/* No sign-in required: the link may be opened in a different browser. */
 router.post('/auth/verify', (req, res) => {
   const userId = A.consumeToken(str((req.body || {}).token, 400), 'verify');
   if (!userId) return bad(res, 'That verification link is invalid or has expired. Please request a new one.');
@@ -306,7 +308,7 @@ router.post('/auth/verify', (req, res) => {
   res.json({ ok: true, user: profileOf(userId) });
 });
 
-/* ===================== Quên / đặt lại mật khẩu ===================== */
+/* ===================== Forgotten / reset password ===================== */
 router.post('/auth/forgot', (req, res) => {
   const email = str((req.body || {}).email, 160).toLowerCase();
   if (!EMAIL_RE.test(email)) return bad(res, 'That email address is not valid.');
@@ -320,7 +322,7 @@ router.post('/auth/forgot', (req, res) => {
     link = deliverLink('reset', user, A.issueToken(user.id, 'reset'));
     logUser(req, 'user.reset.request', user.username);
   }
-  // Luôn cùng một câu trả lời: không tiết lộ email nào có trong hệ thống
+  // Always the same answer: never reveal which emails exist
   res.json({ ok: true, resetLink: link });
 });
 
@@ -334,16 +336,16 @@ router.post('/auth/reset', (req, res) => {
   if (!userId) return bad(res, 'That reset link is invalid or has expired. Please request a new one.');
 
   q.run('UPDATE users SET pass_hash=? WHERE id=?', A.hashPassword(password), userId);
-  A.dropUserSessions(userId);                       // mọi thiết bị cũ phải đăng nhập lại
+  A.dropUserSessions(userId);                       // every old device must sign in again
   const u = q.get('SELECT username FROM users WHERE id=?', userId);
   logUser(req, 'user.reset.done', u ? u.username : userId);
   res.json({ ok: true });
 });
 
-/* ========================= Hồ sơ học viên ========================= */
-/* Thăm dò phiên: mọi trang đều gọi khi khởi động, kể cả trang công khai.
-   Chưa đăng nhập trả 200 kèm user: null — không phải lỗi, và tránh việc trình
-   duyệt ghi một dòng lỗi 401 ở mọi trang khách. Các route cần quyền vẫn trả 401. */
+/* ========================= Student profile ========================= */
+/* Session probe: every page calls this on boot, public pages included.
+   Signed out returns 200 with user: null — not an error, and it avoids the browser
+   logging a 401 on every guest page. Routes that need authorisation still return 401. */
 router.get('/me', (req, res) => {
   const user = A.currentUser(req);
   /* providers rides along on the boot request the pages already make, so the
@@ -379,9 +381,9 @@ router.patch('/me', A.requireUser, A.csrfGuard, (req, res) => {
   if (!EMAIL_RE.test(email)) return bad(res, 'That email address is not valid.');
 
   const taken = q.get('SELECT id FROM users WHERE lower(email)=? AND id<>?', email, req.user.id);
-  if (taken) return res.status(409).json({ error: 'Email này đã thuộc về tài khoản khác.' });
+  if (taken) return res.status(409).json({ error: 'That email already belongs to another account.' });
 
-  // Đổi email thì phải xác thực lại địa chỉ mới
+  // Changing the email means verifying the new address
   const changedEmail = email !== req.user.email.toLowerCase();
   q.run('UPDATE users SET name=?, email=?, interests_json=?, verified=? WHERE id=?',
     name, email, JSON.stringify(cleanInterests(b.interests)),
@@ -411,13 +413,13 @@ router.post('/me/password', A.requireUser, A.csrfGuard, (req, res) => {
   const row = q.get('SELECT pass_hash FROM users WHERE id=?', req.user.id);
   if (!A.verifyPassword(current, row && row.pass_hash)) {
     A.noteFailure(key);
-    return res.status(401).json({ error: 'Mật khẩu hiện tại không đúng.' });
+    return res.status(401).json({ error: 'That is not your current password.' });
   }
 
   A.clearFailures(key);
   q.run('UPDATE users SET pass_hash=? WHERE id=?', A.hashPassword(next), req.user.id);
   A.dropUserSessions(req.user.id);
-  A.createUserSession(req.user.id, req, res);       // giữ thiết bị hiện tại đăng nhập
+  A.createUserSession(req.user.id, req, res);       // keep the current device signed in
   logUser(req, 'user.password.change', req.user.username);
   res.json({ ok: true });
 });
