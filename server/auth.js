@@ -51,7 +51,11 @@ function parseCookies(req) {
 
 function setCookie(res, name, value, opts) {
   opts = opts || {};
-  const bits = [`${name}=${encodeURIComponent(value)}`, 'Path=/', 'SameSite=Strict'];
+  /* Strict by default. The one caller that overrides it is the OAuth state
+     cookie: a Strict cookie is withheld when the browser comes back from
+     Google, which is a cross-site navigation, so that flow needs Lax. */
+  const sameSite = opts.sameSite === 'Lax' ? 'Lax' : 'Strict';
+  const bits = [`${name}=${encodeURIComponent(value)}`, 'Path=/', `SameSite=${sameSite}`];
   if (opts.httpOnly !== false) bits.push('HttpOnly');
   if (opts.maxAge != null) bits.push('Max-Age=' + opts.maxAge);
   if (process.env.FORCE_SECURE_COOKIE === '1') bits.push('Secure');

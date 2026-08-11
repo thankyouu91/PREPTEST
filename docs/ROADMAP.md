@@ -48,7 +48,7 @@ Queue for this track, in order:
 - [x] VPET blueprint: ten lettered parts A-J, 55 items, in `server/data/exam-formats.js`
 - [x] Family readiness flag: `families.status` = `ready` / `coming_soon`, VPET ready and the other five parked; served by `GET /api/catalog`
 - [x] MP3 upload in the admin question bank: storage adapter (disk + Supabase driver), raw-body upload behind requireAdmin + CSRF with magic-byte validation, player and replace/remove on each item, and per-part audio coverage in the format readiness report
-- [ ] **Google Sign-In** — server-side OAuth 2.0 redirect flow (no external script, so the strict CSP stays intact), linked to the existing student account table; falls back to email + password when `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` are not set
+- [x] **Google Sign-In** — server-side OAuth 2.0 redirect (`/auth/google`, `/auth/google/callback`), no external script so the CSP is untouched; state + nonce, issuer/audience/expiry checks, open-redirect guard, links onto an existing account by verified email, and stays hidden until `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` are set
 - [ ] **PWA** — manifest, icons, service worker, offline shell; installable from Chrome on Android without a Play listing
 - [ ] Stop offering non-VPET tests: seeded IELTS/TOEIC tests drop to draft, and the API refuses to publish a test whose family is `coming_soon`
 - [ ] Tag items by VPET part: `questions.part` (A-J) so each part draws from its own pool instead of sharing one skill-wide pool

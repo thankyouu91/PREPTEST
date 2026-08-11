@@ -67,6 +67,27 @@
         <button type="submit" id="submit" class="btn btn-primary btn-lg w-full mt-1">Đăng nhập</button>
       </form>
 
+      <!-- Hidden until /api/me reports the Google provider as configured, so a
+           deployment without OAuth credentials never shows a dead button.
+           A plain link, not a widget: the whole exchange happens server-side,
+           so no external script and no CSP exception. -->
+      <div id="oauth-block" hidden>
+        <div class="flex items-center gap-3 mt-6" aria-hidden="true">
+          <span class="h-px flex-1 bg-[color:var(--color-line)]"></span>
+          <span class="text-[13px] font-bold text-muted">hoặc</span>
+          <span class="h-px flex-1 bg-[color:var(--color-line)]"></span>
+        </div>
+        <a id="google-btn" class="btn btn-soft btn-lg w-full mt-4" href="/auth/google">
+          <svg viewBox="0 0 24 24" class="w-5 h-5" aria-hidden="true" focusable="false">
+            <path fill="#4285F4" d="M23.5 12.3c0-.9-.1-1.7-.2-2.5H12v4.8h6.4a5.5 5.5 0 0 1-2.4 3.6v3h3.9c2.3-2.1 3.6-5.2 3.6-8.9z"/>
+            <path fill="#34A853" d="M12 24c3.2 0 6-1.1 8-2.9l-3.9-3a7.2 7.2 0 0 1-10.7-3.8h-4v3.1A12 12 0 0 0 12 24z"/>
+            <path fill="#FBBC05" d="M5.3 14.3a7.1 7.1 0 0 1 0-4.6v-3.1h-4a12 12 0 0 0 0 10.8l4-3.1z"/>
+            <path fill="#EA4335" d="M12 4.8c1.8 0 3.4.6 4.6 1.8l3.4-3.4A12 12 0 0 0 1.3 6.6l4 3.1A7.2 7.2 0 0 1 12 4.8z"/>
+          </svg>
+          Tiếp tục với Google
+        </a>
+      </div>
+
       <p class="text-[14.5px] font-medium text-muted mt-7">
         Chưa có tài khoản? <a href="/prep/dang-ky/" class="font-bold text-brand-strong hover:underline">Đăng ký miễn phí</a>
       </p>
@@ -120,6 +141,38 @@
     tg.setAttribute('aria-label', show ? 'Ẩn mật khẩu' : 'Hiện mật khẩu');
     setEye(show);
   });
+
+  /* Google sign-in: only shown when the server has OAuth credentials.
+     ?next is carried through so a student who was sent to the login page from
+     a deep link lands back on it. */
+  (async () => {
+    try {
+      const me = await fetch('/api/me', { credentials: 'same-origin' }).then(r => r.json());
+      if (!me || !me.providers || !me.providers.google) return;
+      const next = new URLSearchParams(location.search).get('next');
+      const btn = PREP.qs('#google-btn');
+      if (next && next.startsWith('/prep/')) btn.href = '/auth/google?next=' + encodeURIComponent(next);
+      PREP.qs('#oauth-block').hidden = false;
+    } catch (e) { /* provider unknown: leave the button hidden */ }
+  })();
+
+  /* The Google callback bounces back here with ?oauth=<reason> when a sign-in
+     could not be completed. Say what happened rather than dumping them on a
+     blank form. */
+  {
+    const why = new URLSearchParams(location.search).get('oauth');
+    const SAY = {
+      cancelled: 'Bạn đã huỷ đăng nhập bằng Google.',
+      state: 'Phiên đăng nhập Google đã quá hạn. Bấm lại giúp mình nhé.',
+      unverified: 'Địa chỉ email của tài khoản Google này chưa được xác thực.',
+      locked: 'Tài khoản đang tạm khoá. Liên hệ trung tâm của bạn để mở lại.',
+      disabled: 'Đăng nhập bằng Google chưa được bật trên hệ thống này.'
+    };
+    if (why) {
+      PREP.qs('#form-banner-text').textContent = SAY[why] || 'Đăng nhập bằng Google không thành công. Thử lại hoặc dùng mật khẩu.';
+      PREP.qs('#form-banner').classList.add('show');
+    }
+  }
 
   /* Điền nhanh tài khoản demo */
   PREP.qs('#fill-demo').addEventListener('click', () => {

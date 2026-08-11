@@ -21,6 +21,7 @@
 const express = require('express');
 const { q, nowISO, jparse, audit } = require('./db');
 const A = require('./auth');
+const googleAuth = require('./google-auth');
 
 const router = express.Router();
 router.use(express.json({ limit: '256kb' }));
@@ -147,6 +148,18 @@ router.post('/auth/login', (req, res) => {
   }
 
   const user = q.get('SELECT * FROM users WHERE lower(username)=? OR lower(email)=?', identifier, identifier);
+
+  /* An account created through Google has no password. Saying so is not a
+     disclosure worth worrying about — the person is already holding that email
+     address — and the alternative is a login that fails with no way forward. */
+  if (user && !user.pass_hash) {
+    logUser(req, 'user.login.google_only', user.username);
+    return res.status(409).json({
+      error: 'Tài khoản này đăng nhập bằng Google. Bấm "Tiếp tục với Google", hoặc dùng "Quên mật khẩu" để đặt mật khẩu riêng.',
+      useGoogle: true
+    });
+  }
+
   // Vẫn băm một lần khi không có tài khoản để thời gian phản hồi không lộ thông tin
   const ok = user ? A.verifyPassword(password, user.pass_hash)
                   : A.verifyPassword(password, A.hashPassword('không-tồn-tại'));
@@ -235,10 +248,15 @@ router.post('/auth/reset', (req, res) => {
    duyệt ghi một dòng lỗi 401 ở mọi trang khách. Các route cần quyền vẫn trả 401. */
 router.get('/me', (req, res) => {
   const user = A.currentUser(req);
-  if (!user) return res.set('Cache-Control', 'no-store').json({ user: null });
+  /* providers rides along on the boot request the pages already make, so the
+     login screen knows whether to show the Google button without a second
+     round trip. Returned when signed out too — that is when it is needed. */
+  const providers = { google: googleAuth.enabled() };
+  if (!user) return res.set('Cache-Control', 'no-store').json({ user: null, providers });
   const access = accessOf(user.id);
   res.set('Cache-Control', 'no-store').json({
     user: profileOf(user.id),
+    providers,
     unlockedTestIds: access.unlockedTestIds,
     unlockedFamilyIds: access.unlockedFamilyIds,
     myCodes: access.myCodes,

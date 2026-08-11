@@ -173,6 +173,51 @@ Quản trị (đều cần phiên + CSRF): `/api/admin/reports` (nhận `?days=7
 `/api/admin/codes` (+ `/export`, `/:id/revoke`), `/api/admin/batches`, `/api/admin/settings`,
 `/api/admin/packages/:id`, `/api/admin/password`, `/api/admin/audit`.
 
+## Đăng nhập bằng Google
+
+Học viên đăng nhập bằng Google hoặc bằng email + mật khẩu như cũ. Chưa cấu hình
+khoá thì nút Google **không hiện**, nền tảng chạy y như trước.
+
+```
+GOOGLE_CLIENT_ID       OAuth client id (loại Web application)
+GOOGLE_CLIENT_SECRET   OAuth client secret
+GOOGLE_REDIRECT_URI    tuỳ chọn; mặc định <origin>/auth/google/callback
+```
+
+Lấy khoá ở Google Cloud Console → APIs & Services → Credentials → OAuth client ID,
+khai đúng redirect URI ở trên.
+
+**Vì sao không dùng nút "Sign in with Google" quen thuộc**: nút đó nạp script từ
+`accounts.google.com`, mà nền tảng chạy CSP nghiêm ngặt cấm mọi script ngoài.
+Thay vì mở ngoại lệ CSP cho script bên thứ ba, toàn bộ trao đổi làm ở máy chủ:
+
+```
+/auth/google           → 302 sang Google, kèm state + nonce
+/auth/google/callback  ← Google trả code, server đổi lấy id_token,
+                         tìm hoặc tạo tài khoản, mở phiên
+```
+
+Trình duyệt không chạy dòng mã nào của Google và không bao giờ thấy token.
+
+**Những chỗ đã phòng**:
+
+- `state` chống callback giả mạo, `nonce` buộc id_token phải thuộc đúng lần đăng
+  nhập này; cả hai so bằng thời gian hằng định.
+- Kiểm `iss`, `aud`, `exp` và `email_verified` trên id_token. Chữ ký không kiểm
+  vì token lấy trực tiếp từ endpoint của Google qua TLS ngay trên máy chủ —
+  Google ghi rõ trường hợp này không cần kiểm chữ ký.
+- Tham số `next` chỉ nhận đường dẫn nội bộ: chặn `//evil.example`,
+  `https://…`, dấu gạch chéo ngược và ký tự điều khiển.
+- Cookie `state` để `SameSite=Lax` (bắt buộc, vì cookie `Strict` không được gửi
+  khi quay về từ Google); cookie phiên vẫn `Strict`.
+- Callback trả về một trang chuyển tiếp nhỏ thay vì 302 thẳng: cookie phiên là
+  `Strict` nên nếu redirect tiếp trong cùng chuỗi điều hướng do Google khởi
+  tạo, trình duyệt sẽ không gửi cookie và học viên bị đá về màn đăng nhập.
+- Ghép tài khoản theo email **chỉ khi Google xác nhận email đã xác thực**, để
+  không ai chiếm được tài khoản người khác.
+- Tài khoản tạo qua Google không có mật khẩu; đăng nhập bằng mật khẩu vào tài
+  khoản đó sẽ được chỉ sang nút Google hoặc luồng đặt lại mật khẩu.
+
 ## Tự động hoá
 
 `docs/ROADMAP.md` là hàng đợi công việc. Một Routine chạy **mỗi giờ** sẽ lấy mục chưa tick đầu tiên,

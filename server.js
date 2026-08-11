@@ -21,6 +21,7 @@ const crypto = require('crypto');
 
 const api = require('./server/api');
 const userApi = require('./server/user-api');
+const googleAuth = require('./server/google-auth');
 const A = require('./server/auth');
 
 const app = express();
@@ -72,6 +73,7 @@ function serveHtmlWithNonce(relFile) {
 }
 
 /* ---------------- API (đăng ký trước static) ---------------- */
+app.use(googleAuth.router);      // đăng nhập Google: /auth/google, /auth/google/callback
 app.use('/api', userApi);        // tài khoản học viên: /api/auth/…, /api/me
 app.use('/api', api);            // danh mục công khai + /api/admin/…
 

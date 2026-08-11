@@ -322,6 +322,14 @@ addColumnIfMissing('families', 'status', "TEXT NOT NULL DEFAULT 'ready'");
 /* VPET parts E, F, G, H and J play an MP3 to the candidate, so a question can
    own one audio file. Only the storage key lives here — the bytes are in
    whichever storage driver is configured (see server/storage.js). */
+/* A student can sign in with Google instead of a password. The subject id is
+   the stable identifier: it survives the person renaming their email address.
+   SQLite cannot add a UNIQUE column with ALTER, so the constraint comes from a
+   unique index — which also permits many NULLs, exactly what is wanted for
+   accounts that never link a Google identity. */
+addColumnIfMissing('users', 'google_sub', 'TEXT');
+db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_users_google_sub ON users (google_sub)');
+
 addColumnIfMissing('questions', 'audio_key', 'TEXT');
 addColumnIfMissing('questions', 'audio_bytes', 'INTEGER');
 addColumnIfMissing('questions', 'audio_at', 'TEXT');
