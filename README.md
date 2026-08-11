@@ -7,7 +7,8 @@ Cơ chế truy cập: đăng ký tài khoản → mua/nhập code → mở khoá
 > **Phạm vi hiện tại: khu học viên và khu quản trị đều chạy trên backend thật.**
 > Engine làm bài đã chạy được đầu-cuối: mở lượt thi, đồng hồ từng phần, nghe lại có
 > hạn, ghi âm phần nói, tự lưu, nộp bài, trừ lượt theo gói — màn làm bài ở `/prep/lam-bai/`.
-> Phần chấm điểm chưa có: bài nộp xong được lưu nguyên vẹn chờ engine chấm.
+> Chấm điểm: trắc nghiệm và điền từ chấm ngay khi nộp, quy đổi thang 10 và bậc
+> VSTEP; Viết và Nói để trạng thái chờ chấm. Màn kết quả cho học viên chưa dựng.
 > Danh mục đọc từ `GET /api/catalog`; tài khoản học viên có đăng ký / đăng nhập / xác thực
 > email / đặt lại mật khẩu thật với phiên cookie. Kích hoạt code còn ở phía client.
 

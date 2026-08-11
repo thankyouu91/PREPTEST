@@ -275,6 +275,47 @@ try {
   ok(r.status === 403 && r.data.need === 'plan',
     'Chưa có gói thì không mở được lượt thi', JSON.stringify(r.data));
 
+  /* ---------- Chấm điểm ---------- */
+  head('Chấm điểm');
+  r = await student.req('GET', '/api/attempts/' + attemptId + '/result');
+  ok(r.status === 200, 'Nộp xong là có kết quả ngay', 'status ' + r.status);
+  const result = r.data;
+
+  /* Tài khoản demo cầm gói Plus nên được xem bảng chi tiết. */
+  ok(result.detailed === true, 'Gói Plus xem được báo cáo chi tiết', JSON.stringify(result.detailed));
+  ok(/tham chiếu/.test(result.disclaimer || ''),
+    'Kết quả ghi rõ đây là điểm luyện tập, không phải điểm thi thật', result.disclaimer);
+
+  const listen = (result.skills || []).find(x => x.skill === 'listening');
+  /* Đề kiểm thử: 2 câu Nghe trắc nghiệm, đã trả lời đúng 1 câu ở phần trên. */
+  ok(listen && listen.rawMax === 2, 'Đếm đúng tổng số câu Nghe', JSON.stringify(listen));
+  ok(listen && listen.rawEarned === 1, 'Chấm đúng 1/2 câu Nghe', JSON.stringify(listen));
+  ok(listen && listen.score === 5, 'Quy đổi tuyến tính 1/2 → 5,0 trên thang 10', String(listen && listen.score));
+
+  const speak = (result.skills || []).find(x => x.skill === 'speaking');
+  ok(speak && speak.pending === true, 'Kỹ năng Nói để trạng thái chờ chấm, không phải 0 điểm',
+    JSON.stringify(speak));
+  ok(result.pending === true && result.overall === null,
+    'Chưa chấm đủ bốn kỹ năng thì chưa có điểm tổng', JSON.stringify({ pending: result.pending, overall: result.overall }));
+
+  /* Câu bỏ trống vẫn phải vào mẫu số: bỏ trống nhiều mà điểm cao là lỗi nặng. */
+  const fPart = (result.parts || []).find(x => x.part === 'F');
+  ok(fPart && fPart.max === 2, 'Câu bỏ trống vẫn tính vào mẫu số', JSON.stringify(fPart && { earned: fPart.earned, max: fPart.max }));
+
+  /* Đáp án đúng vẫn không được lộ, kể cả ở màn kết quả — đề còn dùng lại. */
+  ok(!/"answer"/.test(JSON.stringify(result)), 'Báo cáo không kèm đáp án đúng');
+  ok((fPart.items || []).every(i => typeof i.given === 'string'),
+    'Báo cáo có câu trả lời của chính học viên để đối chiếu');
+
+  /* Chấm lại không được nhân đôi điểm hay tạo dòng mới. */
+  r = await student.req('GET', '/api/attempts/' + attemptId + '/result');
+  const again = (r.data.skills || []).find(x => x.skill === 'listening');
+  ok(again && again.rawEarned === 1 && again.rawMax === 2,
+    'Đọc lại kết quả cho cùng một con số', JSON.stringify(again));
+
+  r = await student.req('GET', '/api/attempts/999999/result');
+  ok(r.status === 404, 'Không xem được kết quả của lượt không tồn tại', 'status ' + r.status);
+
   /* ---------- Hạn mức lượt thi của gói Starter ---------- */
   head('Hạn mức lượt thi');
   /* Gói Plus của tài khoản demo là không giới hạn, nên phải dựng riêng một tài
@@ -313,6 +354,18 @@ try {
   r = await capped.req('POST', '/api/attempts', { testId });
   ok(r.status === 403 && r.data.need === 'attempts',
     'Hết lượt thì máy chủ từ chối mở bài thứ 11', JSON.stringify(r.data));
+
+  /* Gói Starter mua "report bình thường thang điểm": có điểm và bậc, không có
+     bảng bóc tách. Ranh giới đó phải nằm ở máy chủ, không phải ở giao diện. */
+  r = await capped.req('GET', '/api/attempts');
+  const cappedAttempt = r.data.items[0];
+  r = await capped.req('GET', '/api/attempts/' + cappedAttempt.id + '/result');
+  ok(r.status === 200 && r.data.detailed === false,
+    'Gói Starter chỉ nhận báo cáo rút gọn', JSON.stringify(r.data.detailed));
+  ok(r.data.skills === undefined && r.data.parts === undefined,
+    'Dữ liệu bóc tách không rời khỏi máy chủ với gói Starter',
+    JSON.stringify(Object.keys(r.data)));
+  ok(typeof r.data.upgradeHint === 'string', 'Nói rõ vì sao báo cáo ngắn', r.data.upgradeHint);
 
   /* Gói không giới hạn thì không có gì để trừ — mở lại bài không được làm hao
      hụt cái gì cả. */

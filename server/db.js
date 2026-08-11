@@ -327,6 +327,19 @@ CREATE TABLE IF NOT EXISTS attempt_answers (
   UNIQUE (attempt_id, question_id)
 );
 
+CREATE TABLE IF NOT EXISTS attempt_scores (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  attempt_id INTEGER NOT NULL REFERENCES attempts(id) ON DELETE CASCADE,
+  skill TEXT NOT NULL,                          -- listening | reading | writing | speaking | overall
+  raw_earned REAL NOT NULL DEFAULT 0,
+  raw_max REAL NOT NULL DEFAULT 0,
+  scaled REAL,                                  -- thang của kỳ thi (VPET: 0-10 bước 0,5)
+  method TEXT NOT NULL DEFAULT '',              -- bảng quy đổi đã dùng
+  pending INTEGER NOT NULL DEFAULT 0,           -- 1 = còn câu chờ người/AI chấm
+  at TEXT NOT NULL,
+  UNIQUE (attempt_id, skill)
+);
+
 CREATE TABLE IF NOT EXISTS settings (
   key TEXT PRIMARY KEY,
   value TEXT NOT NULL
@@ -338,6 +351,7 @@ CREATE INDEX IF NOT EXISTS idx_sec_test  ON sections (test_id, sort);
 CREATE INDEX IF NOT EXISTS idx_audit_at  ON audit (at DESC);
 CREATE INDEX IF NOT EXISTS idx_att_user  ON attempts (user_id, status);
 CREATE INDEX IF NOT EXISTS idx_att_ans   ON attempt_answers (attempt_id);
+CREATE INDEX IF NOT EXISTS idx_att_score ON attempt_scores (attempt_id);
 `);
 
 /* ============================ MIGRATIONS ============================
@@ -394,6 +408,14 @@ db.exec('CREATE INDEX IF NOT EXISTS idx_q_part ON questions (family_id, part, st
    letter back out of the section name would break the moment an admin renames
    it, which they are free to do. */
 addColumnIfMissing('sections', 'part', 'TEXT');
+
+/* Dấu vết chấm của từng câu (docs/SCORING.md §2.4). Điểm phải giải thích được:
+   học viên khiếu nại thì tra ra ngay câu nào đúng, câu nào sai và vì sao, chứ
+   không chỉ có một con số cuối cùng. */
+addColumnIfMissing('attempt_answers', 'earned', 'REAL');
+addColumnIfMissing('attempt_answers', 'max_score', 'REAL');
+addColumnIfMissing('attempt_answers', 'mark_note', 'TEXT');
+addColumnIfMissing('attempt_answers', 'marked_at', 'TEXT');
 
 /* ============================== TIỆN ÍCH ============================== */
 const nowISO = () => new Date().toISOString();
@@ -650,6 +672,33 @@ function seed() {
     ...PLANS.PLANS.map(p => p.id));
   if (retired.changes) console.warn(`[seed] ${retired.changes} gói cũ đã ngừng bán, chuyển sang bảng giá theo thời hạn.`);
 
+  /* Gói của các mã demo được đối chiếu lại mỗi lần khởi động, không phải chỉ
+     lúc seed. Seed chỉ chạy khi bảng codes còn trống, nên một CSDL tạo ra từ
+     trước khi có mô hình gói sẽ mãi mãi giữ những mã plan_id NULL — và mã không
+     có gói thì kích hoạt xong chẳng mở ra quyền gì. Triệu chứng là tài khoản
+     demo lặng lẽ mất sạch quyền sau khi nâng cấp, không kèm một lỗi nào.
+     Chỉ đụng vào đúng những mã demo cố định: mã của người mua thật mà thiếu gói
+     là chuyện phải xử lý bằng tay, không phải tự phát gói. */
+  const DEMO_CODE_PLANS = [
+    ['VPET-B1MK-24TR', 'plus-6m', 6],
+    ['IELT-AC12-96HD', 'starter-3m', 0],
+    ['TOEC-LR20-26CB', 'pro-12m', 0],
+    ['PREP-HHAN-2025', 'starter-3m', 0],
+    ['PREP-DUNG-ROI1', 'starter-3m', 3]
+  ];
+  const monthsFromNow = n => {
+    const d = new Date(); d.setMonth(d.getMonth() + n); return d.toISOString();
+  };
+  let ganLai = 0;
+  for (const [code, planId, months] of DEMO_CODE_PLANS) {
+    const row = q.get('SELECT id, plan_id FROM codes WHERE code=?', code);
+    if (!row || row.plan_id) continue;
+    q.run('UPDATE codes SET plan_id=?, access_expires_at=? WHERE id=?',
+      planId, months ? monthsFromNow(months) : null, row.id);
+    ganLai++;
+  }
+  if (ganLai) console.warn(`[seed] ${ganLai} mã demo được gắn lại gói.`);
+
   if (!q.val('SELECT COUNT(*) c FROM questions')) seedQuestions();
 
   if (!q.val('SELECT COUNT(*) c FROM tests')) {
@@ -713,20 +762,6 @@ function seed() {
     insC.run('PREP-HHAN-2025', null, 'family', 'pte', 'unused', '2025-12-31', null, null, 'Mã minh hoạ đã hết hạn', daysAgo(300));
     insC.run('PREP-DUNG-ROI1', null, 'test', 'ielts-ac-01', 'redeemed', daysFromNow(140),
       q.val("SELECT id FROM users WHERE username='thuhang.nt'"), daysAgo(12), null, daysAgo(13));
-
-    /* Gắn gói cho các mã demo. Từ giờ mã nào không có gói thì kích hoạt không
-       ra quyền gì, nên dữ liệu mẫu phải phản ánh đúng mô hình mới. Tài khoản
-       demo cầm gói Plus để mọi màn — kể cả khu tự học — có dữ liệu để xem. */
-    const monthsFromNow = n => {
-      const d = new Date(); d.setMonth(d.getMonth() + n); return d.toISOString();
-    };
-    const ganGoi = db.prepare('UPDATE codes SET plan_id=?, access_expires_at=? WHERE code=?');
-    ganGoi.run('plus-6m', monthsFromNow(6), 'VPET-B1MK-24TR');
-    ganGoi.run('starter-3m', null, 'IELT-AC12-96HD');
-    ganGoi.run('pro-12m', null, 'TOEC-LR20-26CB');
-    ganGoi.run('starter-3m', null, 'PREP-HHAN-2025');
-    ganGoi.run('starter-3m', monthsFromNow(3), 'PREP-DUNG-ROI1');
-    q.run("UPDATE codes SET plan_id='starter-3m' WHERE plan_id IS NULL AND status='unused'");
 
     // Một ít code đã dùng để báo cáo có dữ liệu
     const users = q.all("SELECT id FROM users WHERE username IN ('khanhqd','ngocanh.study','baolong.tb')");

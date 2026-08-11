@@ -26,6 +26,7 @@ const A = require('./auth');
 const storage = require('./storage');
 const { entitlementOf } = require('./entitlements');
 const PLANS = require('./data/plans');
+const marking = require('./marking');
 
 const router = express.Router();
 
@@ -460,6 +461,10 @@ router.post('/attempts/:id/submit', A.requireUser, A.csrfGuard, (req, res) => {
     q.run('UPDATE attempt_parts SET closed_at=? WHERE attempt_id=? AND closed_at IS NULL', at, att.id);
     q.run("UPDATE attempts SET status='submitted', submitted_at=?, updated_at=? WHERE id=?", at, at, att.id);
   });
+  /* Chấm ngay phần máy chấm được (trắc nghiệm, điền từ). Viết và Nói để lại
+     trạng thái chờ — chấm chúng thành 0 điểm là một lời nói dối trông giống
+     kết quả. Chấm chạy lại được nên sửa bộ chấm không cần thi lại. */
+  marking.markAttempt(att.id);
 
   const answered = q.val(
     "SELECT COUNT(*) c FROM attempt_answers WHERE attempt_id=? AND (answer <> '' OR audio_key IS NOT NULL)", att.id);
@@ -469,6 +474,29 @@ router.post('/attempts/:id/submit', A.requireUser, A.csrfGuard, (req, res) => {
       WHERE ap.attempt_id=?`, att.id);
 
   res.json({ ok: true, submittedAt: at, answered, total });
+});
+
+/**
+ * Kết quả một lượt thi.
+ *
+ * Mức chi tiết theo gói đã mua, và quyết định đó nằm ở máy chủ: gói Starter mua
+ * "report bình thường thang điểm" nên nhận điểm và bậc; từ Plus trở lên mới có
+ * bảng bóc tách từng phần và từng câu. Ẩn ở giao diện thì ai xem mã nguồn cũng
+ * gỡ được, nên phần dữ liệu ấy không được rời khỏi đây.
+ */
+router.get('/attempts/:id/result', A.requireUser, (req, res) => {
+  const att = ownAttempt(req);
+  if (!att) return res.status(404).json({ error: 'Không tìm thấy lượt thi.' });
+  if (att.status !== 'submitted') {
+    return res.status(409).json({ error: 'Lượt thi này chưa nộp nên chưa có kết quả.' });
+  }
+  const ent = entitlementOf(req.user.id);
+  const detailed = !!(ent && ent.features && ent.features.detailedReport);
+  const out = marking.resultOf(att.id, detailed);
+  if (!out) return res.status(404).json({ error: 'Không tìm thấy lượt thi.' });
+  /* Nói thẳng vì sao báo cáo ngắn, thay vì để người dùng tưởng hệ thống hỏng. */
+  if (!detailed) out.upgradeHint = 'Bảng phân tích từng phần có ở gói Plus trở lên.';
+  res.set('Cache-Control', 'no-store').json(out);
 });
 
 /** Lịch sử các lượt đã làm — màn tiến độ đọc cái này. */
