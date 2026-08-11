@@ -134,12 +134,91 @@ const supabaseDriver = {
   }
 };
 
+/* ------------------------- Google Cloud Storage -------------------------
+   The production driver on Google Cloud. No SDK and no key file: on Cloud Run,
+   Compute Engine and Cloud Build the metadata server hands out an access token
+   for the attached service account, which is both simpler and safer than
+   shipping a JSON key — there is no long-lived credential to leak.
+
+   Grant the service account roles/storage.objectAdmin on the bucket and it
+   works; there is nothing to configure in the app beyond the bucket name.
+
+   Locally there is no metadata server, so use AUDIO_STORAGE=disk for
+   development. That is the right split anyway: no keys, no network, instant. */
+
+const GCS_BUCKET = process.env.GCS_AUDIO_BUCKET || '';
+const METADATA_TOKEN_URL =
+  'http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/token';
+
+/* Tokens last an hour. Cache until shortly before expiry rather than fetching
+   per request — the metadata server is fast but it is still a round trip on
+   every single audio read. */
+let cachedToken = { value: '', expiresAt: 0 };
+
+async function gcsToken() {
+  if (cachedToken.value && Date.now() < cachedToken.expiresAt) return cachedToken.value;
+
+  const res = await fetch(METADATA_TOKEN_URL, { headers: { 'Metadata-Flavor': 'Google' } });
+  if (!res.ok) {
+    throw new Error(
+      `Could not get a Google access token (${res.status}). ` +
+      'AUDIO_STORAGE=gcs only works on Google Cloud; use AUDIO_STORAGE=disk locally.');
+  }
+  const body = await res.json();
+  cachedToken = {
+    value: body.access_token,
+    /* 60 seconds of headroom so a token cannot expire mid-request. */
+    expiresAt: Date.now() + Math.max(0, (Number(body.expires_in) || 3600) - 60) * 1000
+  };
+  return cachedToken.value;
+}
+
+/* Object names go in a query string on upload and in the path on read, and a
+   key contains a '/', so it must be percent-encoded both times. */
+const gcsPath = key => `https://storage.googleapis.com/storage/v1/b/${GCS_BUCKET}/o/${encodeURIComponent(key)}`;
+
+const gcsDriver = {
+  name: 'gcs',
+  async put(buf, key) {
+    const token = await gcsToken();
+    const url = `https://storage.googleapis.com/upload/storage/v1/b/${GCS_BUCKET}/o` +
+      `?uploadType=media&name=${encodeURIComponent(key)}`;
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'audio/mpeg' },
+      body: buf
+    });
+    if (!res.ok) throw new Error(`GCS upload failed: ${res.status} ${await res.text()}`);
+  },
+  async get(key) {
+    const token = await gcsToken();
+    const res = await fetch(gcsPath(key) + '?alt=media', {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    if (!res.ok) throw new Error(`GCS download failed: ${res.status}`);
+    return { body: Buffer.from(await res.arrayBuffer()) };
+  },
+  async remove(key) {
+    const token = await gcsToken();
+    const res = await fetch(gcsPath(key), {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    /* Already gone is the outcome the caller wanted. */
+    if (!res.ok && res.status !== 404) throw new Error(`GCS delete failed: ${res.status}`);
+  }
+};
+
 function pickDriver() {
   if (DRIVER === 'supabase') {
     if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
       throw new Error('AUDIO_STORAGE=supabase needs SUPABASE_URL and SUPABASE_SERVICE_KEY');
     }
     return supabaseDriver;
+  }
+  if (DRIVER === 'gcs') {
+    if (!GCS_BUCKET) throw new Error('AUDIO_STORAGE=gcs needs GCS_AUDIO_BUCKET');
+    return gcsDriver;
   }
   return diskDriver;
 }

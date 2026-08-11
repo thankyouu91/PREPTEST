@@ -27,7 +27,7 @@ Six standing decisions that shape the work:
 | Score delivery | **Practice results release to the candidate immediately**, with GSE per skill and ranked tips. Teachers get the same attempt in a score report, and certificates are only ever issued after sign-off. Per-test `release_policy` ([`docs/VOICE.md`](VOICE.md) §8.1) |
 | Result tracking | **One code per attempt** (`R-XXXX-XXXX-XXXX`), minted at submit and printed on both the report and the certificate. Resolves at three levels of detail — full report for the candidate, minimal verification for a third party, everything for a teacher ([`docs/VOICE.md`](VOICE.md) §8.5) |
 | Candidate audio retention | **24 months**, enforced by a bucket lifecycle rule. Scores and transcripts outlive the recordings |
-| Audio storage | Storage adapter with two drivers — local disk for dev, Supabase Storage for production; a Google Cloud Storage driver is queued |
+| Audio storage | Storage adapter with three drivers — local disk for dev, Supabase, and Google Cloud Storage authenticating off the metadata server |
 | Interface language | **English everywhere** — UI copy, code, identifiers, comments, data and AI prompts |
 
 Speaking and audio allocation across the ten parts — how many files to render, how
@@ -155,18 +155,19 @@ below uses the server-side route instead — which is also the more private one.
 |---|---|
 | Sign-In | OAuth 2.0 redirect handled by the server. No `gsi/client` script, no CSP exception. In the VPET queue. |
 | Speaking scoring | Now OpenAI rather than Gemini, behind the provider adapter in [`docs/VOICE.md`](VOICE.md) §3 so either can be swapped in. Already queued. |
-| Cloud Storage | Third driver in `server/storage.js`; the adapter takes it without touching call sites. Two buckets — exam audio keeps forever, candidate speech expires ([`docs/VOICE.md`](VOICE.md) §13). |
-| Cloud Run | Container deploy, closest to how the app runs today. |
+| Cloud Storage | Built — third driver in `server/storage.js`, call sites untouched. Second bucket for candidate speech, with its own expiry, arrives with recording ([`docs/VOICE.md`](VOICE.md) §13). |
+| Cloud Run | Built — see [`deploy/README.md`](../deploy/README.md). One instance only until the database moves off the container. |
 | Cloud Tasks | Pushes queued render and scoring jobs to `/internal/jobs/run`. Needed because Cloud Run throttles CPU after the response is sent, which stalls an in-process worker ([`docs/VOICE.md`](VOICE.md) §7). |
 | Cloud SQL | SQLite has to go first — see below. |
 | Secret Manager | Every API key moves out of plain environment variables. |
 | Analytics | GA4's script breaks CSP; use the Measurement Protocol from the server instead. |
 | Classroom | Assignment hand-off, and results export to Sheets. |
 
-- [ ] Google Cloud Storage driver in `server/storage.js` — third driver beside disk and Supabase, plus the `exam` / `response` namespace split ([`docs/VOICE.md`](VOICE.md) §5.3)
+- [x] Google Cloud Storage driver in `server/storage.js` — third driver beside disk and Supabase, authenticating off the metadata server so there is no JSON key to leak. The `exam` / `response` namespace split still to come with candidate recordings ([`docs/VOICE.md`](VOICE.md) §5.3)
+- [x] **Containerise + deploy to Cloud Run** ([`deploy/README.md`](../deploy/README.md)): Dockerfile on Node 22 Alpine running as non-root, `/healthz` that actually queries the database, SIGTERM handling so a deploy does not cut requests mid-flight, `Secure` cookies automatic under `NODE_ENV=production`, and `deploy/deploy.sh` — one idempotent script for APIs, service account, bucket, Secret Manager and the deploy itself. **Pinned to one instance because SQLite lives in the container**; that constraint lifts with Cloud SQL
 - [ ] **Move off SQLite to Cloud SQL Postgres.** The blocker for Cloud Run: local SQLite dies with the container. The Supabase export already proved the schema ports, so the work is rewriting the `q.all/get/run/val` layer to a pooled async client and making every call site await it. Big and invasive — do it in one dedicated pass, not piecemeal. Also the blocker for a shared job queue, since `media_jobs` needs a database several instances can claim from.
 - [ ] `media_jobs` queue plus Cloud Tasks push delivery — one queue serving both TTS rendering and speech scoring, with lease-based claim, unique idempotency keys so nothing is billed twice, and dead jobs surfaced in the admin area ([`docs/VOICE.md`](VOICE.md) §7)
-- [ ] Containerise + deploy to Cloud Run, with Secret Manager for keys and a CI deploy from the working branch
+- [ ] CI deploy from the working branch (Cloud Build trigger) — the manual deploy works, the automatic one does not exist yet
 - [ ] Google Classroom hand-off: publish a test as an assignment, pull the roster, push scores back
 - [ ] Results export to Google Sheets for teachers
 - [ ] Server-side GA4 Measurement Protocol events, since the GA4 script cannot pass the CSP

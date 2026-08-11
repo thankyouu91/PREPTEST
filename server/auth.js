@@ -49,12 +49,31 @@ function parseCookies(req) {
   return out;
 }
 
+/**
+ * Should session cookies carry Secure?
+ *
+ * Yes in production, without anyone having to remember an environment variable
+ * — a session cookie that can travel over plain HTTP is the kind of mistake
+ * that is invisible until it matters. Cloud Run terminates TLS in front of the
+ * container, so every real request arrives over HTTPS anyway.
+ *
+ * FORCE_SECURE_COOKIE stays as the explicit override in both directions: '1'
+ * turns it on outside production, '0' turns it off for the rare case of running
+ * a production build behind plain HTTP on a private network.
+ */
+function secureCookies() {
+  const flag = process.env.FORCE_SECURE_COOKIE;
+  if (flag === '1') return true;
+  if (flag === '0') return false;
+  return process.env.NODE_ENV === 'production';
+}
+
 function setCookie(res, name, value, opts) {
   opts = opts || {};
   const bits = [`${name}=${encodeURIComponent(value)}`, 'Path=/', 'SameSite=Strict'];
   if (opts.httpOnly !== false) bits.push('HttpOnly');
   if (opts.maxAge != null) bits.push('Max-Age=' + opts.maxAge);
-  if (process.env.FORCE_SECURE_COOKIE === '1') bits.push('Secure');
+  if (secureCookies()) bits.push('Secure');
   const prev = res.getHeader('Set-Cookie');
   const list = prev ? (Array.isArray(prev) ? prev.slice() : [prev]) : [];
   list.push(bits.join('; '));

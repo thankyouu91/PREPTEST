@@ -171,6 +171,24 @@ người nghe", và máy đọc sai tên riêng là chuyện xảy ra thật.
 Băm nội dung (`sha256` của lời đọc + giọng + model + tham số) khiến bấm Dựng lại
 trên một câu chưa sửa gì thì dùng lại tệp cũ, không tốn thêm ký tự nào.
 
+### Triển khai lên Google Cloud
+
+```bash
+PROJECT_ID=your-project ./deploy/deploy.sh
+```
+
+Bật API, tạo service account riêng, tạo bucket audio, sinh secret, build
+container rồi deploy lên Cloud Run ở `asia-southeast1`. Chạy lại lần nữa vẫn an
+toàn — mỗi bước đều kiểm tra trước khi tạo.
+
+**Đọc [`deploy/README.md`](deploy/README.md) trước khi bấm.** Điểm quan trọng
+nhất: Cloud Run cho container một hệ tệp nằm trong RAM và xoá sạch khi instance
+biến mất, mà CSDL SQLite thì nằm trên đó — **deploy lại là mất dữ liệu**. Script
+ghim đúng một instance để giữ được dữ liệu giữa các lượt truy cập, đủ cho bản
+demo và bản thử nội bộ, **chưa đủ cho thí sinh thật**. Audio đã đẩy sang Cloud
+Storage và khoá API lấy từ Secret Manager nên hai thứ đó sống sót; phần còn lại
+chờ chuyển sang Cloud SQL Postgres.
+
 ### Khoá API
 
 Hai khoá, nhập trong **Quản trị → Khoá API**:

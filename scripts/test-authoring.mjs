@@ -1,8 +1,10 @@
 /**
- * Kiểm thử khối soạn đề: ký hiệu ngắt nghỉ, lưu khoá API, và các route dựng audio.
+ * Kiểm thử khối soạn đề và các điều kiện để chạy được trên Cloud Run:
+ * ký hiệu ngắt nghỉ, lưu khoá API, route dựng audio, health check, cờ Secure
+ * trên cookie, và driver lưu trữ GCS.
  *
- * Phần ký hiệu chạy thuần trong tiến trình (không cần mạng, không tốn ký tự của
- * ElevenLabs). Phần route cần server đang bật ở PORT.
+ * Phần ký hiệu và phần khoá chạy thuần trong tiến trình — không cần mạng,
+ * không tốn ký tự nào của ElevenLabs. Phần route cần server đang bật ở PORT.
  *
  * Chạy: node scripts/test-authoring.mjs
  */
@@ -234,6 +236,79 @@ if (cookie && csrf) {
     });
     ok(r.status === 400, 'Nhà cung cấp lạ bị từ chối');
   }
+}
+
+/* ================= 4. Sẵn sàng triển khai ================= */
+
+console.log('\n\x1b[1m== Sẵn sàng chạy trên Cloud Run ==\x1b[0m');
+
+{
+  /* Health check phải trả lời được khi CHƯA đăng nhập: Cloud Run gọi nó bằng
+     một client không có cookie nào. Health check đòi đăng nhập là health check
+     luôn báo hỏng. */
+  try {
+    const r = await fetch(BASE + '/healthz');
+    const body = await r.text();
+    ok(r.status === 200 && body.trim() === 'ok', 'GET /healthz trả 200 "ok" mà không cần đăng nhập');
+  } catch (e) {
+    ok(false, 'GET /healthz trả lời được', e.message);
+  }
+}
+
+{
+  /* Cookie phiên phải có cờ Secure ở production mà không cần ai nhớ đặt biến
+     môi trường — cookie phiên đi được qua HTTP thuần là loại lỗi không ai thấy
+     cho tới lúc nó thành chuyện lớn. */
+  const A = require('../server/auth.js');
+  const cookieOf = () => {
+    const headers = {};
+    const res = {
+      getHeader: k => headers[k],
+      setHeader: (k, v) => { headers[k] = v; }
+    };
+    A.setCookie(res, 'x', 'y', {});
+    return [].concat(headers['Set-Cookie'] || []).join('|');
+  };
+
+  const before = process.env.NODE_ENV;
+  delete process.env.FORCE_SECURE_COOKIE;
+
+  process.env.NODE_ENV = 'production';
+  ok(/Secure/.test(cookieOf()), 'Production tự bật cờ Secure trên cookie phiên');
+
+  process.env.NODE_ENV = 'development';
+  ok(!/Secure/.test(cookieOf()), 'Chạy thử không bật Secure (localhost không có HTTPS)');
+
+  process.env.FORCE_SECURE_COOKIE = '1';
+  ok(/Secure/.test(cookieOf()), 'FORCE_SECURE_COOKIE=1 bật được ngoài production');
+
+  process.env.FORCE_SECURE_COOKIE = '0';
+  process.env.NODE_ENV = 'production';
+  ok(!/Secure/.test(cookieOf()), 'FORCE_SECURE_COOKIE=0 tắt được trong production');
+
+  delete process.env.FORCE_SECURE_COOKIE;
+  if (before === undefined) delete process.env.NODE_ENV; else process.env.NODE_ENV = before;
+}
+
+{
+  /* Driver GCS thiếu tên bucket phải hỏng ngay lúc gọi, kèm câu nói rõ thiếu
+     gì — chứ không phải một lỗi 502 mơ hồ khi ai đó bấm Dựng audio. */
+  const before = { d: process.env.AUDIO_STORAGE, b: process.env.GCS_AUDIO_BUCKET };
+  process.env.AUDIO_STORAGE = 'gcs';
+  delete process.env.GCS_AUDIO_BUCKET;
+
+  /* storage.js đọc biến môi trường lúc nạp module, nên phải nạp lại bản mới. */
+  const fresh = createRequire(import.meta.url);
+  delete fresh.cache[fresh.resolve('../server/storage.js')];
+  const st = fresh('../server/storage.js');
+
+  let msg = '';
+  try { await st.put(Buffer.from([0xff, 0xfb, 0x90, 0x00]), 'audio/mpeg'); }
+  catch (e) { msg = e.message; }
+  ok(/GCS_AUDIO_BUCKET/.test(msg), 'AUDIO_STORAGE=gcs thiếu bucket thì báo đúng biến còn thiếu');
+
+  if (before.d === undefined) delete process.env.AUDIO_STORAGE; else process.env.AUDIO_STORAGE = before.d;
+  if (before.b !== undefined) process.env.GCS_AUDIO_BUCKET = before.b;
 }
 
 /* ================= Kết quả ================= */

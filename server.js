@@ -77,6 +77,23 @@ app.use('/api', userApi);        // tài khoản học viên: /api/auth/…, /ap
 app.use('/api', api);            // danh mục công khai + /api/admin/…
 app.use('/api', authoringApi);   // khoá API nhà cung cấp, dựng audio, soạn đề bằng AI
 
+/* ---------------- Health check ----------------
+   Cloud Run gọi đường này để biết container đã sẵn sàng nhận request chưa, và
+   để phát hiện instance hỏng. Phải nằm TRƯỚC mọi guard và mọi lớp static:
+   một health check đòi đăng nhập là một health check luôn báo hỏng.
+
+   Có chạm CSDL một câu rất nhẹ. Không chạm thì container vẫn "khoẻ" khi ổ đĩa
+   hỏng hoặc kết nối CSDL đứt — đúng lúc cần biết nhất thì lại không biết. */
+app.get('/healthz', (req, res) => {
+  try {
+    require('./server/db').q.val('SELECT 1');
+    res.type('text').send('ok');
+  } catch (e) {
+    console.error('[healthz] database unreachable', e);
+    res.status(503).type('text').send('database unreachable');
+  }
+});
+
 /* ---------------- Khu quản trị ----------------
    Guard phía server: chưa đăng nhập thì đá về /admin/dang-nhap/ ngay từ HTTP,
    không để lộ khung trang quản trị rồi mới kiểm ở client. */
@@ -178,9 +195,35 @@ A.ensureSeedAdmin();
 A.ensureDemoStudentPassword();
 setInterval(A.purgeSessions, 30 * 60e3).unref();
 
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`VPET Prep chạy tại http://localhost:${PORT}`);
   console.log(`  · Học viên:  http://localhost:${PORT}/prep/landing/`);
   console.log(`  · Quản trị:  http://localhost:${PORT}/admin/`);
   A.reportAdminAccounts();
 });
+
+/* ---------------- Tắt êm ----------------
+   Cloud Run gửi SIGTERM rồi chờ khoảng 10 giây trước khi giết container. Không
+   bắt tín hiệu này thì mỗi lần scale xuống hoặc deploy bản mới sẽ có request
+   đang dở bị cắt ngang — người dùng thấy lỗi mạng chứ không thấy trang.
+
+   Chốt chặn 8 giây: một kết nối keep-alive nhàn rỗi có thể giữ server mãi, mà
+   hết hạn ân huệ thì Cloud Run giết cứng, tệ hơn là tự đóng. */
+function shutdown(signal) {
+  console.log(`[${signal}] đang đóng, chờ các request hiện tại xong…`);
+  const hard = setTimeout(() => {
+    console.warn('[shutdown] hết 8 giây, đóng cứng');
+    process.exit(0);
+  }, 8000);
+  hard.unref();
+
+  server.close(() => {
+    clearTimeout(hard);
+    /* SQLite mở đồng bộ; đóng tường minh để bản ghi cuối chắc chắn xuống đĩa
+       trước khi tiến trình biến mất. */
+    try { require('./server/db').db.close(); } catch (e) {}
+    console.log('[shutdown] xong');
+    process.exit(0);
+  });
+}
+['SIGTERM', 'SIGINT'].forEach(s => process.on(s, () => shutdown(s)));
