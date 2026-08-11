@@ -15,10 +15,10 @@ Cơ chế truy cập: đăng ký tài khoản → mua/nhập code → mở khoá
 
 ## Ngôn ngữ giao diện
 
-Đang chuyển sang tiếng Anh theo từng mảng. Xong: năm màn tài khoản (đăng nhập,
-đăng ký, quên/đặt lại mật khẩu, xác thực email) và thông báo `/api/auth/*` đi kèm.
-Còn tiếng Việt: trang giới thiệu, khu học viên đã đăng nhập, khu quản trị —
-xem hàng đợi trong `docs/ROADMAP.md`.
+Đang chuyển sang tiếng Anh theo từng mảng. Xong: **toàn bộ phần trước khi đăng
+nhập** — trang giới thiệu và năm màn tài khoản, kèm thông báo `/api/auth/*`.
+Còn tiếng Việt: khu học viên đã đăng nhập và khu quản trị — xem hàng đợi trong
+`docs/ROADMAP.md`. Giá tiền giữ đơn vị đồng.
 
 **Nội dung khu tự học giữ nguyên tiếng Việt**: phần nghĩa, ví dụ song ngữ và
 "lỗi người Việt hay mắc" tồn tại để giải thích tiếng Anh bằng tiếng mẹ đẻ của
