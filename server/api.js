@@ -194,7 +194,7 @@ router.get('/admin/reports', (req, res) => {
   }
 
   const byFamily = q.all(`
-    SELECT f.id, f.name,
+    SELECT f.id, f.name, f.status,
            (SELECT COUNT(*) FROM tests t WHERE t.family_id=f.id) tests,
            (SELECT COUNT(*) FROM tests t WHERE t.family_id=f.id AND t.status='published') published,
            (SELECT COUNT(*) FROM questions qq WHERE qq.family_id=f.id AND qq.status='active') questions,
@@ -234,7 +234,9 @@ router.get('/admin/reports', (req, res) => {
      đường dẫn tới đúng màn xử lý để không phải tự đi tìm. */
   const todo = [];
 
-  const thieuDe = byFamily.filter(f => f.interested > 0 && f.published === 0);
+  /* Only families that are actually open for business. A parked one having no
+     published test is the intended state, not a problem to chase. */
+  const thieuDe = byFamily.filter(f => f.status !== 'coming_soon' && f.interested > 0 && f.published === 0);
   if (thieuDe.length) {
     todo.push({
       sev: 'cao',
@@ -566,7 +568,7 @@ router.get('/admin/exam-formats', (req, res) => {
   const list = EXAM_FORMATS.FORMATS
     .filter(f => !familyId || f.familyId === familyId)
     .map(f => {
-      const fam = q.get('SELECT name FROM families WHERE id=?', f.familyId);
+      const fam = q.get('SELECT name, status FROM families WHERE id=?', f.familyId);
       const sections = f.sections.map(s => {
         const bank = bankCount(f.familyId, s.skill, s.types, level);
         const have = strict ? bank.exact : bank.total;
@@ -587,6 +589,7 @@ router.get('/admin/exam-formats', (req, res) => {
       const audioShort = sections.reduce((a, s) => a + (s.audio ? s.audio.short : 0), 0);
       return {
         id: f.id, familyId: f.familyId, familyName: fam ? fam.name : f.familyId,
+        familyStatus: fam ? (fam.status || 'ready') : 'ready',
         name: f.name, kind: f.kind, levels: f.levels,
         scoring: f.scoring, guide: f.guide, notes: f.notes,
         totalItems: EXAM_FORMATS.totalItems(f), totalMinutes: EXAM_FORMATS.totalMinutes(f),
@@ -705,6 +708,14 @@ router.post('/admin/tests/:id/status', (req, res) => {
   if (!t) return res.status(404).json({ error: 'Không tìm thấy đề.' });
 
   if (status === 'published') {
+    /* The platform is only selling VPET right now. Letting a parked family's
+       test go live would put it in the catalogue and on sale, which is the
+       one thing parking it was meant to prevent. */
+    const fam = q.get('SELECT name, status FROM families WHERE id=?', t.familyId);
+    if (fam && fam.status === 'coming_soon') {
+      return bad(res, fam.name + ' đang ở trạng thái chưa sẵn sàng nên không phát hành đề được. '
+        + 'Mở kỳ thi này trong server/db.js (FAMILIES) trước đã.');
+    }
     if (!t.sections.length) return bad(res, 'Đề chưa có phần nào, không phát hành được.');
     const empty = t.sections.filter(s => !s.items.length).map(s => s.name);
     if (empty.length) return bad(res, 'Các phần sau chưa có câu hỏi: ' + empty.join(', '));

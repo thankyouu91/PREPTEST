@@ -79,6 +79,18 @@ chưa dựng đề. Cờ này nằm trong CSDL, trả ra ở `GET /api/catalog`,
 cách sửa `FAMILIES` trong `server/db.js` — bảng `families` được đồng bộ lại mỗi
 lần khởi động.
 
+Cờ đó được **thi hành ở ba chỗ**, không chỉ là nhãn hiển thị:
+
+1. Đề seed của kỳ thi đang park nằm ở trạng thái nháp ngay từ đầu.
+2. Mỗi lần khởi động, đề nào của kỳ thi đang park mà lỡ đang phát hành sẽ bị kéo
+   về nháp và ghi cảnh báo ra console — CSDL cũ cũng phải tuân luật, không chỉ
+   CSDL mới.
+3. `POST /api/admin/tests/:id/status` từ chối phát hành đề thuộc kỳ thi đang
+   park, kèm chỉ dẫn phải mở kỳ thi trong `FAMILIES` trước.
+
+Bảng "Việc cần làm" ở màn Tổng quan cũng bỏ qua các kỳ thi đang park: chúng
+không có đề đang bán là **đúng ý đồ**, không phải việc cần xử lý.
+
 #### Format VPET — 10 phần, 55 câu
 
 | Phần | Task | Số câu | Kỹ năng | Cần MP3 |

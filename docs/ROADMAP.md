@@ -50,7 +50,8 @@ Queue for this track, in order:
 - [x] MP3 upload in the admin question bank: storage adapter (disk + Supabase driver), raw-body upload behind requireAdmin + CSRF with magic-byte validation, player and replace/remove on each item, and per-part audio coverage in the format readiness report
 - [x] **Google Sign-In** — server-side OAuth 2.0 redirect (`/auth/google`, `/auth/google/callback`), no external script so the CSP is untouched; state + nonce, issuer/audience/expiry checks, open-redirect guard, links onto an existing account by verified email, and stays hidden until `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` are set
 - [x] **PWA** — manifest with maskable icons rendered from the brand SVG, service worker caching only the shell (never `/api`, never a signed-in page), offline screen, installable from Chrome on Android without a Play listing
-- [ ] Stop offering non-VPET tests: seeded IELTS/TOEIC tests drop to draft, and the API refuses to publish a test whose family is `coming_soon`
+- [x] Stop offering non-VPET tests: seeded IELTS/TOEIC tests seed as drafts, boot pulls any already-published test of a parked family back to draft, the API refuses to publish one, and the dashboard stops raising "nothing to sell" for parked families
+- [ ] Shop copy follow-up: `pk-combo` still offers "any two exams" while only VPET is open, and `pk-single` implies a choice of tests when there is one. Rewrite both when the interface is translated
 - [ ] Tag items by VPET part: `questions.part` (A-J) so each part draws from its own pool instead of sharing one skill-wide pool
 - [ ] VPET exam engine: per-part timer, audio playback with a fixed replay count, microphone capture for parts H/I/J, autosave and submit
 - [ ] AI speaking scoring: adapter around an audio-native model, VPET rubric (fluency, pronunciation, vocabulary, grammar, task), score plus written feedback, reviewer override, and a manual-scoring fallback while no API key is set

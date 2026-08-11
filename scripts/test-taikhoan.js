@@ -147,6 +147,38 @@ try {
   try { cli('xoa-het-du-lieu'); } catch (e) { choiLenhLa = true; }
   ok(choiLenhLa, 'Lệnh không hợp lệ bị từ chối');
 
+  /* 13. Kỳ thi chưa sẵn sàng thì không được có đề đang bán.
+     Đây là luật áp lúc khởi động, nên phải thử đúng cách nó xảy ra thật: đẩy
+     một đề của kỳ thi đã park lên 'published' bằng SQL, rồi khởi động lại và
+     xem nó có bị kéo về nháp không. */
+  const kyThiPark = chay(
+    "const{q}=require('./server/db');" +
+    "console.log(q.val(\"SELECT f.id FROM families f WHERE f.status='coming_soon' " +
+    "AND EXISTS (SELECT 1 FROM tests t WHERE t.family_id=f.id) ORDER BY f.sort LIMIT 1\") || '')"
+  ).trim();
+  ok(!!kyThiPark, 'Có kỳ thi chưa sẵn sàng nhưng vẫn còn đề trong CSDL', kyThiPark);
+
+  const daDay = chay(
+    "const{q}=require('./server/db');" +
+    "const id=q.val(\"SELECT id FROM tests WHERE family_id=? LIMIT 1\", '" + kyThiPark + "');" +
+    "if(id){q.run(\"UPDATE tests SET status='published' WHERE id=?\", id);console.log(id)}else{console.log('')}"
+  ).trim();
+  ok(!!daDay, 'Dựng được tình huống đề của kỳ thi chưa sẵn sàng bị phát hành', daDay);
+
+  const conBan = chay(
+    "const{q}=require('./server/db');" +
+    "console.log(q.val(\"SELECT COUNT(*) c FROM tests t JOIN families f ON f.id=t.family_id " +
+    "WHERE t.status='published' AND f.status='coming_soon'\"))"
+  ).trim();
+  ok(conBan === '0', 'Khởi động lại kéo đề của kỳ thi chưa sẵn sàng về nháp', conBan + ' đề còn đang bán');
+
+  const vpetConNguyen = chay(
+    "const{q}=require('./server/db');" +
+    "console.log(q.val(\"SELECT COUNT(*) c FROM tests t JOIN families f ON f.id=t.family_id " +
+    "WHERE t.status='published' AND f.status='ready'\"))"
+  ).trim();
+  ok(Number(vpetConNguyen) > 0, 'Đề của kỳ thi đang mở không bị đụng tới', vpetConNguyen);
+
 } finally {
   fs.rmSync(thuMuc, { recursive: true, force: true });
 }

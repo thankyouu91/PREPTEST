@@ -425,6 +425,45 @@ const run = async () => {
     check('Gỡ xong thì không tải về được nữa', res.status === 404, 'status ' + res.status);
   }
 
+  /* 16c. Kỳ thi chưa sẵn sàng thì API từ chối phát hành đề của nó */
+  r = await call('GET', '/api/admin/exam-formats');
+  {
+    const list = Array.isArray(r.data) ? r.data : (r.data.items || r.data.formats || []);
+    const parked = list.find(f => f.familyStatus === 'coming_soon');
+    check('Màn format báo được kỳ thi nào đang chưa sẵn sàng', !!parked,
+      list.map(f => f.familyId + ':' + f.familyStatus).join(', '));
+  }
+
+  r = await call('GET', '/api/admin/tests?status=draft&limit=50');
+  {
+    const rows = (r.data && (r.data.items || r.data)) || [];
+    const parkedTest = rows.find(t => ['ielts', 'toeic', 'pte', 'ote', 'vept'].includes(t.familyId));
+    check('Đề của kỳ thi chưa sẵn sàng nằm ở trạng thái nháp', !!parkedTest,
+      rows.map(t => t.id + ':' + t.status).slice(0, 6).join(', '));
+
+    if (parkedTest) {
+      r = await call('POST', '/api/admin/tests/' + parkedTest.id + '/status', { status: 'published' });
+      check('Không phát hành được đề của kỳ thi chưa sẵn sàng',
+        r.status === 400 && /chưa sẵn sàng/.test(String(r.data && r.data.error)),
+        'status ' + r.status + ' ' + JSON.stringify(r.data));
+
+      const after = await call('GET', '/api/admin/tests/' + parkedTest.id);
+      check('Đề đó vẫn ở nguyên trạng thái nháp sau khi bị từ chối',
+        after.data && after.data.status === 'draft', after.data && after.data.status);
+    }
+  }
+
+  r = await fetch(BASE + '/api/catalog').then(x => x.json());
+  {
+    const readyIds = new Set(r.families.filter(f => f.status !== 'coming_soon').map(f => f.id));
+    check('Danh mục học viên chỉ còn đề của kỳ thi đang mở',
+      r.tests.every(t => readyIds.has(t.familyId)),
+      r.tests.filter(t => !readyIds.has(t.familyId)).map(t => t.id).join(', '));
+    check('Danh mục vẫn liệt kê đủ 6 kỳ thi, kèm trạng thái',
+      r.families.length === 6 && r.families.every(f => f.status),
+      r.families.map(f => f.id + ':' + f.status).join(', '));
+  }
+
   /* 17. Đăng xuất huỷ phiên */
   r = await call('POST', '/api/admin/logout');
   check('Đăng xuất', r.status === 200);

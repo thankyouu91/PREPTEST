@@ -389,27 +389,27 @@ const SEED_TESTS = [
            'Bài Viết và Nói được chấm tự động, trả kết quả kèm nhận xét.'],
     sections:[['Listening','listening','Trắc nghiệm',25],['Reading','reading','Trắc nghiệm',35],
               ['Writing','writing','Tự luận',40],['Speaking','speaking','Ghi âm',12]] },
-  { id:'ielts-ac-01', family:'ielts', title:'IELTS Academic Mock 01', level:'B2', dur:164, status:'published',
+  { id:'ielts-ac-01', family:'ielts', title:'IELTS Academic Mock 01', level:'B2', dur:164, status:'draft',
     scoring:'Band 0-9, làm tròn 0.5',
     guide:['Phần Nghe chỉ phát 1 lần, hãy đọc trước câu hỏi.',
            'Writing Task 2 chiếm 2/3 điểm phần Viết.',
            'Speaking mô phỏng phỏng vấn 3 part, trả lời theo đồng hồ.'],
     sections:[['Listening','listening','Trắc nghiệm + điền từ',30],['Reading','reading','Đọc hiểu học thuật',60],
               ['Writing','writing','Task 1 + Task 2',60],['Speaking','speaking','3 part, ghi âm',14]] },
-  { id:'ielts-ac-02', family:'ielts', title:'IELTS Academic Mock 02', level:'C1', dur:164, status:'published',
+  { id:'ielts-ac-02', family:'ielts', title:'IELTS Academic Mock 02', level:'C1', dur:164, status:'draft',
     scoring:'Band 0-9, làm tròn 0.5',
     guide:['Đề nâng cao: từ vựng học thuật dày hơn Mock 01.',
            'Phân bổ 20 phút cho mỗi passage phần Đọc.',
            'Speaking part 3 hỏi sâu quan điểm, luyện trả lời có cấu trúc.'],
     sections:[['Listening','listening','Trắc nghiệm + điền từ',30],['Reading','reading','Đọc hiểu học thuật',60],
               ['Writing','writing','Task 1 + Task 2',60],['Speaking','speaking','3 part, ghi âm',14]] },
-  { id:'toeic-lr-01', family:'toeic', title:'TOEIC Listening & Reading 01', level:'B1', dur:120, status:'published',
+  { id:'toeic-lr-01', family:'toeic', title:'TOEIC Listening & Reading 01', level:'B1', dur:120, status:'draft',
     scoring:'Thang 10-990 (mỗi phần 5-495)',
     guide:['Không có điểm trừ, đừng bỏ trống câu nào.',
            'Part 7 chiếm nhiều thời gian nhất, làm Part 5-6 thật nhanh.',
            'Đồng hồ chung cho cả phần Đọc, tự phân bổ thời gian.'],
     sections:[['Listening','listening','Part 1-4, trắc nghiệm',45],['Reading','reading','Part 5-7, trắc nghiệm',75]] },
-  { id:'toeic-lr-02', family:'toeic', title:'TOEIC Listening & Reading 02', level:'B2', dur:120, status:'published',
+  { id:'toeic-lr-02', family:'toeic', title:'TOEIC Listening & Reading 02', level:'B2', dur:120, status:'draft',
     scoring:'Thang 10-990 (mỗi phần 5-495)',
     guide:['Đề mô phỏng độ khó kỳ thi thật từ 2024 trở lại đây.',
            'Luyện kỹ dạng đoạn đôi / đoạn ba ở Part 7.',
@@ -552,6 +552,30 @@ function seed() {
       ins.run(id, name, price, fam, desc, JSON.stringify(perks), feat, sort);
     }
   }
+
+  /* A parked family must not have anything on sale. Seeds above only run on an
+     empty table, so an existing database needs the rule applied directly —
+     otherwise tests published before a family was parked stay in the
+     catalogue and students can still buy them. */
+  const pulled = q.run(`UPDATE tests SET status='draft', updated_at=?
+                         WHERE status='published'
+                           AND family_id IN (SELECT id FROM families WHERE status='coming_soon')`, at);
+  if (pulled.changes) {
+    console.warn(`[seed] ${pulled.changes} đề của kỳ thi chưa sẵn sàng đã chuyển về nháp.`);
+  }
+
+  /* Same rule for the shop: a package for a parked family would take money and
+     unlock nothing, since that family has no published test. Deactivating is
+     reversible — opening the family again reactivates its package — so this
+     stays correct in both directions rather than being a one-way switch.
+
+     Codes already issued are deliberately left alone: someone holding a
+     pre-paid code keeps their entitlement, and the tests appear for them the
+     day that family opens. Parking stops new sales, it does not confiscate. */
+  q.run(`UPDATE packages SET active=0
+          WHERE active=1 AND family_id IN (SELECT id FROM families WHERE status='coming_soon')`);
+  q.run(`UPDATE packages SET active=1
+          WHERE active=0 AND family_id IN (SELECT id FROM families WHERE status='ready')`);
 
   if (!q.val('SELECT COUNT(*) c FROM questions')) seedQuestions();
 

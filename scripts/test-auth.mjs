@@ -82,7 +82,14 @@ await logout();
 await login('student', 'Goodmorning01');
 await page.waitForTimeout(700);
 const afterRelogin = await page.locator('#mytests-grid article').count();
-check('Bài mở khoá còn sau khi đăng nhập lại', afterRelogin === 3, 'đếm được ' + afterRelogin);
+/* Code này mở khoá cả kỳ IELTS, mà IELTS đang ở trạng thái chưa sẵn sàng nên
+   không có đề nào đã phát hành. Quyền vẫn được ghi nhận — người đã mua không
+   bị mất — nhưng chưa có bài nào hiện ra. Ngày mở IELTS thì chúng xuất hiện. */
+check('Kích hoạt code kỳ thi đang park: quyền được giữ nhưng chưa có bài nào hiện ra',
+  afterRelogin === 1, 'đếm được ' + afterRelogin);
+const codeStillThere = await page.evaluate(() =>
+  (PrepState.load().myCodes || []).some(c => String(c.code).startsWith('IELT-')));
+check('Code đã kích hoạt vẫn nằm trong tài khoản, không bị mất', codeStillThere === true);
 
 /* ---------- 6. Đăng xuất bằng nút trên màn Tài khoản ---------- */
 await page.goto(BASE + '/prep/tai-khoan/', { waitUntil: 'networkidle' });
