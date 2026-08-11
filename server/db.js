@@ -330,6 +330,15 @@ addColumnIfMissing('families', 'status', "TEXT NOT NULL DEFAULT 'ready'");
 addColumnIfMissing('users', 'google_sub', 'TEXT');
 db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_users_google_sub ON users (google_sub)');
 
+/* A code now carries a subscription plan rather than a list of tests: what a
+   buyer picks is how long they practise and how much of the platform they get.
+   The access window is stamped at redemption, so a code bought in January and
+   redeemed in March starts counting in March. attempts_used is on the code
+   because the cap belongs to the purchase, not to the account. */
+addColumnIfMissing('codes', 'plan_id', 'TEXT');
+addColumnIfMissing('codes', 'access_expires_at', 'TEXT');
+addColumnIfMissing('codes', 'attempts_used', 'INTEGER NOT NULL DEFAULT 0');
+
 addColumnIfMissing('questions', 'audio_key', 'TEXT');
 addColumnIfMissing('questions', 'audio_bytes', 'INTEGER');
 addColumnIfMissing('questions', 'audio_at', 'TEXT');
@@ -564,18 +573,30 @@ function seed() {
     console.warn(`[seed] ${pulled.changes} đề của kỳ thi chưa sẵn sàng đã chuyển về nháp.`);
   }
 
-  /* Same rule for the shop: a package for a parked family would take money and
-     unlock nothing, since that family has no published test. Deactivating is
-     reversible — opening the family again reactivates its package — so this
-     stays correct in both directions rather than being a one-way switch.
-
-     Codes already issued are deliberately left alone: someone holding a
-     pre-paid code keeps their entitlement, and the tests appear for them the
-     day that family opens. Parking stops new sales, it does not confiscate. */
-  q.run(`UPDATE packages SET active=0
-          WHERE active=1 AND family_id IN (SELECT id FROM families WHERE status='coming_soon')`);
-  q.run(`UPDATE packages SET active=1
-          WHERE active=0 AND family_id IN (SELECT id FROM families WHERE status='ready')`);
+  /* The shop sells subscription plans now, not per-exam bundles. The plan
+     table in server/data/plans.js is the single source: packages are synced
+     from it on every boot, and anything not in it is retired rather than
+     deleted, because historical orders point at those rows. */
+  const PLANS = require('./data/plans');
+  const insPkg = db.prepare(
+    'INSERT INTO packages (id,name,price,family_id,description,perks_json,featured,active,sort) VALUES (?,?,?,NULL,?,?,?,1,?)');
+  const updPkg = db.prepare(
+    'UPDATE packages SET name=?, price=?, family_id=NULL, description=?, perks_json=?, featured=?, active=1, sort=? WHERE id=?');
+  PLANS.PLANS.forEach((p, i) => {
+    const perks = JSON.stringify(p.perks);
+    /* Plus is the one most people should buy: long enough to matter, and the
+       step that opens the study material. */
+    const featured = p.id === 'plus-6m' ? 1 : 0;
+    if (q.val('SELECT 1 FROM packages WHERE id=?', p.id)) {
+      updPkg.run(p.name, p.price, p.tagline, perks, featured, i, p.id);
+    } else {
+      insPkg.run(p.id, p.name, p.price, p.tagline, perks, featured, i);
+    }
+  });
+  const retired = q.run(
+    `UPDATE packages SET active=0 WHERE active=1 AND id NOT IN (${PLANS.PLANS.map(() => '?').join(',')})`,
+    ...PLANS.PLANS.map(p => p.id));
+  if (retired.changes) console.warn(`[seed] ${retired.changes} gói cũ đã ngừng bán, chuyển sang bảng giá theo thời hạn.`);
 
   if (!q.val('SELECT COUNT(*) c FROM questions')) seedQuestions();
 
@@ -640,6 +661,20 @@ function seed() {
     insC.run('PREP-HHAN-2025', null, 'family', 'pte', 'unused', '2025-12-31', null, null, 'Mã minh hoạ đã hết hạn', daysAgo(300));
     insC.run('PREP-DUNG-ROI1', null, 'test', 'ielts-ac-01', 'redeemed', daysFromNow(140),
       q.val("SELECT id FROM users WHERE username='thuhang.nt'"), daysAgo(12), null, daysAgo(13));
+
+    /* Gắn gói cho các mã demo. Từ giờ mã nào không có gói thì kích hoạt không
+       ra quyền gì, nên dữ liệu mẫu phải phản ánh đúng mô hình mới. Tài khoản
+       demo cầm gói Plus để mọi màn — kể cả khu tự học — có dữ liệu để xem. */
+    const monthsFromNow = n => {
+      const d = new Date(); d.setMonth(d.getMonth() + n); return d.toISOString();
+    };
+    const ganGoi = db.prepare('UPDATE codes SET plan_id=?, access_expires_at=? WHERE code=?');
+    ganGoi.run('plus-6m', monthsFromNow(6), 'VPET-B1MK-24TR');
+    ganGoi.run('starter-3m', null, 'IELT-AC12-96HD');
+    ganGoi.run('pro-12m', null, 'TOEC-LR20-26CB');
+    ganGoi.run('starter-3m', null, 'PREP-HHAN-2025');
+    ganGoi.run('starter-3m', monthsFromNow(3), 'PREP-DUNG-ROI1');
+    q.run("UPDATE codes SET plan_id='starter-3m' WHERE plan_id IS NULL AND status='unused'");
 
     // Một ít code đã dùng để báo cáo có dữ liệu
     const users = q.all("SELECT id FROM users WHERE username IN ('khanhqd','ngocanh.study','baolong.tb')");

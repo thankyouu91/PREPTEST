@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Mua code · VPET Prep</title>
-  <meta name="description" content="Mua code mở khoá bài thi thử theo bài lẻ, gói kỳ thi hoặc combo.">
+  <title>Bảng giá · VPET Prep</title>
+  <meta name="description" content="Ba gói luyện thi VPET theo thời hạn: 3 tháng, 6 tháng và 12 tháng.">
   <meta name="theme-color" content="#1c3d8f">
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <link rel="manifest" href="/manifest.webmanifest">
@@ -26,14 +26,36 @@
   <main id="main">
     <div class="max-w-shell mx-auto px-4 sm:px-6 lg:px-10">
 
-      <section class="mt-8 max-w-[62ch]">
-        <h2 class="text-2xl sm:text-[28px] font-extrabold tracking-tight">Mua code mở khoá</h2>
+      <!-- Đến đây vì vừa chạm vào một phần bị khoá -->
+      <div id="locked-note" hidden class="mt-8">
+        <div class="banner banner-warn show" role="status">
+          <svg viewBox="0 0 24 24" class="w-5 h-5 shrink-0 mt-0.5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2.5"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          <span id="locked-text"></span>
+        </div>
+      </div>
+
+      <section class="mt-8 max-w-[64ch]">
+        <h2 class="text-2xl sm:text-[28px] font-extrabold tracking-tight">Bảng giá luyện thi VPET</h2>
         <p class="text-muted text-[15px] leading-relaxed mt-2">
-          Một code mở đúng một bài hoặc trọn gói kỳ thi. Kích hoạt ở mục <a href="/prep/nhap-code/" class="font-bold text-brand-strong hover:underline">Nhập code</a>, dùng được ngay.
+          Một code mở một gói theo thời hạn cho <b class="text-ink">một tài khoản</b>. Kích hoạt ở mục
+          <a href="/prep/nhap-code/" class="font-bold text-brand-strong hover:underline">Nhập code</a>,
+          thời hạn đếm từ lúc kích hoạt chứ không phải lúc mua.
         </p>
       </section>
 
-      <!-- Loading: chờ GET /api/catalog -->
+      <!-- Gói đang dùng -->
+      <div id="current-plan" hidden class="card p-5 mt-6 flex flex-wrap items-center gap-x-4 gap-y-2">
+        <span class="w-11 h-11 rounded-2xl bg-accent-soft text-accent-strong inline-flex items-center justify-center shrink-0">
+          <svg viewBox="0 0 24 24" class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21.8 10.1A10 10 0 1 1 14 2.2"/><path d="m9 11 3 3L22 4"/></svg>
+        </span>
+        <span class="min-w-0">
+          <b id="cur-name" class="block font-extrabold text-[15.5px]"></b>
+          <span id="cur-meta" class="block text-[13.5px] text-muted font-medium mt-0.5"></span>
+        </span>
+        <a href="/prep/code-cua-toi/" class="btn btn-ghost btn-sm ms-auto">Code của tôi</a>
+      </div>
+
+      <!-- Loading: chờ GET /api/me -->
       <div id="pkg-skeleton" class="grid md:grid-cols-2 xl:grid-cols-3 gap-5 mt-8 mb-4" aria-hidden="true">
         <div class="card p-6"><div class="skeleton h-5 w-2/5 mb-3"></div><div class="skeleton h-4 w-4/5 mb-5"></div><div class="skeleton h-8 w-1/2 mb-6"></div><div class="skeleton h-10 w-full rounded-full"></div></div>
         <div class="card p-6"><div class="skeleton h-5 w-2/5 mb-3"></div><div class="skeleton h-4 w-4/5 mb-5"></div><div class="skeleton h-8 w-1/2 mb-6"></div><div class="skeleton h-10 w-full rounded-full"></div></div>
@@ -44,58 +66,47 @@
 
       <!-- Empty: chưa mở bán gói nào -->
       <div id="pkg-empty" hidden class="card p-10 mt-8 text-center">
-        <h3 class="font-extrabold text-lg tracking-tight">Chưa có gói code nào đang mở bán</h3>
+        <h3 class="font-extrabold text-lg tracking-tight">Chưa có gói nào đang mở bán</h3>
         <p class="text-muted text-[15px] mt-1.5">Liên hệ trung tâm của bạn để nhận code, hoặc quay lại sau nhé.</p>
         <a href="/prep/nhap-code/" class="btn btn-soft btn-md mt-6">Tôi đã có code</a>
       </div>
-      <p class="text-[13px] text-muted/80 font-medium mb-6">Giá minh hoạ trong giai đoạn thử nghiệm. Thanh toán VNPay / MoMo nối sau.</p>
+
+      <p class="text-[13px] text-muted/80 font-medium mb-6">
+        Mọi gói đều gồm 150 bộ đề luyện và nền tảng luyện liên tục trong thời hạn. Cổng thanh toán VNPay / MoMo nối sau.
+      </p>
     </div>
   </main>
 </div>
 
-<!-- Modal mua (demo) -->
+<!-- Cách nhận code -->
 <div id="buy-modal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="bm-title">
   <div class="modal-panel">
-    <!-- Bước xác nhận -->
-    <div id="bm-step-confirm">
-      <div class="flex items-start justify-between gap-4">
-        <h3 id="bm-title" class="text-lg font-extrabold tracking-tight">Xác nhận gói</h3>
-        <button type="button" data-close class="p-1.5 -m-1 rounded-full text-muted hover:text-ink transition" aria-label="Đóng"></button>
-      </div>
-      <div class="card bg-brand-soft border-0 p-4 mt-4 flex items-center justify-between gap-3">
-        <span>
-          <b id="bm-name" class="block font-bold"></b>
-          <span id="bm-desc" class="block text-[13px] text-muted font-medium mt-0.5"></span>
-        </span>
-        <b id="bm-price" class="text-lg font-extrabold whitespace-nowrap"></b>
-      </div>
-
-      <div id="bm-pick" class="mt-4"></div>
-
-      <p class="label mt-5 mb-2">Thanh toán</p>
-      <div class="grid grid-cols-2 gap-2.5">
-        <button type="button" class="btn btn-ghost btn-md opacity-55 cursor-not-allowed" aria-disabled="true">VNPay <span class="badge badge-muted ms-1">sắp có</span></button>
-        <button type="button" class="btn btn-ghost btn-md opacity-55 cursor-not-allowed" aria-disabled="true">MoMo <span class="badge badge-muted ms-1">sắp có</span></button>
-      </div>
-      <p class="help mt-2.5">Cổng thanh toán nối ở giai đoạn backend. Trong bản demo, bạn nhận mã miễn phí để thử luồng.</p>
-      <button type="button" id="bm-buy" class="btn btn-primary btn-lg w-full mt-5">Nhận mã demo miễn phí</button>
+    <div class="flex items-start justify-between gap-4">
+      <h3 id="bm-title" class="text-lg font-extrabold tracking-tight">Nhận code gói này</h3>
+      <button type="button" data-close class="p-1.5 -m-1 rounded-full text-muted hover:text-ink transition" aria-label="Đóng"></button>
     </div>
 
-    <!-- Bước thành công -->
-    <div id="bm-step-done" hidden class="text-center">
-      <span class="w-16 h-16 rounded-full bg-accent-soft text-accent-strong inline-flex items-center justify-center mx-auto">
-        <svg viewBox="0 0 24 24" class="w-8 h-8" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21.8 10.1A10 10 0 1 1 14 2.2"/><path d="m9 11 3 3L22 4"/></svg>
+    <div class="card bg-brand-soft border-0 p-4 mt-4 flex items-center justify-between gap-3">
+      <span>
+        <b id="bm-name" class="block font-bold"></b>
+        <span id="bm-desc" class="block text-[13px] text-muted font-medium mt-0.5"></span>
       </span>
-      <h3 class="text-lg font-extrabold tracking-tight mt-4">Mã của bạn đã sẵn sàng</h3>
-      <p class="text-muted text-sm leading-relaxed mt-1.5">Đơn demo đã lưu vào <b class="text-ink">Lịch sử đơn</b>. Kích hoạt mã để mở khoá.</p>
-      <div class="card bg-brand-soft border-0 px-4 py-3.5 mt-5 flex items-center justify-between gap-3">
-        <code id="bm-code" class="font-extrabold tracking-[.14em] text-[17px]"></code>
-        <button type="button" id="bm-copy" class="btn btn-ghost btn-sm shrink-0" aria-label="Sao chép mã"></button>
-      </div>
-      <div class="grid gap-2.5 mt-5">
-        <a id="bm-redeem-link" href="/prep/nhap-code/" class="btn btn-primary btn-md w-full">Kích hoạt ngay</a>
-        <button type="button" data-close class="btn btn-ghost btn-md w-full">Để sau</button>
-      </div>
+      <b id="bm-price" class="text-lg font-extrabold whitespace-nowrap"></b>
+    </div>
+
+    <ul id="bm-perks" class="grid gap-2 mt-4 text-[13.5px] font-medium text-muted"></ul>
+
+    <div class="border-t border-line mt-5 pt-5">
+      <p class="text-[14.5px] font-bold">Cách nhận code</p>
+      <p class="text-muted text-[14px] leading-relaxed mt-1.5">
+        Cổng thanh toán chưa nối, nên code do trung tâm cấp. Liên hệ trung tâm của bạn để mua gói này —
+        mỗi code chỉ dùng được cho một tài khoản, kích hoạt xong là bắt đầu tính thời hạn.
+      </p>
+    </div>
+
+    <div class="grid gap-2.5 mt-5">
+      <a href="/prep/nhap-code/" class="btn btn-primary btn-md w-full">Tôi đã có code</a>
+      <button type="button" data-close class="btn btn-ghost btn-md w-full">Đóng</button>
     </div>
   </div>
 </div>
@@ -104,43 +115,77 @@
 <script src="/prep/_chrome.js"></script>
 <script>
   PREP.boot({ auth: true }).then(() => {
-    PrepChrome.mount({ title: 'Mua code' });
+    PrepChrome.mount({ title: 'Bảng giá' });
 
-    /* Render gói từ danh mục thật (GET /api/catalog) */
-    const famChip = id => {
-      const f = PREP.family(id);
-      return f ? '<span class="exam-chip" data-family="' + f.id + '">' + f.name + '</span>' : '';
+    /* Vì sao vừa bị đá sang đây. Chỉ nhận các lý do đã biết: tham số đến từ
+       thanh địa chỉ nên không được đưa thẳng vào trang. */
+    const LOCKED = {
+      'self-study': 'Khu tự học — từ vựng, ngữ pháp, từ nối, phát âm — mở từ gói Plus trở lên. Gói hiện tại của bạn chưa gồm phần này.',
+      'detailed-report': 'Báo cáo đánh giá chi tiết mở từ gói Plus trở lên. Gói Starter chỉ có điểm và thang bậc.',
+      'attempts': 'Bạn đã dùng hết số lượt thi của gói Starter. Nâng lên Plus hoặc Pro để luyện không giới hạn.'
     };
-    PREP.loadCatalog().then(res => {
-      PREP.catalogWarning(res);
-      PREP.qs('#pkg-skeleton').classList.add('hidden');
-      if (!PREP.packages.length) {
-        PREP.qs('#pkg-empty').removeAttribute('hidden');
-        return;
-      }
-      PREP.qs('#pkg-grid').classList.remove('hidden');
-      PREP.qs('#pkg-grid').innerHTML = PREP.packages.map(p =>
-        '<article class="card p-6 flex flex-col relative ' + (p.featured ? 'ring-2 ring-[color:var(--color-accent)] shadow-soft-lg' : 'card-hover') + '">' +
-          (p.featured ? '<span class="badge badge-hl absolute -top-3 left-6">Phổ biến nhất</span>' : '') +
-          '<div class="flex items-center gap-2">' +
-            '<h3 class="font-extrabold text-[17px] tracking-tight">' + PREP.esc(p.name) + '</h3>' +
-            (p.familyId ? '<span class="ms-auto">' + famChip(p.familyId) + '</span>' : '') +
-          '</div>' +
-          '<p class="text-muted text-[14px] leading-relaxed mt-1.5">' + PREP.esc(p.desc) + '</p>' +
-          '<p class="mt-4"><b class="text-[26px] font-extrabold tracking-tight">' + PREP.vnd(p.price) + '</b></p>' +
-          '<ul class="grid gap-2 mt-4 mb-6 text-[13.5px] font-medium text-muted">' +
-            p.perks.map(x => '<li class="flex gap-2"><span class="text-accent-strong mt-0.5">' + PREP.icon('check', 'w-4 h-4') + '</span>' + PREP.esc(x) + '</li>').join('') +
-          '</ul>' +
-          '<button type="button" data-buy="' + p.id + '" class="btn ' + (p.featured ? 'btn-primary' : 'btn-soft') + ' btn-md w-full mt-auto">Mua gói này</button>' +
-        '</article>'
-      ).join('');
-    });
+    const why = LOCKED[new URLSearchParams(location.search).get('locked')];
+    if (why) {
+      PREP.qs('#locked-text').textContent = why;
+      PREP.qs('#locked-note').removeAttribute('hidden');
+    }
 
-    /* ----- Modal mua (demo) ----- */
+    /* Gói đang dùng: nói rõ đang có gì thì mới so được với cái đang thiếu. */
+    const ent = PrepState.entitlement();
+    if (ent) {
+      PREP.qs('#cur-name').textContent = 'Bạn đang dùng gói ' + ent.planName;
+      const bits = [];
+      if (ent.expiresAt) bits.push('Hạn dùng đến ' + PREP.fmtDate(ent.expiresAt));
+      bits.push(ent.attemptsLeft === null
+        ? 'Luyện không giới hạn'
+        : 'Còn ' + ent.attemptsLeft + '/' + ent.attemptsLimit + ' lượt thi');
+      PREP.qs('#cur-meta').textContent = bits.join(' · ');
+      PREP.qs('#current-plan').removeAttribute('hidden');
+    }
+
+    /* Bảng giá do máy chủ công bố (đi kèm /api/me), không dựng ở client. */
+    const plans = PrepState.plans();
+    PREP.qs('#pkg-skeleton').classList.add('hidden');
+    if (!plans.length) {
+      PREP.qs('#pkg-empty').removeAttribute('hidden');
+      return;
+    }
+
+    const FEATURED = 'plus-6m';
+    const grid = PREP.qs('#pkg-grid');
+    grid.classList.remove('hidden');
+    grid.innerHTML = plans.map(p => {
+      const mine = ent && ent.planId === p.id;
+      return '<article class="card p-6 flex flex-col relative ' +
+          (p.id === FEATURED ? 'ring-2 ring-[color:var(--color-accent)] shadow-soft-lg' : 'card-hover') + '">' +
+        (p.id === FEATURED ? '<span class="badge badge-hl absolute -top-3 left-6">Phổ biến nhất</span>' : '') +
+        '<div class="flex items-center gap-2">' +
+          '<h3 class="font-extrabold text-[17px] tracking-tight">' + PREP.esc(p.name) + '</h3>' +
+          (mine ? '<span class="badge badge-ok ms-auto">Đang dùng</span>' : '') +
+        '</div>' +
+        '<p class="text-muted text-[14px] leading-relaxed mt-1.5">' + PREP.esc(p.tagline || '') + '</p>' +
+        '<p class="mt-4 flex items-baseline gap-1.5">' +
+          '<b class="text-[26px] font-extrabold tracking-tight">' + PREP.vnd(p.price) + '</b>' +
+          '<span class="text-[14px] font-semibold text-muted">/ ' + p.months + ' tháng</span>' +
+        '</p>' +
+        '<ul class="grid gap-2 mt-4 text-[13.5px] font-medium text-muted">' +
+          (p.perks || []).map(x =>
+            '<li class="flex gap-2"><span class="text-accent-strong mt-0.5 shrink-0">' +
+            PREP.icon('check', 'w-4 h-4') + '</span>' + PREP.esc(x) + '</li>').join('') +
+          /* Giới hạn nói thẳng, không giấu xuống chân trang: người so gói cần
+             biết mình đang đánh đổi cái gì. */
+          (p.limits || []).map(x =>
+            '<li class="flex gap-2 opacity-70"><span class="mt-0.5 shrink-0">' +
+            PREP.icon('lock', 'w-4 h-4') + '</span>' + PREP.esc(x) + '</li>').join('') +
+        '</ul>' +
+        '<button type="button" data-buy="' + p.id + '" class="btn ' +
+          (p.id === FEATURED ? 'btn-primary' : 'btn-soft') + ' btn-md w-full mt-6">' +
+          (mine ? 'Xem lại gói này' : 'Nhận code gói này') + '</button>' +
+      '</article>';
+    }).join('');
+
+    /* ----- Modal "cách nhận code" ----- */
     const modal = PREP.qs('#buy-modal');
-    const stepC = PREP.qs('#bm-step-confirm'), stepD = PREP.qs('#bm-step-done');
-    const pick = PREP.qs('#bm-pick');
-    let current = null;
     PREP.qsa('[data-close]', modal).forEach(b => {
       if (!b.innerHTML.trim()) b.innerHTML = PREP.icon('x', 'w-5 h-5');
       b.addEventListener('click', closeModal);
@@ -151,79 +196,21 @@
     function closeModal() { modal.classList.remove('show'); }
 
     function openModal(p) {
-      current = p;
-      PREP.qs('#bm-name').textContent = p.name;
-      PREP.qs('#bm-desc').textContent = p.desc;
+      PREP.qs('#bm-name').textContent = 'Gói ' + p.name;
+      PREP.qs('#bm-desc').textContent = p.months + ' tháng · ' +
+        (p.attempts ? p.attempts + ' lượt thi' : 'luyện không giới hạn');
       PREP.qs('#bm-price').textContent = PREP.vnd(p.price);
-      stepC.removeAttribute('hidden'); stepD.setAttribute('hidden', '');
-
-      /* Gói bài lẻ: chọn bài · Combo: chọn 2 kỳ thi */
-      if (p.id === 'pk-single') {
-        pick.innerHTML = PREP.tests.length
-          ? '<label class="label" for="bm-test">Chọn bài thi thử</label>' +
-            '<select id="bm-test" class="input">' +
-            PREP.tests.map(t => {
-              const f = PREP.family(t.familyId);
-              return '<option value="' + t.id + '">' + (f ? f.name + ' · ' : '') + PREP.esc(t.title) + '</option>';
-            }).join('') +
-            '</select>'
-          : '<p class="text-[14px] text-muted">Thư viện chưa có bài thi thử nào để chọn.</p>';
-      } else if (p.id === 'pk-combo') {
-        pick.innerHTML = '<p class="label mb-2">Chọn 2 kỳ thi</p><div class="flex flex-wrap gap-2" id="bm-fams">' +
-          PREP.families.map(f => '<button type="button" class="chip" data-family="' + f.id + '" data-pick-fam="' + f.id + '" aria-pressed="false">' + f.name + '</button>').join('') +
-          '</div><p class="field-error" id="bm-fam-err">Chọn đúng 2 kỳ thi cho combo nhé.</p>';
-        PREP.qsa('[data-pick-fam]', pick).forEach(b => b.addEventListener('click', () => {
-          const on = b.getAttribute('aria-pressed') === 'true';
-          const nOn = PREP.qsa('[data-pick-fam][aria-pressed="true"]', pick).length;
-          if (!on && nOn >= 2) return; // tối đa 2
-          b.setAttribute('aria-pressed', String(!on));
-          PREP.qs('#bm-fam-err').classList.remove('show');
-        }));
-      } else {
-        pick.innerHTML = '';
-      }
+      PREP.qs('#bm-perks').innerHTML = (p.perks || []).map(x =>
+        '<li class="flex gap-2"><span class="text-accent-strong mt-0.5 shrink-0">' +
+        PREP.icon('check', 'w-4 h-4') + '</span>' + PREP.esc(x) + '</li>').join('');
       modal.classList.add('show');
     }
 
-    /* Uỷ quyền sự kiện: thẻ gói được dựng sau khi có danh mục */
-    PREP.qs('#pkg-grid').addEventListener('click', e => {
+    /* Uỷ quyền sự kiện: thẻ gói dựng sau khi có bảng giá */
+    grid.addEventListener('click', e => {
       const b = e.target.closest('[data-buy]');
       if (!b) return;
-      openModal(PREP.packages.find(p => p.id === b.getAttribute('data-buy')));
-    });
-
-    /* Nhận mã demo — TODO(backend/payment): thay bằng redirect cổng thanh toán */
-    PREP.qs('#bm-buy').addEventListener('click', () => {
-      let unlocks = null;
-      if (current.id === 'pk-single') {
-        const sel = PREP.qs('#bm-test');
-        if (!sel) return;                        // thư viện trống: không có bài để gán
-        unlocks = { testId: sel.value };
-      } else if (current.id === 'pk-combo') {
-        const fams = PREP.qsa('[data-pick-fam][aria-pressed="true"]', pick).map(x => x.getAttribute('data-pick-fam'));
-        if (fams.length !== 2) { PREP.qs('#bm-fam-err').classList.add('show'); return; }
-        unlocks = { bundle: fams };
-      } else {
-        unlocks = { familyId: current.familyId };
-      }
-      const btn = PREP.qs('#bm-buy');
-      btn.disabled = true;
-      btn.innerHTML = PREP.icon('loader', 'w-5 h-5 animate-spin-slow') + 'Đang tạo mã';
-      setTimeout(() => {
-        const res = PrepState.demoPurchase(current, unlocks);
-        btn.disabled = false; btn.textContent = 'Nhận mã demo miễn phí';
-        PREP.qs('#bm-code').textContent = res.code;
-        PREP.qs('#bm-redeem-link').href = '/prep/nhap-code/?code=' + encodeURIComponent(res.code);
-        const cp = PREP.qs('#bm-copy');
-        cp.innerHTML = PREP.icon('copy', 'w-4 h-4') + 'Chép';
-        stepC.setAttribute('hidden', ''); stepD.removeAttribute('hidden');
-      }, 900);
-    });
-
-    PREP.qs('#bm-copy').addEventListener('click', () => {
-      navigator.clipboard && navigator.clipboard.writeText(PREP.qs('#bm-code').textContent)
-        .then(() => PrepChrome.toast('Đã sao chép mã'))
-        .catch(() => PrepChrome.toast('Không sao chép được, chọn tay giúp mình nhé', 'error'));
+      openModal(plans.find(p => p.id === b.getAttribute('data-buy')));
     });
   });
 </script>

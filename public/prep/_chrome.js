@@ -11,14 +11,27 @@
    ============================================================ */
 
 const PrepChrome = {
+  /* `feature` đánh dấu mục chỉ mở từ một gói trở lên. Không có quyền thì mục
+     vẫn hiện — để người ta biết nền tảng có gì — nhưng bị làm mờ, gắn ổ khoá
+     và trỏ sang bảng giá thay vì dẫn vào một trang sẽ bị máy chủ đá ra. */
   NAV: [
     { key: 'home',     label: 'Trang chủ',   icon: 'home',    href: '/prep/' },
     { key: 'library',  label: 'Thư viện',    icon: 'library', href: '/prep/thu-vien/' },
-    { key: 'learn',    label: 'Tự học',      icon: 'book',    href: '/prep/hoc/dong-tu-bat-quy-tac/' },
+    { key: 'learn',    label: 'Tự học',      icon: 'book',    href: '/prep/hoc/dong-tu-bat-quy-tac/',
+      feature: 'selfStudy', lockedHref: '/prep/mua-code/?locked=self-study',
+      lockedHint: 'Khu tự học mở từ gói Plus' },
     { key: 'codes',    label: 'Code của tôi', icon: 'ticket', href: '/prep/code-cua-toi/' },
     { key: 'progress', label: 'Tiến độ',     icon: 'chart',   href: '/prep/#tien-do' },
     { key: 'account',  label: 'Hồ sơ',       icon: 'user',    href: '/prep/tai-khoan/' }
   ],
+
+  /** Mục điều hướng đã tính sẵn trạng thái khoá. */
+  navItems() {
+    return this.NAV.map(n => {
+      const locked = !!n.feature && !PrepState.can(n.feature);
+      return Object.assign({}, n, { locked, url: locked ? n.lockedHref : n.href });
+    });
+  },
 
   brandHTML(sizeCls) {
     return '<span class="inline-flex items-center justify-center rounded-xl text-white panel-brand shrink-0 ' + (sizeCls || 'w-10 h-10') + '">' +
@@ -40,9 +53,18 @@ const PrepChrome = {
     const initials = user.name.trim().split(/\s+/).map(w => w[0]).slice(-2).join('').toUpperCase() || 'HV';
 
     /* ---------- Sidebar (desktop) ---------- */
-    const nav = this.NAV.map(n =>
-      '<a href="' + n.href + '" class="nav-item" ' + (n.key === active ? 'aria-current="page"' : '') + '>' +
-      PREP.icon(n.icon, 'w-5 h-5 shrink-0') + '<span>' + n.label + '</span></a>'
+    const items = this.navItems();
+    const nav = items.map(n =>
+      '<a href="' + n.url + '" class="nav-item' + (n.locked ? ' is-locked' : '') + '" ' +
+      (n.key === active ? 'aria-current="page" ' : '') +
+      (n.locked ? 'aria-describedby="nav-lock-' + n.key + '" title="' + PREP.esc(n.lockedHint) + '"' : '') + '>' +
+      PREP.icon(n.icon, 'w-5 h-5 shrink-0') + '<span>' + n.label + '</span>' +
+      (n.locked
+        ? '<span id="nav-lock-' + n.key + '" class="ms-auto shrink-0 text-muted">' +
+            PREP.icon('lock', 'w-4 h-4') +
+            '<span class="sr-only">' + PREP.esc(n.lockedHint) + '</span></span>'
+        : '') +
+      '</a>'
     ).join('');
 
     const aside =
@@ -91,9 +113,16 @@ const PrepChrome = {
     const bottom =
       '<nav class="lg:hidden fixed bottom-0 inset-x-0 z-40 border-t border-line bg-card/95 backdrop-blur-md pb-[env(safe-area-inset-bottom)]" aria-label="Điều hướng dưới">' +
         '<div class="flex">' +
-        this.NAV.map(n =>
-          '<a href="' + n.href + '" class="bottom-item" ' + (n.key === active ? 'aria-current="page"' : '') + '>' +
-          PREP.icon(n.icon, 'w-[22px] h-[22px]') + '<span>' + n.label + '</span></a>'
+        items.map(n =>
+          '<a href="' + n.url + '" class="bottom-item' + (n.locked ? ' is-locked' : '') + '" ' +
+          (n.key === active ? 'aria-current="page" ' : '') +
+          (n.locked ? 'title="' + PREP.esc(n.lockedHint) + '"' : '') + '>' +
+          '<span class="relative">' + PREP.icon(n.icon, 'w-[22px] h-[22px]') +
+            (n.locked
+              ? '<span class="lock-dot">' + PREP.icon('lock', 'w-2.5 h-2.5') +
+                '<span class="sr-only">' + PREP.esc(n.lockedHint) + '</span></span>'
+              : '') +
+          '</span><span>' + n.label + '</span></a>'
         ).join('') +
         '</div>' +
       '</nav>';

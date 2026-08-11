@@ -63,10 +63,10 @@
     '<button type="button" id="btn-export" class="btn btn-ghost btn-sm">' + AD.icon('download', 'w-4 h-4') + '<span class="hidden sm:inline">Xuất CSV</span></button>' +
     '<button type="button" id="btn-issue" class="btn btn-primary btn-sm">' + AD.icon('plus', 'w-4 h-4') + 'Cấp code</button>';
 
-  let families = [], tests = [];
+  let families = [], tests = [], PLAN_LIST = [];
   try {
     const cat = await AD.get('/catalog');
-    families = cat.families; tests = cat.tests;
+    families = cat.families; tests = cat.tests; PLAN_LIST = cat.plans || [];
   } catch (e) {}
   try {
     const all = await AD.get('/admin/tests');
@@ -209,6 +209,18 @@
       '<h3 class="text-lg font-extrabold tracking-tight">Cấp code mở khoá</h3>' +
       '<p class="text-muted text-[14px] mt-1.5">Từ 2 mã trở lên sẽ tự gom thành một lô để theo dõi.</p>' +
       '<div class="grid gap-4 mt-5">' +
+        /* Gói là thứ quyết định người cầm mã được dùng gì và trong bao lâu, nên
+           hỏi trước tiên. Không có mặc định ngầm: mã thiếu gói bị máy chủ từ
+           chối ngay, chứ không đợi đến lúc học viên kích hoạt mới lộ ra. */
+        '<div><label class="label" for="i-plan">Gói</label>' +
+          '<select class="input" id="i-plan">' +
+            (PLAN_LIST.length
+              ? PLAN_LIST.map(p => '<option value="' + AD.esc(p.id) + '">' +
+                  AD.esc(p.name + ' · ' + p.months + ' tháng · ' + p.price.toLocaleString('vi-VN') + 'đ') +
+                  '</option>').join('')
+              : '<option value="">Không tải được bảng giá — tải lại trang</option>') +
+          '</select>' +
+          '<p class="help mt-1.5">Quyết định thời hạn, số lượt thi và quyền vào khu tự học.</p></div>' +
         '<div><p class="label">Mở khoá gì</p>' +
           '<div class="flex gap-2 flex-wrap">' +
             '<button type="button" class="chip" data-t="family" aria-pressed="true">Trọn bộ một kỳ thi</button>' +
@@ -267,6 +279,7 @@
         ref = mm.el.querySelector('#i-ref').value;
       }
       const body = {
+        planId: mm.el.querySelector('#i-plan').value,
         unlockType: type, unlockRef: ref,
         qty: +mm.el.querySelector('#i-qty').value || 1,
         expiresAt: mm.el.querySelector('#i-exp').value,

@@ -269,20 +269,29 @@ const run = async () => {
 
   /* 10. Cấp code theo lô + thu hồi + xuất CSV */
   r = await call('POST', '/api/admin/codes', {
-    unlockType: 'family', unlockRef: 'toeic', qty: 5,
+    planId: 'plus-6m', unlockType: 'family', unlockRef: 'toeic', qty: 5,
     expiresAt: '2027-06-30', batchName: 'Lô kiểm thử tự động'
   });
   check('Cấp lô 5 mã', r.status === 201 && r.data.created.length === 5 && r.data.batchId > 0);
+  check('Mã cấp ra mang đúng gói đã chọn', r.data.plan && r.data.plan.id === 'plus-6m',
+    JSON.stringify(r.data.plan));
   const batchId = r.data.batchId;
   check('Mã sinh đúng định dạng XXXX-XXXX-XXXX',
     r.data.created.every(c => /^[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}$/.test(c)), r.data.created[0]);
   check('Các mã trong lô không trùng nhau', new Set(r.data.created).size === 5);
 
-  r = await call('POST', '/api/admin/codes', { unlockType: 'family', unlockRef: 'khong-co', qty: 2 });
+  r = await call('POST', '/api/admin/codes', { planId: 'plus-6m', unlockType: 'family', unlockRef: 'khong-co', qty: 2 });
   check('Từ chối cấp code cho kỳ thi không tồn tại', r.status === 400, 'status ' + r.status);
 
-  r = await call('POST', '/api/admin/codes', { unlockType: 'bundle', unlockRef: 'ielts', qty: 1 });
+  r = await call('POST', '/api/admin/codes', { planId: 'plus-6m', unlockType: 'bundle', unlockRef: 'ielts', qty: 1 });
   check('Từ chối combo chỉ có một kỳ thi', r.status === 400, 'status ' + r.status);
+
+  /* Mã không gắn gói thì kích hoạt xong vẫn không mở được gì, nên phải chặn
+     ngay lúc cấp — nếu lọt, lỗi chỉ lộ ra khi học viên đã cầm mã. */
+  r = await call('POST', '/api/admin/codes', { unlockType: 'family', unlockRef: 'vpet', qty: 1 });
+  check('Từ chối cấp mã không chọn gói', r.status === 400, 'status ' + r.status);
+  r = await call('POST', '/api/admin/codes', { planId: 'khong-co-goi-nay', unlockType: 'family', unlockRef: 'vpet', qty: 1 });
+  check('Từ chối gói không có thật', r.status === 400, 'status ' + r.status);
 
   r = await call('GET', '/api/admin/codes?batch=' + batchId);
   check('Liệt kê mã theo lô', r.data.total === 5, 'total ' + r.data.total);
@@ -296,15 +305,31 @@ const run = async () => {
   r = await call('GET', '/api/admin/codes/export?batch=' + batchId);
   check('Xuất CSV danh sách mã',
     typeof r.data === 'string' && r.data.split('\r\n').length === 6, 'dòng ' + String(r.data).split('\r\n').length);
+  /* Tệp này đem đi phát cho lớp: nói sai gói là nói sai với người mua. */
+  check('CSV có cột gói và ghi đúng tên gói',
+    /(^|,)goi(,|$)/.test(String(r.data).split('\r\n')[0].replace(/^\uFEFF/, '')) &&
+    String(r.data).split('\r\n')[1].includes('Plus'),
+    String(r.data).split('\r\n')[1]);
 
   /* 11. Cấp thẳng cho học viên */
   const users = (await call('GET', '/api/admin/users?limit=1')).data;
   const uid = users.items[0].id;
-  r = await call('POST', '/api/admin/codes', { unlockType: 'family', unlockRef: 'pte', qty: 1, userId: uid });
+  r = await call('POST', '/api/admin/codes', { planId: 'starter-3m', unlockType: 'family', unlockRef: 'pte', qty: 1, userId: uid });
   check('Cấp code trực tiếp cho học viên', r.status === 201 && r.data.created.length === 1);
+  const grantedCode = r.data.created[0];
   const detail = (await call('GET', '/api/admin/users/' + uid)).data;
   check('Code vừa cấp hiện trong hồ sơ học viên',
-    detail.codes.some(c => c.code === r.data.created[0]));
+    detail.codes.some(c => c.code === grantedCode));
+
+  /* Cấp thẳng là kích hoạt luôn, nên thời hạn truy cập phải bắt đầu đếm từ bây
+     giờ. Bỏ trống thì quyền không bao giờ hết hạn — cho không một gói vĩnh viễn. */
+  r = await call('GET', '/api/admin/codes?q=' + encodeURIComponent(grantedCode));
+  const granted = r.data.items.find(c => c.code === grantedCode);
+  check('Mã cấp thẳng có hạn truy cập tính từ lúc cấp',
+    !!(granted && granted.accessExpiresAt) && new Date(granted.accessExpiresAt) > new Date(),
+    granted && granted.accessExpiresAt);
+  check('Bảng quản trị hiện tên gói của mã', granted && /Starter/.test(granted.label),
+    granted && granted.label);
 
   /* 12. Quản lý học viên */
   r = await call('POST', '/api/admin/users/' + uid + '/status', { status: 'locked' });

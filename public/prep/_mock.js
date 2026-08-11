@@ -491,6 +491,9 @@ const PrepState = {
   },
 
   _rebuild() {
+    /* Bảng giá về cả khi chưa đăng nhập — màn bán hàng cần nó trước khi có
+       tài khoản, nên giữ riêng chứ không nằm trong bản gộp của học viên. */
+    this._plans = (this._server && this._server.plans) || [];
     if (!this._server || !this._server.user) { this._merged = null; return; }
     const s = this._server;
     const account = s.user.username;
@@ -502,6 +505,9 @@ const PrepState = {
         name: s.user.name, email: s.user.email,
         verified: !!s.user.verified, interests: s.user.interests || []
       },
+      /* Quyền do máy chủ quyết, không gộp với lớp phủ cục bộ: sửa được ở
+         trình duyệt thì phân quyền không còn nghĩa gì. */
+      entitlement: s.entitlement || null,
       unlockedTestIds: uniq((s.unlockedTestIds || []).concat(L.extraTestIds)),
       unlockedFamilyIds: uniq((s.unlockedFamilyIds || []).concat(L.extraFamilyIds)),
       myCodes: (s.myCodes || []).concat(L.extraCodes),
@@ -515,6 +521,31 @@ const PrepState = {
   /** Bản đã gộp; null khi chưa đăng nhập. Gọi sau PREP.boot(). */
   load() { return this._merged; },
   user() { return this._merged && this._merged.user; },
+
+  /* ---------- Phân quyền theo gói ----------
+     Ba câu hỏi mà mọi màn đều phải hỏi trước khi vẽ: đang dùng gói nào, có
+     được vào phần này không, còn bao nhiêu lượt thi. Câu trả lời chỉ đến từ
+     máy chủ; ở đây chỉ đọc lại cho gọn. Giao diện làm mờ dựa trên các hàm này,
+     nhưng máy chủ vẫn chặn độc lập — làm mờ chỉ là phép lịch sự, không phải
+     hàng rào. */
+
+  /** Quyền đang có, hoặc null khi chưa có gói nào còn hiệu lực. */
+  entitlement() { return (this._merged && this._merged.entitlement) || null; },
+
+  /** Bảng giá do máy chủ công bố (có cả khi chưa đăng nhập). */
+  plans() { return this._plans || []; },
+
+  /** Có được vào một phần tính phí không: can('selfStudy'), can('detailedReport'). */
+  can(feature) {
+    const e = this.entitlement();
+    return !!(e && e.features && e.features[feature]);
+  },
+
+  /** Còn bao nhiêu lượt thi; null nghĩa là không giới hạn. */
+  attemptsLeft() {
+    const e = this.entitlement();
+    return e ? e.attemptsLeft : 0;
+  },
 
   /** Ghi các phần còn ở cục bộ. Phần thuộc server phải đi qua API riêng. */
   save(s) {
@@ -541,35 +572,43 @@ const PrepState = {
     return PREP.tests.filter(t => this.isUnlocked(t));
   },
 
-  /* --- Kích hoạt code (còn ở client) ---
-     // TODO(backend): thay bằng POST /api/redeem, kiểm tra mã phía server */
-  redeem(codeRaw) {
-    const code = codeRaw.trim().toUpperCase();
-    const s = this._merged;
-    if (!s) return { ok: false, error: 'auth' };
-    if ((s.myCodes || []).some(c => c.code === code)) {
-      return { ok: false, error: 'Mã này đã được kích hoạt trên tài khoản của bạn.' };
+  /* --- Kích hoạt code ---
+     Gọi thẳng máy chủ. Trước đây việc này làm ở trình duyệt, nhưng luật "một
+     mã chỉ dùng cho một tài khoản" không thể ép ở đây được: dữ liệu nằm trong
+     localStorage thì sửa được, và hai máy khác nhau không nhìn thấy nhau. */
+  async redeem(codeRaw) {
+    const code = String(codeRaw || '').trim().toUpperCase();
+    if (!code) return { ok: false, error: 'Nhập mã kích hoạt của bạn.' };
+    try {
+      /* Đi qua PrepApi thay vì tự gọi fetch: token CSRF và việc nuốt lỗi mạng
+         đã có sẵn ở đó. Bản trước tự gọi fetch và lấy token bằng PREP.csrf() —
+         hàm ấy nằm ở PrepApi chứ không phải PREP, nên MỌI lần kích hoạt đều
+         ném TypeError và rơi vào nhánh "mất kết nối" bên dưới, kể cả khi mạng
+         hoàn toàn bình thường. */
+      const res = await PrepApi.post('/api/redeem', { code });
+      const data = res.data || {};
+      if (!res.ok) return { ok: false, error: data.error || 'Không kích hoạt được mã. Thử lại sau nhé.' };
+      /* Quyền vừa đổi nên phải nạp lại hồ sơ: fetch() nhớ kết quả cũ trong
+         _promise, xoá đi thì lần gọi sau mới thực sự hỏi lại máy chủ. */
+      this._promise = null;
+      await this.fetch();
+      return { ok: true, already: !!data.already, plan: data.plan, entitlement: data.entitlement };
+    } catch (e) {
+      return { ok: false, error: 'Mất kết nối tới máy chủ. Kiểm tra mạng rồi thử lại.' };
     }
-    const def = PREP_DEMO_CODES[code] || (s.generatedCodes || {})[code];
-    if (!def) return { ok: false, error: 'Mã không tồn tại. Kiểm tra lại từng ký tự nhé.' };
-    if (def.status === 'used') return { ok: false, error: 'Mã đã được sử dụng ở tài khoản khác.' };
-    if (new Date(def.expiresAt) < new Date()) {
-      return { ok: false, error: 'Mã đã hết hạn kích hoạt (' + PREP.fmtDate(def.expiresAt) + ').' };
-    }
-
-    const entry = { code, unlocks: def.unlocks, redeemedAt: new Date().toISOString(), expiresAt: def.expiresAt, status: 'active' };
-    const L = this._local(s.account);
-    L.extraCodes = L.extraCodes.concat([entry]);
-    if (def.unlocks.testId && !L.extraTestIds.includes(def.unlocks.testId)) L.extraTestIds.push(def.unlocks.testId);
-    const fams = def.unlocks.bundle || (def.unlocks.familyId ? [def.unlocks.familyId] : []);
-    fams.forEach(fid => { if (!L.extraFamilyIds.includes(fid)) L.extraFamilyIds.push(fid); });
-    this._saveLocal(s.account, L);
-    this._rebuild();
-    return { ok: true, unlocks: def.unlocks };
   },
 
-  /* Mô tả một quyền mở khoá thành chữ */
+  /* Mô tả một mã thành chữ. Mã bây giờ mang một GÓI theo thời hạn, nên tên gói
+     là câu trả lời đúng; phần unlocks chỉ dùng cho mã cũ cấp trước khi đổi mô
+     hình, và cho dữ liệu chưa gắn gói. */
+  codeLabel(c) {
+    if (c && c.plan) return 'Gói ' + c.plan.name + ' · ' + c.plan.months + ' tháng';
+    return this.unlockLabel((c && c.unlocks) || {});
+  },
+
+  /* Mô tả một quyền mở khoá thành chữ (mô hình cũ theo bài / theo kỳ thi) */
   unlockLabel(unlocks) {
+    if (!unlocks) return 'Gói bài thi';
     if (unlocks.testId) {
       const t = PREP.test(unlocks.testId);
       return t ? t.title : unlocks.testId;
@@ -584,30 +623,11 @@ const PrepState = {
     return 'Gói bài thi';
   },
 
-  /* --- Đơn demo từ màn Mua code (còn ở client) ---
+  /* demoPurchase() đã bỏ. Nó sinh mã ngay trong trình duyệt và cất vào
+     localStorage; từ khi kích hoạt mã do máy chủ xử lý, những mã đó không tồn
+     tại ở đâu cả nên nhập vào chỉ nhận về "mã không tồn tại". Một nút tạo ra
+     thứ chắc chắn hỏng thì tệ hơn là không có nút.
      // TODO(backend/payment): đơn thật + cổng VNPay/MoMo, code sinh phía server */
-  demoPurchase(pkg, unlocks) {
-    const s = this._merged;
-    if (!s) return null;
-    const ALPHA = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
-    const chunk = () => Array.from({ length: 4 }, () => ALPHA[Math.floor(Math.random() * ALPHA.length)]).join('');
-    const code = chunk() + '-' + chunk() + '-' + chunk();
-    const expires = new Date();
-    expires.setMonth(expires.getMonth() + (pkg.id === 'pk-single' ? 6 : 12));
-    const expiresAt = expires.toISOString().slice(0, 10);
-
-    const order = {
-      id: 'DH' + String(Date.now()).slice(-8),
-      packageId: pkg.id, name: pkg.name, amount: pkg.price, code,
-      at: new Date().toISOString(), status: 'demo'
-    };
-    const L = this._local(s.account);
-    L.extraOrders = [order].concat(L.extraOrders);
-    L.generatedCodes = Object.assign({}, L.generatedCodes, { [code]: { unlocks, expiresAt, status: 'valid' } });
-    this._saveLocal(s.account, L);
-    this._rebuild();
-    return { order, code, expiresAt };
-  }
 };
 
 /* ============================================================

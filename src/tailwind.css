@@ -141,6 +141,49 @@
   /* ---- Card / bề mặt ---- */
   .card { @apply bg-card border border-line rounded-2xl shadow-soft; }
   .card-hover { @apply transition duration-300 hover:-translate-y-1 hover:shadow-soft-lg; }
+
+  /* ---- Thẻ gói giá: chọn được, không phải chỉ để ngắm ----
+     Trước đây ba thẻ đứng im, thẻ giữa được viền cứng nên nhìn như ảnh chụp.
+     Giờ mỗi thẻ là một lựa chọn thật: rê chuột thì màu của chính thẻ đó loang
+     lên, chọn thì thẻ nhấc hẳn lên và viền đổi màu. Màu lấy từ --plan-tint đặt
+     trên từng thẻ nên mỗi ô một sắc, không phải cùng một màu nhấn. */
+  .plan {
+    @apply relative isolate overflow-hidden rounded-2xl border border-line bg-card p-7 text-start;
+    transition: transform .35s cubic-bezier(.16,1,.3,1), box-shadow .35s cubic-bezier(.16,1,.3,1),
+                border-color .25s ease;
+  }
+  /* Lớp màu loang: nằm dưới nội dung, không chắn chuột, chỉ đổi opacity nên
+     trình duyệt chỉ phải vẽ lại chứ không tính lại layout. */
+  .plan::before {
+    content: "";
+    @apply absolute inset-0 -z-10 opacity-0;
+    background: radial-gradient(120% 80% at 50% 0%, var(--plan-tint) 0%, transparent 70%);
+    transition: opacity .35s ease;
+  }
+  .plan:hover, .plan:focus-visible { @apply -translate-y-1.5 shadow-soft-lg; border-color: var(--plan-edge); }
+  .plan:hover::before, .plan:focus-visible::before { @apply opacity-100; }
+  .plan:active { @apply translate-y-0; }
+
+  /* Thẻ đang chọn giữ nguyên trạng thái nổi, kèm viền đậm để phân biệt với
+     thẻ chỉ đang bị rê chuột qua. */
+  .plan[aria-pressed="true"] {
+    @apply -translate-y-1.5 shadow-soft-lg;
+    border-color: var(--plan-edge);
+    box-shadow: 0 0 0 2px var(--plan-edge), var(--tw-shadow, 0 0 #0000);
+  }
+  .plan[aria-pressed="true"]::before { @apply opacity-100; }
+
+  /* Ô tính năng: cùng cơ chế loang màu, nhẹ hơn vì đây chỉ là thông tin. */
+  .tile-tint { position: relative; isolation: isolate; overflow: hidden; }
+  .tile-tint::before {
+    content: "";
+    @apply absolute inset-0 -z-10 opacity-0;
+    background: radial-gradient(100% 70% at 50% 0%, var(--plan-tint) 0%, transparent 72%);
+    transition: opacity .35s ease;
+  }
+  .tile-tint:hover::before, .tile-tint:focus-within::before { @apply opacity-100; }
+  .tile-tint { transition: transform .35s cubic-bezier(.16,1,.3,1), box-shadow .35s cubic-bezier(.16,1,.3,1); }
+  .tile-tint:hover { @apply -translate-y-1 shadow-soft-lg; }
   /* Thẻ bài thi đang khoá: nền tint nhạt, phân biệt ngay với thẻ đã mở */
   .card-locked {
     background:
@@ -314,6 +357,28 @@
   .bottom-item[aria-current='page'] { color: var(--color-primary); }
   .dark .bottom-item[aria-current='page'] { color: color-mix(in srgb, var(--color-primary) 78%, white); }
 
+  /* ---- Mục bị khoá theo gói ----
+     Mờ đi chứ không giấu: người dùng cần thấy nền tảng có phần đó thì mới biết
+     mình đang thiếu gì. Vẫn bấm được — nhưng dẫn sang bảng giá, không dẫn vào
+     một trang mà máy chủ sẽ đá ra. Độ mờ dừng ở 55%: đủ để thấy là khác, vẫn
+     đọc được chữ trên nền sáng lẫn nền tối. */
+  .nav-item.is-locked, .bottom-item.is-locked { opacity: .55; }
+  .nav-item.is-locked:hover, .bottom-item.is-locked:hover {
+    opacity: .82;
+    background: color-mix(in srgb, var(--color-accent) 8%, transparent);
+    color: color-mix(in srgb, var(--color-accent) 78%, black);
+  }
+  .dark .nav-item.is-locked:hover, .dark .bottom-item.is-locked:hover {
+    color: color-mix(in srgb, var(--color-accent) 65%, white);
+  }
+  /* Ổ khoá nhỏ chồng lên icon ở thanh dưới, nơi không còn chỗ cho một cột riêng */
+  .lock-dot {
+    @apply absolute -top-1 -right-2 inline-flex items-center justify-center rounded-full w-[15px] h-[15px];
+    background: var(--color-card);
+    color: var(--color-muted);
+    box-shadow: 0 0 0 1.5px var(--color-card);
+  }
+
   /* ---- Tab ---- */
   .tabbtn {
     @apply shrink-0 px-4 py-3 text-sm font-bold text-muted border-b-2 border-transparent -mb-px transition;
@@ -347,11 +412,16 @@
     text-decoration-color: color-mix(in srgb, var(--color-text) 28%, transparent);
     text-underline-offset: 3px;
   }
+  /* --color-accent-soft/-strong không tồn tại (token thật là --color-accent),
+     nên hai dòng này trước đây không đổi gì cả: di chuột vào từ là không thấy
+     phản hồi. Viết lại bằng color-mix như các lớp .bg-accent-soft /
+     .text-accent-strong ở trên. */
   .tts-word:hover {
-    background: var(--color-accent-soft);
-    color: var(--color-accent-strong);
+    background: color-mix(in srgb, var(--color-accent) 10%, transparent);
+    color: color-mix(in srgb, var(--color-accent) 78%, black);
     text-decoration-color: transparent;
   }
+  .dark .tts-word:hover { color: color-mix(in srgb, var(--color-accent) 65%, white); }
   .tts-word:active { transform: scale(.96); }
 
   .tts-bubble {
@@ -549,4 +619,8 @@
   }
   .rise { opacity: 1; animation: none; }
   .confetti-piece { display: none; }
+  /* Giữ lại phần đổi màu — đó là thông tin, không phải hiệu ứng — nhưng bỏ
+     hết phần dịch chuyển. */
+  .plan:hover, .plan:focus-visible, .plan[aria-pressed="true"],
+  .tile-tint:hover { transform: none !important; }
 }

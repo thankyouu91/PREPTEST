@@ -76,7 +76,17 @@ await page.goto(BASE + '/prep/nhap-code/', { waitUntil: 'networkidle' });
 await page.fill('#code', 'IELT-AC12-96HD');
 await page.click('#submit');
 await page.waitForTimeout(1300);
-check('Kích hoạt code thành công', await page.locator('#success-box').isVisible());
+check('Kích hoạt code: màn hình đi tới trạng thái thành công',
+  await page.locator('#success-box').isVisible());
+/* CSDL không được dựng lại giữa các lần chạy, nên lần chạy đầu là "vừa mở
+   khoá" còn những lần sau là "mã này bạn đã kích hoạt rồi". Cả hai đều đúng và
+   đều phải dẫn tới màn thành công — cái sai duy nhất là báo nhầm giữa hai
+   trạng thái, nên kiểm chính chữ hiện ra chứ không chỉ kiểm hộp có hiện. */
+const okTitle = (await page.locator('#ok-title').textContent()).trim();
+check('Nói đúng việc vừa xảy ra: mở khoá mới, hoặc mã đã có hiệu lực từ trước',
+  okTitle === 'Mở khoá thành công!' || okTitle === 'Mã này đang có hiệu lực', okTitle);
+check('Không hiện lỗi khi kích hoạt thành công',
+  !(await page.locator('#code-err').evaluate(el => el.classList.contains('show'))));
 
 await logout();
 await login('student', 'Goodmorning01');
@@ -120,6 +130,35 @@ check('Bản chạy thử hiện liên kết xác thực', await page.locator('#
 await page.click('#dev-link-a');
 await page.waitForTimeout(1200);
 check('Xác thực email thành công', await page.locator('#verify-result').isVisible());
+
+/* ---------- 7b. Phân quyền: tài khoản chưa có gói nào ----------
+   Tài khoản vừa đăng ký chưa nhập code nào nên không có quyền gì. Đây là chỗ
+   duy nhất trong bộ test có một tài khoản "trắng", nên cũng là chỗ duy nhất
+   kiểm được phần bị khoá. Kiểm cả hai lớp: máy chủ có chặn thật không, và
+   giao diện có làm mờ đúng chỗ không. */
+await page.goto(BASE + '/prep/hoc/tu-noi/', { waitUntil: 'networkidle' });
+check('Chưa có gói thì khu tự học bị máy chủ chặn, đá sang bảng giá',
+  page.url().includes('/prep/mua-code/') && page.url().includes('locked=self-study'), page.url());
+await page.waitForTimeout(500);
+check('Bảng giá nói rõ vì sao vừa bị đá sang đây',
+  await page.locator('#locked-note').isVisible());
+check('Bảng giá liệt kê đủ ba gói',
+  await page.locator('#pkg-grid article').count() === 3,
+  'đếm được ' + (await page.locator('#pkg-grid article').count()));
+check('Mục Tự học trên thanh điều hướng bị làm mờ, không dẫn thẳng vào khu tự học',
+  await page.locator('.nav-item.is-locked[href*="locked=self-study"]').count() === 1);
+
+/* Tài khoản demo có gói Plus nên KHÔNG được khoá — nếu làm mờ cả người đã trả
+   tiền thì lỗi này im lặng và rất khó thấy. */
+await logout();
+await login('student', 'Goodmorning01');
+await page.goto(BASE + '/prep/hoc/tu-noi/', { waitUntil: 'networkidle' });
+check('Có gói Plus thì vào thẳng khu tự học', page.url().includes('/prep/hoc/tu-noi/'), page.url());
+await page.waitForTimeout(400);
+check('Có quyền thì không mục nào bị làm mờ',
+  await page.locator('.nav-item.is-locked').count() === 0);
+await logout();
+await login(TMP_EMAIL, TMP_PASS);
 
 /* ---------- 8. Đổi mật khẩu trên tài khoản dùng một lần ---------- */
 await page.goto(BASE + '/prep/tai-khoan/', { waitUntil: 'networkidle' });

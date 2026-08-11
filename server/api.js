@@ -12,6 +12,7 @@ const { q, tx, nowISO, jparse, makeCode, audit } = require('./db');
 const A = require('./auth');
 const EXAM_FORMATS = require('./data/exam-formats');
 const storage = require('./storage');
+const PLANS = require('./data/plans');
 const LINKING = require('./data/linking-words');
 
 const router = express.Router();
@@ -1032,14 +1033,23 @@ router.get('/admin/codes', (req, res) => {
       ${w} ORDER BY c.id DESC LIMIT ? OFFSET ?`, ...args, limit, offset);
   res.json({
     total, limit, offset,
-    items: rows.map(c => ({
-      id: c.id, code: c.code, unlockType: c.unlock_type, unlockRef: c.unlock_ref,
-      label: unlockLabel(c.unlock_type, c.unlock_ref), status: c.status,
-      expiresAt: c.expires_at, redeemedAt: c.redeemed_at, note: c.note,
-      batchId: c.batch_id, batchName: c.batch_name,
-      user: c.user_id ? { id: c.user_id, name: c.user_name, email: c.user_email } : null,
-      createdAt: c.created_at
-    }))
+    items: rows.map(c => {
+      const plan = PLANS.byId(c.plan_id);
+      return {
+        id: c.id, code: c.code, unlockType: c.unlock_type, unlockRef: c.unlock_ref,
+        planId: c.plan_id || null,
+        /* Nhãn hiện ở bảng quản trị là tên gói khi có; mã cũ chưa gắn gói thì
+           rơi về nhãn theo kỳ thi, và nói thẳng là chưa có gói. */
+        label: plan ? 'Gói ' + plan.name + ' · ' + plan.months + ' tháng'
+                    : unlockLabel(c.unlock_type, c.unlock_ref) + ' (chưa gắn gói)',
+        status: c.status,
+        expiresAt: c.expires_at, accessExpiresAt: c.access_expires_at,
+        redeemedAt: c.redeemed_at, note: c.note,
+        batchId: c.batch_id, batchName: c.batch_name,
+        user: c.user_id ? { id: c.user_id, name: c.user_name, email: c.user_email } : null,
+        createdAt: c.created_at
+      };
+    })
   });
 });
 
@@ -1066,36 +1076,52 @@ router.post('/admin/codes', (req, res) => {
   const note = str(b.note, 200);
   const expiresAt = str(b.expiresAt, 10) || null;
   const assignTo = int(b.userId, 0) || null;
+  /* Cái mà một mã thực sự cấp là GÓI. Bắt buộc phải chọn, không đặt mặc định:
+     mã không có gói thì kích hoạt xong người dùng vẫn không vào được gì, mà
+     lỗi ấy chỉ lộ ra khi họ đã cầm mã trong tay. */
+  const plan = PLANS.byId(str(b.planId, 40));
 
+  if (!plan) {
+    return bad(res, 'Chọn gói cho mã: ' + PLANS.PLANS.map(p => p.id).join(', ') + '.');
+  }
   if (!validUnlock(type, ref)) return bad(res, 'Quyền mở khoá không hợp lệ.');
   if (expiresAt && !/^\d{4}-\d{2}-\d{2}$/.test(expiresAt)) return bad(res, 'Hạn dùng phải theo dạng YYYY-MM-DD.');
   if (assignTo && !q.val('SELECT 1 FROM users WHERE id=?', assignTo)) return bad(res, 'Học viên không tồn tại.');
   if (assignTo && qty !== 1) return bad(res, 'Cấp trực tiếp cho học viên thì mỗi lần một mã.');
 
   const at = nowISO();
+  /* Cấp thẳng cho học viên là kích hoạt luôn, nên thời hạn truy cập phải bắt
+     đầu đếm từ bây giờ. Để trống thì entitlementOf() hiểu là không bao giờ hết
+     hạn — cho không một gói vĩnh viễn. */
+  const accessUntil = (() => {
+    if (!assignTo) return null;
+    const d = new Date(at);
+    d.setMonth(d.getMonth() + plan.months);
+    return d.toISOString();
+  })();
   let batchId = null;
   const created = [];
 
   tx(() => {
     if (qty > 1) {
       q.run('INSERT INTO batches (name,unlock_type,unlock_ref,qty,expires_at,created_at,created_by) VALUES (?,?,?,?,?,?,?)',
-        str(b.batchName, 120) || ('Lô ' + unlockLabel(type, ref) + ' ' + at.slice(0, 10)),
+        str(b.batchName, 120) || ('Lô ' + plan.name + ' ' + at.slice(0, 10)),
         type, ref, qty, expiresAt, at, req.admin.id);
       batchId = q.val('SELECT id FROM batches ORDER BY id DESC LIMIT 1');
     }
     for (let i = 0; i < qty; i++) {
       let code = makeCode();
       while (q.val('SELECT 1 FROM codes WHERE code=?', code)) code = makeCode();
-      q.run(`INSERT INTO codes (code,batch_id,unlock_type,unlock_ref,status,expires_at,user_id,redeemed_at,note,created_at,created_by)
-             VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
-        code, batchId, type, ref, assignTo ? 'redeemed' : 'unused', expiresAt,
-        assignTo, assignTo ? at : null, note || null, at, req.admin.id);
+      q.run(`INSERT INTO codes (code,batch_id,unlock_type,unlock_ref,plan_id,status,expires_at,access_expires_at,user_id,redeemed_at,note,created_at,created_by)
+             VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+        code, batchId, type, ref, plan.id, assignTo ? 'redeemed' : 'unused', expiresAt,
+        accessUntil, assignTo, assignTo ? at : null, note || null, at, req.admin.id);
       created.push(code);
     }
   });
 
-  audit(req, 'code.issue', batchId ? 'batches/' + batchId : 'codes', { qty, type, ref, assignTo });
-  res.status(201).json({ created, batchId, qty });
+  audit(req, 'code.issue', batchId ? 'batches/' + batchId : 'codes', { qty, plan: plan.id, type, ref, assignTo });
+  res.status(201).json({ created, batchId, qty, plan: { id: plan.id, name: plan.name, months: plan.months } });
 });
 
 router.post('/admin/codes/:id/revoke', (req, res) => {
@@ -1115,13 +1141,22 @@ router.get('/admin/codes/export', (req, res) => {
   if (req.query.batch) { where.push('c.batch_id = ?'); args.push(int(req.query.batch, 0)); }
   if (req.query.status) { where.push('c.status = ?'); args.push(str(req.query.status, 20)); }
   const w = where.length ? 'WHERE ' + where.join(' AND ') : '';
-  const rows = q.all(`SELECT c.code, c.unlock_type, c.unlock_ref, c.status, c.expires_at, c.redeemed_at,
+  const rows = q.all(`SELECT c.code, c.plan_id, c.unlock_type, c.unlock_ref, c.status,
+                             c.expires_at, c.access_expires_at, c.redeemed_at,
                              u.email user_email
                         FROM codes c LEFT JOIN users u ON u.id=c.user_id ${w}
                        ORDER BY c.id DESC LIMIT 5000`, ...args);
   const esc = v => '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"';
-  const csv = ['ma,quyen_mo_khoa,doi_tuong,trang_thai,han_dung,ngay_kich_hoat,email_hoc_vien']
-    .concat(rows.map(r => [r.code, r.unlock_type, r.unlock_ref, r.status, r.expires_at, r.redeemed_at, r.user_email].map(esc).join(',')))
+  /* Tệp này được đem đi phát cho lớp, nên phải nói đúng mã cấp GÓI gì. Trước
+     đây chỉ có cột quyền mở khoá theo kỳ thi — với mô hình mới, đó là thông
+     tin sai đưa thẳng tới tay người mua. */
+  const csv = ['ma,goi,so_thang,quyen_mo_khoa,doi_tuong,trang_thai,han_kich_hoat,han_truy_cap,ngay_kich_hoat,email_hoc_vien']
+    .concat(rows.map(r => {
+      const plan = PLANS.byId(r.plan_id);
+      return [r.code, plan ? plan.name : '', plan ? plan.months : '',
+        r.unlock_type, r.unlock_ref, r.status,
+        r.expires_at, r.access_expires_at, r.redeemed_at, r.user_email].map(esc).join(',');
+    }))
     .join('\r\n');
   audit(req, 'code.export', 'codes', { rows: rows.length });
   res.setHeader('Content-Type', 'text/csv; charset=utf-8');
@@ -1224,7 +1259,15 @@ router.get('/catalog', (req, res) => {
     id: p.id, name: p.name, price: p.price, familyId: p.family_id,
     desc: p.description, perks: jparse(p.perks_json, []), featured: !!p.featured
   }));
-  res.set('Cache-Control', 'no-store').json({ families, tests, packages });
+  /* Bảng giá là thông tin công khai và cần ở cả hai phía: màn bán hàng của học
+     viên và màn cấp code của quản trị. Đi kèm danh mục thì cả hai chỉ cần một
+     lượt gọi, và không nơi nào phải chép lại giá. */
+  const plans = PLANS.PLANS.map(p => ({
+    id: p.id, name: p.name, price: p.price, months: p.months,
+    attempts: p.attempts || null, features: p.features,
+    tagline: p.tagline, perks: p.perks, limits: p.limits
+  }));
+  res.set('Cache-Control', 'no-store').json({ families, tests, packages, plans });
 });
 
 /* ==================== Khu tự học (công khai) ==================== */

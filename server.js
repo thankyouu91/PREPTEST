@@ -23,6 +23,7 @@ const api = require('./server/api');
 const userApi = require('./server/user-api');
 const googleAuth = require('./server/google-auth');
 const A = require('./server/auth');
+const { entitlementOf } = require('./server/entitlements');
 
 const app = express();
 app.disable('x-powered-by');
@@ -151,18 +152,40 @@ app.get('/prep/code-cua-toi/', studentPage('prep/codes/code-cua-toi.html'));
 app.get('/prep/bai-thi/:id/', studentPage('prep/test/index.html'));
 app.get('/prep/tai-khoan/', studentPage('prep/account/index.html'));
 
+/* ------------- Khu tự học: cần gói có quyền -------------
+   Từ vựng, ngữ pháp và phát âm chỉ mở từ gói Plus trở lên. Chặn ngay ở HTTP
+   chứ không chỉ làm mờ ở giao diện: làm mờ là chuyện trình bày, ai xem mã
+   nguồn trang cũng gỡ được. Ai chưa có quyền thì đá về trang bảng giá, kèm
+   lý do để màn đó nói đúng chuyện vừa xảy ra. */
+function studyPage(file) {
+  const serve = serveHtmlWithNonce(file);
+  return (req, res) => {
+    const user = A.currentUser(req);
+    if (!user) {
+      if (!req.path.endsWith('/')) return res.redirect(301, req.path + '/');
+      return res.redirect(302, '/prep/dang-nhap/?next=' + encodeURIComponent(req.originalUrl));
+    }
+    const ent = entitlementOf(user.id);
+    if (!ent || !ent.features.selfStudy) {
+      if (!req.path.endsWith('/')) return res.redirect(301, req.path + '/');
+      return res.redirect(302, '/prep/mua-code/?locked=self-study&from=' + encodeURIComponent(req.path));
+    }
+    serve(req, res);
+  };
+}
+
 /* Khu tự học */
-app.get('/prep/hoc/dong-tu-bat-quy-tac/', studentPage('prep/learn/dong-tu-bat-quy-tac.html'));
-app.get('/prep/hoc/tu-noi/', studentPage('prep/learn/tu-noi.html'));
-app.get('/prep/hoc/thi/', studentPage('prep/learn/thi.html'));
-app.get('/prep/hoc/danh-tu/', studentPage('prep/learn/danh-tu.html'));
-app.get('/prep/hoc/tinh-tu/', studentPage('prep/learn/tinh-tu.html'));
-app.get('/prep/hoc/khuyet-thieu/', studentPage('prep/learn/khuyet-thieu.html'));
-app.get('/prep/hoc/dieu-kien/', studentPage('prep/learn/dieu-kien.html'));
-app.get('/prep/hoc/bi-dong/', studentPage('prep/learn/bi-dong.html'));
-app.get('/prep/hoc/menh-de/', studentPage('prep/learn/menh-de.html'));
-app.get('/prep/hoc/nhan-manh/', studentPage('prep/learn/nhan-manh.html'));
-app.get('/prep/hoc/sac-thai/', studentPage('prep/learn/sac-thai.html'));
+app.get('/prep/hoc/dong-tu-bat-quy-tac/', studyPage('prep/learn/dong-tu-bat-quy-tac.html'));
+app.get('/prep/hoc/tu-noi/', studyPage('prep/learn/tu-noi.html'));
+app.get('/prep/hoc/thi/', studyPage('prep/learn/thi.html'));
+app.get('/prep/hoc/danh-tu/', studyPage('prep/learn/danh-tu.html'));
+app.get('/prep/hoc/tinh-tu/', studyPage('prep/learn/tinh-tu.html'));
+app.get('/prep/hoc/khuyet-thieu/', studyPage('prep/learn/khuyet-thieu.html'));
+app.get('/prep/hoc/dieu-kien/', studyPage('prep/learn/dieu-kien.html'));
+app.get('/prep/hoc/bi-dong/', studyPage('prep/learn/bi-dong.html'));
+app.get('/prep/hoc/menh-de/', studyPage('prep/learn/menh-de.html'));
+app.get('/prep/hoc/nhan-manh/', studyPage('prep/learn/nhan-manh.html'));
+app.get('/prep/hoc/sac-thai/', studyPage('prep/learn/sac-thai.html'));
 
 /* ---------------- PWA ----------------
    The worker is served from the root so its scope covers the whole site, and

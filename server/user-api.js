@@ -22,6 +22,8 @@ const express = require('express');
 const { q, nowISO, jparse, audit } = require('./db');
 const A = require('./auth');
 const googleAuth = require('./google-auth');
+const PLANS = require('./data/plans');
+const { entitlementOf } = require('./entitlements');
 
 const router = express.Router();
 router.use(express.json({ limit: '256kb' }));
@@ -78,17 +80,28 @@ function accessOf(userId) {
   const rows = q.all(
     "SELECT * FROM codes WHERE user_id=? AND status='redeemed' ORDER BY redeemed_at DESC", userId);
   const testIds = new Set(), familyIds = new Set();
+  const now = nowISO();
   const codes = rows.map(c => {
     const refs = String(c.unlock_ref).split(',').filter(Boolean);
     if (c.unlock_type === 'test') refs.forEach(r => testIds.add(r));
     else refs.forEach(r => familyIds.add(r));
+    /* Cái quyết định một mã còn dùng được hay không là hạn TRUY CẬP
+       (access_expires_at, đếm từ lúc kích hoạt), không phải hạn kích hoạt
+       (expires_at, hạn chót phải nhập mã trước ngày đó). Trước đây chỉ có cái
+       thứ hai nên mã đã kích hoạt trông như hết hạn sai thời điểm. */
+    const until = c.access_expires_at || c.expires_at;
+    const plan = PLANS.byId(c.plan_id);
     return {
       code: c.code,
+      /* Mã mang một GÓI. unlocks giữ lại cho dữ liệu cũ và cho màn hình nào
+         còn đọc nó, nhưng plan mới là thứ nên hiện ra. */
+      plan: plan ? { id: plan.id, name: plan.name, months: plan.months } : null,
       unlocks: c.unlock_type === 'test' ? { testId: refs[0] }
              : c.unlock_type === 'family' ? { familyId: refs[0] }
              : { bundle: refs },
-      redeemedAt: c.redeemed_at, expiresAt: c.expires_at,
-      status: c.expires_at && c.expires_at <= nowISO() ? 'expired' : 'active'
+      redeemedAt: c.redeemed_at,
+      expiresAt: until,
+      status: until && until <= now ? 'expired' : 'active'
     };
   });
   return { unlockedTestIds: [...testIds], unlockedFamilyIds: [...familyIds], myCodes: codes };
@@ -180,6 +193,82 @@ router.post('/auth/login', (req, res) => {
   res.json({ ok: true, user: profileOf(user.id) });
 });
 
+/* ======================= Kích hoạt code =======================
+   Chuyển hẳn về máy chủ. Luật "một code chỉ dùng cho một tài khoản" không thể
+   ép ở trình duyệt: mã nằm trong localStorage thì ai cũng sửa được, và hai
+   máy khác nhau không nhìn thấy nhau. */
+router.post('/redeem', A.requireUser, A.csrfGuard, (req, res) => {
+  const raw = str(req.body && req.body.code, 40).toUpperCase().trim();
+  if (!raw) return bad(res, 'Nhập mã kích hoạt của bạn.');
+
+  /* Mã là chuỗi ngắn nên đoán mò là có thật. Giới hạn theo IP + tài khoản,
+     đếm cả lần sai lẫn lần đúng để không ai quét được cả dải mã. */
+  const wait = A.rateLimit('redeem:' + A.throttleKey(req, 'u' + req.user.id), 12, 10 * 60 * 1000);
+  if (wait) {
+    return res.status(429).json({ error: 'Thử quá nhiều lần. Chờ ' + Math.ceil(wait / 60) + ' phút rồi nhập lại.' });
+  }
+
+  const code = q.get('SELECT * FROM codes WHERE code=?', raw);
+  /* Cùng một câu trả lời cho "không có mã này" và "mã của người khác": nói
+     khác nhau là để lộ mã nào có thật cho người đang dò. */
+  if (!code || code.status === 'revoked') {
+    logUser(req, 'user.redeem.unknown', req.user.username, { code: raw });
+    return res.status(404).json({ error: 'Mã không tồn tại hoặc đã bị thu hồi. Kiểm tra lại từng ký tự nhé.' });
+  }
+  if (code.status === 'redeemed') {
+    /* Mã của người khác thì dừng ở đây: một mã một tài khoản. */
+    if (code.user_id !== req.user.id) {
+      logUser(req, 'user.redeem.taken', req.user.username, { code: raw });
+      return res.status(409).json({
+        error: 'Mã này đã được kích hoạt ở một tài khoản khác. Mỗi mã chỉ dùng cho một tài khoản.'
+      });
+    }
+    /* Mã của chính mình thì không phải lỗi — nhập lại mã đã dùng là chuyện
+       thường (đổi máy, quên là đã kích hoạt). Trả về đúng quyền đang có và
+       KHÔNG gia hạn: nếu cộng thêm tháng thì nhập lại mãi là dùng vĩnh viễn. */
+    const own = PLANS.byId(code.plan_id);
+    logUser(req, 'user.redeem.again', req.user.username, { code: raw });
+    return res.json({
+      ok: true,
+      already: true,
+      plan: own ? { id: own.id, name: own.name, months: own.months } : null,
+      entitlement: entitlementOf(req.user.id)
+    });
+  }
+  if (code.expires_at && code.expires_at <= nowISO()) {
+    return res.status(410).json({ error: 'Mã đã quá hạn kích hoạt.' });
+  }
+
+  const plan = PLANS.byId(code.plan_id);
+  if (!plan) {
+    logUser(req, 'user.redeem.noplan', req.user.username, { code: raw });
+    return res.status(409).json({ error: 'Mã này chưa gắn gói nào. Liên hệ trung tâm của bạn để được cấp lại.' });
+  }
+
+  /* Thời hạn tính từ LÚC KÍCH HOẠT, không phải lúc bán: mua tháng Giêng mà
+     tháng Ba mới dùng thì tháng Ba mới bắt đầu đếm. */
+  const start = new Date();
+  const until = new Date(start);
+  until.setMonth(until.getMonth() + plan.months);
+
+  const r = q.run(
+    `UPDATE codes SET status='redeemed', user_id=?, redeemed_at=?, access_expires_at=?
+      WHERE id=? AND status='unused'`,
+    req.user.id, start.toISOString(), until.toISOString(), code.id);
+  /* Ràng buộc status='unused' ngay trong câu UPDATE: hai người bấm cùng lúc
+     thì chỉ một người thắng, người kia thấy 0 dòng đổi. */
+  if (!r.changes) {
+    return res.status(409).json({ error: 'Mã vừa được kích hoạt ở tài khoản khác.' });
+  }
+
+  logUser(req, 'user.redeem', req.user.username, { code: raw, plan: plan.id });
+  res.json({
+    ok: true,
+    plan: { id: plan.id, name: plan.name, months: plan.months },
+    entitlement: entitlementOf(req.user.id)
+  });
+});
+
 router.post('/auth/logout', A.csrfGuard, (req, res) => {
   const user = A.currentUser(req);
   if (user) logUser(req, 'user.logout', user.username);
@@ -252,11 +341,20 @@ router.get('/me', (req, res) => {
      login screen knows whether to show the Google button without a second
      round trip. Returned when signed out too — that is when it is needed. */
   const providers = { google: googleAuth.enabled() };
-  if (!user) return res.set('Cache-Control', 'no-store').json({ user: null, providers });
+  /* The plan catalogue rides along so the shop and every locked panel can be
+     rendered from one boot request instead of a second round trip. */
+  const plans = PLANS.PLANS.map(p => ({
+    id: p.id, name: p.name, price: p.price, months: p.months,
+    attempts: p.attempts || null, features: p.features,
+    tagline: p.tagline, perks: p.perks, limits: p.limits
+  }));
+  if (!user) return res.set('Cache-Control', 'no-store').json({ user: null, providers, plans });
   const access = accessOf(user.id);
   res.set('Cache-Control', 'no-store').json({
     user: profileOf(user.id),
     providers,
+    plans,
+    entitlement: entitlementOf(user.id),
     unlockedTestIds: access.unlockedTestIds,
     unlockedFamilyIds: access.unlockedFamilyIds,
     myCodes: access.myCodes,

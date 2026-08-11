@@ -50,7 +50,7 @@
           <thead>
             <tr class="text-left text-[12.5px] uppercase tracking-wide text-muted border-b border-line">
               <th class="font-bold px-6 py-4">Mã</th>
-              <th class="font-bold px-4 py-4">Mở khoá</th>
+              <th class="font-bold px-4 py-4">Gói</th>
               <th class="font-bold px-4 py-4">Kích hoạt</th>
               <th class="font-bold px-4 py-4">Hạn dùng</th>
               <th class="font-bold px-6 py-4 text-right">Trạng thái</th>
@@ -128,7 +128,7 @@
       PREP.qs('#codes-tbody').innerHTML = codes.map((c, i) =>
         '<tr class="border-b border-line last:border-0">' +
           '<td class="px-6 py-4">' + codeCell(c, i) + '</td>' +
-          '<td class="px-4 py-4 font-semibold">' + PREP.esc(PrepState.unlockLabel(c.unlocks)) + '</td>' +
+          '<td class="px-4 py-4 font-semibold">' + PREP.esc(PrepState.codeLabel(c)) + '</td>' +
           '<td class="px-4 py-4 text-muted">' + PREP.fmtDate(c.redeemedAt) + '</td>' +
           '<td class="px-4 py-4 text-muted">' + PREP.fmtDate(c.expiresAt) + '</td>' +
           '<td class="px-6 py-4 text-right">' + stChip(c) + '</td>' +
@@ -138,7 +138,7 @@
       PREP.qs('#codes-cards').innerHTML = codes.map((c, i) =>
         '<article class="card p-5">' +
           '<div class="flex items-center justify-between gap-3">' + codeCell(c, i) + stChip(c) + '</div>' +
-          '<p class="font-semibold mt-3">' + PREP.esc(PrepState.unlockLabel(c.unlocks)) + '</p>' +
+          '<p class="font-semibold mt-3">' + PREP.esc(PrepState.codeLabel(c)) + '</p>' +
           '<p class="flex gap-4 text-[13px] font-medium text-muted mt-2">' +
             '<span>Kích hoạt: ' + PREP.fmtDate(c.redeemedAt) + '</span>' +
             '<span>Hạn: ' + PREP.fmtDate(c.expiresAt) + '</span>' +

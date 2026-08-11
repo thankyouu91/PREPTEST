@@ -214,7 +214,7 @@
               <svg viewBox="0 0 24 24" class="w-40 h-40" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M2 9.5a2.5 2.5 0 0 1 0 5V17a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2.5a2.5 2.5 0 0 1 0-5V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z"/></svg>
             </span>
             <h3 id="h-buy" class="font-extrabold tracking-tight text-lg">Cần thêm bài luyện?</h3>
-            <p class="text-sm leading-relaxed mt-1.5 text-white/85 max-w-[34ch]">Mua code theo bài lẻ hoặc trọn gói kỳ thi, kích hoạt là vào luyện ngay.</p>
+            <p class="text-sm leading-relaxed mt-1.5 text-white/85 max-w-[34ch]">Ba gói luyện theo thời hạn: 3, 6 hoặc 12 tháng. Kích hoạt code là vào luyện ngay.</p>
             <a href="/prep/mua-code/" class="btn btn-on-brand btn-md mt-5">Mua thêm code</a>
           </section>
         </div>
@@ -283,10 +283,10 @@
             '</span>' +
             '<p class="text-[12.5px] font-bold uppercase tracking-wide text-white/70">Bắt đầu từ đây</p>' +
             '<h3 class="text-2xl font-extrabold tracking-tight mt-2 max-w-[24ch]">Mở khoá bài đầu tiên của bạn</h3>' +
-            '<p class="text-white/85 text-[15px] leading-relaxed mt-2 max-w-[46ch]">Có code từ trường hoặc trung tâm? Nhập vào là dùng được ngay. Chưa có thì xem các gói code.</p>' +
+            '<p class="text-white/85 text-[15px] leading-relaxed mt-2 max-w-[46ch]">Có code từ trường hoặc trung tâm? Nhập vào là dùng được ngay. Chưa có thì xem bảng giá.</p>' +
             '<div class="flex flex-wrap gap-2.5 mt-6">' +
               '<a href="/prep/nhap-code/" class="btn btn-on-brand btn-lg">Nhập code</a>' +
-              '<a href="/prep/mua-code/" class="btn btn-outline-brand btn-lg">Xem gói code</a>' +
+              '<a href="/prep/mua-code/" class="btn btn-outline-brand btn-lg">Xem bảng giá</a>' +
             '</div>' +
           '</div>';
         return;
@@ -414,7 +414,7 @@
             return '<div class="flex items-center gap-3 py-2.5 border-b border-line last:border-0">' +
               '<span class="w-9 h-9 rounded-xl bg-brand-soft text-brand-strong shrink-0 inline-flex items-center justify-center">' + PREP.icon('ticket', 'w-[18px] h-[18px]') + '</span>' +
               '<span class="min-w-0 flex-1">' +
-                '<b class="block text-[14px] font-bold truncate">' + PREP.esc(PrepState.unlockLabel(c.unlocks)) + '</b>' +
+                '<b class="block text-[14px] font-bold truncate">' + PREP.esc(PrepState.codeLabel(c)) + '</b>' +
                 '<span class="block text-[12.5px] text-muted font-medium">' + PREP.maskCode(c.code) + '</span>' +
               '</span>' +
               '<span class="badge shrink-0 ' + (warn ? 'badge-hl' : 'badge-muted') + '">còn ' + left + ' ngày</span>' +
@@ -427,7 +427,7 @@
       const events = []
         .concat(codes.map(c => ({
           at: c.redeemedAt, icon: 'unlock',
-          text: 'Kích hoạt code, mở khoá ' + PrepState.unlockLabel(c.unlocks)
+          text: 'Kích hoạt code, mở khoá ' + PrepState.codeLabel(c)
         })))
         .concat((s.orders || []).map(o => ({
           at: o.at, icon: 'receipt', text: 'Mua ' + o.name + ' · ' + PREP.vnd(o.amount)
