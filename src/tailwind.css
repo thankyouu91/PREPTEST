@@ -463,6 +463,66 @@
   .no-scrollbar::-webkit-scrollbar { display: none; }
   .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
   .text-balance { text-wrap: balance; }
+
+  /* ---- Thanh kéo cho hàng chip điều hướng khu tự học ----
+     Hàng chip dài hơn màn hình thì các mục cuối bị cắt mà không có dấu hiệu
+     gì. public/prep/learn/_navscroll.js gắn nút mũi tên và bật các class dưới
+     đây; không có JS thì hàng vẫn cuộn được bằng ngón tay như cũ. */
+  .navscroll { position: relative; }
+
+  /* Thanh cuộn mảnh, kéo được bằng chuột */
+  .navscroll-track { scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--color-text) 22%, transparent) transparent; }
+  .navscroll-track::-webkit-scrollbar { height: 6px; }
+  .navscroll-track::-webkit-scrollbar-track { background: transparent; }
+  .navscroll-track::-webkit-scrollbar-thumb {
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--color-text) 22%, transparent);
+  }
+  .navscroll-track:hover::-webkit-scrollbar-thumb {
+    background: color-mix(in srgb, var(--color-text) 38%, transparent);
+  }
+
+  /* Vệt mờ hai mép: chỉ hiện khi phía đó còn nội dung bị che */
+  .navscroll::before, .navscroll::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 6px;                       /* chừa chỗ cho thanh cuộn bên dưới */
+    width: 2.5rem;
+    z-index: 5;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity .18s ease;
+  }
+  .navscroll::before { left: 0; background: linear-gradient(to right, var(--color-surface), transparent); }
+  .navscroll::after { right: 0; background: linear-gradient(to left, var(--color-surface), transparent); }
+  .navscroll-has-l::before { opacity: 1; }
+  .navscroll-has-r::after { opacity: 1; }
+
+  .navscroll-btn {
+    position: absolute;
+    top: calc(50% - 3px);              /* trừ nửa chiều cao thanh cuộn */
+    transform: translateY(-50%);
+    z-index: 10;
+    display: grid;
+    place-items: center;
+    width: 1.75rem;
+    height: 1.75rem;
+    border-radius: 999px;
+    cursor: pointer;
+    transition: border-color .15s ease, background .15s ease;
+    @apply border border-line bg-card text-ink shadow-soft;
+  }
+  .navscroll-btn:active { transform: translateY(-50%) scale(.94); }
+  .navscroll-btn:hover { border-color: color-mix(in srgb, var(--color-text) 30%, transparent); }
+  .navscroll-btn[hidden] { display: none; }
+  .navscroll-btn svg {
+    width: 1rem; height: 1rem;
+    fill: none; stroke: currentColor;
+    stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round;
+  }
+  .navscroll-prev { left: 0; }
+  .navscroll-next { right: 0; }
 }
 
 @keyframes shimmer { 100% { transform: translateX(100%); } }

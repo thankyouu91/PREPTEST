@@ -1219,6 +1219,57 @@ try {
   ok(await page.locator('article[data-slug="register-shift-for-effect"] [data-answer]').count() === 10,
     'Mục cuối cùng của khu ngữ pháp cũng mở ra đủ 10 câu luyện');
 
+  /* --- Thanh kéo của hàng chip điều hướng ---
+     Hàng chip đã dài hơn màn hình nên các mục cuối bị cắt. Thu hẹp khung nhìn
+     cho chắc chắn tràn rồi kiểm cả ba việc: bọc đúng, tự kéo mục đang xem vào
+     tầm nhìn, và nút mũi tên kéo thật. */
+  await page.setViewportSize({ width: 700, height: 900 });
+  await page.goto(BASE + '/prep/hoc/sac-thai/', { waitUntil: 'networkidle' });
+  await page.waitForSelector('nav[aria-label="Mục tự học"]', { timeout: 10000 });
+
+  ok(await page.locator('.navscroll nav[aria-label="Mục tự học"]').count() === 1,
+    'Hàng chip được bọc trong khung có thanh kéo');
+  ok(await page.locator('nav[aria-label="Mục tự học"].navscroll-track').count() === 1,
+    'Hàng chip đổi sang thanh cuộn nhìn thấy được');
+
+  const traiSau = () => page.evaluate(
+    () => document.querySelector('nav[aria-label="Mục tự học"]').scrollLeft);
+  const tranNgang = await page.evaluate(() => {
+    const n = document.querySelector('nav[aria-label="Mục tự học"]');
+    return n.scrollWidth - n.clientWidth;
+  });
+  ok(tranNgang > 0, 'Ở khung hẹp thì hàng chip thật sự tràn ngang (' + tranNgang + 'px)');
+
+  /* Trang sắc thái là chip cuối danh sách: mở lên phải thấy nó ngay */
+  ok(await traiSau() > 0, 'Mở trang thì tự kéo chip của trang đang xem vào tầm nhìn');
+
+  /* Kiểm cho đúng ý: chip phải nằm TRỌN trong dải nhìn thấy của hàng chip.
+     Không dùng isVisible() vì nó chỉ xét phần tử có kích thước, không xét vị
+     trí cuộn — và trên trang còn một [aria-current] nữa ở thanh điều hướng
+     chính, ở khung hẹp thì thanh đó thu lại nên kết quả sai hẳn ý định. */
+  const chipTronTam = await page.evaluate(() => {
+    const nav = document.querySelector('nav[aria-label="Mục tự học"]');
+    const chip = nav.querySelector('[aria-current="page"]');
+    if (!chip) return false;
+    const n = nav.getBoundingClientRect(), c = chip.getBoundingClientRect();
+    return c.left >= n.left - 1 && c.right <= n.right + 1;
+  });
+  ok(chipTronTam, 'Chip của trang đang xem nằm trọn trong dải nhìn thấy');
+
+  /* Đã kéo sang phải thì nút lùi phải hiện, nút tiến thì ẩn vì đã hết đường */
+  ok(await page.locator('.navscroll-prev').isVisible(), 'Nút lùi hiện khi còn mục bị che bên trái');
+  const truocKhiLui = await traiSau();
+  await page.click('.navscroll-prev');
+  await page.waitForTimeout(600);
+  ok(await traiSau() < truocKhiLui, 'Bấm nút lùi thì hàng chip kéo về bên trái thật');
+
+  /* Về đầu hàng thì nút lùi tự ẩn, nút tiến hiện lên */
+  await page.evaluate(() => { document.querySelector('nav[aria-label="Mục tự học"]').scrollLeft = 0; });
+  await page.waitForTimeout(300);
+  ok(await page.locator('.navscroll-prev').isHidden(), 'Về đầu hàng thì nút lùi tự ẩn');
+  ok(await page.locator('.navscroll-next').isVisible(), 'Nút tiến hiện khi còn mục bị che bên phải');
+  await page.setViewportSize({ width: 1280, height: 900 });
+
   ok(errs.length === 0, 'Không có lỗi JavaScript trên mười trang tự học' +
     (errs.length ? ': ' + errs[0] : ''));
 
