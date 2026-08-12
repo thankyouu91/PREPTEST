@@ -586,7 +586,7 @@ const run = async () => {
     if (parkedTest) {
       r = await call('POST', '/api/admin/tests/' + parkedTest.id + '/status', { status: 'published' });
       check('Không phát hành được đề của kỳ thi chưa sẵn sàng',
-        r.status === 400 && /chưa sẵn sàng/.test(String(r.data && r.data.error)),
+        r.status === 400 && /is not ready yet/.test(String(r.data && r.data.error)),
         'status ' + r.status + ' ' + JSON.stringify(r.data));
 
       const after = await call('GET', '/api/admin/tests/' + parkedTest.id);

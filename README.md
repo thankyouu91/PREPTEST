@@ -48,8 +48,14 @@ Số câu và số phút giữ nguyên từng con số — đây là bất biế
 Tên cột CSV khi nhập hàng loạt (`ky_thi`, `ky_nang`, `do_kho`, …) giữ nguyên —
 đó là hợp đồng định dạng, đổi tên là đổi chức năng chứ không phải dịch.
 
-Còn tiếng Việt: các thông báo `/api/admin/*` trong `server/api.js` — xem hàng
-đợi trong `docs/ROADMAP.md`.
+`server/api.js` cũng đã sang tiếng Anh: thông báo lỗi `/api/admin/*`, phần chú
+thích, nhãn phễu và việc cần làm, và các dòng CSV mẫu.
+
+**Toàn bộ giao diện — trước đăng nhập, khu học viên, khu tự học và khu quản trị
+— nay là tiếng Anh.** Phần cố ý giữ tiếng Việt: nội dung giảng dạy ở khu tự
+học, tên bậc VSTEP (`Bậc 3/4/5`), giá tiền theo đồng, tên các tài khoản demo,
+tên cột CSV khi nhập hàng loạt, và ngân hàng câu hỏi mẫu trong `db.js` — phần
+này sẽ bị ngân hàng đề VPET thay toàn bộ.
 
 **Nội dung khu tự học giữ nguyên tiếng Việt**: phần nghĩa, ví dụ song ngữ và
 "lỗi người Việt hay mắc" tồn tại để giải thích tiếng Anh bằng tiếng mẹ đẻ của
