@@ -363,7 +363,7 @@ function reportAdminAccounts() {
   const admins = q.all('SELECT username FROM admins WHERE active=1 ORDER BY id');
   if (!admins.length) return;
   console.log('   · Admin:  ' + admins.map(a => a.username).join(', ') +
-    '  (forgotten the password? run: node scripts/tai-khoan.js dat-lai-admin)');
+    '  (forgotten the password? run: node scripts/accounts.js reset-admin)');
 }
 
 module.exports = {

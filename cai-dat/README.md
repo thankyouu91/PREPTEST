@@ -17,7 +17,7 @@ Bản cũ hơn thì `chay-server.bat` sẽ báo lỗi và dừng chứ không ch
 | `chay-server.bat` | Nhấn đúp để chạy. Tự kiểm tra Node, cài thư viện, build CSS, bật server rồi mở trình duyệt |
 | `cap-nhat.bat` | Kéo code mới nhất từ GitHub về, cài lại thư viện, build lại CSS |
 | `dung-server.bat` | Tắt server còn sót lại khi lỡ đóng cửa sổ mà tiến trình vẫn chạy |
-| `tai-khoan.bat` | **Không đăng nhập được?** Xem tài khoản đang có, đặt lại mật khẩu quản trị hoặc học viên demo, mở khoá tài khoản |
+| `accounts.bat` | **Không đăng nhập được?** Xem tài khoản đang có, đặt lại mật khẩu quản trị hoặc học viên demo, mở khoá tài khoản |
 | `cau-hinh.mau.bat` | Mẫu cấu hình. Chép thành `cau-hinh.bat` rồi sửa nếu muốn đổi cổng hay mật khẩu |
 | `_mo-trinh-duyet.bat` | Tệp phụ, `chay-server.bat` gọi. Không chạy trực tiếp |
 
@@ -70,7 +70,7 @@ lên git. Đừng viết mật khẩu thẳng vào `cau-hinh.mau.bat` vì tệp 
 
 ## Không đăng nhập được
 
-Nhấn đúp `tai-khoan.bat`. Nó liệt kê tài khoản đang có trong cơ sở dữ liệu rồi
+Nhấn đúp `accounts.bat`. Nó liệt kê tài khoản đang có trong cơ sở dữ liệu rồi
 cho chọn: đặt lại mật khẩu quản trị, đặt lại tài khoản học viên demo, hoặc mở
 khoá tài khoản bị khoá.
 

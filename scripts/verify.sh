@@ -35,7 +35,7 @@ step "Build CSS"
 npm run build || fail=1
 
 step "Account rescue"
-node scripts/test-taikhoan.js || fail=1
+node scripts/test-accounts.js || fail=1
 
 step "Start the server"
 pkill -f 'node server\.js' 2>/dev/null || true

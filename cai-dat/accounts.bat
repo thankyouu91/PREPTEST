@@ -35,7 +35,7 @@ call "%~dp0dung-server.bat" >nul 2>nul
 echo.
 echo Tinh trang tai khoan hien tai:
 echo.
-node scripts/tai-khoan.js xem
+node scripts/accounts.js list
 echo.
 echo ------------------------------------------
 echo   1. Dat lai mat khau QUAN TRI ve mac dinh
@@ -49,13 +49,13 @@ set /p CHON=Chon 1, 2, 3 hoac 4 roi bam Enter:
 
 if "%CHON%"=="1" (
   echo.
-  node scripts/tai-khoan.js dat-lai-admin
+  node scripts/accounts.js reset-admin
 ) else if "%CHON%"=="2" (
   echo.
-  node scripts/tai-khoan.js dat-lai-student
+  node scripts/accounts.js reset-student
 ) else if "%CHON%"=="3" (
   echo.
-  node scripts/tai-khoan.js mo-khoa
+  node scripts/accounts.js unlock
 ) else (
   echo.
   echo Khong doi gi ca.

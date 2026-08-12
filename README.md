@@ -82,11 +82,11 @@ Lệnh khác:
 | `node scripts/test-admin.mjs` | kiểm thử API quản trị: phiên, CSRF, phân quyền, CRUD, sinh đề, cấp code |
 | `node scripts/test-catalog.mjs` | kiểm thử trang học viên đọc `/api/catalog` + nhánh dự phòng khi API hỏng, và bảng giá ở trang giới thiệu đọc từ `plans.js` (đổi giá ở máy chủ thì trang phải đổi theo) |
 | `node scripts/test-user-api.mjs` | kiểm thử API tài khoản học viên: đăng ký, đăng nhập, xác thực email, đặt lại mật khẩu, CSRF, chống dò |
-| `node scripts/tai-khoan.js xem` | **Vào không được?** Liệt kê tài khoản quản trị và trạng thái học viên demo. Đặt lại bằng `dat-lai-admin` / `dat-lai-student`, mở khoá bằng `mo-khoa`. Trên Windows nhấn đúp `cai-dat\tai-khoan.bat` |
-| `node scripts/test-taikhoan.js` | kiểm thử đường cứu hộ tài khoản (tự phục hồi tài khoản demo, đặt lại mật khẩu quản trị) |
+| `node scripts/accounts.js list` | **Vào không được?** Liệt kê tài khoản quản trị và trạng thái học viên demo. Đặt lại bằng `reset-admin` / `reset-student`, mở khoá bằng `unlock`. Trên Windows nhấn đúp `cai-dat\accounts.bat` |
+| `node scripts/test-accounts.js` | kiểm thử đường cứu hộ tài khoản (tự phục hồi tài khoản demo, đặt lại mật khẩu quản trị) |
 | `node scripts/test-exam.mjs` | kiểm thử engine làm bài: mở/nối lại lượt thi, đồng hồ từng phần, số lần nghe lại đếm ở máy chủ, ghi âm câu trả lời, nộp bài, hạn mức lượt của gói Starter, và **đáp án không lọt ra trình duyệt** |
 | `node scripts/test-learn.mjs` | kiểm thử khu tự học: chất lượng dữ liệu động từ bất quy tắc, từ nối và hai nhóm ngữ pháp (nhóm khớp hình thái, ví dụ chứa đúng mục từ, đủ bốn lát cắt, chỗ trống khớp đáp án, đúng hạn mức bậc) + bộ lọc bốn trang |
-| `node scripts/xuat-supabase.mjs --count` | xuất nội dung ra Supabase (SQL hoặc JSON) — xem [Bản sao nội dung trên Supabase](#bản-sao-nội-dung-trên-supabase) |
+| `node scripts/export-supabase.mjs --count` | xuất nội dung ra Supabase (SQL hoặc JSON) — xem [Bản sao nội dung trên Supabase](#bản-sao-nội-dung-trên-supabase) |
 | `npm run screenshot:admin` | chụp các màn quản trị |
 | `npm test` | chạy cả bảy bộ kiểm thử |
 
@@ -524,9 +524,9 @@ Mọi bảng đều chặn ghi qua khoá công khai. **Không** đưa lên Supab
 Nạp lại sau khi sửa nội dung:
 
 ```bash
-node scripts/xuat-supabase.mjs --ddl              # tạo bảng + RLS (chạy lại vô hại)
-node scripts/xuat-supabase.mjs --data             # toàn bộ INSERT, đã ON CONFLICT DO UPDATE
-node scripts/xuat-supabase.mjs --json exam_questions   # hoặc JSON để nạp qua PostgREST
+node scripts/export-supabase.mjs --ddl              # tạo bảng + RLS (chạy lại vô hại)
+node scripts/export-supabase.mjs --data             # toàn bộ INSERT, đã ON CONFLICT DO UPDATE
+node scripts/export-supabase.mjs --json exam_questions   # hoặc JSON để nạp qua PostgREST
 ```
 
 Chạy lại chỉ cập nhật chứ không nhân đôi. Các bảng lấy từ `data/prep.sqlite` cần chạy
