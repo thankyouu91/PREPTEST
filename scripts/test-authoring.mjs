@@ -479,6 +479,219 @@ if (cookie && csrf) {
   ok(laPart.status === 400, 'Part không có rubric bị từ chối');
 }
 
+/* ================= 6b. Phân tích câu hỏi =================
+   Kiểm bằng ví dụ tính tay. Một module thống kê chỉ có thể tin được khi có
+   người tính tay ra cùng con số — so với chính nó thì mãi mãi đúng. */
+
+console.log('\n\x1b[1m== Phân tích câu hỏi (ACADEMIC §9) ==\x1b[0m');
+
+const IA = require('../server/item-analysis.js');
+const gan = (a, b, eps = 1e-9) => a != null && Math.abs(a - b) < eps;
+
+{
+  const f = IA.facility([1, 1, 1, 0, 0]);
+  ok(gan(f.p, 0.6), 'Độ khó: 3/5 đúng cho p = 0,60', String(f.p));
+  ok(f.reliable === false, `Dưới ${IA.MIN_N.facility} lượt thì cờ reliable phải tắt`);
+  ok(IA.facility(Array(120).fill(1).map((_, i) => (i < 60 ? 1 : 0))).reliable === true,
+    'Đủ lượt thì cờ reliable bật');
+
+  ok(IA.facility(Array(100).fill(1)).verdict.startsWith('too easy'),
+    'Ai cũng đúng: "quá dễ — không phân biệt được ai"');
+  ok(IA.facility(Array(100).fill(0)).verdict.startsWith('too hard'),
+    'Không ai đúng: "quá khó — không phân biệt được ai"');
+  ok(IA.facility([], 1).p === null, 'Không có dữ liệu thì trả null chứ không trả 0');
+}
+
+{
+  /* Câu chấm rubric 0–6: độ khó là điểm trung bình trên điểm tối đa, không
+     phải tỉ lệ vượt một mốc nào đó. Cắt ở 4 thì nhóm trung bình 4,5 hoá ra
+     "quá khó" — sai, và sẽ loại một câu hoàn toàn tốt. */
+  const f = IA.facility([3, 4, 5, 6], 6);
+  ok(gan(f.p, 0.75), 'Câu rubric: trung bình 4,5/6 cho p = 0,75', String(f.p));
+  ok(gan(f.meanScore, 4.5) && f.max === 6, 'Giữ lại cả điểm trung bình lẫn điểm tối đa');
+  ok(IA.facility([3, 3, 3, 3], 6).verdict === 'well targeted',
+    'Trung bình 3/6 là "đúng tầm", không phải "quá khó"');
+  let nem = false;
+  try { IA.facility([1], 0); } catch (e) { nem = true; }
+  ok(nem, 'Điểm tối đa bằng 0 thì ném lỗi chứ không chia cho 0');
+}
+
+{
+  /* Ví dụ tính tay, 6 thí sinh:
+       câu này    1 1 1 0 0 0
+       tổng       4 3 3 2 1 1
+       phần còn lại (tổng − câu này) = 3 2 2 2 1 1
+       trung bình nhóm đúng 7/3, nhóm sai 4/3, độ lệch chuẩn 0,687184…
+       r = (1/0,687184…) × √(0,5×0,5) = 0,7276068751… */
+  const d = IA.discrimination([1, 1, 1, 0, 0, 0], [4, 3, 3, 2, 1, 1]);
+  ok(gan(d.r, 0.7276068751089989, 1e-12), 'Độ phân biệt khớp ví dụ tính tay 0,72760688', String(d.r));
+  ok(d.verdict === 'excellent' && d.action === 'keep', 'r > 0,40 xếp loại tốt và giữ lại');
+}
+
+{
+  /* Hệ số Pearson trên câu 0–1 phải ra đúng con số của point-biserial. Đây là
+     điều kiện để dùng một công thức cho cả hai loại câu — nếu lệch thì việc
+     gộp là sai, và phải tách lại. */
+  const item = [1, 0, 1, 1, 0, 1, 0, 0, 1, 0];
+  const total = [7, 3, 6, 8, 2, 5, 4, 3, 9, 1];
+  const rest = total.map((t, i) => t - item[i]);
+  const dung = rest.filter((_, i) => item[i] === 1), sai = rest.filter((_, i) => item[i] === 0);
+  const tb = xs => xs.reduce((a, b) => a + b, 0) / xs.length;
+  const m = tb(rest);
+  const dlc = Math.sqrt(rest.reduce((a, x) => a + (x - m) ** 2, 0) / rest.length);
+  const p = dung.length / item.length;
+  const pbis = ((tb(dung) - tb(sai)) / dlc) * Math.sqrt(p * (1 - p));
+  ok(gan(IA.discrimination(item, total).r, pbis, 1e-12),
+    'Pearson và point-biserial cho cùng một số trên câu đúng/sai');
+}
+
+{
+  const d = IA.discrimination([0, 0, 1, 1, 0, 1], [5, 4, 1, 2, 3, 1]);
+  ok(d.r < 0, 'Người giỏi làm sai nhiều hơn thì r âm', String(d.r));
+  ok(d.action === 'fix-key', 'r âm ra hành động "kiểm tra lại khoá", không phải "câu khó"');
+}
+
+{
+  ok(IA.discrimination(Array(200).fill(1), Array(200).fill(5)).verdict === 'no variance',
+    'Cả nhóm trả lời như nhau: "không có biến thiên", không phải r = 0');
+  ok(IA.discrimination([1, 0, 1], [1, 0, 1]).verdict === 'no variance in total',
+    'Phần còn lại không phân biệt được ai thì nói rõ, và không đổ lỗi cho câu');
+  let nem = false;
+  try { IA.discrimination([1, 0], [1, 0, 1]); } catch (e) { nem = true; }
+  ok(nem, 'Hai mảng lệch độ dài thì ném lỗi ngay');
+}
+
+{
+  /* Ví dụ tính tay: 4 thí sinh, 3 câu, ma trận bậc thang.
+       phương sai từng câu 0,1875 + 0,25 + 0,1875 = 0,625
+       phương sai tổng 1,25
+       alpha = (3/2)(1 − 0,625/1,25) = 0,75 chẵn */
+  const a = IA.cronbachAlpha([[1, 1, 1], [1, 1, 0], [1, 0, 0], [0, 0, 0]]);
+  ok(gan(a.alpha, 0.75), 'Alpha khớp ví dụ tính tay 0,75', String(a.alpha));
+  ok(a.k === 3 && a.n === 4, 'Đếm đúng số câu và số lượt');
+  ok(a.reliable === false, `Dưới ${IA.MIN_N.alpha} lượt thì alpha chưa dùng được`);
+
+  const sem = IA.standardError(a.alpha, a.totalSd);
+  ok(gan(sem, Math.sqrt(1.25) * 0.5), 'Sai số đo = độ lệch chuẩn × √(1−alpha)', String(sem));
+
+  const kt = IA.confidenceInterval(55, sem);
+  ok(gan(kt.low, 55 - sem) && gan(kt.high, 55 + sem), 'Khoảng tin cậy 68% rộng đúng một sai số đo');
+  ok(gan(IA.confidenceInterval(55, sem, 95).high, 55 + 1.96 * sem), 'Mức 95% dùng 1,96 sai số đo');
+  ok(IA.confidenceInterval(55, null) === null, 'Không có sai số đo thì không bịa ra khoảng tin cậy');
+}
+
+{
+  ok(IA.cronbachAlpha([[1, 1], [1, 1], [1, 1]]).verdict === 'no variance in totals',
+    'Mọi người cùng điểm tổng: nói rõ thay vì chia cho 0');
+  ok(IA.cronbachAlpha([[1], [0], [1]]).alpha === null, 'Một câu thì không có alpha');
+  let nem = false;
+  try { IA.cronbachAlpha([[1, 1], [1]]); } catch (e) { nem = true; }
+  ok(nem, 'Ma trận thiếu ô thì ném lỗi chứ không lặng lẽ tính sai');
+  ok(IA.standardError(1, 5) === null, 'Alpha = 1 (không thể có thật) thì không trả sai số đo');
+}
+
+{
+  /* Bốn phương án: B là đáp án, A hút người giỏi (dấu hiệu khoá sai hoặc
+     phương án cũng đúng), D không ai chọn. */
+  const chon = ['A', 'A', 'B', 'B', 'B', 'C', 'C', 'B', 'A', 'B'];
+  const tong = [9, 8, 5, 4, 6, 2, 1, 5, 9, 3];
+  const da = IA.distractorAnalysis(chon, ['A', 'B', 'C', 'D'], 'B', tong);
+  const lay = o => da.options.find(x => x.option === o);
+
+  ok(lay('B').isKey && gan(lay('B').share, 0.5), 'Đáp án B được 50% chọn');
+  ok(lay('D').verdict.startsWith('dead'), 'Phương án không ai chọn bị gọi là phương án chết');
+  ok(lay('A').verdict.startsWith('attracts stronger'),
+    'Phương án hút người điểm cao hơn đáp án bị nêu đích danh', lay('A').verdict);
+  ok(lay('C').verdict === 'working', 'Phương án nhiễu hút người điểm thấp là đang làm đúng việc');
+  ok(gan(lay('A').meanTotal, (9 + 8 + 9) / 3), 'Điểm trung bình của người chọn A tính đúng');
+}
+
+{
+  const N = IA.MIN_N.discrimination;
+  const item = Array.from({ length: N }, (_, i) => (i % 2 ? 1 : 0));
+  const total = Array.from({ length: N }, (_, i) => (i % 2 ? 8 : 3));
+
+  const du = IA.analyseItem({ id: 1, part: 'C', itemScores: item, totalScores: total });
+  ok(du.recommend === 'keep', 'Câu hoạt động bình thường thì giữ', du.why);
+
+  const thieu = IA.analyseItem({ id: 2, part: 'C', itemScores: item.slice(0, 20), totalScores: total.slice(0, 20) });
+  ok(thieu.recommend === 'wait', 'Chưa đủ lượt thì "chờ", không phải "giữ"');
+  ok(thieu.why.includes(String(N)), 'Lời giải thích nói rõ cần bao nhiêu lượt nữa');
+
+  /* Cả 500 người cùng làm đúng là đã quá đủ dữ liệu để kết luận — không được
+     báo "chờ thêm dữ liệu" chỉ vì độ phân biệt không tính được. */
+  const chet = IA.analyseItem({
+    id: 3, part: 'C', itemScores: Array(500).fill(1), totalScores: Array(500).fill(9)
+  });
+  ok(chet.recommend === 'retire', 'Ai cũng đúng ở 500 lượt là "bỏ", không phải "chờ"', chet.why);
+
+  /* Câu khó nhưng phân biệt tốt thì không được loại: nó đang tách nhóm giỏi
+     nhất ra khỏi nhóm giỏi. Việc cần làm là xem lại nó thuộc level nào. */
+  const kho = Array.from({ length: 300 }, (_, i) => (i < 20 ? 1 : 0));
+  const tongKho = Array.from({ length: 300 }, (_, i) => (i < 20 ? 9 : 2));
+  const r = IA.analyseItem({ id: 4, part: 'H', itemScores: kho, totalScores: tongKho });
+  ok(r.recommend === 'review' && /right level/.test(r.why),
+    'Câu khó mà phân biệt tốt thì "xem lại level", không phải "bỏ"', r.why);
+
+  /* 297/300 làm đúng, và ba người làm sai nằm đúng giữa thang năng lực — nên
+     độ phân biệt gần 0. Đây là câu vô hại nhưng vô dụng: chiếm chỗ và chiếm
+     thời gian của thí sinh mà không nói thêm được gì về ai. */
+  const deIdx = i => i === 103 || i === 114 || i === 124;
+  const deItem = Array.from({ length: 300 }, (_, i) => (deIdx(i) ? 0 : 1));
+  const de = IA.analyseItem({
+    id: 5, part: 'C',
+    itemScores: deItem,
+    /* Tổng phải bao gồm chính câu này — đó là điều kiện để phép trừ trong
+       công thức có nghĩa. Dựng tổng không chứa câu rồi vẫn trừ đi là trừ hai
+       lần, và sẽ ra tương quan âm giả. */
+    totalScores: deItem.map((v, i) => (i % 10) + v)
+  });
+  ok(de.recommend === 'retire' && Math.abs(de.discrimination.r) < 0.3,
+    'Câu ai cũng làm được và không phân biệt được thì bỏ', de.why);
+}
+
+{
+  const IS = require('../server/item-stats.js');
+  ok(IS.sectionKey('listening', 1) === 'listening-L1', 'Khoá phần ghép từ kỹ năng và level');
+  ok(IS.sectionKey('reading', null) === 'reading-L?', 'Câu chưa gắn level vẫn gom được, và lộ ra là chưa gắn');
+  ok(IS.vpetLevel({ tags_json: '["ref:E1-L2","part-E","level-2"]' }) === 2, 'Đọc được level từ tag');
+  ok(IS.vpetLevel({ tags_json: '["part-E"]' }) === null, 'Không có tag level thì trả null, không đoán bừa');
+}
+
+if (cookie && csrf) {
+  const r = await fetch(BASE + '/api/admin/analysis', { headers: { cookie, 'x-csrf-token': csrf } });
+  const b = await r.json();
+  ok(r.status === 200 && b.coverage && b.thresholds, 'GET /admin/analysis trả độ phủ dữ liệu và ngưỡng');
+  ok(b.thresholds.discrimination === IA.MIN_N.discrimination,
+    'Ngưỡng trả về đúng bằng ngưỡng module dùng để tính');
+  ok(Array.isArray(b.items) && Array.isArray(b.sections), 'Trả về danh sách câu và danh sách phần');
+
+  const xau = await fetch(BASE + '/api/admin/analysis?recommend=xoa-het', { headers: { cookie, 'x-csrf-token': csrf } });
+  ok(xau.status === 400, 'Giá trị recommend lạ bị từ chối');
+
+  const chay = await fetch(BASE + '/api/admin/analysis/run', {
+    method: 'POST',
+    headers: { cookie, 'x-csrf-token': csrf, 'content-type': 'application/json' },
+    body: JSON.stringify({ dryRun: true })
+  });
+  const cb = await chay.json();
+  ok(chay.status === 200 && cb.summary, 'POST /admin/analysis/run --thu trả tóm tắt');
+  ok(cb.summary.ready === (cb.summary.sectionsReliable > 0),
+    'Cờ "được phép hiện khoảng tin cậy" chỉ bật khi có phần đủ tin cậy');
+
+  const ngay = await fetch(BASE + '/api/admin/analysis/run', {
+    method: 'POST',
+    headers: { cookie, 'x-csrf-token': csrf, 'content-type': 'application/json' },
+    body: JSON.stringify({ since: 'hôm qua' })
+  });
+  ok(ngay.status === 400, 'Ngày không đúng định dạng ISO bị từ chối');
+
+  const khongCsrf = await fetch(BASE + '/api/admin/analysis/run', {
+    method: 'POST', headers: { cookie, 'content-type': 'application/json' }, body: '{}'
+  });
+  ok(khongCsrf.status === 403, 'Chạy phân tích mà thiếu token CSRF bị chặn');
+}
+
 /* ================= 7. Sẵn sàng triển khai ================= */
 
 console.log('\n\x1b[1m== Sẵn sàng chạy trên Cloud Run ==\x1b[0m');

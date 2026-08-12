@@ -398,6 +398,71 @@ CREATE INDEX IF NOT EXISTS idx_tts_q    ON tts_renders (question_id, id DESC);
 CREATE INDEX IF NOT EXISTS idx_tts_hash ON tts_renders (hash);
 `);
 
+/* Một dòng cho mỗi câu trả lời của mỗi thí sinh.
+   ---------------------------------------------------------------------------
+   Bảng này tồn tại vì phân tích câu hỏi không làm ngược lại được. Điểm tổng
+   thì tính lại lúc nào cũng được, nhưng "thí sinh này chọn phương án C" mà
+   không ghi lại ngay hôm đó thì mất vĩnh viễn — và đó chính là dữ liệu duy
+   nhất nói được câu nào hỏng. docs/ACADEMIC.md §9 liệt kê việc phải làm khi có
+   dữ liệu; không có bảng này thì mục đó không bao giờ chạy được.
+
+   Vì sao lưu cả `correct` lẫn `chosen`: đáp án có thể sửa. Khi phát hiện khoá
+   sai và sửa lại, những bài đã chấm cần giữ nguyên kết quả đã báo cho thí
+   sinh, còn `chosen` cho phép chấm lại và biết ai bị thiệt. Chỉ lưu một trong
+   hai là mất một trong hai khả năng đó.
+
+   `attempt_ref` gom các câu của cùng một lượt thi. Không tham chiếu tới bảng
+   nào cả: lượt thi có thể tới từ mã dùng thử, từ lớp học, hay từ bản nhập tay
+   của giáo viên, và ràng buộc khoá ngoại vào một nguồn sẽ chặn hai nguồn kia.
+
+   docs/ACADEMIC.md §13: giữ 24 tháng. Bảng này chỉ có lựa chọn và điểm, không
+   có bài viết hay bản ghi âm, nên xoá theo hạn không làm mất phần thống kê. */
+db.exec(`
+CREATE TABLE IF NOT EXISTS item_responses (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  attempt_ref TEXT NOT NULL,
+  question_id INTEGER NOT NULL REFERENCES questions(id) ON DELETE CASCADE,
+  test_id INTEGER REFERENCES tests(id) ON DELETE SET NULL,
+  part TEXT,
+  level INTEGER,
+  chosen TEXT,
+  correct INTEGER NOT NULL DEFAULT 0,          -- 1 đúng, 0 sai
+  score REAL,                                   -- điểm phần chấm rubric, null với trắc nghiệm
+  max_score REAL,
+  ms INTEGER,                                   -- thời gian làm câu này
+  source TEXT NOT NULL DEFAULT 'exam',          -- exam | practice | import | simulated
+  created_at TEXT NOT NULL,
+  UNIQUE (attempt_ref, question_id)
+);
+CREATE INDEX IF NOT EXISTS idx_resp_q      ON item_responses (question_id);
+CREATE INDEX IF NOT EXISTS idx_resp_att    ON item_responses (attempt_ref);
+CREATE INDEX IF NOT EXISTS idx_resp_at     ON item_responses (created_at);
+
+CREATE TABLE IF NOT EXISTS item_stats (
+  question_id INTEGER PRIMARY KEY REFERENCES questions(id) ON DELETE CASCADE,
+  n INTEGER NOT NULL DEFAULT 0,
+  facility REAL,
+  discrimination REAL,
+  reliable INTEGER NOT NULL DEFAULT 0,
+  recommend TEXT NOT NULL DEFAULT 'wait',       -- keep | wait | review | retire | fix-key
+  why TEXT,
+  detail_json TEXT NOT NULL DEFAULT '{}',
+  computed_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_stats_rec ON item_stats (recommend);
+
+CREATE TABLE IF NOT EXISTS section_stats (
+  section TEXT PRIMARY KEY,                     -- kỹ năng + level, ví dụ "listening-L1"
+  n INTEGER NOT NULL DEFAULT 0,
+  k INTEGER NOT NULL DEFAULT 0,
+  alpha REAL,
+  sem REAL,
+  reliable INTEGER NOT NULL DEFAULT 0,
+  verdict TEXT,
+  computed_at TEXT NOT NULL
+);
+`);
+
 /* ============================== TIỆN ÍCH ============================== */
 const nowISO = () => new Date().toISOString();
 const jparse = (s, fb) => { try { return JSON.parse(s); } catch (e) { return fb; } };

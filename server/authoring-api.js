@@ -37,6 +37,8 @@ const openai = require('./providers/openai');
 const descriptors = require('./data/descriptors');
 const rubrics = require('./data/rubrics');
 const EXAM_FORMATS = require('./data/exam-formats');
+const itemStats = require('./item-stats');
+const analysis = require('./item-analysis');
 
 const router = express.Router();
 router.use(express.json({ limit: '1mb' }));
@@ -526,6 +528,71 @@ router.get('/admin/framework/profile', (req, res) => {
     return bad(res, 'Score must be a number between 10 and 90.');
   }
   res.json(descriptors.profile(skill, gse));
+});
+
+/* ========================= Item analysis =========================
+   docs/ACADEMIC.md §9, made runnable. Everything in the framework above is a
+   design decision until candidate responses exist; these routes are what turn
+   the decisions into measurements and, where the measurement disagrees with
+   the decision, say so.
+
+   Reading and recomputing are deliberately separate routes. The computation
+   walks every response in the table, and an admin screen that recomputed on
+   load would do it on every refresh and — worse — would show a verdict whose
+   sample size changed while somebody was reading it. */
+
+/**
+ * How much data exists, and what was last concluded from it.
+ *
+ * `coverage` is the honest header for the whole screen: with 12 responses,
+ * nothing below it means anything, and the screen should say that louder than
+ * it says anything else.
+ */
+router.get('/admin/analysis', (req, res) => {
+  const recommend = str(req.query.recommend, 12);
+  const allowed = ['keep', 'wait', 'review', 'retire', 'fix-key'];
+  if (recommend && !allowed.includes(recommend)) {
+    return bad(res, 'recommend must be one of: ' + allowed.join(', '));
+  }
+  res.json({
+    coverage: itemStats.coverage(),
+    thresholds: analysis.MIN_N,
+    ...itemStats.stored({ recommend: recommend || undefined })
+  });
+});
+
+/**
+ * Recompute from the response table and store the result.
+ *
+ * `dryRun` returns the numbers without writing them, which is what a reviewer
+ * wants before letting a batch of retire verdicts land on the bank.
+ */
+router.post('/admin/analysis/run', (req, res) => {
+  const body = req.body || {};
+  const source = str(body.source, 20);
+  const since = str(body.since, 30);
+  if (since && !/^\d{4}-\d{2}-\d{2}/.test(since)) return bad(res, 'since must be an ISO date.');
+
+  const report = itemStats.computeAll({
+    source: source || undefined,
+    since: since || undefined,
+    dryRun: !!body.dryRun
+  });
+
+  if (!body.dryRun) {
+    audit(req, 'analysis.run', 'items', {
+      attempts: report.attempts, items: report.summary.total,
+      actionable: report.summary.actionable
+    });
+  }
+  /* The per-item detail is large and the caller asking to run the analysis is
+     asking "what changed", not "give me every distractor row". The detail is
+     one GET away and does not need to ride along here. */
+  res.json({
+    at: report.at, attempts: report.attempts,
+    summary: report.summary, sections: report.sections,
+    actionable: report.items.filter(i => i.recommend !== 'keep' && i.recommend !== 'wait')
+  });
 });
 
 module.exports = router;

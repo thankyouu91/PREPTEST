@@ -50,9 +50,10 @@ measurement behind it. Reporting 55 rather than B1+ invites a learner to read
 a one-point change as real when it is well inside the error of any test this
 length. Two mitigations, both in the product rather than in this document:
 the report shows a position within a band rather than a bare number, and it
-never celebrates a change smaller than the band width. **Reporting a
-confidence interval once there is data to compute one is queued in section 9,
-and until then the number is presented as a position, not a measurement.**
+never celebrates a change smaller than the band width. **The confidence
+interval is built and waiting** (section 9.1): the standard error is computed
+the moment a section reaches enough attempts, and until it does, the number is
+presented as a position rather than a measurement.
 
 ---
 
@@ -335,6 +336,55 @@ A concrete sequence, in dependency order, so this document has consequences.
 8. Check the descriptor placements against performance. If candidates at 56
    routinely fail the ability placed at 56, the placement is wrong, not the
    candidates.
+
+### 9.1 Steps 1–4 are implemented
+
+They run today, against an empty table, and will produce numbers the moment it
+is not empty.
+
+| Piece | Where |
+|---|---|
+| The statistics, as pure functions over arrays | `server/item-analysis.js` |
+| Reading responses, grouping, storing verdicts | `server/item-stats.js` |
+| The durable record of what each candidate answered | `item_responses` table |
+| Command-line report | `npm run phan-tich` |
+| Admin API | `GET /api/admin/analysis`, `POST /api/admin/analysis/run` |
+| Hand-worked tests of the maths | `scripts/test-authoring.mjs` |
+
+**The table is the part that cannot wait.** Facility can be recomputed at any
+time from stored responses; a response that was never stored is gone. Every
+attempt sat before `item_responses` exists is an attempt that can never
+contribute to any figure in this document, which is why the table landed
+before the exam-delivery code that will fill it.
+
+**Three design decisions worth knowing about**, because each one changes what a
+verdict means:
+
+1. **Nothing is reported as evidence below the sample sizes in the table
+   above.** Each statistic carries a `reliable` flag, and an item with fewer
+   than 100 responses is recommended `wait`, never `keep` or `retire`. A
+   facility of 0.62 from nine candidates is noise dressed as data, and it is
+   more dangerous than no statistic at all, because somebody will retire a good
+   item on the strength of it.
+
+2. **Discrimination is correlated against the rest of the item's own section**,
+   with the item subtracted from the total. Correlating an item against a total
+   that contains it guarantees a positive answer, which is the usual way this
+   number is computed wrongly and the reason a broken item can look healthy.
+
+3. **An extreme facility retires an item only when discrimination is also
+   poor.** An item that 13% of candidates get right while discriminating at
+   0.80 is not a dead item — it is separating the strongest from the very
+   strongest, and it is the only thing in the bank doing so. The verdict is
+   *review the level it is tagged to*, which is step 3 above, not *retire*.
+
+Internal consistency is grouped by skill and level rather than by part, because
+the claim being tested is that the listening items measure listening. Parts E,
+F and G together are 22 items; part I alone is two, and an alpha computed on
+two items would look like evidence and would not be any.
+
+Steps 5 to 8 are not implemented. They need decisions no code can make: what
+counts as a benchmark mark, who marks it, and what disagreement is tolerable.
 
 ---
 
