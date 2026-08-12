@@ -190,6 +190,38 @@ try {
   ).trim();
   ok(Number(openFamilyIntact) > 0, 'Tests of an open family are left alone', openFamilyIntact);
 
+  /* 14. A brand-new database must be usable on its FIRST boot.
+
+     The demo codes' plans are reconciled by a loop in seed(), and that loop used
+     to run before the INSERT that creates the codes. On a fresh database it
+     therefore found nothing, the INSERT named no plan_id column, and sixteen
+     codes came out attached to no plan. Only the SECOND boot repaired them, so
+     a brand-new install answered "This code has no plan attached. Ask your
+     centre to issue a replacement" to the first person who tried one.
+
+     This check has to run the seed EXACTLY ONCE, in its own database, and read
+     the answer in the same process. Requiring server/db.js runs the seed, so
+     querying from a second process would be a second boot — which is precisely
+     the thing that used to hide the bug, and it hid it from me too while I was
+     chasing it. One process, one seed, one answer. */
+  const firstBootDir = fs.mkdtempSync(path.join(os.tmpdir(), 'vpet-firstboot-'));
+  try {
+    const unattached = execFileSync(process.execPath, ['-e',
+      "const{q}=require('./server/db');" +
+      "console.log(q.val(\"SELECT COUNT(*) c FROM codes WHERE plan_id IS NULL AND code IN (" +
+      "'VPET-B1MK-24TR','IELT-AC12-96HD','TOEC-LR20-26CB','PREP-HHAN-2025','PREP-DUNG-ROI1')\"))"
+    ], {
+      cwd: ROOT, encoding: 'utf8',
+      env: { ...process.env, PREP_DB: path.join(firstBootDir, 'first.sqlite'), NODE_ENV: 'test' },
+      stdio: ['ignore', 'pipe', 'ignore']
+    }).trim().split('\n').pop();
+    ok(unattached === '0',
+      'On the first boot of a fresh database every demo code already has its plan',
+      unattached + ' code(s) came out with no plan, so redeeming one would 409');
+  } finally {
+    fs.rmSync(firstBootDir, { recursive: true, force: true });
+  }
+
 } finally {
   fs.rmSync(tmpDir, { recursive: true, force: true });
 }

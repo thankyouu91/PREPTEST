@@ -811,33 +811,6 @@ function seed() {
     ...PLANS.PLANS.map(p => p.id));
   if (retired.changes) console.warn(`[seed] ${retired.changes} old bundle(s) retired in favour of the time-limited plans.`);
 
-  /* The demo codes' plans are reconciled on every boot, not only at seed time. The
-     seed only runs while the codes table is empty, so a database created before the
-     plan model existed would keep plan_id NULL forever — and a code with no plan
-     opens nothing when redeemed. The symptom was the demo account silently losing
-     all access after an upgrade, with no error anywhere.
-     Only the five fixed demo codes are touched: a real buyer's code missing its plan
-     is something to settle by hand, not by issuing a plan automatically. */
-  const DEMO_CODE_PLANS = [
-    ['VPET-B1MK-24TR', 'plus-6m', 6],
-    ['IELT-AC12-96HD', 'starter-3m', 0],
-    ['TOEC-LR20-26CB', 'pro-12m', 0],
-    ['PREP-HHAN-2025', 'starter-3m', 0],
-    ['PREP-DUNG-ROI1', 'starter-3m', 3]
-  ];
-  const monthsFromNow = n => {
-    const d = new Date(); d.setMonth(d.getMonth() + n); return d.toISOString();
-  };
-  let ganLai = 0;
-  for (const [code, planId, months] of DEMO_CODE_PLANS) {
-    const row = q.get('SELECT id, plan_id FROM codes WHERE code=?', code);
-    if (!row || row.plan_id) continue;
-    q.run('UPDATE codes SET plan_id=?, access_expires_at=? WHERE id=?',
-      planId, months ? monthsFromNow(months) : null, row.id);
-    ganLai++;
-  }
-  if (ganLai) console.warn(`[seed] ${ganLai} demo code(s) had their plan reattached.`);
-
   if (!q.val('SELECT COUNT(*) c FROM questions')) seedQuestions();
   seedVpetItems();
 
@@ -910,6 +883,42 @@ function seed() {
       insC.run(makeCode(), null, refs[i][0], refs[i][1], 'redeemed', daysFromNow(180), u.id, daysAgo(i + 2), null, daysAgo(i + 3));
     });
   }
+
+  /* The demo codes' plans are reconciled on every boot, not only at seed time. The
+     block above only runs while the codes table is empty, so a database created
+     before the plan model existed would keep plan_id NULL for ever — and a code
+     with no plan opens nothing when redeemed. The symptom was the demo account
+     silently losing all access after an upgrade, with no error anywhere.
+
+     This has to sit AFTER the insert, and used to sit before it. On a fresh
+     database the loop then ran while the codes table was still empty, found
+     nothing to reconcile, and the INSERT below it named no plan_id column — so a
+     brand-new install shipped sixteen codes that opened nothing, and only the
+     SECOND boot repaired them. Redeeming one answered "This code has no plan
+     attached. Ask your centre to issue a replacement", which is exactly the
+     sentence you do not want a new customer reading on day one.
+
+     Only the five fixed demo codes are touched: a real buyer's code missing its
+     plan is something to settle by hand, not by issuing a plan automatically. */
+  const DEMO_CODE_PLANS = [
+    ['VPET-B1MK-24TR', 'plus-6m', 6],
+    ['IELT-AC12-96HD', 'starter-3m', 0],
+    ['TOEC-LR20-26CB', 'pro-12m', 0],
+    ['PREP-HHAN-2025', 'starter-3m', 0],
+    ['PREP-DUNG-ROI1', 'starter-3m', 3]
+  ];
+  const monthsFromNow = n => {
+    const d = new Date(); d.setMonth(d.getMonth() + n); return d.toISOString();
+  };
+  let reattached = 0;
+  for (const [code, planId, months] of DEMO_CODE_PLANS) {
+    const row = q.get('SELECT id, plan_id FROM codes WHERE code=?', code);
+    if (!row || row.plan_id) continue;
+    q.run('UPDATE codes SET plan_id=?, access_expires_at=? WHERE id=?',
+      planId, months ? monthsFromNow(months) : null, row.id);
+    reattached++;
+  }
+  if (reattached) console.warn(`[seed] ${reattached} demo code(s) had their plan reattached.`);
 
   if (!q.val('SELECT COUNT(*) c FROM orders')) {
     const ins = db.prepare('INSERT INTO orders (user_id,package_id,name,amount,status,created_at) VALUES (?,?,?,?,?,?)');
