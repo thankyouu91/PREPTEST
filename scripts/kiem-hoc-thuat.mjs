@@ -198,6 +198,102 @@ for (const part of Object.keys(R.PART_RUBRICS)) {
     'có rubric nhưng ngân hàng chưa có câu nào thuộc part này');
 }
 
+/* ================= 8. Nội dung cá nhân hoá ================= */
+nhom('8 · Phát âm và từ vựng cá nhân hoá');
+
+const PRON = require('../server/data/pronunciation.js');
+const VOCAB = require('../server/data/vocabulary.js');
+const PLAN = require('../server/study-plan.js');
+
+const cacTieuChi = new Set(Object.keys(R.CRITERIA));
+
+for (const t of PRON.TARGETS) {
+  const laTieuChi = t.affects.filter(a => !cacTieuChi.has(a));
+  ok(laTieuChi.length === 0, `Phát âm ${t.id}: ảnh hưởng tới tiêu chí có thật`, laTieuChi.join(', '));
+  ok(!!PRON.COST[t.cost], `Phát âm ${t.id}: mức thiệt hại hợp lệ`, t.cost);
+  ok(t.gse[0] < t.gse[1] && t.gse[0] >= 10 && t.gse[1] <= 90,
+    `Phát âm ${t.id}: dải GSE hợp lệ`, t.gse.join('–'));
+  ok(t.pairs.length >= 2 && !!t.drill && !!t.why,
+    `Phát âm ${t.id}: có cặp từ, bài tập và lý do`);
+}
+
+/* Mục tiêu bị chấm dưới tên khác phải nói rõ điều đó, nếu không report sẽ đẩy
+   người học sang trang ngữ pháp để luyện thứ họ đã biết. */
+for (const c of ['grammar', 'accuracy']) {
+  ok(PRON.hidesAs(c).length > 0, `Có lỗi phát âm bị chấm thành lỗi ${c}, và đã ghi chú`);
+}
+ok(PRON.TARGETS.filter(t => t.cost === 'high').length >= 4,
+  'Đủ mục tiêu mức thiệt hại cao để xếp trước cho người mới');
+
+for (const s of VOCAB.SETS) {
+  ok(s.items.length >= 6, `Từ vựng ${s.id}: đủ số mục`, `đang có ${s.items.length}`);
+  ok(s.parts.every(p => R.PART_RUBRICS[p] || /^[A-J]$/.test(p)),
+    `Từ vựng ${s.id}: trỏ tới part có thật`, s.parts.join(', '));
+  ok(s.items.every(i => i.word && i.gloss), `Từ vựng ${s.id}: mục nào cũng có từ và nghĩa`);
+
+  /* Từ nhiều âm tiết mà không đánh dấu trọng âm là dạy người học nói một từ
+     không ai nhận ra — đúng lỗi mà chính pronunciation.js xếp mức cao. */
+  const syl = w => { const m = w.toLowerCase().replace(/[^a-z]/g, '').replace(/e$/, '').match(/[aeiouy]+/g); return m ? m.length : 0; };
+  const thieuTrongAm = s.items.filter(i =>
+    !i.stress && i.word.split(' ').some(t => syl(t) >= 2 && !/ed$/.test(t)));
+  ok(thieuTrongAm.length === 0, `Từ vựng ${s.id}: từ nhiều âm tiết đều có trọng âm`,
+    thieuTrongAm.map(i => i.word).join(', '));
+
+  /* Trọng âm phải nằm ở trường stress, không nằm lẫn trong trường word. */
+  const lanCaps = s.items.filter(i => i.word.split(' ').some((t, k) => {
+    if (/^I('[a-z]+)?$/.test(t)) return false;
+    const caps = t.split('').filter(c => c >= 'A' && c <= 'Z').length;
+    if (!caps) return false;
+    return !(k === 0 && caps === 1 && t[0] >= 'A' && t[0] <= 'Z');
+  }));
+  ok(lanCaps.length === 0, `Từ vựng ${s.id}: trường word không lẫn dấu trọng âm`,
+    lanCaps.map(i => i.word).join(', '));
+}
+
+ok(VOCAB.SETS.filter(s => s.kind === 'function').length >= VOCAB.SETS.filter(s => s.kind === 'topic').length,
+  'Bộ theo chức năng nhiều hơn bộ theo chủ đề', 'chức năng lặp lại ở mọi đề, chủ đề thì không');
+
+/* Kế hoạch phải chạy được ở mọi mức, kể cả hai đầu thang. Người ở mức thấp
+   nhất và cao nhất là hai nhóm dễ bị bỏ rơi nhất trong mọi hệ thống gợi ý. */
+for (const gse of [15, 30, 50, 70, 88]) {
+  let ke = null, loi = '';
+  try {
+    ke = PLAN.build({
+      skill: 'speaking', gse,
+      parts: { J: { content: 3, fluency: 3, coherence: 3, pronunciation: 2, vocabulary: 3, grammar: 3 } }
+    });
+  } catch (e) { loi = e.message; }
+  ok(ke && ke.thisWeek.length > 0, `Kế hoạch ở GSE ${gse} luôn có ít nhất một việc làm được`, loi);
+  if (ke) {
+    ok(ke.thisWeek.every(v => v.do && v.do.length > 15), `Kế hoạch GSE ${gse}: việc nào cũng cụ thể`);
+    const dan = ke.thisWeek.map(v => v.study).filter(Boolean);
+    ok(dan.every(u => routeCoThat.has(u)), `Kế hoạch GSE ${gse}: đường dẫn học đều tồn tại`, dan.join(', '));
+  }
+}
+
+/* Người giỏi đều mọi mặt vẫn phải nhận được lời khuyên, không được nhận một
+   trang trống — đây là trường hợp hệ thống gợi ý hay im lặng nhất. */
+const gioi = PLAN.build({
+  skill: 'speaking', gse: 80,
+  parts: { J: { content: 6, fluency: 6, coherence: 6, pronunciation: 6, vocabulary: 6, grammar: 6 } }
+});
+ok(gioi.thisWeek.length > 0, 'Người không yếu chỗ nào vẫn nhận được việc để làm');
+
+/* Kết luận "điểm ngữ pháp có thể không phải lỗi ngữ pháp" chỉ được nói khi cả
+   hai tiêu chí cùng yếu — nói bừa sẽ khiến người học bỏ qua lỗi ngữ pháp thật. */
+const caiYeu = PLAN.build({
+  skill: 'speaking', gse: 45,
+  parts: { J: { content: 3, fluency: 3, coherence: 3, pronunciation: 1, vocabulary: 3, grammar: 1 } }
+});
+ok(caiYeu.hiddenCauses.length > 0, 'Yếu cả phát âm lẫn ngữ pháp thì nêu khả năng nguyên nhân ẩn');
+
+const chiNguPhap = PLAN.build({
+  skill: 'speaking', gse: 45,
+  parts: { J: { content: 3, fluency: 3, coherence: 3, pronunciation: 6, vocabulary: 3, grammar: 1 } }
+});
+ok(chiNguPhap.hiddenCauses.length === 0,
+  'Phát âm tốt mà ngữ pháp yếu thì không đổ cho phát âm');
+
 /* ================= Kết quả ================= */
 const tong = dat + hong;
 const phanTram = Math.round((dat / tong) * 100);

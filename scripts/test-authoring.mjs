@@ -479,6 +479,160 @@ if (cookie && csrf) {
   ok(laPart.status === 400, 'Part không có rubric bị từ chối');
 }
 
+/* ================= 6a. Ôn tập cá nhân hoá ================= */
+
+console.log('\n\x1b[1m== Kế hoạch ôn tập cá nhân hoá ==\x1b[0m');
+
+const PRON = require('../server/data/pronunciation.js');
+const VOCAB = require('../server/data/vocabulary.js');
+const PLAN = require('../server/study-plan.js');
+
+{
+  /* Nguyên tắc xếp hạng: cái làm mất nghĩa nhiều nhất đứng trước, không phải
+     cái nghe "Tây" nhất. "th" là thứ người học hỏi đầu tiên và đáng làm cuối. */
+  const moi = PRON.targetsFor({ band: 1, gse: 30, limit: 5 });
+  ok(moi.every(t => t.cost === 'high'), 'Người ở bậc thấp chỉ nhận mục tiêu mức thiệt hại cao');
+  ok(!moi.some(t => t.id === 'th'), '"th" không được xếp trước phụ âm cuối cho người mới');
+
+  const gioi = PRON.targetsFor({ band: 6, gse: 82, limit: 5 });
+  ok(gioi.some(t => t.cost !== 'high'), 'Người đã vững thì chuyển sang mục tiêu tinh hơn');
+}
+
+{
+  /* Điểm mấu chốt của cả file: yếu ngữ pháp cộng yếu phát âm có thể là MỘT
+     vấn đề. Khi ngữ pháp yếu, mục tiêu phát âm phá ngữ pháp phải lên trước. */
+  const khong = PRON.targetsFor({ band: 3, gse: 45, weak: [], limit: 2 }).map(t => t.id);
+  const co = PRON.targetsFor({ band: 3, gse: 45, weak: ['grammar'], limit: 2 }).map(t => t.id);
+  ok(co.includes('final-s-z') && co.includes('final-ed'),
+    'Yếu ngữ pháp thì đuôi -s và -ed được đẩy lên đầu', co.join(', '));
+  ok(JSON.stringify(khong) !== JSON.stringify(co),
+    'Tiêu chí yếu thật sự làm đổi thứ tự, không phải trang trí');
+
+  const t = PRON.targetsFor({ band: 3, gse: 45, weak: ['grammar'], limit: 1 })[0];
+  ok(t.alsoHelps.includes('grammar'), 'Mục tiêu nói rõ nó còn gỡ điểm cho tiêu chí nào');
+  ok(!!t.misdiagnosis, 'Mục tiêu bị chấm nhầm tên có ghi chú cảnh báo');
+}
+
+{
+  ok(PRON.hidesAs('grammar').length === 2, 'Đúng hai lỗi phát âm bị chấm thành lỗi ngữ pháp');
+  ok(PRON.hidesAs('fluency').length === 0, 'Không gán bừa nguyên nhân ẩn cho tiêu chí khác');
+  ok(PRON.targetsFor({ gse: 30, limit: 99 }).length < PRON.TARGETS.length,
+    'Mục tiêu ngoài tầm điểm bị loại, không đổ hết cho người học');
+}
+
+{
+  const I = VOCAB.setsFor({ gse: 45, parts: ['I'], limit: 3 });
+  ok(I.every(s => s.parts.includes('I')), 'Bộ từ vựng bám đúng part người học làm kém');
+  const J = VOCAB.setsFor({ gse: 60, parts: ['J'], limit: 1 })[0];
+  ok(J.parts.includes('J'), 'Part J nhận bộ kể chuyện', J.id);
+  ok(VOCAB.setsFor({ gse: 45, limit: 3 }).every(s => s.kind === 'function'),
+    'Không có tín hiệu part thì ưu tiên bộ theo chức năng');
+  ok(VOCAB.ALL_WORDS.length === VOCAB.SETS.reduce((a, s) => a + s.items.length, 0),
+    'Danh sách từ phẳng khớp tổng các bộ');
+}
+
+{
+  const p = PLAN.build({
+    skill: 'speaking', gse: 48,
+    parts: {
+      H: { accuracy: 2, pronunciation: 2, fluency: 3 },
+      J: { content: 3, fluency: 3, coherence: 3, pronunciation: 2, vocabulary: 2, grammar: 2 }
+    }
+  });
+
+  ok(p.band === 'B1', 'Kế hoạch gắn đúng bậc CEFR cho điểm GSE', p.band);
+  ok(p.priorities.length === 3, 'Trả về đúng số việc ưu tiên đã yêu cầu');
+
+  /* Tiêu chí xuất hiện ở nhiều part phải gộp làm một. Bảo người học ba lần
+     rằng độ trôi chảy còn yếu là bảo họ không gì cả, ba lần. */
+  const trung = p.priorities.map(x => x.criterion);
+  ok(new Set(trung).size === trung.length, 'Tiêu chí lặp ở nhiều part được gộp làm một');
+  const fl = p.priorities.find(x => x.criterion === 'fluency');
+  ok(!fl || fl.parts.length === 2, 'Việc gộp giữ lại danh sách part đã cộng dồn');
+
+  /* Xếp theo điểm gỡ được, không theo điểm thấp nhất. */
+  const hs = p.priorities.map(x => x.recoverable);
+  ok(hs.every((v, i) => i === 0 || v <= hs[i - 1]), 'Xếp giảm dần theo số điểm gỡ được');
+
+  ok(p.thisWeek.length === 3, 'Danh sách việc tuần này bị chặn ở 3');
+  const loai = new Set(p.thisWeek.map(x => x.kind));
+  ok(loai.size >= 2, 'Việc tuần này trộn nhiều loại, không phải ba lần cùng một kiểu', [...loai].join(','));
+  ok(p.thisWeek[0].kind === 'sound',
+    'Bài luyện gỡ được hai tiêu chí cùng lúc được đưa lên đầu', p.thisWeek[0].kind);
+
+  ok(p.hiddenCauses.length === 2, 'Nêu nguyên nhân ẩn cho cả grammar lẫn accuracy');
+  ok(/may not be an accuracy problem/.test(p.hiddenCauses.find(h => h.criterion === 'accuracy').note),
+    'Câu ghi chú dùng đúng mạo từ trước nguyên âm');
+}
+
+{
+  /* partScore trả về bậc 0–6, không phải phần trăm. So với 60 thì part nào
+     cũng thành "yếu" và phần chọn từ vựng mất tín hiệu mạnh nhất của nó. */
+  const p = PLAN.build({
+    skill: 'speaking', gse: 70,
+    parts: { J: { content: 6, fluency: 6, coherence: 6, pronunciation: 6, vocabulary: 6, grammar: 6 } }
+  });
+  ok(p.partScores.J === 6, 'Điểm part nằm trên thang 0–6 của rubric', String(p.partScores.J));
+  ok(p.hiddenCauses.length === 0, 'Không yếu chỗ nào thì không nêu nguyên nhân ẩn');
+  ok(p.thisWeek.length > 0, 'Người giỏi vẫn nhận được việc để làm, không nhận trang trống');
+}
+
+{
+  let loi = '';
+  try { PLAN.build({ skill: 'nau-an', gse: 50 }); } catch (e) { loi = e.message; }
+  ok(/Unknown skill/.test(loi), 'Kỹ năng không có thật bị từ chối');
+
+  loi = '';
+  try { PLAN.build({ skill: 'speaking', gse: 200 }); } catch (e) { loi = e.message; }
+  ok(/10 to 90/.test(loi), 'Điểm ngoài thang bị từ chối');
+
+  loi = '';
+  try { PLAN.build({ skill: 'speaking', gse: 50, parts: { Z: { content: 3 } } }); } catch (e) { loi = e.message; }
+  ok(/No rubric for part Z/.test(loi), 'Part không có rubric bị từ chối');
+}
+
+if (cookie && csrf) {
+  const post = (p, body) => fetch(BASE + '/api' + p, {
+    method: 'POST',
+    headers: { cookie, 'x-csrf-token': csrf, 'content-type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+
+  const r = await post('/admin/framework/plan', {
+    skill: 'speaking', gse: 48,
+    parts: { J: { content: 3, fluency: 3, coherence: 3, pronunciation: 2, vocabulary: 2, grammar: 2 } }
+  });
+  const b = await r.json();
+  ok(r.status === 200 && b.thisWeek && b.priorities, 'POST /admin/framework/plan trả kế hoạch đầy đủ');
+  ok(b.sounds.length > 0 && b.vocabulary.length > 0, 'Kế hoạch có cả phần phát âm lẫn từ vựng');
+
+  const laBac = await post('/admin/framework/plan', {
+    skill: 'speaking', gse: 48, parts: { J: { content: 9 } }
+  });
+  ok(laBac.status === 400, 'Bậc ngoài 0–6 bị từ chối ở tầng API');
+
+  const laTieuChi = await post('/admin/framework/plan', {
+    skill: 'speaking', gse: 48, parts: { J: { mechanics: 3 } }
+  });
+  ok(laTieuChi.status === 400, 'Tiêu chí không thuộc part đó bị từ chối');
+
+  const pron = await fetch(BASE + '/api/admin/framework/pronunciation?gse=40',
+    { headers: { cookie, 'x-csrf-token': csrf } });
+  const pb = await pron.json();
+  ok(pron.status === 200 && pb.targets.length === PRON.TARGETS.length && pb.suggested.length === 3,
+    'GET /admin/framework/pronunciation trả cả danh sách lẫn gợi ý theo điểm');
+
+  const voc = await fetch(BASE + '/api/admin/framework/vocabulary?set=narrating',
+    { headers: { cookie, 'x-csrf-token': csrf } });
+  const vb = await voc.json();
+  ok(voc.status === 200 && vb.sets.length === 1 && vb.sets[0].id === 'narrating',
+    'GET /admin/framework/vocabulary lọc được theo bộ');
+
+  const laBo = await fetch(BASE + '/api/admin/framework/vocabulary?set=khong-co',
+    { headers: { cookie, 'x-csrf-token': csrf } });
+  ok(laBo.status === 400, 'Bộ từ vựng không tồn tại bị từ chối');
+}
+
 /* ================= 6b. Phân tích câu hỏi =================
    Kiểm bằng ví dụ tính tay. Một module thống kê chỉ có thể tin được khi có
    người tính tay ra cùng con số — so với chính nó thì mãi mãi đúng. */

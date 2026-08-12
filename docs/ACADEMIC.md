@@ -217,6 +217,57 @@ learner performance. A descriptor claiming an ability appears at 56 is a
 hypothesis until enough candidates at 56 have demonstrated it. Section 9 says
 how that gets checked.
 
+### 5.1 Turning a score into a week's work
+
+A score and a band are a diagnosis. Neither is a treatment, and a report that
+stops there has told a learner where they stand and left them with nothing to
+do on Monday.
+
+Four sources are joined by `server/study-plan.js`:
+
+| Source | Answers |
+|---|---|
+| `data/descriptors.js` | What can this learner already do, and what is next |
+| `data/rubrics.js` | Which criterion is costing the most marks |
+| `data/pronunciation.js` | Which sounds are the cause |
+| `data/vocabulary.js` | Which words would actually get used |
+
+**Ranked by recoverable marks, not by lowest score.** A criterion worth 10% of
+a part sitting at band 2 is a smaller prize than one worth 40% sitting at band
+4. A report listing weaknesses in ascending order of score is intuitive and it
+sends the learner to work in the wrong place.
+
+**Capped at three actions.** Everything computed is available to a teacher
+through the API. What reaches the learner is three things, because a plan
+listing nine is a plan nobody starts, and the report is judged on what gets
+done rather than on what it contains.
+
+**The diagnosis that justifies the whole layer.** Vietnamese does not permit
+/s/ or /z/ at the end of a syllable. A speaker who cannot produce them cannot
+say *she works* or *two books* however well they know the rule — and a marker
+hearing *she work* records a grammar error, because from the outside the two
+are identical. The same applies to past-tense *-ed*, which can quietly remove
+the entire past tense from a part J retelling.
+
+So when a learner is weak on both grammar and pronunciation, the report checks
+whether the grammar marks were lost to sounds rather than to rules, and says
+so. It raises this only when both are weak: weak grammar with sound
+pronunciation really is grammar, and saying otherwise would send a learner past
+a real problem.
+
+**Which reorders the pronunciation advice too.** Targets are ranked by how much
+meaning they destroy, not by how foreign they sound. Final consonants come
+first; /θ/ — the sound learners ask about first — is near the bottom, because
+*tink* for *think* is understood every time and a dropped final /s/ is not
+noticed by anyone, including the listener. An accent course would order these
+the other way round, and would spend a learner's month on the wrong thing.
+
+**Status.** Same as the descriptors: expert-written, unvalidated. The
+phonological predictions follow from published descriptions of Vietnamese and
+English syllable structure, but *which* target helps *this* learner most is a
+hypothesis until attempt data can be compared before and after. It is listed in
+section 10.
+
 ---
 
 ## 6. Content validity: what each part is evidence for
@@ -405,6 +456,12 @@ Stated together, so nobody has to assemble them from footnotes.
 7. **Descriptors are expert-written and unvalidated.** Plausible, not verified.
 8. **Scale precision exceeds measurement precision.** A one-point difference is
    not meaningful, and the product must not present it as though it were.
+9. **The revision advice is untested.** Section 5.1 ranks what a learner should
+   work on. The ranking follows from the rubric weights and from published
+   descriptions of Vietnamese phonology, but no learner has yet been shown a
+   plan and re-measured, so *this advice raises scores* is a hypothesis. Two
+   attempts either side of a plan is the cheapest test of it, and the data is
+   already being stored for it.
 
 None of these makes the platform unfit for what it is — a practice test that
 tells learners where they stand and what to do next. All of them would make it

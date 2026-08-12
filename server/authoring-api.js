@@ -39,6 +39,9 @@ const rubrics = require('./data/rubrics');
 const EXAM_FORMATS = require('./data/exam-formats');
 const itemStats = require('./item-stats');
 const analysis = require('./item-analysis');
+const pronunciation = require('./data/pronunciation');
+const vocabulary = require('./data/vocabulary');
+const studyPlan = require('./study-plan');
 
 const router = express.Router();
 router.use(express.json({ limit: '1mb' }));
@@ -528,6 +531,61 @@ router.get('/admin/framework/profile', (req, res) => {
     return bad(res, 'Score must be a number between 10 and 90.');
   }
   res.json(descriptors.profile(skill, gse));
+});
+
+/* ======================= Personalised revision =======================
+   The join across descriptors, rubrics, pronunciation and vocabulary. The
+   report generator calls this rather than assembling a plan itself, so that a
+   learner's report and a teacher's view of the same attempt cannot disagree
+   about what the learner should do next. See server/study-plan.js. */
+
+router.post('/admin/framework/plan', (req, res) => {
+  const body = req.body || {};
+  const skill = str(body.skill, 20);
+  const gse = int(body.gse, NaN);
+
+  if (!descriptors.BY_SKILL[skill]) return bad(res, 'Unknown skill.');
+  if (!Number.isFinite(gse) || gse < 10 || gse > 90) {
+    return bad(res, 'Score must be a number between 10 and 90.');
+  }
+
+  const parts = {};
+  const raw = body.parts || {};
+  for (const part of Object.keys(raw)) {
+    const rubric = rubrics.PART_RUBRICS[part];
+    if (!rubric) return bad(res, `No rubric for part ${part}.`);
+    parts[part] = {};
+    for (const [name, v] of Object.entries(raw[part] || {})) {
+      if (!rubric.criteria[name]) return bad(res, `Part ${part} is not marked on "${name}".`);
+      const b = int(v, NaN);
+      if (!Number.isFinite(b) || b < 0 || b > 6) return bad(res, `Band for "${name}" must be 0 to 6.`);
+      parts[part][name] = b;
+    }
+  }
+
+  try {
+    res.json(studyPlan.build({ skill, gse, parts, actions: clamp(int(body.actions, 3), 1, 6) }));
+  } catch (e) {
+    return bad(res, e.message);
+  }
+});
+
+/* The two content sets on their own, for the study pages and for an author
+   checking what a learner would be shown without simulating a whole result. */
+router.get('/admin/framework/pronunciation', (req, res) => {
+  const gse = int(req.query.gse, NaN);
+  res.json({
+    targets: pronunciation.TARGETS,
+    suggested: Number.isFinite(gse)
+      ? pronunciation.targetsFor({ gse, limit: int(req.query.limit, 3) })
+      : null
+  });
+});
+
+router.get('/admin/framework/vocabulary', (req, res) => {
+  const set = str(req.query.set, 40);
+  if (set && !vocabulary.BY_ID[set]) return bad(res, 'Unknown vocabulary set.');
+  res.json({ sets: set ? [vocabulary.BY_ID[set]] : vocabulary.SETS });
 });
 
 /* ========================= Item analysis =========================
