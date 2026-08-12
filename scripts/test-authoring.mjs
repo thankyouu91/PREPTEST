@@ -299,7 +299,68 @@ console.log('\n\x1b[1m== Kịch bản audio VPET ==\x1b[0m');
   ok(items.filter(i => i.level === 2).every(i => i.cefr === 'B2'), 'Level 2 gắn bậc B2');
 }
 
-/* ================= 5. Sẵn sàng triển khai ================= */
+/* ================= 5. Khung đo và bộ mô tả năng lực ================= */
+
+console.log('\n\x1b[1m== Khung đo · mô tả năng lực ==\x1b[0m');
+
+{
+  const D = require('../server/data/descriptors.js');
+
+  ok(Object.keys(D.BY_SKILL).length === 4, 'Đủ bốn kỹ năng');
+  ok(Object.values(D.BY_SKILL).every(l => l.length === 35), 'Mỗi kỹ năng 35 mô tả');
+
+  /* Mô tả phải xếp tăng dần theo GSE: nextTargets() cắt mảng theo thứ tự chứ
+     không sắp lại, nên một mục đặt sai chỗ sẽ lặng lẽ cho ra mục tiêu sai. */
+  const tangDan = Object.values(D.BY_SKILL).every(list =>
+    list.every((d, i) => i === 0 || d.gse > list[i - 1].gse));
+  ok(tangDan, 'Mô tả trong mỗi kỹ năng xếp tăng dần theo điểm GSE');
+
+  ok(Object.values(D.BY_SKILL).flat().every(d => d.gse >= 10 && d.gse <= 90),
+    'Mọi mốc GSE nằm trong thang 10–90');
+  ok(Object.values(D.BY_SKILL).flat().every(d => d.text && !/ and .* and /.test(d.text)),
+    'Không mô tả nào ghép ba việc bằng "and" — một mô tả một năng lực');
+
+  /* Ranh giới bậc phải liền mạch, không hở không chồng: hở một điểm là có
+     điểm số không tra ra bậc nào. */
+  const lienMach = D.BANDS.every((b, i) => i === 0 || b.min === D.BANDS[i - 1].max + 1);
+  ok(lienMach, 'Dải bậc liền mạch, không hở và không chồng lấn');
+  ok(D.bandFor(43) === 'B1' && D.bandFor(50) === 'B1' && D.bandFor(59) === 'B2',
+    'Tra bậc đúng ở hai đầu dải B1 và đầu dải B2');
+
+  ok(D.pointsToNextBand(55) === 4, 'Từ 55 còn đúng 4 điểm tới B2');
+  ok(D.pointsToNextBand(88) === null, 'Ở bậc cao nhất thì không còn bậc kế tiếp');
+
+  const p = D.profile('speaking', 55);
+  ok(p.band === 'B1+', 'Hồ sơ trả đúng bậc');
+  ok(p.achieved.length > 0 && p.achieved.every(d => d.gse <= 55), 'Phần "làm được rồi" chỉ lấy mốc từ điểm trở xuống');
+  ok(p.next.length > 0 && p.next.every(d => d.gse > 55), 'Phần "mục tiêu kế tiếp" chỉ lấy mốc trên điểm');
+  ok(p.next[0].gap <= p.next[p.next.length - 1].gap, 'Mục tiêu xếp theo khoảng cách gần trước');
+  ok(p.positionInBand > 0 && p.positionInBand < 1, 'Tính được vị trí trong bậc');
+
+  /* Đầu và cuối thang là hai chỗ dễ vỡ nhất khi cắt mảng. */
+  ok(D.profile('reading', 10).achieved.length === 0, 'Điểm sàn thì chưa làm được mô tả nào');
+  ok(D.profile('reading', 90).next.length === 0, 'Điểm trần thì không còn mục tiêu nào ở trên');
+}
+
+if (cookie && csrf) {
+  const call = p => fetch(BASE + '/api' + p, { headers: { cookie, 'x-csrf-token': csrf } });
+
+  const r = await call('/admin/framework/profile?skill=speaking&gse=55');
+  const b = await r.json();
+  ok(r.status === 200 && b.band === 'B1+', 'GET /admin/framework/profile trả đúng hồ sơ');
+  ok(b.pointsToNextBand === 4, 'Hồ sơ qua API nói đúng còn mấy điểm tới bậc sau');
+
+  const xau = await call('/admin/framework/profile?skill=speaking&gse=200');
+  ok(xau.status === 400, 'Điểm ngoài thang 10–90 bị từ chối');
+
+  const laKyNang = await call('/admin/framework/profile?skill=dancing&gse=55');
+  ok(laKyNang.status === 400, 'Kỹ năng không có thật bị từ chối');
+
+  const bands = await (await call('/admin/framework/bands')).json();
+  ok(Array.isArray(bands.bands) && bands.bands.length === 10, 'GET /admin/framework/bands trả đủ 10 dải');
+}
+
+/* ================= 6. Sẵn sàng triển khai ================= */
 
 console.log('\n\x1b[1m== Sẵn sàng chạy trên Cloud Run ==\x1b[0m');
 

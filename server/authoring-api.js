@@ -34,6 +34,7 @@ const secrets = require('./secrets');
 const markup = require('./script-markup');
 const eleven = require('./providers/elevenlabs');
 const openai = require('./providers/openai');
+const descriptors = require('./data/descriptors');
 const EXAM_FORMATS = require('./data/exam-formats');
 
 const router = express.Router();
@@ -430,6 +431,46 @@ router.post('/admin/authoring/items', async (req, res) => {
 /** The VPET blueprint as the authoring screen needs it. */
 router.get('/admin/authoring/parts', (req, res) => {
   res.json({ parts: Object.values(PARTS) });
+});
+
+/* ===================== Measurement framework =====================
+   The band table and the can-do descriptors, served rather than duplicated.
+   The report generator, the marking rubrics and the study pages all need the
+   same statements, and three copies of a descriptor set is three chances for
+   them to disagree about what B2 means. See docs/ACADEMIC.md. */
+
+router.get('/admin/framework/bands', (req, res) => {
+  res.json({ bands: descriptors.BANDS });
+});
+
+router.get('/admin/framework/descriptors', (req, res) => {
+  const skill = str(req.query.skill, 20);
+  if (skill && !descriptors.BY_SKILL[skill]) return bad(res, 'Unknown skill.');
+  const out = {};
+  for (const [name, list] of Object.entries(descriptors.BY_SKILL)) {
+    if (skill && name !== skill) continue;
+    out[name] = list.map(d => ({ gse: d.gse, band: descriptors.bandFor(d.gse), text: d.text }));
+  }
+  res.json({ descriptors: out });
+});
+
+/**
+ * One skill's profile at a given score.
+ *
+ * This is the shape the candidate report is built from: where they are, what
+ * that means they can do, and the nearest things above them ordered by how
+ * close. Exposed now so the framework is exercised and testable before the
+ * results engine exists to consume it.
+ */
+router.get('/admin/framework/profile', (req, res) => {
+  const skill = str(req.query.skill, 20);
+  if (!descriptors.BY_SKILL[skill]) return bad(res, 'Unknown skill.');
+
+  const gse = int(req.query.gse, NaN);
+  if (!Number.isFinite(gse) || gse < 10 || gse > 90) {
+    return bad(res, 'Score must be a number between 10 and 90.');
+  }
+  res.json(descriptors.profile(skill, gse));
 });
 
 module.exports = router;
