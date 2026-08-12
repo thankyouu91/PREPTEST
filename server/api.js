@@ -969,9 +969,24 @@ router.post('/admin/tests/generate', (req, res) => {
       at, at, req.admin.id);
 
     picked.forEach((p, i) => {
+      /* The line under the part heading that tells a candidate what they are
+         about to do. Take it from the caller, then from the published format
+         for that part, and only then fall back — and fall back to the skill
+         rather than to "Multiple choice".
+
+         The old default was a specific claim, and on a dictation part it was a
+         false one: part E showed "Multiple choice - 8 items" above eight boxes
+         asking the candidate to type what they heard. A default that describes
+         the wrong task is worse than one that describes none, because nobody
+         reads it as a placeholder. */
+      const fromFormat = EXAM_FORMATS.sectionOfPart(familyId, p.part);
+      const displayType = str(p.sec.type, 100)
+        || (fromFormat && str(fromFormat.type, 100))
+        || str(p.sec.skill, 20);
+
       q.run('INSERT INTO sections (test_id,name,skill,type,minutes,sort,part) VALUES (?,?,?,?,?,?,?)',
         id, str(p.sec.name, 100) || p.sec.skill, str(p.sec.skill, 20),
-        str(p.sec.type, 100) || 'Multiple choice', clamp(int(p.sec.minutes, 0), 0, 600), i, p.part || null);
+        displayType, clamp(int(p.sec.minutes, 0), 0, 600), i, p.part || null);
       const sid = q.val('SELECT id FROM sections WHERE test_id=? ORDER BY id DESC LIMIT 1', id);
       p.ids.forEach((qid, j) =>
         q.run('INSERT OR IGNORE INTO section_items (section_id,question_id,sort) VALUES (?,?,?)', sid, qid, j));

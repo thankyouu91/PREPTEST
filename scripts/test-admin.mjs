@@ -423,15 +423,28 @@ const run = async () => {
   check('Hai lượt bốc phần A ở cùng bậc B2 không trùng khít',
     overlap < 10, 'trùng ' + overlap + '/10');
 
-  /* Báo thiếu vẫn phải theo phần chứ không theo kỹ năng. Phần E là chỗ kiểm
-     đúng nhất: nó cần audio nên ngân hàng chưa có câu nào, trong khi phần A
-     cùng dạng điền từ thì đầy. */
+  /* Báo thiếu vẫn phải theo phần chứ không theo kỹ năng: phần E và phần A đều
+     là câu điền từ, nên nếu bộ sinh đề gộp theo kỹ năng thì nó sẽ lấy câu phần
+     A đắp vào phần E và không báo thiếu gì cả.
+
+     Xin nhiều hơn số câu phần E có thể có, chứ không dựa vào việc phần E đang
+     rỗng. Bản kiểm cũ đúng vì lúc đó phần E chưa có câu nào — một điều kiện có
+     thật nhưng tình cờ, và nó tắt ngay lần đầu ai đó phát hành nội dung phần
+     E. Điều đang kiểm là "báo thiếu theo phần", không phải "phần E rỗng". */
+  const coPhanE = 999;
   r = await call('POST', '/api/admin/tests/generate', {
     familyId: 'vpet', level: 'B1',
-    blueprint: [{ name: 'Part E - Dictation', part: 'E', skill: 'listening', type: 'Chép chính tả', items: 8, minutes: 6, types: ['gap'] }]
+    blueprint: [{ name: 'Part E - Dictation', part: 'E', skill: 'listening', type: 'Chép chính tả', items: coPhanE, minutes: 6, types: ['gap'] }]
   });
+  const thieu = (r.data && r.data.shortages) || [];
   check('Sinh đề báo thiếu đúng phần E, không lấy câu phần khác',
-    r.status === 409 && r.data.shortages[0].part === 'E', JSON.stringify(r.data.shortages || r.data));
+    r.status === 409 && thieu.length === 1 && thieu[0].part === 'E',
+    JSON.stringify(thieu.length ? thieu : r.data));
+  /* `need` là con số sau khi bộ sinh đề kẹp về trần 200 câu một phần, không
+     phải con số vừa gửi lên — báo lại đúng cái nó sẽ đi tìm mới có ích. */
+  check('Báo thiếu nói rõ cần bao nhiêu và đang có bao nhiêu',
+    thieu[0] && thieu[0].need > thieu[0].have && typeof thieu[0].have === 'number',
+    JSON.stringify(thieu[0] || null));
 
   /* Section nhớ chữ cái của nó, nếu không lần bốc lại sau sẽ bốc trong cả kỹ
      năng và kéo câu của phần khác vào. */
