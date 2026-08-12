@@ -493,6 +493,113 @@ if (cookie && csrf) {
   ok(laPart.status === 400, 'Part không có rubric bị từ chối');
 }
 
+/* ================= 5b. Hướng dẫn chấm cho AI ================= */
+
+console.log('\n\x1b[1m== Hướng dẫn chấm cho AI ==\x1b[0m');
+
+const MG = require('../server/marking-guide.js');
+
+{
+  const D2 = require('../server/data/descriptors.js');
+
+  /* Mốc bậc là số nguyên (B1+ 51–58, B2 bắt đầu 59), nên điểm lẻ rơi vào chín
+     khe giữa các bậc. Bản cũ trả 'C2' cho mọi giá trị không khớp — tức là một
+     kết quả 58,2 (B1+) in ra C2 trên báo cáo và trên chứng chỉ. */
+  const khe = [21.5, 29.5, 35.5, 42.5, 50.5, 58.2, 66.5, 75.5, 84.5];
+  const mong = ['below A1', 'A1', 'A2', 'A2+', 'B1', 'B1+', 'B2', 'B2+', 'C1'];
+  khe.forEach((g, i) => ok(D2.bandFor(g) === mong[i],
+    `Điểm lẻ ${g} xếp bậc ${mong[i]}, không rơi lên C2`, D2.bandFor(g)));
+  ok(khe.every(g => D2.positionInBand(g) > 0),
+    'Điểm lẻ vẫn có vị trí trong bậc, không tụt về 0');
+
+  ok(D2.bandFor(58) === 'B1+' && D2.bandFor(59) === 'B2', 'Biên nguyên vẫn xếp đúng');
+  ok(D2.bandFor(5) === 'below A1', 'Dưới sàn thang xếp bậc thấp nhất, không phải C2');
+  ok(D2.bandFor(95) === 'C2' && D2.bandFor('x') === null, 'Trên trần là C2; giá trị không phải số trả null');
+}
+
+{
+  /* Quy đổi bậc → thang phải nội suy, không làm tròn: làm tròn là vứt đi đúng
+     phần khoảng cách mà thang liên tục sinh ra để có. */
+  ok(MG.bandToGse(3) === 47 && MG.bandToGse(4) === 63, 'Bậc nguyên rơi đúng mốc đã công bố');
+  const giua = MG.bandToGse(3.5);
+  ok(giua > 47 && giua < 63, 'Bậc lẻ nội suy giữa hai mốc', String(giua));
+  ok(MG.bandToGse(0) === null, 'Bậc 0 không có vị trí trên thang — "không làm bài" khác "làm ở đáy thang"');
+  ok(MG.bandToGse(0.5) > MG.SCALE_MIN && MG.bandToGse(0.5) < 26,
+    'Dưới bậc 1 vẫn nội suy xuống sàn thang chứ không dồn cục');
+  ok(MG.bandToGse(6) <= MG.SCALE_MAX, 'Bậc cao nhất không vượt trần thang');
+  ok(MG.bandToGse(9) === MG.bandToGse(6), 'Bậc ngoài thang bị kẹp, không ngoại suy');
+}
+
+{
+  const r = MG.partResult('J', { content: 4, fluency: 4, coherence: 3, pronunciation: 3, vocabulary: 4, grammar: 4 });
+  ok(r && r.bandScore > 3 && r.bandScore < 4, 'Điểm part là trung bình có trọng số của các bậc');
+  ok(r.gse > 47 && r.gse < 63, 'Điểm part quy ra thang nằm giữa hai mốc tương ứng');
+  ok(r.cefr === 'B1+', 'Bậc CEFR khớp điểm thang', r.cefr);
+
+  /* Cộng trọng số trên thang BẬC, không trên số đã quy đổi: quy đổi không
+     tuyến tính (bậc 3→4 cách 16 điểm, bậc 5→6 cách 7), nên trung bình số đã
+     quy đổi sẽ lặng lẽ đánh nặng phần giữa thang. */
+  const full = MG.skillResult('speaking', {
+    H: { accuracy: 4, pronunciation: 3, fluency: 4 },
+    I: { task: 4, fluency: 4, pronunciation: 3, vocabulary: 4, grammar: 3, coherence: 4 },
+    J: { content: 4, fluency: 4, coherence: 3, pronunciation: 3, vocabulary: 4, grammar: 4 }
+  });
+  ok(full.weightCovered === 100, 'Đủ ba part Nói thì phủ trọn 100% trọng số');
+  ok(full.cefr === 'B1+', 'Kết quả kỹ năng ra đúng bậc', full.cefr);
+
+  const partial = MG.skillResult('speaking', { H: { accuracy: 4, pronunciation: 3, fluency: 4 } });
+  ok(partial.weightCovered === 25,
+    'Thiếu part thì báo rõ phủ bao nhiêu trọng số, không giả vờ là kết quả đầy đủ');
+  ok(partial.parts.length === 1, 'Chỉ tính những part thật sự có điểm');
+
+  let nem = false;
+  try { MG.skillResult('reading', {}); } catch (e) { nem = true; }
+  ok(nem, 'Kỹ năng không chấm rubric thì ném lỗi chứ không bịa trọng số');
+}
+
+{
+  /* Ranh giới quan trọng nhất của cả file: model chấm bậc, nền tảng quy ra số.
+     Schema phải không có chỗ nào để model nhét một con số tự nghĩ vào. */
+  const sch = MG.responseSchema('J');
+  const props = sch.properties.criteria.properties;
+  ok(Object.keys(props).length === 6, 'Schema part J có đủ sáu tiêu chí');
+  ok(sch.additionalProperties === false && sch.properties.criteria.additionalProperties === false,
+    'Schema đóng — model thêm trường lạ thì hỏng validate, không bị bỏ qua im lặng');
+  ok(Object.values(props).every(p => p.properties.band.maximum === 6 && p.properties.band.minimum === 0),
+    'Mỗi tiêu chí chỉ nhận bậc 0–6');
+  ok(Object.values(props).every(p => p.required.includes('evidence')),
+    'Bằng chứng là bắt buộc — bậc không có trích dẫn thì không kiểm lại được');
+  const json = JSON.stringify(sch);
+  ok(!/\bgse\b/i.test(json) && !/\bcefr\b/i.test(json) && !/"score"/.test(json),
+    'Schema không có trường nào để model xuất điểm thang hay bậc CEFR');
+
+  const p = MG.systemPrompt('J');
+  ok(/band from 0 to 6/i.test(p), 'Lời nhắc nói rõ chỉ trả bậc 0–6');
+  ok(/do not return a score out of 100|percentage|CEFR/i.test(p), 'Lời nhắc cấm xuất thang khác');
+  ok(!/\bGSE\b/.test(p), 'Lời nhắc không hề nhắc tới thang GSE');
+  ok(/quotation/i.test(p), 'Lời nhắc đòi trích dẫn từ chính bài làm');
+  /* Mọi bậc của mọi tiêu chí phải nằm trong lời nhắc: giám khảo được bảo "áp
+     dụng bậc 4" mà không có mô tả sẽ áp dụng ý niệm bậc 4 của riêng nó. */
+  const rub = require('../server/data/rubrics.js').PART_RUBRICS.J;
+  const duBac = Object.keys(rub.criteria).every(nm =>
+    require('../server/data/rubrics.js').CRITERIA[nm].bands.every(b => p.includes(b.descriptor)));
+  ok(duBac, 'Lời nhắc trải đủ mô tả của mọi bậc, mọi tiêu chí');
+  ok(MG.REFUSALS.every(x => p.includes(x.code)), 'Lời nhắc liệt kê đủ điều kiện từ chối chấm');
+  ok(MG.NEVER.every(x => p.includes(x)), 'Lời nhắc liệt kê đủ thứ không được ảnh hưởng tới điểm');
+
+  let nem = false;
+  try { MG.systemPrompt('Z'); } catch (e) { nem = true; }
+  ok(nem, 'Part không có rubric thì không dựng được lời nhắc');
+}
+
+{
+  ok(MG.REFUSALS.some(r => r.code === 'unintelligible-recording'),
+    'Có điều kiện từ chối cho bản ghi âm hỏng — lỗi thiết bị không phải lỗi thí sinh');
+  ok(MG.NEVER.some(n => /accent/i.test(n)), 'Giọng vùng miền nằm trong danh sách không được tính');
+  ok(MG.NEVER.some(n => /Recording quality/i.test(n)), 'Chất lượng thu âm nằm trong danh sách không được tính');
+  ok(MG.MARKED_PARTS.length === 5, 'Đúng năm part được AI chấm', MG.MARKED_PARTS.join(','));
+}
+
 /* ================= 6a. Ôn tập cá nhân hoá ================= */
 
 console.log('\n\x1b[1m== Kế hoạch ôn tập cá nhân hoá ==\x1b[0m');

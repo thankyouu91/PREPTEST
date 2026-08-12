@@ -274,17 +274,40 @@ const BY_SKILL = {
  * ------------------------------------------------------------------ */
 
 /** The CEFR band a GSE score falls in. */
+/** The band row a score sits in. Ordered bands, so it is the last floor reached. */
+function bandInfoFor(gse) {
+  const n = Number(gse);
+  if (!Number.isFinite(n)) return null;
+  if (n < BANDS[0].min) return BANDS[0];
+  let hit = BANDS[0];
+  for (const b of BANDS) if (n >= b.min) hit = b;
+  return hit;
+}
+
 function bandFor(gse) {
   const n = Number(gse);
   if (!Number.isFinite(n)) return null;
-  const hit = BANDS.find(b => n >= b.min && n <= b.max);
-  return hit ? hit.band : (n < 10 ? 'below A1' : 'C2');
+
+  /* The band bounds are whole numbers (B1+ is 51-58, B2 starts at 59), so a
+     fractional score lands in one of nine gaps between them. Matching on
+     `n >= min && n <= max` misses those, and the old fallback answered "C2"
+     for anything it could not place — which put a C2 on a 58.2, a B1+ result.
+     A lookup that fails should never resolve upward.
+
+     Bands are ordered, so the band a score belongs to is the last one whose
+     floor it has reached. That covers the continuum with no gaps and needs no
+     fallback at all above the bottom of the scale. */
+  const hit = bandInfoFor(n);
+  return hit ? hit.band : null;
 }
 
 /** Where a score sits inside its band, 0 to 1. Drives the position bar. */
 function positionInBand(gse) {
   const n = Number(gse);
-  const b = BANDS.find(x => n >= x.min && n <= x.max);
+  /* Same lookup as bandFor, for the same reason: a fractional score used to
+     fall between two bands, find nothing, and report position 0 — the bar on
+     the report would jump back to empty as a learner crossed a boundary. */
+  const b = bandInfoFor(n);
   if (!b || b.max === b.min) return 0;
   return Math.min(1, Math.max(0, (n - b.min) / (b.max - b.min)));
 }

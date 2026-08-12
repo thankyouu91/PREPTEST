@@ -13,15 +13,17 @@
  * một câu hỏi có thể trả lời "chưa" mà không có gì hỏng, và cần đo được để
  * biết còn bao xa. Bộ kiểm thử pass/fail; vòng này còn báo phần trăm hoàn tất.
  *
- * Bảy nhóm kiểm, theo thứ tự phụ thuộc:
+ * Chín nhóm kiểm, theo thứ tự phụ thuộc:
  *
- *   1. Blueprint      đủ 55 câu mỗi level, đúng số câu từng part
+ *   1. Blueprint      bể đủ câu để dựng trọn một đề, từng part một
  *   2. Mô tả năng lực thang liền mạch, không hở bậc nào
  *   3. Rubric         đủ tiêu chí, trọng số tròn 100, đủ 7 bậc
  *   4. Ôn tập         mỗi tiêu chí có lời khuyên cho cả ba mức
  *   5. Liên kết       mọi đường dẫn trang học đều tồn tại thật
  *   6. Nhất quán      mốc GSE của rubric nằm đúng dải bậc của mô tả
  *   7. Phủ chấm       part nào cần rubric thì có rubric, và ngược lại
+ *   8. Cá nhân hoá    mục tiêu phát âm và bộ từ vựng đủ và đúng chỗ
+ *   9. Chấm bằng AI   model chỉ trả bậc, không có chỗ nào xuất được thang
  */
 import { createRequire } from 'node:module';
 import fs from 'node:fs';
@@ -319,6 +321,72 @@ const chiNguPhap = PLAN.build({
 });
 ok(chiNguPhap.hiddenCauses.length === 0,
   'Phát âm tốt mà ngữ pháp yếu thì không đổ cho phát âm');
+
+/* ================= 9. Hướng dẫn chấm cho AI ================= */
+nhom('9 · Hướng dẫn chấm cho AI');
+
+const MG = require('../server/marking-guide.js');
+
+/* Ranh giới quan trọng nhất: model chấm bậc, nền tảng quy ra số. Nếu schema
+   hở một trường để model nhét điểm thang vào thì cả lập luận sụp. */
+for (const part of MG.MARKED_PARTS) {
+  const sch = MG.responseSchema(part);
+  const json = JSON.stringify(sch);
+  ok(!/\bgse\b/i.test(json) && !/\bcefr\b/i.test(json),
+    `Part ${part}: schema không có chỗ cho model xuất thang GSE hay CEFR`);
+  ok(sch.additionalProperties === false,
+    `Part ${part}: schema đóng, trường lạ làm hỏng validate`);
+
+  const nhac = MG.systemPrompt(part);
+  ok(!/\bGSE\b/.test(nhac), `Part ${part}: lời nhắc không nhắc tới thang GSE`);
+  ok(/quotation/i.test(nhac), `Part ${part}: lời nhắc đòi trích dẫn bài làm`);
+
+  /* Mọi bậc của mọi tiêu chí phải có mặt trong lời nhắc — thiếu một bậc là
+     chỗ giám khảo máy tự nghĩ ra tiêu chuẩn của riêng nó. */
+  const rub = R.PART_RUBRICS[part];
+  const thieu = Object.keys(rub.criteria).filter(n =>
+    R.CRITERIA[n].bands.some(b => !nhac.includes(b.descriptor)));
+  ok(thieu.length === 0, `Part ${part}: lời nhắc trải đủ mọi bậc của mọi tiêu chí`, thieu.join(', '));
+
+  const thieuBc = Object.keys(rub.criteria).filter(n =>
+    R.CRITERIA[n].bands.some(b => !nhac.includes(b.evidence)));
+  ok(thieuBc.length === 0, `Part ${part}: lời nhắc có đủ dấu hiệu quan sát của từng bậc`, thieuBc.join(', '));
+}
+
+/* Quy đổi bậc → thang phải đơn điệu và nằm trong thang. Một chỗ lệch ở đây là
+   một chỗ hai thí sinh làm khác nhau nhận cùng một điểm, hoặc ngược lại. */
+let truoc = -1, donDieu = true;
+for (let b = 0.2; b <= 6; b += 0.2) {
+  const g = MG.bandToGse(b);
+  if (g == null) { donDieu = false; break; }
+  if (g < truoc) { donDieu = false; break; }
+  if (g < MG.SCALE_MIN || g > MG.SCALE_MAX) { donDieu = false; break; }
+  truoc = g;
+}
+ok(donDieu, 'Quy đổi bậc → thang tăng đơn điệu và luôn nằm trong 10–90');
+ok(MG.bandToGse(0) === null, 'Bậc 0 không có vị trí trên thang');
+
+/* Mốc của rubric và bảng bậc của bộ mô tả phải nói cùng một chuyện. */
+for (const [bac, gse] of Object.entries(R.BAND_GSE)) {
+  if (gse == null) continue;
+  const quaDoi = MG.bandToGse(Number(bac));
+  ok(quaDoi === gse, `Bậc ${bac} quy đổi đúng về mốc ${gse} đã công bố`, String(quaDoi));
+}
+
+/* Điểm lẻ không được rơi lên C2 — chín khe giữa các bậc là chỗ lỗi cũ nằm. */
+const kheLe = [21.5, 29.5, 35.5, 42.5, 50.5, 58.2, 66.5, 75.5, 84.5];
+ok(kheLe.every(g => D.bandFor(g) !== 'C2'),
+  'Điểm lẻ giữa hai bậc không bị xếp nhầm lên C2',
+  kheLe.filter(g => D.bandFor(g) === 'C2').join(', '));
+ok(kheLe.every(g => D.positionInBand(g) > 0), 'Điểm lẻ vẫn có vị trí trong bậc');
+
+ok(MG.REFUSALS.length >= 5, 'Có đủ điều kiện từ chối chấm');
+ok(MG.REFUSALS.every(r => r.code && r.when && r.note), 'Mỗi điều kiện từ chối nói rõ khi nào và vì sao');
+ok(MG.NEVER.length >= 5, 'Có đủ danh sách thứ không được ảnh hưởng tới điểm');
+
+/* Part nào có rubric thì AI phải chấm được, và ngược lại. */
+ok(MG.MARKED_PARTS.length === Object.keys(R.PART_RUBRICS).length,
+  'Danh sách part AI chấm khớp đúng danh sách part có rubric');
 
 /* ================= Kết quả ================= */
 const tong = dat + hong;
