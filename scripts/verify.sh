@@ -65,6 +65,9 @@ if ! curl -fsS -o /dev/null "http://localhost:$PORT/prep/landing/"; then
 fi
 note "server ready on port $PORT"
 
+step "Lifecycle and health (crash exits non-zero, SIGTERM drains, /healthz)"
+node scripts/test-health.mjs || fail=1
+
 step "Admin API"
 node scripts/test-admin.mjs || fail=1
 

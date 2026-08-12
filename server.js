@@ -25,6 +25,8 @@ const examApi = require('./server/exam-api');
 const googleAuth = require('./server/google-auth');
 const A = require('./server/auth');
 const security = require('./server/security');
+const lifecycle = require('./server/lifecycle');
+const { q } = require('./server/db');
 const { entitlementOf } = require('./server/entitlements');
 
 const app = express();
@@ -43,6 +45,31 @@ app.use(security.writeLimit);
 
 const PUB = path.join(__dirname, 'public');
 const PORT = process.env.PORT || 3000;
+
+/* ---------------- Health ----------------
+   Registered before everything else, because a health check that depends on the
+   rest of the application is measuring the wrong thing.
+
+   It does a real database round-trip on purpose. A handler that answers 200
+   from memory reports "the process is up", which the platform already knows —
+   what it cannot see is a process that is listening while its database has gone
+   away, and that is precisely the state worth restarting.
+
+   It says nothing else. No version, no path, no error text: an unauthenticated
+   endpoint is an unauthenticated endpoint, and every detail it volunteers is a
+   detail somebody gets for free. The reason a check failed goes to the log,
+   where the operator is, not to the caller. */
+app.get('/healthz', (req, res) => {
+  res.setHeader('Cache-Control', 'no-store');
+  res.setHeader('X-Robots-Tag', 'noindex, nofollow');
+  try {
+    if (q.val('SELECT 1 AS one') !== 1) throw new Error('the database answered, but not with 1');
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('[healthz] database check failed: ' + (e && e.message));
+    res.status(503).json({ ok: false });
+  }
+});
 
 function cspFor(nonce) {
   return [
@@ -246,9 +273,13 @@ A.ensureSeedAdmin();
 A.ensureDemoStudent();
 setInterval(A.purgeSessions, 30 * 60e3).unref();
 
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`VPET Prep chạy tại http://localhost:${PORT}`);
   console.log(`  · Học viên:  http://localhost:${PORT}/prep/landing/`);
   console.log(`  · Quản trị:  http://localhost:${PORT}/admin/`);
   A.reportAdminAccounts();
 });
+
+/* A crash exits non-zero so a supervisor restarts it; SIGTERM drains and exits 0.
+   See the note at the top of server/lifecycle.js. */
+lifecycle.install(server);

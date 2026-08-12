@@ -85,6 +85,7 @@ Lệnh khác:
 | `node scripts/accounts.js list` | **Vào không được?** Liệt kê tài khoản quản trị và trạng thái học viên demo. Đặt lại bằng `reset-admin` / `reset-student`, mở khoá bằng `unlock`. Trên Windows nhấn đúp `cai-dat\accounts.bat` |
 | `node scripts/test-accounts.js` | kiểm thử đường cứu hộ tài khoản (tự phục hồi tài khoản demo, đặt lại mật khẩu quản trị) |
 | `node scripts/test-mail.mjs` | kiểm thử thư đi: soạn thư (mã hoá tiêu đề, chống chèn header), toàn bộ hội thoại SMTP với một server giả chạy tại chỗ, và **token không lọt vào log** |
+| `node scripts/test-health.mjs` | kiểm thử vòng đời tiến trình (sập thì thoát khác 0, SIGTERM thì thoát êm bằng 0, có chặn thời gian) và endpoint `/healthz` |
 | `node scripts/test-exam.mjs` | kiểm thử engine làm bài: mở/nối lại lượt thi, đồng hồ từng phần, số lần nghe lại đếm ở máy chủ, ghi âm câu trả lời, nộp bài, hạn mức lượt của gói Starter, và **đáp án không lọt ra trình duyệt** |
 | `node scripts/test-learn.mjs` | kiểm thử khu tự học: chất lượng dữ liệu động từ bất quy tắc, từ nối và hai nhóm ngữ pháp (nhóm khớp hình thái, ví dụ chứa đúng mục từ, đủ bốn lát cắt, chỗ trống khớp đáp án, đúng hạn mức bậc) + bộ lọc bốn trang |
 | `node scripts/export-supabase.mjs --count` | xuất nội dung ra Supabase (SQL hoặc JSON) — xem [Bản sao nội dung trên Supabase](#bản-sao-nội-dung-trên-supabase) |
@@ -220,6 +221,28 @@ Nơi lưu do biến môi trường quyết định, không phải sửa mã:
 Đĩa hợp cho lúc phát triển (không cần khoá, chạy ngay) nhưng container dựng lại
 là mất; production dùng Supabase. Thêm driver thứ ba (ví dụ Google Cloud Storage)
 chỉ cần viết thêm một object trong `server/storage.js`, chỗ gọi không phải sửa.
+
+### Vòng đời tiến trình và `/healthz`
+
+`server/lifecycle.js`. Ba việc tách bạch:
+
+- **Sập thì phải ồn ào và dứt khoát.** `unhandledRejection` và `uncaughtException`
+  đều ghi log có ngữ cảnh rồi **thoát khác 0**, để bộ giám sát khởi động lại một
+  tiến trình đã hỏng thay vì tin nó. Tiến trình còn sống mà đã hỏng là trạng thái
+  tệ nhất — nó vẫn trả lời health check nên không ai biết mà cứu.
+- **Tắt theo yêu cầu thì phải lịch sự.** Cloud Run gửi `SIGTERM` trước khi hạ
+  container. Không bắt tín hiệu là mọi request đang dở bị cắt giữa chừng — người
+  dùng thật thấy nó là một lần nộp bài thất bại trong lúc deploy. Giờ: ngừng nhận
+  kết nối mới, để request đang chạy xong, thoát **bằng 0**.
+- **Kiểu gì cũng phải có hạn.** `server.close()` chờ kết nối đang mở, mà một
+  keep-alive nhàn rỗi thì chờ mãi mãi. Nên kết nối rỗi bị đóng ngay, và một hẹn
+  giờ (`SHUTDOWN_GRACE_MS`, mặc định 8000) bảo đảm tiến trình vẫn thoát.
+
+`GET /healthz` trả `{"ok":true}` kèm **một truy vấn thật xuống cơ sở dữ liệu** —
+tiến trình đang chạy thì nền tảng đã biết rồi; cái nó không thấy được là tiến
+trình vẫn nghe cổng trong khi CSDL đã mất, và đúng trạng thái đó mới đáng khởi
+động lại. Endpoint không nói gì thêm: không phiên bản, không đường dẫn, không
+nội dung lỗi — lý do hỏng đi vào log, chỗ người vận hành đang nhìn.
 
 ### Thư đi (xác thực email, đặt lại mật khẩu)
 
