@@ -35,6 +35,15 @@ const isProd = () => process.env.NODE_ENV === 'production';
 
 /** Accounts creatable per hour from one address. See the note at /auth/register. */
 const REGISTER_PER_HOUR = Math.max(1, parseInt(process.env.REGISTER_PER_HOUR, 10) || 5);
+/* Same escape hatch, same reason: every full run of the interface suite asks for
+   one password-reset link, and five an hour means the suite cannot be run six
+   times in an hour — which is exactly what anybody chasing a flaky test does.
+   The default is unchanged; only scripts/verify.sh raises it. */
+const FORGOT_PER_HOUR = Math.max(1, parseInt(process.env.FORGOT_PER_HOUR, 10) || 5);
+/* And the third of the same kind. Twelve redemptions per ten minutes is right
+   for a real account; the interface suite spends one per run against the demo
+   student, so a dozen runs in ten minutes exhausts it. Default unchanged. */
+const REDEEM_PER_10MIN = Math.max(1, parseInt(process.env.REDEEM_PER_10MIN, 10) || 12);
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
@@ -213,7 +222,7 @@ router.post('/redeem', A.requireUser, A.csrfGuard, (req, res) => {
 
   /* Codes are short strings, so guessing is a real risk. Rate-limit per IP +
      account, counting hits as well as misses so nobody can sweep the range. */
-  const wait = A.rateLimit('redeem:' + A.throttleKey(req, 'u' + req.user.id), 12, 10 * 60 * 1000);
+  const wait = A.rateLimit('redeem:' + A.throttleKey(req, 'u' + req.user.id), REDEEM_PER_10MIN, 10 * 60 * 1000);
   if (wait) {
     return res.status(429).json({ error: 'Too many attempts. Wait ' + Math.ceil(wait / 60) + ' minutes and try again.' });
   }
@@ -313,7 +322,7 @@ router.post('/auth/forgot', (req, res) => {
   const email = str((req.body || {}).email, 160).toLowerCase();
   if (!EMAIL_RE.test(email)) return bad(res, 'That email address is not valid.');
 
-  const wait = A.rateLimit('forgot|' + (req.ip || '?'), 5, 3600e3);
+  const wait = A.rateLimit('forgot|' + (req.ip || '?'), FORGOT_PER_HOUR, 3600e3);
   if (wait) return res.status(429).json({ error: 'You have asked for that several times. Try again in ' + Math.ceil(wait / 60) + ' minutes.' });
 
   const user = q.get('SELECT * FROM users WHERE lower(email)=?', email);

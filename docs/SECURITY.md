@@ -49,9 +49,15 @@ toàn cục là sàn nằm dưới tất cả:
 |---|---|
 | `POST /api/auth/register` | `REGISTER_PER_HOUR` (mặc định 5) mỗi giờ theo IP, chỉ trừ lượt khi đăng ký thành công |
 | `POST /api/auth/login`, `POST /api/admin/login` | Khoá 15 phút sau 5 lần sai, theo IP × tên đăng nhập |
-| `POST /api/auth/forgot` | 5 lần/giờ theo IP |
+| `POST /api/auth/forgot` | `FORGOT_PER_HOUR` (mặc định 5) mỗi giờ theo IP |
 | `POST /api/auth/verify/send` | 3 lần/giờ theo tài khoản |
-| `POST /api/redeem` | 12 lần/10 phút theo tài khoản |
+| `POST /api/redeem` | `REDEEM_PER_10MIN` (mặc định 12) mỗi 10 phút theo tài khoản |
+
+Ba biến môi trường ở trên tồn tại **cho bộ test**, không phải để nới trong sản
+phẩm. Mỗi lượt `npm run verify` tiêu một suất đăng ký, một suất quên mật khẩu và
+một suất kích hoạt mã, nên với ngưỡng mặc định thì chạy bộ test sáu lần trong
+một giờ là tự làm mình đỏ — đúng việc mà người đang truy một bài test chập chờn
+sẽ làm. `scripts/verify.sh` nới cả ba lên 200; mặc định trong mã nguồn không đổi.
 
 ## 3. Tám endpoint ghi không có guard đăng nhập
 

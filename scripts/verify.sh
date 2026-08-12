@@ -28,8 +28,13 @@ pkill -f 'node server\.js' 2>/dev/null || true
 sleep 0.5
 # Cả suite lẫn bước chụp ảnh đều đăng ký tài khoản từ 127.0.0.1, nên ngưỡng 5
 # tài khoản/giờ của production sẽ khiến bước chạy sau bị bước trước chặn — đỏ vì
-# thứ tự chứ không vì lỗi thật. Chỉ nới ở đây, không nới trong mã nguồn.
-REGISTER_PER_HOUR=200 node server.js > /tmp/prep-verify-server.log 2>&1 &
+# thứ tự chứ không vì lỗi thật. Ngưỡng quên-mật-khẩu cũng vậy: mỗi lượt chạy xin
+# một liên kết đặt lại, 5 lượt/giờ nghĩa là không chạy nổi bộ test sáu lần trong
+# một giờ — đúng việc mà người đang truy một bài test chập chờn sẽ làm. Ngưỡng
+# kích hoạt mã cũng thế: 12 lần/10 phút, mỗi lượt chạy tiêu một lần.
+# Đây là cả ba ngưỡng theo thời gian mà bộ test đi qua (xem docs/SECURITY.md mục
+# 2); nới ở đây thôi, không nới trong mã nguồn.
+REGISTER_PER_HOUR=200 FORGOT_PER_HOUR=200 REDEEM_PER_10MIN=200 node server.js > /tmp/prep-verify-server.log 2>&1 &
 SERVER_PID=$!
 cleanup() { kill "$SERVER_PID" 2>/dev/null || true; }
 trap cleanup EXIT

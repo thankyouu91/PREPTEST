@@ -286,6 +286,11 @@ bọc những route đăng ký **sau** nó — nhìn mã rất dễ kết luận
 - **Chỗ còn hở, đã biết và đã xếp hàng đợi:** sáu endpoint đầu trong số đó không
   có `csrfGuard`, vì cookie `prep_csrf` chỉ cấp sau khi đăng nhập. Hệ quả thật là
   **login CSRF**. Cách sửa là cấp cookie ngay khi phục vụ trang.
+- **Ba ngưỡng theo thời gian có biến môi trường cho bộ test**, mặc định trong mã
+  nguồn không đổi: `REGISTER_PER_HOUR`, `FORGOT_PER_HOUR`, `REDEEM_PER_10MIN`.
+  Mỗi lượt `npm run verify` tiêu một suất của cả ba, nên với mặc định thì chạy bộ
+  test sáu lần trong một giờ là tự làm mình đỏ — đúng việc mà người đang truy một
+  bài test chập chờn sẽ làm. `scripts/verify.sh` nới cả ba lên 200.
 
 ### API
 
