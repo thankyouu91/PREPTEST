@@ -377,16 +377,38 @@ const run = async () => {
   check('Mỗi phần trong báo cáo format mang chữ cái của nó',
     vf.sections.filter(x => x.part).length === 10, String(vf.sections.filter(x => x.part).length));
   check('Phần A đếm theo pool riêng của phần A', secA && secA.bank.total >= 1, JSON.stringify(secA && secA.bank));
-  check('Phần B không mượn câu của phần A dù cùng kỹ năng Viết',
-    secB && secB.bank.total === 0, JSON.stringify(secB && secB.bank));
 
-  /* Sinh đề phải báo thiếu theo phần, không phải theo kỹ năng */
+  /* A và B cùng kỹ năng Viết nhưng khác pool. Trước đây phép thử này dựa vào
+     việc phần B trống — một cách chứng minh gián tiếp, và nó hỏng ngay khi ngân
+     hàng có câu phần B thật. Đếm thẳng số câu mang nhãn B rồi so với con số báo
+     cáo format đưa ra: nếu B mượn câu của A thì hai số này lệch nhau. */
+  const bTagged = (await call('GET', '/api/admin/questions?family=vpet&part=B')).data.total;
+  const aTagged = (await call('GET', '/api/admin/questions?family=vpet&part=A')).data.total;
+  check('Pool phần B đúng bằng số câu mang nhãn B',
+    secB && secB.bank.total === bTagged, JSON.stringify({ pool: secB && secB.bank.total, tagged: bTagged }));
+  check('Phần B không mượn câu của phần A dù cùng kỹ năng Viết',
+    secB && secB.bank.total !== bTagged + aTagged && aTagged > 0,
+    JSON.stringify({ b: bTagged, a: aTagged, pool: secB && secB.bank.total }));
+
+  /* Sinh đề theo phần B chỉ được bốc câu mang nhãn B */
   r = await call('POST', '/api/admin/tests/generate', {
     familyId: 'vpet', level: 'B1',
     blueprint: [{ name: 'Part B - Passage Reconstruction', part: 'B', skill: 'writing', type: 'Viết lại', items: 3, minutes: 9, types: ['essay'] }]
   });
-  check('Sinh đề báo thiếu đúng phần B, không lấy câu phần khác',
-    r.status === 409 && r.data.shortages[0].part === 'B', JSON.stringify(r.data.shortages || r.data));
+  const genB = (r.data.sections || [])[0];
+  check('Sinh đề phần B chỉ bốc câu của phần B',
+    r.status === 201 && genB && genB.items.length === 3 && genB.items.every(i => i.part === 'B'),
+    JSON.stringify({ status: r.status, parts: genB && genB.items.map(i => i.part) }));
+
+  /* Báo thiếu vẫn phải theo phần chứ không theo kỹ năng. Phần E là chỗ kiểm
+     đúng nhất: nó cần audio nên ngân hàng chưa có câu nào, trong khi phần A
+     cùng dạng điền từ thì đầy. */
+  r = await call('POST', '/api/admin/tests/generate', {
+    familyId: 'vpet', level: 'B1',
+    blueprint: [{ name: 'Part E - Dictation', part: 'E', skill: 'listening', type: 'Chép chính tả', items: 8, minutes: 6, types: ['gap'] }]
+  });
+  check('Sinh đề báo thiếu đúng phần E, không lấy câu phần khác',
+    r.status === 409 && r.data.shortages[0].part === 'E', JSON.stringify(r.data.shortages || r.data));
 
   /* Section nhớ chữ cái của nó, nếu không lần bốc lại sau sẽ bốc trong cả kỹ
      năng và kéo câu của phần khác vào. */

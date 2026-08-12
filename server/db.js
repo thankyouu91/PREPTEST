@@ -403,6 +403,20 @@ addColumnIfMissing('questions', 'audio_at', 'TEXT');
 addColumnIfMissing('questions', 'part', 'TEXT');
 db.exec('CREATE INDEX IF NOT EXISTS idx_q_part ON questions (family_id, part, status)');
 
+/* A stable key for authored items, so the item bank can be re-seeded in place.
+   The other content tables are reloaded by clearing them, which cannot work
+   here: section_items holds a foreign key into questions, so clearing the bank
+   would empty every test built from it. An external key gives each authored
+   item an identity that survives, and the seed upserts against it — correcting
+   a typo in an item reaches a running database without disturbing the tests
+   that already use it, and without touching anything an admin wrote by hand.
+   Existing rows keep NULL here; SQLite treats NULLs as distinct, so the unique
+   index does not collide across them. */
+addColumnIfMissing('questions', 'ext_key', 'TEXT');
+addColumnIfMissing('questions', 'source', 'TEXT');
+addColumnIfMissing('questions', 'licence', 'TEXT');
+db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_q_ext_key ON questions (ext_key)');
+
 /* A section on a built test remembers which lettered part it is, so re-drawing
    its items later pulls from the same pool the generator used. Reading the
    letter back out of the section name would break the moment an admin renames
@@ -702,6 +716,7 @@ function seed() {
   if (ganLai) console.warn(`[seed] ${ganLai} demo code(s) had their plan reattached.`);
 
   if (!q.val('SELECT COUNT(*) c FROM questions')) seedQuestions();
+  seedVpetItems();
 
   if (!q.val('SELECT COUNT(*) c FROM tests')) {
     const insT = db.prepare(`INSERT INTO tests
@@ -828,6 +843,37 @@ function seedTable(name, table, rows, insertSql, values) {
     const ins = db.prepare(insertSql);
     list.forEach((r, i) => ins.run(...values(r, i)));
   });
+}
+
+/* The VPET item bank.
+   Upserted on ext_key rather than cleared and reloaded, because section_items
+   holds a foreign key into questions: clearing the bank would empty every test
+   built from it. An admin's own edits to prompt or status are left alone — only
+   the authored rows carry an ext_key, and only those are touched. */
+function seedVpetItems() {
+  const rows = require('./data/vpet-items').rows();
+  const at = nowISO();
+  const ins = db.prepare(`INSERT INTO questions
+      (ext_key, family_id, skill, level, type, part, prompt, options_json, answer,
+       explanation, tags_json, source, licence, status, created_at)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?, 'active', ?)
+    ON CONFLICT(ext_key) DO UPDATE SET
+      skill=excluded.skill, level=excluded.level, type=excluded.type,
+      part=excluded.part, prompt=excluded.prompt, options_json=excluded.options_json,
+      answer=excluded.answer, explanation=excluded.explanation,
+      tags_json=excluded.tags_json, source=excluded.source, licence=excluded.licence`);
+
+  let n = 0;
+  tx(() => {
+    for (const r of rows) {
+      const before = q.val('SELECT 1 FROM questions WHERE ext_key=?', r.key);
+      ins.run(r.key, 'vpet', r.skill, r.level, r.type, r.part, r.prompt,
+        JSON.stringify(r.options), r.answer, r.explanation,
+        JSON.stringify(r.tags), r.source, r.licence, at);
+      if (!before) n++;
+    }
+  });
+  if (n) console.warn(`[seed] ${n} VPET bank item(s) added.`);
 }
 
 /* The V1–V2–V3 irregular verb table */

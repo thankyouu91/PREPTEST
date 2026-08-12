@@ -112,6 +112,21 @@ nếu chưa có tài khoản nào và cũng không có `ADMIN_PASSWORD`.
 | Code | `/admin/code/` | Lô code, cấp theo lô hoặc cho một học viên, thu hồi, xuất CSV |
 | Quản trị | `/admin/quan-tri/` | Thương hiệu, giá gói, đổi mật khẩu, nhật ký thao tác |
 
+### Ngân hàng đề VPET
+
+`server/data/vpet-items.js` giữ **20 câu** cho năm phần không cần audio:
+A (10 điền từ) · B (3 dựng lại đoạn) · C (3 đọc hiểu) · D (2 email) · I (2 nói
+theo tình huống). Đủ một lượt thi cho mọi phần thi được mà không cần bản ghi.
+
+Seed chạy lại được: upsert theo `questions.ext_key`, không xoá rồi nạp lại —
+`section_items` trỏ khoá ngoại vào `questions`, xoá ngân hàng là xoá luôn mọi đề
+đã dựng từ nó. Câu do admin tự nhập không có `ext_key` nên không bao giờ bị đụng.
+
+Năm phần còn lại (E, F, G, H, J — 35 câu) **chưa có**, và đó là chủ ý: với các
+phần này bản ghi chính là đề bài, kịch bản không kèm MP3 thì thí sinh không làm
+được. Chúng đi cùng phần giọng nói. `scripts/test-items.mjs` đọc thẳng blueprint
+để kiểm, nên bài test không thể "đúng" khi blueprint đã đổi.
+
 ### Format đề chuẩn
 
 `/admin/format/` giữ cấu trúc đề thật của cả 6 kỳ thi — dữ liệu nằm trong
