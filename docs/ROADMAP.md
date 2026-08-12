@@ -1,14 +1,47 @@
 # Lộ trình xây nền tảng VPET Prep
 
-Hai hàng đợi tách riêng:
+## Who takes what — owner decision, 2026-08-12
 
-- **Hàng đợi** — việc lặp, tốn thời gian, làm được không cần bàn bạc (nhồi dữ liệu,
-  soạn nội dung theo mẫu). Phiên tự động chạy mỗi giờ (Routine) **chỉ lấy việc ở đây**:
-  mỗi lượt đúng một mục chưa tick ở đầu danh sách, làm xong, kiểm thử, commit, push, tick.
-- **Việc kiến trúc** — thiết kế hệ thống, đổi lược đồ, engine. Làm trực tiếp cùng người
-  dùng, **Routine không đụng vào**.
+**The hourly Routine builds the platform: the engine, running it, keeping it
+working, upgrading it. Academic content goes to a separate session.** This
+reverses the split the file used to describe, in which the Routine took only
+the repetitive content work and never touched architecture.
+
+| Lane | Who | Where the queue is |
+|---|---|---|
+| Platform, engine, operations, maintenance, upgrades | **the hourly Routine** | "Nền tảng & engine" below |
+| Exam items, vocabulary, grammar, self-study content | a separate session | "Hàng đợi" and the content items in the VPET section |
+| Anything that changes the blueprint, the band table or the schema contract | the owner, in a session with a human present | flagged in place |
+
+> **The Routine prompt still carries the old rule** — it says to take the first
+> unchecked item in the VPET queue, then "Hàng đợi", and never to touch "Việc
+> kiến trúc". Until that prompt is edited, a Routine turn reads two sets of
+> instructions that disagree. This file is the newer one and wins; the prompt
+> should be updated to match. Recorded here rather than fixed silently, because
+> only the owner can edit the Routine.
 
 Nhánh làm việc: `claude/prep-test-platform-design-fpiuqn`
+
+## Nền tảng & engine — the Routine's queue
+
+One unchecked item per turn, from the top. VPET is still what the product is
+for; what changed is that the Routine builds the machinery and someone else
+writes what goes through it. Detail and the reasoning behind the Google items
+are further down under "Việc kiến trúc", which is now a reference section
+rather than a separate no-go queue.
+
+- [ ] **Vocabulary schema + importer** — `vocab_entries` / `vocab_senses` / `vocab_examples` / `vocab_forms` / `collocations` per `docs/LEARNING.md` §6, plus a re-runnable importer in the shape `seedVpetItems()` already uses. First because it is the one item blocking the other session outright: four content items (NGSL, NAWL/TSL, Tatoeba, Wiktextract) cannot start until these tables exist
+- [ ] **Security sweep across the whole API** — security headers, a rate limit on every write endpoint rather than the handful that have one today, and a per-endpoint check that requireAdmin / requireUser / csrfGuard are all actually attached. A table in the sweep of endpoint → guards → limit, so the next audit is a diff rather than a re-reading
+- [ ] **CI: `npm run verify` on every push** — a GitHub Actions workflow on the working branch. The suite already runs headless and returns a non-zero exit code; what is missing is anything running it when a human forgets. Cache `node_modules` and the Playwright browser, or the run costs more than it saves
+- [ ] **Translate `scripts/`** — the last Vietnamese island in the repo, and the only thing left before "English everywhere" is true. Eight test scripts plus `verify.sh`. Whole-line replacement keyed on line number, as slice 4b did; the check names are printed output, not identifiers, so nothing else moves
+- [ ] **Spaced-repetition screen + `learn_progress`** — the reduced SM-2 in `docs/LEARNING.md`. Needs the vocabulary schema above, not the vocabulary data: the screen can be built and tested against a handful of seeded rows
+- [ ] **Google Cloud Storage driver in `server/storage.js`** — third driver beside disk and Supabase. Ships disabled and falls back to disk until the credential exists, like every other keyed feature here
+- [ ] **Server-side GA4 via the Measurement Protocol** — the GA4 tag cannot pass the CSP, so events go from the server. Disabled without `GA4_MEASUREMENT_ID` / `GA4_API_SECRET`
+- [ ] **Payments in sandbox (VNPay / MoMo)** — issue a code automatically once a payment settles. Sandbox only; the live keys are the owner's call
+- [ ] **Move off SQLite to Cloud SQL Postgres** — the blocker for Cloud Run, and the one item here that wants a whole turn to itself: rewriting `q.all/get/run/val` to a pooled async client means awaiting every call site. Do not start it in a turn that is already half spent
+- [ ] **Containerise + deploy to Cloud Run**, with Secret Manager for keys and a deploy from CI
+- [ ] **Google Classroom hand-off** — publish a test as an assignment, pull the roster, push scores back
+- [ ] **Results export to Google Sheets** for teachers
 
 ## VPET first — current priority
 
@@ -43,7 +76,12 @@ at 55 items and must not be changed:
 **Platform before content** (owner, 2026-08-11): build frontend and backend
 first; real exam items come last, once the machinery that carries them works.
 
-Queue for this track, in order:
+Queue for this track, in order. Since 2026-08-12 the two remaining **content**
+items here — the five audio parts, and slice 2 of the level balancing — belong
+to the content session, not to the Routine. They are left in place because the
+platform reasoning around them is what makes them legible; only who picks them
+up has changed. The two items still waiting on a decision or on another branch
+are marked as such and belong to nobody until that clears.
 
 - [x] VPET blueprint: ten lettered parts A-J, 55 items, in `server/data/exam-formats.js`
 - [x] Family readiness flag: `families.status` = `ready` / `coming_soon`, VPET ready and the other five parked; served by `GET /api/catalog`
@@ -84,6 +122,9 @@ Queue for this track, in order:
 
 ## Hàng đợi
 
+Content lane — the separate session works from here, not the Routine (owner
+decision, 2026-08-12).
+
 - [x] Frontend giai đoạn 1: 12 màn học viên, token white-label, dark mode, CSP nghiêm ngặt
 - [x] Tài khoản học viên demo `student` + kho tài khoản phía client
 - [x] Dashboard học viên đầy đủ sau đăng nhập
@@ -99,7 +140,7 @@ Queue for this track, in order:
 - [x] Bảng động từ bất quy tắc V1–V2–V3 (193 từ) + lớp TTS Anh/Mỹ dùng chung
 - [x] Engine format đề chuẩn: 11 format của 6 kỳ thi + phân tích độ phủ ngân hàng + sinh đề một chạm
 
-### Việc soạn nội dung (Routine làm tiếp từ đây)
+### Việc soạn nội dung (phiên nội dung làm tiếp từ đây)
 
 - [x] Linking words: 123 mục theo chức năng × độ trang trọng, kèm vị trí trong câu, dấu câu và cảnh báo lạm dụng
 - [x] Ngữ pháp 12 thì: công thức, khi dùng / khi không dùng, phân biệt cặp dễ nhầm, lỗi người Việt hay mắc, 8 ví dụ + 12 câu luyện mỗi thì
@@ -143,7 +184,11 @@ hàng cần người dùng quyết:
 
 ## Việc kiến trúc
 
-Routine **không** lấy việc ở mục này.
+Reference section, not a queue. Since 2026-08-12 the platform items below are
+worked from "Nền tảng & engine" at the top of this file, which carries them in
+priority order; what is kept here is the reasoning, the constraints and the
+Google scope decision. Items already delivered are ticked so the list stops
+reading as a backlog of work nobody has done.
 
 ### Google ecosystem — scope settled 2026-08-11
 
@@ -176,11 +221,11 @@ below uses the server-side route instead — which is also the more private one.
 
 - [ ] Lược đồ từ vựng: `vocab_entries` / `vocab_senses` / `vocab_examples` / `vocab_forms` / `collocations` + trình nhập
 - [x] Lược đồ ngữ pháp: `grammar_points` / `grammar_examples` (dựng cùng mục 12 thì, theo đúng đặc tả `docs/LEARNING.md` mục 6; `linking_words` đã dựng cùng mục từ nối)
-- [ ] API kích hoạt code phía server (`POST /api/redeem`) + rate-limit chống dò mã, thay `PrepState.redeem`
+- [x] API kích hoạt code phía server (`POST /api/redeem`) + rate-limit chống dò mã, thay `PrepState.redeem` — dựng cùng mục gói thuê bao; giới hạn 12 lần / 10 phút theo tài khoản trong `server/user-api.js`
 - [ ] Màn học từ vựng có lặp lại ngắt quãng (SM-2 rút gọn) + bảng `learn_progress`
-- [ ] Engine chấm điểm: `attempts` + chấm trắc nghiệm/điền từ + bảng quy đổi theo kỳ thi (`docs/SCORING.md` mục 2)
-- [ ] Engine làm bài: khung làm bài theo phần, đồng hồ từng phần, tự lưu tiến độ, nộp bài
-- [ ] Màn kết quả cho học viên: điểm từng phần, phân tích 4 kỹ năng, lịch sử các lần làm
+- [x] Engine chấm điểm: `attempts` + chấm trắc nghiệm/điền từ + bảng quy đổi theo kỳ thi (`docs/SCORING.md` mục 2) — `server/marking.js`, ba tầng, quy đổi `linear`
+- [x] Engine làm bài: khung làm bài theo phần, đồng hồ từng phần, tự lưu tiến độ, nộp bài — `server/exam-api.js` và `/prep/lam-bai/`, mọi luật nằm ở server
+- [x] Màn kết quả cho học viên: điểm từng phần, phân tích 4 kỹ năng, lịch sử các lần làm — `/prep/ket-qua/:attemptId/`, bảng chi tiết gác sau quyền `detailedReport`
 - [ ] Chấm phần Viết và Nói: khung chấm theo tiêu chí + chỗ cắm dịch vụ chấm
 - [ ] Tích hợp thanh toán VNPay/MoMo ở chế độ sandbox, tự sinh code sau khi thanh toán thành công
 - [ ] Rà soát bảo mật toàn hệ: security headers, rate-limit toàn API, kiểm tra phân quyền từng endpoint
@@ -192,9 +237,9 @@ below uses the server-side route instead — which is also the more private one.
 hãy dùng đúng một lệnh sau, nó tự cài dependency, tự bật/tắt server và chạy hết mọi bước:
 
 ```bash
-npm run verify          # cài deps → build → chạy server → 6 bộ test → audit → chụp ảnh
+npm run verify          # cài deps → build → chạy server → 8 bộ test → audit → chụp ảnh
                         # (test-taikhoan, test-admin, test-auth, test-catalog,
-                        #  test-user-api, test-learn)
+                        #  test-user-api, test-exam, test-items, test-learn)
 SKIP_SHOTS=1 npm run verify   # bản nhanh, bỏ bước chụp ảnh
 ```
 
@@ -204,8 +249,9 @@ Quy trình một lượt:
 
 1. `git fetch origin` và `git pull --rebase origin claude/prep-test-platform-design-fpiuqn`.
 2. Nếu commit gần nhất mới dưới 15 phút: có thể có phiên khác đang làm, bỏ lượt, thoát êm.
-3. Lấy mục chưa tick đầu tiên ở **"Hàng đợi"**. Làm đúng một mục đó.
-   Tuyệt đối không lấy việc ở mục "Việc kiến trúc".
+3. Lấy mục chưa tick đầu tiên ở **"Nền tảng & engine"** (đầu tệp này). Làm đúng một mục đó.
+   Từ 2026-08-12, Routine làm nền tảng và engine; nội dung học thuật do phiên khác làm,
+   nên **không** lấy việc ở "Hàng đợi" hay ở các mục nội dung trong phần VPET nữa.
 4. Chạy `npm run verify`. Đỏ thì sửa; không sửa được thì `git checkout -- .`, ghi lý do vào
    "Vướng mắc" bên dưới, commit riêng ghi chú đó rồi thoát. Không push code hỏng.
 5. Tick ô đã xong, cập nhật README nếu có tính năng mới, commit và push.
