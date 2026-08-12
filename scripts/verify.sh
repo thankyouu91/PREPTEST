@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
-# Kiểm thử toàn bộ trong một lệnh — dùng cho phiên tự động và cho người.
-# Tự cài dependency nếu thiếu, tự bật/tắt server, trả mã thoát khác 0 nếu có bước đỏ.
+# The whole suite in one command — for the autonomous session and for people.
+# Installs dependencies if missing, starts and stops the server, exits non-zero on red.
 set -uo pipefail
 cd "$(dirname "$0")/.."
 
 PORT="${PORT:-3000}"
 fail=0
-# Đo thời gian từng bước. Bộ test đã có lúc vượt mười lăm phút mà không ai biết
-# phần nào ăn hết, vì log không nói. In ra thì lần chậm sau tự tố cáo chính nó.
+# Time each step. The suite once passed fifteen minutes with nobody able to say
+# which part ate them, because the log did not say. Printed, the next slow step tells on itself.
 STEP_T0=0
 STEP_NAME=''
 declare -a STEP_TIMES=()
@@ -25,29 +25,29 @@ note() { printf '   %s\n' "$1"; }
 
 step "Dependency"
 if [ ! -d node_modules ] || [ ! -d node_modules/express ]; then
-  note "node_modules thiếu, đang cài…"
-  npm install --no-audit --no-fund || { echo "npm install THẤT BẠI"; exit 1; }
+  note "node_modules missing, installing…"
+  npm install --no-audit --no-fund || { echo "npm install FAILED"; exit 1; }
 else
-  note "đã có node_modules"
+  note "node_modules already present"
 fi
 
 step "Build CSS"
 npm run build || fail=1
 
-step "Kiểm thử cứu hộ tài khoản"
+step "Account rescue"
 node scripts/test-taikhoan.js || fail=1
 
-step "Khởi động server"
+step "Start the server"
 pkill -f 'node server\.js' 2>/dev/null || true
 sleep 0.5
-# Cả suite lẫn bước chụp ảnh đều đăng ký tài khoản từ 127.0.0.1, nên ngưỡng 5
-# tài khoản/giờ của production sẽ khiến bước chạy sau bị bước trước chặn — đỏ vì
-# thứ tự chứ không vì lỗi thật. Ngưỡng quên-mật-khẩu cũng vậy: mỗi lượt chạy xin
-# một liên kết đặt lại, 5 lượt/giờ nghĩa là không chạy nổi bộ test sáu lần trong
-# một giờ — đúng việc mà người đang truy một bài test chập chờn sẽ làm. Ngưỡng
-# kích hoạt mã cũng thế: 12 lần/10 phút, mỗi lượt chạy tiêu một lần.
-# Đây là cả ba ngưỡng theo thời gian mà bộ test đi qua (xem docs/SECURITY.md mục
-# 2); nới ở đây thôi, không nới trong mã nguồn.
+# Both the suite and the screenshot step register accounts from 127.0.0.1, so
+# production's 5-per-hour ceiling would have a later step blocked by an earlier
+# one — red because of ordering, not because of a real fault. Same for the
+# forgotten-password ceiling: each run asks for one reset link, and 5 per hour
+# means the suite cannot run six times in an hour — exactly what somebody chasing
+# a flaky test does. Same again for code redemption: 12 per 10 minutes, one per run.
+# These are all three of the time-window limits the suite passes through (see
+# docs/SECURITY.md §2); raise them here only, never in the source.
 REGISTER_PER_HOUR=200 FORGOT_PER_HOUR=200 REDEEM_PER_10MIN=200 node server.js > /tmp/prep-verify-server.log 2>&1 &
 SERVER_PID=$!
 cleanup() { kill "$SERVER_PID" 2>/dev/null || true; }
@@ -58,55 +58,55 @@ for i in $(seq 1 30); do
   sleep 0.5
 done
 if ! curl -fsS -o /dev/null "http://localhost:$PORT/prep/landing/"; then
-  echo "Server không lên được. Log:"; tail -20 /tmp/prep-verify-server.log; exit 1
+  echo "Server would not start. Log:"; tail -20 /tmp/prep-verify-server.log; exit 1
 fi
-note "server sẵn sàng ở cổng $PORT"
+note "server ready on port $PORT"
 
-step "Kiểm thử API quản trị"
+step "Admin API"
 node scripts/test-admin.mjs || fail=1
 
-step "Kiểm thử luồng học viên"
+step "Student journey"
 node scripts/test-auth.mjs || fail=1
 
-step "Kiểm thử danh mục học viên (/api/catalog)"
+step "Student catalogue (/api/catalog)"
 node scripts/test-catalog.mjs || fail=1
 
-step "Kiểm thử API tài khoản học viên"
+step "Student account API"
 node scripts/test-user-api.mjs || fail=1
 
-step "Kiểm thử engine làm bài (lượt thi, đồng hồ, nghe lại, hạn mức)"
+step "Exam engine (sittings, timers, replays, quotas)"
 node scripts/test-exam.mjs || fail=1
 
-step "Kiểm thử ngân hàng đề VPET (khớp blueprint, chất lượng từng câu)"
+step "VPET item bank (blueprint match, per-item quality)"
 node scripts/test-items.mjs || fail=1
 
-step "Kiểm thử bảo mật (header, giới hạn ghi, guard từng endpoint)"
+step "Security (headers, write limit, per-endpoint guards)"
 node scripts/test-security.mjs || fail=1
 
-step "Kiểm thử từ vựng (lược đồ, trình nhập, tra theo dạng biến đổi)"
+step "Vocabulary (schema, importer, lookup by inflected form)"
 node scripts/test-vocab.mjs || fail=1
 
-step "Kiểm thử khu tự học (động từ bất quy tắc, từ nối)"
+step "Self-study area (irregular verbs, linking words)"
 node scripts/test-learn.mjs || fail=1
 
-step "Audit giao diện (tràn ngang, tương phản, CSP)"
+step "Interface audit (overflow, contrast, CSP)"
 node scripts/audit.mjs || fail=1
 
 if [ "${SKIP_SHOTS:-0}" != "1" ]; then
-  step "Chụp ảnh nghiệm thu"
+  step "Acceptance screenshots"
   node scripts/screenshot.mjs || fail=1
   node scripts/shot-admin.mjs || fail=1
 fi
 
 _close_step
-printf '\n\033[1m== Thời gian từng bước ==\033[0m\n'
+printf '\n\033[1m== Time per step ==\033[0m\n'
 printf '   %s\n' "${STEP_TIMES[@]}"
-printf '   %ss  TỔNG\n' "$SECONDS"
+printf '   %ss  TOTAL\n' "$SECONDS"
 
 printf '\n'
 if [ "$fail" -eq 0 ]; then
-  printf '\033[1;32m✔ Tất cả bước đều xanh.\033[0m\n'
+  printf '\033[1;32m✔ All steps green.\033[0m\n'
 else
-  printf '\033[1;31m✗ Có bước thất bại — xem log phía trên.\033[0m\n'
+  printf '\033[1;31m✗ A step failed — see the log above.\033[0m\n'
 fi
 exit "$fail"

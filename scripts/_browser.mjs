@@ -1,34 +1,34 @@
 /**
- * Mở Chromium theo cách chạy được ở cả hai nơi: máy phát triển này và CI.
+ * Open Chromium in a way that works in both places: this machine and CI.
  *
- * Máy ở đây có sẵn một bản Chromium tại `/opt/pw-browsers/chromium`, nên các
- * script vẫn trỏ thẳng đường dẫn ấy. Trên CI thì không có: ở đó
- * `playwright-core install chromium` tự tải bản của nó về `~/.cache/ms-playwright`
- * với tên thư mục kèm số hiệu bản dựng. Ép `executablePath` vào một đường dẫn
- * không tồn tại thì hỏng ngay ở `launch()`, mà thông báo lỗi lại không hề gợi ý
- * rằng vấn đề nằm ở đường dẫn gắn cứng.
+ * This machine keeps a Chromium at `/opt/pw-browsers/chromium`, which is why
+ * the scripts used to point straight at it. CI has no such file: there,
+ * `playwright-core install chromium` downloads its own copy into
+ * `~/.cache/ms-playwright` under a build-numbered directory. Forcing
+ * `executablePath` at a path that does not exist fails at `launch()`, and the
+ * error says nothing about a hardcoded path being the cause.
  *
- * Thứ tự: biến `CHROMIUM` nếu có → đường dẫn quen nếu nó thật sự tồn tại →
- * không đặt gì, để Playwright tự tìm bản nó vừa cài.
+ * Order: `CHROMIUM` if set, then the familiar path if it really exists, then
+ * nothing at all, so Playwright finds the build it has just installed.
  */
 import { existsSync } from 'node:fs';
 import { chromium } from 'playwright-core';
 
 const LOCAL = '/opt/pw-browsers/chromium';
 
-/** Đường dẫn Chromium nên dùng, hoặc null nếu để Playwright tự quyết. */
+/** The Chromium to use, or null to let Playwright decide for itself. */
 export function chromiumPath() {
   if (process.env.CHROMIUM) return process.env.CHROMIUM;
   return existsSync(LOCAL) ? LOCAL : null;
 }
 
-/** launchOptions kèm executablePath khi — và chỉ khi — biết chắc nó tồn tại. */
+/** launchOptions with executablePath only when we know it is there. */
 export function launchOptions(extra) {
   const exec = chromiumPath();
   return Object.assign({}, extra || {}, exec ? { executablePath: exec } : {});
 }
 
-/** chromium.launch() đã điền sẵn đường dẫn đúng cho môi trường đang chạy. */
+/** chromium.launch() with the right path already filled in for this machine. */
 export function launchChromium(extra) {
   return chromium.launch(launchOptions(extra));
 }

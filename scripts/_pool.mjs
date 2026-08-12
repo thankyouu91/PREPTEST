@@ -1,30 +1,30 @@
 /**
- * Chạy một danh sách việc qua N luồng song song, trả kết quả ĐÚNG THỨ TỰ đầu vào.
+ * Run a list of jobs through N parallel workers, returning results IN ORDER.
  *
- * Bước audit và bước chụp ảnh chiếm phần lớn thời gian của `npm run verify`, mà
- * từng lượt tải trang trong đó hoàn toàn độc lập: mỗi lượt một BrowserContext
- * riêng, không dùng chung state nào. Chạy tuần tự chỉ vì vòng lặp viết ra thế.
+ * The audit and screenshot steps take most of `npm run verify`, and every page
+ * load inside them is fully independent: its own BrowserContext, no shared
+ * state. They ran one at a time only because the loops were written that way.
  *
- * Giữ đúng thứ tự kết quả là chủ ý: chạy song song thì thứ tự HOÀN THÀNH ngẫu
- * nhiên, và một bản báo cáo đổi thứ tự sau mỗi lần chạy thì không diff được với
- * lần trước. Người gọi thu kết quả rồi in một lượt, thay vì in ngay trong luồng.
+ * Keeping the result order is deliberate: run in parallel and the COMPLETION
+ * order is arbitrary, and a report that reorders itself on every run cannot be
+ * diffed against the last one. Callers collect, then print once at the end.
  */
 
 import { availableParallelism } from 'node:os';
 
-/* Số luồng mặc định đi theo máy, không gắn cứng: máy CI hai lõi mà mở bốn
-   context Chromium thì tranh CPU đến mức chậm hơn chạy tuần tự, và chính phép đo
-   layout của bước audit bắt đầu nhiễu. Chặn trên ở 4 vì quá số đó thì cái nghẽn
-   chuyển sang bộ nhớ chứ không còn là CPU. Đặt PW_JOBS để ép một con số khác. */
+/* The default worker count follows the machine rather than a fixed number: on a
+   two-core runner four Chromium contexts fight for CPU hard enough to be slower
+   than one at a time, and the audit own layout measurements start to drift.
+   Capped at 4: past that the bottleneck is memory, not CPU. PW_JOBS overrides. */
 
 const cores = typeof availableParallelism === 'function' ? availableParallelism() : 4;
 export const JOBS = Math.max(1, parseInt(process.env.PW_JOBS, 10) || Math.min(4, cores));
 
 /**
- * @param {Array} items   danh sách việc
- * @param {number} limit  số luồng chạy cùng lúc
+ * @param {Array} items   the jobs to run
+ * @param {number} limit  how many run at once
  * @param {Function} worker  (item, index) => Promise<any>
- * @returns {Promise<Array>} kết quả theo đúng thứ tự của items
+ * @returns {Promise<Array>} results in the same order as items
  */
 export async function pool(items, limit, worker) {
   const out = new Array(items.length);

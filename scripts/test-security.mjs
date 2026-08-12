@@ -1,18 +1,18 @@
 /**
- * Kiểm thử rà soát bảo mật: header, giới hạn ghi, và bảng guard từng endpoint.
+ * Security sweep: headers, the write limit, and the per-endpoint guard table.
  *
- * Chạy khi server đã bật: node scripts/test-security.mjs
+ * Run with the server up: node scripts/test-security.mjs
  *
- * Ba nửa, và nửa thứ ba mới là thứ đáng giá về lâu dài:
+ * Three halves, and the third is the one that keeps paying:
  *
- * - Header: đọc thật qua HTTP, trên trang HTML, trên response API và trên tệp
- *   tĩnh, vì ba loại này đi qua ba nhánh khác nhau của server.
- * - Giới hạn ghi: gọi thẳng middleware với req/res giả. Bắn 300 request thật
- *   chỉ để thấy con số 429 thì tốn thời gian mà chứng minh được ít hơn.
- * - Bảng guard: đọc stack Express, khẳng định MỌI route ghi đều có guard đăng
- *   nhập và csrfGuard, trừ đúng tám endpoint đã khai trong PUBLIC_WRITES. Rồi
- *   sinh lại bảng trong docs/SECURITY.md và so — lệch một dòng là đỏ. Thêm
- *   endpoint mà quên guard thì hỏng ở đây, không đợi lần rà soát sau.
+ * - Headers: read over real HTTP, on an HTML page, on an API response and on a
+ *   static file, because those three take three different paths through the server.
+ * - Write limit: call the middleware directly with a fake req/res. Firing 300
+ *   real requests just to see a 429 costs time and proves less.
+ * - The guard table: read the Express stack, assert that EVERY mutating route has
+ *   csrfGuard and an auth guard, except the eight declared in PUBLIC_WRITES. Then
+ *   regenerate the table in docs/SECURITY.md and compare — one line adrift is red.
+ *   Add an endpoint without a guard and it breaks here, not at the next sweep.
  */
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
@@ -31,55 +31,55 @@ const head = t => console.log('\n\x1b[1m== ' + t + ' ==\x1b[0m');
 
 let tmp = '';
 try {
-  head('Header trên mọi response');
+  head('Headers on every response');
 
   const html = await fetch(BASE + '/prep/landing/');
   const api = await fetch(BASE + '/api/catalog');
   const asset = await fetch(BASE + '/prep/learn/_tts.js');
 
-  /* Header nền phải có mặt trên cả ba nhánh. Trước lượt rà soát này chỉ trang
-     HTML mới được đặt header, còn API và tệp tĩnh thì trống trơn. */
-  for (const [label, r] of [['trang HTML', html], ['response API', api], ['tệp tĩnh', asset]]) {
-    ok(r.status === 200, 'Đọc được ' + label, 'status ' + r.status);
+  /* The base headers have to be on all three branches. Before this sweep only the
+     HTML pages got them; API responses and static files went out bare. */
+  for (const [label, r] of [['an HTML page', html], ['an API response', api], ['a static file', asset]]) {
+    ok(r.status === 200, 'Can read ' + label, 'status ' + r.status);
     ok(r.headers.get('x-content-type-options') === 'nosniff',
-      'nosniff trên ' + label, String(r.headers.get('x-content-type-options')));
+      'nosniff on ' + label, String(r.headers.get('x-content-type-options')));
     ok(r.headers.get('referrer-policy') === 'strict-origin-when-cross-origin',
-      'Referrer-Policy trên ' + label, String(r.headers.get('referrer-policy')));
+      'Referrer-Policy on ' + label, String(r.headers.get('referrer-policy')));
     ok(r.headers.get('x-frame-options') === 'SAMEORIGIN',
-      'X-Frame-Options trên ' + label, String(r.headers.get('x-frame-options')));
+      'X-Frame-Options on ' + label, String(r.headers.get('x-frame-options')));
     ok(r.headers.get('cross-origin-opener-policy') === 'same-origin',
-      'COOP trên ' + label);
+      'COOP on ' + label);
     ok(r.headers.get('cross-origin-resource-policy') === 'same-origin',
-      'CORP trên ' + label);
+      'CORP on ' + label);
     ok((r.headers.get('permissions-policy') || '').includes('camera=()'),
-      'Permissions-Policy trên ' + label);
+      'Permissions-Policy on ' + label);
   }
 
-  /* Micro là thứ duy nhất nền tảng thật sự dùng — phần Nói ghi âm qua
-     MediaRecorder. Tắt nhầm nó thì bài thi Nói hỏng mà không ai biết vì sao. */
+  /* The microphone is the one capability the platform really uses — the speaking
+     parts record through MediaRecorder. Deny it by mistake and they break silently. */
   const pp = html.headers.get('permissions-policy') || '';
   ok(pp.includes('microphone=(self)'),
-    'Permissions-Policy vẫn cho phép micro — phần Nói cần MediaRecorder', pp.slice(0, 120));
+    'Permissions-Policy still allows the microphone — speaking needs MediaRecorder', pp.slice(0, 120));
   ok(pp.includes('camera=()') && pp.includes('geolocation=()'),
-    'Camera và định vị bị tắt');
+    'Camera and geolocation are off');
 
   ok(!html.headers.get('strict-transport-security'),
-    'Không gửi HSTS qua HTTP — gửi lúc chạy dev sẽ ghim localhost sang HTTPS',
+    'No HSTS over plain HTTP — sending it in dev would pin localhost to HTTPS',
     String(html.headers.get('strict-transport-security')));
 
   const csp = html.headers.get('content-security-policy') || '';
-  ok(/script-src 'self' 'nonce-/.test(csp), 'Trang HTML vẫn giữ CSP có nonce theo request');
-  ok(csp.includes("default-src 'self'"), 'CSP trang HTML vẫn là default-src self');
+  ok(/script-src 'self' 'nonce-/.test(csp), 'HTML pages keep their per-request nonce CSP');
+  ok(csp.includes("default-src 'self'"), 'The HTML CSP is still default-src self');
 
   const apiCsp = api.headers.get('content-security-policy') || '';
   ok(apiCsp.includes("default-src 'none'") && apiCsp.includes("frame-ancestors 'none'"),
-    'Response API mang CSP khoá chặt, không phải CSP của tài liệu', apiCsp);
+    'An API response carries the locked-down CSP, not the document one', apiCsp);
   ok((api.headers.get('x-robots-tag') || '').includes('noindex'),
-    'Response API không cho lập chỉ mục');
+    'API responses are not indexable');
   ok(!(asset.headers.get('content-security-policy') || '').includes("default-src 'none'"),
-    'Tệp tĩnh không bị dính CSP dành cho API');
+    'A static file does not pick up the API CSP');
 
-  head('Giới hạn ghi');
+  head('Write limit');
 
   tmp = mkdtempSync(join(tmpdir(), 'prep-sec-'));
   process.env.PREP_DB = join(tmp, 'probe.sqlite');
@@ -98,27 +98,27 @@ try {
     headers: cookie ? { cookie } : {}
   });
 
-  /* Đọc thì không bao giờ bị đếm: một danh sách được tải lại nhiều lần là
-     chuyện bình thường, và tính nó vào cùng một xô với ghi sẽ khoá nhầm. */
+  /* Reads are never counted: reloading a list several times is ordinary, and
+     putting it in the same bucket as writes would lock the wrong person out. */
   let called = 0;
   security.writeLimit(fakeReq('GET'), fakeRes(), () => called++);
   security.writeLimit(fakeReq('HEAD'), fakeRes(), () => called++);
-  ok(called === 2, 'GET và HEAD đi thẳng, không tiêu lượt ghi', String(called));
+  ok(called === 2, 'GET and HEAD pass straight through, spending no write allowance', String(called));
 
-  /* Hai phiên khác nhau phải có xô riêng, nếu không một người dùng nhiều sẽ
-     khoá người khác — và cùng một phiên thì phải dùng chung xô dù đổi IP hay
-     không, vì đó là đơn vị mà một phiên ăn cắp được tiêu. */
+  /* Two sessions need separate buckets, or one busy user locks out another — and
+     one session shares a bucket whatever the address, because that is the unit a
+     stolen session is spent in. */
   const keyA = security.writeKey(fakeReq('POST', 'prep_user=aaaa'));
   const keyB = security.writeKey(fakeReq('POST', 'prep_user=bbbb'));
   const keyA2 = security.writeKey(fakeReq('POST', 'prep_user=aaaa'));
-  ok(keyA !== keyB, 'Hai phiên khác nhau đếm riêng');
-  ok(keyA === keyA2, 'Cùng một phiên thì cùng một xô');
-  ok(!keyA.includes('aaaa'), 'Token phiên được băm, không nằm thẳng trong khoá', keyA);
+  ok(keyA !== keyB, 'Two sessions are counted separately');
+  ok(keyA === keyA2, 'One session means one bucket');
+  ok(!keyA.includes('aaaa'), 'The session token is hashed, not put in the key raw', keyA);
   ok(security.writeKey(fakeReq('POST', '', '198.51.100.1')) !==
      security.writeKey(fakeReq('POST', '', '198.51.100.2')),
-    'Chưa đăng nhập thì đếm theo địa chỉ IP');
+    'Signed out, counting falls back to the address');
 
-  /* Chạm trần phải là 429 kèm Retry-After, không phải 500 hay im lặng. */
+  /* Hitting the ceiling must be a 429 with Retry-After, not a 500 and not silence. */
   const cookie = 'prep_user=' + 'z'.repeat(20);
   let last = null, passed = 0;
   for (let i = 0; i < security.WRITE_PER_MIN + 2; i++) {
@@ -127,74 +127,74 @@ try {
     last = res;
   }
   ok(passed === security.WRITE_PER_MIN,
-    'Đúng ' + security.WRITE_PER_MIN + ' lượt ghi được đi qua rồi mới chặn', String(passed));
-  ok(last.code === 429, 'Chạm trần trả về 429', String(last.code));
-  ok(Number(last.headers['retry-after']) > 0, 'Kèm Retry-After tính bằng giây',
+    'Exactly ' + security.WRITE_PER_MIN + ' writes pass before the block', String(passed));
+  ok(last.code === 429, 'The ceiling answers 429', String(last.code));
+  ok(Number(last.headers['retry-after']) > 0, 'With Retry-After in seconds',
     String(last.headers['retry-after']));
 
-  head('Bảng guard từng endpoint');
+  head('Per-endpoint guard table');
 
   const map = await import('./security-map.mjs');
   const rows = map.routeTable(require_);
-  ok(rows.length >= 70, 'Đọc được bảng route từ stack Express', String(rows.length));
+  ok(rows.length >= 70, 'The route table reads out of the Express stack', String(rows.length));
 
   const mutating = rows.filter(r => r.mutating);
-  ok(mutating.length >= 40, 'Có đủ route ghi để bảng nói lên điều gì', String(mutating.length));
+  ok(mutating.length >= 40, 'Enough mutating routes for the table to mean anything', String(mutating.length));
 
-  /* Điểm chính của cả lượt rà soát: mọi route ghi phải có guard đăng nhập và
-     csrfGuard, trừ đúng những endpoint đã khai. "Đúng" theo cả hai chiều. */
+  /* The point of the whole sweep: every mutating route has an auth guard and
+     csrfGuard, except the ones declared. "Except" checked in both directions. */
   const declared = new Set(Object.keys(map.PUBLIC_WRITES));
   const naked = mutating.filter(r =>
     !r.guards.includes('requireAdmin') && !r.guards.includes('requireUser'));
   const undeclared = naked.filter(r => !declared.has(r.method + ' ' + r.path));
   ok(undeclared.length === 0,
-    'Không route ghi nào thiếu guard đăng nhập mà chưa được khai trong PUBLIC_WRITES',
+    'No mutating route lacks an auth guard without being declared in PUBLIC_WRITES',
     undeclared.map(r => r.method + ' ' + r.path).join(', '));
 
   const stale = [...declared].filter(k =>
     !naked.some(r => (r.method + ' ' + r.path) === k));
   ok(stale.length === 0,
-    'PUBLIC_WRITES không còn dòng thừa — endpoint đã có guard thì phải bỏ khỏi danh sách',
+    'PUBLIC_WRITES carries no stale row — a guarded endpoint must leave the list',
     stale.join(', '));
   ok(Object.values(map.PUBLIC_WRITES).every(v => v && v.length > 15),
-    'Mỗi ngoại lệ đều nêu được cái gì thay thế guard');
+    'Every exception names what stands in for a guard');
 
-  /* Không còn phân biệt "có guard đăng nhập" hay không: từ 2026-08-12 cookie
-     prep_csrf được cấp ngay khi phục vụ trang HTML, nên khách chưa đăng nhập
-     cũng có token để đối chiếu và MỌI route ghi đều phải có csrfGuard. Trước đó
-     sáu endpoint công khai đứng ngoài, và đó là chỗ hở duy nhất bản rà soát
-     trước tìm ra mà chưa vá. */
+  /* No longer split by whether there is an auth guard: since 2026-08-12 the
+     prep_csrf cookie is minted the moment an HTML page is served, so a signed-out
+     visitor holds a token too and EVERY mutating route must carry csrfGuard. Before
+     that, six public endpoints stood outside it — the one hole the previous sweep
+     found and did not close. */
   ok(mutating.every(r => r.guards.includes('csrfGuard')),
-    'Mọi route ghi đều có csrfGuard, kể cả những route không đòi đăng nhập',
+    'Every mutating route has csrfGuard, including those that need no sign-in',
     mutating.filter(r => !r.guards.includes('csrfGuard')).map(r => r.method + ' ' + r.path).join(', '));
 
   ok(mutating.every(r => r.writeLimited),
-    'Mọi route ghi nằm dưới giới hạn ghi toàn cục');
+    'Every mutating route sits under the global write limit');
 
-  /* Ba route quản trị đăng ký TRƯỚC router.use('/admin', …) nên không được nó
-     bọc. Đây là chủ ý — không thể đòi đăng nhập ở chính chỗ để đăng nhập —
-     nhưng phải kiểm, vì thêm route thứ tư vào đúng chỗ đó thì nó lọt guard mà
-     nhìn mã nguồn vẫn thấy "nằm trong khu /admin". */
+  /* Three admin routes are registered BEFORE router.use('/admin', …) and so are not
+     wrapped by it. That is deliberate — you cannot demand a sign-in at the place
+     you sign in — but it needs checking, because a fourth route added in that spot
+     would slip the guard while still reading as "inside /admin" in the source. */
   const adminUnguarded = rows.filter(r =>
     r.path.startsWith('/api/admin/') && !r.guards.includes('requireAdmin'));
   ok(adminUnguarded.length === 3 &&
      adminUnguarded.every(r => ['/api/admin/login', '/api/admin/logout', '/api/admin/me'].includes(r.path)),
-    'Chỉ đúng ba route /admin nằm ngoài requireAdmin, và đúng ba route đó',
+    'Exactly three /admin routes sit outside requireAdmin, and exactly those three',
     adminUnguarded.map(r => r.method + ' ' + r.path).join(', '));
 
-  head('docs/SECURITY.md còn khớp');
+  head('docs/SECURITY.md still matches');
 
   const doc = readFileSync(new URL('../docs/SECURITY.md', import.meta.url), 'utf8');
   const marker = doc.indexOf('| Method | Endpoint | Guards | Write limit |');
-  ok(marker > 0, 'Tệp có bảng sinh tự động');
+  ok(marker > 0, 'The file has the generated table');
   ok(doc.slice(marker).trim() === map.markdownTable(rows).trim(),
-    'Bảng trong docs/SECURITY.md khớp với stack hiện tại — chạy lại script để cập nhật');
+    'The table in docs/SECURITY.md matches the current stack — re-run the script to update it');
 } catch (e) {
   fail++;
-  console.log('✗ Lỗi khi chạy: ' + (e && e.stack ? e.stack : e));
+  console.log('✗ Failed while running: ' + (e && e.stack ? e.stack : e));
 } finally {
   if (tmp) rmSync(tmp, { recursive: true, force: true });
 }
 
-console.log('\n' + (fail ? '\x1b[31m' : '\x1b[32m') + pass + '/' + (pass + fail) + ' kiểm thử đạt\x1b[0m');
+console.log('\n' + (fail ? '\x1b[31m' : '\x1b[32m') + pass + '/' + (pass + fail) + ' checks passed\x1b[0m');
 process.exit(fail ? 1 : 0);

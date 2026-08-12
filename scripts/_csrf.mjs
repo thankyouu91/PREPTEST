@@ -1,18 +1,18 @@
 /**
- * Gửi một request ghi qua APIRequestContext của Playwright, kèm token CSRF.
+ * Send a write through Playwright APIRequestContext, carrying a CSRF token.
  *
- * Từ 2026-08-12 mọi route ghi đều đi qua csrfGuard, kể cả đăng nhập và đăng ký.
- * Trình duyệt thật không phải làm gì thêm: nó mở trang trước, máy chủ cấp cookie
- * `prep_csrf` trong response ấy, rồi mã trên trang đọc cookie và gắn header. Một
- * script gọi thẳng `ctx.request.post()` thì bỏ qua bước "mở trang", nên không có
- * cookie và nhận 403 — đúng như audit và bước chụp ảnh đã dính.
+ * Since 2026-08-12 every mutating route goes through csrfGuard, sign-in and
+ * registration included. A real browser needs no help: it loads a page, the
+ * server sets `prep_csrf` on that response, and the code on the page reads the
+ * cookie and attaches the header. A script that calls `ctx.request.post()`
+ * directly skips the page load, holds no cookie, and gets 403 — as audit did.
  *
- * Hàm này làm lại đúng thứ tự đó: chưa có cookie thì xin một trang không có
- * guard chuyển hướng, rồi mới gửi. Cookie nằm trong jar của chính context nên
- * phiên đăng nhập sau đó vẫn thuộc về context ấy.
+ * This redoes that order: with no cookie yet, ask for a page carrying no
+ * redirect guard, then send. The cookie lands in the context own jar, so the
+ * sign-in that follows still belongs to that context.
  */
 
-/** Trang dùng để xin cookie: công khai và không chuyển hướng dù đã đăng nhập. */
+/** The page used to obtain the cookie: public, and never redirects. */
 const WARM_PATH = '/prep/landing/';
 
 async function csrfToken(ctx, base) {
@@ -25,7 +25,7 @@ async function csrfToken(ctx, base) {
   return hit ? hit.value : '';
 }
 
-/** POST kèm X-CSRF-Token, trả về APIResponse như ctx.request.post(). */
+/** POST with X-CSRF-Token, returning an APIResponse like ctx.request.post(). */
 export async function postWithCsrf(ctx, base, path, data) {
   const token = await csrfToken(ctx, base);
   return ctx.request.post(base + path, { data, headers: { 'X-CSRF-Token': token } });

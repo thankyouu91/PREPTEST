@@ -1,19 +1,19 @@
 /**
- * Đọc thẳng stack của Express để dựng bảng: endpoint → guard → giới hạn ghi.
+ * Read the Express stack directly to build the table: endpoint → guards → write limit.
  *
- * Lý do đọc stack thay vì đọc mã nguồn: chỉ có stack mới biết cái gì THỰC SỰ
- * chạy. `router.use('/admin', requireAdmin, csrfGuard)` bọc mọi route đăng ký
- * SAU nó và không bọc ba route đăng ký trước — đọc bằng mắt rất dễ kết luận
- * ngược, còn thứ tự trong stack thì không nói dối được.
+ * Why read the stack rather than the source: only the stack knows what ACTUALLY
+ * runs. `router.use('/admin', requireAdmin, csrfGuard)` wraps every route
+ * registered AFTER it and none of the three registered before — reading the file
+ * makes it very easy to conclude the opposite; the stack order cannot lie.
  *
- * Bảng này là đầu vào của `scripts/test-security.mjs` và của docs/SECURITY.md.
+ * This table feeds `scripts/test-security.mjs` and docs/SECURITY.md.
  */
 import { createRequire } from 'node:module';
 
 const SAFE = ['get', 'head', 'options'];
 
-/* Ghi vào một cơ sở dữ liệu tạm: nạp các router là nạp cả server/db.js, và bài
-   kiểm tra không được đụng vào data/. Người gọi có thể đặt trước PREP_DB. */
+/* Write to a throwaway database: loading the routers loads server/db.js too, and
+   a test must not touch data/. The caller may set PREP_DB beforehand. */
 export function loadRouters(require_) {
   return [
     { mount: '', file: 'server/google-auth.js', router: require_('../server/google-auth.js').router },
@@ -23,8 +23,8 @@ export function loadRouters(require_) {
   ];
 }
 
-/* Express biến path prefix của router.use() thành regexp. Lấy lại chuỗi gốc để
-   so khớp với đường dẫn route, vì bảng cần đọc được bằng mắt. */
+/* Express turns a router.use() path prefix into a regexp. Recover the original
+   string to match against route paths, because the table has to be readable. */
 function prefixOf(layer) {
   const src = String(layer.regexp);
   if (src === '/^\\/?(?=\\/|$)/i') return '/';
@@ -34,13 +34,13 @@ function prefixOf(layer) {
 
 const GUARDS = new Set(['requireAdmin', 'requireUser', 'requireOwner', 'csrfGuard']);
 
-/** Mọi route của mọi router, kèm guard thật sự chạy trước nó. */
+/** Every route of every router, with the guards that really run before it. */
 export function routeTable(require_ = createRequire(import.meta.url)) {
   const rows = [];
 
   for (const { mount, file, router } of loadRouters(require_)) {
-    /* Guard gắn bằng router.use() tích luỹ theo thứ tự đăng ký, nên duyệt stack
-       một lượt từ đầu và mang theo những gì đã bọc. */
+    /* Guards attached by router.use() accumulate in registration order, so walk
+       the stack once from the top, carrying what has been wrapped so far. */
     const inherited = [];
 
     for (const layer of router.stack) {
@@ -67,9 +67,9 @@ export function routeTable(require_ = createRequire(import.meta.url)) {
           path: full,
           file,
           guards,
-          /* Giới hạn ghi toàn cục nằm ở server.js, trước mọi router, nên nó phủ
-             đúng những phương thức không an toàn — không phải thứ đọc ra được
-             từ stack của router, mà là hệ quả của chỗ nó được gắn. */
+          /* The global write limit lives in server.js, before every router, so it
+             covers exactly the unsafe methods — not something readable out of a
+             router's stack, but a consequence of where it is mounted. */
           writeLimited: !SAFE.includes(method),
           mutating: !SAFE.includes(method)
         });
@@ -81,23 +81,23 @@ export function routeTable(require_ = createRequire(import.meta.url)) {
   return rows;
 }
 
-/* Tám endpoint ghi không thể có guard đăng nhập: chúng tồn tại để người CHƯA
-   đăng nhập dùng. Mỗi cái phải nêu được cái gì thay thế, nếu không thì danh sách
-   này chỉ là chỗ giấu lỗi. Từ 2026-08-12 cả tám đều đã có csrfGuard: cookie
-   prep_csrf được cấp ngay khi phục vụ trang HTML, nên khách cũng có token để đối
-   chiếu — thiếu guard đăng nhập không còn kéo theo thiếu luôn CSRF. */
+/* Eight write endpoints that cannot have an auth guard: they exist for people who
+   are NOT signed in. Each must name what stands in for one, or this list is just
+   somewhere to hide a mistake. Since 2026-08-12 all eight do have csrfGuard: the
+   prep_csrf cookie is minted the moment an HTML page is served, so a guest holds a
+   token too — no auth guard no longer implies no CSRF check either. */
 export const PUBLIC_WRITES = {
-  'POST /api/auth/register': 'csrfGuard; khoá theo IP, REGISTER_PER_HOUR, chỉ trừ lượt khi đăng ký thành công',
-  'POST /api/auth/login': 'csrfGuard; khoá 15 phút sau 5 lần sai, theo IP × tên đăng nhập',
-  'POST /api/admin/login': 'csrfGuard; khoá 15 phút sau 5 lần sai, theo IP × tên đăng nhập',
-  'POST /api/auth/forgot': 'csrfGuard; FORGOT_PER_HOUR theo IP, và trả lời như nhau dù email có tồn tại hay không',
-  'POST /api/auth/reset': 'csrfGuard; token dùng một lần, băm trong CSDL, hết hạn sau 2 giờ',
-  'POST /api/auth/verify': 'csrfGuard; token dùng một lần, băm trong CSDL, hết hạn sau 48 giờ',
-  'POST /api/auth/logout': 'csrfGuard; đăng xuất khi chưa đăng nhập là vô hại',
-  'POST /api/admin/logout': 'csrfGuard; đăng xuất khi chưa đăng nhập là vô hại'
+  'POST /api/auth/register': 'csrfGuard; per-IP lockout, REGISTER_PER_HOUR, only a successful registration is charged',
+  'POST /api/auth/login': 'csrfGuard; 15-minute lockout after 5 failures, per IP × username',
+  'POST /api/admin/login': 'csrfGuard; 15-minute lockout after 5 failures, per IP × username',
+  'POST /api/auth/forgot': 'csrfGuard; FORGOT_PER_HOUR per IP, and the same answer whether or not the email exists',
+  'POST /api/auth/reset': 'csrfGuard; single-use token, hashed in the database, expires after 2 hours',
+  'POST /api/auth/verify': 'csrfGuard; single-use token, hashed in the database, expires after 48 hours',
+  'POST /api/auth/logout': 'csrfGuard; signing out when not signed in is harmless',
+  'POST /api/admin/logout': 'csrfGuard; signing out when not signed in is harmless'
 };
 
-/** Bảng markdown cho docs/SECURITY.md — sinh ra chứ không gõ tay. */
+/** The markdown table for docs/SECURITY.md — generated, never hand-typed. */
 export function markdownTable(rows) {
   const cell = s => String(s).replace(/\|/g, '\\|');
   const out = ['| Method | Endpoint | Guards | Write limit |', '|---|---|---|---|'];
