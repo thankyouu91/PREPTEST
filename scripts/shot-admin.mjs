@@ -1,4 +1,4 @@
-/** Chụp ảnh các màn quản trị (đăng nhập thật) + bắt lỗi console/CSP. */
+/** Screenshots of the admin screens (a real sign-in) + console/CSP errors. */
 import fs from 'node:fs';
 import { launchChromium } from './_browser.mjs';
 const BASE = process.env.BASE_URL || 'http://localhost:3000';
@@ -29,7 +29,7 @@ for (const [slug, url, needAuth] of PAGES) {
       await p.fill('#username', process.env.ADMIN_USERNAME || 'admin');
       await p.fill('#password', process.env.ADMIN_PASSWORD || 'Admin@123456');
       await p.click('#submit');
-      // Chờ rời hẳn trang đăng nhập, tránh goto đua với redirect sau khi POST
+      // Wait until the sign-in page is really gone, so goto does not race the redirect
       await p.waitForURL(u => !u.pathname.includes('dang-nhap'), { timeout: 10000 });
       await p.waitForLoadState('networkidle');
     }
@@ -44,5 +44,5 @@ for (const [slug, url, needAuth] of PAGES) {
   console.log('✓', slug);
 }
 await b.close();
-if (problems.length) { console.log('\n⚠ Lỗi console:'); problems.forEach(x => console.log(' -', x)); process.exitCode = 1; }
-else console.log('\n✔ 0 lỗi console/CSP trên mọi màn quản trị.');
+if (problems.length) { console.log('\n⚠ Console errors:'); problems.forEach(x => console.log(' -', x)); process.exitCode = 1; }
+else console.log('\n✔ 0 console/CSP errors on any admin screen.');

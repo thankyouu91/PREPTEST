@@ -1,8 +1,8 @@
 /**
- * Kiểm thử lớp danh mục phía học viên: trang đọc thật GET /api/catalog,
- * và khi API hỏng thì rơi về dữ liệu dự phòng kèm dải cảnh báo (không trắng trang).
+ * Student-side catalogue layer: the pages really read GET /api/catalog, and when
+ * the API fails they fall back to bundled data with a warning strip (never a blank page).
  *
- * Chạy khi server đã bật: node scripts/test-catalog.mjs
+ * Run with the server up: node scripts/test-catalog.mjs
  */
 import { chromium } from 'playwright-core';
 import { chromiumPath } from './_browser.mjs';
@@ -11,14 +11,14 @@ const BASE = process.env.BASE || 'http://127.0.0.1:3000';
 const EXEC = chromiumPath();
 
 let pass = 0, fail = 0;
-/* detail chỉ in khi đỏ: một dòng đủ để biết thấy gì thay vì phải chạy lại tay */
+/* detail prints only on red: one line is enough to see what happened without a re-run */
 const ok = (c, name, detail) => {
   if (c) { pass++; console.log('✓ ' + name); return; }
   fail++;
   console.log('✗ ' + name + (detail === undefined ? '' : '  → ' + detail));
 };
 
-/** Đăng nhập tài khoản demo rồi trả về page đã vào được khu học viên */
+/** Sign in as the demo account and return a page already inside the student area */
 async function login(ctx) {
   const page = await ctx.newPage();
   await page.goto(BASE + '/prep/dang-nhap/', { waitUntil: 'networkidle' });
@@ -32,13 +32,13 @@ async function login(ctx) {
 const browser = await chromium.launch({ executablePath: EXEC, args: ['--no-sandbox'] });
 
 try {
-  console.log('\n\x1b[1m== Danh mục học viên đọc từ /api/catalog ==\x1b[0m');
+  console.log('\n\x1b[1m== The student catalogue reads /api/catalog ==\x1b[0m');
 
-  /* --- 1. API trả gì thì trang hiện đúng thế --- */
+  /* --- 1. Whatever the API returns is what the page shows --- */
   const api = await (await fetch(BASE + '/api/catalog')).json();
   const published = api.tests.length;
-  ok(Array.isArray(api.families) && api.families.length === 6, 'API trả đủ 6 nhóm kỳ thi');
-  ok(published > 0, 'API có ít nhất một đề đã phát hành (' + published + ')');
+  ok(Array.isArray(api.families) && api.families.length === 6, 'The API returns all 6 exam families');
+  ok(published > 0, 'The API has at least one published test (' + published + ')');
 
   const ctx = await browser.newContext();
   const errs = [];
@@ -49,41 +49,41 @@ try {
   await page.waitForTimeout(600);
 
   const cards = await page.locator('#lib-grid article').count();
-  ok(cards === published, 'Thư viện hiện đúng ' + published + ' đề đã phát hành (thấy ' + cards + ')');
-  ok(await page.locator('#lib-skeleton.hidden').count() === 1, 'Skeleton đã nhường chỗ cho nội dung');
-  ok(await page.locator('#catalog-warning').count() === 0, 'Không có cảnh báo khi API chạy tốt');
+  ok(cards === published, 'The library shows exactly ' + published + ' published tests (saw ' + cards + ')');
+  ok(await page.locator('#lib-skeleton.hidden').count() === 1, 'The skeleton has given way to content');
+  ok(await page.locator('#catalog-warning').count() === 0, 'No warning while the API is healthy');
 
   const src = await page.evaluate(() => PREP.catalogSource);
   ok(src === 'api', 'PREP.catalogSource = "api"');
 
-  /* Đề chưa nhập câu hỏi: không được hiện "0 câu" */
+  /* A test with no questions yet must not show "0 items" */
   const zeroText = await page.locator('#lib-grid').innerText();
-  ok(!/\b0 câu\b/.test(zeroText), 'Không hiện "0 câu" cho đề chưa nhập câu hỏi');
+  ok(!/\b0 items\b/.test(zeroText), 'No "0 items" line for a test with no questions');
 
-  /* Bài draft (pte-ac-01) không được lọt xuống học viên */
+  /* A draft test (pte-ac-01) must not reach students */
   const hasDraft = await page.evaluate(() => PREP.tests.some(t => t.id === 'pte-ac-01'));
-  ok(!hasDraft, 'Đề trạng thái draft không xuất hiện trong danh mục học viên');
+  ok(!hasDraft, 'A draft test never appears in the student catalogue');
 
-  /* --- 2. Trang chi tiết đọc đúng bài từ danh mục --- */
+  /* --- 2. The detail page reads the right test out of the catalogue --- */
   const firstId = api.tests[0].id;
   await page.goto(BASE + '/prep/bai-thi/' + firstId + '/', { waitUntil: 'networkidle' });
   await page.waitForTimeout(500);
-  ok(await page.locator('#page:not([hidden])').count() === 1, 'Trang chi tiết mở được bài ' + firstId);
-  ok((await page.locator('#t-title').innerText()).trim() === api.tests[0].title, 'Tiêu đề khớp dữ liệu API');
-  ok(await page.locator('#t-loading.hidden').count() === 1, 'Skeleton chi tiết đã tắt');
+  ok(await page.locator('#page:not([hidden])').count() === 1, 'The detail page opens test ' + firstId);
+  ok((await page.locator('#t-title').innerText()).trim() === api.tests[0].title, 'The title matches the API data');
+  ok(await page.locator('#t-loading.hidden').count() === 1, 'The detail skeleton is gone');
 
-  /* Bài không tồn tại → trạng thái không tìm thấy, không phải trang trắng */
-  await page.goto(BASE + '/prep/bai-thi/khong-co-that/', { waitUntil: 'networkidle' });
+  /* A test that does not exist → a not-found state, not a blank page */
+  await page.goto(BASE + '/prep/bai-thi/no-such-test/', { waitUntil: 'networkidle' });
   await page.waitForTimeout(400);
-  ok(await page.locator('#nf:not([hidden])').count() === 1, 'Bài không tồn tại hiện trạng thái "không tìm thấy"');
+  ok(await page.locator('#nf:not([hidden])').count() === 1, 'A missing test shows the "not found" state');
 
-  /* --- 2b. Bảng giá ở trang giới thiệu đọc từ máy chủ ---
-     Landing là mặt tiền: gõ tay giá ở đây thì lần đổi giá tới sẽ có một trang
-     nói sai. Đối chiếu từng thẻ với bảng giá máy chủ công bố, nên nếu ai đó
-     đổi giá trong plans.js mà quên trang này, bài test đỏ ngay. */
+  /* --- 2b. The landing price table reads from the server ---
+     The landing page is the shop front: type the prices in by hand and the next
+     price change leaves one page lying. Compare every card against the price list
+     the server publishes, so changing plans.js and forgetting this page goes red. */
   const me = await (await fetch(BASE + '/api/me')).json();
   const apiPlans = me.plans || [];
-  ok(apiPlans.length > 0, 'API công bố bảng giá (' + apiPlans.length + ' gói)');
+  ok(apiPlans.length > 0, 'The API publishes a price list (' + apiPlans.length + ' plans)');
 
   await page.goto(BASE + '/prep/landing/', { waitUntil: 'networkidle' });
   await page.waitForTimeout(600);
@@ -94,26 +94,26 @@ try {
   })));
   const vnd = n => n.toLocaleString('vi-VN') + 'đ';
   ok(shownPlans.length === apiPlans.length,
-    'Trang giới thiệu hiện đúng số gói đang bán (' + shownPlans.length + '/' + apiPlans.length + ')');
+    'The landing page shows the right number of plans on sale (' + shownPlans.length + '/' + apiPlans.length + ')');
   const mismatch = shownPlans.filter(c => {
     const p = apiPlans.find(x => x.id === c.id);
     return !p || c.price !== vnd(p.price) || c.months !== String(p.months);
   });
-  ok(mismatch.length === 0, 'Giá và thời hạn từng gói khớp bảng giá máy chủ',
+  ok(mismatch.length === 0, 'Every plan price and duration matches the server price list',
     JSON.stringify(mismatch));
 
-  /* Dòng ghi chú dưới nút phải nói đúng giá của thẻ đang chọn, không phải một
-     bản sao gõ tay đứng im. */
+  /* The note under the button must state the price of the card actually selected,
+     not a hand-typed copy that never moves. */
   await page.click('.plan[data-plan="' + apiPlans[0].id + '"]');
   await page.waitForTimeout(200);
   const note = (await page.locator('#plan-cta-note').innerText()).trim();
   ok(note.startsWith(vnd(apiPlans[0].price)),
-    'Ghi chú dưới nút đi theo gói đang chọn', note);
+    'The note under the button follows the selected plan', note);
 
-  /* So trang với API thôi thì chưa chứng minh được gì: số gõ sẵn trong HTML
-     đang trùng giá thật, nên trang vẫn "khớp" kể cả khi nó chẳng đọc gì. Đổi
-     giá ngay trong câu trả lời của máy chủ rồi xem trang có đi theo không —
-     đây mới là phép thử không thể đúng nhờ trùng hợp. */
+  /* Comparing the page with the API proves nothing on its own: the numbers typed
+     into the HTML happen to equal the real prices, so the page still "matches" even
+     if it reads nothing at all. Change the price in the server's own answer and see
+     whether the page follows — that is the check that cannot pass by coincidence. */
   await page.route('**/api/me', async route => {
     const res = await route.fetch();
     const body = await res.json();
@@ -132,11 +132,11 @@ try {
     return p && c.price === vnd(p.price + 7000) && c.months === String(p.months + 1);
   });
   ok(followed.length === apiPlans.length,
-    'Đổi giá ở máy chủ thì trang giới thiệu đổi theo (không gõ tay)',
+    'Change the price on the server and the landing page follows (nothing hand-typed)',
     JSON.stringify(doctored));
 
-  /* Máy chủ im lặng thì vẫn phải thấy một cái giá: thà giá cũ còn hơn ô trống
-     ở đúng chỗ người ta cần đọc. */
+  /* With the server silent there must still be a price on screen: an old price beats
+     an empty box in the very place someone came to read one. */
   await page.unroute('**/api/me');
   await page.route('**/api/me', r => r.abort());
   await page.goto(BASE + '/prep/landing/', { waitUntil: 'networkidle' });
@@ -144,32 +144,32 @@ try {
   const offline = await page.$$eval('.plan:not([hidden])', els => els.map(e =>
     e.querySelector('[data-plan-price]').textContent.trim()));
   ok(offline.length === 3 && offline.every(t => /\d/.test(t)),
-    'API im thì bảng giá rơi về số dự phòng, không để trống', JSON.stringify(offline));
+    'With the API silent the price table falls back to bundled numbers rather than blanks', JSON.stringify(offline));
   await page.unroute('**/api/me');
 
-  ok(errs.length === 0, 'Không có lỗi console khi API chạy tốt');
+  ok(errs.length === 0, 'No console errors while the API is healthy');
   await ctx.close();
 
-  /* --- 3. API hỏng: dữ liệu dự phòng + dải cảnh báo --- */
-  console.log('\n\x1b[1m== API danh mục hỏng: rơi về dữ liệu dự phòng ==\x1b[0m');
+  /* --- 3. A broken API: bundled data + a warning strip --- */
+  console.log('\n\x1b[1m== Catalogue API broken: falling back to bundled data ==\x1b[0m');
   const ctx2 = await browser.newContext();
   const errs2 = [];
   ctx2.on('weberror', e => errs2.push(String(e.error())));
 
   page = await login(ctx2);
-  await ctx2.route('**/api/catalog', r => r.abort());   // chặn sau khi đã đăng nhập
+  await ctx2.route('**/api/catalog', r => r.abort());   // block it only after signing in
   await page.goto(BASE + '/prep/thu-vien/', { waitUntil: 'networkidle' });
   await page.waitForTimeout(700);
 
-  ok(await page.locator('#catalog-warning').count() === 1, 'Hiện dải cảnh báo khi không gọi được API');
-  ok(await page.locator('#lib-grid article').count() > 0, 'Vẫn render đề từ dữ liệu dự phòng');
+  ok(await page.locator('#catalog-warning').count() === 1, 'A warning strip appears when the API cannot be reached');
+  ok(await page.locator('#lib-grid article').count() > 0, 'Tests still render from the bundled data');
   ok(await page.evaluate(() => PREP.catalogSource) === 'fallback', 'PREP.catalogSource = "fallback"');
-  ok(errs2.length === 0, 'Lỗi mạng không làm vỡ trang (không có lỗi JS)');
+  ok(errs2.length === 0, 'A network failure does not break the page (no JS errors)');
 
   await ctx2.close();
 } finally {
   await browser.close();
 }
 
-console.log('\n' + (pass + fail ? pass + '/' + (pass + fail) + ' kiểm thử đạt' : 'không có kiểm thử nào'));
+console.log('\n' + (pass + fail ? pass + '/' + (pass + fail) + ' checks passed' : 'no checks ran'));
 if (fail) process.exit(1);

@@ -1,10 +1,10 @@
 /**
- * Kiểm thử luồng tài khoản học viên TRÊN GIAO DIỆN (đã nối API thật).
- * Chạy: node scripts/test-auth.mjs   (cần server đang chạy)
+ * Student account journey THROUGH THE INTERFACE (wired to the real API).
+ * Run: node scripts/test-auth.mjs   (needs the server up)
  *
- * Quy tắc: KHÔNG đổi mật khẩu tài khoản demo `student` — ảnh nghiệm thu và
- * các bộ test khác đều đăng nhập bằng nó. Mọi phép thử đổi/đặt lại mật khẩu
- * chạy trên tài khoản dùng một lần, đăng ký ngay trong bài test.
+ * Rule: NEVER change the demo `student` password — the acceptance screenshots and
+ * the other suites all sign in with it. Every change-password and reset-password
+ * check runs on a throwaway account registered inside the test itself.
  */
 import { launchChromium } from './_browser.mjs';
 
@@ -13,46 +13,46 @@ const results = [];
 const check = (name, ok, extra) => { results.push({ name, ok, extra }); };
 
 const stamp = String(process.hrtime.bigint()).slice(-9);
-const TMP_EMAIL = `giaodien.${stamp}@thu-nghiem.vn`;
+const TMP_EMAIL = `interface.${stamp}@example-test.vn`;
 const TMP_PASS = 'Matkhau123';
 
 const browser = await launchChromium();
 const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, locale: 'vi-VN' });
 const page = await ctx.newPage();
-/* Bài test cố tình đăng nhập sai vài lần; 401/403/429 từ chính các endpoint auth là
-   kết quả mong đợi, không phải lỗi trang. Chỉ bắt lỗi JS và vi phạm CSP. */
+/* The test signs in wrongly on purpose; 401/403/429 from the auth endpoints are the
+   expected result, not a page fault. Catch only JS errors and CSP violations. */
 const EXPECTED = /Failed to load resource.*\b(401|403|429)\b/i;
 const errors = [];
 page.on('console', m => { if (m.type() === 'error' && !EXPECTED.test(m.text())) errors.push(m.text()); });
 page.on('pageerror', e => errors.push('PAGEERROR ' + e.message));
 
-/* Chờ theo KẾT CỤC, không chờ theo đồng hồ.
-   Bài test này từng đỏ oan hai lần trong ngày 2026-08-12 với đúng đoạn mã vừa
-   xanh vài phút trước. Nguyên nhân luôn là một câu waitForTimeout đoán trước:
-   máy tải nặng thì request chưa về, bài test đọc trạng thái cũ rồi đi tiếp, và
-   vỡ ở một chỗ cách đó vài dòng, chẳng liên quan gì. Lần đổi mật khẩu là ví dụ
-   rõ nhất — chờ 1200 ms không đủ, mật khẩu CŨ vẫn đăng nhập được, trang nhảy
-   vào trong, rồi lượt vào màn đăng nhập kế tiếp bị guard đá ra và Playwright
-   ngồi đợi hết 30 giây một ô #email không bao giờ tồn tại.
+/* Wait for the OUTCOME, never for the clock.
+   This suite went red twice on 2026-08-12 with code that had passed minutes
+   earlier. The cause was always a waitForTimeout guessed in advance: under load
+   the request had not landed, the test read stale state and carried on, then broke
+   a few lines later somewhere unrelated. The password change was the clearest
+   case — 1200 ms was not enough, the OLD password still signed in, the page went
+   inside, and the next visit to the sign-in screen was bounced by the guard while
+   Playwright sat out 30 seconds waiting for an #email that could not exist.
 
-   Nguyên tắc thay thế: chờ tới khi thao tác NGÃ NGŨ — xong hoặc lỗi — rồi mới
-   khẳng định nó ngã về bên nào. Chờ đúng cái mình sắp khẳng định thì phép kiểm
-   thành vô nghĩa; chờ "đã ngã ngũ" thì vẫn còn nguyên ý nghĩa mà hết chỗ đua. */
+   The replacement rule: wait until the operation has SETTLED — done or failed —
+   and only then assert which way it went. Waiting for exactly the thing you are
+   about to assert makes the assertion vacuous; waiting for "settled" does not. */
 const OUTCOME_MS = 15000;
 
-/** Chờ một trong các mốc kết cục hiện ra. Quá hạn thì trả null để phép kiểm
-    ngay sau đó báo đúng cái sai, thay vì ném TimeoutError ở giữa bài. */
+/** Wait for one of the outcome markers to appear. On timeout return null so the
+    check just after reports the real problem instead of throwing mid-suite. */
 const settle = (...selectors) => page
   .waitForSelector(selectors.join(', '), { timeout: OUTCOME_MS, state: 'visible' })
   .catch(() => null);
 
-/** Chờ đúng request mà một thao tác gây ra (bỏ qua GET, vì trang nào cũng có). */
+/** Wait for the request an action causes (skipping GET, which every page makes). */
 const posted = urlPart => page
   .waitForResponse(r => r.url().includes(urlPart) && r.request().method() !== 'GET',
     { timeout: OUTCOME_MS })
   .catch(() => null);
 
-/** Chờ rời khỏi một đường dẫn — dùng cho thao tác kết thúc bằng điều hướng. */
+/** Wait to leave a path — for actions that end in a navigation. */
 const leaves = part => page
   .waitForURL(u => !String(u).includes(part), { timeout: OUTCOME_MS })
   .catch(() => null);
@@ -64,182 +64,182 @@ const login = async (id, pw) => {
   const call = posted('/api/auth/login');
   await page.click('#submit');
   await call;
-  /* Đúng thì trang tự chuyển đi, sai thì hiện banner. Chờ tới khi một trong hai
-     xảy ra rồi mới trả về, nên người gọi luôn đọc được trạng thái đã xong. */
+  /* Right, and the page navigates away; wrong, and a banner appears. Wait until one
+     of the two happens, so the caller always reads a settled state. */
   await Promise.race([leaves('/dang-nhap/'), settle('#form-banner.show')]);
 };
-/* Đăng xuất bằng cách xoá cookie phiên — nhanh và chắc hơn bấm nút */
+/* Sign out by clearing the session cookie — faster and surer than clicking */
 const logout = () => ctx.clearCookies();
 
-/* ---------- 1. Đăng nhập sai ---------- */
-await login('student', 'sai-mat-khau');
-check('Sai mật khẩu bị chặn', page.url().includes('/dang-nhap/'), page.url());
-check('Hiện banner lỗi', await page.locator('#form-banner.show').isVisible());
+/* ---------- 1. Signing in wrongly ---------- */
+await login('student', 'wrong-password');
+check('A wrong password is blocked', page.url().includes('/dang-nhap/'), page.url());
+check('An error banner appears', await page.locator('#form-banner.show').isVisible());
 
-/* Tên không tồn tại phải KHÁC NHAU mỗi lượt chạy. Khoá chống dò mật khẩu đếm
-   theo cặp IP × tên đăng nhập: dùng mãi một tên thì sau năm lượt chạy nó bị
-   khoá, thông báo đổi thành "khoá 15 phút", và phép so bên dưới báo đỏ vì
-   chính bài test đã tự làm hỏng điều kiện của mình. Tài khoản `student` không
-   dính vì mỗi lượt nó đăng nhập đúng một lần, và đăng nhập đúng thì xoá bộ đếm. */
+/* The nonexistent username must DIFFER on every run. The brute-force lockout counts
+   per IP × username: reuse one name and after five runs it locks, the message turns
+   into "locked for 15 minutes", and the comparison below goes red because the test
+   broke its own precondition. The `student` account escapes this because each run
+   signs in correctly once, and a correct sign-in clears the counter. */
 const msgWrongPass = (await page.locator('#form-banner-text').textContent()).trim();
-await login('khongaico' + stamp, 'Goodmorning01');
+await login('nobody' + stamp, 'Goodmorning01');
 const msgWrongUser = (await page.locator('#form-banner-text').textContent()).trim();
-check('Thông báo lỗi không tiết lộ tài khoản tồn tại', msgWrongUser === msgWrongPass, msgWrongUser);
+check('The error message does not reveal whether the account exists', msgWrongUser === msgWrongPass, msgWrongUser);
 
-/* ---------- 2. Guard phía server ---------- */
+/* ---------- 2. The server-side guard ---------- */
 await logout();
 const guarded = await page.goto(BASE + '/prep/thu-vien/', { waitUntil: 'networkidle' });
-check('Trang cần đăng nhập bị đá về màn đăng nhập', page.url().includes('/prep/dang-nhap/'), page.url());
-check('Giữ lại đích đến trong tham số next', page.url().includes('next='), page.url());
-check('Không trả 200 cho trang bị chặn', guarded.status() === 200 && page.url().includes('dang-nhap'), String(guarded.status()));
+check('A page needing sign-in bounces to the sign-in screen', page.url().includes('/prep/dang-nhap/'), page.url());
+check('The destination is kept in the next parameter', page.url().includes('next='), page.url());
+check('A blocked page never answers 200', guarded.status() === 200 && page.url().includes('dang-nhap'), String(guarded.status()));
 
-/* ---------- 3. Đăng nhập đúng ---------- */
+/* ---------- 3. Signing in properly ---------- */
 await login('student', 'Goodmorning01');
-check('Đăng nhập thành công vào dashboard', page.url().endsWith('/prep/'), page.url());
-/* Chờ dashboard vẽ xong TRƯỚC khi đọc bất cứ thứ gì trên nó. Lưới bài để hidden
-   cho tới khi có thẻ, không có bài nào thì hiện #mytests-empty, nên một trong
-   hai lộ ra nghĩa là dữ liệu đã về và trang đã dựng.
-   Riêng ô tên phải chờ vì trong HTML nó có sẵn chữ "Student" làm chỗ giữ chỗ,
-   và tên thật chỉ ghi đè sau khi /api/me trả lời. Đọc sớm thì đọc trúng chỗ
-   giữ chỗ — phép kiểm đỏ vì bài test nhanh tay, không vì sản phẩm sai. */
+check('Signing in reaches the dashboard', page.url().endsWith('/prep/'), page.url());
+/* Wait for the dashboard to finish drawing BEFORE reading anything on it. The
+   tests grid stays hidden until it has cards, and with no tests #mytests-empty
+   appears, so one of the two showing means the page is built.
+   The name box especially: the HTML ships with the literal "Student" as a
+   placeholder, overwritten only once /api/me answers. Read too early and you read
+   the placeholder — red because the test was quick, not the product wrong. */
 await settle('#mytests-grid', '#mytests-empty');
 const name = (await page.locator('#greet-name').textContent()).trim();
-check('Hiện đúng tên học viên', name === 'Demo Student', name);
+check('The student name is right', name === 'Demo Student', name);
 const unlocked = await page.locator('#mytests-grid article').count();
-check('Có 1 bài đã mở khoá sẵn (từ code trong CSDL)', unlocked === 1, 'đếm được ' + unlocked);
+check('One test is already unlocked (from a code in the database)', unlocked === 1, 'counted ' + unlocked);
 
-/* Đã đăng nhập thì màn đăng nhập chuyển thẳng vào trong */
+/* Signed in, the sign-in screen goes straight inside */
 await page.goto(BASE + '/prep/dang-nhap/', { waitUntil: 'networkidle' });
-check('Đã đăng nhập thì không xem màn đăng nhập nữa', page.url().endsWith('/prep/'), page.url());
+check('Signed in, the sign-in screen is not shown again', page.url().endsWith('/prep/'), page.url());
 
-/* ---------- 4. Đăng nhập bằng email ---------- */
+/* ---------- 4. Signing in by email ---------- */
 await logout();
 await login('student@vpetprep.vn', 'Goodmorning01');
-check('Đăng nhập được bằng email', page.url().endsWith('/prep/'), page.url());
+check('Signing in by email works', page.url().endsWith('/prep/'), page.url());
 
-/* ---------- 5. Kích hoạt code còn hiệu lực qua đăng nhập lại ---------- */
+/* ---------- 5. Redeeming a live code, then signing in again ---------- */
 await page.goto(BASE + '/prep/nhap-code/', { waitUntil: 'networkidle' });
 await page.fill('#code', 'IELT-AC12-96HD');
 const redeemed = posted('/api/redeem');
 await page.click('#submit');
 await redeemed;
 await settle('#success-box', '#code-err.show');
-check('Kích hoạt code: màn hình đi tới trạng thái thành công',
+check('Redeeming a code: the screen reaches the success state',
   await page.locator('#success-box').isVisible());
-/* CSDL không được dựng lại giữa các lần chạy, nên lần chạy đầu là "vừa mở
-   khoá" còn những lần sau là "mã này bạn đã kích hoạt rồi". Cả hai đều đúng và
-   đều phải dẫn tới màn thành công — cái sai duy nhất là báo nhầm giữa hai
-   trạng thái, nên kiểm chính chữ hiện ra chứ không chỉ kiểm hộp có hiện. */
+/* The database is not rebuilt between runs, so the first run is "just unlocked" and
+   later ones are "you have already redeemed this code". Both are correct and both
+   must reach the success screen — the only wrong outcome is reporting one as the
+   other, so check the actual wording rather than just that the box appeared. */
 const okTitle = (await page.locator('#ok-title').textContent()).trim();
-check('Nói đúng việc vừa xảy ra: mở khoá mới, hoặc mã đã có hiệu lực từ trước',
+check('It says the right thing: newly unlocked, or already active',
   okTitle === 'Unlocked.' || okTitle === 'This code is already active', okTitle);
-check('Không hiện lỗi khi kích hoạt thành công',
+check('No error is shown on a successful redemption',
   !(await page.locator('#code-err').evaluate(el => el.classList.contains('show'))));
 
 await logout();
 await login('student', 'Goodmorning01');
 await settle('#mytests-grid', '#mytests-empty');
 const afterRelogin = await page.locator('#mytests-grid article').count();
-/* Code này mở khoá cả kỳ IELTS, mà IELTS đang ở trạng thái chưa sẵn sàng nên
-   không có đề nào đã phát hành. Quyền vẫn được ghi nhận — người đã mua không
-   bị mất — nhưng chưa có bài nào hiện ra. Ngày mở IELTS thì chúng xuất hiện. */
-check('Kích hoạt code kỳ thi đang park: quyền được giữ nhưng chưa có bài nào hiện ra',
-  afterRelogin === 1, 'đếm được ' + afterRelogin);
+/* This code unlocks the whole IELTS family, and IELTS is parked so it has no
+   published tests. The right is still recorded — someone who paid does not lose it
+   — but nothing appears yet. The day IELTS opens, they show up. */
+check('Redeeming a parked family: the right is kept but no test appears yet',
+  afterRelogin === 1, 'counted ' + afterRelogin);
 const codeStillThere = await page.evaluate(() =>
   (PrepState.load().myCodes || []).some(c => String(c.code).startsWith('IELT-')));
-check('Code đã kích hoạt vẫn nằm trong tài khoản, không bị mất', codeStillThere === true);
+check('A redeemed code stays on the account rather than vanishing', codeStillThere === true);
 
-/* ---------- 6. Đăng xuất bằng nút trên màn Tài khoản ---------- */
+/* ---------- 6. Signing out with the button on the Account screen ---------- */
 await page.goto(BASE + '/prep/tai-khoan/', { waitUntil: 'networkidle' });
 await page.click('#logout-btn');
 await page.waitForURL('**/prep/landing/', { timeout: 8000 }).catch(() => {});
-check('Nút đăng xuất đưa về trang giới thiệu', page.url().includes('/prep/landing/'), page.url());
+check('The sign-out button returns to the landing page', page.url().includes('/prep/landing/'), page.url());
 await page.goto(BASE + '/prep/', { waitUntil: 'networkidle' });
-check('Sau đăng xuất không vào được khu học viên', page.url().includes('/dang-nhap/'), page.url());
+check('After signing out the student area is closed', page.url().includes('/dang-nhap/'), page.url());
 
-/* ---------- 7. Đăng ký tài khoản mới qua giao diện ---------- */
+/* ---------- 7. Registering a new account through the interface ---------- */
 await page.goto(BASE + '/prep/dang-ky/', { waitUntil: 'networkidle' });
-await page.fill('#name', 'Người Thử Giao Diện');
+await page.fill('#name', 'Interface Test Person');
 await page.fill('#email', TMP_EMAIL);
 await page.fill('#password', 'yeu');
 await page.check('#terms');
 const leaked = posted('/api/auth/register');
 await page.click('#submit');
 await Promise.race([settle('#err-password.show'), leaked]);
-check('Chặn mật khẩu không đạt yêu cầu ngay ở client', await page.locator('#err-password.show').isVisible());
+check('A password failing the rules is blocked client-side', await page.locator('#err-password.show').isVisible());
 
 await page.fill('#password', TMP_PASS);
 await page.click('#submit');
 await page.waitForURL('**/prep/xac-thuc-email/**', { timeout: 8000 }).catch(() => {});
-check('Đăng ký xong sang màn xác thực email', page.url().includes('/xac-thuc-email/'), page.url());
+check('Registration moves on to the email verification screen', page.url().includes('/xac-thuc-email/'), page.url());
 await settle('#dev-link');
-check('Bản chạy thử hiện liên kết xác thực', await page.locator('#dev-link').isVisible());
+check('The development build shows the verification link', await page.locator('#dev-link').isVisible());
 
-/* Bấm liên kết xác thực → trạng thái đã xác thực */
+/* Click the verification link → verified state */
 await page.click('#dev-link-a');
 await settle('#verify-result');
-check('Xác thực email thành công', await page.locator('#verify-result').isVisible());
+check('Email verification succeeds', await page.locator('#verify-result').isVisible());
 
-/* ---------- 7b. Phân quyền: tài khoản chưa có gói nào ----------
-   Tài khoản vừa đăng ký chưa nhập code nào nên không có quyền gì. Đây là chỗ
-   duy nhất trong bộ test có một tài khoản "trắng", nên cũng là chỗ duy nhất
-   kiểm được phần bị khoá. Kiểm cả hai lớp: máy chủ có chặn thật không, và
-   giao diện có làm mờ đúng chỗ không. */
+/* ---------- 7b. Permissions: an account with no plan ----------
+   A freshly registered account has redeemed no code, so it holds no rights. This is
+   the only "blank" account in the suite, and therefore the only place the locked
+   state can be checked. Check both layers: does the server really block it, and
+   does the interface dim the right things. */
 await page.goto(BASE + '/prep/hoc/tu-noi/', { waitUntil: 'networkidle' });
-check('Chưa có gói thì khu tự học bị máy chủ chặn, đá sang bảng giá',
+check('With no plan the server blocks self-study and redirects to the price list',
   page.url().includes('/prep/mua-code/') && page.url().includes('locked=self-study'), page.url());
 await settle('#locked-note', '#pkg-grid article');
-check('Bảng giá nói rõ vì sao vừa bị đá sang đây',
+check('The price list says why you were just sent here',
   await page.locator('#locked-note').isVisible());
-check('Bảng giá liệt kê đủ ba gói',
+check('The price list shows all three plans',
   await page.locator('#pkg-grid article').count() === 3,
-  'đếm được ' + (await page.locator('#pkg-grid article').count()));
-check('Mục Tự học trên thanh điều hướng bị làm mờ, không dẫn thẳng vào khu tự học',
+  'counted ' + (await page.locator('#pkg-grid article').count()));
+check('The Self-study nav item is dimmed and does not lead straight in',
   await page.locator('.nav-item.is-locked[href*="locked=self-study"]').count() === 1);
 
-/* Tài khoản demo có gói Plus nên KHÔNG được khoá — nếu làm mờ cả người đã trả
-   tiền thì lỗi này im lặng và rất khó thấy. */
+/* The demo account holds a Plus plan and must NOT be locked — dimming things for
+   someone who has paid is a fault that stays silent and is very hard to spot. */
 await logout();
 await login('student', 'Goodmorning01');
 await page.goto(BASE + '/prep/hoc/tu-noi/', { waitUntil: 'networkidle' });
-check('Có gói Plus thì vào thẳng khu tự học', page.url().includes('/prep/hoc/tu-noi/'), page.url());
+check('With a Plus plan self-study opens directly', page.url().includes('/prep/hoc/tu-noi/'), page.url());
 await settle('.nav-item');
-check('Có quyền thì không mục nào bị làm mờ',
+check('With the right, nothing is dimmed',
   await page.locator('.nav-item.is-locked').count() === 0);
 await logout();
 await login(TMP_EMAIL, TMP_PASS);
 
-/* ---------- 8. Đổi mật khẩu trên tài khoản dùng một lần ---------- */
+/* ---------- 8. Changing the password on the throwaway account ---------- */
 await page.goto(BASE + '/prep/tai-khoan/', { waitUntil: 'networkidle' });
 await page.click('#tab-security');
-await page.fill('#cur-pass', 'sai-roi');
+await page.fill('#cur-pass', 'wrong-one');
 await page.fill('#new-pass', 'Matkhaumoi456');
 await page.fill('#re-pass', 'Matkhaumoi456');
 let passCall = posted('/api/me/password');
 await page.click('#pass-save');
 await passCall;
 await settle('#pass-err.show', '#pass-ok.show');
-check('Đổi mật khẩu: chặn khi mật khẩu hiện tại sai', await page.locator('#pass-err.show').isVisible());
+check('Password change: blocked when the current password is wrong', await page.locator('#pass-err.show').isVisible());
 
 await page.fill('#cur-pass', TMP_PASS);
 await page.fill('#new-pass', 'Matkhaumoi456');
 await page.fill('#re-pass', 'Matkhaumoi456');
-/* Chờ chính lời đáp của máy chủ. Đây là chỗ đã gây ra cả hai lần đỏ oan: đi
-   tiếp trước khi mật khẩu đổi xong thì mật khẩu cũ ngay dưới đây vẫn đăng nhập
-   được, và bài test vỡ ở một chỗ khác hẳn. */
+/* Wait for the server's own answer. This is what caused both false reds: carry on
+   before the change has landed and the old password just below still signs in, and
+   the suite breaks somewhere else entirely. */
 passCall = posted('/api/me/password');
 await page.click('#pass-save');
 await passCall;
 await settle('#pass-ok.show', '#pass-err.show');
-check('Đổi mật khẩu thành công', await page.locator('#pass-ok.show').isVisible());
+check('The password change succeeds', await page.locator('#pass-ok.show').isVisible());
 
 await logout();
 await login(TMP_EMAIL, TMP_PASS);
-check('Mật khẩu cũ hết hiệu lực', page.url().includes('/dang-nhap/'), page.url());
+check('The old password stops working', page.url().includes('/dang-nhap/'), page.url());
 await login(TMP_EMAIL, 'Matkhaumoi456');
-check('Mật khẩu mới đăng nhập được', page.url().endsWith('/prep/'), page.url());
+check('The new password signs in', page.url().endsWith('/prep/'), page.url());
 
-/* ---------- 9. Quên và đặt lại mật khẩu ---------- */
+/* ---------- 9. Forgotten and reset password ---------- */
 await logout();
 await page.goto(BASE + '/prep/quen-mat-khau/', { waitUntil: 'networkidle' });
 await page.fill('#email', TMP_EMAIL);
@@ -247,90 +247,90 @@ const forgot = posted('/api/auth/forgot');
 await page.click('#submit');
 await forgot;
 await settle('#step-done', '#form-banner.show');
-check('Gửi yêu cầu đặt lại thành công', await page.locator('#step-done').isVisible());
-/* #dev-link hiện sau #step-done một nhịp, nên phải chờ riêng nó. Chờ kết cục
-   của thao tác rồi tưởng mọi thứ trên trang đã xong là cách bỏ chờ cứng mà vẫn
-   giữ nguyên chỗ đua — đúng lỗi bản sửa đầu tiên của mục này mắc phải. */
+check('The reset request succeeds', await page.locator('#step-done').isVisible());
+/* #dev-link appears a beat after #step-done, so it needs its own wait. Waiting for
+   the outcome of an action and assuming everything else on the page is done too is
+   how you drop a fixed wait and keep the race — the mistake the first fix here made. */
 await settle('#dev-link');
-check('Bản chạy thử hiện liên kết đặt lại', await page.locator('#dev-link').isVisible());
+check('The development build shows the reset link', await page.locator('#dev-link').isVisible());
 
 await page.click('#dev-link-a');
 await page.waitForURL('**/prep/dat-lai-mat-khau/**', { timeout: 8000 }).catch(() => {});
-check('Mở được màn đặt lại mật khẩu', page.url().includes('/dat-lai-mat-khau/'), page.url());
+check('The reset screen opens', page.url().includes('/dat-lai-mat-khau/'), page.url());
 await page.fill('#password', 'Datlai789');
 await page.fill('#repass', 'Datlai78x');
 const leakedReset = posted('/api/auth/reset');
 await page.click('#submit');
 await Promise.race([settle('#err-repass.show'), leakedReset]);
-check('Chặn khi hai mật khẩu chưa khớp', await page.locator('#err-repass.show').isVisible());
+check('Blocked while the two passwords differ', await page.locator('#err-repass.show').isVisible());
 
 await page.fill('#repass', 'Datlai789');
 const reset = posted('/api/auth/reset');
 await page.click('#submit');
 await reset;
 await settle('#step-done', '#form-banner.show');
-check('Đặt lại mật khẩu thành công', await page.locator('#step-done').isVisible());
+check('The password reset succeeds', await page.locator('#step-done').isVisible());
 
 await login(TMP_EMAIL, 'Datlai789');
-check('Đăng nhập bằng mật khẩu vừa đặt lại', page.url().endsWith('/prep/'), page.url());
+check('Signing in with the freshly reset password', page.url().endsWith('/prep/'), page.url());
 
-/* Thiếu token thì báo liên kết không hợp lệ, không hiện form */
+/* With no token, report an invalid link rather than showing the form */
 await page.goto(BASE + '/prep/dat-lai-mat-khau/', { waitUntil: 'networkidle' });
-check('Liên kết đặt lại thiếu mã thì báo không hợp lệ', await page.locator('#step-invalid').isVisible());
+check('A reset link with no token reports itself invalid', await page.locator('#step-invalid').isVisible());
 
-/* ---------- 10. Nút điền sẵn tài khoản demo ---------- */
+/* ---------- 10. The demo-account prefill button ---------- */
 await logout();
 await page.goto(BASE + '/prep/dang-nhap/', { waitUntil: 'networkidle' });
 await page.click('#fill-demo');
-check('Nút điền sẵn hoạt động',
+check('The prefill button works',
   (await page.inputValue('#email')) === 'student' && (await page.inputValue('#password')) === 'Goodmorning01');
 const demoCall = posted('/api/auth/login');
 await page.click('#submit');
 await demoCall;
 await Promise.race([leaves('/dang-nhap/'), settle('#form-banner.show')]);
-check('Tài khoản demo vẫn đăng nhập được sau toàn bộ bài test', page.url().endsWith('/prep/'), page.url());
+check('The demo account still signs in after the whole suite', page.url().endsWith('/prep/'), page.url());
 
 /* ---------------- PWA ----------------
-   Ba câu hỏi: cài đặt được không, service worker có chạy không, và — quan
-   trọng nhất — nó có cache nhầm thứ không được cache không. Bộ nhớ đệm trên
-   máy dùng chung là chỗ đáp án đề thi rò ra. */
+   Three questions: can it be installed, does the service worker run, and — most
+   important — does it cache anything it must not. A cache on a shared machine is
+   where exam answers leak out. */
 {
   const mres = await fetch(BASE + '/manifest.webmanifest');
   const mtype = mres.headers.get('content-type') || '';
   const man = await mres.json().catch(() => null);
-  check('Manifest phục vụ đúng kiểu nội dung', mres.status === 200 && mtype.includes('manifest+json'), mtype);
-  check('Manifest đủ trường để Chrome cho cài',
+  check('The manifest is served with the right content type', mres.status === 200 && mtype.includes('manifest+json'), mtype);
+  check('The manifest has the fields Chrome needs to offer installation',
     !!man && man.name && man.start_url && man.display === 'standalone' &&
     (man.icons || []).some(i => /(^|\s)512x512(\s|$)/.test(i.sizes)) &&
     (man.icons || []).some(i => String(i.purpose).includes('maskable')),
     JSON.stringify(man && man.icons));
 
   const swres = await fetch(BASE + '/sw.js');
-  check('Service worker phục vụ ở gốc với phạm vi toàn site',
+  check('The service worker is served at the root with site-wide scope',
     swres.status === 200 && swres.headers.get('service-worker-allowed') === '/',
     'status ' + swres.status);
 
   for (const icon of ['icon-192', 'icon-512', 'maskable-512']) {
     const r = await fetch(BASE + '/icons/' + icon + '.png');
-    check('Icon ' + icon + ' tải được', r.status === 200 && (r.headers.get('content-type') || '').includes('image/png'));
+    check('Icon ' + icon + ' loads', r.status === 200 && (r.headers.get('content-type') || '').includes('image/png'));
   }
 
   const off = await fetch(BASE + '/prep/offline/');
-  check('Trang offline mở được khi chưa đăng nhập', off.status === 200, 'status ' + off.status);
+  check('The offline page opens while signed out', off.status === 200, 'status ' + off.status);
 
-  /* Chạy trong ngữ cảnh riêng: đăng ký service worker rồi soi đúng những gì
-     nó đã cache. */
+  /* In a context of its own: register the service worker, then inspect exactly what
+     it has cached. */
   const swCtx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
   const swPage = await swCtx.newPage();
   await swPage.goto(BASE + '/prep/landing/', { waitUntil: 'load' });
   const ready = await swPage.evaluate(() =>
     navigator.serviceWorker.ready.then(r => !!r.active).catch(() => false));
-  check('Service worker đăng ký và hoạt động', ready === true, String(ready));
+  check('The service worker registers and activates', ready === true, String(ready));
 
   await swPage.goto(BASE + '/prep/landing/', { waitUntil: 'load' });
-  /* Chờ service worker nạp xong bộ nhớ đệm. Đây là bước chuẩn bị, không phải
-     phép kiểm: hai phép kiểm đáng giá ngay dưới là "không cache /api" và
-     "không cache trang HTML nào ngoài trang offline". */
+  /* Wait for the service worker to fill its cache. This is setup, not a check: the
+     two checks worth having just below are "nothing under /api is cached" and
+     "no HTML page but the offline one is cached". */
   await swPage.waitForFunction(async () => (await caches.keys()).length > 0,
     null, { timeout: 15000 }).catch(() => {});
   const cached = await swPage.evaluate(async () => {
@@ -342,11 +342,11 @@ check('Tài khoản demo vẫn đăng nhập được sau toàn bộ bài test',
     }
     return urls;
   });
-  check('Có cache vỏ ứng dụng để dùng offline', cached.length > 0, String(cached.length));
-  check('Không cache bất cứ thứ gì dưới /api — đáp án đề thi không nằm trong bộ nhớ đệm',
+  check('An app shell is cached for offline use', cached.length > 0, String(cached.length));
+  check('Nothing under /api is cached — exam answers never sit in the cache',
     !cached.some(u => new URL(u).pathname.startsWith('/api/')),
     cached.filter(u => u.includes('/api/'))[0] || '');
-  check('Không cache trang HTML nào ngoài trang offline',
+  check('No HTML page but the offline one is cached',
     cached.every(u => {
       const p = new URL(u).pathname;
       return p === '/prep/offline/' || /\.[a-z0-9]+$/i.test(p);
@@ -357,11 +357,11 @@ check('Tài khoản demo vẫn đăng nhập được sau toàn bộ bài test',
 
 await browser.close();
 
-check('Không có lỗi console / CSP', errors.length === 0, errors[0] || '');
+check('No console / CSP errors', errors.length === 0, errors[0] || '');
 let failed = 0;
 for (const r of results) {
   console.log((r.ok ? '✓ ' : '✗ ') + r.name + (r.ok || !r.extra ? '' : '  → ' + r.extra));
   if (!r.ok) failed++;
 }
-console.log(failed ? `\n${failed}/${results.length} kiểm thử THẤT BẠI` : `\n${results.length}/${results.length} kiểm thử đạt`);
+console.log(failed ? `\n${failed}/${results.length} checks FAILED` : `\n${results.length}/${results.length} checks passed`);
 process.exitCode = failed ? 1 : 0;

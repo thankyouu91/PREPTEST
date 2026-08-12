@@ -1,11 +1,11 @@
 /**
- * Kiểm thử engine làm bài: vòng đời một lượt thi.
+ * Exam engine: the life cycle of one sitting.
  *
- * Chạy khi server đã bật: node scripts/test-exam.mjs
- * Không dùng trình duyệt — fetch thuần, tự giữ cookie.
+ * Run with the server up: node scripts/test-exam.mjs
+ * No browser — plain fetch, keeping its own cookies.
  *
- * Trọng tâm là những thứ KHÔNG được tin vào trình duyệt: đồng hồ từng phần,
- * số lần nghe lại, hạn mức lượt thi, và việc đáp án không bao giờ đi ra ngoài.
+ * The focus is everything that must NOT be trusted to a browser: the per-part
+ * clock, the replay count, the sitting quota, and answers never going out.
  */
 import { chromium } from 'playwright-core';
 import { launchOptions } from './_browser.mjs';
@@ -20,7 +20,7 @@ const ok = (c, name, detail) => {
 };
 const head = t => console.log('\n\x1b[1m== ' + t + ' ==\x1b[0m');
 
-/** Một "trình duyệt" nhỏ: nhớ cookie, tự gắn CSRF */
+/** A small "browser": remembers cookies, attaches CSRF itself */
 function client() {
   const jar = new Map();
   const readSetCookie = r => {
@@ -36,11 +36,11 @@ function client() {
   return {
     jar,
     async req(method, path, body, extra) {
-      /* Chưa có prep_csrf thì xin một cái: máy chủ cấp cookie ấy khi phục vụ bất
-         kỳ trang HTML nào, kể cả cho khách chưa đăng nhập. Làm ở ngay đây chứ
-         không bắt từng chỗ gọi phải nhớ — quên một chỗ là một cái 403 khó hiểu.
-         Đây cũng đúng những gì trình duyệt làm: mở trang rồi mới gửi được biểu
-         mẫu. Dùng trang landing vì nó không có guard chuyển hướng nào. */
+      /* No prep_csrf yet, so ask for one: the server mints that cookie whenever it
+         serves an HTML page, guests included. Done here rather than making every
+         call site remember — forget one and you get a baffling 403. It is also
+         exactly what a browser does: load a page before you can submit a form.
+         The landing page is used because it carries no redirect guard. */
       if (method !== 'GET' && !jar.has('prep_csrf')) await this.req('GET', '/prep/landing/');
       const headers = Object.assign({ Accept: 'application/json' }, extra || {});
       if (jar.size) headers.Cookie = [...jar].map(([k, v]) => k + '=' + encodeURIComponent(v)).join('; ');
@@ -62,8 +62,8 @@ function client() {
   };
 }
 
-/* Một MP3 hợp lệ tối thiểu: tag ID3 rồi một frame header. Đủ để qua vòng sniff
-   của storage mà không phải kèm tệp nhị phân vào repo. */
+/* A minimal valid MP3: an ID3 tag then a frame header. Enough to pass storage's
+   sniff without committing a binary file to the repository. */
 function fakeMp3() {
   const buf = Buffer.alloc(2048);
   buf.write('ID3', 0, 'latin1');
@@ -71,7 +71,7 @@ function fakeMp3() {
   buf[10] = 0xFF; buf[11] = 0xFB;
   return new Uint8Array(buf);
 }
-/* WebM: bốn byte EBML mở đầu — đúng thứ MediaRecorder của trình duyệt sinh ra */
+/* WebM: the four opening EBML bytes — exactly what a browser's MediaRecorder emits */
 function fakeWebm() {
   const buf = Buffer.alloc(1024);
   buf[0] = 0x1A; buf[1] = 0x45; buf[2] = 0xDF; buf[3] = 0xA3;
@@ -82,13 +82,13 @@ const admin = client();
 const student = client();
 
 try {
-  /* ---------- Dựng một đề có thật để thi ---------- */
-  head('Chuẩn bị đề kiểm thử');
+  /* ---------- Build a real paper to sit ---------- */
+  head('Preparing the test paper');
   await admin.req('GET', '/api/me');
   let r = await admin.req('POST', '/api/admin/login', { username: 'admin', password: process.env.ADMIN_PASSWORD || 'Admin@123456' });
-  ok(r.status === 200, 'Đăng nhập quản trị', 'status ' + r.status);
+  ok(r.status === 200, 'Administrator sign-in', 'status ' + r.status);
 
-  /* Hai câu Nghe có audio + một câu Viết, đủ để thử đồng hồ, nghe lại và ghi âm */
+  /* Two Listening items with audio + one Writing item: enough for the clock, replays and recording */
   const made = [];
   for (let i = 0; i < 2; i++) {
     r = await admin.req('POST', '/api/admin/questions', {
@@ -97,253 +97,253 @@ try {
       options: ['Yes, of course.', 'It is blue.', 'At six.', 'By bus.'],
       answer: 'Yes, of course.'
     });
-    ok(r.status === 201, 'Tạo câu nghe ' + (i + 1), 'status ' + r.status);
+    ok(r.status === 201, 'Creates listening item ' + (i + 1), 'status ' + r.status);
     made.push(r.data.id);
     const up = await admin.req('POST', '/api/admin/questions/' + r.data.id + '/audio', fakeMp3(),
       { 'Content-Type': 'audio/mpeg' });
-    ok(up.status === 201 || up.status === 200, 'Gắn MP3 cho câu nghe ' + (i + 1), 'status ' + up.status);
+    ok(up.status === 201 || up.status === 200, 'Attaches an MP3 to listening item ' + (i + 1), 'status ' + up.status);
   }
   r = await admin.req('POST', '/api/admin/questions', {
     familyId: 'vpet', skill: 'speaking', level: 'B1', type: 'speaking', part: 'I',
     prompt: 'Engine test speaking item — respond to the situation.'
   });
-  ok(r.status === 201, 'Tạo câu nói', 'status ' + r.status);
+  ok(r.status === 201, 'Creates the speaking item', 'status ' + r.status);
   const speakQ = r.data.id;
 
   r = await admin.req('POST', '/api/admin/tests', {
-    familyId: 'vpet', title: 'Đề kiểm thử engine', level: 'B1', durationMin: 10
+    familyId: 'vpet', title: 'Engine test paper', level: 'B1', durationMin: 10
   });
   const testId = r.data.id;
-  ok(!!testId, 'Tạo đề kiểm thử', String(testId));
+  ok(!!testId, 'Creates the test paper', String(testId));
 
-  /* Phần Nghe có đồng hồ 1 phút; phần Nói để 0 phút = không giới hạn giờ */
+  /* The Listening part has a 1-minute clock; the Speaking part is 0 minutes = untimed */
   r = await admin.req('POST', '/api/admin/tests/' + testId + '/sections', {
-    name: 'Part F - Response Selection', skill: 'listening', type: 'Trắc nghiệm', minutes: 1, part: 'F'
+    name: 'Part F - Response Selection', skill: 'listening', type: 'Multiple choice', minutes: 1, part: 'F'
   });
   const secListen = r.data.id;
   r = await admin.req('POST', '/api/admin/tests/' + testId + '/sections', {
-    name: 'Part I - Speaking Situations', skill: 'speaking', type: 'Ghi âm', minutes: 0, part: 'I'
+    name: 'Part I - Speaking Situations', skill: 'speaking', type: 'Recording', minutes: 0, part: 'I'
   });
   const secSpeak = r.data.id;
   await admin.req('POST', '/api/admin/sections/' + secListen + '/items', { questionIds: made });
   await admin.req('POST', '/api/admin/sections/' + secSpeak + '/items', { questionIds: [speakQ] });
   r = await admin.req('POST', '/api/admin/tests/' + testId + '/status', { status: 'published' });
-  ok(r.status === 200, 'Phát hành đề kiểm thử', JSON.stringify(r.data));
+  ok(r.status === 200, 'Publishes the test paper', JSON.stringify(r.data));
 
-  /* ---------- Bắt đầu một lượt thi ---------- */
-  head('Bắt đầu lượt thi');
+  /* ---------- Starting a sitting ---------- */
+  head('Starting a sitting');
   await student.req('GET', '/api/me');
   r = await student.req('POST', '/api/auth/login', { username: 'student', password: 'Goodmorning01' });
-  ok(r.status === 200, 'Đăng nhập học viên', 'status ' + r.status);
+  ok(r.status === 200, 'Student sign-in', 'status ' + r.status);
 
-  /* CSDL không dựng lại giữa các lần chạy: một lượt bỏ dở của lần trước sẽ chặn
-     lần này. Dọn trước rồi mới thi, để bài test đo engine chứ không đo rác. */
+  /* The database is not rebuilt between runs: an abandoned sitting from last time
+     blocks this one. Clear it first, so the test measures the engine, not leftovers. */
   const leftover = await student.req('GET', '/api/attempts/current');
   if (leftover.data && leftover.data.attempt) {
     await student.req('POST', '/api/attempts/' + leftover.data.attempt.id + '/submit');
   }
 
   r = await student.req('POST', '/api/attempts', { testId });
-  ok(r.status === 201 && r.data.attempt, 'Mở được lượt thi mới', JSON.stringify(r.data).slice(0, 120));
+  ok(r.status === 201 && r.data.attempt, 'A new sitting opens', JSON.stringify(r.data).slice(0, 120));
   const att = r.data.attempt;
   const attemptId = att.id;
 
-  ok(att.parts.length === 2, 'Lượt thi có đủ hai phần', 'thấy ' + att.parts.length);
+  ok(att.parts.length === 2, 'The sitting has both parts', 'saw ' + att.parts.length);
   const pF = att.parts.find(p => p.part === 'F');
   const pI = att.parts.find(p => p.part === 'I');
-  ok(!!pF && !!pI, 'Hai phần mang đúng chữ cái của chúng');
-  ok(pF.items.length === 2, 'Phần F có đủ 2 câu', String(pF.items.length));
+  ok(!!pF && !!pI, 'Both parts carry their own letter');
+  ok(pF.items.length === 2, 'Part F holds its 2 items', String(pF.items.length));
 
-  /* Đáp án không bao giờ được đi ra ngoài — đây là điều dễ để lọt nhất và cũng
-     là điều hỏng nặng nhất nếu lọt. */
+  /* Answers must never go out — the easiest thing to leak and the most damaging
+     if it does. */
   const raw = JSON.stringify(att);
-  ok(!/"answer":"Yes, of course\."/.test(raw), 'Đáp án đúng KHÔNG có trong dữ liệu gửi về trình duyệt');
-  ok(!/explanation/.test(raw), 'Giải thích cũng không gửi kèm');
+  ok(!/"answer":"Yes, of course\."/.test(raw), 'The correct answer is NOT in what the browser receives');
+  ok(!/explanation/.test(raw), 'Nor is the explanation');
   ok(pF.items.every(i => Array.isArray(i.options) && i.options.length === 4),
-    'Phương án vẫn gửi về (cần để hiện lên màn hình)');
+    'The options are still sent (they have to be rendered)');
 
-  /* Mở bài khác khi còn bài dở phải bị chặn, nếu không bài đang làm biến mất */
+  /* Opening another paper while one is unfinished must be blocked, or the one in progress vanishes */
   r = await student.req('POST', '/api/attempts', { testId: 'vpet-b1-01' });
-  ok(r.status === 409, 'Không cho mở bài khác khi còn bài chưa nộp', 'status ' + r.status);
+  ok(r.status === 409, 'Cannot open another paper while one is unsubmitted', 'status ' + r.status);
 
   r = await student.req('POST', '/api/attempts', { testId });
-  ok(r.status === 200 && r.data.resumed === true, 'Mở lại đúng bài đang dở thì nối tiếp, không tạo lượt mới');
+  ok(r.status === 200 && r.data.resumed === true, 'Reopening the unfinished one resumes it rather than starting a new sitting');
 
-  /* ---------- Đồng hồ từng phần ---------- */
-  head('Đồng hồ từng phần');
+  /* ---------- The per-part clock ---------- */
+  head('The per-part clock');
   r = await student.req('PATCH', '/api/attempts/' + attemptId + '/answers',
     { answers: [{ questionId: made[0], answer: 'Yes, of course.' }] });
   ok(r.data.rejected.length === 1 && r.data.rejected[0].reason === 'part-closed',
-    'Chưa vào phần thì chưa lưu được đáp án', JSON.stringify(r.data));
+    'No answer can be saved before entering the part', JSON.stringify(r.data));
 
   r = await student.req('POST', '/api/attempts/' + attemptId + '/parts/' + secListen + '/start');
   ok(r.status === 200 && r.data.secondsLeft > 0 && r.data.secondsLeft <= 60,
-    'Vào phần F thì đồng hồ chạy đúng số phút đã khai', JSON.stringify(r.data));
+    'Entering part F starts a clock of exactly the declared minutes', JSON.stringify(r.data));
   const firstEnds = r.data.endsAt;
 
   r = await student.req('POST', '/api/attempts/' + attemptId + '/parts/' + secListen + '/start');
-  ok(r.data.endsAt === firstEnds, 'Vào lại phần đang mở KHÔNG được cấp đồng hồ mới', r.data.endsAt);
+  ok(r.data.endsAt === firstEnds, 'Re-entering an open part does NOT grant a fresh clock', r.data.endsAt);
 
   r = await student.req('PATCH', '/api/attempts/' + attemptId + '/answers',
     { answers: [{ questionId: made[0], answer: 'Yes, of course.' }] });
-  ok(r.data.saved.length === 1 && !r.data.rejected.length, 'Phần đang mở thì lưu được đáp án',
+  ok(r.data.saved.length === 1 && !r.data.rejected.length, 'An open part accepts answers',
     JSON.stringify(r.data));
 
   r = await student.req('PATCH', '/api/attempts/' + attemptId + '/answers',
-    { answers: [{ questionId: speakQ, answer: 'thử ghi vào phần chưa mở' }] });
-  ok(r.data.rejected.length === 1, 'Không ghi được vào phần chưa vào', JSON.stringify(r.data));
+    { answers: [{ questionId: speakQ, answer: 'writing into a part not yet entered' }] });
+  ok(r.data.rejected.length === 1, 'Nothing can be written into a part not yet entered', JSON.stringify(r.data));
 
   r = await student.req('PATCH', '/api/attempts/' + attemptId + '/answers',
-    { answers: [{ questionId: 999999, answer: 'câu không thuộc lượt này' }] });
+    { answers: [{ questionId: 999999, answer: 'an item outside this sitting' }] });
   ok(r.data.rejected.length === 1 && r.data.rejected[0].reason === 'not-in-attempt',
-    'Không ghi được cho câu không thuộc lượt thi', JSON.stringify(r.data));
+    'Nothing can be written for an item outside the sitting', JSON.stringify(r.data));
 
-  /* ---------- Nghe lại: đếm ở máy chủ ---------- */
-  head('Số lần nghe lại');
+  /* ---------- Replays: counted on the server ---------- */
+  head('Replay count');
   const listenOnce = () => student.req('GET', '/api/attempts/' + attemptId + '/items/' + made[0] + '/audio');
   r = await listenOnce();
-  ok(r.status === 200 && r.data.length > 0, 'Nghe lần 1 lấy được tệp', 'status ' + r.status);
-  ok(r.headers.get('x-replays-left') === '1', 'Còn 1 lần nghe sau lần đầu', r.headers.get('x-replays-left'));
+  ok(r.status === 200 && r.data.length > 0, 'The first listen returns the file', 'status ' + r.status);
+  ok(r.headers.get('x-replays-left') === '1', 'One replay left after the first', r.headers.get('x-replays-left'));
   ok((r.headers.get('cache-control') || '').includes('no-store'),
-    'Tệp đề thi không được cache', r.headers.get('cache-control'));
+    'Exam audio is never cached', r.headers.get('cache-control'));
 
   r = await listenOnce();
-  ok(r.status === 200 && r.headers.get('x-replays-left') === '0', 'Nghe lần 2 là lần cuối',
+  ok(r.status === 200 && r.headers.get('x-replays-left') === '0', 'The second listen is the last',
     r.headers.get('x-replays-left'));
 
   r = await listenOnce();
-  ok(r.status === 429, 'Hết lượt nghe thì máy chủ từ chối, không phụ thuộc trình duyệt', 'status ' + r.status);
+  ok(r.status === 429, 'Out of replays the server refuses, independent of the browser', 'status ' + r.status);
 
   r = await student.req('GET', '/api/attempts/' + attemptId);
   const itemAfter = r.data.attempt.parts.find(p => p.part === 'F').items.find(i => i.questionId === made[0]);
-  ok(itemAfter.replaysLeft === 0, 'Trạng thái trả về đúng số lượt nghe còn lại', String(itemAfter.replaysLeft));
+  ok(itemAfter.replaysLeft === 0, 'The returned state reports the right number of replays left', String(itemAfter.replaysLeft));
 
-  /* Kết thúc phần sớm: cùng một hàm partOpen() gác cả trường hợp hết giờ, nên
-     đây là đường đóng phần được kiểm trực tiếp mà không phải chờ hết một phút
-     thật trong mọi lần chạy CI. */
+  /* Closing a part early: the same partOpen() guards the out-of-time case too, so
+     this exercises that path directly without waiting out a real minute on every
+     CI run. */
   r = await student.req('POST', '/api/attempts/' + attemptId + '/parts/' + secListen + '/close');
-  ok(r.status === 200 && r.data.closedAt, 'Kết thúc phần F sớm', JSON.stringify(r.data));
+  ok(r.status === 200 && r.data.closedAt, 'Part F closes early', JSON.stringify(r.data));
   r = await student.req('PATCH', '/api/attempts/' + attemptId + '/answers',
-    { answers: [{ questionId: made[1], answer: 'ghi sau khi phần đã đóng' }] });
+    { answers: [{ questionId: made[1], answer: 'written after the part closed' }] });
   ok(r.data.rejected.length === 1 && r.data.rejected[0].reason === 'part-closed',
-    'Phần đã đóng thì không ghi thêm đáp án được', JSON.stringify(r.data));
+    'A closed part accepts no further answers', JSON.stringify(r.data));
   r = await student.req('GET', '/api/attempts/' + attemptId + '/items/' + made[1] + '/audio');
-  ok(r.status === 403, 'Phần đã đóng thì không nghe được nữa', 'status ' + r.status);
+  ok(r.status === 403, 'A closed part cannot be listened to any more', 'status ' + r.status);
   r = await student.req('POST', '/api/attempts/' + attemptId + '/parts/' + secListen + '/start');
-  ok(r.status === 400, 'Không mở lại được phần đã kết thúc', 'status ' + r.status);
+  ok(r.status === 400, 'A closed part cannot be reopened', 'status ' + r.status);
 
-  /* ---------- Ghi âm câu trả lời ---------- */
-  head('Ghi âm câu trả lời');
+  /* ---------- Recording an answer ---------- */
+  head('Recording an answer');
   r = await student.req('POST', '/api/attempts/' + attemptId + '/items/' + speakQ + '/recording',
     fakeWebm(), { 'Content-Type': 'audio/webm' });
-  ok(r.status === 403, 'Chưa vào phần Nói thì chưa ghi âm được', 'status ' + r.status);
+  ok(r.status === 403, 'No recording before entering the Speaking part', 'status ' + r.status);
 
   await student.req('POST', '/api/attempts/' + attemptId + '/parts/' + secSpeak + '/start');
   r = await student.req('POST', '/api/attempts/' + attemptId + '/items/' + speakQ + '/recording',
     fakeWebm(), { 'Content-Type': 'audio/webm' });
-  ok(r.status === 201, 'Ghi âm WebM của trình duyệt lưu được', JSON.stringify(r.data));
+  ok(r.status === 201, 'A browser WebM recording is stored', JSON.stringify(r.data));
 
   r = await student.req('POST', '/api/attempts/' + attemptId + '/items/' + speakQ + '/recording',
     new Uint8Array(Buffer.from('MZ\x90\x00 not audio at all')), { 'Content-Type': 'audio/webm' });
-  ok(r.status === 400, 'Tệp giả danh audio bị từ chối theo nội dung, không theo lời khai', 'status ' + r.status);
+  ok(r.status === 400, 'A file merely claiming to be audio is refused on content, not on its claim', 'status ' + r.status);
 
   r = await student.req('GET', '/api/attempts/' + attemptId);
   const spoken = r.data.attempt.parts.find(p => p.part === 'I').items[0];
-  ok(spoken.hasRecording === true, 'Trạng thái ghi nhận đã có bản ghi âm');
+  ok(spoken.hasRecording === true, 'The state records that a recording exists');
 
-  /* ---------- Nộp bài ---------- */
-  head('Nộp bài');
+  /* ---------- Handing in ---------- */
+  head('Handing in');
   r = await student.req('POST', '/api/attempts/' + attemptId + '/submit');
-  ok(r.status === 200 && r.data.ok, 'Nộp bài thành công', JSON.stringify(r.data));
-  ok(r.data.total === 3, 'Đếm đúng tổng số câu của đề', String(r.data.total));
-  ok(r.data.answered === 2, 'Đếm đúng số câu đã trả lời', String(r.data.answered));
+  ok(r.status === 200 && r.data.ok, 'The paper is handed in', JSON.stringify(r.data));
+  ok(r.data.total === 3, 'The total item count is right', String(r.data.total));
+  ok(r.data.answered === 2, 'The answered count is right', String(r.data.answered));
 
   r = await student.req('PATCH', '/api/attempts/' + attemptId + '/answers',
-    { answers: [{ questionId: made[1], answer: 'sửa sau khi đã nộp' }] });
-  ok(r.status === 400, 'Nộp rồi thì không sửa đáp án được nữa', 'status ' + r.status);
+    { answers: [{ questionId: made[1], answer: 'edited after handing in' }] });
+  ok(r.status === 400, 'Once handed in, answers cannot be edited', 'status ' + r.status);
 
   r = await student.req('POST', '/api/attempts/' + attemptId + '/submit');
-  ok(r.status === 200 && r.data.alreadySubmitted, 'Nộp hai lần không tạo ra lượt hỏng', JSON.stringify(r.data));
+  ok(r.status === 200 && r.data.alreadySubmitted, 'Handing in twice creates no broken sitting', JSON.stringify(r.data));
 
   r = await student.req('GET', '/api/attempts/current');
-  ok(r.data.attempt === null, 'Nộp xong thì không còn bài đang làm dở');
+  ok(r.data.attempt === null, 'Once handed in there is no paper in progress');
 
-  /* ---------- Lượt thi của người khác ---------- */
-  head('Phân quyền lượt thi');
+  /* ---------- Somebody else's sitting ---------- */
+  head('Sitting permissions');
   const other = client();
   await other.req('GET', '/api/me');
   const email = 'engine.' + Date.now() + '@thu-nghiem.vn';
   await other.req('POST', '/api/auth/register',
-    { name: 'Người Thử Engine', email, password: 'Matkhau12345', interests: [] });
+    { name: 'Engine Test Person', email, password: 'Matkhau12345', interests: [] });
   r = await other.req('GET', '/api/attempts/' + attemptId);
-  ok(r.status === 404, 'Không xem được lượt thi của người khác (404, không phải 403)', 'status ' + r.status);
+  ok(r.status === 404, 'Another person\'s sitting is not visible (404, not 403)', 'status ' + r.status);
 
   r = await other.req('POST', '/api/attempts', { testId });
   ok(r.status === 403 && r.data.need === 'plan',
-    'Chưa có gói thì không mở được lượt thi', JSON.stringify(r.data));
+    'With no plan no sitting can be opened', JSON.stringify(r.data));
 
-  /* ---------- Chấm điểm ---------- */
-  head('Chấm điểm');
+  /* ---------- Marking ---------- */
+  head('Marking');
   r = await student.req('GET', '/api/attempts/' + attemptId + '/result');
-  ok(r.status === 200, 'Nộp xong là có kết quả ngay', 'status ' + r.status);
+  ok(r.status === 200, 'A result exists as soon as the paper is handed in', 'status ' + r.status);
   const result = r.data;
 
-  /* Tài khoản demo cầm gói Plus nên được xem bảng chi tiết. */
-  ok(result.detailed === true, 'Gói Plus xem được báo cáo chi tiết', JSON.stringify(result.detailed));
+  /* The demo account holds a Plus plan, so it sees the detailed table. */
+  ok(result.detailed === true, 'A Plus plan sees the detailed report', JSON.stringify(result.detailed));
   ok(/reference mark/.test(result.disclaimer || ''),
-    'Kết quả ghi rõ đây là điểm luyện tập, không phải điểm thi thật', result.disclaimer);
+    'The result says plainly that this is a practice score, not a real exam score', result.disclaimer);
 
   const listen = (result.skills || []).find(x => x.skill === 'listening');
-  /* Đề kiểm thử: 2 câu Nghe trắc nghiệm, đã trả lời đúng 1 câu ở phần trên. */
-  ok(listen && listen.rawMax === 2, 'Đếm đúng tổng số câu Nghe', JSON.stringify(listen));
-  ok(listen && listen.rawEarned === 1, 'Chấm đúng 1/2 câu Nghe', JSON.stringify(listen));
-  ok(listen && listen.score === 5, 'Quy đổi tuyến tính 1/2 → 5,0 trên thang 10', String(listen && listen.score));
+  /* The test paper: 2 Listening multiple-choice items, 1 answered correctly above. */
+  ok(listen && listen.rawMax === 2, 'The Listening item total is right', JSON.stringify(listen));
+  ok(listen && listen.rawEarned === 1, 'Marks 1 of 2 Listening items', JSON.stringify(listen));
+  ok(listen && listen.score === 5, 'Linear conversion 1/2 → 5.0 on a scale of 10', String(listen && listen.score));
 
   const speak = (result.skills || []).find(x => x.skill === 'speaking');
-  ok(speak && speak.pending === true, 'Kỹ năng Nói để trạng thái chờ chấm, không phải 0 điểm',
+  ok(speak && speak.pending === true, 'Speaking is left pending rather than scored zero',
     JSON.stringify(speak));
   ok(result.pending === true && result.overall === null,
-    'Chưa chấm đủ bốn kỹ năng thì chưa có điểm tổng', JSON.stringify({ pending: result.pending, overall: result.overall }));
+    'With fewer than four skills marked there is no overall score', JSON.stringify({ pending: result.pending, overall: result.overall }));
 
-  /* Câu bỏ trống vẫn phải vào mẫu số: bỏ trống nhiều mà điểm cao là lỗi nặng. */
+  /* A blank item still counts in the denominator: many blanks and a high score is a serious fault. */
   const fPart = (result.parts || []).find(x => x.part === 'F');
-  ok(fPart && fPart.max === 2, 'Câu bỏ trống vẫn tính vào mẫu số', JSON.stringify(fPart && { earned: fPart.earned, max: fPart.max }));
+  ok(fPart && fPart.max === 2, 'A blank item still counts in the denominator', JSON.stringify(fPart && { earned: fPart.earned, max: fPart.max }));
 
-  /* Đáp án đúng vẫn không được lộ, kể cả ở màn kết quả — đề còn dùng lại. */
-  ok(!/"answer"/.test(JSON.stringify(result)), 'Báo cáo không kèm đáp án đúng');
+  /* The correct answer stays hidden even on the result screen — the paper gets reused. */
+  ok(!/"answer"/.test(JSON.stringify(result)), 'The report carries no correct answers');
   ok((fPart.items || []).every(i => typeof i.given === 'string'),
-    'Báo cáo có câu trả lời của chính học viên để đối chiếu');
+    'The report does carry the student\'s own answer, for comparison');
 
-  /* Chấm lại không được nhân đôi điểm hay tạo dòng mới. */
+  /* Re-marking must not double the score or create new rows. */
   r = await student.req('GET', '/api/attempts/' + attemptId + '/result');
   const again = (r.data.skills || []).find(x => x.skill === 'listening');
   ok(again && again.rawEarned === 1 && again.rawMax === 2,
-    'Đọc lại kết quả cho cùng một con số', JSON.stringify(again));
+    'Reading the result again gives the same numbers', JSON.stringify(again));
 
   r = await student.req('GET', '/api/attempts/999999/result');
-  ok(r.status === 404, 'Không xem được kết quả của lượt không tồn tại', 'status ' + r.status);
+  ok(r.status === 404, 'The result of a sitting that does not exist is not readable', 'status ' + r.status);
 
-  /* ---------- Hạn mức lượt thi của gói Starter ---------- */
-  head('Hạn mức lượt thi');
-  /* Gói Plus của tài khoản demo là không giới hạn, nên phải dựng riêng một tài
-     khoản cầm gói Starter mới thử được cái hạn mức 10 lượt. */
+  /* ---------- The Starter plan's sitting quota ---------- */
+  head('Sitting quota');
+  /* The demo account's Plus plan is uncapped, so testing the 10-sitting cap needs
+     an account of its own holding a Starter plan. */
   const capped = client();
   await capped.req('GET', '/api/me');
   const cappedEmail = 'han-muc.' + Date.now() + '@thu-nghiem.vn';
   await capped.req('POST', '/api/auth/register',
-    { name: 'Người Thử Hạn Mức', email: cappedEmail, password: 'Matkhau12345', interests: [] });
+    { name: 'Quota Test Person', email: cappedEmail, password: 'Matkhau12345', interests: [] });
   r = await admin.req('GET', '/api/admin/users?q=' + encodeURIComponent(cappedEmail));
   const cappedId = r.data.items[0] && r.data.items[0].id;
-  ok(!!cappedId, 'Tìm được tài khoản vừa đăng ký', String(cappedId));
+  ok(!!cappedId, 'Finds the account just registered', String(cappedId));
 
   r = await admin.req('POST', '/api/admin/codes', {
     planId: 'starter-3m', unlockType: 'family', unlockRef: 'vpet', qty: 1, userId: cappedId
   });
-  ok(r.status === 201, 'Cấp mã Starter thẳng cho tài khoản đó', 'status ' + r.status);
+  ok(r.status === 201, 'Issues a Starter code straight to that account', 'status ' + r.status);
 
   r = await capped.req('GET', '/api/me');
   ok(r.data.entitlement && r.data.entitlement.attemptsLeft === 10,
-    'Gói Starter bắt đầu với đủ 10 lượt', JSON.stringify(r.data.entitlement));
+    'A Starter plan begins with all 10 sittings', JSON.stringify(r.data.entitlement));
 
   let used = 0;
   for (let i = 0; i < 10; i++) {
@@ -352,42 +352,42 @@ try {
     used++;
     await capped.req('POST', '/api/attempts/' + s1.data.attempt.id + '/submit');
   }
-  ok(used === 10, 'Làm được đúng 10 lượt', 'thấy ' + used);
+  ok(used === 10, 'Exactly 10 sittings are allowed', 'saw ' + used);
 
   r = await capped.req('GET', '/api/me');
   ok(r.data.entitlement.attemptsUsed === 10 && r.data.entitlement.attemptsLeft === 0,
-    'Đếm lượt đã dùng khớp số lần thực sự mở bài', JSON.stringify(r.data.entitlement));
+    'The used count matches how many papers were really opened', JSON.stringify(r.data.entitlement));
 
   r = await capped.req('POST', '/api/attempts', { testId });
   ok(r.status === 403 && r.data.need === 'attempts',
-    'Hết lượt thì máy chủ từ chối mở bài thứ 11', JSON.stringify(r.data));
+    'Out of sittings the server refuses to open an eleventh', JSON.stringify(r.data));
 
-  /* Gói Starter mua "report bình thường thang điểm": có điểm và bậc, không có
-     bảng bóc tách. Ranh giới đó phải nằm ở máy chủ, không phải ở giao diện. */
+  /* Starter buys "a normal banded report": a score and a band, no breakdown table.
+     That boundary has to live on the server, not in the interface. */
   r = await capped.req('GET', '/api/attempts');
   const cappedAttempt = r.data.items[0];
   r = await capped.req('GET', '/api/attempts/' + cappedAttempt.id + '/result');
   ok(r.status === 200 && r.data.detailed === false,
-    'Gói Starter chỉ nhận báo cáo rút gọn', JSON.stringify(r.data.detailed));
+    'A Starter plan receives only the short report', JSON.stringify(r.data.detailed));
   ok(r.data.skills === undefined && r.data.parts === undefined,
-    'Dữ liệu bóc tách không rời khỏi máy chủ với gói Starter',
+    'Breakdown data never leaves the server for a Starter plan',
     JSON.stringify(Object.keys(r.data)));
-  ok(typeof r.data.upgradeHint === 'string', 'Nói rõ vì sao báo cáo ngắn', r.data.upgradeHint);
+  ok(typeof r.data.upgradeHint === 'string', 'It says why the report is short', r.data.upgradeHint);
 
-  /* Gói không giới hạn thì không có gì để trừ — mở lại bài không được làm hao
-     hụt cái gì cả. */
+  /* An uncapped plan has nothing to decrement — reopening a paper must cost
+     nothing at all. */
   const beforeUnlimited = (await student.req('GET', '/api/me')).data.entitlement.attemptsUsed;
   r = await student.req('POST', '/api/attempts', { testId });
   const unlimitedAttempt = r.data.attempt && r.data.attempt.id;
   const afterUnlimited = (await student.req('GET', '/api/me')).data.entitlement.attemptsUsed;
   ok(afterUnlimited === beforeUnlimited,
-    'Gói không giới hạn: mở bài không trừ lượt nào', beforeUnlimited + ' → ' + afterUnlimited);
+    'An uncapped plan: opening a paper decrements nothing', beforeUnlimited + ' → ' + afterUnlimited);
   if (unlimitedAttempt) await student.req('POST', '/api/attempts/' + unlimitedAttempt + '/submit');
 
-  /* ---------- Màn làm bài lái được engine ---------- */
-  head('Màn làm bài');
-  /* Backend đã kiểm kỹ ở trên; phần này chỉ hỏi một câu: cái màn hình có thật
-     sự lái được engine đó không, hay chỉ vẽ ra trông giống. */
+  /* ---------- The exam runner really drives the engine ---------- */
+  head('The exam runner');
+  /* The backend is thoroughly checked above; this part asks one question: does the
+     screen really drive that engine, or only draw something that looks like it. */
   const browser = await chromium.launch({
     ...launchOptions({ args: ['--no-sandbox'] })
   });
@@ -404,88 +404,88 @@ try {
 
     await page.goto(BASE + '/prep/lam-bai/?test=' + encodeURIComponent(testId), { waitUntil: 'networkidle' });
     await page.waitForTimeout(900);
-    ok(await page.locator('#runner').isVisible(), 'Mở màn làm bài từ nút Bắt đầu');
+    ok(await page.locator('#runner').isVisible(), 'The Start button opens the runner');
     ok((await page.locator('#ex-parts button').count()) === 2,
-      'Hiện đủ hai phần', String(await page.locator('#ex-parts button').count()));
+      'Both parts are shown', String(await page.locator('#ex-parts button').count()));
 
-    /* Chưa vào phần thì chưa có câu nào — đúng như máy chủ quy định */
-    ok((await page.locator('[data-item]').count()) === 0, 'Chưa vào phần thì chưa hiện câu hỏi');
+    /* Before entering a part there are no items — exactly as the server dictates */
+    ok((await page.locator('[data-item]').count()) === 0, 'No items before entering a part');
     await page.click('#ex-enter');
     await page.waitForTimeout(900);
-    ok((await page.locator('[data-item]').count()) === 2, 'Vào phần F thì hiện đủ 2 câu',
+    ok((await page.locator('[data-item]').count()) === 2, 'Entering part F shows both items',
       String(await page.locator('[data-item]').count()));
     const clock = (await page.locator('#ex-clock-text').textContent()).trim();
-    ok(/^\d+:\d\d$/.test(clock), 'Đồng hồ chạy trên màn hình', clock);
+    ok(/^\d+:\d\d$/.test(clock), 'The clock is running on screen', clock);
 
-    /* Trả lời một câu rồi đợi autosave — không có nút Lưu, nên nếu chỗ này im
-       lặng thì người làm bài không biết bài mình có được giữ hay không. */
+    /* Answer one item and wait for autosave — there is no Save button, so if this
+       stays silent the candidate cannot tell whether their work was kept. */
     await page.locator('[data-answer]').first().check();
     await page.waitForTimeout(1900);
     ok((await page.locator('#ex-saved').textContent()).trim() === 'Saved',
-      'Tự lưu và báo đã lưu', (await page.locator('#ex-saved').textContent()).trim());
+      'Autosaves and says so', (await page.locator('#ex-saved').textContent()).trim());
 
-    /* Nghe: bấm một lần thì số lượt còn lại phải giảm theo máy chủ */
+    /* Listening: one click must drop the remaining count, following the server */
     const playBtn = page.locator('[data-play]').first();
     const before = (await page.locator('[data-plays]').first().textContent()).trim();
     await playBtn.click();
     await page.waitForTimeout(1200);
     const after = (await page.locator('[data-plays]').first().textContent()).trim();
-    ok(before !== after, 'Bấm Nghe thì số lượt còn lại đổi theo máy chủ', before + ' → ' + after);
+    ok(before !== after, 'Clicking Listen changes the remaining count, following the server', before + ' → ' + after);
 
-    /* Tải lại trang: bài đang làm phải quay lại nguyên trạng, không mất */
+    /* Reload the page: the paper in progress must come back intact */
     await page.reload({ waitUntil: 'networkidle' });
     await page.waitForTimeout(900);
-    ok(await page.locator('#runner').isVisible(), 'Tải lại trang thì vào tiếp bài đang làm');
-    ok(await page.locator('[data-answer]').first().isChecked(), 'Đáp án đã lưu vẫn còn sau khi tải lại');
+    ok(await page.locator('#runner').isVisible(), 'Reloading returns to the paper in progress');
+    ok(await page.locator('[data-answer]').first().isChecked(), 'A saved answer survives the reload');
 
-    /* Nộp bài qua giao diện */
+    /* Hand in through the interface */
     await page.click('#ex-submit');
     await page.waitForTimeout(400);
-    ok(await page.locator('#submit-modal.show').count() === 1, 'Hỏi lại trước khi nộp');
+    ok(await page.locator('#submit-modal.show').count() === 1, 'It asks before handing in');
     await page.click('#sm-go');
     await page.waitForTimeout(1200);
-    ok(await page.locator('#done').isVisible(), 'Nộp xong hiện màn đã nộp');
+    ok(await page.locator('#done').isVisible(), 'Handing in shows the submitted screen');
 
-    ok(uiErrors.length === 0, 'Không có lỗi JavaScript trên màn làm bài', uiErrors.join(' | '));
+    ok(uiErrors.length === 0, 'No JavaScript errors on the runner', uiErrors.join(' | '));
 
-    /* ---- Màn kết quả ---- */
-    head('Màn kết quả');
+    /* ---- The result screen ---- */
+    head('The result screen');
     const uiAttempt = (await (await page.request.get(BASE + '/api/attempts')).json())
       .items.find(a => a.status === 'submitted');
     await page.goto(BASE + '/prep/ket-qua/' + uiAttempt.id + '/', { waitUntil: 'networkidle' });
     await page.waitForTimeout(800);
-    ok(await page.locator('#report').isVisible(), 'Mở được màn kết quả');
-    ok(await page.locator('#r-skills article').count() > 0, 'Hiện điểm từng kỹ năng');
-    ok(await page.locator('#r-parts article').count() > 0, 'Hiện bảng bóc tách từng phần');
-    /* Chưa chấm đủ bốn kỹ năng: điểm tổng phải để gạch ngang, không phải một
-       con số nửa vời trông như kết quả cuối cùng. */
+    ok(await page.locator('#report').isVisible(), 'The result screen opens');
+    ok(await page.locator('#r-skills article').count() > 0, 'Per-skill scores are shown');
+    ok(await page.locator('#r-parts article').count() > 0, 'The per-part breakdown is shown');
+    /* With fewer than four skills marked the overall must be a dash, not a
+       half-computed number that reads as a final result. */
     ok((await page.locator('#r-overall').textContent()).trim() === '–',
-      'Chưa chấm đủ thì điểm tổng để trống, không bịa số',
+      'Unfinished marking leaves the overall blank rather than inventing a number',
       (await page.locator('#r-overall').textContent()).trim());
-    ok(await page.locator('#r-pending').isVisible(), 'Nói rõ Viết và Nói còn chờ chấm');
-    ok(!(await page.locator('#r-upgrade').isVisible()), 'Gói Plus không thấy bảng mời nâng gói');
+    ok(await page.locator('#r-pending').isVisible(), 'It says Writing and Speaking are still to be marked');
+    ok(!(await page.locator('#r-upgrade').isVisible()), 'A Plus plan sees no upgrade panel');
     const body = await page.locator('#r-parts').innerText();
-    ok(/Correct|Wrong|Left blank/.test(body), 'Mỗi câu có dấu đúng / sai / bỏ trống');
+    ok(/Correct|Wrong|Left blank/.test(body), 'Every item is marked correct / wrong / blank');
 
-    /* Lượt chưa nộp: không phải lỗi, mà là việc còn dở — phải dẫn về làm tiếp. */
+    /* An unsubmitted sitting is not an error but unfinished work — it must lead back in. */
     const running = await page.request.post(BASE + '/api/attempts', {
       data: { testId }, headers: { 'X-CSRF-Token': await page.evaluate(() => PrepApi.csrf()) }
     });
     const runningId = (await running.json()).attempt.id;
     await page.goto(BASE + '/prep/ket-qua/' + runningId + '/', { waitUntil: 'networkidle' });
     await page.waitForTimeout(700);
-    ok(await page.locator('#none').isVisible(), 'Lượt chưa nộp thì chưa có kết quả');
+    ok(await page.locator('#none').isVisible(), 'An unsubmitted sitting has no result yet');
     ok((await page.locator('#none-cta').getAttribute('href')) === '/prep/lam-bai/',
-      'Và dẫn thẳng về chỗ làm tiếp', await page.locator('#none-cta').getAttribute('href'));
+      'And it leads straight back to where the work continues', await page.locator('#none-cta').getAttribute('href'));
     await page.request.post(BASE + '/api/attempts/' + runningId + '/submit', {
       headers: { 'X-CSRF-Token': await page.evaluate(() => PrepApi.csrf()) }
     });
 
-    ok(uiErrors.length === 0, 'Không có lỗi JavaScript trên màn kết quả', uiErrors.join(' | '));
+    ok(uiErrors.length === 0, 'No JavaScript errors on the result screen', uiErrors.join(' | '));
     await ctx.close();
 
-    /* Gói Starter: màn kết quả rút gọn, kèm lý do. Đây là chỗ chính sách gói
-       hiện ra cho người dùng thấy, nên phải kiểm trên chính màn hình. */
+    /* Starter: a short result screen, with the reason. This is where plan policy
+       becomes visible to a user, so it has to be checked on the screen itself. */
     const ctx2 = await browser.newContext();
     const page2 = await ctx2.newPage();
     await page2.goto(BASE + '/prep/dang-nhap/', { waitUntil: 'networkidle' });
@@ -497,23 +497,23 @@ try {
       .items.find(a => a.status === 'submitted');
     await page2.goto(BASE + '/prep/ket-qua/' + cappedDone.id + '/', { waitUntil: 'networkidle' });
     await page2.waitForTimeout(800);
-    ok(await page2.locator('#report').isVisible(), 'Gói Starter vẫn xem được kết quả');
-    ok(await page2.locator('#r-upgrade').isVisible(), 'Gói Starter thấy bảng giải thích vì sao báo cáo ngắn');
-    ok(!(await page2.locator('#r-parts-box').isVisible()), 'Gói Starter không có bảng bóc tách từng câu');
+    ok(await page2.locator('#report').isVisible(), 'A Starter plan still sees a result');
+    ok(await page2.locator('#r-upgrade').isVisible(), 'A Starter plan sees the panel explaining why the report is short');
+    ok(!(await page2.locator('#r-parts-box').isVisible()), 'A Starter plan gets no per-item breakdown');
     await ctx2.close();
   } finally {
     await browser.close();
   }
 
-  /* ---------- Dọn dẹp ---------- */
+  /* ---------- Cleaning up ---------- */
   await admin.req('DELETE', '/api/admin/tests/' + testId);
   for (const id of made.concat([speakQ])) {
     await admin.req('POST', '/api/admin/questions/' + id + '/status', { status: 'retired' });
   }
 } catch (e) {
   fail++;
-  console.log('✗ Lỗi không mong đợi: ' + (e && e.stack ? e.stack : e));
+  console.log('✗ Unexpected error: ' + (e && e.stack ? e.stack : e));
 }
 
-console.log('\n' + (pass + fail ? pass + '/' + (pass + fail) + ' kiểm thử đạt' : 'không có kiểm thử nào'));
+console.log('\n' + (pass + fail ? pass + '/' + (pass + fail) + ' checks passed' : 'no checks ran'));
 if (fail) process.exit(1);

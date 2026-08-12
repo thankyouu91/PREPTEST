@@ -1,13 +1,13 @@
 /**
- * Audit nghiệm thu: tràn ngang, tương phản nút, chiều cao nav, lỗi console/CSP.
- * Chạy: node scripts/audit.mjs   (cần server đang chạy)
+ * Acceptance audit: horizontal overflow, button contrast, nav height, console/CSP errors.
+ * Run: node scripts/audit.mjs   (needs the server up)
  */
 import { postWithCsrf } from './_csrf.mjs';
 import { pool, JOBS } from './_pool.mjs';
 import { launchChromium } from './_browser.mjs';
 
 const BASE = process.env.BASE_URL || 'http://localhost:3000';
-/* Phiên thật (cookie) bằng tài khoản demo + lớp phủ cục bộ cho code kích hoạt client */
+/* A real cookie session as the demo account + a local overlay for client-side codes */
 const DEMO = { id: 'student', pw: 'Goodmorning01' };
 const LOCAL_OVERLAY = {
   student: {
@@ -19,8 +19,8 @@ const LOCAL_OVERLAY = {
   }
 };
 
-/* Trang khách (không đăng nhập) — server sẽ đá trang này về /prep/ nếu có phiên,
-   nên phải duyệt chúng bằng context KHÔNG đăng nhập. */
+/* Guest pages (signed out) — the server bounces these to /prep/ when a session
+   exists, so they have to be visited from a SIGNED-OUT context. */
 const GUEST_URLS = ['/prep/landing/', '/prep/dang-ky/', '/prep/dang-nhap/', '/prep/quen-mat-khau/',
   '/prep/xac-thuc-email/', '/prep/dat-lai-mat-khau/'];
 
@@ -32,15 +32,15 @@ const URLS = GUEST_URLS.concat([
 ]);
 const WIDTHS = [360, 390, 768, 1024, 1440];
 
-/* Tương phản WCAG */
+/* WCAG contrast */
 const lum = ([r, g, b]) => {
   const f = v => { v /= 255; return v <= .03928 ? v / 12.92 : Math.pow((v + .055) / 1.055, 2.4); };
   return .2126 * f(r) + .7152 * f(g) + .0722 * f(b);
 };
 const ratio = (a, b) => { const [x, y] = [lum(a), lum(b)].sort((m, n) => n - m); return (x + .05) / (y + .05); };
 
-/* Chromium trả 'rgb(r g b / a)' HOẶC 'color(srgb 0..1 0..1 0..1 / a)' (kết quả color-mix).
-   Chuẩn hoá về [r,g,b,a] với r,g,b thang 0-255. */
+/* Chromium returns 'rgb(r g b / a)' OR 'color(srgb 0..1 0..1 0..1 / a)' (from color-mix).
+   Normalise to [r,g,b,a] with r,g,b on a 0-255 scale. */
 const parse = s => {
   const n = (s.match(/[\d.]+(?=%?)/g) || []).map(Number);
   if (!n.length) return [0, 0, 0, 1];
@@ -49,7 +49,7 @@ const parse = s => {
   const a = n.length > 3 ? n[3] : 1;
   return [r, g, b, a];
 };
-/* Chồng màu nền có alpha lên nền dưới */
+/* Composite a background with alpha over the one beneath it */
 const over = (fg, bg) => {
   const a = fg[3];
   return [0, 1, 2].map(i => fg[i] * a + bg[i] * (1 - a)).concat(1);
@@ -59,9 +59,9 @@ const run = async () => {
   const browser = await launchChromium();
   const issues = [];
 
-  /* Màn kết quả cần một lượt thi CÓ THẬT của tài khoản demo. Gắn cứng id thì
-     lượt đó có thể không tồn tại hay thuộc người khác, API trả 404, và audit đỏ
-     vì dữ liệu chứ không vì giao diện. Hỏi máy chủ một lần rồi thay vào. */
+  /* The result screen needs a sitting that REALLY exists for the demo account.
+     Hardcode an id and it may not exist or may belong to someone else, the API
+     answers 404, and the audit goes red over data rather than over the interface. */
   let doneAttempt = null;
   {
     const probe = await browser.newContext();
@@ -77,14 +77,14 @@ const run = async () => {
   const urls = URLS
     .map(u => (u.includes(':done') ? (doneAttempt ? u.replace(':done', doneAttempt) : null) : u))
     .filter(Boolean);
-  if (!doneAttempt) console.log('   (bỏ qua màn kết quả: tài khoản demo chưa có lượt thi nào đã nộp)');
+  if (!doneAttempt) console.log('   (skipping the result screen: the demo account has submitted no sitting)');
 
-  /* 220 lượt tải trang — 2 chế độ màu × 22 đường dẫn × 5 bề rộng — chạy tuần tự
-     là phần lâu nhất của `npm run verify`. Chúng độc lập hoàn toàn: mỗi lượt một
-     context riêng, không dùng chung state nào, nên xếp được vào hàng đợi song
-     song. Kết quả thu về theo đúng thứ tự đầu vào rồi mới in, vì thứ tự HOÀN
-     THÀNH thì ngẫu nhiên và một báo cáo đổi thứ tự mỗi lần chạy thì không diff
-     được với lần trước. */
+  /* 220 page loads — 2 colour modes × 22 paths × 5 widths — run one at a time was
+     the slowest part of `npm run verify`. They are entirely independent: a context
+     each, no shared state, so they queue up in parallel. Results are collected in
+     input order and printed afterwards, because the COMPLETION order is arbitrary
+     and a report that reorders itself on every run cannot be diffed against the
+     last one. */
   const jobs = [];
   for (const dark of [false, true]) {
     for (const url of urls) {
@@ -108,7 +108,7 @@ const run = async () => {
       }, { o: LOCAL_OVERLAY, d: dark, g: guest });
       if (!guest) {
         const r = await postWithCsrf(ctx, BASE, '/api/auth/login', { username: DEMO.id, password: DEMO.pw });
-        if (!r.ok()) mine.push(`[đăng nhập] ${url}: HTTP ${r.status()}`);
+        if (!r.ok()) mine.push(`[sign-in] ${url}: HTTP ${r.status()}`);
       }
       await page.goto(BASE + url, { waitUntil: 'networkidle' });
       await page.waitForTimeout(1100);
@@ -117,16 +117,16 @@ const run = async () => {
       if (errs.length) mine.push(`[console] ${tag}: ${errs[0].slice(0, 140)}`);
 
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1);
-      if (overflow) mine.push(`[tràn ngang] ${tag}`);
+      if (overflow) mine.push(`[overflow] ${tag}`);
 
-      // Nút/chip: tương phản chữ vs nền + nhãn xuống dòng ở desktop
+      // Buttons and chips: text vs background contrast + labels wrapping on desktop
       const bad = await page.evaluate(() => {
         const out = [];
         document.querySelectorAll('.btn, .chip, .badge').forEach(el => {
           const r = el.getBoundingClientRect();
           if (!r.width || el.closest('[hidden]') || getComputedStyle(el).visibility === 'hidden') return;
           const cs = getComputedStyle(el);
-          // Chuỗi nền từ phần tử lên tới body (để chồng alpha đúng thứ tự)
+          // The background chain from the element up to body (to composite alpha in order)
           const stack = [];
           for (let node = el; node; node = node.parentElement) {
             stack.push(getComputedStyle(node).backgroundColor);
@@ -142,7 +142,7 @@ const run = async () => {
         return out;
       });
       bad.forEach(b => {
-        // Nền hiệu dụng: chồng ngược từ dưới lên (bỏ lớp trong suốt hoàn toàn)
+          // Effective background: composite from the bottom up (skipping fully transparent layers)
         let bg = [255, 255, 255, 1];
         for (const c of b.bgStack.slice().reverse()) {
           const p = parse(c);
@@ -152,7 +152,7 @@ const run = async () => {
         const cr = ratio(fg, bg);
         const large = b.size >= 18 || (b.size >= 14 && +b.weight >= 700);
         const min = large ? 3 : 4.5;
-        if (cr < min) mine.push(`[tương phản ${cr.toFixed(2)}<${min}] ${tag} "${b.text}" ${b.fg} trên ${b.bgStack[0]}`);
+        if (cr < min) mine.push(`[contrast ${cr.toFixed(2)}<${min}] ${tag} "${b.text}" ${b.fg} on ${b.bgStack[0]}`);
       });
 
       if (w >= 1024) {
@@ -166,7 +166,7 @@ const run = async () => {
           });
           return bad;
         });
-        wrapped.forEach(t => mine.push(`[nút xuống dòng] ${tag} "${t}"`));
+        wrapped.forEach(t => mine.push(`[button wraps] ${tag} "${t}"`));
         const navH = await page.evaluate(() => {
           const h = document.querySelector('header');
           return h ? Math.round(h.getBoundingClientRect().height) : 0;
@@ -183,8 +183,8 @@ const run = async () => {
   await browser.close();
 
   const uniq = [...new Set(issues)];
-  if (uniq.length) { console.log('⚠ ' + uniq.length + ' vấn đề:'); uniq.forEach(i => console.log(' - ' + i)); process.exitCode = 1; }
-  else console.log('✔ Audit sạch: 0 tràn ngang, 0 lỗi tương phản, 0 lỗi console/CSP.');
+  if (uniq.length) { console.log('⚠ ' + uniq.length + ' problem(s):'); uniq.forEach(i => console.log(' - ' + i)); process.exitCode = 1; }
+  else console.log('✔ Audit clean: 0 overflow, 0 contrast failures, 0 console/CSP errors.');
 };
 
 run().catch(e => { console.error(e); process.exit(1); });

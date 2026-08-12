@@ -1,33 +1,33 @@
 /**
- * Xuất nội dung dự án ra Supabase (Postgres).
+ * Export the project's content to Supabase (Postgres).
  *
- * Vì sao có tệp này: CSDL chạy của ứng dụng là SQLite nhúng, còn Supabase là
- * Postgres. Đây KHÔNG phải bước chuyển ứng dụng sang Postgres — ứng dụng vẫn
- * chạy SQLite như cũ. Tệp này đẩy phần NỘI DUNG lên Supabase để nơi khác đọc
- * được:
+ * Why this exists: the application's live database is embedded SQLite, while
+ * Supabase is Postgres. This is NOT a step towards moving the application to
+ * Postgres — it still runs on SQLite. This file pushes the CONTENT up to Supabase
+ * so that other places can read it:
  *
- *   Khu tự học (nguồn: server/data/*.js — tệp nguồn trong git)
+ *   The self-study area (source: server/data/*.js — source files in git)
  *     irregular_verbs, linking_words, grammar_points, grammar_examples
- *   Danh mục và ngân hàng đề (nguồn: data/prep.sqlite — CSDL đang chạy)
+ *   The catalogue and item bank (source: data/prep.sqlite — the live database)
  *     exam_families, exam_packages, exam_formats,
  *     exam_tests, exam_sections, exam_questions, exam_section_items
  *
- * KHÔNG xuất: tài khoản, phiên đăng nhập, token, code, đơn hàng, nhật ký —
- * dữ liệu người dùng và bí mật ở lại máy chủ.
+ * NOT exported: accounts, sessions, tokens, codes, orders, the audit log —
+ * user data and secrets stay on the server.
  *
- * Chạy:
- *   node scripts/xuat-supabase.mjs --ddl            → in phần tạo bảng
- *   node scripts/xuat-supabase.mjs --data           → in toàn bộ INSERT
- *   node scripts/xuat-supabase.mjs --count          → đếm số câu lệnh
- *   node scripts/xuat-supabase.mjs --bang           → liệt kê tên bảng
- *   node scripts/xuat-supabase.mjs --json <bảng>    → JSON để nạp qua PostgREST
+ * Run:
+ *   node scripts/xuat-supabase.mjs --ddl            → print the table definitions
+ *   node scripts/xuat-supabase.mjs --data           → print every INSERT
+ *   node scripts/xuat-supabase.mjs --count          → count the statements
+ *   node scripts/xuat-supabase.mjs --bang           → list the table names
+ *   node scripts/xuat-supabase.mjs --json <table>   → JSON to load through PostgREST
  *
- * Nạp lại được nhiều lần: mọi INSERT đều ON CONFLICT DO UPDATE nên chạy lại
- * chỉ cập nhật chứ không nhân đôi. Câu ví dụ nối với điểm ngữ pháp qua slug
- * chứ không qua id.
+ * Re-runnable: every INSERT is ON CONFLICT DO UPDATE, so running it again updates
+ * rather than duplicating. Example sentences join to grammar points by slug,
+ * never by id.
  *
- * Không đụng tới khoá bí mật: việc kết nối do công cụ bên ngoài lo, tệp này
- * chỉ sinh ra SQL và JSON thuần.
+ * No secret key is touched: connecting is the outside tool's job, this file only
+ * emits plain SQL and JSON.
  */
 import { createRequire } from 'node:module';
 import { existsSync } from 'node:fs';
@@ -45,13 +45,13 @@ const NGU_PHAP = [
 ];
 
 /* ------------------------------------------------------------------ *
- * Nguồn 1: tệp nguồn khu tự học
+ * Source 1: the self-study source files
  * ------------------------------------------------------------------ */
 
 let _nguPhap = null;
 const nguPhap = () => (_nguPhap ||= NGU_PHAP.map(f => require('../server/data/' + f)));
 
-/* Điểm ngữ pháp đã đánh lại sort theo từng nhóm — y hệt seedGrammar bên db.js */
+/* Grammar points are re-sorted within each group — exactly as seedGrammar does in db.js */
 function diemNguPhap() {
   const diem = nguPhap().flatMap(x => x.points());
   const dem = {};
@@ -62,14 +62,14 @@ function diemNguPhap() {
 const rong = (v) => (v === undefined || v === '') ? null : v;
 
 /* ------------------------------------------------------------------ *
- * Nguồn 2: CSDL đang chạy (danh mục + ngân hàng đề, admin sửa được)
+ * Source 2: the live database (catalogue + item bank, editable by an admin)
  * ------------------------------------------------------------------ */
 
 let _db = null;
 function db() {
   if (_db) return _db;
   if (!existsSync('data/prep.sqlite')) {
-    console.error('Chưa có data/prep.sqlite. Chạy `npm start` một lần để tạo và seed CSDL.');
+    console.error('No data/prep.sqlite yet. Run `npm start` once to create and seed it.');
     process.exit(1);
   }
   const { DatabaseSync } = require('node:sqlite');
@@ -77,11 +77,11 @@ function db() {
 }
 
 const lay = (sql) => db().prepare(sql).all();
-const doc = (v) => JSON.parse(v || '[]');   /* cột *_json trong SQLite */
-const bool = (v) => !!v;                    /* SQLite lưu 0/1 */
+const doc = (v) => JSON.parse(v || '[]');   /* a *_json column in SQLite */
+const bool = (v) => !!v;                    /* SQLite stores 0/1 */
 
 /* ------------------------------------------------------------------ *
- * Bảng: khoá chính + cách dựng từng dòng
+ * Tables: primary key + how each row is built
  * ------------------------------------------------------------------ */
 
 const BANG = {
@@ -191,7 +191,7 @@ const BANG = {
   }
 };
 
-/* Thứ tự nạp: bảng cha trước bảng con, vì có khoá ngoại */
+/* Load order: parent tables before child tables, because of the foreign keys */
 const THU_TU = [
   'irregular_verbs', 'linking_words', 'grammar_points', 'grammar_examples',
   'exam_families', 'exam_packages', 'exam_formats',
@@ -199,7 +199,7 @@ const THU_TU = [
 ];
 
 /* ------------------------------------------------------------------ *
- * Sinh SQL từ chính các dòng JSON ở trên — một nguồn, hai đầu ra
+ * Generate SQL from the same JSON rows above — one source, two outputs
  * ------------------------------------------------------------------ */
 
 function giaTri(v) {
@@ -228,14 +228,14 @@ function cauLenh(ten) {
  * ------------------------------------------------------------------ */
 
 const DDL = `
--- Nội dung VPET Prep trên Supabase. Sinh bằng scripts/xuat-supabase.mjs.
+-- VPET Prep content on Supabase. Generated by scripts/xuat-supabase.mjs.
 --
--- Hai mức truy cập:
---   công khai  — nội dung học và danh mục kỳ thi: ai cũng đọc được
---   nội bộ     — câu hỏi và bố cục đề: bật RLS, KHÔNG có policy nào, nên khoá
---                công khai không đọc nổi. Chỉ service role (tức là qua máy
---                chủ) mới thấy. Lý do: cột answer và explanation là đáp án đề
---                thi, lộ ra là hỏng ngân hàng câu hỏi.
+-- Two levels of access:
+--   public   — study content and the exam catalogue: anyone may read
+--   internal — questions and paper layouts: RLS on, NO policy at all, so the
+--              public key cannot read them. Only the service role (that is,
+--              through the server) sees them. Reason: the answer and explanation
+--              columns are the exam answers, and leaking them ruins the bank.
 
 create table if not exists public.irregular_verbs (
   v1 text primary key,
@@ -270,7 +270,7 @@ create table if not exists public.grammar_examples (
   kind text not null,                        -- example | practice
   sort integer not null,
   en text not null, vi text not null,
-  ok boolean,                                -- true đúng, false phản ví dụ, null với câu luyện
+  ok boolean,                                -- true correct, false counter-example, null for practice
   answer text, note text,
   primary key (point_slug, kind, sort)
 );
@@ -372,8 +372,8 @@ alter table public.exam_sections      enable row level security;
 alter table public.exam_questions     enable row level security;
 alter table public.exam_section_items enable row level security;
 
--- Công khai: ai cũng đọc được, không ai ghi được qua khoá công khai.
--- Muốn ghi thì phải dùng service role, tức là qua máy chủ.
+-- Public: anyone may read, nobody may write through the public key.
+-- Writing means using the service role, that is, going through the server.
 drop policy if exists doc_cong_khai on public.irregular_verbs;
 drop policy if exists doc_cong_khai on public.linking_words;
 drop policy if exists doc_cong_khai on public.grammar_points;
@@ -389,7 +389,7 @@ create policy doc_cong_khai on public.exam_families    for select using (true);
 create policy doc_cong_khai on public.exam_packages    for select using (true);
 create policy doc_cong_khai on public.exam_formats     for select using (true);
 
--- Đề: chỉ đề đã phát hành mới lộ ra ngoài, bản nháp thì không.
+-- Tests: only published papers are exposed, drafts are not.
 drop policy if exists doc_de_da_phat_hanh on public.exam_tests;
 drop policy if exists doc_phan_de_da_phat_hanh on public.exam_sections;
 create policy doc_de_da_phat_hanh on public.exam_tests
@@ -400,12 +400,12 @@ create policy doc_phan_de_da_phat_hanh on public.exam_sections
     where t.id = exam_sections.test_id and t.status = 'published'
   ));
 
--- exam_questions và exam_section_items cố tình KHÔNG có policy: bật RLS mà
--- không mở policy nào nghĩa là khoá công khai không đọc được dòng nào.
+-- exam_questions and exam_section_items deliberately have NO policy: RLS on with
+-- no policy open means the public key cannot read a single row.
 `.trim();
 
 /* ------------------------------------------------------------------ *
- * Dòng lệnh
+ * Command line
  * ------------------------------------------------------------------ */
 
 const cd = process.argv[2];
@@ -420,11 +420,11 @@ if (cd === '--ddl') {
 } else if (cd === '--json') {
   const ten = process.argv[3];
   if (!BANG[ten]) {
-    console.error('Bảng lạ: ' + ten + '. Có: ' + THU_TU.join(', '));
+    console.error('Unknown table: ' + ten + '. Available: ' + THU_TU.join(', '));
     process.exit(1);
   }
   console.log(JSON.stringify(BANG[ten].rows()));
 } else {
-  console.error('Dùng: node scripts/xuat-supabase.mjs --ddl | --data | --count | --bang | --json <bảng>');
+  console.error('Use: node scripts/xuat-supabase.mjs --ddl | --data | --count | --bang | --json <table>');
   process.exit(1);
 }

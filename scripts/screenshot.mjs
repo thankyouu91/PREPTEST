@@ -1,9 +1,9 @@
 /**
- * Chụp màn hình nghiệm thu (desktop + mobile) cho mọi trang.
- * Đồng thời bắt lỗi console (đặc biệt lỗi CSP) — yêu cầu: 0 lỗi.
+ * Acceptance screenshots (desktop + mobile) for every page.
+ * Also catches console errors, CSP ones especially — the requirement is zero.
  *
- * Cách chạy:  node scripts/screenshot.mjs [--only=slug]
- * Yêu cầu server đang chạy ở PORT (mặc định 3000).
+ * Run:  node scripts/screenshot.mjs [--only=slug]
+ * Needs the server up on PORT (3000 by default).
  */
 import { chromium } from 'playwright-core';
 import fs from 'node:fs';
@@ -18,9 +18,9 @@ fs.mkdirSync(OUT, { recursive: true });
 
 const only = (process.argv.find(a => a.startsWith('--only=')) || '').split('=')[1];
 
-/* Tài khoản demo (phiên thật qua cookie) + lớp phủ cục bộ để ảnh có trạng thái phong phú.
-   Lớp phủ chính là phần code kích hoạt phía client — đúng thứ người dùng thật sẽ có,
-   không cần chèn dữ liệu giả vào CSDL. */
+/* The demo account (a real cookie session) + a local overlay so the images show rich state.
+   The overlay is the client-side redeemed-code state — exactly what a real user would
+   have, with no need to plant fake rows in the database. */
 const DEMO = { id: 'student', pw: 'Goodmorning01' };
 
 const LOCAL_OVERLAY = {
@@ -46,7 +46,7 @@ const PAGES = [
   { slug: 'quen-mat-khau',  url: '/prep/quen-mat-khau/',        auth: false },
   { slug: 'dat-lai-mat-khau', url: '/prep/dat-lai-mat-khau/?token=vi-du', auth: false },
   { slug: 'xac-thuc-email', url: '/prep/xac-thuc-email/?email=ngocanh.study%40gmail.com', auth: false },
-  // Đăng nhập thật bằng tài khoản demo student rồi chụp dashboard
+  // Sign in for real as the demo student, then shoot the dashboard
   { slug: 'dashboard-student', url: '/prep/', login: { id: 'student', pw: 'Goodmorning01' }, full: true },
   { slug: 'dashboard',       url: '/prep/',                      auth: true, full: true },
   { slug: 'dashboard-empty', url: '/prep/',                      auth: 'fresh' },
@@ -76,13 +76,13 @@ const PAGES = [
   { slug: 'landing-tenant',  url: '/prep/landing/',              auth: false, tenant: 'evergreen' }
 ];
 
-/** Đăng nhập qua API — cookie phiên đi thẳng vào cookie jar của context */
+/** Sign in through the API — the session cookie lands in the context's own jar */
 const apiLogin = async (ctx, username, password) => {
   const r = await postWithCsrf(ctx, BASE, '/api/auth/login', { username, password });
-  if (!r.ok()) throw new Error('Không đăng nhập được ' + username + ': HTTP ' + r.status());
+  if (!r.ok()) throw new Error('Could not sign in as ' + username + ': HTTP ' + r.status());
 };
 
-/** Tài khoản mới tinh cho ảnh "dashboard trống" — đăng ký một lần mỗi lượt chạy */
+/** A brand-new account for the "empty dashboard" shot — registered once per run */
 const makeFreshAccount = async (browser) => {
   const ctx = await browser.newContext({ ignoreHTTPSErrors: true });
   const account = {
@@ -90,15 +90,15 @@ const makeFreshAccount = async (browser) => {
     password: 'Matkhau123'
   };
   const r = await postWithCsrf(ctx, BASE, '/api/auth/register',
-    { name: 'Tân Sinh Viên', email: account.email, password: account.password, interests: [] });
+    { name: 'New Student', email: account.email, password: account.password, interests: [] });
   await ctx.close();
-  if (!r.ok()) throw new Error('Không tạo được tài khoản trống: HTTP ' + r.status());
+  if (!r.ok()) throw new Error('Could not create the empty account: HTTP ' + r.status());
   return account;
 };
 
 const run = async () => {
   const launchOpts = launchOptions();
-  // Môi trường CI/remote: đi qua agent proxy để tải được Google Fonts
+  // CI/remote: go through the agent proxy so Google Fonts can be fetched
   if (process.env.HTTPS_PROXY) {
     launchOpts.proxy = { server: process.env.HTTPS_PROXY, bypass: 'localhost,127.0.0.1' };
   }
@@ -106,8 +106,8 @@ const run = async () => {
   const problems = [];
   const freshAccount = await makeFreshAccount(browser);
 
-  /* Màn kết quả cần một lượt thi có thật của tài khoản demo — gắn cứng một id
-     thì ảnh nghiệm thu sẽ chụp đúng cái màn "không tìm thấy". Hỏi máy chủ. */
+  /* The result screen needs a sitting that really exists for the demo account —
+     hardcode an id and the acceptance shot captures the "not found" screen. Ask the server. */
   let doneAttempt = null;
   {
     const probe = await browser.newContext();
@@ -125,21 +125,21 @@ const run = async () => {
       ? (doneAttempt ? Object.assign({}, x, { url: x.url.replace(':done', doneAttempt) }) : null)
       : x))
     .filter(Boolean);
-  if (!doneAttempt) console.log('   (bỏ qua ảnh màn kết quả: chưa có lượt thi nào đã nộp)');
+  if (!doneAttempt) console.log('   (skipping the result screenshot: no sitting has been submitted)');
 
-  /* Mỗi trang chụp hai khổ, và cả 86 lượt đều độc lập — context riêng, tệp ảnh
-     riêng. Chạy tuần tự là lý do chính khiến `npm run verify` mất hơn mười lăm
-     phút. Xếp song song PW_JOBS luồng, rồi in ✓ theo đúng thứ tự khai báo: thứ
-     tự hoàn thành thì ngẫu nhiên, mà một bản log đổi thứ tự sau mỗi lần chạy
-     không còn so được với lần trước. */
+  /* Each page is shot at two sizes, and all 86 are independent — own context, own
+     file. Running them one at a time was the main reason `npm run verify` took over
+     fifteen minutes. They queue across PW_JOBS workers, then ✓ is printed in
+     declaration order: completion order is arbitrary, and a log that reorders itself
+     on every run can no longer be compared with the last one. */
   const wanted = pages.filter(x => !only || x.slug === only);
   const VIEWPORTS = [['desktop', { width: 1440, height: 900 }], ['mobile', { width: 390, height: 844 }]];
   const shots = [];
   for (const p of wanted) for (const [dev, vp] of VIEWPORTS) shots.push({ p, dev, vp });
 
   const taken = await pool(shots, JOBS, async ({ p, dev, vp }) => {
-    // ignoreHTTPSErrors: CA của agent-proxy không nằm trong NSS store của Chromium
-    // (chỉ ảnh hưởng harness chụp ảnh cục bộ, không liên quan sản phẩm)
+    // ignoreHTTPSErrors: the agent proxy CA is not in Chromium's NSS store
+    // (affects only this local screenshot harness, nothing in the product)
     const ctx = await browser.newContext({ viewport: vp, deviceScaleFactor: 1.5, locale: 'vi-VN', ignoreHTTPSErrors: true });
     try {
       const page = await ctx.newPage();
@@ -154,7 +154,7 @@ const run = async () => {
         if (tenant) localStorage.setItem('prep.tenant', tenant);
       }, { auth: p.auth, dark: !!p.dark, tenant: p.tenant || null, overlay: LOCAL_OVERLAY });
 
-      /* Phiên thật: đăng nhập qua API để cookie nằm sẵn trong context */
+      /* A real session: sign in through the API so the cookie is already in the context */
       if (p.auth === true) await apiLogin(ctx, DEMO.id, DEMO.pw);
       if (p.auth === 'fresh') await apiLogin(ctx, freshAccount.email, freshAccount.password);
 
@@ -167,7 +167,7 @@ const run = async () => {
       } else {
         await page.goto(BASE + p.url, { waitUntil: 'networkidle' });
       }
-      await page.waitForTimeout(1300); // đợi skeleton nhường chỗ cho nội dung + font
+      await page.waitForTimeout(1300); // let skeletons give way to content, and fonts load
       await page.screenshot({ path: path.join(OUT, `${p.slug}-${dev}.png`), fullPage: !!p.full });
 
       const cspErrors = errors.filter(e => /Content Security Policy|CSP/i.test(e));
@@ -183,7 +183,7 @@ const run = async () => {
 
   await browser.close();
   if (problems.length) {
-    console.log('\n⚠ LỖI CONSOLE:');
+    console.log('\n⚠ CONSOLE ERRORS:');
     for (const pr of problems) {
       console.log(' -', pr.page);
       pr.cspErrors.forEach(e => console.log('   [CSP]', e.slice(0, 220)));
@@ -191,7 +191,7 @@ const run = async () => {
     }
     process.exitCode = 1;
   } else {
-    console.log('\n✔ 0 lỗi console / CSP trên tất cả trang đã chụp.');
+    console.log('\n✔ 0 console / CSP errors on any page shot.');
   }
 };
 
