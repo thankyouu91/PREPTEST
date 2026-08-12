@@ -192,6 +192,7 @@ app.use((req, res) =>
 
 /* Tài khoản quản trị khởi tạo + dọn phiên hết hạn định kỳ */
 A.ensureSeedAdmin();
+A.ensureDevAdminPassword();
 A.ensureDemoStudentPassword();
 setInterval(A.purgeSessions, 30 * 60e3).unref();
 

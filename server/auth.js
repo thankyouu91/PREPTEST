@@ -309,6 +309,51 @@ function ensureSeedAdmin() {
   return { username, password: envPw ? null : password };
 }
 
+/* ------------- Mật khẩu quản trị khi chạy thử -------------
+   ensureSeedAdmin() ở trên chỉ chạy khi bảng admins còn trống. Nghĩa là sửa
+   DEV_DEFAULT_PASSWORD không đụng được tới một CSDL đã tồn tại: người dùng kéo
+   mã mới về, đọc README, gõ đúng mật khẩu ghi trong đó, và bị từ chối — trong
+   khi cả mã lẫn tài liệu đều nói mật khẩu là cái họ vừa gõ.
+
+   Đây đúng là lỗi mà tài khoản học viên demo đã dính và đã xử ngay bên dưới.
+   Tài khoản quản trị bị bỏ sót, nên xử luôn ở đây theo cùng một cách: ngoài
+   production, mỗi lần khởi động kéo tài khoản quản trị hạt giống về đúng trạng
+   thái tài liệu ghi, và in một dòng khi thật sự có sửa.
+
+   Ba chỗ hàm này KHÔNG đụng vào:
+   - production: mật khẩu ở đó do ADMIN_PASSWORD quyết, không bao giờ là mặc định
+   - khi ADMIN_PASSWORD được đặt tường minh: người vận hành đã quyết rồi
+   - các tài khoản quản trị khác: chỉ đúng tài khoản hạt giống bị kéo về
+
+   Đánh đổi có thật: đổi mật khẩu tài khoản này trong dashboard lúc chạy thử thì
+   lần khởi động sau nó quay về mặc định. Với một tài khoản mà mật khẩu nằm sẵn
+   trong README thì lệch tài liệu là lỗi tệ hơn — cần mật khẩu riêng thì đặt
+   ADMIN_PASSWORD, hàm này lập tức đứng ngoài. */
+function ensureDevAdminPassword() {
+  if (process.env.NODE_ENV === 'production') return false;
+  if (process.env.ADMIN_PASSWORD) return false;
+
+  const username = process.env.ADMIN_USERNAME || 'admin';
+  const a = q.get('SELECT id, pass_hash, active FROM admins WHERE username=?', username);
+  if (!a) return false;
+
+  const dungMatKhau = a.pass_hash && verifyPassword(DEV_DEFAULT_PASSWORD, a.pass_hash);
+  if (dungMatKhau && a.active === 1) return false;
+
+  q.run('UPDATE admins SET pass_hash=?, active=1 WHERE id=?',
+    hashPassword(DEV_DEFAULT_PASSWORD), a.id);
+  /* Phiên cũ được cấp dưới mật khẩu cũ; thu hồi hết cho khớp hành vi của lệnh
+     `node scripts/tai-khoan.js dat-lai-admin`. */
+  q.run('DELETE FROM sessions WHERE admin_id=?', a.id);
+
+  console.warn(
+    '\n⚠  Tài khoản quản trị đã lệch khỏi tài liệu, đã đặt lại:' +
+    '\n   ' + username + ' / ' + DEV_DEFAULT_PASSWORD +
+    '\n   (chỉ chạy ngoài production; đặt ADMIN_PASSWORD nếu muốn mật khẩu riêng)\n'
+  );
+  return true;
+}
+
 /* ------------- Mật khẩu cho tài khoản học viên demo -------------
    Bản seed tạo user 'student' không có mật khẩu. Ngoài production, đặt sẵn
    mật khẩu demo để thử luồng đăng nhập; ở production để trống nên không ai
@@ -359,6 +404,6 @@ module.exports = {
   rateLimit, rateLimitPeek, rateLimitNote,
   issueToken, consumeToken,
   requireAdmin, requireOwner, csrfGuard,
-  ensureSeedAdmin, ensureDemoStudentPassword, reportAdminAccounts,
+  ensureSeedAdmin, ensureDevAdminPassword, ensureDemoStudentPassword, reportAdminAccounts,
   DEV_DEFAULT_PASSWORD, DEMO_STUDENT_PASSWORD
 };
