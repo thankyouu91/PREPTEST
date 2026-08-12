@@ -176,7 +176,38 @@ gấp đôi cửa sổ dài nhất mà bất kỳ chỗ gọi nào yêu cầu).
 `node scripts/accounts.js unlock` — lệnh đó xoá cả hai thứ cùng tên "khoá":
 tài khoản bị quản trị viên vô hiệu hoá, *và* khoá do sai mật khẩu quá nhiều.
 
-### 4.4 Token trong thư — không bao giờ vào log
+### 4.4 Lớp xác thực thứ hai cho khu quản trị
+
+Trước 2026-08-12, quyền chủ sở hữu với **mọi** tài khoản, đề thi và mã kích hoạt
+nằm sau đúng một mật khẩu, mở ra Internet. Giờ có TOTP (RFC 6238), mặc định tắt,
+bật bằng `node scripts/accounts.js totp-enable`.
+
+Tự viết bằng `node:crypto`, không thêm dependency. Điều đó chỉ chấp nhận được vì
+`scripts/test-totp.mjs` chạy **sáu vector chuẩn của RFC 6238** — trong đó có
+T=20000000000, vượt 2³² giây, đúng dòng bắt lỗi bộ đếm 64-bit ghi bằng một
+`writeUInt32BE`. "Nhìn thì đúng" là ý kiến; khớp với chuẩn trên đầu vào đã biết
+là thứ mọi app authenticator cùng dựa vào.
+
+Ba tính chất mà một bộ sinh mã đúng **không** tự cho không:
+
+- **Mã đã dùng thì không dùng lại.** Một mã sống nguyên 30 giây, nên mã bị nhìn
+  trộm qua vai hoặc lọt vào ảnh chụp màn hình vẫn dùng được vài giây sau. Bộ đếm
+  của lần dùng gần nhất được lưu và không bao giờ nhận lại.
+- **So sánh theo thời gian hằng định.** Mã chỉ có sáu chữ số; so sánh dừng sớm ở
+  chữ số sai đầu tiên là phát ra một gợi ý đo được.
+- **Cửa sổ lệch giờ đúng một bước mỗi bên.** Rộng hơn thì dễ chịu với đồng hồ
+  lệch, và dễ chịu tương ứng với việc dò.
+
+Mã sai bị tính vào **cùng bộ đếm khoá 15 phút** với mật khẩu sai. Nếu không thì
+mật khẩu bị giới hạn tần suất còn sáu chữ số đứng sau nó thì không — trong khi
+sáu chữ số chỉ là một triệu khả năng, không phải một cụm mật khẩu.
+
+**Mã cứu hộ.** 10 mã, hiện đúng một lần, CSDL chỉ giữ hash — cùng lý do với token
+phiên: CSDL rò rỉ không được phép trao ra một lối vào còn dùng được. Không có
+chúng thì bật lớp thứ hai là một cách tự khoá mình khỏi nền tảng của chính mình
+vĩnh viễn, và lời khuyên trung thực sẽ phải là "đừng bật".
+
+### 4.5 Token trong thư — không bao giờ vào log
 
 `deliverLink()` từng `console.log` nguyên cả liên kết xác thực và đặt lại mật
 khẩu, ở **mọi** môi trường kể cả production. Một token dùng một lần là thông tin

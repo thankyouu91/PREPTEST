@@ -19,6 +19,19 @@
  *   node scripts/accounts.js reset-student
  *       Put the demo student's password back to the value the README states.
  *
+ *   node scripts/accounts.js totp-status
+ *       Show which administrators have a second factor, and how many recovery
+ *       codes each has left.
+ *
+ *   node scripts/accounts.js totp-enable [code] [--secret=…] [--user=<name>]
+ *       Two steps: run it once to get a secret, add that to an authenticator,
+ *       then run it again with the 6-digit code to switch it on. Prints the
+ *       recovery codes once and never again.
+ *
+ *   node scripts/accounts.js totp-disable [--user=<name>]
+ *       Turn it off. The way back in when the phone is lost and the recovery
+ *       codes are spent — which is why it needs the database, not a browser.
+ *
  *   node scripts/accounts.js unlock
  *       Clear both kinds of lock: accounts an administrator disabled, and the
  *       15-minute lockouts from too many wrong passwords.
@@ -32,6 +45,7 @@
 
 const A = require('../server/auth');
 const { q, nowISO, DB_FILE } = require('../server/db');
+const totp = require('../server/totp');
 
 const DEFAULT_ADMIN_PASSWORD = 'Admin@123456';
 const DEMO_STUDENT_PASSWORD = 'Goodmorning01';
@@ -145,11 +159,107 @@ function unlockAll() {
   console.log('\nBoth survive a restart, so this command is the way out of either.');
 }
 
+/* ---------------------- Second factor ----------------------
+   Enrolment lives here rather than in the admin interface, and that is a choice
+   rather than a shortcut. Turning on a second factor is the one operation where
+   getting it half-done locks you out of the place you would go to fix it — so
+   it happens with the server stopped, at a prompt, where the secret and the
+   recovery codes can be written down before anything is switched on. */
+
+function adminByName(name) {
+  const admins = q.all('SELECT * FROM admins ORDER BY id');
+  if (!admins.length) {
+    console.error('No administrator in the database. Start the server once, then run this again.');
+    process.exit(1);
+  }
+  const chosen = name ? admins.find(a => a.username === name) : admins[0];
+  if (!chosen) {
+    console.error('No administrator named "' + name + '". Present: ' + admins.map(a => a.username).join(', '));
+    process.exit(1);
+  }
+  if (!name && admins.length > 1) {
+    console.log('There are ' + admins.length + ' administrators; taking the first.');
+    console.log('Add --user=<username> to pick another.\n');
+  }
+  return chosen;
+}
+
+function totpStatus() {
+  for (const a of q.all('SELECT * FROM admins ORDER BY id')) {
+    const left = A.recoveryCodesLeft(a.id);
+    console.log('  · ' + a.username.padEnd(16) +
+      (A.totpEnabled(a)
+        ? 'two-factor ON since ' + a.totp_enabled_at.slice(0, 16).replace('T', ' ') + '  ·  ' + left + ' recovery code(s) left'
+        : 'two-factor off'));
+  }
+}
+
+function totpEnable() {
+  const admin = adminByName(optValue('user'));
+  if (A.totpEnabled(admin)) {
+    console.error('Two-factor is already on for ' + admin.username + '. Turn it off first to re-enrol.');
+    process.exit(1);
+  }
+
+  const secret = totp.newSecret();
+  const code = positional[0];
+  if (!code) {
+    /* Two steps on purpose. The first prints the secret; the second proves the
+       authenticator actually has it. Enabling in one step would happily switch
+       on a factor nobody can produce. */
+    console.log('Add this to your authenticator app, then run the command again with the 6-digit code.\n');
+    console.log('  Account : ' + admin.username + ' @ VPET Prep');
+    console.log('  Secret  : ' + secret.replace(/(.{4})/g, '$1 ').trim());
+    console.log('  URI     : ' + totp.otpauthUri(secret, admin.username));
+    console.log('\n  node scripts/accounts.js totp-enable <code> --secret=' + secret +
+      (optValue('user') ? ' --user=' + optValue('user') : ''));
+    console.log('\nNothing has been switched on yet.');
+    return;
+  }
+
+  const useSecret = optValue('secret') || secret;
+  if (totp.verify(useSecret, code) === null) {
+    console.error('That code does not match the secret. Check the clock on your phone, then try again.');
+    console.error('Nothing has been switched on.');
+    process.exit(1);
+  }
+
+  const codes = A.issueRecoveryCodes(admin.id);
+  q.run('UPDATE admins SET totp_secret=?, totp_enabled_at=?, totp_last_counter=NULL WHERE id=?',
+    useSecret, nowISO(), admin.id);
+  q.run('DELETE FROM sessions WHERE admin_id=?', admin.id);
+
+  console.log('Two-factor is ON for ' + admin.username + '.');
+  console.log('Every existing session for this account has been signed out.\n');
+  console.log('RECOVERY CODES — write these down now. They are shown once and stored only as hashes,');
+  console.log('so nobody, including this tool, can print them again. Each one works once.\n');
+  codes.forEach(c => console.log('    ' + c));
+  console.log('\nWithout them, losing the phone means losing the admin area.');
+}
+
+function totpDisable() {
+  const admin = adminByName(optValue('user'));
+  if (!A.totpEnabled(admin)) {
+    console.log('Two-factor is already off for ' + admin.username + '.');
+    return;
+  }
+  q.run('UPDATE admins SET totp_secret=NULL, totp_enabled_at=NULL, totp_last_counter=NULL WHERE id=?', admin.id);
+  q.run('DELETE FROM admin_recovery_codes WHERE admin_id=?', admin.id);
+  q.run('INSERT INTO audit (admin_id,admin_name,action,target,meta_json,ip,at) VALUES (?,?,?,?,?,?,?)',
+    null, 'cli', 'admin.totp.disabled', 'admins/' + admin.username, '{"source":"scripts/accounts.js"}', null, nowISO());
+  console.log('Two-factor is OFF for ' + admin.username + ', and its recovery codes are gone.');
+  console.log('This is the way back in when the phone is lost and the recovery codes are spent —');
+  console.log('which is why it needs the database, not a browser.');
+}
+
 const COMMANDS = {
   'list': listAccounts,
   'reset-admin': resetAdmin,
   'reset-student': resetStudent,
-  'unlock': unlockAll
+  'unlock': unlockAll,
+  'totp-status': totpStatus,
+  'totp-enable': totpEnable,
+  'totp-disable': totpDisable
 };
 
 if (!COMMANDS[verb]) {

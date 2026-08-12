@@ -286,6 +286,63 @@ function rateLimitNote(key) {
   q.run('INSERT INTO throttle_hits (bucket, at) VALUES (?,?)', key, nowISO());
 }
 
+/* ---------------------- Second factor, admin side ----------------------
+   The engine is in server/totp.js, checked against the RFC 6238 vectors. What
+   lives here is the part that touches accounts: whether one is enrolled, and
+   the recovery codes that stop enrolment from being a way to lock yourself out
+   of your own platform for ever. */
+const totp = require('./totp');
+
+const totpEnabled = admin => !!(admin && admin.totp_secret && admin.totp_enabled_at);
+
+/**
+ * Check a submitted second factor against an administrator row.
+ *
+ * Returns 'totp', 'recovery', or null. A successful TOTP burns its counter so
+ * the same code cannot be presented twice within its 30-second life; a
+ * successful recovery code is spent outright.
+ */
+function verifySecondFactor(admin, submitted) {
+  const code = String(submitted || '').replace(/[\s-]/g, '');
+  if (!code) return null;
+
+  const counter = totp.verify(admin.totp_secret, code, { lastCounter: admin.totp_last_counter });
+  if (counter !== null) {
+    q.run('UPDATE admins SET totp_last_counter=? WHERE id=?', counter, admin.id);
+    return 'totp';
+  }
+
+  /* Recovery codes are longer than six digits, so a TOTP attempt never
+     accidentally consumes one and the two never collide. */
+  const row = q.get(
+    'SELECT code_hash FROM admin_recovery_codes WHERE admin_id=? AND code_hash=? AND used_at IS NULL',
+    admin.id, sha256(code.toUpperCase()));
+  if (row) {
+    q.run('UPDATE admin_recovery_codes SET used_at=? WHERE code_hash=?', nowISO(), row.code_hash);
+    return 'recovery';
+  }
+  return null;
+}
+
+/** Mint a fresh set of recovery codes, replacing any that are left. Returns them once. */
+function issueRecoveryCodes(adminId, howMany = 10) {
+  q.run('DELETE FROM admin_recovery_codes WHERE admin_id=?', adminId);
+  const codes = [];
+  for (let i = 0; i < howMany; i++) {
+    /* Base32 alphabet, so nothing reads as both a letter and a digit when it is
+       copied off a screen by hand at the worst possible moment. */
+    const raw = totp.base32Encode(crypto.randomBytes(10)).slice(0, 16);
+    const shown = raw.slice(0, 4) + '-' + raw.slice(4, 8) + '-' + raw.slice(8, 12) + '-' + raw.slice(12, 16);
+    codes.push(shown);
+    q.run('INSERT INTO admin_recovery_codes (code_hash, admin_id, created_at) VALUES (?,?,?)',
+      sha256(raw), adminId, nowISO());
+  }
+  return codes;
+}
+
+const recoveryCodesLeft = adminId =>
+  q.val('SELECT COUNT(*) c FROM admin_recovery_codes WHERE admin_id=? AND used_at IS NULL', adminId);
+
 /* ------------------ Single-use tokens sent by email ------------------ */
 const TOKEN_HOURS = { verify: 48, reset: 2 };
 
@@ -421,6 +478,7 @@ module.exports = {
   createUserSession, destroyUserSession, dropUserSessions, currentUser, requireUser,
   ensureCsrfCookie,
   throttleKey, isLocked, noteFailure, clearFailures, clearAllLocks,
+  totpEnabled, verifySecondFactor, issueRecoveryCodes, recoveryCodesLeft,
   rateLimit, rateLimitPeek, rateLimitNote,
   issueToken, consumeToken,
   requireAdmin, requireOwner, csrfGuard,

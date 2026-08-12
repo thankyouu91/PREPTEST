@@ -75,6 +75,36 @@ router.post('/admin/login', A.csrfGuard, (req, res) => {
     return res.status(401).json({ error: 'That username or password is not right.' });
   }
 
+  /* Second factor, when this account has one. An administrator with no second
+     factor sees exactly the behaviour it always had — the feature is off until
+     somebody turns it on, per the rule for anything that needs setting up.
+
+     The wrong code counts as a failed attempt against the same lockout as a
+     wrong password. Otherwise the password stays rate-limited and the six
+     digits standing behind it do not, which is the wrong way round: those six
+     digits are a million guesses, not a passphrase. */
+  if (A.totpEnabled(admin)) {
+    const factor = A.verifySecondFactor(admin, req.body && req.body.code);
+    if (!factor) {
+      A.noteFailure(key);
+      audit({ ip: req.ip }, 'admin.login.2fa_failed', 'admins/' + username, {});
+      /* Say the password was right: whoever is holding it already knows, and a
+         vague answer here just leaves an administrator staring at a screen that
+         will not say which of the two fields it disliked. */
+      return res.status(401).json({
+        error: (req.body && req.body.code)
+          ? 'That code is not right, or it has already been used.'
+          : 'This account needs a code from your authenticator app.',
+        needCode: true
+      });
+    }
+    if (factor === 'recovery') {
+      const left = A.recoveryCodesLeft(admin.id);
+      audit({ admin, ip: req.ip }, 'admin.login.recovery_used', 'admins/' + admin.username, { left });
+      console.warn(`[2fa] ${admin.username} signed in with a recovery code; ${left} left`);
+    }
+  }
+
   A.clearFailures(key);
   A.createSession(admin.id, req, res);
   q.run('UPDATE admins SET last_login_at=? WHERE id=?', nowISO(), admin.id);

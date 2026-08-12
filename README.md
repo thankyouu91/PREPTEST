@@ -85,6 +85,7 @@ Lệnh khác:
 | `node scripts/accounts.js list` | **Vào không được?** Liệt kê tài khoản quản trị và trạng thái học viên demo. Đặt lại bằng `reset-admin` / `reset-student`. `unlock` gỡ **cả hai** thứ tên "khoá": tài khoản bị quản trị vô hiệu hoá, và khoá 15 phút do sai mật khẩu 5 lần — khoá này nằm trong CSDL nên khởi động lại server không xoá nó. Trên Windows nhấn đúp `cai-dat\accounts.bat` |
 | `node scripts/test-accounts.js` | kiểm thử đường cứu hộ tài khoản (tự phục hồi tài khoản demo, đặt lại mật khẩu quản trị) |
 | `node scripts/test-mail.mjs` | kiểm thử thư đi: soạn thư (mã hoá tiêu đề, chống chèn header), toàn bộ hội thoại SMTP với một server giả chạy tại chỗ, và **token không lọt vào log** |
+| `node scripts/test-totp.mjs` | kiểm thử lớp xác thực thứ hai: **sáu vector chuẩn RFC 6238**, cửa sổ lệch giờ, mã đã dùng không dùng lại được, mã cứu hộ, và toàn bộ luồng đăng nhập thật |
 | `node scripts/test-health.mjs` | kiểm thử vòng đời tiến trình (sập thì thoát khác 0, SIGTERM thì thoát êm bằng 0, có chặn thời gian) và endpoint `/healthz` |
 | `node scripts/test-exam.mjs` | kiểm thử engine làm bài: mở/nối lại lượt thi, đồng hồ từng phần, số lần nghe lại đếm ở máy chủ, ghi âm câu trả lời, nộp bài, hạn mức lượt của gói Starter, và **đáp án không lọt ra trình duyệt** |
 | `node scripts/test-learn.mjs` | kiểm thử khu tự học: chất lượng dữ liệu động từ bất quy tắc, từ nối và hai nhóm ngữ pháp (nhóm khớp hình thái, ví dụ chứa đúng mục từ, đủ bốn lát cắt, chỗ trống khớp đáp án, đúng hạn mức bậc) + bộ lọc bốn trang |
@@ -243,6 +244,35 @@ tiến trình đang chạy thì nền tảng đã biết rồi; cái nó không 
 trình vẫn nghe cổng trong khi CSDL đã mất, và đúng trạng thái đó mới đáng khởi
 động lại. Endpoint không nói gì thêm: không phiên bản, không đường dẫn, không
 nội dung lỗi — lý do hỏng đi vào log, chỗ người vận hành đang nhìn.
+
+### Lớp xác thực thứ hai cho khu quản trị
+
+Khu quản trị nắm mọi tài khoản, mọi đề thi, mọi mã kích hoạt — và trước đây chỉ
+có **một mật khẩu** đứng giữa nó và Internet. Giờ có TOTP (RFC 6238), thứ mà mọi
+app authenticator đều nói.
+
+Mặc định **tắt**. Bật bằng dòng lệnh, với server đã dừng:
+
+```bash
+node scripts/accounts.js totp-enable            # in ra secret + URI otpauth://
+# thêm secret vào app authenticator, rồi:
+node scripts/accounts.js totp-enable 123456 --secret=<secret>
+```
+
+Hai bước là cố ý: bước một chỉ **in** secret chứ chưa bật gì cả; bước hai chứng
+minh app thật sự đã có nó. Bật một bước là bật một lớp bảo vệ mà chưa chắc ai
+tạo được mã.
+
+Bật xong sẽ in **10 mã cứu hộ**, chỉ hiện đúng một lần (CSDL chỉ giữ hash). Không
+có chúng thì bật lớp thứ hai đồng nghĩa với việc mất điện thoại là mất luôn khu
+quản trị. `totp-disable` là đường về cuối cùng khi mất cả điện thoại lẫn mã cứu
+hộ — nó cần CSDL chứ không phải trình duyệt, đó là lý do nó nằm ở dòng lệnh.
+
+`totp-status` cho biết ai đang bật và còn bao nhiêu mã cứu hộ.
+
+Chưa có giao diện tự bật trong `/admin/quan-tri/` — đó là việc riêng đã xếp hàng.
+Vẽ mã QR cũng vậy: vẽ QR cần thêm dependency hoặc tự viết Reed-Solomon, mà mọi
+app authenticator đều cho gõ tay secret, nên QR là tiện chứ không phải thiếu.
 
 ### Thư đi (xác thực email, đặt lại mật khẩu)
 

@@ -109,6 +109,21 @@ CREATE TABLE IF NOT EXISTS throttle_locks (
 
 CREATE INDEX IF NOT EXISTS idx_throttle_locks_until ON throttle_locks(locked_until);
 
+-- One-use recovery codes for an administrator who has lost their authenticator.
+--
+-- Without these, enrolling a second factor is a way to lock yourself out of your
+-- own platform permanently, and the honest advice would be "do not turn it on".
+-- Only the HASH is stored, for the same reason session tokens are: a leaked
+-- database must not hand over a working way in.
+CREATE TABLE IF NOT EXISTS admin_recovery_codes (
+  code_hash TEXT PRIMARY KEY,
+  admin_id  INTEGER NOT NULL REFERENCES admins(id) ON DELETE CASCADE,
+  created_at TEXT NOT NULL,
+  used_at   TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_recovery_admin ON admin_recovery_codes(admin_id, used_at);
+
 -- Self-study: the V1–V2–V3 irregular verb table.
 -- Searchable on any column (typing "went" must find "go"), so all three are indexed.
 CREATE TABLE IF NOT EXISTS irregular_verbs (
@@ -511,6 +526,15 @@ db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_users_google_sub ON users (google
 addColumnIfMissing('codes', 'plan_id', 'TEXT');
 addColumnIfMissing('codes', 'access_expires_at', 'TEXT');
 addColumnIfMissing('codes', 'attempts_used', 'INTEGER NOT NULL DEFAULT 0');
+
+/* Second factor on the administrator sign-in. Added as columns rather than a
+   table because there is exactly one per administrator, and a NULL secret is a
+   complete and correct answer for "not enrolled". totp_last_counter is what
+   makes a code single-use: a code stays valid for its whole 30-second step, so
+   without it one glimpsed over a shoulder could be replayed. */
+addColumnIfMissing('admins', 'totp_secret', 'TEXT');
+addColumnIfMissing('admins', 'totp_enabled_at', 'TEXT');
+addColumnIfMissing('admins', 'totp_last_counter', 'INTEGER');
 
 addColumnIfMissing('questions', 'audio_key', 'TEXT');
 addColumnIfMissing('questions', 'audio_bytes', 'INTEGER');
