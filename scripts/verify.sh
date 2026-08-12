@@ -86,7 +86,7 @@ node scripts/test-security.mjs || fail=1
 step "Vocabulary (schema, importer, lookup by inflected form)"
 node scripts/test-vocab.mjs || fail=1
 
-step "Self-study area (irregular verbs, linking words)"
+step "Self-study area (verbs, linking words, nine grammar groups, eleven pages)"
 node scripts/test-learn.mjs || fail=1
 
 step "Interface audit (overflow, contrast, CSP)"
