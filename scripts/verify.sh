@@ -37,6 +37,9 @@ npm run build || fail=1
 step "Account rescue"
 node scripts/test-accounts.js || fail=1
 
+step "Outgoing mail (composition, SMTP conversation, no token in the log)"
+node scripts/test-mail.mjs || fail=1
+
 step "Start the server"
 pkill -f 'node server\.js' 2>/dev/null || true
 sleep 0.5

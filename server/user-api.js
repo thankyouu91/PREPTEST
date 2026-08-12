@@ -12,16 +12,16 @@
  * - Against guessing: sign-in locks temporarily per IP + account; registration and
  *   resends are rate-limited per IP.
  *
- * Email: no mail service is wired in yet. Verification / reset links are written to
- * the server console, and ONLY outside production are they returned in the response
- * so the flow can be exercised.
- * // TODO(backend/mail): wire up SMTP or a mail service, and drop devLink from the response.
+ * Email: server/mail.js. MAIL_DRIVER=console (default) sends nothing and returns
+ * the link to the caller outside production so the flow can be exercised;
+ * MAIL_DRIVER=smtp sends a real message. The token is never written to a log.
  */
 'use strict';
 const express = require('express');
 const { q, nowISO, jparse, audit } = require('./db');
 const A = require('./auth');
 const googleAuth = require('./google-auth');
+const mail = require('./mail');
 const PLANS = require('./data/plans');
 const { entitlementOf } = require('./entitlements');
 
@@ -67,13 +67,49 @@ function cleanInterests(v) {
   return [...new Set(v.filter(x => typeof x === 'string' && valid.has(x)))].slice(0, 10);
 }
 
-/** Write the link to the log; outside production return it so the client can open it. */
-function deliverLink(kind, user, token) {
-  const path = kind === 'verify' ? '/prep/xac-thuc-email/?token=' : '/prep/dat-lai-mat-khau/?token=';
-  const link = path + encodeURIComponent(token);
-  const label = kind === 'verify' ? 'email verification' : 'password reset';
-  console.log(`[mail] ${label} link for ${user.email}: ${link}`);
-  return isProd() ? undefined : link;
+/* The two links this platform ever sends. Both carry a single-use token that is
+   a bearer credential for one account until it is spent, which is why the token
+   never reaches a log — see the note at the top of server/mail.js. */
+const LINKS = {
+  verify: {
+    path: '/prep/xac-thuc-email/?token=',
+    subject: 'Xác thực địa chỉ email — VPET Prep',
+    body: link => 'Chào bạn,\n\n' +
+      'Bấm vào liên kết dưới đây để xác thực địa chỉ email của bạn:\n\n' + link +
+      '\n\nLiên kết có hiệu lực trong 48 giờ và chỉ dùng được một lần.\n' +
+      'Nếu bạn không tạo tài khoản nào ở VPET Prep, bỏ qua thư này là được.\n'
+  },
+  reset: {
+    path: '/prep/dat-lai-mat-khau/?token=',
+    subject: 'Đặt lại mật khẩu — VPET Prep',
+    body: link => 'Chào bạn,\n\n' +
+      'Bấm vào liên kết dưới đây để đặt mật khẩu mới:\n\n' + link +
+      '\n\nLiên kết có hiệu lực trong 2 giờ và chỉ dùng được một lần.\n' +
+      'Nếu bạn không yêu cầu đổi mật khẩu, bỏ qua thư này — mật khẩu hiện tại vẫn giữ nguyên.\n'
+  }
+};
+
+/**
+ * Issue one link and get it to the person.
+ *
+ * The link is returned to the caller only when no real transport is configured
+ * AND this is not production — that is the development path, where the sign-up
+ * screen shows the link because there is nowhere else for it to go. With SMTP
+ * configured, or in production, the response carries nothing: a token in an API
+ * response is a token in a browser history, a proxy log and a screenshot.
+ *
+ * Sending is deliberately not awaited. A mail server having a slow afternoon
+ * must not hold a registration request open, and the send path already reports
+ * its own failures; the person can ask for another link.
+ */
+function deliverLink(kind, user, token, req) {
+  const spec = LINKS[kind];
+  const link = spec.path + encodeURIComponent(token);
+  if (user.email) {
+    mail.send({ to: user.email, subject: spec.subject, text: spec.body(mail.baseUrl(req) + link) })
+      .catch(e => console.error('[mail] delivery failed: ' + (e && e.message)));
+  }
+  return (isProd() || mail.enabled()) ? undefined : link;
 }
 
 /** The profile sent to the client — never carries pass_hash */
@@ -158,7 +194,7 @@ router.post('/auth/register', A.csrfGuard, (req, res) => {
 
   A.rateLimitNote(rlKey);
   const user = q.get('SELECT * FROM users WHERE email=?', email);
-  const devLink = deliverLink('verify', user, A.issueToken(user.id, 'verify'));
+  const devLink = deliverLink('verify', user, A.issueToken(user.id, 'verify'), req);
   A.createUserSession(user.id, req, res);
   q.run('UPDATE users SET last_login_at=? WHERE id=?', nowISO(), user.id);
   logUser(req, 'user.register', email);
@@ -302,7 +338,7 @@ router.post('/auth/verify/send', A.requireUser, A.csrfGuard, (req, res) => {
   const wait = A.rateLimit('verify-send|' + req.user.id, 3, 3600e3);
   if (wait) return res.status(429).json({ error: 'That has been sent a few times already. Try again in ' + Math.ceil(wait / 60) + ' minutes.' });
 
-  const link = deliverLink('verify', req.user, A.issueToken(req.user.id, 'verify'));
+  const link = deliverLink('verify', req.user, A.issueToken(req.user.id, 'verify'), req);
   logUser(req, 'user.verify.send', req.user.username);
   res.json({ ok: true, verifyLink: link });
 });
@@ -328,7 +364,7 @@ router.post('/auth/forgot', A.csrfGuard, (req, res) => {
   const user = q.get('SELECT * FROM users WHERE lower(email)=?', email);
   let link;
   if (user && user.status === 'active') {
-    link = deliverLink('reset', user, A.issueToken(user.id, 'reset'));
+    link = deliverLink('reset', user, A.issueToken(user.id, 'reset'), req);
     logUser(req, 'user.reset.request', user.username);
   }
   // Always the same answer: never reveal which emails exist
@@ -400,7 +436,7 @@ router.patch('/me', A.requireUser, A.csrfGuard, (req, res) => {
 
   let link;
   if (changedEmail) {
-    link = deliverLink('verify', { email }, A.issueToken(req.user.id, 'verify'));
+    link = deliverLink('verify', { email }, A.issueToken(req.user.id, 'verify'), req);
   }
   logUser(req, 'user.profile.update', req.user.username, { changedEmail });
   res.json({ ok: true, user: profileOf(req.user.id), verifyLink: link });

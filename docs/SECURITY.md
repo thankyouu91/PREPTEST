@@ -146,6 +146,40 @@ Giờ: production tự bật. `FORCE_SECURE_COOKIE` còn lại như một cách 
 ý theo cả hai chiều — `1` để bật cho máy dev nằm sau TLS proxy, `0` để tắt nếu
 một bản production nào đó buộc phải phục vụ HTTP thường.
 
+### 4.3 Token trong thư — không bao giờ vào log
+
+`deliverLink()` từng `console.log` nguyên cả liên kết xác thực và đặt lại mật
+khẩu, ở **mọi** môi trường kể cả production. Một token dùng một lần là thông tin
+xác thực dạng bearer cho đúng một tài khoản cho tới khi bị tiêu — nên **token
+trong log là mật khẩu trong log**, và ai đọc được log là chiếm được mọi tài khoản.
+
+Từ 2026-08-12, `server/mail.js` chỉ ghi *việc đã gửi*, gửi *cái gì* và *cho ai*:
+
+```
+[mail] would send "Xác thực địa chỉ email — VPET Prep" to probe@example.com (link not logged: it is a credential)
+```
+
+Kiểm thật trên server chạy `NODE_ENV=production`: đăng ký một tài khoản rồi đếm
+`token=` trong toàn bộ log → **0**. Response cũng không trả link (chỉ driver
+`console` ngoài production mới trả, để bấm thử lúc phát triển).
+
+`scripts/test-mail.mjs` chặn bắt `console.log`/`console.error` quanh một lần gửi
+thật và khẳng định token không nằm trong đó — nhưng *người nhận thì có*, để vẫn
+truy được một lần gửi về đúng tài khoản.
+
+Ba điểm khác của lớp thư, cũng có kiểm:
+
+- **Chèn header.** Địa chỉ người nhận đến từ ô đăng ký. Một ký tự xuống dòng
+  trong đó là người gửi tự viết thêm `Bcc:` cho mình. Mọi giá trị đi vào header
+  đều bị từ chối nếu có `\r` hoặc `\n`.
+- **Không gửi mật khẩu qua kết nối chưa mã hoá.** Server không mời STARTTLS và
+  cổng cũng không phải TLS sẵn → AUTH bị từ chối, không hạ cấp. Muốn khác thì
+  phải nói rõ bằng `SMTP_ALLOW_PLAINTEXT_AUTH=1`. Test khẳng định thêm rằng
+  không có lệnh `AUTH` nào lọt ra dây.
+- **Thân thư mã hoá base64**, nên không dòng nào bắt đầu bằng `.` — quy tắc
+  dot-stuffing vốn hay làm hỏng SMTP client viết tay trở thành không thể xảy ra
+  chứ không phải chỉ khó xảy ra.
+
 ## 5. Bảng endpoint → guard → giới hạn ghi
 
 74 route, 43 route ghi. **43/43 route ghi đều có `csrfGuard`**; 35/43 có thêm

@@ -84,6 +84,7 @@ Lệnh khác:
 | `node scripts/test-user-api.mjs` | kiểm thử API tài khoản học viên: đăng ký, đăng nhập, xác thực email, đặt lại mật khẩu, CSRF, chống dò |
 | `node scripts/accounts.js list` | **Vào không được?** Liệt kê tài khoản quản trị và trạng thái học viên demo. Đặt lại bằng `reset-admin` / `reset-student`, mở khoá bằng `unlock`. Trên Windows nhấn đúp `cai-dat\accounts.bat` |
 | `node scripts/test-accounts.js` | kiểm thử đường cứu hộ tài khoản (tự phục hồi tài khoản demo, đặt lại mật khẩu quản trị) |
+| `node scripts/test-mail.mjs` | kiểm thử thư đi: soạn thư (mã hoá tiêu đề, chống chèn header), toàn bộ hội thoại SMTP với một server giả chạy tại chỗ, và **token không lọt vào log** |
 | `node scripts/test-exam.mjs` | kiểm thử engine làm bài: mở/nối lại lượt thi, đồng hồ từng phần, số lần nghe lại đếm ở máy chủ, ghi âm câu trả lời, nộp bài, hạn mức lượt của gói Starter, và **đáp án không lọt ra trình duyệt** |
 | `node scripts/test-learn.mjs` | kiểm thử khu tự học: chất lượng dữ liệu động từ bất quy tắc, từ nối và hai nhóm ngữ pháp (nhóm khớp hình thái, ví dụ chứa đúng mục từ, đủ bốn lát cắt, chỗ trống khớp đáp án, đúng hạn mức bậc) + bộ lọc bốn trang |
 | `node scripts/export-supabase.mjs --count` | xuất nội dung ra Supabase (SQL hoặc JSON) — xem [Bản sao nội dung trên Supabase](#bản-sao-nội-dung-trên-supabase) |
@@ -219,6 +220,30 @@ Nơi lưu do biến môi trường quyết định, không phải sửa mã:
 Đĩa hợp cho lúc phát triển (không cần khoá, chạy ngay) nhưng container dựng lại
 là mất; production dùng Supabase. Thêm driver thứ ba (ví dụ Google Cloud Storage)
 chỉ cần viết thêm một object trong `server/storage.js`, chỗ gọi không phải sửa.
+
+### Thư đi (xác thực email, đặt lại mật khẩu)
+
+Cùng kiểu adapter, ở `server/mail.js`. Nền tảng chỉ gửi hai loại thư, cả hai đều
+chứa một token dùng một lần — nên **token không bao giờ được ghi vào log**.
+
+| Biến | Mặc định | Việc |
+|---|---|---|
+| `MAIL_DRIVER` | `console` | `console` không gửi gì; `smtp` gửi thật |
+| `PUBLIC_BASE_URL` | suy từ request | gốc URL tuyệt đối đặt trong thư (`https://vpetprep.vn`) |
+| `MAIL_FROM` | — | bắt buộc khi dùng `smtp`, ví dụ `VPET Prep <no-reply@vpetprep.vn>` |
+| `SMTP_HOST` | — | bắt buộc khi dùng `smtp` |
+| `SMTP_PORT` | `587` | `465` là TLS ngay từ byte đầu; `587` bắt đầu thường rồi STARTTLS |
+| `SMTP_USER`, `SMTP_PASS` | — | bỏ trống nếu relay không cần đăng nhập |
+| `SMTP_SECURE` | `1` khi cổng 465 | ép TLS ngay từ đầu |
+| `SMTP_ALLOW_PLAINTEXT_AUTH` | `0` | chỉ bật với relay nội bộ bạn tự quản |
+
+Driver `smtp` viết bằng `node:net` + `node:tls`, **không thêm dependency**, và
+không gắn với nhà cung cấp nào: SES, SendGrid, Postmark hay Gmail (app password)
+đều nói SMTP. Chưa cấu hình thì driver `console` chạy — ngoài production nó trả
+link về cho client để bấm thử, còn trong production thì không trả gì cả.
+
+Nó **không bao giờ gửi mật khẩu qua kết nối chưa mã hoá**: nếu server không mời
+STARTTLS và cổng cũng không phải TLS sẵn thì AUTH bị từ chối chứ không hạ cấp.
 
 **Kiểm tra khi nhận tệp** — đây là chỗ duy nhất nền tảng nhận file từ ngoài:
 
