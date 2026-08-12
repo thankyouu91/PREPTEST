@@ -12,14 +12,22 @@
  * sign-in that follows still belongs to that context.
  */
 
+import { retry } from './_retry.mjs';
+
 /** The page used to obtain the cookie: public, and never redirects. */
 const WARM_PATH = '/prep/landing/';
 
+/**
+ * The warm-up is the single most-called request in the suite — every audit job
+ * and every screenshot with a session starts here — and for a while it was also
+ * the least forgiving: one `ECONNRESET` under the four-worker pool threw out of
+ * the worker and took all 220 jobs with it. It gets one more try now.
+ */
 async function csrfToken(ctx, base) {
   const read = async () => (await ctx.cookies(base)).find(c => c.name === 'prep_csrf');
   let hit = await read();
   if (!hit) {
-    await ctx.request.get(base + WARM_PATH);
+    await retry(`CSRF warm-up ${WARM_PATH}`, () => ctx.request.get(base + WARM_PATH));
     hit = await read();
   }
   return hit ? hit.value : '';

@@ -4,11 +4,9 @@
  *
  * Run with the server up: node scripts/test-catalog.mjs
  */
-import { chromium } from 'playwright-core';
-import { chromiumPath } from './_browser.mjs';
+import { launchChromium } from './_browser.mjs';
 
 const BASE = process.env.BASE || 'http://127.0.0.1:3000';
-const EXEC = chromiumPath();
 
 let pass = 0, fail = 0;
 /* detail prints only on red: one line is enough to see what happened without a re-run */
@@ -29,7 +27,7 @@ async function login(ctx) {
   return page;
 }
 
-const browser = await chromium.launch({ executablePath: EXEC, args: ['--no-sandbox'] });
+const browser = await launchChromium({ args: ['--no-sandbox'] });
 
 try {
   console.log('\n\x1b[1m== The student catalogue reads /api/catalog ==\x1b[0m');

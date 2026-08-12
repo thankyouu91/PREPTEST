@@ -87,6 +87,7 @@ Lệnh khác:
 | `node scripts/test-mail.mjs` | kiểm thử thư đi: soạn thư (mã hoá tiêu đề, chống chèn header), toàn bộ hội thoại SMTP với một server giả chạy tại chỗ, và **token không lọt vào log** |
 | `node scripts/test-totp.mjs` | kiểm thử lớp xác thực thứ hai: **sáu vector chuẩn RFC 6238**, cửa sổ lệch giờ, mã đã dùng không dùng lại được, mã cứu hộ, và toàn bộ luồng đăng nhập thật |
 | `node scripts/test-health.mjs` | kiểm thử vòng đời tiến trình (sập thì thoát khác 0, SIGTERM thì thoát êm bằng 0, có chặn thời gian) và endpoint `/healthz` |
+| `node scripts/test-harness.mjs` | kiểm thử **chính bộ máy chạy test**: lớp thử lại có chặn trên (kiểm bằng một socket bị ngắt thật, không chỉ bằng chuỗi lỗi tự gõ), pool báo đúng job nào hỏng thay vì kéo sập cả lượt, và bước hâm nóng CSRF. Không cần server, không cần trình duyệt |
 | `node scripts/test-exam.mjs` | kiểm thử engine làm bài: mở/nối lại lượt thi, đồng hồ từng phần, số lần nghe lại đếm ở máy chủ, ghi âm câu trả lời, nộp bài, hạn mức lượt của gói Starter, và **đáp án không lọt ra trình duyệt** |
 | `node scripts/test-learn.mjs` | kiểm thử khu tự học: chất lượng dữ liệu động từ bất quy tắc, từ nối và hai nhóm ngữ pháp (nhóm khớp hình thái, ví dụ chứa đúng mục từ, đủ bốn lát cắt, chỗ trống khớp đáp án, đúng hạn mức bậc) + bộ lọc bốn trang |
 | `node scripts/export-supabase.mjs --count` | xuất nội dung ra Supabase (SQL hoặc JSON) — xem [Bản sao nội dung trên Supabase](#bản-sao-nội-dung-trên-supabase) |
@@ -481,7 +482,10 @@ duyệt). Không thêm dependency nào: `playwright-core` có sẵn lệnh `inst
 Đường dẫn Chromium do `scripts/_browser.mjs` quyết: biến `CHROMIUM` nếu có →
 `/opt/pw-browsers/chromium` nếu nó tồn tại thật → không đặt gì, để Playwright tự
 tìm bản nó vừa cài. Trước đây tám script gắn cứng đường dẫn ấy, thứ chỉ tồn tại
-trên máy phát triển này.
+trên máy phát triển này. Bốn script vẫn còn tự gọi `chromium.launch()` — ba
+trong số đó truyền `executablePath` có thể bằng `null` — nay cả bốn đều đi qua
+`launchChromium()`, nên không còn chỗ nào tự quyết đường dẫn, và mọi trang mở ra
+đều được bọc sẵn lớp thử lại `goto` nói ở dưới.
 
 `npm run verify` chạy hết trong khoảng **sáu phút** và in **bảng thời gian từng
 bước** ở cuối, nên lần chậm sau tự tố cáo chính nó thay vì lẫn trong một bức
@@ -490,6 +494,24 @@ tường dấu tích. Bước audit và bước chụp ảnh — 306 lượt t�
 `scripts/_pool.mjs`, số luồng lấy theo số lõi máy và chặn trên ở 4 (ép bằng
 `PW_JOBS`). Kết quả thu theo đúng thứ tự đầu vào rồi mới in: báo cáo mà đổi thứ
 tự sau mỗi lần chạy thì không so được với lần trước.
+
+**Một job hỏng không còn kéo sập cả lượt chạy.** Trước đây ngoại lệ thoát khỏi
+worker, `Promise.all` bị reject, và 220 job được báo bằng một stack trace không
+nói trang nào cũng không nói bề rộng nào — nên một kết nối bị rớt trông y hệt
+như giao diện hỏng ở khắp nơi. Nay lỗi nằm đúng ô của job đó, có tên trang, và
+các job còn lại vẫn chạy hết. Tính chất "hỏng thì dừng sớm" vẫn giữ cho đúng
+trường hợp cần nó: đủ nhiều job hỏng trong một lượt (mặc định 5) thì pool bỏ
+cuộc, vì lúc ấy không phải chập chờn mà là server đã chết.
+
+Đi kèm là `scripts/_retry.mjs`, một lớp thử lại **có chặn trên** cho hai chỗ đã
+từng làm cổng đỏ oan: bước hâm nóng CSRF và `page.goto`. Hai quy tắc giữ cho nó
+không che lỗi thật — danh sách lỗi coi là "tạm thời" là **danh sách đóng** (sai
+assertion, timeout, lỗi 500 đều không thử lại, vì hỏi lại lần nữa cũng thế), và
+**mỗi lần thử lại đều in ra một dòng**, vì im lặng sẽ biến một lỗi server chập
+chờn thành một lỗi vô hình. Danh sách ấy viết bằng cách đọc lỗi thật ném ra chứ
+không viết theo trí nhớ: `fetch` báo đứt kết nối là `TypeError: fetch failed` và
+giấu `SocketError: other side closed` trong `cause`, nên bản đầu tiên — viết
+theo trí nhớ — không khớp chữ nào.
 
 ## Tài khoản demo
 

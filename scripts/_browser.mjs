@@ -13,6 +13,7 @@
  */
 import { existsSync } from 'node:fs';
 import { chromium } from 'playwright-core';
+import { retry } from './_retry.mjs';
 
 const LOCAL = '/opt/pw-browsers/chromium';
 
@@ -28,7 +29,39 @@ export function launchOptions(extra) {
   return Object.assign({}, extra || {}, exec ? { executablePath: exec } : {});
 }
 
+/**
+ * Give `page.goto` one more try when a navigation is aborted mid-flight.
+ *
+ * There are around fifty `page.goto` calls across the suite and every one of
+ * them is a plain GET of a page we control, so retrying is safe and none of
+ * them wants its own retry code. Wrapping here means a call site cannot forget
+ * it, including call sites written after this. The wrapper is thin on purpose:
+ * same arguments, same return value (`Response | null`, which `test-auth.mjs`
+ * reads), and only the closed transient list in `_retry.mjs` is retried at all.
+ */
+export function hardenPage(page) {
+  const goto = page.goto.bind(page);
+  page.goto = (url, opts) => retry(`goto ${url}`, () => goto(url, opts));
+  return page;
+}
+
+/** Every page opened from this context gets the hardened goto. */
+export function hardenContext(ctx) {
+  const newPage = ctx.newPage.bind(ctx);
+  ctx.newPage = async (...a) => hardenPage(await newPage(...a));
+  return ctx;
+}
+
+/** …and every context opened from this browser hardens the pages it opens. */
+export function hardenBrowser(browser) {
+  const newContext = browser.newContext.bind(browser);
+  browser.newContext = async (...a) => hardenContext(await newContext(...a));
+  const newPage = browser.newPage.bind(browser);
+  browser.newPage = async (...a) => hardenPage(await newPage(...a));
+  return browser;
+}
+
 /** chromium.launch() with the right path already filled in for this machine. */
-export function launchChromium(extra) {
-  return chromium.launch(launchOptions(extra));
+export async function launchChromium(extra) {
+  return hardenBrowser(await chromium.launch(launchOptions(extra)));
 }

@@ -8,11 +8,9 @@
  *
  * Run with the server up: node scripts/test-learn.mjs
  */
-import { chromium } from 'playwright-core';
-import { chromiumPath } from './_browser.mjs';
+import { launchChromium } from './_browser.mjs';
 
 const BASE = process.env.BASE || 'http://127.0.0.1:3000';
-const EXEC = chromiumPath();
 
 let pass = 0, fail = 0;
 const ok = (c, name) => { c ? (pass++, console.log('✓ ' + name)) : (fail++, console.log('✗ ' + name)); };
@@ -29,7 +27,7 @@ async function login(ctx) {
   return page;
 }
 
-const browser = await chromium.launch({ executablePath: EXEC, args: ['--no-sandbox'] });
+const browser = await launchChromium({ args: ['--no-sandbox'] });
 
 try {
   /* ============ 1. Irregular verbs ============ */

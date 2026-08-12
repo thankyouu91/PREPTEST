@@ -7,8 +7,7 @@
  * The focus is everything that must NOT be trusted to a browser: the per-part
  * clock, the replay count, the sitting quota, and answers never going out.
  */
-import { chromium } from 'playwright-core';
-import { launchOptions } from './_browser.mjs';
+import { launchChromium } from './_browser.mjs';
 
 const BASE = process.env.BASE || 'http://127.0.0.1:3000';
 
@@ -388,9 +387,7 @@ try {
   head('The exam runner');
   /* The backend is thoroughly checked above; this part asks one question: does the
      screen really drive that engine, or only draw something that looks like it. */
-  const browser = await chromium.launch({
-    ...launchOptions({ args: ['--no-sandbox'] })
-  });
+  const browser = await launchChromium({ args: ['--no-sandbox'] });
   try {
     const ctx = await browser.newContext();
     const uiErrors = [];

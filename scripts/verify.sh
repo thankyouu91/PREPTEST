@@ -34,6 +34,9 @@ fi
 step "Build CSS"
 npm run build || fail=1
 
+step "The gate's own machinery (retry, worker pool, CSRF warm-up)"
+node scripts/test-harness.mjs || fail=1
+
 step "Account rescue"
 node scripts/test-accounts.js || fail=1
 

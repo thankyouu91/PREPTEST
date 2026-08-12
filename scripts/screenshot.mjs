@@ -5,12 +5,11 @@
  * Run:  node scripts/screenshot.mjs [--only=slug]
  * Needs the server up on PORT (3000 by default).
  */
-import { chromium } from 'playwright-core';
 import fs from 'node:fs';
 import path from 'node:path';
 import { postWithCsrf } from './_csrf.mjs';
-import { pool, JOBS } from './_pool.mjs';
-import { launchOptions } from './_browser.mjs';
+import { pool, isFailure, JOBS } from './_pool.mjs';
+import { launchChromium } from './_browser.mjs';
 
 const BASE = process.env.BASE_URL || 'http://localhost:3000';
 const OUT = path.resolve('docs/screenshots');
@@ -97,12 +96,12 @@ const makeFreshAccount = async (browser) => {
 };
 
 const run = async () => {
-  const launchOpts = launchOptions();
+  const launchOpts = {};
   // CI/remote: go through the agent proxy so Google Fonts can be fetched
   if (process.env.HTTPS_PROXY) {
     launchOpts.proxy = { server: process.env.HTTPS_PROXY, bypass: 'localhost,127.0.0.1' };
   }
-  const browser = await chromium.launch(launchOpts);
+  const browser = await launchChromium(launchOpts);
   const problems = [];
   const freshAccount = await makeFreshAccount(browser);
 
@@ -137,6 +136,7 @@ const run = async () => {
   const shots = [];
   for (const p of wanted) for (const [dev, vp] of VIEWPORTS) shots.push({ p, dev, vp });
 
+  const nameOf = ({ p, dev }) => `${p.slug}-${dev}`;
   const taken = await pool(shots, JOBS, async ({ p, dev, vp }) => {
     // ignoreHTTPSErrors: the agent proxy CA is not in Chromium's NSS store
     // (affects only this local screenshot harness, nothing in the product)
@@ -176,10 +176,18 @@ const run = async () => {
     } finally {
       await ctx.close();
     }
-  });
+  }, { describe: nameOf });
 
-  problems.push(...taken.filter(Boolean));
-  wanted.forEach(p => console.log('✓', p.slug));
+  /* A shot that threw is reported as that shot rather than as the whole run,
+     and its slug loses its ✓ — the file on disk is missing or stale, and a tick
+     next to it would be the log lying about what was produced. */
+  const crashed = new Set();
+  taken.forEach((r, i) => {
+    if (!isFailure(r)) { if (r) problems.push(r); return; }
+    crashed.add(shots[i].p.slug);
+    problems.push({ page: r.where, cspErrors: [], otherErrors: ['did not complete: ' + r.message] });
+  });
+  wanted.forEach(p => console.log(crashed.has(p.slug) ? '✗' : '✓', p.slug));
 
   await browser.close();
   if (problems.length) {

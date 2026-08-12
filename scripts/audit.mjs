@@ -3,7 +3,7 @@
  * Run: node scripts/audit.mjs   (needs the server up)
  */
 import { postWithCsrf } from './_csrf.mjs';
-import { pool, JOBS } from './_pool.mjs';
+import { pool, isFailure, JOBS } from './_pool.mjs';
 import { launchChromium } from './_browser.mjs';
 
 const BASE = process.env.BASE_URL || 'http://localhost:3000';
@@ -92,7 +92,9 @@ const run = async () => {
     }
   }
 
-  const perJob = await pool(jobs, JOBS, async ({ dark, url, w }) => {
+  const tagOf = ({ dark, url, w }) => `${url} @${w}${dark ? ' dark' : ''}`;
+  const perJob = await pool(jobs, JOBS, async (job) => {
+    const { dark, url, w } = job;
     const mine = [];
     const ctx = await browser.newContext({ viewport: { width: w, height: 900 }, locale: 'vi-VN' });
     try {
@@ -113,7 +115,7 @@ const run = async () => {
       await page.goto(BASE + url, { waitUntil: 'networkidle' });
       await page.waitForTimeout(1100);
 
-      const tag = `${url} @${w}${dark ? ' dark' : ''}`;
+      const tag = tagOf(job);
       if (errs.length) mine.push(`[console] ${tag}: ${errs[0].slice(0, 140)}`);
 
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1);
@@ -177,8 +179,14 @@ const run = async () => {
       await ctx.close();
     }
     return mine;
-  });
-  issues.push(...perJob.flat());
+  }, { describe: tagOf });
+
+  /* A job that threw becomes one more line in the report, naming the page and
+     the width, instead of a stack trace standing in for all 220 of them. */
+  for (const result of perJob) {
+    if (isFailure(result)) issues.push(`[crashed] ${result.where}: ${result.message}`);
+    else issues.push(...result);
+  }
 
   await browser.close();
 

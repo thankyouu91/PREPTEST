@@ -15,15 +15,13 @@
  *                         launcher uses and anything in the outer ~10% can be
  *                         cut away
  */
-import { chromium } from 'playwright-core';
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { chromiumPath } from './_browser.mjs';
+import { launchChromium } from './_browser.mjs';
 
 const ROOT = path.join(import.meta.dirname, '..');
 const SVG = path.join(ROOT, 'public', 'favicon.svg');
 const OUT = path.join(ROOT, 'public', 'icons');
-const EXEC = chromiumPath();
 
 /* The safe zone for a maskable icon: keep the mark inside the middle 80%. */
 const MASKABLE_INSET = 0.1;
@@ -34,7 +32,7 @@ const TARGETS = [
   { file: 'maskable-512.png', size: 512, inset: MASKABLE_INSET }
 ];
 
-const page = await (await chromium.launch({ executablePath: EXEC })).newPage();
+const page = await (await launchChromium()).newPage();
 const svg = await fs.readFile(SVG, 'utf8');
 await fs.mkdir(OUT, { recursive: true });
 
