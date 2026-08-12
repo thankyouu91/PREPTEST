@@ -58,13 +58,23 @@ Owner decision (2026-08-11): **build the VPET practice suite before anything
 else.** Every other exam family is parked as `coming_soon`; nothing else gets
 built for them until VPET is done.
 
-Three standing decisions that shape the work:
+Six standing decisions that shape the work:
 
 | Decision | Choice |
 |---|---|
-| Speaking scoring | Audio-native model (Gemini / GPT-4o audio): the MP3 goes straight to the model, no separate transcription step |
-| Audio storage | Storage adapter with two drivers — local disk for dev, Supabase Storage for production |
+| Exam audio | **ElevenLabs TTS, rendered at authoring time**, never during a live exam. Full design in [`docs/VOICE.md`](VOICE.md) |
+| Speaking scoring | **OpenAI**: audio-native for parts I and J, ASR plus deterministic word matching for part H. Provider sits behind an adapter, so Gemini or Azure can replace it without touching the engine |
+| Reporting scale | **GSE 10–90 as the working scale, CEFR as the label.** GSE granularity is what lets the report say "4 points from B2" and turn that into advice ([`docs/VOICE.md`](VOICE.md) §1.6) |
+| Exam levels | **Two.** Level 1 measures B1 and below (GSE 10–50), Level 2 measures B2 and above (GSE 59–90). A form never reports outside its own range — it reports a ceiling or floor and recommends the other level ([`docs/VOICE.md`](VOICE.md) §1.7) |
+| Score delivery | **Practice results release to the candidate immediately**, with GSE per skill and ranked tips. Teachers get the same attempt in a score report, and certificates are only ever issued after sign-off. Per-test `release_policy` ([`docs/VOICE.md`](VOICE.md) §8.1) |
+| Result tracking | **One code per attempt** (`R-XXXX-XXXX-XXXX`), minted at submit and printed on both the report and the certificate. Resolves at three levels of detail — full report for the candidate, minimal verification for a third party, everything for a teacher ([`docs/VOICE.md`](VOICE.md) §8.5) |
+| Candidate audio retention | **24 months**, enforced by a bucket lifecycle rule. Scores and transcripts outlive the recordings |
+| Audio storage | Storage adapter with three drivers — local disk for dev, Supabase, and Google Cloud Storage authenticating off the metadata server |
 | Interface language | **English everywhere** — UI copy, code, identifiers, comments, data and AI prompts |
+
+Speaking and audio allocation across the ten parts — how many files to render, how
+many clips come back, and how H, I and J combine into the Speaking band — is
+worked out in [`docs/VOICE.md`](VOICE.md) sections 1 and 2.
 
 The official VPET blueprint, already in `server/data/exam-formats.js`, is fixed
 at 55 items and must not be changed:
@@ -128,6 +138,13 @@ are marked as such and belong to nobody until that clears.
   - [x] **Level-balanced depth, slice 1: two sittings at B2** — twenty-two more items (A +10, B +2, C +2, D +4, I +4), so the pool is A 30 · B 8 · C 8 · D 8 · I 8 = 62. What this changes is *where* the depth sits rather than how much of it there is, and the earlier note above understated the problem. The generator orders the pool exact-level-first, so at the paper's level a part holding fewer items than the blueprint asks for repeats every one of them — and a part holding **exactly** the blueprint count repeats all of them with certainty, which is the worse of the two and is exactly where part A stood at B2, with ten B2 items for a ten-item part. Parts D and I were in that position at both of their levels. Every audio-free part now holds twice the blueprint count at B2, and D and I at B1 as well. The rule the pool follows from here, and `scripts/test-items.mjs` enforces: at any level a part is either shallow (fewer than the blueprint count, so the top-up drawn from other levels varies between sittings) or deep (at least twice it) — never the number in between. The assertion that each part's *total* be a whole multiple of its blueprint count went with it: same idea measured on the wrong axis, and it passed happily on a pool that repeated itself. `test-admin.mjs` now checks the claim through the API rather than the data file — a B2 paper draws only B2 items, and two draws of part A at B2 do not come back identical
     - Not done here, and worth saying rather than leaving implied: depth makes a different retake *possible*, it does not make one certain. Ten items drawn at random from twenty overlap by five on average. Getting below that is a generator change — remembering what a candidate has already been shown — and that is engine work, not content work
   - [ ] **Level-balanced depth, slice 2: B1 for parts A, B and C** — twenty-two items (A 14, B 4, C 4), which is what is left to make B1 as deep as B2 now is. B1 is the level a real retake meets first: the generate screen defaults to it and the seeded VPET paper is a B1 paper. A2 and C1 stay shallow on purpose and are a different question — whether a VPET paper should be generated at those levels at all is a blueprint decision, not a content one
+
+- [x] **AI item drafting**: `POST /admin/authoring/script` writes a spoken script in the pause markup for a given part and level, `POST /admin/authoring/items` writes the questions that go with it under a strict JSON schema, both landing in the bank as `status='draft'` tagged `ai-draft`. Items whose answer is not among their own options, or which duplicate an option, are rejected before an author ever sees them
+- [x] **Provider API keys in the dashboard**: two fields under Quản trị → Khoá API, AES-256-GCM at rest with the encryption key outside the database (`APP_SECRET`, or `data/.app-secret` in dev), environment variables taking precedence so Secret Manager can take over without a data change, masked reads, and a Test connection button per provider
+- [x] **ElevenLabs TTS pipeline** ([`docs/VOICE.md`](VOICE.md) §4): pause markup (`,` short · `.` long · `_` a 1.5 s gap, `_2s` for an exact one) in `server/script-markup.js`; `audio_script` / `audio_status` / `audio_voice_id` / `audio_hash` / `key_points_json` / `part` columns; `tts_renders` audit trail; provider adapter asking for `mp3_44100_128` so the bytes go straight into the existing storage adapter; content hashing so an unchanged item never renders twice; free instant preview of pauses, billed characters and estimated duration before any API call; Render / Approve / Unapprove in the question bank. `audioReadyCount()` now requires `audio_status='approved'`, so no form ships with audio nobody has heard
+- [x] **Measurement framework** ([`docs/ACADEMIC.md`](ACADEMIC.md)): the alignment argument, the justification for every weight, per-part content validity, fairness, and a plainly stated list of what cannot yet be claimed — plus 140 can-do descriptors written in-house in `server/data/descriptors.js` so the platform owns its own statements rather than republishing Pearson's or the Council of Europe's. Served at `/admin/framework/*`, and `profile(skill, gse)` returns exactly the shape the candidate report needs
+- [x] **VPET audio scripts**: two complete forms in `server/data/vpet-scripts.js` — one per level, 70 scripts (E8 · F8 · G6 · H10 · J3 each — part I is text-prompted, `needsAudio: false`), written in the pause markup with distractors, answers, explanations and part J key points. `scripts/nhap-kich-ban.js` validates and imports them as drafts, idempotent by `ref:` tag, and prints the ElevenLabs character bill per part before anything is spent
+- [x] **Item analysis, and the personalised revision it feeds** ([`docs/ACADEMIC.md`](ACADEMIC.md) §5.1 and §9.1): facility, corrected item-rest discrimination, distractor behaviour, Cronbach's alpha and standard error in `server/item-analysis.js`, computed over the exam engine's own `attempt_answers` rather than a second copy of the responses. Nothing is reported as evidence below its sample size, and an extreme facility retires an item only when discrimination is also poor. On top of it, 14 pronunciation targets for Vietnamese speakers ranked by lost meaning rather than by accent, 96 vocabulary entries grouped by exam function, and `server/study-plan.js` joining rubric, descriptors, sounds and words into three things to do this week. `npm run hoc-thuat` holds all of it at 281 checks
 
 ## Hàng đợi
 
@@ -213,17 +230,20 @@ below uses the server-side route instead — which is also the more private one.
 | Piece | How it fits here |
 |---|---|
 | Sign-In | OAuth 2.0 redirect handled by the server. No `gsi/client` script, no CSP exception. In the VPET queue. |
-| Gemini | Speaking scoring, server-side call with inline audio. Already queued. |
-| Cloud Storage | Third driver in `server/storage.js`; the adapter takes it without touching call sites. |
-| Cloud Run | Container deploy, closest to how the app runs today. |
+| Speaking scoring | Now OpenAI rather than Gemini, behind the provider adapter in [`docs/VOICE.md`](VOICE.md) §3 so either can be swapped in. Already queued. |
+| Cloud Storage | Built — third driver in `server/storage.js`, call sites untouched. Second bucket for candidate speech, with its own expiry, arrives with recording ([`docs/VOICE.md`](VOICE.md) §13). |
+| Cloud Run | Built — see [`deploy/README.md`](../deploy/README.md). One instance only until the database moves off the container. |
+| Cloud Tasks | Pushes queued render and scoring jobs to `/internal/jobs/run`. Needed because Cloud Run throttles CPU after the response is sent, which stalls an in-process worker ([`docs/VOICE.md`](VOICE.md) §7). |
 | Cloud SQL | SQLite has to go first — see below. |
 | Secret Manager | Every API key moves out of plain environment variables. |
 | Analytics | GA4's script breaks CSP; use the Measurement Protocol from the server instead. |
 | Classroom | Assignment hand-off, and results export to Sheets. |
 
-- [ ] Google Cloud Storage driver in `server/storage.js` — third driver beside disk and Supabase
-- [ ] **Move off SQLite to Cloud SQL Postgres.** The blocker for Cloud Run: local SQLite dies with the container. The Supabase export already proved the schema ports, so the work is rewriting the `q.all/get/run/val` layer to a pooled async client and making every call site await it. Big and invasive — do it in one dedicated pass, not piecemeal.
-- [ ] Containerise + deploy to Cloud Run, with Secret Manager for keys and a CI deploy from the working branch
+- [x] Google Cloud Storage driver in `server/storage.js` — third driver beside disk and Supabase, authenticating off the metadata server so there is no JSON key to leak. The `exam` / `response` namespace split still to come with candidate recordings ([`docs/VOICE.md`](VOICE.md) §5.3)
+- [x] **Containerise + deploy to Cloud Run** ([`deploy/README.md`](../deploy/README.md)): Dockerfile on Node 22 Alpine running as non-root, `/healthz` that actually queries the database, SIGTERM handling so a deploy does not cut requests mid-flight, `Secure` cookies automatic under `NODE_ENV=production`, and `deploy/deploy.sh` — one idempotent script for APIs, service account, bucket, Secret Manager and the deploy itself. **Pinned to one instance because SQLite lives in the container**; that constraint lifts with Cloud SQL
+- [ ] **Move off SQLite to Cloud SQL Postgres.** The blocker for Cloud Run: local SQLite dies with the container. The Supabase export already proved the schema ports, so the work is rewriting the `q.all/get/run/val` layer to a pooled async client and making every call site await it. Big and invasive — do it in one dedicated pass, not piecemeal. Also the blocker for a shared job queue, since `media_jobs` needs a database several instances can claim from.
+- [ ] `media_jobs` queue plus Cloud Tasks push delivery — one queue serving both TTS rendering and speech scoring, with lease-based claim, unique idempotency keys so nothing is billed twice, and dead jobs surfaced in the admin area ([`docs/VOICE.md`](VOICE.md) §7)
+- [ ] CI deploy from the working branch (Cloud Build trigger) — the manual deploy works, the automatic one does not exist yet
 - [ ] Google Classroom hand-off: publish a test as an assignment, pull the roster, push scores back
 - [ ] Results export to Google Sheets for teachers
 - [ ] Server-side GA4 Measurement Protocol events, since the GA4 script cannot pass the CSP

@@ -1,0 +1,27 @@
+# Keep the build context small and, more importantly, keep secrets and local
+# state out of the image entirely.
+
+# Local database, uploaded audio, and the generated encryption key. Baking any
+# of these into an image would ship one deployment's data to every other one.
+data/
+
+node_modules/
+.git/
+.github/
+
+# Dev-only: tests, screenshots, build sources, Windows helper scripts.
+scripts/
+docs/
+src/
+cai-dat/
+*.md
+
+.env
+.env.*
+*.log
+.DS_Store
+
+# The deploy runbook and script are for a human, not for the runtime.
+deploy/
+Dockerfile
+.dockerignore

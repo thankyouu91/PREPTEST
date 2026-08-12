@@ -50,6 +50,25 @@ function parseCookies(req) {
   return out;
 }
 
+/**
+ * Should session cookies carry Secure?
+ *
+ * Yes in production, without anyone having to remember an environment variable
+ * — a session cookie that can travel over plain HTTP is the kind of mistake
+ * that is invisible until it matters. Cloud Run terminates TLS in front of the
+ * container, so every real request arrives over HTTPS anyway.
+ *
+ * FORCE_SECURE_COOKIE stays as the explicit override in both directions: '1'
+ * turns it on outside production, '0' turns it off for the rare case of running
+ * a production build behind plain HTTP on a private network.
+ */
+function secureCookies() {
+  const flag = process.env.FORCE_SECURE_COOKIE;
+  if (flag === '1') return true;
+  if (flag === '0') return false;
+  return process.env.NODE_ENV === 'production';
+}
+
 function setCookie(res, name, value, opts) {
   opts = opts || {};
   /* Strict by default. The one caller that overrides it is the OAuth state
@@ -59,7 +78,7 @@ function setCookie(res, name, value, opts) {
   const bits = [`${name}=${encodeURIComponent(value)}`, 'Path=/', `SameSite=${sameSite}`];
   if (opts.httpOnly !== false) bits.push('HttpOnly');
   if (opts.maxAge != null) bits.push('Max-Age=' + opts.maxAge);
-  if (process.env.FORCE_SECURE_COOKIE === '1') bits.push('Secure');
+  if (secureCookies()) bits.push('Secure');
   const prev = res.getHeader('Set-Cookie');
   const list = prev ? (Array.isArray(prev) ? prev.slice() : [prev]) : [];
   list.push(bits.join('; '));
@@ -288,7 +307,10 @@ function csrfGuard(req, res, next) {
 }
 
 /* --------------------- The seed administrator account --------------------- */
-const DEV_DEFAULT_PASSWORD = 'Admin@123456';
+/* Set by the owner. README, deploy/README.md and this constant must agree:
+   whenever they do not, somebody types the documented password and is refused,
+   which is the bug ensureDevAdminPassword() below exists to prevent. */
+const DEV_DEFAULT_PASSWORD = 'Goodmorning01';
 
 function ensureSeedAdmin() {
   if (q.val('SELECT COUNT(*) c FROM admins')) return null;
@@ -315,6 +337,54 @@ function ensureSeedAdmin() {
     );
   }
   return { username, password: envPw ? null : password };
+}
+
+/* ------------- The seed administrator's password in development -------------
+   ensureSeedAdmin() above only runs while the admins table is empty. That means
+   editing DEV_DEFAULT_PASSWORD cannot reach a database that already exists: a
+   user pulls the new code, reads the README, types the password written there,
+   and is refused — while both the code and the documentation say the password
+   is the one they just typed.
+
+   This is exactly the fault the demo student account had, and which is fixed
+   immediately below. The administrator account was missed, so it is handled
+   here the same way: outside production, every boot pulls the seed
+   administrator back to the state the documentation describes, and prints a
+   line when it actually had to.
+
+   Three things this deliberately does not touch:
+   - production: the password there is ADMIN_PASSWORD's, never the default
+   - an explicitly set ADMIN_PASSWORD: the operator has already decided
+   - any other administrator account: only the seeded username is pulled back
+
+   The trade-off is real. Change this account's password in the dashboard
+   during development and the next boot puts it back. For an account whose
+   password is printed in the README, drifting from the documentation is the
+   worse fault — and anyone wanting their own password sets ADMIN_PASSWORD,
+   which takes this function out of the loop entirely. */
+function ensureDevAdminPassword() {
+  if (process.env.NODE_ENV === 'production') return false;
+  if (process.env.ADMIN_PASSWORD) return false;
+
+  const username = process.env.ADMIN_USERNAME || 'admin';
+  const a = q.get('SELECT id, pass_hash, active FROM admins WHERE username=?', username);
+  if (!a) return false;
+
+  const matches = a.pass_hash && verifyPassword(DEV_DEFAULT_PASSWORD, a.pass_hash);
+  if (matches && a.active === 1) return false;
+
+  q.run('UPDATE admins SET pass_hash=?, active=1 WHERE id=?',
+    hashPassword(DEV_DEFAULT_PASSWORD), a.id);
+  /* Existing sessions were issued under the old password; revoke them so this
+     matches what `node scripts/tai-khoan.js dat-lai-admin` does. */
+  q.run('DELETE FROM sessions WHERE admin_id=?', a.id);
+
+  console.warn(
+    '\n⚠  The administrator account had drifted from the documentation; reset to:' +
+    '\n   ' + username + ' / ' + DEV_DEFAULT_PASSWORD +
+    '\n   (development only; set ADMIN_PASSWORD for your own password)\n'
+  );
+  return true;
 }
 
 /* ------------- The demo student account -------------
@@ -376,6 +446,6 @@ module.exports = {
   rateLimit, rateLimitPeek, rateLimitNote,
   issueToken, consumeToken,
   requireAdmin, requireOwner, csrfGuard,
-  ensureSeedAdmin, ensureDemoStudent, reportAdminAccounts,
+  ensureSeedAdmin, ensureDevAdminPassword, ensureDemoStudent, reportAdminAccounts,
   DEV_DEFAULT_PASSWORD, DEMO_STUDENT_PASSWORD
 };

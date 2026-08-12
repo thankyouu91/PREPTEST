@@ -95,7 +95,7 @@ Lệnh khác:
 Truy cập `/admin/`. Dữ liệu nằm trong SQLite nhúng (`node:sqlite`, không cần dependency native),
 file `data/prep.sqlite` tự tạo và seed ở lần chạy đầu — thư mục `data/` không đưa vào git.
 
-Tài khoản quản trị khởi tạo: `admin` / `Admin@123456` (in ra console kèm cảnh báo).
+Tài khoản quản trị khởi tạo: `admin` / `Goodmorning01` (in ra console kèm cảnh báo).
 Đặt `ADMIN_PASSWORD` để dùng mật khẩu khác; ở `NODE_ENV=production` server **từ chối khởi động**
 nếu chưa có tài khoản nào và cũng không có `ADMIN_PASSWORD`.
 
@@ -220,6 +220,30 @@ Nơi lưu do biến môi trường quyết định, không phải sửa mã:
 là mất; production dùng Supabase. Thêm driver thứ ba (ví dụ Google Cloud Storage)
 chỉ cần viết thêm một object trong `server/storage.js`, chỗ gọi không phải sửa.
 
+### Kịch bản có sẵn cho VPET
+
+`server/data/vpet-scripts.js` chứa kịch bản cho **các part thật sự phát audio**,
+hai bộ — một Level 1 (B1 đổ xuống), một Level 2 (B2 trở lên) — tổng **70 kịch
+bản**: E8 · F8 · G6 · H10 · J3 cho mỗi level.
+
+Part I không có ở đây dù cũng là phần nói: blueprint đánh `needsAudio: false`
+cho nó, thí sinh đọc tình huống trên màn hình rồi nói. Viết kịch bản cho part I
+là hiện nút Dựng MP3 ở chỗ không phát gì và trả tiền cho một tệp không ai nghe.
+Bể part I nằm ở `server/data/vpet-items.js`, dạng đề bài chữ, và được nạp sẵn
+lúc khởi động chứ không qua lệnh dưới đây.
+
+```bash
+node scripts/nhap-kich-ban.js --thu   # xem sẽ nhập gì + hoá đơn ký tự, không ghi
+node scripts/nhap-kich-ban.js         # nhập vào ngân hàng, trạng thái draft
+```
+
+Chạy được nhiều lần: mỗi câu mang tag `ref:E1-L1`, câu đã có thì bỏ qua. Sửa nội
+dung rồi muốn đẩy xuống thì thêm `--lam-moi` — cờ này cũng huỷ trạng thái đã
+duyệt của câu bị sửa kịch bản, vì tệp MP3 cũ không còn khớp lời đọc mới.
+
+Toàn bộ 70 kịch bản tốn khoảng **19 nghìn ký tự** ElevenLabs cho một lần dựng
+hết. Lệnh `--thu` in bảng chi tiết theo từng part trước khi anh tiêu đồng nào.
+
 **Kiểm tra khi nhận tệp** — đây là chỗ duy nhất nền tảng nhận file từ ngoài:
 
 - Tên tệp của client **không bao giờ được dùng**; khoá lưu trữ do server sinh ngẫu nhiên.
@@ -229,6 +253,100 @@ chỉ cần viết thêm một object trong `server/storage.js`, chỗ gọi kh�
 - Upload và gỡ đều qua `requireAdmin` + CSRF và đều ghi nhật ký thao tác.
 - Khi trả tệp về đặt `Cache-Control: private, no-store` — audio đề thi là đáp án,
   không để nằm trong cache dùng chung.
+
+### Dựng audio bằng ElevenLabs
+
+Thu tay từng câu không nhân lên được khi ngân hàng lên vài nghìn câu, nên audio
+đề được **dựng từ kịch bản**: tác giả viết lời đọc, nền tảng gọi ElevenLabs, ai
+đó nghe, rồi mới duyệt. Thiết kế đầy đủ ở [`docs/VOICE.md`](docs/VOICE.md).
+
+**Ký hiệu ngắt nghỉ** — ba ký tự điều khiển nhịp đọc, viết ngay trong lời đọc:
+
+| Ký hiệu | Ngắt | Mặc định |
+|---|---|---|
+| *(mở đầu mỗi kịch bản)* | im lặng dẫn vào | **1 giây** |
+| `,` `;` `:` `"` | ngắn | **0,3 giây** |
+| `.` `!` `?` | dài, cuối câu | **0,8 giây** |
+| `_` | cách một đoạn | 1,5 giây (`_2s` hoặc `_800ms` nếu cần chính xác) |
+
+**Một giây im lặng mở đầu** đứng trước từ đầu tiên của mọi kịch bản. Không phải
+để đệm: thí sinh bấm phát rồi sự chú ý mới tới sau một nhịp, và ở part E — cả
+câu hỏi là một câu đọc chính tả — mấy từ đầu *chính là* đề bài. Ai lỡ mất phải
+tiêu một lượt nghe lại, mà lượt nghe lại là tài nguyên có tính điểm. Khoảng lặng
+nằm **trong tệp MP3** chứ không nằm ở trình phát, vì độ trễ thêm lúc phát sẽ
+không đi theo tệp khi nó được tải về hay phát bằng thứ khác.
+
+**Tốc độ đọc 1,2×.** Chủ dự án yêu cầu ~1,25× nhưng ElevenLabs chỉ nhận
+`speed` trong khoảng 0,7–1,2 và từ chối ngoài dải đó, nên nền tảng kẹp xuống
+1,2 — chênh 4%, khoảng một từ trong câu hai mươi lăm từ. Đây cũng là lý do
+khoảng nghỉ ở `,` và `.` được nâng lên: khoảng lặng **không** co theo tốc độ,
+nên muốn giữ nhịp thì phải kéo dài bằng tay.
+
+Dấu câu **được giữ nguyên** trong lời đọc — bỏ đi là lấy mất tín hiệu ngữ điệu
+mà model đọc tốt nhất. Nền tảng giữ dấu **và** chèn thêm một khoảng nghỉ cố
+định, nên câu vẫn ra câu mà độ dài khoảng nghỉ thì lần nào cũng như lần nào. Đó
+mới là điểm chính: hai thí sinh cùng một đề phải nghe đúng một file giống nhau.
+
+Riêng `_` không phải dấu câu nên bị gỡ khỏi lời đọc và thay hẳn bằng khoảng lặng.
+
+> **Nháy đơn `'` không phải ký hiệu ngắt.** Nó trùng ký tự với dấu lược trong
+> `don't`, `it's` — coi nó là ngắt thì mọi từ rút gọn trong ngân hàng đề đều vỡ
+> làm đôi. Cần nghỉ ở chỗ có nháy thì gõ dấu phẩy.
+
+Trong màn **Ngân hàng câu hỏi**, nút *Kịch bản & dựng audio* mở ô soạn lời đọc,
+hiện ngay số ký tự sẽ bị tính tiền và ước lượng thời lượng **trước khi** gọi API.
+Dựng xong nghe thử tại chỗ, rồi bấm *Duyệt*.
+
+**Chỉ câu đã duyệt mới được tính** trong báo cáo độ phủ — "có tệp" khác "đã có
+người nghe", và máy đọc sai tên riêng là chuyện xảy ra thật.
+
+Băm nội dung (`sha256` của lời đọc + giọng + model + tham số) khiến bấm Dựng lại
+trên một câu chưa sửa gì thì dùng lại tệp cũ, không tốn thêm ký tự nào.
+
+### Triển khai lên Google Cloud
+
+```bash
+PROJECT_ID=your-project ./deploy/deploy.sh
+```
+
+Bật API, tạo service account riêng, tạo bucket audio, sinh secret, build
+container rồi deploy lên Cloud Run ở `asia-southeast1`. Chạy lại lần nữa vẫn an
+toàn — mỗi bước đều kiểm tra trước khi tạo.
+
+**Đọc [`deploy/README.md`](deploy/README.md) trước khi bấm.** Điểm quan trọng
+nhất: Cloud Run cho container một hệ tệp nằm trong RAM và xoá sạch khi instance
+biến mất, mà CSDL SQLite thì nằm trên đó — **deploy lại là mất dữ liệu**. Script
+ghim đúng một instance để giữ được dữ liệu giữa các lượt truy cập, đủ cho bản
+demo và bản thử nội bộ, **chưa đủ cho thí sinh thật**. Audio đã đẩy sang Cloud
+Storage và khoá API lấy từ Secret Manager nên hai thứ đó sống sót; phần còn lại
+chờ chuyển sang Cloud SQL Postgres.
+
+### Khoá API
+
+Hai khoá, nhập trong **Quản trị → Khoá API**:
+
+| Nhà cung cấp | Việc |
+|---|---|
+| ElevenLabs | dựng MP3 cho part E, F, G, H, J |
+| OpenAI | soạn kịch bản, soạn câu hỏi, chấm phần Nói |
+
+Khoá được mã hoá AES-256-GCM trước khi ghi xuống CSDL; chìa khoá mã hoá nằm
+**ngoài** CSDL (`APP_SECRET`, hoặc `data/.app-secret` mode 0600 khi chạy thử),
+nên một bản sao lưu CSDL rơi ra ngoài vẫn chưa dùng được.
+
+Biến môi trường luôn thắng giá trị lưu trong dashboard, nên khi lên Google Cloud
+chuyển sang Secret Manager là xong, không phải đụng vào dữ liệu:
+
+| Biến | Việc |
+|---|---|
+| `APP_SECRET` | chìa khoá mã hoá các khoá API. **Bắt buộc đặt ở production** |
+| `ELEVENLABS_API_KEY` | đặt thì dashboard chỉ hiển thị, không sửa được |
+| `ELEVENLABS_MODEL` | ghim model TTS, mặc định `eleven_multilingual_v2` |
+| `OPENAI_API_KEY` | như trên |
+| `OPENAI_ITEM_MODEL` | ghim model soạn đề, mặc định `gpt-4o` |
+
+Không đặt khoá nào thì nền tảng vẫn chạy bình thường — chỉ là các nút cần khoá
+báo rõ còn thiếu gì, chứ không đổ lỗi 500.
 
 Màn **Format đề** báo luôn phần nào còn thiếu MP3: một phần cần audio chỉ tính là
 sẵn sàng khi số câu **có tệp** đủ cho phần đó, nên không sinh ra đề nghe câm.

@@ -85,7 +85,7 @@ try {
   /* ---------- Dựng một đề có thật để thi ---------- */
   head('Chuẩn bị đề kiểm thử');
   await admin.req('GET', '/api/me');
-  let r = await admin.req('POST', '/api/admin/login', { username: 'admin', password: process.env.ADMIN_PASSWORD || 'Admin@123456' });
+  let r = await admin.req('POST', '/api/admin/login', { username: 'admin', password: process.env.ADMIN_PASSWORD || 'Goodmorning01' });
   ok(r.status === 200, 'Đăng nhập quản trị', 'status ' + r.status);
 
   /* Hai câu Nghe có audio + một câu Viết, đủ để thử đồng hồ, nghe lại và ghi âm */

@@ -6,7 +6,9 @@
  * khẩu trong CSDL lệch khỏi README một lần là lệch mãi, im lặng, không có đường
  * vào lại. Bộ này chốt hai thứ:
  *   1. Tài khoản demo tự phục hồi về đúng tài liệu ở mỗi lần khởi động.
- *   2. scripts/tai-khoan.js đặt lại được mật khẩu quản trị khi đã mất.
+ *   2. Tài khoản quản trị cũng vậy — đây chính là lỗi đã xảy ra khi đổi mật
+ *      khẩu mặc định: CSDL cũ giữ nguyên mật khẩu cũ vì hàm seed không chạy lại.
+ *   3. scripts/tai-khoan.js đặt lại được mật khẩu quản trị khi đã mất.
  *
  * Chạy độc lập, không cần server: node scripts/test-taikhoan.js
  */
@@ -121,7 +123,7 @@ try {
   const adminOk = chay(
     "const A=require('./server/auth'),{q}=require('./server/db');" +
     "const a=q.get(\"SELECT pass_hash FROM admins WHERE username='admin'\");" +
-    "console.log(A.verifyPassword('Admin@123456', a.pass_hash))").trim();
+    "console.log(A.verifyPassword('Goodmorning01', a.pass_hash))").trim();
   ok(adminOk === 'true', 'Đặt lại được mật khẩu quản trị về mặc định');
 
   /* 9. Đặt được mật khẩu tuỳ chọn, và từ chối mật khẩu quá ngắn */
@@ -153,7 +155,48 @@ try {
   const conKhoa = chay("const{q}=require('./server/db');console.log(q.val(\"SELECT COUNT(*) c FROM users WHERE status='locked'\"))").trim();
   ok(conKhoa === '0', 'Lệnh "mo-khoa" mở hết tài khoản bị khoá');
 
-  /* 12. Lệnh sai thì báo lỗi rõ chứ không im lặng làm bừa */
+  /* 12. Mật khẩu quản trị trên một CSDL đã có sẵn.
+
+     ensureSeedAdmin() chỉ chạy khi bảng admins còn trống, nên đổi
+     DEV_DEFAULT_PASSWORD trong mã KHÔNG chạm tới CSDL đang tồn tại. Người dùng
+     kéo mã mới về, gõ đúng mật khẩu README ghi, và bị từ chối. */
+  {
+    /* Dựng lại đúng cảnh đó: tài khoản quản trị mang một mật khẩu cũ. */
+    chay("const A=require('./server/auth');const{q}=require('./server/db');" +
+         "q.run(\"UPDATE admins SET pass_hash=? WHERE username='admin'\", A.hashPassword('MatKhauCu@123'));");
+
+    const truoc = chay("const A=require('./server/auth');const{q}=require('./server/db');" +
+      "console.log(A.verifyPassword(A.DEV_DEFAULT_PASSWORD, q.get(\"SELECT pass_hash FROM admins WHERE username='admin'\").pass_hash));").trim();
+    ok(truoc === 'false', 'Dựng được cảnh CSDL cũ: mật khẩu quản trị lệch khỏi tài liệu');
+
+    const sau = chay("const A=require('./server/auth');const{q}=require('./server/db');" +
+      "A.ensureSeedAdmin();A.ensureDevAdminPassword();" +
+      "console.log(A.verifyPassword(A.DEV_DEFAULT_PASSWORD, q.get(\"SELECT pass_hash FROM admins WHERE username='admin'\").pass_hash));").trim();
+    ok(sau === 'true', 'Khởi động kéo mật khẩu quản trị về đúng tài liệu');
+
+    /* Không được đụng vào khi người vận hành đã quyết mật khẩu, và không bao
+       giờ chạy ở production. */
+    const coAdminPw = execFileSync(process.execPath, ['-e',
+      "const A=require('./server/auth');console.log(A.ensureDevAdminPassword());"],
+      { cwd: GOC, encoding: 'utf8', env: { ...process.env, PREP_DB: DB, ADMIN_PASSWORD: 'RiengCuaToi@1' } }).trim();
+    ok(coAdminPw === 'false', 'Đặt ADMIN_PASSWORD thì không đụng vào mật khẩu quản trị');
+
+    const oProd = execFileSync(process.execPath, ['-e',
+      "const A=require('./server/auth');console.log(A.ensureDevAdminPassword());"],
+      { cwd: GOC, encoding: 'utf8', env: { ...process.env, PREP_DB: DB, NODE_ENV: 'production' } }).trim();
+    ok(oProd === 'false', 'Ở production thì không bao giờ đặt lại mật khẩu quản trị');
+
+    /* Đặt lại mật khẩu phải thu hồi phiên cũ — phiên cấp dưới mật khẩu cũ
+       không được sống tiếp. */
+    chay("const A=require('./server/auth');const{q}=require('./server/db');" +
+         "q.run(\"UPDATE admins SET pass_hash=? WHERE username='admin'\", A.hashPassword('LechLanNua@1'));" +
+         "q.run(\"INSERT INTO sessions (token_hash,admin_id,created_at,expires_at) VALUES ('x',(SELECT id FROM admins WHERE username='admin'),?,?)\", new Date().toISOString(), '2099-01-01T00:00:00Z');");
+    const conPhien = chay("const A=require('./server/auth');const{q}=require('./server/db');" +
+      "A.ensureDevAdminPassword();console.log(q.val('SELECT COUNT(*) c FROM sessions'));").trim();
+    ok(conPhien === '0', 'Đặt lại mật khẩu quản trị thu hồi hết phiên cũ');
+  }
+
+  /* 13. Lệnh sai thì báo lỗi rõ chứ không im lặng làm bừa */
   let choiLenhLa = false;
   try { cli('xoa-het-du-lieu'); } catch (e) { choiLenhLa = true; }
   ok(choiLenhLa, 'Lệnh không hợp lệ bị từ chối');
