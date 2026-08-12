@@ -4,6 +4,7 @@
  */
 import { chromium } from 'playwright-core';
 import { postWithCsrf } from './_csrf.mjs';
+import { pool, JOBS } from './_pool.mjs';
 
 const BASE = process.env.BASE_URL || 'http://localhost:3000';
 /* Phiên thật (cookie) bằng tài khoản demo + lớp phủ cục bộ cho code kích hoạt client */
@@ -78,91 +79,107 @@ const run = async () => {
     .filter(Boolean);
   if (!doneAttempt) console.log('   (bỏ qua màn kết quả: tài khoản demo chưa có lượt thi nào đã nộp)');
 
+  /* 220 lượt tải trang — 2 chế độ màu × 22 đường dẫn × 5 bề rộng — chạy tuần tự
+     là phần lâu nhất của `npm run verify`. Chúng độc lập hoàn toàn: mỗi lượt một
+     context riêng, không dùng chung state nào, nên xếp được vào hàng đợi song
+     song. Kết quả thu về theo đúng thứ tự đầu vào rồi mới in, vì thứ tự HOÀN
+     THÀNH thì ngẫu nhiên và một báo cáo đổi thứ tự mỗi lần chạy thì không diff
+     được với lần trước. */
+  const jobs = [];
   for (const dark of [false, true]) {
     for (const url of urls) {
-      for (const w of WIDTHS) {
-        const ctx = await browser.newContext({ viewport: { width: w, height: 900 }, locale: 'vi-VN' });
-        const page = await ctx.newPage();
-        const errs = [];
-        page.on('console', m => { if (m.type() === 'error') errs.push(m.text()); });
-        page.on('pageerror', e => errs.push('PAGEERROR ' + e.message));
-        const guest = GUEST_URLS.includes(url.split('?')[0]);
-        await page.addInitScript(({ o, d, g }) => {
-          localStorage.clear();
-          if (!g) localStorage.setItem('prep.local.v1', JSON.stringify(o));
-          localStorage.setItem('prep.theme', d ? 'dark' : 'light');
-        }, { o: LOCAL_OVERLAY, d: dark, g: guest });
-        if (!guest) {
-          const r = await postWithCsrf(ctx, BASE, '/api/auth/login', { username: DEMO.id, password: DEMO.pw });
-          if (!r.ok()) issues.push(`[đăng nhập] ${url}: HTTP ${r.status()}`);
-        }
-        await page.goto(BASE + url, { waitUntil: 'networkidle' });
-        await page.waitForTimeout(1100);
-
-        const tag = `${url} @${w}${dark ? ' dark' : ''}`;
-        if (errs.length) issues.push(`[console] ${tag}: ${errs[0].slice(0, 140)}`);
-
-        const overflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1);
-        if (overflow) issues.push(`[tràn ngang] ${tag}`);
-
-        // Nút/chip: tương phản chữ vs nền + nhãn xuống dòng ở desktop
-        const bad = await page.evaluate(() => {
-          const out = [];
-          document.querySelectorAll('.btn, .chip, .badge').forEach(el => {
-            const r = el.getBoundingClientRect();
-            if (!r.width || el.closest('[hidden]') || getComputedStyle(el).visibility === 'hidden') return;
-            const cs = getComputedStyle(el);
-            // Chuỗi nền từ phần tử lên tới body (để chồng alpha đúng thứ tự)
-            const stack = [];
-            for (let node = el; node; node = node.parentElement) {
-              stack.push(getComputedStyle(node).backgroundColor);
-            }
-            stack.push(getComputedStyle(document.body).backgroundColor);
-            out.push({
-              text: (el.textContent || '').trim().slice(0, 34),
-              fg: cs.color, bgStack: stack,
-              size: parseFloat(cs.fontSize), weight: cs.fontWeight,
-              lines: Math.round(r.height / (parseFloat(cs.lineHeight) || parseFloat(cs.fontSize) * 1.4))
-            });
-          });
-          return out;
-        });
-        bad.forEach(b => {
-          // Nền hiệu dụng: chồng ngược từ dưới lên (bỏ lớp trong suốt hoàn toàn)
-          let bg = [255, 255, 255, 1];
-          for (const c of b.bgStack.slice().reverse()) {
-            const p = parse(c);
-            if (p[3] > 0) bg = over(p, bg);
-          }
-          const fg = over(parse(b.fg), bg);
-          const cr = ratio(fg, bg);
-          const large = b.size >= 18 || (b.size >= 14 && +b.weight >= 700);
-          const min = large ? 3 : 4.5;
-          if (cr < min) issues.push(`[tương phản ${cr.toFixed(2)}<${min}] ${tag} "${b.text}" ${b.fg} trên ${b.bgStack[0]}`);
-        });
-
-        if (w >= 1024) {
-          const wrapped = await page.evaluate(() => {
-            const bad = [];
-            document.querySelectorAll('.btn').forEach(el => {
-              const cs = getComputedStyle(el);
-              const lh = parseFloat(cs.lineHeight) || parseFloat(cs.fontSize) * 1.4;
-              const inner = el.getBoundingClientRect().height - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
-              if (inner > lh * 1.7) bad.push((el.textContent || '').trim().slice(0, 32));
-            });
-            return bad;
-          });
-          wrapped.forEach(t => issues.push(`[nút xuống dòng] ${tag} "${t}"`));
-          const navH = await page.evaluate(() => {
-            const h = document.querySelector('header');
-            return h ? Math.round(h.getBoundingClientRect().height) : 0;
-          });
-          if (navH > 80) issues.push(`[nav cao ${navH}px] ${tag}`);
-        }
-        await ctx.close();
-      }
+      for (const w of WIDTHS) jobs.push({ dark, url, w });
     }
   }
+
+  const perJob = await pool(jobs, JOBS, async ({ dark, url, w }) => {
+    const mine = [];
+    const ctx = await browser.newContext({ viewport: { width: w, height: 900 }, locale: 'vi-VN' });
+    try {
+      const page = await ctx.newPage();
+      const errs = [];
+      page.on('console', m => { if (m.type() === 'error') errs.push(m.text()); });
+      page.on('pageerror', e => errs.push('PAGEERROR ' + e.message));
+      const guest = GUEST_URLS.includes(url.split('?')[0]);
+      await page.addInitScript(({ o, d, g }) => {
+        localStorage.clear();
+        if (!g) localStorage.setItem('prep.local.v1', JSON.stringify(o));
+        localStorage.setItem('prep.theme', d ? 'dark' : 'light');
+      }, { o: LOCAL_OVERLAY, d: dark, g: guest });
+      if (!guest) {
+        const r = await postWithCsrf(ctx, BASE, '/api/auth/login', { username: DEMO.id, password: DEMO.pw });
+        if (!r.ok()) mine.push(`[đăng nhập] ${url}: HTTP ${r.status()}`);
+      }
+      await page.goto(BASE + url, { waitUntil: 'networkidle' });
+      await page.waitForTimeout(1100);
+
+      const tag = `${url} @${w}${dark ? ' dark' : ''}`;
+      if (errs.length) mine.push(`[console] ${tag}: ${errs[0].slice(0, 140)}`);
+
+      const overflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1);
+      if (overflow) mine.push(`[tràn ngang] ${tag}`);
+
+      // Nút/chip: tương phản chữ vs nền + nhãn xuống dòng ở desktop
+      const bad = await page.evaluate(() => {
+        const out = [];
+        document.querySelectorAll('.btn, .chip, .badge').forEach(el => {
+          const r = el.getBoundingClientRect();
+          if (!r.width || el.closest('[hidden]') || getComputedStyle(el).visibility === 'hidden') return;
+          const cs = getComputedStyle(el);
+          // Chuỗi nền từ phần tử lên tới body (để chồng alpha đúng thứ tự)
+          const stack = [];
+          for (let node = el; node; node = node.parentElement) {
+            stack.push(getComputedStyle(node).backgroundColor);
+          }
+          stack.push(getComputedStyle(document.body).backgroundColor);
+          out.push({
+            text: (el.textContent || '').trim().slice(0, 34),
+            fg: cs.color, bgStack: stack,
+            size: parseFloat(cs.fontSize), weight: cs.fontWeight,
+            lines: Math.round(r.height / (parseFloat(cs.lineHeight) || parseFloat(cs.fontSize) * 1.4))
+          });
+        });
+        return out;
+      });
+      bad.forEach(b => {
+        // Nền hiệu dụng: chồng ngược từ dưới lên (bỏ lớp trong suốt hoàn toàn)
+        let bg = [255, 255, 255, 1];
+        for (const c of b.bgStack.slice().reverse()) {
+          const p = parse(c);
+          if (p[3] > 0) bg = over(p, bg);
+        }
+        const fg = over(parse(b.fg), bg);
+        const cr = ratio(fg, bg);
+        const large = b.size >= 18 || (b.size >= 14 && +b.weight >= 700);
+        const min = large ? 3 : 4.5;
+        if (cr < min) mine.push(`[tương phản ${cr.toFixed(2)}<${min}] ${tag} "${b.text}" ${b.fg} trên ${b.bgStack[0]}`);
+      });
+
+      if (w >= 1024) {
+        const wrapped = await page.evaluate(() => {
+          const bad = [];
+          document.querySelectorAll('.btn').forEach(el => {
+            const cs = getComputedStyle(el);
+            const lh = parseFloat(cs.lineHeight) || parseFloat(cs.fontSize) * 1.4;
+            const inner = el.getBoundingClientRect().height - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
+            if (inner > lh * 1.7) bad.push((el.textContent || '').trim().slice(0, 32));
+          });
+          return bad;
+        });
+        wrapped.forEach(t => mine.push(`[nút xuống dòng] ${tag} "${t}"`));
+        const navH = await page.evaluate(() => {
+          const h = document.querySelector('header');
+          return h ? Math.round(h.getBoundingClientRect().height) : 0;
+        });
+        if (navH > 80) mine.push(`[nav cao ${navH}px] ${tag}`);
+      }
+    } finally {
+      await ctx.close();
+    }
+    return mine;
+  });
+  issues.push(...perJob.flat());
+
   await browser.close();
 
   const uniq = [...new Set(issues)];

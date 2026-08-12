@@ -9,6 +9,7 @@ import { chromium } from 'playwright-core';
 import fs from 'node:fs';
 import path from 'node:path';
 import { postWithCsrf } from './_csrf.mjs';
+import { pool, JOBS } from './_pool.mjs';
 
 const BASE = process.env.BASE_URL || 'http://localhost:3000';
 const OUT = path.resolve('docs/screenshots');
@@ -125,11 +126,21 @@ const run = async () => {
     .filter(Boolean);
   if (!doneAttempt) console.log('   (bỏ qua ảnh màn kết quả: chưa có lượt thi nào đã nộp)');
 
-  for (const p of pages.filter(x => !only || x.slug === only)) {
-    for (const [dev, vp] of [['desktop', { width: 1440, height: 900 }], ['mobile', { width: 390, height: 844 }]]) {
-      // ignoreHTTPSErrors: CA của agent-proxy không nằm trong NSS store của Chromium
-      // (chỉ ảnh hưởng harness chụp ảnh cục bộ, không liên quan sản phẩm)
-      const ctx = await browser.newContext({ viewport: vp, deviceScaleFactor: 1.5, locale: 'vi-VN', ignoreHTTPSErrors: true });
+  /* Mỗi trang chụp hai khổ, và cả 86 lượt đều độc lập — context riêng, tệp ảnh
+     riêng. Chạy tuần tự là lý do chính khiến `npm run verify` mất hơn mười lăm
+     phút. Xếp song song PW_JOBS luồng, rồi in ✓ theo đúng thứ tự khai báo: thứ
+     tự hoàn thành thì ngẫu nhiên, mà một bản log đổi thứ tự sau mỗi lần chạy
+     không còn so được với lần trước. */
+  const wanted = pages.filter(x => !only || x.slug === only);
+  const VIEWPORTS = [['desktop', { width: 1440, height: 900 }], ['mobile', { width: 390, height: 844 }]];
+  const shots = [];
+  for (const p of wanted) for (const [dev, vp] of VIEWPORTS) shots.push({ p, dev, vp });
+
+  const taken = await pool(shots, JOBS, async ({ p, dev, vp }) => {
+    // ignoreHTTPSErrors: CA của agent-proxy không nằm trong NSS store của Chromium
+    // (chỉ ảnh hưởng harness chụp ảnh cục bộ, không liên quan sản phẩm)
+    const ctx = await browser.newContext({ viewport: vp, deviceScaleFactor: 1.5, locale: 'vi-VN', ignoreHTTPSErrors: true });
+    try {
       const page = await ctx.newPage();
       const errors = [];
       page.on('console', m => { if (m.type() === 'error') errors.push(m.text()); });
@@ -160,11 +171,14 @@ const run = async () => {
 
       const cspErrors = errors.filter(e => /Content Security Policy|CSP/i.test(e));
       const otherErrors = errors.filter(e => !/Content Security Policy|CSP/i.test(e));
-      if (errors.length) problems.push({ page: `${p.slug}-${dev}`, cspErrors, otherErrors });
+      return errors.length ? { page: `${p.slug}-${dev}`, cspErrors, otherErrors } : null;
+    } finally {
       await ctx.close();
     }
-    console.log('✓', p.slug);
-  }
+  });
+
+  problems.push(...taken.filter(Boolean));
+  wanted.forEach(p => console.log('✓', p.slug));
 
   await browser.close();
   if (problems.length) {

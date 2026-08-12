@@ -6,7 +6,21 @@ cd "$(dirname "$0")/.."
 
 PORT="${PORT:-3000}"
 fail=0
-step() { printf '\n\033[1m== %s ==\033[0m\n' "$1"; }
+# Đo thời gian từng bước. Bộ test đã có lúc vượt mười lăm phút mà không ai biết
+# phần nào ăn hết, vì log không nói. In ra thì lần chậm sau tự tố cáo chính nó.
+STEP_T0=0
+STEP_NAME=''
+declare -a STEP_TIMES=()
+_close_step() {
+  [ -z "$STEP_NAME" ] && return 0
+  STEP_TIMES+=("$(( SECONDS - STEP_T0 ))s  $STEP_NAME")
+  STEP_NAME=''
+}
+step() {
+  _close_step
+  STEP_NAME="$1"; STEP_T0=$SECONDS
+  printf '\n\033[1m== %s ==\033[0m\n' "$1"
+}
 note() { printf '   %s\n' "$1"; }
 
 step "Dependency"
@@ -83,6 +97,11 @@ if [ "${SKIP_SHOTS:-0}" != "1" ]; then
   node scripts/screenshot.mjs || fail=1
   node scripts/shot-admin.mjs || fail=1
 fi
+
+_close_step
+printf '\n\033[1m== Thời gian từng bước ==\033[0m\n'
+printf '   %s\n' "${STEP_TIMES[@]}"
+printf '   %ss  TỔNG\n' "$SECONDS"
 
 printf '\n'
 if [ "$fail" -eq 0 ]; then

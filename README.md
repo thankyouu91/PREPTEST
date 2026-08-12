@@ -387,6 +387,14 @@ Trình duyệt không chạy dòng mã nào của Google và không bao giờ th
 làm xong, chạy toàn bộ kiểm thử rồi mới commit và push lên nhánh làm việc. Nếu kiểm thử đỏ thì hoàn
 tác và ghi lý do vào mục "Vướng mắc" thay vì push. Tắt Routine bất cứ lúc nào trong phần Routines.
 
+`npm run verify` chạy hết trong khoảng **sáu phút** và in **bảng thời gian từng
+bước** ở cuối, nên lần chậm sau tự tố cáo chính nó thay vì lẫn trong một bức
+tường dấu tích. Bước audit và bước chụp ảnh — 306 lượt tải trang, mỗi lượt một
+`BrowserContext` riêng và không dùng chung state nào — chạy song song qua
+`scripts/_pool.mjs`, số luồng lấy theo số lõi máy và chặn trên ở 4 (ép bằng
+`PW_JOBS`). Kết quả thu theo đúng thứ tự đầu vào rồi mới in: báo cáo mà đổi thứ
+tự sau mỗi lần chạy thì không so được với lần trước.
+
 ## Tài khoản demo
 
 | Tên đăng nhập | Mật khẩu | Ghi chú |
