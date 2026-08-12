@@ -126,6 +126,24 @@ Nơi lưu do biến môi trường quyết định, không phải sửa mã:
 là mất; production dùng Supabase. Thêm driver thứ ba (ví dụ Google Cloud Storage)
 chỉ cần viết thêm một object trong `server/storage.js`, chỗ gọi không phải sửa.
 
+### Kịch bản có sẵn cho VPET
+
+`server/data/vpet-scripts.js` chứa **hai đề đầy đủ** — một Level 1 (B1 đổ xuống),
+một Level 2 (B2 trở lên) — tổng **74 kịch bản audio**: E8 · F8 · G6 · H10 · I2 · J3
+cho mỗi level, đúng blueprint.
+
+```bash
+node scripts/nhap-kich-ban.js --thu   # xem sẽ nhập gì + hoá đơn ký tự, không ghi
+node scripts/nhap-kich-ban.js         # nhập vào ngân hàng, trạng thái draft
+```
+
+Chạy được nhiều lần: mỗi câu mang tag `ref:E1-L1`, câu đã có thì bỏ qua. Sửa nội
+dung rồi muốn đẩy xuống thì thêm `--lam-moi` — cờ này cũng huỷ trạng thái đã
+duyệt của câu bị sửa kịch bản, vì tệp MP3 cũ không còn khớp lời đọc mới.
+
+Toàn bộ 74 kịch bản tốn khoảng **20 nghìn ký tự** ElevenLabs cho một lần dựng
+hết. Lệnh `--thu` in bảng chi tiết theo từng part trước khi anh tiêu đồng nào.
+
 **Kiểm tra khi nhận tệp** — đây là chỗ duy nhất nền tảng nhận file từ ngoài:
 
 - Tên tệp của client **không bao giờ được dùng**; khoá lưu trữ do server sinh ngẫu nhiên.

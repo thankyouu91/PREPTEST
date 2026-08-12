@@ -238,7 +238,68 @@ if (cookie && csrf) {
   }
 }
 
-/* ================= 4. Sẵn sàng triển khai ================= */
+/* ================= 4. Nội dung kịch bản VPET =================
+   Kịch bản là nội dung, mà nội dung thì sửa tay. Bộ này chốt các bất biến để
+   một lần sửa không âm thầm làm hỏng cả đề: đủ số câu theo blueprint, đáp án
+   nằm trong phương án, và ký hiệu ngắt nghỉ vẫn phân tích được. */
+
+console.log('\n\x1b[1m== Kịch bản audio VPET ==\x1b[0m');
+
+{
+  const { allItems } = require('../server/data/vpet-scripts.js');
+  const items = allItems();
+
+  /* Blueprint cố định 55 câu, trong đó các part có audio là E8 F8 G6 H10 I2 J3
+     = 37 câu mỗi level (docs/VOICE.md mục 1.1). */
+  const MONG_DOI = { E: 8, F: 8, G: 6, H: 10, I: 2, J: 3 };
+  const dem = {};
+  items.forEach(i => { dem[i.part + i.level] = (dem[i.part + i.level] || 0) + 1; });
+
+  let duSo = true;
+  for (const [part, n] of Object.entries(MONG_DOI)) {
+    for (const level of [1, 2]) if (dem[part + level] !== n) duSo = false;
+  }
+  ok(duSo, 'Đủ số câu theo blueprint cho cả hai level (E8 F8 G6 H10 I2 J3)');
+  ok(items.length === 74, 'Tổng 74 kịch bản — 37 câu × 2 level', 'thấy ' + items.length);
+
+  ok(items.every(i => i.script && i.script.trim()), 'Không kịch bản nào rỗng');
+  ok(new Set(items.map(i => i.ref)).size === items.length, 'Mã tham chiếu không trùng nhau');
+
+  const mcq = items.filter(i => i.type === 'mcq');
+  ok(mcq.every(i => i.options.length >= 2), 'Mọi câu trắc nghiệm có ít nhất 2 phương án');
+  ok(mcq.every(i => i.options.includes(i.answer)), 'Đáp án luôn nằm trong các phương án của chính nó');
+  ok(mcq.every(i => new Set(i.options).size === i.options.length), 'Không có phương án trùng nhau trong cùng một câu');
+
+  const gap = items.filter(i => i.type === 'gap');
+  ok(gap.every(i => i.answer && i.answer.trim()), 'Mọi câu điền từ đều có đáp án');
+
+  /* Part H chấm bằng so khớp từ với chính câu đã đọc, nên đáp án phải bám
+     kịch bản chứ không được chép tay thành một bản lệch. */
+  const h = items.filter(i => i.part === 'H');
+  ok(h.every(i => i.answer === i.script), 'Đáp án part H lấy thẳng từ kịch bản, không chép tay');
+
+  /* Part J chấm coverage theo key points; thiếu key points là không chấm được
+     nội dung, chỉ còn chấm được ngôn ngữ. */
+  const j = items.filter(i => i.part === 'J');
+  ok(j.every(i => i.keyPoints.length >= 4), 'Mỗi bài kể chuyện có ít nhất 4 ý chính để chấm coverage');
+
+  /* Ký hiệu ngắt nghỉ phải phân tích được và không vượt ngưỡng thẻ break —
+     vượt ngưỡng thì hệ thống bỏ thẻ, tức là kịch bản mất nhịp tác giả muốn. */
+  const capped = items.filter(i => parseScript(i.script).stats.capped);
+  ok(capped.length === 0, 'Không kịch bản nào vượt ngưỡng số thẻ ngắt',
+    capped.map(i => i.ref).join(', '));
+
+  const tongKyTu = items.reduce((n, i) => n + parseScript(i.script).stats.billedChars, 0);
+  ok(tongKyTu > 15000 && tongKyTu < 30000,
+    'Tổng ký tự tính tiền nằm trong khoảng đã dự toán (' + tongKyTu.toLocaleString('en-US') + ')');
+
+  /* Level 1 đo tới B1, level 2 từ B2 lên — gắn sai bậc là bỏ câu vào kho mà
+     đề của level đó không được phép bốc. */
+  ok(items.filter(i => i.level === 1).every(i => i.cefr === 'B1'), 'Level 1 gắn bậc B1');
+  ok(items.filter(i => i.level === 2).every(i => i.cefr === 'B2'), 'Level 2 gắn bậc B2');
+}
+
+/* ================= 5. Sẵn sàng triển khai ================= */
 
 console.log('\n\x1b[1m== Sẵn sàng chạy trên Cloud Run ==\x1b[0m');
 

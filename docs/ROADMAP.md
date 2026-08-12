@@ -75,7 +75,8 @@ Queue for this track, in order:
 - [ ] **Teacher score report and certificates** ([`docs/VOICE.md`](VOICE.md) §8.3–8.5): one screen per attempt with item-level auto-marking, AI criteria plus evidence and transcript, per-criterion override and sign-off; `release_policy` and `awaiting_review` states; `certificate_profiles` with per-form logo upload (PNG/JPEG only, never SVG) pinned onto each issued certificate; a printable certificate page (HTML + print CSS, no new dependency), the `certificates` table and a public `/verify/:code` page. The certificate states plainly that it records a practice result on this platform, prints the level sat, and carries no awarding-body branding
 - [ ] Auto marking for parts A, C, E, F, G plus the score-to-CEFR conversion in `docs/SCORING.md`
 - [ ] Translate the whole interface to English — 12 student screens, 8 admin screens, every banner and empty state
-- [ ] VPET item bank: real items for all ten parts, tagged by part, with audio attached where the part needs it (**content, deliberately last**)
+- [x] **VPET audio scripts**: two complete forms in `server/data/vpet-scripts.js` — one per level, 74 scripts (E8 · F8 · G6 · H10 · I2 · J3 each), written in the pause markup with distractors, answers, explanations and part J key points. `scripts/nhap-kich-ban.js` validates and imports them as drafts, idempotent by `ref:` tag, and prints the ElevenLabs character bill per part before anything is spent
+- [ ] VPET item bank, non-audio parts: A, B, C and D still need real items (**content, deliberately last**)
 
 ## Hàng đợi
 
