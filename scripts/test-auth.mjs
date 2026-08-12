@@ -6,7 +6,7 @@
  * các bộ test khác đều đăng nhập bằng nó. Mọi phép thử đổi/đặt lại mật khẩu
  * chạy trên tài khoản dùng một lần, đăng ký ngay trong bài test.
  */
-import { chromium } from 'playwright-core';
+import { launchChromium } from './_browser.mjs';
 
 const BASE = process.env.BASE_URL || 'http://localhost:3000';
 const results = [];
@@ -16,7 +16,7 @@ const stamp = String(process.hrtime.bigint()).slice(-9);
 const TMP_EMAIL = `giaodien.${stamp}@thu-nghiem.vn`;
 const TMP_PASS = 'Matkhau123';
 
-const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' });
+const browser = await launchChromium();
 const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, locale: 'vi-VN' });
 const page = await ctx.newPage();
 /* Bài test cố tình đăng nhập sai vài lần; 401/403/429 từ chính các endpoint auth là

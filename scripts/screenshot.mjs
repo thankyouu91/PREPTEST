@@ -10,6 +10,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { postWithCsrf } from './_csrf.mjs';
 import { pool, JOBS } from './_pool.mjs';
+import { launchOptions } from './_browser.mjs';
 
 const BASE = process.env.BASE_URL || 'http://localhost:3000';
 const OUT = path.resolve('docs/screenshots');
@@ -96,7 +97,7 @@ const makeFreshAccount = async (browser) => {
 };
 
 const run = async () => {
-  const launchOpts = { executablePath: '/opt/pw-browsers/chromium' };
+  const launchOpts = launchOptions();
   // Môi trường CI/remote: đi qua agent proxy để tải được Google Fonts
   if (process.env.HTTPS_PROXY) {
     launchOpts.proxy = { server: process.env.HTTPS_PROXY, bypass: 'localhost,127.0.0.1' };

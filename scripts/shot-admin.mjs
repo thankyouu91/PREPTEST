@@ -1,6 +1,6 @@
 /** Chụp ảnh các màn quản trị (đăng nhập thật) + bắt lỗi console/CSP. */
-import { chromium } from 'playwright-core';
 import fs from 'node:fs';
+import { launchChromium } from './_browser.mjs';
 const BASE = process.env.BASE_URL || 'http://localhost:3000';
 const OUT = 'docs/screenshots';
 fs.mkdirSync(OUT, { recursive: true });
@@ -15,7 +15,7 @@ const PAGES = [
   ['admin-codes', '/admin/code/', true],
   ['admin-settings', '/admin/quan-tri/', true]
 ];
-const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' });
+const b = await launchChromium();
 const problems = [];
 for (const [slug, url, needAuth] of PAGES) {
   for (const [dev, vp] of [['desktop', { width: 1440, height: 950 }], ['mobile', { width: 390, height: 844 }]]) {

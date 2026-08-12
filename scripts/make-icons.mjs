@@ -18,11 +18,12 @@
 import { chromium } from 'playwright-core';
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import { chromiumPath } from './_browser.mjs';
 
 const ROOT = path.join(import.meta.dirname, '..');
 const SVG = path.join(ROOT, 'public', 'favicon.svg');
 const OUT = path.join(ROOT, 'public', 'icons');
-const EXEC = process.env.CHROMIUM || '/opt/pw-browsers/chromium';
+const EXEC = chromiumPath();
 
 /* The safe zone for a maskable icon: keep the mark inside the middle 80%. */
 const MASKABLE_INSET = 0.1;

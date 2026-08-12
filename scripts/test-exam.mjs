@@ -8,6 +8,7 @@
  * số lần nghe lại, hạn mức lượt thi, và việc đáp án không bao giờ đi ra ngoài.
  */
 import { chromium } from 'playwright-core';
+import { launchOptions } from './_browser.mjs';
 
 const BASE = process.env.BASE || 'http://127.0.0.1:3000';
 
@@ -388,7 +389,7 @@ try {
   /* Backend đã kiểm kỹ ở trên; phần này chỉ hỏi một câu: cái màn hình có thật
      sự lái được engine đó không, hay chỉ vẽ ra trông giống. */
   const browser = await chromium.launch({
-    executablePath: process.env.CHROMIUM || '/opt/pw-browsers/chromium', args: ['--no-sandbox']
+    ...launchOptions({ args: ['--no-sandbox'] })
   });
   try {
     const ctx = await browser.newContext();

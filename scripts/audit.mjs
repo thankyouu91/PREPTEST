@@ -2,9 +2,9 @@
  * Audit nghiệm thu: tràn ngang, tương phản nút, chiều cao nav, lỗi console/CSP.
  * Chạy: node scripts/audit.mjs   (cần server đang chạy)
  */
-import { chromium } from 'playwright-core';
 import { postWithCsrf } from './_csrf.mjs';
 import { pool, JOBS } from './_pool.mjs';
+import { launchChromium } from './_browser.mjs';
 
 const BASE = process.env.BASE_URL || 'http://localhost:3000';
 /* Phiên thật (cookie) bằng tài khoản demo + lớp phủ cục bộ cho code kích hoạt client */
@@ -56,7 +56,7 @@ const over = (fg, bg) => {
 };
 
 const run = async () => {
-  const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' });
+  const browser = await launchChromium();
   const issues = [];
 
   /* Màn kết quả cần một lượt thi CÓ THẬT của tài khoản demo. Gắn cứng id thì

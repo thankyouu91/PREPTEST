@@ -1,0 +1,59 @@
+# `npm run verify` on every push.
+#
+# The suite has always been able to run headless and return a non-zero exit
+# code; what was missing was anything running it when a person forgets. Now
+# that the gate is no longer flaky (test-auth.mjs, 2026-08-12) and takes about
+# six minutes instead of fifteen, putting it in CI is both safe and cheap —
+# wiring a flaky gate into CI just teaches everyone to press re-run.
+name: verify
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+  workflow_dispatch:
+
+# A second push to the same branch makes the first run pointless.
+concurrency:
+  group: verify-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # node:sqlite is what the data layer runs on, so the major version is not
+      # a preference — below 22 the server will not start at all.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - run: npm ci --no-audit --no-fund
+
+      # playwright-core ships no browser. Cache the download rather than the
+      # apt packages: the browser is ~150 MB and unchanged between runs, while
+      # install-deps is fast and its result is baked into the runner image.
+      - name: Cache Chromium
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+          restore-keys: playwright-${{ runner.os }}-
+
+      - run: npx playwright-core install --with-deps chromium
+
+      # SKIP_SHOTS on purpose. The screenshot step writes PNGs into
+      # docs/screenshots/, which is an authoring artefact reviewed by eye and
+      # committed by hand — CI producing images nobody looks at, into a working
+      # tree that is thrown away, buys nothing and costs two minutes. Every
+      # correctness gate (ten test suites plus the interface audit, which does
+      # need the browser) still runs.
+      - run: SKIP_SHOTS=1 npm run verify

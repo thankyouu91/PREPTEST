@@ -5,9 +5,10 @@
  * Chạy khi server đã bật: node scripts/test-catalog.mjs
  */
 import { chromium } from 'playwright-core';
+import { chromiumPath } from './_browser.mjs';
 
 const BASE = process.env.BASE || 'http://127.0.0.1:3000';
-const EXEC = process.env.CHROMIUM || '/opt/pw-browsers/chromium';
+const EXEC = chromiumPath();
 
 let pass = 0, fail = 0;
 /* detail chỉ in khi đỏ: một dòng đủ để biết thấy gì thay vì phải chạy lại tay */

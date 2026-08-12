@@ -387,6 +387,18 @@ Trình duyệt không chạy dòng mã nào của Google và không bao giờ th
 làm xong, chạy toàn bộ kiểm thử rồi mới commit và push lên nhánh làm việc. Nếu kiểm thử đỏ thì hoàn
 tác và ghi lý do vào mục "Vướng mắc" thay vì push. Tắt Routine bất cứ lúc nào trong phần Routines.
 
+**CI**: `.github/workflows/verify.yml` chạy `SKIP_SHOTS=1 npm run verify` cho
+mọi nhánh, mọi pull request, và chạy tay được. Bỏ bước chụp ảnh là chủ ý — ảnh
+nghiệm thu là sản phẩm soi bằng mắt rồi commit tay, để CI sinh ra ảnh không ai
+xem trong một thư mục nó vứt đi ngay sau đó thì tốn hai phút mà chẳng được gì;
+mọi cổng đúng-sai vẫn chạy đủ, kể cả bước audit (bước này thật sự cần trình
+duyệt). Không thêm dependency nào: `playwright-core` có sẵn lệnh `install`.
+
+Đường dẫn Chromium do `scripts/_browser.mjs` quyết: biến `CHROMIUM` nếu có →
+`/opt/pw-browsers/chromium` nếu nó tồn tại thật → không đặt gì, để Playwright tự
+tìm bản nó vừa cài. Trước đây tám script gắn cứng đường dẫn ấy, thứ chỉ tồn tại
+trên máy phát triển này.
+
 `npm run verify` chạy hết trong khoảng **sáu phút** và in **bảng thời gian từng
 bước** ở cuối, nên lần chậm sau tự tố cáo chính nó thay vì lẫn trong một bức
 tường dấu tích. Bước audit và bước chụp ảnh — 306 lượt tải trang, mỗi lượt một
