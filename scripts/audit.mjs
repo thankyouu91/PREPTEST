@@ -3,6 +3,7 @@
  * Chạy: node scripts/audit.mjs   (cần server đang chạy)
  */
 import { chromium } from 'playwright-core';
+import { postWithCsrf } from './_csrf.mjs';
 
 const BASE = process.env.BASE_URL || 'http://localhost:3000';
 /* Phiên thật (cookie) bằng tài khoản demo + lớp phủ cục bộ cho code kích hoạt client */
@@ -63,7 +64,7 @@ const run = async () => {
   let doneAttempt = null;
   {
     const probe = await browser.newContext();
-    await probe.request.post(BASE + '/api/auth/login', { data: { username: DEMO.id, password: DEMO.pw } });
+    await postWithCsrf(probe, BASE, '/api/auth/login', { username: DEMO.id, password: DEMO.pw });
     const list = await probe.request.get(BASE + '/api/attempts');
     if (list.ok()) {
       const items = (await list.json()).items || [];
@@ -92,7 +93,7 @@ const run = async () => {
           localStorage.setItem('prep.theme', d ? 'dark' : 'light');
         }, { o: LOCAL_OVERLAY, d: dark, g: guest });
         if (!guest) {
-          const r = await ctx.request.post(BASE + '/api/auth/login', { data: { username: DEMO.id, password: DEMO.pw } });
+          const r = await postWithCsrf(ctx, BASE, '/api/auth/login', { username: DEMO.id, password: DEMO.pw });
           if (!r.ok()) issues.push(`[đăng nhập] ${url}: HTTP ${r.status()}`);
         }
         await page.goto(BASE + url, { waitUntil: 'networkidle' });

@@ -27,6 +27,7 @@ Header nào phải nhớ gắn ở từng handler là header mà handler tiếp 
 | `Strict-Transport-Security` | `max-age=31536000; includeSubDomains` | **Chỉ khi request đã là HTTPS.** Gửi qua HTTP thì trình duyệt bỏ qua, mà gửi lúc chạy dev sẽ ghim `localhost` sang HTTPS cả năm trong trình duyệt của người phát triển |
 | `Content-Security-Policy` (trang HTML) | `default-src 'self'` + nonce theo từng request | Không CDN, không eval, không inline lậu |
 | `Content-Security-Policy` (`/api/*`) | `default-src 'none'; frame-ancestors 'none'; base-uri 'none'; sandbox` | Response API là dữ liệu, không bao giờ là tài liệu: không được tải gì, chạy gì, và không trang nào được nhúng nó |
+| `Set-Cookie: prep_csrf` (trang HTML) | token 24 byte, `SameSite=Strict`, đọc được bằng JS | Cấp ngay khi phục vụ trang, kể cả cho khách — đó là thứ cho phép `csrfGuard` phủ được cả màn đăng nhập. Đăng nhập thành công thì xoay token mới |
 | `X-Robots-Tag` (`/api/*`) | `noindex, nofollow` | Không để công cụ tìm kiếm lập chỉ mục dữ liệu API |
 
 ## 2. Giới hạn ghi toàn cục
@@ -63,32 +64,48 @@ sẽ làm. `scripts/verify.sh` nới cả ba lên 200; mặc định trong mã n
 
 Đây là danh sách đầy đủ, và mỗi dòng phải nêu được cái gì thay thế — nếu không
 thì danh sách này chỉ là chỗ giấu lỗi. `scripts/test-security.mjs` kiểm đúng
-danh sách này: thêm một endpoint ghi công khai mà không khai ở đây là đỏ.
+danh sách này: thêm một endpoint ghi công khai mà không khai ở đây là đỏ, mà
+khai thừa một dòng cũng đỏ.
 
-| Endpoint | Vì sao không có guard | Thay bằng |
+**Từ 2026-08-12 cả tám đều đã có `csrfGuard`.** Cookie `prep_csrf` được cấp ngay
+khi máy chủ phục vụ bất kỳ trang HTML nào, kể cả cho khách chưa đăng nhập, nên
+"không đòi đăng nhập" không còn kéo theo "không kiểm CSRF". Trước đó nó chỉ được
+cấp sau khi đăng nhập thành công, nên khách không có gì để đối chiếu.
+
+| Endpoint | Vì sao không có guard đăng nhập | Thay bằng |
 |---|---|---|
-| `POST /api/auth/register` | Người chưa có tài khoản mới cần nó | Khoá theo IP, chỉ trừ lượt khi thành công |
-| `POST /api/auth/login` | Chưa đăng nhập thì không thể đòi đăng nhập | Khoá 15 phút sau 5 lần sai |
-| `POST /api/admin/login` | Như trên | Như trên |
-| `POST /api/auth/forgot` | Người quên mật khẩu không vào được tài khoản | 5 lần/giờ theo IP, và trả lời giống hệt nhau dù email có tồn tại hay không |
-| `POST /api/auth/reset` | Người dùng đến từ đường link trong email | Token dùng một lần, băm trong CSDL, hết hạn sau 2 giờ |
-| `POST /api/auth/verify` | Như trên | Token dùng một lần, hết hạn sau 48 giờ |
-| `POST /api/auth/logout` | Đăng xuất khi chưa đăng nhập là vô hại | Vẫn có `csrfGuard` |
-| `POST /api/admin/logout` | Như trên | Vẫn có `csrfGuard` |
+| `POST /api/auth/register` | Người chưa có tài khoản mới cần nó | `csrfGuard`; khoá theo IP, chỉ trừ lượt khi thành công |
+| `POST /api/auth/login` | Chưa đăng nhập thì không thể đòi đăng nhập | `csrfGuard`; khoá 15 phút sau 5 lần sai |
+| `POST /api/admin/login` | Như trên | `csrfGuard`; như trên |
+| `POST /api/auth/forgot` | Người quên mật khẩu không vào được tài khoản | `csrfGuard`; `FORGOT_PER_HOUR` theo IP, và trả lời giống hệt nhau dù email có tồn tại hay không |
+| `POST /api/auth/reset` | Người dùng đến từ đường link trong email | `csrfGuard`; token dùng một lần, băm trong CSDL, hết hạn sau 2 giờ |
+| `POST /api/auth/verify` | Như trên | `csrfGuard`; token dùng một lần, hết hạn sau 48 giờ |
+| `POST /api/auth/logout` | Đăng xuất khi chưa đăng nhập là vô hại | `csrfGuard` |
+| `POST /api/admin/logout` | Như trên | `csrfGuard` |
 
-**Chỗ còn hở, đã biết:** sáu endpoint đầu không có `csrfGuard`, vì cookie
-`prep_csrf` chỉ được cấp **sau khi đăng nhập thành công** — khách chưa đăng
-nhập không có gì để đối chiếu. Hệ quả thực tế là **login CSRF**: kẻ tấn công
-ép trình duyệt nạn nhân đăng nhập vào tài khoản của *hắn*, rồi những gì nạn
-nhân làm tiếp được ghi vào đó. Với đăng ký, quên mật khẩu và xác thực token
-thì giả mạo không đạt được gì. Cách sửa là cấp `prep_csrf` ngay khi phục vụ
-trang, trước lúc đăng nhập — đã xếp vào hàng đợi nền tảng, không gộp vào lượt
-này vì nó động tới bốn màn auth và bộ test của chúng.
+### Đính chính: chỗ hở này chưa từng khai thác được
+
+Bản rà soát trước gọi đây là **login CSRF** và mô tả nó như một lỗ thật. Kiểm
+lại bằng request thật thì không đúng, và ghi lại đây vì nói quá về một lỗ hổng
+cũng làm hỏng lòng tin vào tài liệu y như nói thiếu:
+
+| Cách tấn công từ site khác | Kết quả thật |
+|---|---|
+| `<form method=POST>` (không cần preflight) | **400** — `express.json()` không đọc thân form, `req.body` rỗng |
+| `fetch` `mode:'no-cors'`, `Content-Type: text/plain` | **400** — cùng lý do |
+| `fetch` với `Content-Type: application/json` | Trình duyệt bắt buộc preflight CORS; máy chủ không trả `Access-Control-Allow-Origin` nên request không bao giờ được gửi |
+
+Tức là hàng rào có thật, nhưng nó là **hệ quả tình cờ** của hai lựa chọn không
+liên quan: chỉ nạp `express.json()`, và không cấu hình CORS. Thêm
+`express.urlencoded()` một ngày nào đó, hoặc mở CORS cho một ứng dụng di động,
+là biến cái tình cờ ấy thành lỗ thật mà không ai nhận ra mình vừa làm gì. Đặt
+`csrfGuard` lên cả tám endpoint biến hàng rào tình cờ thành hàng rào cố ý — và
+đó mới là lý do đáng để làm, chứ không phải vì đang có ai khai thác được.
 
 ## 4. Bảng endpoint → guard → giới hạn ghi
 
-74 route, 43 route ghi. 35/43 route ghi có đủ guard đăng nhập và `csrfGuard`;
-8 route còn lại là danh sách ở mục 3.
+74 route, 43 route ghi. **43/43 route ghi đều có `csrfGuard`**; 35/43 có thêm
+guard đăng nhập, 8 route còn lại là danh sách ở mục 3.
 
 <!-- BẢNG SINH TỰ ĐỘNG — đừng sửa tay, chạy scripts/test-security.mjs để kiểm -->
 
@@ -102,7 +119,7 @@ này vì nó động tới bốn màn auth và bộ test của chúng.
 | GET | `/api/admin/codes/export` | `requireAdmin` + `csrfGuard` | n/a (read) |
 | GET | `/api/admin/exam-formats` | `requireAdmin` + `csrfGuard` | n/a (read) |
 | DELETE | `/api/admin/items/:itemId` | `requireAdmin` + `csrfGuard` | yes |
-| POST | `/api/admin/login` | — | yes |
+| POST | `/api/admin/login` | `csrfGuard` | yes |
 | POST | `/api/admin/logout` | `csrfGuard` | yes |
 | GET | `/api/admin/me` | — | n/a (read) |
 | PUT | `/api/admin/packages/:id` | `requireAdmin` + `csrfGuard` | yes |
@@ -148,12 +165,12 @@ này vì nó động tới bốn màn auth và bộ test của chúng.
 | GET | `/api/attempts/:id/result` | `requireUser` | n/a (read) |
 | POST | `/api/attempts/:id/submit` | `requireUser` + `csrfGuard` | yes |
 | GET | `/api/attempts/current` | `requireUser` | n/a (read) |
-| POST | `/api/auth/forgot` | — | yes |
-| POST | `/api/auth/login` | — | yes |
+| POST | `/api/auth/forgot` | `csrfGuard` | yes |
+| POST | `/api/auth/login` | `csrfGuard` | yes |
 | POST | `/api/auth/logout` | `csrfGuard` | yes |
-| POST | `/api/auth/register` | — | yes |
-| POST | `/api/auth/reset` | — | yes |
-| POST | `/api/auth/verify` | — | yes |
+| POST | `/api/auth/register` | `csrfGuard` | yes |
+| POST | `/api/auth/reset` | `csrfGuard` | yes |
+| POST | `/api/auth/verify` | `csrfGuard` | yes |
 | POST | `/api/auth/verify/send` | `requireUser` + `csrfGuard` | yes |
 | GET | `/api/catalog` | — | n/a (read) |
 | GET | `/api/learn/grammar` | — | n/a (read) |

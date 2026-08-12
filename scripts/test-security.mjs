@@ -159,11 +159,14 @@ try {
   ok(Object.values(map.PUBLIC_WRITES).every(v => v && v.length > 15),
     'Mỗi ngoại lệ đều nêu được cái gì thay thế guard');
 
-  const guardedMut = mutating.filter(r =>
-    r.guards.includes('requireAdmin') || r.guards.includes('requireUser'));
-  ok(guardedMut.every(r => r.guards.includes('csrfGuard')),
-    'Route ghi có guard đăng nhập thì luôn có cả csrfGuard',
-    guardedMut.filter(r => !r.guards.includes('csrfGuard')).map(r => r.method + ' ' + r.path).join(', '));
+  /* Không còn phân biệt "có guard đăng nhập" hay không: từ 2026-08-12 cookie
+     prep_csrf được cấp ngay khi phục vụ trang HTML, nên khách chưa đăng nhập
+     cũng có token để đối chiếu và MỌI route ghi đều phải có csrfGuard. Trước đó
+     sáu endpoint công khai đứng ngoài, và đó là chỗ hở duy nhất bản rà soát
+     trước tìm ra mà chưa vá. */
+  ok(mutating.every(r => r.guards.includes('csrfGuard')),
+    'Mọi route ghi đều có csrfGuard, kể cả những route không đòi đăng nhập',
+    mutating.filter(r => !r.guards.includes('csrfGuard')).map(r => r.method + ' ' + r.path).join(', '));
 
   ok(mutating.every(r => r.writeLimited),
     'Mọi route ghi nằm dưới giới hạn ghi toàn cục');

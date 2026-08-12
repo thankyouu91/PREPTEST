@@ -73,6 +73,10 @@ function serveHtmlWithNonce(relFile) {
       const out = html
         .replace(/<script\b/g, `<script nonce="${nonce}"`)
         .replace(/<style\b/g, `<style nonce="${nonce}"`);
+      /* Anyone holding a page can submit a form from it, so anyone holding a
+         page needs a CSRF token — signed in or not. Minted here rather than at
+         sign-in, which is what lets csrfGuard cover the sign-in itself. */
+      A.ensureCsrfCookie(req, res);
       /* The document CSP carries this request's nonce, so it is set here rather
          than in the global middleware. Everything else a response needs —
          nosniff, referrer policy, permissions policy, framing — is already on

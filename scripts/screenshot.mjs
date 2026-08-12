@@ -8,6 +8,7 @@
 import { chromium } from 'playwright-core';
 import fs from 'node:fs';
 import path from 'node:path';
+import { postWithCsrf } from './_csrf.mjs';
 
 const BASE = process.env.BASE_URL || 'http://localhost:3000';
 const OUT = path.resolve('docs/screenshots');
@@ -75,7 +76,7 @@ const PAGES = [
 
 /** Đăng nhập qua API — cookie phiên đi thẳng vào cookie jar của context */
 const apiLogin = async (ctx, username, password) => {
-  const r = await ctx.request.post(BASE + '/api/auth/login', { data: { username, password } });
+  const r = await postWithCsrf(ctx, BASE, '/api/auth/login', { username, password });
   if (!r.ok()) throw new Error('Không đăng nhập được ' + username + ': HTTP ' + r.status());
 };
 
@@ -86,9 +87,8 @@ const makeFreshAccount = async (browser) => {
     email: `anh-chup.${String(process.hrtime.bigint()).slice(-9)}@thu-nghiem.vn`,
     password: 'Matkhau123'
   };
-  const r = await ctx.request.post(BASE + '/api/auth/register', {
-    data: { name: 'Tân Sinh Viên', email: account.email, password: account.password, interests: [] }
-  });
+  const r = await postWithCsrf(ctx, BASE, '/api/auth/register',
+    { name: 'Tân Sinh Viên', email: account.email, password: account.password, interests: [] });
   await ctx.close();
   if (!r.ok()) throw new Error('Không tạo được tài khoản trống: HTTP ' + r.status());
   return account;

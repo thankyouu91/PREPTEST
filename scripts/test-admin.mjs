@@ -27,6 +27,15 @@ function absorb(res) {
 
 async function call(method, path, body, opts) {
   opts = opts || {};
+  /* Chưa có prep_csrf thì xin một cái: máy chủ cấp cookie ấy khi phục vụ bất kỳ
+     trang HTML nào, kể cả cho khách chưa đăng nhập. Làm ở ngay đây chứ không bắt
+     từng chỗ gọi phải nhớ — quên một chỗ là một cái 403 khó hiểu. Đây cũng đúng
+     những gì trình duyệt làm: mở trang rồi mới gửi được biểu mẫu.
+     Trang dùng để xin phải là trang KHÔNG có guard chuyển hướng, nếu không thì
+     lúc đã đăng nhập nó trả 302 và chẳng cấp cookie nào. */
+  if (method !== 'GET' && !opts.noCsrf && !jar.has('prep_csrf')) {
+    await call('GET', '/admin/dang-nhap/');
+  }
   const headers = { 'Accept': 'application/json' };
   if (jar.size) headers.Cookie = cookieHeader();
   if (body !== undefined) headers['Content-Type'] = 'application/json';
@@ -58,10 +67,19 @@ const run = async () => {
   r = await call('POST', '/api/admin/login', { username: USER, password: 'sai-mat-khau' });
   check('Từ chối mật khẩu sai', r.status === 401, 'status ' + r.status);
 
-  /* 3. Đăng nhập đúng */
+  /* 3. Đăng nhập đúng.
+     Cookie CSRF giờ đã có từ trước khi đăng nhập — máy chủ cấp nó lúc phục vụ
+     trang, nếu không thì chính request đăng nhập ở trên đã không qua được
+     csrfGuard. Nên "có cookie CSRF" không còn nói lên điều gì; thứ đáng kiểm là
+     đăng nhập xong nó phải ĐỔI. Token do kẻ tấn công gài sẵn trước lúc đăng nhập
+     mà sống sót vào trong phiên thì double-submit chẳng còn bảo vệ được gì. */
+  const csrfBefore = jar.get('prep_csrf');
+  check('Có cookie CSRF từ trước khi đăng nhập', !!csrfBefore);
   r = await call('POST', '/api/admin/login', { username: USER, password: PASS });
   check('Đăng nhập quản trị thành công', r.status === 200 && r.data && r.data.ok, JSON.stringify(r.data));
   check('Có cookie phiên HttpOnly và cookie CSRF', jar.has('prep_admin') && jar.has('prep_csrf'));
+  check('Đăng nhập xong thì token CSRF được xoay mới',
+    jar.get('prep_csrf') !== csrfBefore, 'trước ' + csrfBefore + ' sau ' + jar.get('prep_csrf'));
 
   /* 4. CSRF: thiếu hoặc sai token thì bị chặn */
   r = await call('POST', '/api/admin/questions', { familyId: 'ielts' }, { noCsrf: true });

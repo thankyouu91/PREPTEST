@@ -27,6 +27,12 @@ function client() {
   return {
     jar,
     async req(method, path, body, extraHeaders) {
+      /* Chưa có prep_csrf thì xin một cái: máy chủ cấp cookie ấy khi phục vụ bất
+         kỳ trang HTML nào, kể cả cho khách chưa đăng nhập. Làm ở ngay đây chứ
+         không bắt từng chỗ gọi phải nhớ — quên một chỗ là một cái 403 khó hiểu.
+         Đây cũng đúng những gì trình duyệt làm: mở trang rồi mới gửi được biểu
+         mẫu. Dùng trang landing vì nó không có guard chuyển hướng nào. */
+      if (method !== 'GET' && !jar.has('prep_csrf')) await this.get('/prep/landing/');
       const headers = Object.assign({ Accept: 'application/json' }, extraHeaders || {});
       if (jar.size) headers.Cookie = [...jar].map(([k, v]) => k + '=' + encodeURIComponent(v)).join('; ');
       if (jar.has('prep_csrf') && !('X-CSRF-Token' in headers)) headers['X-CSRF-Token'] = jar.get('prep_csrf');

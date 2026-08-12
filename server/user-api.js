@@ -125,7 +125,7 @@ function ordersOf(userId) {
 }
 
 /* ============================ Registration ============================ */
-router.post('/auth/register', (req, res) => {
+router.post('/auth/register', A.csrfGuard, (req, res) => {
   // Only spend an allowance when an account is actually CREATED: bad input or a duplicate email costs nothing
   const rlKey = 'register|' + (req.ip || '?');
   /* Five accounts per hour per address. This default applies everywhere, test
@@ -167,7 +167,7 @@ router.post('/auth/register', (req, res) => {
 });
 
 /* =========================== Sign-in =========================== */
-router.post('/auth/login', (req, res) => {
+router.post('/auth/login', A.csrfGuard, (req, res) => {
   const b = req.body || {};
   const identifier = str(b.username, 160).toLowerCase();
   const password = typeof b.password === 'string' ? b.password : '';
@@ -308,7 +308,7 @@ router.post('/auth/verify/send', A.requireUser, A.csrfGuard, (req, res) => {
 });
 
 /* No sign-in required: the link may be opened in a different browser. */
-router.post('/auth/verify', (req, res) => {
+router.post('/auth/verify', A.csrfGuard, (req, res) => {
   const userId = A.consumeToken(str((req.body || {}).token, 400), 'verify');
   if (!userId) return bad(res, 'That verification link is invalid or has expired. Please request a new one.');
   q.run('UPDATE users SET verified=1 WHERE id=?', userId);
@@ -318,7 +318,7 @@ router.post('/auth/verify', (req, res) => {
 });
 
 /* ===================== Forgotten / reset password ===================== */
-router.post('/auth/forgot', (req, res) => {
+router.post('/auth/forgot', A.csrfGuard, (req, res) => {
   const email = str((req.body || {}).email, 160).toLowerCase();
   if (!EMAIL_RE.test(email)) return bad(res, 'That email address is not valid.');
 
@@ -335,7 +335,7 @@ router.post('/auth/forgot', (req, res) => {
   res.json({ ok: true, resetLink: link });
 });
 
-router.post('/auth/reset', (req, res) => {
+router.post('/auth/reset', A.csrfGuard, (req, res) => {
   const b = req.body || {};
   const password = typeof b.password === 'string' ? b.password : '';
   const pwErr = passwordProblem(password);

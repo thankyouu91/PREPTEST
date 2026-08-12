@@ -81,18 +81,20 @@ export function routeTable(require_ = createRequire(import.meta.url)) {
   return rows;
 }
 
-/* Năm endpoint ghi mà không thể có guard đăng nhập: chúng tồn tại để người chưa
-   đăng nhập dùng. Mỗi cái phải nêu được cái gì thay thế, nếu không thì danh
-   sách này chỉ là chỗ giấu lỗi. */
+/* Tám endpoint ghi không thể có guard đăng nhập: chúng tồn tại để người CHƯA
+   đăng nhập dùng. Mỗi cái phải nêu được cái gì thay thế, nếu không thì danh sách
+   này chỉ là chỗ giấu lỗi. Từ 2026-08-12 cả tám đều đã có csrfGuard: cookie
+   prep_csrf được cấp ngay khi phục vụ trang HTML, nên khách cũng có token để đối
+   chiếu — thiếu guard đăng nhập không còn kéo theo thiếu luôn CSRF. */
 export const PUBLIC_WRITES = {
-  'POST /api/auth/register': 'Khoá theo IP, REGISTER_PER_HOUR, chỉ trừ lượt khi đăng ký thành công',
-  'POST /api/auth/login': 'Khoá 15 phút sau 5 lần sai, theo IP × tên đăng nhập',
-  'POST /api/admin/login': 'Khoá 15 phút sau 5 lần sai, theo IP × tên đăng nhập',
-  'POST /api/auth/forgot': 'Giới hạn 5 lần/giờ theo IP; trả lời như nhau dù email có tồn tại hay không',
-  'POST /api/auth/reset': 'Token dùng một lần, băm trong CSDL, hết hạn sau 2 giờ',
-  'POST /api/auth/verify': 'Token dùng một lần, băm trong CSDL, hết hạn sau 48 giờ',
-  'POST /api/auth/logout': 'Có csrfGuard; đăng xuất khi chưa đăng nhập là vô hại',
-  'POST /api/admin/logout': 'Có csrfGuard; đăng xuất khi chưa đăng nhập là vô hại'
+  'POST /api/auth/register': 'csrfGuard; khoá theo IP, REGISTER_PER_HOUR, chỉ trừ lượt khi đăng ký thành công',
+  'POST /api/auth/login': 'csrfGuard; khoá 15 phút sau 5 lần sai, theo IP × tên đăng nhập',
+  'POST /api/admin/login': 'csrfGuard; khoá 15 phút sau 5 lần sai, theo IP × tên đăng nhập',
+  'POST /api/auth/forgot': 'csrfGuard; FORGOT_PER_HOUR theo IP, và trả lời như nhau dù email có tồn tại hay không',
+  'POST /api/auth/reset': 'csrfGuard; token dùng một lần, băm trong CSDL, hết hạn sau 2 giờ',
+  'POST /api/auth/verify': 'csrfGuard; token dùng một lần, băm trong CSDL, hết hạn sau 48 giờ',
+  'POST /api/auth/logout': 'csrfGuard; đăng xuất khi chưa đăng nhập là vô hại',
+  'POST /api/admin/logout': 'csrfGuard; đăng xuất khi chưa đăng nhập là vô hại'
 };
 
 /** Bảng markdown cho docs/SECURITY.md — sinh ra chứ không gõ tay. */

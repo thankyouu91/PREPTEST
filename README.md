@@ -283,9 +283,13 @@ bọc những route đăng ký **sau** nó — nhìn mã rất dễ kết luận
   quên mật khẩu, đặt lại, xác thực, hai màn đăng xuất) được khai tên trong
   `PUBLIC_WRITES` cùng thứ thay thế guard. Bài test kiểm cả hai chiều: thiếu khai
   là đỏ, mà khai thừa cũng đỏ.
-- **Chỗ còn hở, đã biết và đã xếp hàng đợi:** sáu endpoint đầu trong số đó không
-  có `csrfGuard`, vì cookie `prep_csrf` chỉ cấp sau khi đăng nhập. Hệ quả thật là
-  **login CSRF**. Cách sửa là cấp cookie ngay khi phục vụ trang.
+- **`csrfGuard` phủ 43/43 route ghi**, kể cả những route không đòi đăng nhập.
+  Cookie `prep_csrf` được cấp ngay khi phục vụ bất kỳ trang HTML nào, nên khách
+  chưa đăng nhập cũng có token để đối chiếu; đăng nhập xong thì token được xoay
+  mới. Bản rà soát trước gọi chỗ này là **login CSRF** đang mở — kiểm lại bằng
+  request thật thì không khai thác được (xem đính chính ở `docs/SECURITY.md` mục
+  3). Hàng rào có thật nhưng là hệ quả tình cờ của việc chỉ nạp `express.json()`
+  và không cấu hình CORS; đặt `csrfGuard` lên biến nó thành hàng rào cố ý.
 - **Ba ngưỡng theo thời gian có biến môi trường cho bộ test**, mặc định trong mã
   nguồn không đổi: `REGISTER_PER_HOUR`, `FORGOT_PER_HOUR`, `REDEEM_PER_10MIN`.
   Mỗi lượt `npm run verify` tiêu một suất của cả ba, nên với mặc định thì chạy bộ

@@ -126,6 +126,28 @@ function createUserSession(userId, req, res) {
   return token;
 }
 
+/* Every HTML page carries a CSRF token, whether or not anybody is signed in.
+
+   It used to be minted only on a successful sign-in, which left a guest with
+   nothing to double-submit — so register, both sign-ins, forgot, reset and
+   verify all had to sit outside csrfGuard and be declared as exceptions. Those
+   endpoints were not actually reachable cross-site (express.json() refuses a
+   form body, and a JSON body needs a CORS preflight this server never answers),
+   but that is an accident of two unrelated choices rather than a guard. Adding
+   express.urlencoded() one day, or a CORS header for a mobile client, would
+   quietly turn the accident into a hole.
+
+   The token is not an authenticator, so a long life costs nothing; it matches
+   the user session so a tab left open overnight still submits. Signing in
+   rotates it, which is what stops a token planted before sign-in from being
+   carried into the session. */
+function ensureCsrfCookie(req, res) {
+  if (parseCookies(req).prep_csrf) return false;
+  setCookie(res, 'prep_csrf', crypto.randomBytes(24).toString('base64url'),
+    { httpOnly: false, maxAge: USER_SESSION_DAYS * 86400 });
+  return true;
+}
+
 function destroyUserSession(req, res) {
   const token = parseCookies(req).prep_user;
   if (token) q.run('DELETE FROM user_sessions WHERE token_hash=?', sha256(token));
@@ -349,6 +371,7 @@ module.exports = {
   parseCookies, setCookie,
   createSession, destroySession, currentAdmin, purgeSessions,
   createUserSession, destroyUserSession, dropUserSessions, currentUser, requireUser,
+  ensureCsrfCookie,
   throttleKey, isLocked, noteFailure, clearFailures,
   rateLimit, rateLimitPeek, rateLimitNote,
   issueToken, consumeToken,

@@ -52,7 +52,7 @@ function unlockLabel(type, ref) {
 }
 
 /* ======================= Admin sign-in ======================= */
-router.post('/admin/login', (req, res) => {
+router.post('/admin/login', A.csrfGuard, (req, res) => {
   const username = str(req.body && req.body.username, 60);
   const password = typeof (req.body && req.body.password) === 'string' ? req.body.password : '';
   if (!username || !password) return bad(res, 'Enter a username and a password.');
