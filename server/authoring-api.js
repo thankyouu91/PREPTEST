@@ -35,7 +35,13 @@ const markup = require('./script-markup');
 const eleven = require('./providers/elevenlabs');
 const openai = require('./providers/openai');
 const descriptors = require('./data/descriptors');
+const rubrics = require('./data/rubrics');
 const EXAM_FORMATS = require('./data/exam-formats');
+const itemStats = require('./item-stats');
+const analysis = require('./item-analysis');
+const pronunciation = require('./data/pronunciation');
+const vocabulary = require('./data/vocabulary');
+const studyPlan = require('./study-plan');
 
 const router = express.Router();
 router.use(express.json({ limit: '1mb' }));
@@ -462,6 +468,60 @@ router.get('/admin/framework/descriptors', (req, res) => {
  * close. Exposed now so the framework is exercised and testable before the
  * results engine exists to consume it.
  */
+/**
+ * The full rubric for one part, or all of them.
+ *
+ * Served rather than duplicated: the AI marker, the teacher's screen and the
+ * learner's report must be reading the same bands. Three copies is three
+ * chances for a learner to work on something that was never being scored.
+ */
+router.get('/admin/framework/rubrics', (req, res) => {
+  const part = str(req.query.part, 2).toUpperCase();
+  if (part && !rubrics.PART_RUBRICS[part]) return bad(res, 'No rubric for that part.');
+
+  const parts = part ? { [part]: rubrics.PART_RUBRICS[part] } : rubrics.PART_RUBRICS;
+  const used = new Set(Object.values(parts).flatMap(r => Object.keys(r.criteria)));
+  const criteria = {};
+  for (const name of used) criteria[name] = rubrics.CRITERIA[name];
+
+  res.json({
+    parts, criteria,
+    bandGse: rubrics.BAND_GSE, bandCefr: rubrics.BAND_CEFR,
+    partWeights: { speaking: rubrics.SPEAKING_PART_WEIGHTS, writing: rubrics.WRITING_PART_WEIGHTS }
+  });
+});
+
+/**
+ * Turn a set of criterion bands into ranked advice.
+ *
+ * The personalisation endpoint: given what a learner scored on one part, it
+ * returns the part score and the criteria ordered by points recoverable —
+ * not by which score is lowest. A criterion worth 10% at band 2 is a smaller
+ * prize than one worth 40% at band 4, and telling a learner otherwise sends
+ * them to work in the wrong place.
+ */
+router.post('/admin/framework/advice', (req, res) => {
+  const part = str(req.body && req.body.part, 2).toUpperCase();
+  const rubric = rubrics.PART_RUBRICS[part];
+  if (!rubric) return bad(res, 'No rubric for that part.');
+
+  const scores = {};
+  const raw = (req.body && req.body.scores) || {};
+  for (const name of Object.keys(rubric.criteria)) {
+    if (raw[name] == null) continue;
+    const b = int(raw[name], NaN);
+    if (!Number.isFinite(b) || b < 0 || b > 6) return bad(res, `Band for "${name}" must be 0 to 6.`);
+    scores[name] = b;
+  }
+  if (!Object.keys(scores).length) return bad(res, 'No criterion bands were supplied.');
+
+  res.json({
+    part, name: rubric.name,
+    partScore: rubrics.partScore(part, scores),
+    ranked: rubrics.rankByOpportunity(part, scores)
+  });
+});
+
 router.get('/admin/framework/profile', (req, res) => {
   const skill = str(req.query.skill, 20);
   if (!descriptors.BY_SKILL[skill]) return bad(res, 'Unknown skill.');
@@ -471,6 +531,126 @@ router.get('/admin/framework/profile', (req, res) => {
     return bad(res, 'Score must be a number between 10 and 90.');
   }
   res.json(descriptors.profile(skill, gse));
+});
+
+/* ======================= Personalised revision =======================
+   The join across descriptors, rubrics, pronunciation and vocabulary. The
+   report generator calls this rather than assembling a plan itself, so that a
+   learner's report and a teacher's view of the same attempt cannot disagree
+   about what the learner should do next. See server/study-plan.js. */
+
+router.post('/admin/framework/plan', (req, res) => {
+  const body = req.body || {};
+  const skill = str(body.skill, 20);
+  const gse = int(body.gse, NaN);
+
+  if (!descriptors.BY_SKILL[skill]) return bad(res, 'Unknown skill.');
+  if (!Number.isFinite(gse) || gse < 10 || gse > 90) {
+    return bad(res, 'Score must be a number between 10 and 90.');
+  }
+
+  const parts = {};
+  const raw = body.parts || {};
+  for (const part of Object.keys(raw)) {
+    const rubric = rubrics.PART_RUBRICS[part];
+    if (!rubric) return bad(res, `No rubric for part ${part}.`);
+    parts[part] = {};
+    for (const [name, v] of Object.entries(raw[part] || {})) {
+      if (!rubric.criteria[name]) return bad(res, `Part ${part} is not marked on "${name}".`);
+      const b = int(v, NaN);
+      if (!Number.isFinite(b) || b < 0 || b > 6) return bad(res, `Band for "${name}" must be 0 to 6.`);
+      parts[part][name] = b;
+    }
+  }
+
+  try {
+    res.json(studyPlan.build({ skill, gse, parts, actions: clamp(int(body.actions, 3), 1, 6) }));
+  } catch (e) {
+    return bad(res, e.message);
+  }
+});
+
+/* The two content sets on their own, for the study pages and for an author
+   checking what a learner would be shown without simulating a whole result. */
+router.get('/admin/framework/pronunciation', (req, res) => {
+  const gse = int(req.query.gse, NaN);
+  res.json({
+    targets: pronunciation.TARGETS,
+    suggested: Number.isFinite(gse)
+      ? pronunciation.targetsFor({ gse, limit: int(req.query.limit, 3) })
+      : null
+  });
+});
+
+router.get('/admin/framework/vocabulary', (req, res) => {
+  const set = str(req.query.set, 40);
+  if (set && !vocabulary.BY_ID[set]) return bad(res, 'Unknown vocabulary set.');
+  res.json({ sets: set ? [vocabulary.BY_ID[set]] : vocabulary.SETS });
+});
+
+/* ========================= Item analysis =========================
+   docs/ACADEMIC.md §9, made runnable. Everything in the framework above is a
+   design decision until candidate responses exist; these routes are what turn
+   the decisions into measurements and, where the measurement disagrees with
+   the decision, say so.
+
+   Reading and recomputing are deliberately separate routes. The computation
+   walks every response in the table, and an admin screen that recomputed on
+   load would do it on every refresh and — worse — would show a verdict whose
+   sample size changed while somebody was reading it. */
+
+/**
+ * How much data exists, and what was last concluded from it.
+ *
+ * `coverage` is the honest header for the whole screen: with 12 responses,
+ * nothing below it means anything, and the screen should say that louder than
+ * it says anything else.
+ */
+router.get('/admin/analysis', (req, res) => {
+  const recommend = str(req.query.recommend, 12);
+  const allowed = ['keep', 'wait', 'review', 'retire', 'fix-key'];
+  if (recommend && !allowed.includes(recommend)) {
+    return bad(res, 'recommend must be one of: ' + allowed.join(', '));
+  }
+  res.json({
+    coverage: itemStats.coverage(),
+    thresholds: analysis.MIN_N,
+    ...itemStats.stored({ recommend: recommend || undefined })
+  });
+});
+
+/**
+ * Recompute from the response table and store the result.
+ *
+ * `dryRun` returns the numbers without writing them, which is what a reviewer
+ * wants before letting a batch of retire verdicts land on the bank.
+ */
+router.post('/admin/analysis/run', (req, res) => {
+  const body = req.body || {};
+  const source = str(body.source, 20);
+  const since = str(body.since, 30);
+  if (since && !/^\d{4}-\d{2}-\d{2}/.test(since)) return bad(res, 'since must be an ISO date.');
+
+  const report = itemStats.computeAll({
+    source: source || undefined,
+    since: since || undefined,
+    dryRun: !!body.dryRun
+  });
+
+  if (!body.dryRun) {
+    audit(req, 'analysis.run', 'items', {
+      attempts: report.attempts, items: report.summary.total,
+      actionable: report.summary.actionable
+    });
+  }
+  /* The per-item detail is large and the caller asking to run the analysis is
+     asking "what changed", not "give me every distractor row". The detail is
+     one GET away and does not need to ride along here. */
+  res.json({
+    at: report.at, attempts: report.attempts,
+    summary: report.summary, sections: report.sections,
+    actionable: report.items.filter(i => i.recommend !== 'keep' && i.recommend !== 'wait')
+  });
 });
 
 module.exports = router;

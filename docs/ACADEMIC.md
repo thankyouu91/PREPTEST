@@ -50,9 +50,10 @@ measurement behind it. Reporting 55 rather than B1+ invites a learner to read
 a one-point change as real when it is well inside the error of any test this
 length. Two mitigations, both in the product rather than in this document:
 the report shows a position within a band rather than a bare number, and it
-never celebrates a change smaller than the band width. **Reporting a
-confidence interval once there is data to compute one is queued in section 9,
-and until then the number is presented as a position, not a measurement.**
+never celebrates a change smaller than the band width. **The confidence
+interval is built and waiting** (section 9.1): the standard error is computed
+the moment a section reaches enough attempts, and until it does, the number is
+presented as a position rather than a measurement.
 
 ---
 
@@ -216,6 +217,57 @@ learner performance. A descriptor claiming an ability appears at 56 is a
 hypothesis until enough candidates at 56 have demonstrated it. Section 9 says
 how that gets checked.
 
+### 5.1 Turning a score into a week's work
+
+A score and a band are a diagnosis. Neither is a treatment, and a report that
+stops there has told a learner where they stand and left them with nothing to
+do on Monday.
+
+Four sources are joined by `server/study-plan.js`:
+
+| Source | Answers |
+|---|---|
+| `data/descriptors.js` | What can this learner already do, and what is next |
+| `data/rubrics.js` | Which criterion is costing the most marks |
+| `data/pronunciation.js` | Which sounds are the cause |
+| `data/vocabulary.js` | Which words would actually get used |
+
+**Ranked by recoverable marks, not by lowest score.** A criterion worth 10% of
+a part sitting at band 2 is a smaller prize than one worth 40% sitting at band
+4. A report listing weaknesses in ascending order of score is intuitive and it
+sends the learner to work in the wrong place.
+
+**Capped at three actions.** Everything computed is available to a teacher
+through the API. What reaches the learner is three things, because a plan
+listing nine is a plan nobody starts, and the report is judged on what gets
+done rather than on what it contains.
+
+**The diagnosis that justifies the whole layer.** Vietnamese does not permit
+/s/ or /z/ at the end of a syllable. A speaker who cannot produce them cannot
+say *she works* or *two books* however well they know the rule — and a marker
+hearing *she work* records a grammar error, because from the outside the two
+are identical. The same applies to past-tense *-ed*, which can quietly remove
+the entire past tense from a part J retelling.
+
+So when a learner is weak on both grammar and pronunciation, the report checks
+whether the grammar marks were lost to sounds rather than to rules, and says
+so. It raises this only when both are weak: weak grammar with sound
+pronunciation really is grammar, and saying otherwise would send a learner past
+a real problem.
+
+**Which reorders the pronunciation advice too.** Targets are ranked by how much
+meaning they destroy, not by how foreign they sound. Final consonants come
+first; /θ/ — the sound learners ask about first — is near the bottom, because
+*tink* for *think* is understood every time and a dropped final /s/ is not
+noticed by anyone, including the listener. An accent course would order these
+the other way round, and would spend a learner's month on the wrong thing.
+
+**Status.** Same as the descriptors: expert-written, unvalidated. The
+phonological predictions follow from published descriptions of Vietnamese and
+English syllable structure, but *which* target helps *this* learner most is a
+hypothesis until attempt data can be compared before and after. It is listed in
+section 10.
+
 ---
 
 ## 6. Content validity: what each part is evidence for
@@ -336,6 +388,55 @@ A concrete sequence, in dependency order, so this document has consequences.
    routinely fail the ability placed at 56, the placement is wrong, not the
    candidates.
 
+### 9.1 Steps 1–4 are implemented
+
+They run today, against an empty table, and will produce numbers the moment it
+is not empty.
+
+| Piece | Where |
+|---|---|
+| The statistics, as pure functions over arrays | `server/item-analysis.js` |
+| Reading responses, grouping, storing verdicts | `server/item-stats.js` |
+| The durable record of what each candidate answered | `item_responses` table |
+| Command-line report | `npm run phan-tich` |
+| Admin API | `GET /api/admin/analysis`, `POST /api/admin/analysis/run` |
+| Hand-worked tests of the maths | `scripts/test-authoring.mjs` |
+
+**The table is the part that cannot wait.** Facility can be recomputed at any
+time from stored responses; a response that was never stored is gone. Every
+attempt sat before `item_responses` exists is an attempt that can never
+contribute to any figure in this document, which is why the table landed
+before the exam-delivery code that will fill it.
+
+**Three design decisions worth knowing about**, because each one changes what a
+verdict means:
+
+1. **Nothing is reported as evidence below the sample sizes in the table
+   above.** Each statistic carries a `reliable` flag, and an item with fewer
+   than 100 responses is recommended `wait`, never `keep` or `retire`. A
+   facility of 0.62 from nine candidates is noise dressed as data, and it is
+   more dangerous than no statistic at all, because somebody will retire a good
+   item on the strength of it.
+
+2. **Discrimination is correlated against the rest of the item's own section**,
+   with the item subtracted from the total. Correlating an item against a total
+   that contains it guarantees a positive answer, which is the usual way this
+   number is computed wrongly and the reason a broken item can look healthy.
+
+3. **An extreme facility retires an item only when discrimination is also
+   poor.** An item that 13% of candidates get right while discriminating at
+   0.80 is not a dead item — it is separating the strongest from the very
+   strongest, and it is the only thing in the bank doing so. The verdict is
+   *review the level it is tagged to*, which is step 3 above, not *retire*.
+
+Internal consistency is grouped by skill and level rather than by part, because
+the claim being tested is that the listening items measure listening. Parts E,
+F and G together are 22 items; part I alone is two, and an alpha computed on
+two items would look like evidence and would not be any.
+
+Steps 5 to 8 are not implemented. They need decisions no code can make: what
+counts as a benchmark mark, who marks it, and what disagreement is tolerable.
+
 ---
 
 ## 10. Limitations
@@ -355,6 +456,12 @@ Stated together, so nobody has to assemble them from footnotes.
 7. **Descriptors are expert-written and unvalidated.** Plausible, not verified.
 8. **Scale precision exceeds measurement precision.** A one-point difference is
    not meaningful, and the product must not present it as though it were.
+9. **The revision advice is untested.** Section 5.1 ranks what a learner should
+   work on. The ranking follows from the rubric weights and from published
+   descriptions of Vietnamese phonology, but no learner has yet been shown a
+   plan and re-measured, so *this advice raises scores* is a hypothesis. Two
+   attempts either side of a plan is the cheapest test of it, and the data is
+   already being stored for it.
 
 None of these makes the platform unfit for what it is — a practice test that
 tells learners where they stand and what to do next. All of them would make it

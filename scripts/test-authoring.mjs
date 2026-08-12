@@ -409,7 +409,444 @@ if (cookie && csrf) {
   ok(Array.isArray(bands.bands) && bands.bands.length === 10, 'GET /admin/framework/bands trả đủ 10 dải');
 }
 
-/* ================= 6. Sẵn sàng triển khai ================= */
+/* ================= 6. Rubric và ôn tập cá nhân hoá ================= */
+
+console.log('\n\x1b[1m== Rubric · ôn tập cá nhân hoá ==\x1b[0m');
+
+{
+  const R = require('../server/data/rubrics.js');
+
+  ok(Object.values(R.PART_RUBRICS).every(r =>
+    Object.values(r.criteria).reduce((a, b) => a + b, 0) === 100),
+    'Trọng số mọi part tròn 100');
+
+  ok(Object.values(R.CRITERIA).every(c => c.bands.length === 7), 'Mọi tiêu chí đủ 7 bậc');
+  ok(Object.values(R.CRITERIA).every(c => c.bands.every(b => b.evidence)),
+    'Mọi bậc có dấu hiệu quan sát được, không chỉ lời mô tả');
+
+  /* Part H cố ý không chấm từ vựng và ngữ pháp — từ ngữ do đề cho sẵn. */
+  ok(!('vocabulary' in R.PART_RUBRICS.H.criteria) && !('grammar' in R.PART_RUBRICS.H.criteria),
+    'Part H không chấm từ vựng và ngữ pháp');
+  ok('accuracy' in R.PART_RUBRICS.H.criteria && !('accuracy' in R.PART_RUBRICS.I.criteria),
+    'Chỉ part H có tiêu chí khớp từ — hai part kia không có văn bản gốc để so');
+
+  ok(R.tierFor(1) === 'struggling' && R.tierFor(4) === 'developing' && R.tierFor(6) === 'refining',
+    'Chia đúng ba mức ôn tập theo bậc');
+
+  /* Điểm part rút gọn theo trọng số thực có: chấm thiếu một tiêu chí không
+     được âm thầm kéo điểm xuống. */
+  ok(Math.abs(R.partScore('H', { accuracy: 6, pronunciation: 6, fluency: 6 }) - 6) < 1e-9,
+    'Chấm tối đa mọi tiêu chí cho đúng 6');
+  ok(Math.abs(R.partScore('H', { accuracy: 4 }) - 4) < 1e-9,
+    'Thiếu tiêu chí thì rút gọn theo trọng số có thật, không kéo điểm xuống');
+
+  /* Xếp hạng theo điểm lấy lại được, KHÔNG theo điểm thấp nhất. */
+  const xep = R.rankByOpportunity('J',
+    { content: 3, fluency: 4, coherence: 3, pronunciation: 2, vocabulary: 4, grammar: 4 });
+  ok(xep[0].criterion === 'content',
+    'Ưu tiên tiêu chí lấy lại được nhiều điểm nhất, không phải tiêu chí điểm thấp nhất',
+    'thấy ' + xep[0].criterion);
+  ok(xep.every((r, i) => i === 0 || r.headroom <= xep[i - 1].headroom), 'Xếp giảm dần theo headroom');
+  ok(xep.every(r => r.advice && r.advice.actions.length >= 2), 'Mỗi mục xếp hạng đều kèm việc làm được');
+
+  const loiKhuyen = R.adviceFor('fluency', 2);
+  ok(loiKhuyen.tier === 'struggling' && loiKhuyen.study.length > 0,
+    'Lời khuyên kèm trang tự học để bấm sang');
+}
+
+if (cookie && csrf) {
+  const post = (p, body) => fetch(BASE + '/api' + p, {
+    method: 'POST',
+    headers: { cookie, 'x-csrf-token': csrf, 'content-type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+
+  const r = await fetch(BASE + '/api/admin/framework/rubrics?part=J', { headers: { cookie, 'x-csrf-token': csrf } });
+  const b = await r.json();
+  ok(r.status === 200 && b.parts.J, 'GET /admin/framework/rubrics?part=J trả rubric');
+  ok(Object.keys(b.criteria).length === Object.keys(b.parts.J.criteria).length,
+    'Chỉ trả về tiêu chí mà part đó thật sự dùng');
+
+  const a = await post('/admin/framework/advice', { part: 'J', scores: { content: 3, fluency: 4 } });
+  const ab = await a.json();
+  ok(a.status === 200 && Array.isArray(ab.ranked) && ab.ranked.length === 2,
+    'POST /admin/framework/advice xếp hạng đúng số tiêu chí được chấm');
+
+  const xau = await post('/admin/framework/advice', { part: 'J', scores: { content: 99 } });
+  ok(xau.status === 400, 'Bậc ngoài thang 0–6 bị từ chối');
+
+  const laPart = await post('/admin/framework/advice', { part: 'Z', scores: { content: 3 } });
+  ok(laPart.status === 400, 'Part không có rubric bị từ chối');
+}
+
+/* ================= 6a. Ôn tập cá nhân hoá ================= */
+
+console.log('\n\x1b[1m== Kế hoạch ôn tập cá nhân hoá ==\x1b[0m');
+
+const PRON = require('../server/data/pronunciation.js');
+const VOCAB = require('../server/data/vocabulary.js');
+const PLAN = require('../server/study-plan.js');
+
+{
+  /* Nguyên tắc xếp hạng: cái làm mất nghĩa nhiều nhất đứng trước, không phải
+     cái nghe "Tây" nhất. "th" là thứ người học hỏi đầu tiên và đáng làm cuối. */
+  const moi = PRON.targetsFor({ band: 1, gse: 30, limit: 5 });
+  ok(moi.every(t => t.cost === 'high'), 'Người ở bậc thấp chỉ nhận mục tiêu mức thiệt hại cao');
+  ok(!moi.some(t => t.id === 'th'), '"th" không được xếp trước phụ âm cuối cho người mới');
+
+  const gioi = PRON.targetsFor({ band: 6, gse: 82, limit: 5 });
+  ok(gioi.some(t => t.cost !== 'high'), 'Người đã vững thì chuyển sang mục tiêu tinh hơn');
+}
+
+{
+  /* Điểm mấu chốt của cả file: yếu ngữ pháp cộng yếu phát âm có thể là MỘT
+     vấn đề. Khi ngữ pháp yếu, mục tiêu phát âm phá ngữ pháp phải lên trước. */
+  const khong = PRON.targetsFor({ band: 3, gse: 45, weak: [], limit: 2 }).map(t => t.id);
+  const co = PRON.targetsFor({ band: 3, gse: 45, weak: ['grammar'], limit: 2 }).map(t => t.id);
+  ok(co.includes('final-s-z') && co.includes('final-ed'),
+    'Yếu ngữ pháp thì đuôi -s và -ed được đẩy lên đầu', co.join(', '));
+  ok(JSON.stringify(khong) !== JSON.stringify(co),
+    'Tiêu chí yếu thật sự làm đổi thứ tự, không phải trang trí');
+
+  const t = PRON.targetsFor({ band: 3, gse: 45, weak: ['grammar'], limit: 1 })[0];
+  ok(t.alsoHelps.includes('grammar'), 'Mục tiêu nói rõ nó còn gỡ điểm cho tiêu chí nào');
+  ok(!!t.misdiagnosis, 'Mục tiêu bị chấm nhầm tên có ghi chú cảnh báo');
+}
+
+{
+  ok(PRON.hidesAs('grammar').length === 2, 'Đúng hai lỗi phát âm bị chấm thành lỗi ngữ pháp');
+  ok(PRON.hidesAs('fluency').length === 0, 'Không gán bừa nguyên nhân ẩn cho tiêu chí khác');
+  ok(PRON.targetsFor({ gse: 30, limit: 99 }).length < PRON.TARGETS.length,
+    'Mục tiêu ngoài tầm điểm bị loại, không đổ hết cho người học');
+}
+
+{
+  const I = VOCAB.setsFor({ gse: 45, parts: ['I'], limit: 3 });
+  ok(I.every(s => s.parts.includes('I')), 'Bộ từ vựng bám đúng part người học làm kém');
+  const J = VOCAB.setsFor({ gse: 60, parts: ['J'], limit: 1 })[0];
+  ok(J.parts.includes('J'), 'Part J nhận bộ kể chuyện', J.id);
+  ok(VOCAB.setsFor({ gse: 45, limit: 3 }).every(s => s.kind === 'function'),
+    'Không có tín hiệu part thì ưu tiên bộ theo chức năng');
+  ok(VOCAB.ALL_WORDS.length === VOCAB.SETS.reduce((a, s) => a + s.items.length, 0),
+    'Danh sách từ phẳng khớp tổng các bộ');
+}
+
+{
+  const p = PLAN.build({
+    skill: 'speaking', gse: 48,
+    parts: {
+      H: { accuracy: 2, pronunciation: 2, fluency: 3 },
+      J: { content: 3, fluency: 3, coherence: 3, pronunciation: 2, vocabulary: 2, grammar: 2 }
+    }
+  });
+
+  ok(p.band === 'B1', 'Kế hoạch gắn đúng bậc CEFR cho điểm GSE', p.band);
+  ok(p.priorities.length === 3, 'Trả về đúng số việc ưu tiên đã yêu cầu');
+
+  /* Tiêu chí xuất hiện ở nhiều part phải gộp làm một. Bảo người học ba lần
+     rằng độ trôi chảy còn yếu là bảo họ không gì cả, ba lần. */
+  const trung = p.priorities.map(x => x.criterion);
+  ok(new Set(trung).size === trung.length, 'Tiêu chí lặp ở nhiều part được gộp làm một');
+  const fl = p.priorities.find(x => x.criterion === 'fluency');
+  ok(!fl || fl.parts.length === 2, 'Việc gộp giữ lại danh sách part đã cộng dồn');
+
+  /* Xếp theo điểm gỡ được, không theo điểm thấp nhất. */
+  const hs = p.priorities.map(x => x.recoverable);
+  ok(hs.every((v, i) => i === 0 || v <= hs[i - 1]), 'Xếp giảm dần theo số điểm gỡ được');
+
+  ok(p.thisWeek.length === 3, 'Danh sách việc tuần này bị chặn ở 3');
+  const loai = new Set(p.thisWeek.map(x => x.kind));
+  ok(loai.size >= 2, 'Việc tuần này trộn nhiều loại, không phải ba lần cùng một kiểu', [...loai].join(','));
+  ok(p.thisWeek[0].kind === 'sound',
+    'Bài luyện gỡ được hai tiêu chí cùng lúc được đưa lên đầu', p.thisWeek[0].kind);
+
+  ok(p.hiddenCauses.length === 2, 'Nêu nguyên nhân ẩn cho cả grammar lẫn accuracy');
+  ok(/may not be an accuracy problem/.test(p.hiddenCauses.find(h => h.criterion === 'accuracy').note),
+    'Câu ghi chú dùng đúng mạo từ trước nguyên âm');
+}
+
+{
+  /* partScore trả về bậc 0–6, không phải phần trăm. So với 60 thì part nào
+     cũng thành "yếu" và phần chọn từ vựng mất tín hiệu mạnh nhất của nó. */
+  const p = PLAN.build({
+    skill: 'speaking', gse: 70,
+    parts: { J: { content: 6, fluency: 6, coherence: 6, pronunciation: 6, vocabulary: 6, grammar: 6 } }
+  });
+  ok(p.partScores.J === 6, 'Điểm part nằm trên thang 0–6 của rubric', String(p.partScores.J));
+  ok(p.hiddenCauses.length === 0, 'Không yếu chỗ nào thì không nêu nguyên nhân ẩn');
+  ok(p.thisWeek.length > 0, 'Người giỏi vẫn nhận được việc để làm, không nhận trang trống');
+}
+
+{
+  let loi = '';
+  try { PLAN.build({ skill: 'nau-an', gse: 50 }); } catch (e) { loi = e.message; }
+  ok(/Unknown skill/.test(loi), 'Kỹ năng không có thật bị từ chối');
+
+  loi = '';
+  try { PLAN.build({ skill: 'speaking', gse: 200 }); } catch (e) { loi = e.message; }
+  ok(/10 to 90/.test(loi), 'Điểm ngoài thang bị từ chối');
+
+  loi = '';
+  try { PLAN.build({ skill: 'speaking', gse: 50, parts: { Z: { content: 3 } } }); } catch (e) { loi = e.message; }
+  ok(/No rubric for part Z/.test(loi), 'Part không có rubric bị từ chối');
+}
+
+if (cookie && csrf) {
+  const post = (p, body) => fetch(BASE + '/api' + p, {
+    method: 'POST',
+    headers: { cookie, 'x-csrf-token': csrf, 'content-type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+
+  const r = await post('/admin/framework/plan', {
+    skill: 'speaking', gse: 48,
+    parts: { J: { content: 3, fluency: 3, coherence: 3, pronunciation: 2, vocabulary: 2, grammar: 2 } }
+  });
+  const b = await r.json();
+  ok(r.status === 200 && b.thisWeek && b.priorities, 'POST /admin/framework/plan trả kế hoạch đầy đủ');
+  ok(b.sounds.length > 0 && b.vocabulary.length > 0, 'Kế hoạch có cả phần phát âm lẫn từ vựng');
+
+  const laBac = await post('/admin/framework/plan', {
+    skill: 'speaking', gse: 48, parts: { J: { content: 9 } }
+  });
+  ok(laBac.status === 400, 'Bậc ngoài 0–6 bị từ chối ở tầng API');
+
+  const laTieuChi = await post('/admin/framework/plan', {
+    skill: 'speaking', gse: 48, parts: { J: { mechanics: 3 } }
+  });
+  ok(laTieuChi.status === 400, 'Tiêu chí không thuộc part đó bị từ chối');
+
+  const pron = await fetch(BASE + '/api/admin/framework/pronunciation?gse=40',
+    { headers: { cookie, 'x-csrf-token': csrf } });
+  const pb = await pron.json();
+  ok(pron.status === 200 && pb.targets.length === PRON.TARGETS.length && pb.suggested.length === 3,
+    'GET /admin/framework/pronunciation trả cả danh sách lẫn gợi ý theo điểm');
+
+  const voc = await fetch(BASE + '/api/admin/framework/vocabulary?set=narrating',
+    { headers: { cookie, 'x-csrf-token': csrf } });
+  const vb = await voc.json();
+  ok(voc.status === 200 && vb.sets.length === 1 && vb.sets[0].id === 'narrating',
+    'GET /admin/framework/vocabulary lọc được theo bộ');
+
+  const laBo = await fetch(BASE + '/api/admin/framework/vocabulary?set=khong-co',
+    { headers: { cookie, 'x-csrf-token': csrf } });
+  ok(laBo.status === 400, 'Bộ từ vựng không tồn tại bị từ chối');
+}
+
+/* ================= 6b. Phân tích câu hỏi =================
+   Kiểm bằng ví dụ tính tay. Một module thống kê chỉ có thể tin được khi có
+   người tính tay ra cùng con số — so với chính nó thì mãi mãi đúng. */
+
+console.log('\n\x1b[1m== Phân tích câu hỏi (ACADEMIC §9) ==\x1b[0m');
+
+const IA = require('../server/item-analysis.js');
+const gan = (a, b, eps = 1e-9) => a != null && Math.abs(a - b) < eps;
+
+{
+  const f = IA.facility([1, 1, 1, 0, 0]);
+  ok(gan(f.p, 0.6), 'Độ khó: 3/5 đúng cho p = 0,60', String(f.p));
+  ok(f.reliable === false, `Dưới ${IA.MIN_N.facility} lượt thì cờ reliable phải tắt`);
+  ok(IA.facility(Array(120).fill(1).map((_, i) => (i < 60 ? 1 : 0))).reliable === true,
+    'Đủ lượt thì cờ reliable bật');
+
+  ok(IA.facility(Array(100).fill(1)).verdict.startsWith('too easy'),
+    'Ai cũng đúng: "quá dễ — không phân biệt được ai"');
+  ok(IA.facility(Array(100).fill(0)).verdict.startsWith('too hard'),
+    'Không ai đúng: "quá khó — không phân biệt được ai"');
+  ok(IA.facility([], 1).p === null, 'Không có dữ liệu thì trả null chứ không trả 0');
+}
+
+{
+  /* Câu chấm rubric 0–6: độ khó là điểm trung bình trên điểm tối đa, không
+     phải tỉ lệ vượt một mốc nào đó. Cắt ở 4 thì nhóm trung bình 4,5 hoá ra
+     "quá khó" — sai, và sẽ loại một câu hoàn toàn tốt. */
+  const f = IA.facility([3, 4, 5, 6], 6);
+  ok(gan(f.p, 0.75), 'Câu rubric: trung bình 4,5/6 cho p = 0,75', String(f.p));
+  ok(gan(f.meanScore, 4.5) && f.max === 6, 'Giữ lại cả điểm trung bình lẫn điểm tối đa');
+  ok(IA.facility([3, 3, 3, 3], 6).verdict === 'well targeted',
+    'Trung bình 3/6 là "đúng tầm", không phải "quá khó"');
+  let nem = false;
+  try { IA.facility([1], 0); } catch (e) { nem = true; }
+  ok(nem, 'Điểm tối đa bằng 0 thì ném lỗi chứ không chia cho 0');
+}
+
+{
+  /* Ví dụ tính tay, 6 thí sinh:
+       câu này    1 1 1 0 0 0
+       tổng       4 3 3 2 1 1
+       phần còn lại (tổng − câu này) = 3 2 2 2 1 1
+       trung bình nhóm đúng 7/3, nhóm sai 4/3, độ lệch chuẩn 0,687184…
+       r = (1/0,687184…) × √(0,5×0,5) = 0,7276068751… */
+  const d = IA.discrimination([1, 1, 1, 0, 0, 0], [4, 3, 3, 2, 1, 1]);
+  ok(gan(d.r, 0.7276068751089989, 1e-12), 'Độ phân biệt khớp ví dụ tính tay 0,72760688', String(d.r));
+  ok(d.verdict === 'excellent' && d.action === 'keep', 'r > 0,40 xếp loại tốt và giữ lại');
+}
+
+{
+  /* Hệ số Pearson trên câu 0–1 phải ra đúng con số của point-biserial. Đây là
+     điều kiện để dùng một công thức cho cả hai loại câu — nếu lệch thì việc
+     gộp là sai, và phải tách lại. */
+  const item = [1, 0, 1, 1, 0, 1, 0, 0, 1, 0];
+  const total = [7, 3, 6, 8, 2, 5, 4, 3, 9, 1];
+  const rest = total.map((t, i) => t - item[i]);
+  const dung = rest.filter((_, i) => item[i] === 1), sai = rest.filter((_, i) => item[i] === 0);
+  const tb = xs => xs.reduce((a, b) => a + b, 0) / xs.length;
+  const m = tb(rest);
+  const dlc = Math.sqrt(rest.reduce((a, x) => a + (x - m) ** 2, 0) / rest.length);
+  const p = dung.length / item.length;
+  const pbis = ((tb(dung) - tb(sai)) / dlc) * Math.sqrt(p * (1 - p));
+  ok(gan(IA.discrimination(item, total).r, pbis, 1e-12),
+    'Pearson và point-biserial cho cùng một số trên câu đúng/sai');
+}
+
+{
+  const d = IA.discrimination([0, 0, 1, 1, 0, 1], [5, 4, 1, 2, 3, 1]);
+  ok(d.r < 0, 'Người giỏi làm sai nhiều hơn thì r âm', String(d.r));
+  ok(d.action === 'fix-key', 'r âm ra hành động "kiểm tra lại khoá", không phải "câu khó"');
+}
+
+{
+  ok(IA.discrimination(Array(200).fill(1), Array(200).fill(5)).verdict === 'no variance',
+    'Cả nhóm trả lời như nhau: "không có biến thiên", không phải r = 0');
+  ok(IA.discrimination([1, 0, 1], [1, 0, 1]).verdict === 'no variance in total',
+    'Phần còn lại không phân biệt được ai thì nói rõ, và không đổ lỗi cho câu');
+  let nem = false;
+  try { IA.discrimination([1, 0], [1, 0, 1]); } catch (e) { nem = true; }
+  ok(nem, 'Hai mảng lệch độ dài thì ném lỗi ngay');
+}
+
+{
+  /* Ví dụ tính tay: 4 thí sinh, 3 câu, ma trận bậc thang.
+       phương sai từng câu 0,1875 + 0,25 + 0,1875 = 0,625
+       phương sai tổng 1,25
+       alpha = (3/2)(1 − 0,625/1,25) = 0,75 chẵn */
+  const a = IA.cronbachAlpha([[1, 1, 1], [1, 1, 0], [1, 0, 0], [0, 0, 0]]);
+  ok(gan(a.alpha, 0.75), 'Alpha khớp ví dụ tính tay 0,75', String(a.alpha));
+  ok(a.k === 3 && a.n === 4, 'Đếm đúng số câu và số lượt');
+  ok(a.reliable === false, `Dưới ${IA.MIN_N.alpha} lượt thì alpha chưa dùng được`);
+
+  const sem = IA.standardError(a.alpha, a.totalSd);
+  ok(gan(sem, Math.sqrt(1.25) * 0.5), 'Sai số đo = độ lệch chuẩn × √(1−alpha)', String(sem));
+
+  const kt = IA.confidenceInterval(55, sem);
+  ok(gan(kt.low, 55 - sem) && gan(kt.high, 55 + sem), 'Khoảng tin cậy 68% rộng đúng một sai số đo');
+  ok(gan(IA.confidenceInterval(55, sem, 95).high, 55 + 1.96 * sem), 'Mức 95% dùng 1,96 sai số đo');
+  ok(IA.confidenceInterval(55, null) === null, 'Không có sai số đo thì không bịa ra khoảng tin cậy');
+}
+
+{
+  ok(IA.cronbachAlpha([[1, 1], [1, 1], [1, 1]]).verdict === 'no variance in totals',
+    'Mọi người cùng điểm tổng: nói rõ thay vì chia cho 0');
+  ok(IA.cronbachAlpha([[1], [0], [1]]).alpha === null, 'Một câu thì không có alpha');
+  let nem = false;
+  try { IA.cronbachAlpha([[1, 1], [1]]); } catch (e) { nem = true; }
+  ok(nem, 'Ma trận thiếu ô thì ném lỗi chứ không lặng lẽ tính sai');
+  ok(IA.standardError(1, 5) === null, 'Alpha = 1 (không thể có thật) thì không trả sai số đo');
+}
+
+{
+  /* Bốn phương án: B là đáp án, A hút người giỏi (dấu hiệu khoá sai hoặc
+     phương án cũng đúng), D không ai chọn. */
+  const chon = ['A', 'A', 'B', 'B', 'B', 'C', 'C', 'B', 'A', 'B'];
+  const tong = [9, 8, 5, 4, 6, 2, 1, 5, 9, 3];
+  const da = IA.distractorAnalysis(chon, ['A', 'B', 'C', 'D'], 'B', tong);
+  const lay = o => da.options.find(x => x.option === o);
+
+  ok(lay('B').isKey && gan(lay('B').share, 0.5), 'Đáp án B được 50% chọn');
+  ok(lay('D').verdict.startsWith('dead'), 'Phương án không ai chọn bị gọi là phương án chết');
+  ok(lay('A').verdict.startsWith('attracts stronger'),
+    'Phương án hút người điểm cao hơn đáp án bị nêu đích danh', lay('A').verdict);
+  ok(lay('C').verdict === 'working', 'Phương án nhiễu hút người điểm thấp là đang làm đúng việc');
+  ok(gan(lay('A').meanTotal, (9 + 8 + 9) / 3), 'Điểm trung bình của người chọn A tính đúng');
+}
+
+{
+  const N = IA.MIN_N.discrimination;
+  const item = Array.from({ length: N }, (_, i) => (i % 2 ? 1 : 0));
+  const total = Array.from({ length: N }, (_, i) => (i % 2 ? 8 : 3));
+
+  const du = IA.analyseItem({ id: 1, part: 'C', itemScores: item, totalScores: total });
+  ok(du.recommend === 'keep', 'Câu hoạt động bình thường thì giữ', du.why);
+
+  const thieu = IA.analyseItem({ id: 2, part: 'C', itemScores: item.slice(0, 20), totalScores: total.slice(0, 20) });
+  ok(thieu.recommend === 'wait', 'Chưa đủ lượt thì "chờ", không phải "giữ"');
+  ok(thieu.why.includes(String(N)), 'Lời giải thích nói rõ cần bao nhiêu lượt nữa');
+
+  /* Cả 500 người cùng làm đúng là đã quá đủ dữ liệu để kết luận — không được
+     báo "chờ thêm dữ liệu" chỉ vì độ phân biệt không tính được. */
+  const chet = IA.analyseItem({
+    id: 3, part: 'C', itemScores: Array(500).fill(1), totalScores: Array(500).fill(9)
+  });
+  ok(chet.recommend === 'retire', 'Ai cũng đúng ở 500 lượt là "bỏ", không phải "chờ"', chet.why);
+
+  /* Câu khó nhưng phân biệt tốt thì không được loại: nó đang tách nhóm giỏi
+     nhất ra khỏi nhóm giỏi. Việc cần làm là xem lại nó thuộc level nào. */
+  const kho = Array.from({ length: 300 }, (_, i) => (i < 20 ? 1 : 0));
+  const tongKho = Array.from({ length: 300 }, (_, i) => (i < 20 ? 9 : 2));
+  const r = IA.analyseItem({ id: 4, part: 'H', itemScores: kho, totalScores: tongKho });
+  ok(r.recommend === 'review' && /right level/.test(r.why),
+    'Câu khó mà phân biệt tốt thì "xem lại level", không phải "bỏ"', r.why);
+
+  /* 297/300 làm đúng, và ba người làm sai nằm đúng giữa thang năng lực — nên
+     độ phân biệt gần 0. Đây là câu vô hại nhưng vô dụng: chiếm chỗ và chiếm
+     thời gian của thí sinh mà không nói thêm được gì về ai. */
+  const deIdx = i => i === 103 || i === 114 || i === 124;
+  const deItem = Array.from({ length: 300 }, (_, i) => (deIdx(i) ? 0 : 1));
+  const de = IA.analyseItem({
+    id: 5, part: 'C',
+    itemScores: deItem,
+    /* Tổng phải bao gồm chính câu này — đó là điều kiện để phép trừ trong
+       công thức có nghĩa. Dựng tổng không chứa câu rồi vẫn trừ đi là trừ hai
+       lần, và sẽ ra tương quan âm giả. */
+    totalScores: deItem.map((v, i) => (i % 10) + v)
+  });
+  ok(de.recommend === 'retire' && Math.abs(de.discrimination.r) < 0.3,
+    'Câu ai cũng làm được và không phân biệt được thì bỏ', de.why);
+}
+
+{
+  const IS = require('../server/item-stats.js');
+  ok(IS.sectionKey('listening', 1) === 'listening-L1', 'Khoá phần ghép từ kỹ năng và level');
+  ok(IS.sectionKey('reading', null) === 'reading-L?', 'Câu chưa gắn level vẫn gom được, và lộ ra là chưa gắn');
+  ok(IS.vpetLevel({ tags_json: '["ref:E1-L2","part-E","level-2"]' }) === 2, 'Đọc được level từ tag');
+  ok(IS.vpetLevel({ tags_json: '["part-E"]' }) === null, 'Không có tag level thì trả null, không đoán bừa');
+}
+
+if (cookie && csrf) {
+  const r = await fetch(BASE + '/api/admin/analysis', { headers: { cookie, 'x-csrf-token': csrf } });
+  const b = await r.json();
+  ok(r.status === 200 && b.coverage && b.thresholds, 'GET /admin/analysis trả độ phủ dữ liệu và ngưỡng');
+  ok(b.thresholds.discrimination === IA.MIN_N.discrimination,
+    'Ngưỡng trả về đúng bằng ngưỡng module dùng để tính');
+  ok(Array.isArray(b.items) && Array.isArray(b.sections), 'Trả về danh sách câu và danh sách phần');
+
+  const xau = await fetch(BASE + '/api/admin/analysis?recommend=xoa-het', { headers: { cookie, 'x-csrf-token': csrf } });
+  ok(xau.status === 400, 'Giá trị recommend lạ bị từ chối');
+
+  const chay = await fetch(BASE + '/api/admin/analysis/run', {
+    method: 'POST',
+    headers: { cookie, 'x-csrf-token': csrf, 'content-type': 'application/json' },
+    body: JSON.stringify({ dryRun: true })
+  });
+  const cb = await chay.json();
+  ok(chay.status === 200 && cb.summary, 'POST /admin/analysis/run --thu trả tóm tắt');
+  ok(cb.summary.ready === (cb.summary.sectionsReliable > 0),
+    'Cờ "được phép hiện khoảng tin cậy" chỉ bật khi có phần đủ tin cậy');
+
+  const ngay = await fetch(BASE + '/api/admin/analysis/run', {
+    method: 'POST',
+    headers: { cookie, 'x-csrf-token': csrf, 'content-type': 'application/json' },
+    body: JSON.stringify({ since: 'hôm qua' })
+  });
+  ok(ngay.status === 400, 'Ngày không đúng định dạng ISO bị từ chối');
+
+  const khongCsrf = await fetch(BASE + '/api/admin/analysis/run', {
+    method: 'POST', headers: { cookie, 'content-type': 'application/json' }, body: '{}'
+  });
+  ok(khongCsrf.status === 403, 'Chạy phân tích mà thiếu token CSRF bị chặn');
+}
+
+/* ================= 7. Sẵn sàng triển khai ================= */
 
 console.log('\n\x1b[1m== Sẵn sàng chạy trên Cloud Run ==\x1b[0m');
 

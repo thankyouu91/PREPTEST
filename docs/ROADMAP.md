@@ -81,6 +81,28 @@ Queue for this track, in order:
 
 ## Hàng đợi
 
+### Việc engine — Routine làm, người dùng không cần bàn thêm
+
+Quyết định của chủ dự án (2026-08-12): **việc xây engine đẩy hết sang Routine.**
+Phiên tự động lấy mỗi lượt đúng một mục chưa tick ở đầu danh sách này, làm xong,
+kiểm thử, commit, push, tick. Phiên làm cùng người dùng tập trung vào học thuật:
+nội dung, khung đo, rubric, cá nhân hoá.
+
+Mỗi mục dưới đây đã đặc tả đủ để làm mà không phải hỏi lại. Thiết kế đầy đủ nằm
+ở [`docs/VOICE.md`](VOICE.md) và [`docs/SCORING.md`](SCORING.md) — Routine đọc
+đúng mục được dẫn, không tự nghĩ ra kiến trúc mới.
+
+- [ ] **Bảng `attempts` + `attempt_answers`** theo [`docs/SCORING.md`](SCORING.md) §2.4: một lượt làm bài, đáp án từng câu, kèm dấu vết chấm (`earned` / `max` / `detail`). Chưa cần giao diện, chỉ cần lược đồ + hàm ghi.
+- [ ] **Chấm tự động part A, C, E, F, G** theo [`docs/SCORING.md`](SCORING.md) §2.2 tầng 1: `mcq` đúng/sai, `gap` so chuỗi có chuẩn hoá (bỏ hoa thường, bỏ dấu câu thừa, chấp nhận biến thể ngăn bằng `|`). Part E chấm như `gap` nhưng so cả câu.
+- [ ] **`attempts.result_code`** dạng `R-XXXX-XXXX-XXXX` dùng `makeCode()` sẵn có, sinh lúc nộp bài, UNIQUE ([`docs/VOICE.md`](VOICE.md) §8.5).
+- [ ] **Engine làm bài VPET**: đồng hồ từng part theo `minutes` trong blueprint, phát audio với số lần nghe lại cố định, tự lưu tiến độ, nộp bài. Chưa cần thu âm.
+- [ ] **Thu âm part H, I, J**: `AudioWorklet` ghi WAV 16 kHz mono (KHÔNG dùng `MediaRecorder` — lý do ở [`docs/VOICE.md`](VOICE.md) §5.1), tải lên từng câu ngay khi hết giờ, bản sao IndexedDB tới khi server xác nhận, namespace `response` trong `server/storage.js` §5.3.
+- [ ] **Tầng đo tất định** cho bài nói ([`docs/VOICE.md`](VOICE.md) §6.2): thời lượng nói thực, tốc độ, tỉ lệ im lặng, số quãng lặng, độ dài mạch nói, từ đệm — tính thẳng từ mẫu PCM, không gọi mạng, không tốn token.
+- [ ] **Hàng đợi `media_jobs`** ([`docs/VOICE.md`](VOICE.md) §7): `idempotency_key` UNIQUE, nhận việc theo lease, giãn dần 5s/30s/5ph, chết sau 3 lần và hiện trong khu quản trị.
+- [ ] **Dựng audio hàng loạt** cho cả một đề, chạy qua `media_jobs` thay vì từng câu một.
+- [ ] **Chuyển SQLite sang Cloud SQL Postgres** — việc lớn, làm trong một pass riêng, không nhỏ giọt. Chặn cả hàng đợi lẫn chạy nhiều instance.
+
+
 - [x] Frontend giai đoạn 1: 12 màn học viên, token white-label, dark mode, CSP nghiêm ngặt
 - [x] Tài khoản học viên demo `student` + kho tài khoản phía client
 - [x] Dashboard học viên đầy đủ sau đăng nhập

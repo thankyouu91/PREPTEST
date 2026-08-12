@@ -10,6 +10,8 @@
     "screenshot": "node scripts/screenshot.mjs",
     "screenshot:admin": "node scripts/shot-admin.mjs",
     "test": "node scripts/test-taikhoan.js && node scripts/test-admin.mjs && node scripts/test-auth.mjs && node scripts/test-catalog.mjs && node scripts/test-authoring.mjs && node scripts/test-user-api.mjs && node scripts/test-learn.mjs && node scripts/audit.mjs",
+    "hoc-thuat": "node scripts/kiem-hoc-thuat.mjs",
+    "phan-tich": "node scripts/phan-tich-cau-hoi.mjs",
     "verify": "bash scripts/verify.sh"
   },
   "dependencies": {
