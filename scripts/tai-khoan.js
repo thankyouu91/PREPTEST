@@ -1,29 +1,29 @@
 /**
- * Công cụ cứu hộ tài khoản — chạy trực tiếp trên CSDL, không cần đăng nhập.
+ * Account rescue tool — runs straight against the database, no sign-in needed.
  *
- * Vì sao cần: hàm khởi tạo chỉ tạo tài khoản quản trị khi CSDL CHƯA có admin
- * nào. Từ lần chạy thứ hai trở đi nó im lặng, không in gì. Nếu mật khẩu trong
- * CSDL đã khác với mật khẩu ghi trong README — do đổi tay, do một lần chạy cũ,
- * hay do quên — thì trước đây không có đường nào vào lại.
+ * Why it exists: the bootstrap only creates an administrator when the database has
+ * NO admin at all. From the second run on it is silent. If the password in the
+ * database has drifted from the one written in the README — changed by hand, by an
+ * older run, or forgotten — there used to be no way back in.
  *
- * Cách dùng (chạy ở thư mục gốc dự án, khi server ĐANG TẮT):
+ * Usage (from the project root, with the server STOPPED):
  *
  *   node scripts/tai-khoan.js xem
- *       Liệt kê tài khoản quản trị và trạng thái tài khoản học viên demo.
- *       Không in mật khẩu vì CSDL chỉ lưu bản băm, không lấy lại được.
+ *       List the administrator accounts and the demo student's state.
+ *       Prints no password: the database stores only hashes, which cannot be undone.
  *
- *   node scripts/tai-khoan.js dat-lai-admin [mật-khẩu-mới]
- *       Đặt lại mật khẩu quản trị. Bỏ trống thì dùng lại mật khẩu mặc định
- *       trong README. Kèm --user=<tên> nếu có nhiều tài khoản quản trị.
+ *   node scripts/tai-khoan.js dat-lai-admin [new-password]
+ *       Reset an administrator password. Leave it out to reuse the default from the
+ *       README. Add --user=<name> when there is more than one administrator.
  *
  *   node scripts/tai-khoan.js dat-lai-student
- *       Đưa mật khẩu tài khoản học viên demo về đúng giá trị ghi trong README.
+ *       Put the demo student's password back to the value the README states.
  *
  *   node scripts/tai-khoan.js mo-khoa
- *       Bỏ trạng thái khoá của mọi tài khoản học viên.
+ *       Clear the locked flag on every student account.
  *
- * Lưu ý: cơ chế chống dò mật khẩu (sai 5 lần thì khoá 15 phút) nằm trong bộ
- * nhớ tiến trình, nên chỉ cần tắt rồi bật lại server là hết khoá.
+ * Note: the brute-force lockout (5 failures, 15 minutes) lives in process memory,
+ * so stopping and restarting the server clears it.
  */
 'use strict';
 
@@ -46,55 +46,55 @@ console.log('CSDL: ' + DB_FILE + '\n');
 function xem() {
   const admins = q.all('SELECT username, name, role, active, created_at, last_login_at FROM admins ORDER BY id');
   if (!admins.length) {
-    console.log('Chưa có tài khoản quản trị nào. Chạy server một lần là nó tự tạo.');
+    console.log('No administrator account yet. Running the server once creates one.');
   } else {
-    console.log('Tài khoản quản trị (' + admins.length + '):');
+    console.log('Admin accounts (' + admins.length + '):');
     admins.forEach(a => console.log(
       '  · ' + a.username + '  —  ' + a.name +
-      '  [' + a.role + (a.active ? '' : ', ĐANG TẮT') + ']' +
-      (a.last_login_at ? '  đăng nhập gần nhất ' + a.last_login_at.slice(0, 16).replace('T', ' ') : '  chưa đăng nhập lần nào')
+      '  [' + a.role + (a.active ? '' : ', DISABLED') + ']' +
+      (a.last_login_at ? '  last signed in ' + a.last_login_at.slice(0, 16).replace('T', ' ') : '  never signed in')
     ));
   }
 
   const s = q.get("SELECT username, email, verified, status, pass_hash FROM users WHERE username='student'");
-  console.log('\nTài khoản học viên demo:');
+  console.log('\nDemo student account:');
   if (!s) {
-    console.log('  · Không có tài khoản "student" trong CSDL.');
+    console.log('  · No "student" account in the database.');
   } else {
     console.log('  · ' + s.username + ' (' + s.email + ')' +
-      '  ' + (s.verified ? 'đã xác thực' : 'CHƯA xác thực') +
-      ', trạng thái ' + s.status +
-      ', ' + (s.pass_hash ? 'có mật khẩu' : 'CHƯA đặt mật khẩu'));
+      '  ' + (s.verified ? 'verified' : 'NOT verified') +
+      ', status ' + s.status +
+      ', ' + (s.pass_hash ? 'has a password' : 'NO password set'));
   }
 
   const khoa = q.val("SELECT COUNT(*) c FROM users WHERE status='locked'");
-  console.log('\nHọc viên đang bị khoá: ' + khoa);
-  console.log('\nCSDL chỉ lưu bản băm nên không đọc lại được mật khẩu.');
-  console.log('Vào không được thì chạy:  node scripts/tai-khoan.js dat-lai-admin');
+  console.log('\nStudents currently locked: ' + khoa);
+  console.log('\nThe database stores only hashes, so no password can be read back.');
+  console.log('Locked out? Run:  node scripts/tai-khoan.js dat-lai-admin');
 }
 
 function datLaiAdmin() {
   const matKhau = thamSo[0] || MAT_KHAU_ADMIN_MAC_DINH;
   if (matKhau.length < 10) {
-    console.error('Mật khẩu phải dài ít nhất 10 ký tự.');
+    console.error('The password must be at least 10 characters.');
     process.exit(1);
   }
 
   const ten = co('user');
   const admins = q.all('SELECT id, username FROM admins ORDER BY id');
   if (!admins.length) {
-    console.error('CSDL chưa có tài khoản quản trị nào. Bật server một lần để nó tự tạo rồi chạy lại.');
+    console.error('No administrator in the database. Start the server once to create one, then run this again.');
     process.exit(1);
   }
   let chon = ten ? admins.find(a => a.username === ten) : admins[0];
   if (!chon) {
-    console.error('Không có tài khoản quản trị tên "' + ten + '". Đang có: ' +
+    console.error('No administrator named "' + ten + '". Present: ' +
       admins.map(a => a.username).join(', '));
     process.exit(1);
   }
   if (!ten && admins.length > 1) {
-    console.log('Có ' + admins.length + ' tài khoản quản trị, đang chọn cái đầu tiên.');
-    console.log('Muốn đổi cái khác thì thêm --user=<tên đăng nhập>.\n');
+    console.log('There are ' + admins.length + ' administrators; taking the first.');
+    console.log('Add --user=<username> to pick another.\n');
   }
 
   q.run('UPDATE admins SET pass_hash=?, active=1 WHERE id=?', A.hashPassword(matKhau), chon.id);
@@ -102,33 +102,33 @@ function datLaiAdmin() {
   q.run('INSERT INTO audit (admin_id,admin_name,action,target,meta_json,ip,at) VALUES (?,?,?,?,?,?,?)',
     null, 'cli', 'admin.password.reset', 'admins/' + chon.username, '{"source":"scripts/tai-khoan.js"}', null, nowISO());
 
-  console.log('Đã đặt lại mật khẩu quản trị.');
-  console.log('  Tên đăng nhập : ' + chon.username);
-  console.log('  Mật khẩu      : ' + matKhau);
-  console.log('\nMọi phiên đăng nhập cũ của tài khoản này đã bị thu hồi.');
-  console.log('Bật lại server rồi vào /admin/ và đổi mật khẩu trong mục Quản trị.');
+  console.log('Administrator password reset.');
+  console.log('  Username : ' + chon.username);
+  console.log('  Password : ' + matKhau);
+  console.log('\nEvery previous session for this account has been revoked.');
+  console.log('Restart the server, sign in at /admin/ and change the password under Administration.');
 }
 
 function datLaiStudent() {
   const u = q.get("SELECT id FROM users WHERE username='student'");
   if (!u) {
-    console.error('Không tìm thấy tài khoản "student". CSDL này có thể chưa được seed.');
+    console.error('No "student" account found. This database may never have been seeded.');
     process.exit(1);
   }
   q.run("UPDATE users SET pass_hash=?, verified=1, status='active' WHERE id=?",
     A.hashPassword(MAT_KHAU_STUDENT_DEMO), u.id);
   q.run('DELETE FROM user_sessions WHERE user_id=?', u.id);
-  console.log('Đã đưa tài khoản học viên demo về đúng mật khẩu ghi trong README.');
-  console.log('  Tên đăng nhập : student  (hoặc student@vpetprep.vn)');
-  console.log('  Mật khẩu      : ' + MAT_KHAU_STUDENT_DEMO);
+  console.log('Demo student password put back to the value in the README.');
+  console.log('  Username : student  (or student@vpetprep.vn)');
+  console.log('  Password : ' + MAT_KHAU_STUDENT_DEMO);
 }
 
 function moKhoa() {
   const n = q.val("SELECT COUNT(*) c FROM users WHERE status='locked'");
   q.run("UPDATE users SET status='active' WHERE status='locked'");
-  console.log('Đã mở khoá ' + n + ' tài khoản học viên.');
-  console.log('Nếu bị chặn vì nhập sai nhiều lần thì chỉ cần tắt rồi bật lại server:');
-  console.log('bộ đếm đó nằm trong bộ nhớ tiến trình, không lưu vào CSDL.');
+  console.log('Unlocked ' + n + ' student account(s).');
+  console.log('If sign-in is blocked after too many wrong attempts, just restart the server:');
+  console.log('that counter lives in process memory and is never written to the database.');
 }
 
 const LENH = {
@@ -139,8 +139,8 @@ const LENH = {
 };
 
 if (!LENH[lenh]) {
-  console.error('Lệnh không hợp lệ: ' + lenh);
-  console.error('Dùng một trong: ' + Object.keys(LENH).join(', '));
+  console.error('Unknown command: ' + lenh);
+  console.error('Use one of: ' + Object.keys(LENH).join(', '));
   process.exit(1);
 }
 LENH[lenh]();
