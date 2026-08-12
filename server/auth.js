@@ -50,6 +50,21 @@ function parseCookies(req) {
   return out;
 }
 
+/* Secure on in production, without needing a second switch.
+   It used to be `FORCE_SECURE_COOKIE === '1'` alone, so NODE_ENV=production by
+   itself shipped session cookies that a browser would send over plain HTTP —
+   two switches for one intention, which is how a deployment goes out unprotected
+   while looking configured. Production now opts in by itself; the env var stays
+   as an explicit override in both directions, '1' to force it on for a dev box
+   behind a TLS proxy, '0' to force it off if a production run ever has to serve
+   plain HTTP on purpose. */
+function cookieIsSecure(env) {
+  const forced = (env || {}).FORCE_SECURE_COOKIE;
+  if (forced === '1') return true;
+  if (forced === '0') return false;
+  return (env || {}).NODE_ENV === 'production';
+}
+
 function setCookie(res, name, value, opts) {
   opts = opts || {};
   /* Strict by default. The one caller that overrides it is the OAuth state
@@ -59,7 +74,7 @@ function setCookie(res, name, value, opts) {
   const bits = [`${name}=${encodeURIComponent(value)}`, 'Path=/', `SameSite=${sameSite}`];
   if (opts.httpOnly !== false) bits.push('HttpOnly');
   if (opts.maxAge != null) bits.push('Max-Age=' + opts.maxAge);
-  if (process.env.FORCE_SECURE_COOKIE === '1') bits.push('Secure');
+  if (cookieIsSecure(process.env)) bits.push('Secure');
   const prev = res.getHeader('Set-Cookie');
   const list = prev ? (Array.isArray(prev) ? prev.slice() : [prev]) : [];
   list.push(bits.join('; '));
@@ -368,7 +383,7 @@ function reportAdminAccounts() {
 
 module.exports = {
   hashPassword, verifyPassword,
-  parseCookies, setCookie,
+  parseCookies, setCookie, cookieIsSecure,
   createSession, destroySession, currentAdmin, purgeSessions,
   createUserSession, destroyUserSession, dropUserSessions, currentUser, requireUser,
   ensureCsrfCookie,

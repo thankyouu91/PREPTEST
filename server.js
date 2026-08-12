@@ -29,7 +29,10 @@ const { entitlementOf } = require('./server/entitlements');
 
 const app = express();
 app.disable('x-powered-by');
-app.set('trust proxy', true);
+/* Never `true` here — see the note on resolveTrustProxy in server/security.js.
+   req.ip is what the sign-in lockout and the write limit are keyed on, so
+   trusting any X-Forwarded-For turns both of them off. */
+app.set('trust proxy', security.TRUST_PROXY);
 
 /* Security first, before anything can answer. Both of these are deliberately
    global: a header set per handler is a header the next handler forgets, and a

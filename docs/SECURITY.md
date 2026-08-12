@@ -102,7 +102,51 @@ là biến cái tình cờ ấy thành lỗ thật mà không ai nhận ra mình
 `csrfGuard` lên cả tám endpoint biến hàng rào tình cờ thành hàng rào cố ý — và
 đó mới là lý do đáng để làm, chứ không phải vì đang có ai khai thác được.
 
-## 4. Bảng endpoint → guard → giới hạn ghi
+## 4. Cấu hình bắt buộc khi chạy online
+
+Hai thiết lập dưới đây từng sai, và cả hai đều thuộc loại "nhìn thì như đã cấu
+hình xong". Sửa ngày 2026-08-12, có kiểm trong `scripts/test-security.mjs`.
+
+### 4.1 `TRUST_PROXY` — mặc định 0, không bao giờ `true`
+
+`req.ip` là thứ mà **khoá chống dò mật khẩu** (`auth.js` `throttleKey`) và
+**giới hạn ghi toàn cục** (mục 2) cùng lấy làm khoá. `server.js` từng đặt
+`app.set('trust proxy', true)`, tức tin mọi `X-Forwarded-For` client gửi lên —
+và thế là tắt cả hai.
+
+Chạy thật trên máy, trước khi sửa:
+
+```
+7 lần sai mật khẩu, cùng một IP khai báo → lần 6 bị khoá 15 phút   ✔ đúng
+5 lần tiếp, mỗi lần khai báo một IP khác → không lần nào bị khoá   ✘ đoán vô hạn
+```
+
+Sau khi sửa, 10 lần với 10 IP khai báo khác nhau vẫn bị khoá từ lần 6.
+
+| `TRUST_PROXY` | Dùng khi |
+|---|---|
+| *không đặt* → 0 | Chạy trực tiếp, không có proxy. `req.ip` là địa chỉ socket, client không giả được |
+| `1` | Cloud Run, hoặc đúng một load balancer phía trước |
+| `2`… | Chuỗi proxy sâu hơn, khai đúng số tầng |
+
+Giá trị không phải số nguyên ≥ 0 — kể cả chuỗi `"true"` — đều về 0. Thà chặn
+nhầm cả proxy còn hơn tin nhầm cả thế giới.
+
+Hệ quả kèm theo: `req.secure` cũng chỉ đi theo `X-Forwarded-Proto` trong phạm vi
+`TRUST_PROXY` cho phép, nên HSTS ở mục 1 không còn bị một header giả kích hoạt.
+
+### 4.2 Cookie `Secure` — production tự bật
+
+Trước đây `Secure` chỉ được đặt khi `FORCE_SECURE_COOKIE=1`, nghĩa là
+`NODE_ENV=production` một mình vẫn phát cookie phiên mà trình duyệt sẵn sàng gửi
+qua HTTP thường. Hai công tắc cho một ý định là cách một bản deploy ra đời
+không an toàn trong khi trông như đã cấu hình đủ.
+
+Giờ: production tự bật. `FORCE_SECURE_COOKIE` còn lại như một cách ghi đè có chủ
+ý theo cả hai chiều — `1` để bật cho máy dev nằm sau TLS proxy, `0` để tắt nếu
+một bản production nào đó buộc phải phục vụ HTTP thường.
+
+## 5. Bảng endpoint → guard → giới hạn ghi
 
 74 route, 43 route ghi. **43/43 route ghi đều có `csrfGuard`**; 35/43 có thêm
 guard đăng nhập, 8 route còn lại là danh sách ở mục 3.

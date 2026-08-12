@@ -30,6 +30,29 @@ const API_CSP = "default-src 'none'; frame-ancestors 'none'; base-uri 'none'; sa
 
 const HSTS = 'max-age=31536000; includeSubDomains';
 
+/* ------------------------- How far to trust a proxy -------------------------
+   How many reverse proxies sit in front of this process. Express turns this into
+   how much of X-Forwarded-For it believes, and req.ip is what the sign-in lockout
+   (auth.js throttleKey) and the write limit below are both keyed on.
+
+   This was `true` — trust any X-Forwarded-For a client cares to send — which made
+   both of those decorative. Five wrong passwords lock an account; rotate the header
+   and the lock never engages, so `admin` could be guessed at without limit. Proved
+   against a running server, and now pinned by test-security.mjs.
+
+   0 is the safe default: req.ip is then the socket address, which a client cannot
+   forge. Behind a real proxy that makes every request look like it came from the
+   proxy, so the limit over-blocks rather than under-blocks — the right way to fail.
+   Set TRUST_PROXY to the number of proxies in front (Cloud Run or one load
+   balancer: 1). Anything that is not a finite number, including the string "true",
+   resolves to 0 rather than being guessed at. */
+function resolveTrustProxy(env) {
+  const raw = (env || {}).TRUST_PROXY;
+  const n = Number(raw);
+  return raw !== undefined && raw !== '' && Number.isInteger(n) && n >= 0 ? n : 0;
+}
+const TRUST_PROXY = resolveTrustProxy(process.env);
+
 /** The headers every response carries, whatever it is serving. */
 function baseHeaders(req, res, next) {
   res.setHeader('X-Content-Type-Options', 'nosniff');
@@ -44,8 +67,9 @@ function baseHeaders(req, res, next) {
 
   /* HSTS only over a connection that is already HTTPS. Sent over plain HTTP it
      is ignored by browsers, and sending it in development would pin localhost
-     to HTTPS in the developer's own browser for a year. `trust proxy` is on, so
-     req.secure follows X-Forwarded-Proto behind Cloud Run or a load balancer. */
+     to HTTPS in the developer's own browser for a year. req.secure follows
+     X-Forwarded-Proto only as far as TRUST_PROXY allows, so behind a correctly
+     configured proxy this is the real scheme rather than whatever was claimed. */
   if (req.secure) res.setHeader('Strict-Transport-Security', HSTS);
 
   if (req.path.startsWith('/api')) {
@@ -96,5 +120,6 @@ function writeLimit(req, res, next) {
 
 module.exports = {
   baseHeaders, writeLimit, writeKey,
+  resolveTrustProxy, TRUST_PROXY,
   PERMISSIONS_POLICY, API_CSP, HSTS, WRITE_PER_MIN, WINDOW_MS
 };

@@ -132,6 +132,48 @@ try {
   ok(Number(last.headers['retry-after']) > 0, 'With Retry-After in seconds',
     String(last.headers['retry-after']));
 
+  head('How far a proxy is trusted');
+
+  /* req.ip is what the sign-in lockout and the write limit are both keyed on, so
+     `trust proxy: true` — believe any X-Forwarded-For — silently switches both off.
+     It was set that way, and five rotating header values walked straight past a
+     lockout that engages on the fifth wrong password. These checks pin the fix:
+     the safe default, the deliberate opt-in, and a refusal to guess. */
+  ok(security.resolveTrustProxy({}) === 0,
+    'With TRUST_PROXY unset, no proxy is trusted and req.ip is the socket address',
+    String(security.resolveTrustProxy({})));
+  ok(security.resolveTrustProxy({ TRUST_PROXY: '1' }) === 1,
+    'TRUST_PROXY=1 trusts exactly one proxy — Cloud Run, or a single load balancer');
+  ok(security.resolveTrustProxy({ TRUST_PROXY: '2' }) === 2, 'A deeper chain can be declared');
+  ok(security.resolveTrustProxy({ TRUST_PROXY: 'true' }) === 0,
+    'TRUST_PROXY=true resolves to 0 — the dangerous spelling is refused, not guessed at',
+    String(security.resolveTrustProxy({ TRUST_PROXY: 'true' })));
+  ok(security.resolveTrustProxy({ TRUST_PROXY: '-1' }) === 0, 'A negative value falls back to 0');
+  ok(security.resolveTrustProxy({ TRUST_PROXY: 'yes' }) === 0, 'Nonsense falls back to 0');
+
+  /* The unit checks above prove the helper. This one proves the wiring, because a
+     correct helper nobody calls protects nothing. */
+  const serverSrc = readFileSync(new URL('../server.js', import.meta.url), 'utf8');
+  ok(/app\.set\('trust proxy', security\.TRUST_PROXY\)/.test(serverSrc),
+    'server.js takes its trust-proxy setting from that helper');
+  ok(!/trust proxy',\s*true/.test(serverSrc),
+    'server.js never passes `true` to trust proxy');
+
+  head('Secure cookies');
+
+  /* NODE_ENV=production used to leave Secure off unless FORCE_SECURE_COOKIE=1 was
+     also set. Two switches for one intention is how a deployment ships with session
+     cookies a browser will send over plain HTTP. */
+  const A_ = require_('../server/auth.js');
+  ok(A_.cookieIsSecure({ NODE_ENV: 'production' }) === true,
+    'Production sets Secure on its own, with no second switch to remember');
+  ok(A_.cookieIsSecure({}) === false,
+    'A local run does not, so http://localhost still receives its cookies');
+  ok(A_.cookieIsSecure({ FORCE_SECURE_COOKIE: '1' }) === true,
+    'FORCE_SECURE_COOKIE=1 forces it on for a dev box behind a TLS proxy');
+  ok(A_.cookieIsSecure({ NODE_ENV: 'production', FORCE_SECURE_COOKIE: '0' }) === false,
+    'FORCE_SECURE_COOKIE=0 is the deliberate way out, and has to be deliberate');
+
   head('Per-endpoint guard table');
 
   const map = await import('./security-map.mjs');
