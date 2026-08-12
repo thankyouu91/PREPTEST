@@ -409,7 +409,77 @@ if (cookie && csrf) {
   ok(Array.isArray(bands.bands) && bands.bands.length === 10, 'GET /admin/framework/bands trả đủ 10 dải');
 }
 
-/* ================= 6. Sẵn sàng triển khai ================= */
+/* ================= 6. Rubric và ôn tập cá nhân hoá ================= */
+
+console.log('\n\x1b[1m== Rubric · ôn tập cá nhân hoá ==\x1b[0m');
+
+{
+  const R = require('../server/data/rubrics.js');
+
+  ok(Object.values(R.PART_RUBRICS).every(r =>
+    Object.values(r.criteria).reduce((a, b) => a + b, 0) === 100),
+    'Trọng số mọi part tròn 100');
+
+  ok(Object.values(R.CRITERIA).every(c => c.bands.length === 7), 'Mọi tiêu chí đủ 7 bậc');
+  ok(Object.values(R.CRITERIA).every(c => c.bands.every(b => b.evidence)),
+    'Mọi bậc có dấu hiệu quan sát được, không chỉ lời mô tả');
+
+  /* Part H cố ý không chấm từ vựng và ngữ pháp — từ ngữ do đề cho sẵn. */
+  ok(!('vocabulary' in R.PART_RUBRICS.H.criteria) && !('grammar' in R.PART_RUBRICS.H.criteria),
+    'Part H không chấm từ vựng và ngữ pháp');
+  ok('accuracy' in R.PART_RUBRICS.H.criteria && !('accuracy' in R.PART_RUBRICS.I.criteria),
+    'Chỉ part H có tiêu chí khớp từ — hai part kia không có văn bản gốc để so');
+
+  ok(R.tierFor(1) === 'struggling' && R.tierFor(4) === 'developing' && R.tierFor(6) === 'refining',
+    'Chia đúng ba mức ôn tập theo bậc');
+
+  /* Điểm part rút gọn theo trọng số thực có: chấm thiếu một tiêu chí không
+     được âm thầm kéo điểm xuống. */
+  ok(Math.abs(R.partScore('H', { accuracy: 6, pronunciation: 6, fluency: 6 }) - 6) < 1e-9,
+    'Chấm tối đa mọi tiêu chí cho đúng 6');
+  ok(Math.abs(R.partScore('H', { accuracy: 4 }) - 4) < 1e-9,
+    'Thiếu tiêu chí thì rút gọn theo trọng số có thật, không kéo điểm xuống');
+
+  /* Xếp hạng theo điểm lấy lại được, KHÔNG theo điểm thấp nhất. */
+  const xep = R.rankByOpportunity('J',
+    { content: 3, fluency: 4, coherence: 3, pronunciation: 2, vocabulary: 4, grammar: 4 });
+  ok(xep[0].criterion === 'content',
+    'Ưu tiên tiêu chí lấy lại được nhiều điểm nhất, không phải tiêu chí điểm thấp nhất',
+    'thấy ' + xep[0].criterion);
+  ok(xep.every((r, i) => i === 0 || r.headroom <= xep[i - 1].headroom), 'Xếp giảm dần theo headroom');
+  ok(xep.every(r => r.advice && r.advice.actions.length >= 2), 'Mỗi mục xếp hạng đều kèm việc làm được');
+
+  const loiKhuyen = R.adviceFor('fluency', 2);
+  ok(loiKhuyen.tier === 'struggling' && loiKhuyen.study.length > 0,
+    'Lời khuyên kèm trang tự học để bấm sang');
+}
+
+if (cookie && csrf) {
+  const post = (p, body) => fetch(BASE + '/api' + p, {
+    method: 'POST',
+    headers: { cookie, 'x-csrf-token': csrf, 'content-type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+
+  const r = await fetch(BASE + '/api/admin/framework/rubrics?part=J', { headers: { cookie, 'x-csrf-token': csrf } });
+  const b = await r.json();
+  ok(r.status === 200 && b.parts.J, 'GET /admin/framework/rubrics?part=J trả rubric');
+  ok(Object.keys(b.criteria).length === Object.keys(b.parts.J.criteria).length,
+    'Chỉ trả về tiêu chí mà part đó thật sự dùng');
+
+  const a = await post('/admin/framework/advice', { part: 'J', scores: { content: 3, fluency: 4 } });
+  const ab = await a.json();
+  ok(a.status === 200 && Array.isArray(ab.ranked) && ab.ranked.length === 2,
+    'POST /admin/framework/advice xếp hạng đúng số tiêu chí được chấm');
+
+  const xau = await post('/admin/framework/advice', { part: 'J', scores: { content: 99 } });
+  ok(xau.status === 400, 'Bậc ngoài thang 0–6 bị từ chối');
+
+  const laPart = await post('/admin/framework/advice', { part: 'Z', scores: { content: 3 } });
+  ok(laPart.status === 400, 'Part không có rubric bị từ chối');
+}
+
+/* ================= 7. Sẵn sàng triển khai ================= */
 
 console.log('\n\x1b[1m== Sẵn sàng chạy trên Cloud Run ==\x1b[0m');
 

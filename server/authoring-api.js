@@ -35,6 +35,7 @@ const markup = require('./script-markup');
 const eleven = require('./providers/elevenlabs');
 const openai = require('./providers/openai');
 const descriptors = require('./data/descriptors');
+const rubrics = require('./data/rubrics');
 const EXAM_FORMATS = require('./data/exam-formats');
 
 const router = express.Router();
@@ -462,6 +463,60 @@ router.get('/admin/framework/descriptors', (req, res) => {
  * close. Exposed now so the framework is exercised and testable before the
  * results engine exists to consume it.
  */
+/**
+ * The full rubric for one part, or all of them.
+ *
+ * Served rather than duplicated: the AI marker, the teacher's screen and the
+ * learner's report must be reading the same bands. Three copies is three
+ * chances for a learner to work on something that was never being scored.
+ */
+router.get('/admin/framework/rubrics', (req, res) => {
+  const part = str(req.query.part, 2).toUpperCase();
+  if (part && !rubrics.PART_RUBRICS[part]) return bad(res, 'No rubric for that part.');
+
+  const parts = part ? { [part]: rubrics.PART_RUBRICS[part] } : rubrics.PART_RUBRICS;
+  const used = new Set(Object.values(parts).flatMap(r => Object.keys(r.criteria)));
+  const criteria = {};
+  for (const name of used) criteria[name] = rubrics.CRITERIA[name];
+
+  res.json({
+    parts, criteria,
+    bandGse: rubrics.BAND_GSE, bandCefr: rubrics.BAND_CEFR,
+    partWeights: { speaking: rubrics.SPEAKING_PART_WEIGHTS, writing: rubrics.WRITING_PART_WEIGHTS }
+  });
+});
+
+/**
+ * Turn a set of criterion bands into ranked advice.
+ *
+ * The personalisation endpoint: given what a learner scored on one part, it
+ * returns the part score and the criteria ordered by points recoverable —
+ * not by which score is lowest. A criterion worth 10% at band 2 is a smaller
+ * prize than one worth 40% at band 4, and telling a learner otherwise sends
+ * them to work in the wrong place.
+ */
+router.post('/admin/framework/advice', (req, res) => {
+  const part = str(req.body && req.body.part, 2).toUpperCase();
+  const rubric = rubrics.PART_RUBRICS[part];
+  if (!rubric) return bad(res, 'No rubric for that part.');
+
+  const scores = {};
+  const raw = (req.body && req.body.scores) || {};
+  for (const name of Object.keys(rubric.criteria)) {
+    if (raw[name] == null) continue;
+    const b = int(raw[name], NaN);
+    if (!Number.isFinite(b) || b < 0 || b > 6) return bad(res, `Band for "${name}" must be 0 to 6.`);
+    scores[name] = b;
+  }
+  if (!Object.keys(scores).length) return bad(res, 'No criterion bands were supplied.');
+
+  res.json({
+    part, name: rubric.name,
+    partScore: rubrics.partScore(part, scores),
+    ranked: rubrics.rankByOpportunity(part, scores)
+  });
+});
+
 router.get('/admin/framework/profile', (req, res) => {
   const skill = str(req.query.skill, 20);
   if (!descriptors.BY_SKILL[skill]) return bad(res, 'Unknown skill.');
