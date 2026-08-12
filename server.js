@@ -24,11 +24,19 @@ const userApi = require('./server/user-api');
 const examApi = require('./server/exam-api');
 const googleAuth = require('./server/google-auth');
 const A = require('./server/auth');
+const security = require('./server/security');
 const { entitlementOf } = require('./server/entitlements');
 
 const app = express();
 app.disable('x-powered-by');
 app.set('trust proxy', true);
+
+/* Security first, before anything can answer. Both of these are deliberately
+   global: a header set per handler is a header the next handler forgets, and a
+   rate limit attached per route is a rate limit the next route does without.
+   See server/security.js and docs/SECURITY.md. */
+app.use(security.baseHeaders);
+app.use(security.writeLimit);
 
 const PUB = path.join(__dirname, 'public');
 const PORT = process.env.PORT || 3000;
@@ -65,9 +73,11 @@ function serveHtmlWithNonce(relFile) {
       const out = html
         .replace(/<script\b/g, `<script nonce="${nonce}"`)
         .replace(/<style\b/g, `<style nonce="${nonce}"`);
+      /* The document CSP carries this request's nonce, so it is set here rather
+         than in the global middleware. Everything else a response needs —
+         nosniff, referrer policy, permissions policy, framing — is already on
+         by then; see server/security.js. */
       res.setHeader('Content-Security-Policy', cspFor(nonce));
-      res.setHeader('X-Content-Type-Options', 'nosniff');
-      res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
       res.setHeader('Cache-Control', 'no-store');
       res.type('html').send(out);
     });

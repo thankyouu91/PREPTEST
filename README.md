@@ -256,6 +256,37 @@ sẵn sàng khi số câu **có tệp** đủ cho phần đó, nên không sinh 
 - Mọi thao tác thay đổi dữ liệu đều ghi vào bảng `audit` (ai, làm gì, lúc nào, IP).
 - Toàn bộ truy vấn dùng prepared statement có tham số.
 
+### Bảo mật toàn hệ
+
+Chi tiết đầy đủ — kèm **bảng 74 endpoint → guard → giới hạn ghi** — nằm trong
+[`docs/SECURITY.md`](docs/SECURITY.md). Bảng ấy **sinh tự động** từ stack của
+Express, không gõ tay, và `scripts/test-security.mjs` sinh lại rồi so mỗi lần
+chạy `npm run verify`: thêm endpoint mà quên guard là đỏ ngay, không đợi lần rà
+soát sau. Đọc stack chứ không đọc mã nguồn, vì `router.use('/admin', …)` chỉ
+bọc những route đăng ký **sau** nó — nhìn mã rất dễ kết luận ngược.
+
+- **Header nền trên mọi response**, đặt một chỗ ở `server/security.js` và gắn
+  trước mọi router: `nosniff`, `Referrer-Policy`, `Permissions-Policy`,
+  `X-Frame-Options`, COOP, CORP, `X-Permitted-Cross-Domain-Policies`. Trước đây
+  chỉ trang HTML mới có; response API và tệp tĩnh thì trống. `Permissions-Policy`
+  tắt hết trừ `microphone=(self)` — phần Nói ghi âm qua MediaRecorder.
+- **HSTS chỉ khi request đã là HTTPS.** Gửi qua HTTP thì trình duyệt bỏ qua, mà
+  gửi lúc chạy dev sẽ ghim `localhost` sang HTTPS cả năm trong máy người phát triển.
+- **CSP riêng cho `/api/*`**: `default-src 'none'; frame-ancestors 'none'; sandbox`.
+  Response API là dữ liệu, không bao giờ là tài liệu.
+- **Giới hạn ghi toàn cục** `WRITE_PER_MIN` (mặc định 300/phút), gắn trước mọi
+  router nên phủ cả endpoint viết ngày mai. Khoá đếm là **cookie phiên đã băm ×
+  IP** — ai cầm cookie thì người đó bị đếm, đúng đơn vị mà một phiên ăn cắp được
+  tiêu. Đây là trần chứ không phải hạn mức: người dùng thật không chạm tới.
+  Endpoint cần chặt hơn vẫn giữ giới hạn riêng của nó.
+- **Tám endpoint ghi không có guard đăng nhập** (đăng ký, hai màn đăng nhập,
+  quên mật khẩu, đặt lại, xác thực, hai màn đăng xuất) được khai tên trong
+  `PUBLIC_WRITES` cùng thứ thay thế guard. Bài test kiểm cả hai chiều: thiếu khai
+  là đỏ, mà khai thừa cũng đỏ.
+- **Chỗ còn hở, đã biết và đã xếp hàng đợi:** sáu endpoint đầu trong số đó không
+  có `csrfGuard`, vì cookie `prep_csrf` chỉ cấp sau khi đăng nhập. Hệ quả thật là
+  **login CSRF**. Cách sửa là cấp cookie ngay khi phục vụ trang.
+
 ### API
 
 Công khai: `GET /api/catalog` (kỳ thi, đề đã phát hành, gói bán — cùng shape với mock phía học viên).

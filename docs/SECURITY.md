@@ -1,0 +1,164 @@
+# Rà soát bảo mật — endpoint, guard, giới hạn ghi
+
+Tệp này là **kết quả sinh ra**, không phải ghi chép tay. Bảng ở cuối do
+`scripts/security-map.mjs` đọc thẳng stack của Express mà dựng, và
+`scripts/test-security.mjs` sinh lại rồi so — lệch một dòng là đỏ. Nghĩa là
+thêm một endpoint mà quên guard thì `npm run verify` báo ngay, chứ không đợi
+lần rà soát sau.
+
+Đọc stack chứ không đọc mã nguồn, vì chỉ stack mới biết cái gì thực sự chạy:
+`router.use('/admin', requireAdmin, csrfGuard)` bọc mọi route đăng ký **sau**
+nó và không bọc ba route đăng ký trước. Đọc bằng mắt rất dễ kết luận ngược.
+
+## 1. Header trên mọi response
+
+Đặt một chỗ ở `server/security.js`, gắn trước mọi router trong `server.js`.
+Header nào phải nhớ gắn ở từng handler là header mà handler tiếp theo sẽ quên.
+
+| Header | Giá trị | Vì sao |
+|---|---|---|
+| `X-Content-Type-Options` | `nosniff` | Trình duyệt không được đoán lại kiểu nội dung |
+| `Referrer-Policy` | `strict-origin-when-cross-origin` | Không rò đường dẫn có id sang site khác |
+| `Permissions-Policy` | tắt hết, trừ `microphone=(self)`, `autoplay=(self)`, `fullscreen=(self)` | Micro là thứ nền tảng thật sự dùng — phần Nói ghi âm qua MediaRecorder. Cho phép thứ không ai xin thì không còn là chính sách |
+| `X-Frame-Options` | `SAMEORIGIN` | Bản dự phòng cho trình duyệt chưa đọc `frame-ancestors` |
+| `Cross-Origin-Opener-Policy` | `same-origin` | Cắt tham chiếu `window.opener` |
+| `Cross-Origin-Resource-Policy` | `same-origin` | Site khác không nhúng được tài nguyên của mình |
+| `X-Permitted-Cross-Domain-Policies` | `none` | Chặn `crossdomain.xml` của Flash/PDF cũ |
+| `Strict-Transport-Security` | `max-age=31536000; includeSubDomains` | **Chỉ khi request đã là HTTPS.** Gửi qua HTTP thì trình duyệt bỏ qua, mà gửi lúc chạy dev sẽ ghim `localhost` sang HTTPS cả năm trong trình duyệt của người phát triển |
+| `Content-Security-Policy` (trang HTML) | `default-src 'self'` + nonce theo từng request | Không CDN, không eval, không inline lậu |
+| `Content-Security-Policy` (`/api/*`) | `default-src 'none'; frame-ancestors 'none'; base-uri 'none'; sandbox` | Response API là dữ liệu, không bao giờ là tài liệu: không được tải gì, chạy gì, và không trang nào được nhúng nó |
+| `X-Robots-Tag` (`/api/*`) | `noindex, nofollow` | Không để công cụ tìm kiếm lập chỉ mục dữ liệu API |
+
+## 2. Giới hạn ghi toàn cục
+
+`WRITE_PER_MIN` (mặc định **300**) lượt ghi mỗi phút, gắn ở `server.js` trước
+mọi router nên phủ mọi phương thức không an toàn — kể cả endpoint viết ngày
+mai. Đây là **trần**, không phải hạn mức: quản trị viên làm nhanh, hay bài thi
+tự lưu theo debounce, không bao giờ chạm tới. Cái nó chặn là script — vòng lặp
+dò mật khẩu, quét mã kích hoạt, xoá hàng loạt bằng phiên ăn cắp được.
+
+Khoá đếm là **cookie phiên đã băm × địa chỉ IP**, không phải tài khoản đã tra
+ra: ai cầm cookie thì người đó bị đếm, và đó đúng là đơn vị mà một phiên bị ăn
+cắp được tiêu. Băm vì token phiên không nên nằm trong khoá của một map. Chưa
+đăng nhập thì rơi về địa chỉ IP.
+
+Endpoint cần chặt hơn vẫn tự đặt giới hạn riêng bên trong handler — giới hạn
+toàn cục là sàn nằm dưới tất cả:
+
+| Endpoint | Giới hạn riêng |
+|---|---|
+| `POST /api/auth/register` | `REGISTER_PER_HOUR` (mặc định 5) mỗi giờ theo IP, chỉ trừ lượt khi đăng ký thành công |
+| `POST /api/auth/login`, `POST /api/admin/login` | Khoá 15 phút sau 5 lần sai, theo IP × tên đăng nhập |
+| `POST /api/auth/forgot` | 5 lần/giờ theo IP |
+| `POST /api/auth/verify/send` | 3 lần/giờ theo tài khoản |
+| `POST /api/redeem` | 12 lần/10 phút theo tài khoản |
+
+## 3. Tám endpoint ghi không có guard đăng nhập
+
+Đây là danh sách đầy đủ, và mỗi dòng phải nêu được cái gì thay thế — nếu không
+thì danh sách này chỉ là chỗ giấu lỗi. `scripts/test-security.mjs` kiểm đúng
+danh sách này: thêm một endpoint ghi công khai mà không khai ở đây là đỏ.
+
+| Endpoint | Vì sao không có guard | Thay bằng |
+|---|---|---|
+| `POST /api/auth/register` | Người chưa có tài khoản mới cần nó | Khoá theo IP, chỉ trừ lượt khi thành công |
+| `POST /api/auth/login` | Chưa đăng nhập thì không thể đòi đăng nhập | Khoá 15 phút sau 5 lần sai |
+| `POST /api/admin/login` | Như trên | Như trên |
+| `POST /api/auth/forgot` | Người quên mật khẩu không vào được tài khoản | 5 lần/giờ theo IP, và trả lời giống hệt nhau dù email có tồn tại hay không |
+| `POST /api/auth/reset` | Người dùng đến từ đường link trong email | Token dùng một lần, băm trong CSDL, hết hạn sau 2 giờ |
+| `POST /api/auth/verify` | Như trên | Token dùng một lần, hết hạn sau 48 giờ |
+| `POST /api/auth/logout` | Đăng xuất khi chưa đăng nhập là vô hại | Vẫn có `csrfGuard` |
+| `POST /api/admin/logout` | Như trên | Vẫn có `csrfGuard` |
+
+**Chỗ còn hở, đã biết:** sáu endpoint đầu không có `csrfGuard`, vì cookie
+`prep_csrf` chỉ được cấp **sau khi đăng nhập thành công** — khách chưa đăng
+nhập không có gì để đối chiếu. Hệ quả thực tế là **login CSRF**: kẻ tấn công
+ép trình duyệt nạn nhân đăng nhập vào tài khoản của *hắn*, rồi những gì nạn
+nhân làm tiếp được ghi vào đó. Với đăng ký, quên mật khẩu và xác thực token
+thì giả mạo không đạt được gì. Cách sửa là cấp `prep_csrf` ngay khi phục vụ
+trang, trước lúc đăng nhập — đã xếp vào hàng đợi nền tảng, không gộp vào lượt
+này vì nó động tới bốn màn auth và bộ test của chúng.
+
+## 4. Bảng endpoint → guard → giới hạn ghi
+
+74 route, 43 route ghi. 35/43 route ghi có đủ guard đăng nhập và `csrfGuard`;
+8 route còn lại là danh sách ở mục 3.
+
+<!-- BẢNG SINH TỰ ĐỘNG — đừng sửa tay, chạy scripts/test-security.mjs để kiểm -->
+
+| Method | Endpoint | Guards | Write limit |
+|---|---|---|---|
+| GET | `/api/admin/audit` | `requireAdmin` + `csrfGuard` | n/a (read) |
+| GET | `/api/admin/batches` | `requireAdmin` + `csrfGuard` | n/a (read) |
+| GET | `/api/admin/codes` | `requireAdmin` + `csrfGuard` | n/a (read) |
+| POST | `/api/admin/codes` | `requireAdmin` + `csrfGuard` | yes |
+| POST | `/api/admin/codes/:id/revoke` | `requireAdmin` + `csrfGuard` | yes |
+| GET | `/api/admin/codes/export` | `requireAdmin` + `csrfGuard` | n/a (read) |
+| GET | `/api/admin/exam-formats` | `requireAdmin` + `csrfGuard` | n/a (read) |
+| DELETE | `/api/admin/items/:itemId` | `requireAdmin` + `csrfGuard` | yes |
+| POST | `/api/admin/login` | — | yes |
+| POST | `/api/admin/logout` | `csrfGuard` | yes |
+| GET | `/api/admin/me` | — | n/a (read) |
+| PUT | `/api/admin/packages/:id` | `requireAdmin` + `csrfGuard` | yes |
+| POST | `/api/admin/password` | `requireAdmin` + `csrfGuard` | yes |
+| GET | `/api/admin/questions` | `requireAdmin` + `csrfGuard` | n/a (read) |
+| POST | `/api/admin/questions` | `requireAdmin` + `csrfGuard` | yes |
+| PUT | `/api/admin/questions/:id` | `requireAdmin` + `csrfGuard` | yes |
+| DELETE | `/api/admin/questions/:id/audio` | `requireAdmin` + `csrfGuard` | yes |
+| GET | `/api/admin/questions/:id/audio` | `requireAdmin` + `csrfGuard` | n/a (read) |
+| POST | `/api/admin/questions/:id/audio` | `requireAdmin` + `csrfGuard` | yes |
+| POST | `/api/admin/questions/:id/status` | `requireAdmin` + `csrfGuard` | yes |
+| GET | `/api/admin/questions/availability` | `requireAdmin` + `csrfGuard` | n/a (read) |
+| POST | `/api/admin/questions/bulk` | `requireAdmin` + `csrfGuard` | yes |
+| GET | `/api/admin/questions/template.csv` | `requireAdmin` + `csrfGuard` | n/a (read) |
+| GET | `/api/admin/reports` | `requireAdmin` + `csrfGuard` | n/a (read) |
+| DELETE | `/api/admin/sections/:sid` | `requireAdmin` + `csrfGuard` | yes |
+| PUT | `/api/admin/sections/:sid` | `requireAdmin` + `csrfGuard` | yes |
+| POST | `/api/admin/sections/:sid/items` | `requireAdmin` + `csrfGuard` | yes |
+| POST | `/api/admin/sections/:sid/reshuffle` | `requireAdmin` + `csrfGuard` | yes |
+| GET | `/api/admin/settings` | `requireAdmin` + `csrfGuard` | n/a (read) |
+| PUT | `/api/admin/settings` | `requireAdmin` + `csrfGuard` | yes |
+| GET | `/api/admin/tests` | `requireAdmin` + `csrfGuard` | n/a (read) |
+| POST | `/api/admin/tests` | `requireAdmin` + `csrfGuard` | yes |
+| DELETE | `/api/admin/tests/:id` | `requireAdmin` + `csrfGuard` | yes |
+| GET | `/api/admin/tests/:id` | `requireAdmin` + `csrfGuard` | n/a (read) |
+| PUT | `/api/admin/tests/:id` | `requireAdmin` + `csrfGuard` | yes |
+| POST | `/api/admin/tests/:id/sections` | `requireAdmin` + `csrfGuard` | yes |
+| POST | `/api/admin/tests/:id/status` | `requireAdmin` + `csrfGuard` | yes |
+| POST | `/api/admin/tests/generate` | `requireAdmin` + `csrfGuard` | yes |
+| GET | `/api/admin/users` | `requireAdmin` + `csrfGuard` | n/a (read) |
+| GET | `/api/admin/users/:id` | `requireAdmin` + `csrfGuard` | n/a (read) |
+| PUT | `/api/admin/users/:id` | `requireAdmin` + `csrfGuard` | yes |
+| POST | `/api/admin/users/:id/status` | `requireAdmin` + `csrfGuard` | yes |
+| POST | `/api/admin/users/:id/verify` | `requireAdmin` + `csrfGuard` | yes |
+| GET | `/api/attempts` | `requireUser` | n/a (read) |
+| POST | `/api/attempts` | `requireUser` + `csrfGuard` | yes |
+| GET | `/api/attempts/:id` | `requireUser` | n/a (read) |
+| PATCH | `/api/attempts/:id/answers` | `requireUser` + `csrfGuard` | yes |
+| GET | `/api/attempts/:id/items/:questionId/audio` | `requireUser` | n/a (read) |
+| POST | `/api/attempts/:id/items/:questionId/recording` | `requireUser` + `csrfGuard` | yes |
+| POST | `/api/attempts/:id/parts/:sectionId/close` | `requireUser` + `csrfGuard` | yes |
+| POST | `/api/attempts/:id/parts/:sectionId/start` | `requireUser` + `csrfGuard` | yes |
+| GET | `/api/attempts/:id/result` | `requireUser` | n/a (read) |
+| POST | `/api/attempts/:id/submit` | `requireUser` + `csrfGuard` | yes |
+| GET | `/api/attempts/current` | `requireUser` | n/a (read) |
+| POST | `/api/auth/forgot` | — | yes |
+| POST | `/api/auth/login` | — | yes |
+| POST | `/api/auth/logout` | `csrfGuard` | yes |
+| POST | `/api/auth/register` | — | yes |
+| POST | `/api/auth/reset` | — | yes |
+| POST | `/api/auth/verify` | — | yes |
+| POST | `/api/auth/verify/send` | `requireUser` + `csrfGuard` | yes |
+| GET | `/api/catalog` | — | n/a (read) |
+| GET | `/api/learn/grammar` | — | n/a (read) |
+| GET | `/api/learn/grammar/:slug` | — | n/a (read) |
+| GET | `/api/learn/irregular-verbs` | — | n/a (read) |
+| GET | `/api/learn/linking-words` | — | n/a (read) |
+| GET | `/api/learn/vocab` | — | n/a (read) |
+| GET | `/api/learn/vocab/:headword` | — | n/a (read) |
+| GET | `/api/me` | — | n/a (read) |
+| PATCH | `/api/me` | `requireUser` + `csrfGuard` | yes |
+| POST | `/api/me/password` | `requireUser` + `csrfGuard` | yes |
+| POST | `/api/redeem` | `requireUser` + `csrfGuard` | yes |
+| GET | `/auth/google` | — | n/a (read) |
+| GET | `/auth/google/callback` | — | n/a (read) |
