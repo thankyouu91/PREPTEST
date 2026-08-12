@@ -114,9 +114,16 @@ nếu chưa có tài khoản nào và cũng không có `ADMIN_PASSWORD`.
 
 ### Ngân hàng đề VPET
 
-`server/data/vpet-items.js` giữ **20 câu** cho năm phần không cần audio:
-A (10 điền từ) · B (3 dựng lại đoạn) · C (3 đọc hiểu) · D (2 email) · I (2 nói
-theo tình huống). Đủ một lượt thi cho mọi phần thi được mà không cần bản ghi.
+`server/data/vpet-items.js` giữ **40 câu** cho năm phần không cần audio:
+A (20 điền từ) · B (6 dựng lại đoạn) · C (6 đọc hiểu) · D (4 email) · I (4 nói
+theo tình huống) — **hai lượt thi** cho mọi phần thi được mà không cần bản ghi.
+Ngân hàng là pool: trình sinh đề bốc đúng số câu blueprint yêu cầu, nên thi lại
+là bốc ra bộ khác.
+
+Một giới hạn đã biết: trình sinh đề ưu tiên câu đúng bậc rồi mới lấy bậc khác,
+nên thi lại ở bậc B1 sẽ gặp lại toàn bộ câu B1 của phần đó. Muốn hai lượt khác
+hẳn nhau ở một bậc thì cần hai lượt câu **ở đúng bậc ấy** — việc cân bậc, không
+phải việc thêm số lượng.
 
 Seed chạy lại được: upsert theo `questions.ext_key`, không xoá rồi nạp lại —
 `section_items` trỏ khoá ngoại vào `questions`, xoá ngân hàng là xoá luôn mọi đề

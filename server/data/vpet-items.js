@@ -55,7 +55,31 @@ const PART_A = [
   ['vpet-a-09', 'B2', 'We had no choice ___ to cancel the trip.', 'but',
     'no choice but to + infinitive. A fixed frame; "except" needs "except to" and reads oddly here.'],
   ['vpet-a-10', 'B2', 'Hardly ___ I sat down when the telephone rang.', 'had',
-    'Hardly had + subject + past participle … when …. Fronting "hardly" forces the inversion.']
+    'Hardly had + subject + past participle … when …. Fronting "hardly" forces the inversion.'],
+
+  /* Second set. The bank is a pool, not a fixed paper: the generator draws the
+     blueprint's ten from whatever part A holds, so a second ten is what makes a
+     retake a different sitting rather than the same one again. */
+  ['vpet-a-11', 'A2', 'I have lived in this street ___ ten years.', 'for',
+    'for + a length of time. "since" would need a starting point ("since 2015").'],
+  ['vpet-a-12', 'A2', 'My younger sister is afraid ___ dogs.', 'of',
+    'afraid of + noun. "afraid from" is a common transfer error.'],
+  ['vpet-a-13', 'B1', 'The concert was called ___ because of the storm.', 'off',
+    'call off = cancel. "call out" and "call up" do not fit a cancelled event.'],
+  ['vpet-a-14', 'B1', 'I look forward ___ hearing from you.', 'to',
+    'look forward to + -ing. Another preposition "to", which is why it is not "hear".'],
+  ['vpet-a-15', 'B1', 'He succeeded ___ passing the exam at the third attempt.', 'in',
+    'succeed in + -ing. Compare "manage to pass", which takes the infinitive.'],
+  ['vpet-a-16', 'B2', 'The flight was cancelled ___ account of the fog.', 'on',
+    'on account of = because of. A fixed three-word preposition.'],
+  ['vpet-a-17', 'B2', 'There is no point ___ arguing with him.', 'in',
+    'no point in + -ing. The "in" is often dropped in speech but is wanted in writing.'],
+  ['vpet-a-18', 'B2', 'She insisted ___ paying for the meal herself.', 'on',
+    'insist on + -ing. "insist to" does not exist; "insist that" takes a clause instead.'],
+  ['vpet-a-19', 'B2', 'Not only ___ he arrive late, he also forgot the tickets.', 'did',
+    'Not only + auxiliary + subject. Fronting "not only" forces the inversion, and the main verb goes back to its base form.'],
+  ['vpet-a-20', 'B2', 'The new safety rules come ___ force next month.', 'into',
+    'come into force = start to apply. "in force" is the state; "into force" is the change.']
 ];
 
 /* ---------------- Part B · Passage Reconstruction (writing, essay) ----------------
@@ -83,7 +107,28 @@ const PART_B = [
     'first half hour. Within a year, short car journeys in the centre had fallen by a ' +
     'tenth. Cities that copied the scheme saw smaller gains, largely because they kept ' +
     'the bicycles inside a single district.',
-    'Both the result and its explanation must survive. Reporting only the fall in car journeys is half the passage.']
+    'Both the result and its explanation must survive. Reporting only the fall in car journeys is half the passage.'],
+
+  /* Second set, so a retake draws three different passages. */
+  ['vpet-b-04', 'B1',
+    'Read this passage, then write it again in your own words after it disappears.\n\n' +
+    'The number 12 bus used to run every twenty minutes and was often nearly empty. ' +
+    'Last year the council cut it to one an hour and put the money into a later evening ' +
+    'service. Complaints rose sharply at first, then fell below where they had started.',
+    'Three facts and an order: the old service, the change, and how complaints moved. Losing the reversal loses the passage.'],
+  ['vpet-b-05', 'B2',
+    'Read this passage, then write it again in your own words after it disappears.\n\n' +
+    'A secondary school made its lunches free for everyone rather than for the poorest ' +
+    'pupils only. Take-up went from a third of the school to almost all of it. Teachers ' +
+    'reported fewer disputes in afternoon lessons, though the head was careful to say ' +
+    'that nobody had measured this properly.',
+    'The hedge at the end is part of the meaning. A reconstruction that states the calmer afternoons as fact has overstated the passage.'],
+  ['vpet-b-06', 'B2',
+    'Read this passage, then write it again in your own words after it disappears.\n\n' +
+    'For thirty years the paper mill was the largest employer in the valley and the main ' +
+    'source of pollution in its river. It closed in 2018. The water is now clean enough ' +
+    'for fish to return, and the town has lost a fifth of its working population.',
+    'The passage sets a gain against a loss without resolving it. Keeping only one side changes what it says.']
 ];
 
 /* ---------------- Part C · Reading Comprehension (reading, mcq) ----------------
@@ -117,7 +162,37 @@ const PART_C = [
     ['The new visitors are mostly local', 'The museum is losing money',
       'The shop and cafe are too small', 'Visitor numbers have started to fall'],
     'The new visitors are mostly local',
-    'The caution is about who came, not how many. The passage says plainly that income did not fall, which removes the second option.']
+    'The caution is about who came, not how many. The passage says plainly that income did not fall, which removes the second option.'],
+
+  /* Second set, so a retake draws three different passages. */
+  ['vpet-c-04', 'B1',
+    'The swimming pool opens at six in the morning on weekdays and at eight at weekends. ' +
+    'In July and August it also stays open until ten at night, an hour later than usual. ' +
+    'The lane reserved for slow swimmers is closed during school lessons on Tuesday and ' +
+    'Thursday mornings.\n\nWhen is the slow lane unavailable?',
+    ['On two mornings a week during lessons', 'Every morning before eight',
+      'Throughout July and August', 'At weekends only'],
+    'On two mornings a week during lessons',
+    'The passage names Tuesday and Thursday mornings. The other options each reuse a real detail from the text but attach it to the wrong thing.'],
+  ['vpet-c-05', 'B2',
+    'The company published its emissions figures a year earlier than the law required. ' +
+    'Rivals complained that the early release made their own reporting look slow, and one ' +
+    'accused the company of choosing a favourable measure. The company has not disputed ' +
+    'that the measure it used is the most flattering of the three in common use.\n\n' +
+    'What is the company\'s position on the measure it chose?',
+    ['It has not denied the criticism', 'It denies choosing a flattering measure',
+      'It says the law required that measure', 'It has stopped using the measure'],
+    'It has not denied the criticism',
+    '"Has not disputed" is an admission by silence, not a denial. The distractors turn that into a denial, a legal requirement or a reversal, none of which the passage says.'],
+  ['vpet-c-06', 'B2',
+    'Researchers gave one group of drivers a display showing their fuel use in real time ' +
+    'and left a second group without one. Over six months the first group used four per ' +
+    'cent less fuel. The effect was almost entirely produced in the first three weeks, ' +
+    'after which the two groups behaved much the same.\n\nWhat does the study suggest about the display?',
+    ['Its effect faded after a short time', 'It saved fuel steadily over six months',
+      'It made no difference at any point', 'It worked only for experienced drivers'],
+    'Its effect faded after a short time',
+    'The last sentence is the finding: the saving is real but front-loaded. "Steadily over six months" is the reading the last sentence exists to rule out.']
 ];
 
 /* ---------------- Part D · E-Mail Writing (writing, essay) ----------------
@@ -136,7 +211,22 @@ const PART_D = [
     'not arrived on the 12th. Your own work has stopped as a result.\n\n' +
     'Write an email of about 150 words to the supplier. State the facts, explain the ' +
     'consequence, and say what you now need and by when. Use a formal register throughout.',
-    'Formal register is part of the mark here. So is a specific deadline: "as soon as possible" leaves the supplier nothing to meet.']
+    'Formal register is part of the mark here. So is a specific deadline: "as soon as possible" leaves the supplier nothing to meet.'],
+
+  /* Second set: one friendly, one formal, matching the pairing above so a retake
+     is a different task rather than a different level of difficulty. */
+  ['vpet-d-03', 'B1',
+    'You bought a pair of headphones online two weeks ago. One side stopped working after ' +
+    'three days. You still have the order number and the packaging.\n\n' +
+    'Write an email of about 120 words to the shop. Say what you bought and when, describe ' +
+    'the fault, and say what you want them to do about it.',
+    'Task, tone and accuracy. The three facts (what, when, what is wrong) and a clear request all have to be there; a polite email that never asks for a refund or replacement has not done the task.'],
+  ['vpet-d-04', 'B2',
+    'You rent a flat. The heating has not worked for eight days. You reported it twice by ' +
+    'telephone and nothing has happened. It is now the coldest week of the year.\n\n' +
+    'Write an email of about 150 words to the landlord. Set out what has happened, say why ' +
+    'it now matters urgently, and state what you expect and by when. Stay formal and civil.',
+    'The difficulty is escalating without losing the register. A letter that becomes angry, or one that stays so mild it reads as a first report, both miss.']
 ];
 
 /* ---------------- Part I · Speaking Situations (speaking) ----------------
@@ -153,7 +243,22 @@ const PART_I = [
     'You have arrived at your hotel late in the evening. The room you were given is directly ' +
     'above a bar and is too noisy to sleep in. You are speaking to the receptionist.\n\n' +
     'Speak for up to one minute. Describe the problem, say what you would like done, and stay polite.',
-    'The difficulty is being firm and polite at once. A complaint that never asks for anything, or one that becomes rude, both lose marks.']
+    'The difficulty is being firm and polite at once. A complaint that never asks for anything, or one that becomes rude, both lose marks.'],
+
+  /* Second set. Both name a relationship and a difficulty, as above: register in
+     speech comes from who is being spoken to. */
+  ['vpet-i-03', 'B1',
+    'You bought a jacket last week and the zip has broken. You are at the shop counter, ' +
+    'speaking to an assistant. You do not have the receipt, but you paid by card.\n\n' +
+    'Speak for up to one minute. Explain the problem, say what you would like, and deal with ' +
+    'the missing receipt.',
+    'Scored on whether the problem, the request and the receipt are all handled, and on whether the tone stays reasonable when the receipt comes up.'],
+  ['vpet-i-04', 'B2',
+    'Your manager has invited you to a work social event on Saturday. You cannot go, and the ' +
+    'reason is personal and you would rather not explain it.\n\n' +
+    'Speak for up to one minute. Decline the invitation, keep the reason private without ' +
+    'sounding evasive, and leave the relationship in good order.',
+    'The hard part is declining without either over-explaining or sounding cold. Vague-but-warm is the target; a flat refusal and an invented excuse both miss it.']
 ];
 
 /** Every item, flattened into the shape the seed inserts. */

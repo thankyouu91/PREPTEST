@@ -35,16 +35,32 @@ try {
   ok(covered.join('') === AUDIO_FREE.join(''),
     'Chỉ có các phần không cần audio, đủ cả năm phần', covered.join(''));
 
+  /* Ngân hàng là một POOL chứ không phải một đề cố định: trình sinh đề bốc đúng
+     số câu blueprint yêu cầu từ những gì phần đó đang có. Nên phép kiểm không
+     phải "đúng bằng" mà là "đủ, và chia hết" — pool bằng đúng k lần số câu mỗi
+     đề thì phần đó cho được k lượt thi khác nhau. */
+  const sittings = {};
   for (const letter of AUDIO_FREE) {
     const mine = items.filter(i => i.part === letter);
     const want = partOf[letter];
-    ok(mine.length === want.items,
-      'Phần ' + letter + ' đủ ' + want.items + ' câu như bảng phần thi', String(mine.length));
+    sittings[letter] = mine.length / want.items;
+    ok(mine.length >= want.items,
+      'Phần ' + letter + ' đủ ít nhất ' + want.items + ' câu cho một lượt thi', String(mine.length));
+    ok(Number.isInteger(sittings[letter]),
+      'Phần ' + letter + ' có số câu chia hết cho ' + want.items,
+      mine.length + '/' + want.items);
     ok(mine.every(i => i.skill === want.skill),
       'Phần ' + letter + ' đúng kỹ năng ' + want.skill);
     ok(mine.every(i => want.types.includes(i.type)),
       'Phần ' + letter + ' đúng dạng câu ' + want.types.join('/'));
   }
+
+  /* Mọi phần phải cho cùng một số lượt thi. Nếu phần A đủ hai đề mà phần B chỉ
+     đủ một thì lần thi lại khác ở A và lặp nguyên ở B — tệ hơn là chỉ có một đề,
+     vì nhìn thì tưởng đề mới. */
+  const counts = [...new Set(Object.values(sittings))];
+  ok(counts.length === 1, 'Các phần cho cùng số lượt thi khác nhau', JSON.stringify(sittings));
+  ok(counts[0] >= 1, 'Đủ ít nhất một lượt thi trọn vẹn', String(counts[0]));
 
   head('Chất lượng từng câu');
 
@@ -76,7 +92,10 @@ try {
      sẽ để trạng thái chờ chấm chứ không so chuỗi. */
   const rubric = items.filter(i => i.type === 'essay' || i.type === 'speaking');
   ok(rubric.every(i => i.answer === ''), 'Câu chấm rubric không mang đáp án dựng sẵn');
-  ok(rubric.length === 7, 'Đúng 7 câu chấm bằng rubric (B 3 · D 2 · I 2)', String(rubric.length));
+  const rubricWant = (partOf.B.items + partOf.D.items + partOf.I.items) * counts[0];
+  ok(rubric.length === rubricWant,
+    'Số câu chấm rubric khớp blueprint (B + D + I, nhân số lượt thi)',
+    rubric.length + ' ≠ ' + rubricWant);
 
   head('Đã vào cơ sở dữ liệu');
 
