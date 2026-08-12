@@ -123,6 +123,40 @@ try {
   r = await admin.req('POST', '/api/admin/tests/' + testId + '/status', { status: 'published' });
   ok(r.status === 200, 'Phát hành đề kiểm thử', JSON.stringify(r.data));
 
+  /* ---------- Ba cổng phát hành ----------
+     Cùng một lớp lỗi: nền tảng cho ra đời một đề mà thí sinh ngồi vào sẽ gặp
+     thứ không dùng được, và không có gì báo. Part J từng hiện "You will hear a
+     short story once" mà không có nút nghe nào. */
+  head('Cổng phát hành');
+
+  {
+    /* Câu bị rút khỏi lưu hành vẫn nằm trong đề đã phát hành. Câu retired là
+       câu ai đó đã quyết định thôi không hỏi nữa — sai khoá, nhiễu mập mờ, hoặc
+       phân tích nói nó lấy điểm của người hiểu bài. Phát hành lại là đưa nó về
+       trước mặt thí sinh, và màn thi phát nguyên những gì section đang giữ. */
+    const qid = made[0];
+    await admin.req('POST', '/api/admin/questions/' + qid + '/status', { status: 'retired' });
+    let g = await admin.req('POST', '/api/admin/tests/' + testId + '/status', { status: 'published' });
+    ok(g.status === 400 && /retired or still in draft/.test(g.data.error || ''),
+      'Đề chứa câu đã rút khỏi lưu hành thì không phát hành được', JSON.stringify(g.data));
+    await admin.req('POST', '/api/admin/questions/' + qid + '/status', { status: 'active' });
+    g = await admin.req('POST', '/api/admin/tests/' + testId + '/status', { status: 'published' });
+    ok(g.status === 200, 'Trả câu về active thì phát hành lại được');
+  }
+
+  {
+    /* Part phát audio mà bản ghi chưa dựng và chưa duyệt. "Có tệp" không đủ:
+       máy đọc sai tên riêng là chuyện xảy ra thật, và cổng duyệt là chỗ bắt. */
+    const qid = made[0];
+    await admin.req('POST', '/api/admin/questions/' + qid + '/tts/unapprove');
+    const g = await admin.req('POST', '/api/admin/tests/' + testId + '/status', { status: 'published' });
+    ok(g.status === 400 && /recordings are not built and approved/.test(g.data.error || ''),
+      'Part cần audio mà chưa duyệt bản ghi thì không phát hành được', JSON.stringify(g.data));
+    await admin.req('POST', '/api/admin/questions/' + qid + '/tts/approve');
+    const back = await admin.req('POST', '/api/admin/tests/' + testId + '/status', { status: 'published' });
+    ok(back.status === 200, 'Duyệt lại bản ghi thì phát hành được');
+  }
+
   /* ---------- Bắt đầu một lượt thi ---------- */
   head('Bắt đầu lượt thi');
   await student.req('GET', '/api/me');

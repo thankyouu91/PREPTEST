@@ -27,6 +27,7 @@ const storage = require('./storage');
 const { entitlementOf } = require('./entitlements');
 const PLANS = require('./data/plans');
 const marking = require('./marking');
+const EXAM_FORMATS = require('./data/exam-formats');
 
 const router = express.Router();
 
@@ -101,7 +102,7 @@ function attemptState(att) {
     submittedAt: att.submitted_at,
     parts: parts.map(p => {
       const items = q.all(
-        `SELECT si.sort, qs.id, qs.prompt, qs.type, qs.options_json, qs.audio_key
+        `SELECT si.sort, qs.id, qs.prompt, qs.passage, qs.type, qs.options_json, qs.audio_key
            FROM section_items si JOIN questions qs ON qs.id = si.question_id
           WHERE si.section_id=? ORDER BY si.sort, si.id`, p.section_id);
       const open = partOpen(p);
@@ -117,12 +118,25 @@ function attemptState(att) {
         closedAt: p.closed_at,
         secondsLeft: secondsLeft(p),
         open,
+        /* Whether the blueprint says this part plays audio. The screen needs it
+           to tell "this item has no recording" apart from "this item never had
+           one" — part I is spoken but text-prompted, and flagging a missing
+           recording there would send a candidate to their teacher over nothing. */
+        needsAudio: !!(p.part && (EXAM_FORMATS.sectionOfPart(
+          test ? test.family_id : null, p.part) || {}).needsAudio),
         items: items.map(it => {
           const saved = byQuestion.get(it.id);
           const used = saved ? saved.replays_used : 0;
           return {
             questionId: it.id,
             prompt: it.prompt,
+            /* Reading matter shown beside the instruction. The authoring screen
+               has accepted this field since the column was added and the exam
+               never read it, so anything typed there was silently dropped on
+               the way to the candidate — an author could write a part C passage,
+               see it saved, and ship a comprehension question about a text
+               nobody would ever be shown. */
+            passage: it.passage || '',
             type: it.type,
             options: JSON.parse(it.options_json || '[]'),
             hasAudio: !!it.audio_key,

@@ -116,24 +116,49 @@ async function duDeMuoiPart() {
         part: /^Part ([A-J])\b/.exec(s.name)[1]
       }));
 
-    const gen = await call('POST', '/api/admin/tests/generate', {
-      familyId: 'vpet', level: 'B2', blueprint,
-      title: 'VPET đủ 10 part — ảnh nghiệm thu'
-    });
-    if (gen.status === 409) {
-      const thieu = (gen.body.shortages || [])
-        .map(x => `${x.part || x.skill}: cần ${x.need}, có ${x.have}`).join('; ');
-      throw new Error('Ngân hàng chưa đủ để dựng đề mười part — ' + thieu);
-    }
-    if (gen.status !== 201 && gen.status !== 200) {
-      throw new Error(`Dựng đề hỏng: HTTP ${gen.status} ${JSON.stringify(gen.body)}`);
+    const dung = async (bp, nhan) => {
+      const gen = await call('POST', '/api/admin/tests/generate', {
+        familyId: 'vpet', level: 'B2', blueprint: bp, title: nhan
+      });
+      if (gen.status === 409) {
+        const thieu = (gen.body.shortages || [])
+          .map(x => `${x.part || x.skill}: cần ${x.need}, có ${x.have}`).join('; ');
+        throw new Error('Ngân hàng chưa đủ để dựng đề — ' + thieu);
+      }
+      if (gen.status !== 201 && gen.status !== 200) {
+        throw new Error(`Dựng đề hỏng: HTTP ${gen.status} ${JSON.stringify(gen.body)}`);
+      }
+      const id = gen.body.id || (gen.body.test && gen.body.test.id);
+      const pub = await call('POST', `/api/admin/tests/${id}/status`, { status: 'published' });
+      return { id, pub };
+    };
+
+    const day = await dung(blueprint, 'VPET đủ 10 part — ảnh nghiệm thu');
+    if (day.pub.status === 200) {
+      console.log(`  \x1b[2m(đã dựng và phát hành đề ${day.id} — đủ 10 part)\x1b[0m`);
+      return day.id;
     }
 
-    const id = gen.body.id || (gen.body.test && gen.body.test.id);
-    const pub = await call('POST', `/api/admin/tests/${id}/status`, { status: 'published' });
-    if (pub.status !== 200) throw new Error(`Không phát hành được đề: HTTP ${pub.status}`);
-    console.log(`  \x1b[2m(đã dựng và phát hành đề ${id})\x1b[0m`);
-    return id;
+    /* Cổng phát hành từ chối, và nó đúng: part phát audio mà chưa có bản ghi
+       đã duyệt thì không ai được ngồi vào. Chụp phần thật sự chạy được hôm nay
+       thay vì dựng đường vòng qua cổng — một bộ ảnh đẹp về phòng thi không
+       phát hành nổi là bộ ảnh nói dối. */
+    const khongCanAudio = blueprint.filter(b => {
+      const fs2 = FORMATS.sectionOfPart('vpet', b.part);
+      return fs2 && !fs2.needsAudio;
+    });
+    console.log(`\n  \x1b[33mKhông phát hành được đề đủ 10 part:\x1b[0m`);
+    console.log(`  \x1b[2m${(day.pub.body && day.pub.body.error) || 'HTTP ' + day.pub.status}\x1b[0m`);
+    console.log(`  \x1b[2mChụp ${khongCanAudio.length} part không cần audio: ` +
+      khongCanAudio.map(b => b.part).join(', ') + `\x1b[0m`);
+
+    const it = await dung(khongCanAudio, 'VPET các part không cần audio — ảnh nghiệm thu');
+    if (it.pub.status !== 200) {
+      throw new Error(`Không phát hành được cả đề rút gọn: HTTP ${it.pub.status} ` +
+        JSON.stringify(it.pub.body));
+    }
+    console.log(`  \x1b[2m(đã dựng và phát hành đề ${it.id})\x1b[0m`);
+    return it.id;
   } finally {
     await actx.close();
   }

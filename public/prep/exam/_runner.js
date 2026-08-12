@@ -224,21 +224,42 @@ const PrepRunner = {
         'value="' + PREP.esc(it.answer) + '" aria-label="Your answer">';
     }
 
+    /* An item in a part that plays audio, with no recording behind it. The
+       publish gate in server/api.js is what stops such a paper going live, so
+       reaching this line means something got past it. Say so plainly: a
+       candidate reading "You will hear a short story once" with nothing to
+       press cannot tell whether the exam is broken or their browser is, and
+       silence is the one response that guarantees they lose the marks without
+       knowing why. */
+    const missing = !it.hasAudio && p.needsAudio;
     const audio = it.hasAudio
       ? '<div class="flex flex-wrap items-center gap-2.5 mt-3">' +
           '<button type="button" class="btn btn-soft btn-sm" data-play="' + it.questionId + '"' +
             (it.replaysLeft <= 0 ? ' disabled' : '') + '>' +
-            PREP.icon('play', 'w-4 h-4') + '<span>Nghe</span></button>' +
+            PREP.icon('play', 'w-4 h-4') + '<span>Play</span></button>' +
           '<span class="text-[13px] font-semibold text-muted" data-plays="' + it.questionId + '">' +
             (it.replaysLeft > 0 ? it.replaysLeft + ' replays left' : 'No replays left') + '</span>' +
         '</div>'
+      : missing
+        ? '<p class="mt-3 text-[13px] font-semibold text-danger" data-no-audio="' + it.questionId + '">' +
+            'The recording for this question is missing. Tell your teacher — this item ' +
+            'cannot be answered and must not count against you.' +
+          '</p>'
+        : '';
+
+    /* The passage sits between the instruction and the answer box, set apart so
+       it reads as material rather than as more instruction. */
+    const passage = it.passage
+      ? '<div class="mt-3 rounded-xl bg-surface-2 border border-line px-4 py-3 ' +
+        'text-[14.5px] leading-relaxed whitespace-pre-line" data-passage="' + it.questionId + '">' +
+        PREP.esc(it.passage) + '</div>'
       : '';
 
     return '<article class="card p-5" data-item="' + it.questionId + '">' +
       '<p class="flex gap-2.5">' +
         '<span class="w-6 shrink-0 text-[13px] font-bold text-muted">' + (i + 1) + '</span>' +
         '<span class="text-[15px] leading-relaxed">' + PREP.esc(it.prompt) + '</span>' +
-      '</p>' + audio + body +
+      '</p>' + passage + audio + body +
     '</article>';
   },
 

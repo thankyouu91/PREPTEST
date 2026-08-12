@@ -795,6 +795,52 @@ router.post('/admin/tests/:id/status', (req, res) => {
     if (!t.sections.length) return bad(res, 'This test has no parts, so it cannot be published.');
     const empty = t.sections.filter(s => !s.items.length).map(s => s.name);
     if (empty.length) return bad(res, 'These parts have no questions yet: ' + empty.join(', '));
+
+    /* A question is retired when somebody decided it should stop being asked —
+       a wrong key, an ambiguous distractor, an item the analysis says takes
+       marks from the candidates who understood. Publishing a test that still
+       contains one puts it back in front of candidates, and the exam screen
+       serves whatever the section holds without re-checking status. Draft is
+       the same argument from the other end: content nobody has approved. */
+    const notActive = [];
+    for (const s of t.sections) {
+      const bad2 = s.items.filter(i => i.status !== 'active');
+      if (bad2.length) notActive.push(`${s.name} (${bad2.length})`);
+    }
+    if (notActive.length) {
+      return bad(res, 'These parts contain questions that are retired or still in draft: '
+        + notActive.join(', ') + '. Swap them out before publishing.');
+    }
+
+    /* A part the blueprint marks needsAudio must have an approved recording on
+       every item before anyone can sit it.
+       -------------------------------------------------------------------
+       Without this gate a paper publishes happily with silent listening
+       parts, and the candidate meets "You will hear a short story once" with
+       nothing on screen to press. They cannot tell whether the exam is broken
+       or their browser is, they have no way to ask, and the marks for that
+       part are gone. The readiness screen already counted approved audio;
+       nothing stopped a publish that ignored it.
+
+       Approved, not merely present: a synthetic voice mangling a proper noun
+       is caught by a person listening, and that gate is the reason
+       audio_status exists (docs/VOICE.md 4.6). */
+    const silent = [];
+    for (const s of t.sections) {
+      const bp = s.part ? EXAM_FORMATS.sectionOfPart(t.familyId, s.part) : null;
+      if (!bp || !bp.needsAudio) continue;
+      const ids = s.items.map(i => i.questionId);
+      if (!ids.length) continue;
+      const ready = q.val(
+        `SELECT COUNT(*) c FROM questions
+          WHERE id IN (${ids.map(() => '?').join(',')})
+            AND audio_key IS NOT NULL AND audio_status='approved'`, ...ids);
+      if (ready < ids.length) silent.push(`${s.name} (${ready}/${ids.length})`);
+    }
+    if (silent.length) {
+      return bad(res, 'These parts play audio but their recordings are not built and approved yet: '
+        + silent.join(', ') + '. Render and approve them in the question bank first.');
+    }
   }
   q.run('UPDATE tests SET status=?, updated_at=? WHERE id=?', status, nowISO(), id);
   audit(req, 'test.status', 'tests/' + id, { status });
