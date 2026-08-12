@@ -54,6 +54,17 @@
           </div>
           <p class="field-error" id="err-password">Enter your password.</p>
         </div>
+        <!-- Hidden until the server says this account has a second factor. Asking
+             everybody for a code they mostly do not have would train people to
+             ignore the field. -->
+        <div id="code-row" hidden>
+          <label class="label" for="code">Code from your authenticator</label>
+          <input class="input tracking-[0.3em] text-center" id="code" name="code" type="text"
+                 inputmode="numeric" autocomplete="one-time-code" maxlength="19"
+                 spellcheck="false" placeholder="000000">
+          <p class="help">Six digits, or one of your recovery codes.</p>
+          <p class="field-error" id="err-code">Enter the code from your authenticator.</p>
+        </div>
         <button type="submit" id="submit" class="btn btn-primary btn-lg w-full">Sign in</button>
       </form>
 
@@ -102,7 +113,19 @@
     AD.qs('#err-' + id).classList.toggle('show', bad);
     AD.qs('#' + id).classList.toggle('input-invalid', bad);
   };
-  ['username', 'password'].forEach(id => AD.qs('#' + id).addEventListener('input', () => mark(id, false)));
+  ['username', 'password', 'code'].forEach(id => AD.qs('#' + id).addEventListener('input', () => mark(id, false)));
+
+  /* The second factor appears only once the server has said this account has one
+     — it answers needCode on the first attempt. Two consequences worth keeping:
+     the password is NOT cleared when the code is what was missing, because
+     retyping a correct password to fix a wrong code is pure friction; and once
+     the field is showing, it stays. */
+  const codeRow = AD.qs('#code-row'), code = AD.qs('#code');
+  const askForCode = () => {
+    if (!codeRow.hidden) return;
+    codeRow.hidden = false;
+    code.focus();
+  };
 
   AD.qs('#f').addEventListener('submit', async ev => {
     ev.preventDefault();
@@ -111,21 +134,30 @@
     let bad = false;
     mark('username', !username); bad = bad || !username;
     mark('password', !pass.value); bad = bad || !pass.value;
+    /* Only required once it is on screen: before that the server has not asked. */
+    if (!codeRow.hidden) { mark('code', !code.value.trim()); bad = bad || !code.value.trim(); }
     if (bad) return;
 
     const btn = AD.qs('#submit');
     btn.disabled = true;
     btn.innerHTML = AD.icon('loader', 'w-5 h-5 animate-spin-slow') + 'Signing in';
     try {
-      await AD.post('/admin/login', { username, password: pass.value });
+      await AD.post('/admin/login', { username, password: pass.value, code: code.value.trim() });
       const next = new URLSearchParams(location.search).get('next');
       location.href = next && next.startsWith('/admin') ? next : '/admin/';
     } catch (e) {
       btn.disabled = false; btn.textContent = 'Sign in';
       bannerText.textContent = e.message;
       banner.classList.add('show');
-      pass.value = '';
-      pass.focus();
+      const wantsCode = !!(e.data && e.data.needCode);
+      if (wantsCode) {
+        askForCode();
+        code.value = '';
+        code.focus();
+      } else {
+        pass.value = '';
+        pass.focus();
+      }
     }
   });
 </script>

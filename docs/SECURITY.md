@@ -172,6 +172,15 @@ Kiểm bằng hành vi chứ không bằng lời: một tiến trình **khác** 
 liệu và thấy đúng cái khoá đó. `throttle_hits` được dọn định kỳ (giữ 2 giờ, dài
 gấp đôi cửa sổ dài nhất mà bất kỳ chỗ gọi nào yêu cầu).
 
+**Hệ quả cho bộ test, phát hiện muộn một lượt.** Bộ test cố tình đăng nhập sai vài
+lần mỗi lượt chạy, để chứng minh câu trả lời giống hệt nhau dù tài khoản có tồn
+tại hay không. Khoá giờ nằm trong CSDL nên nó **tích luỹ giữa các lượt chạy**:
+chạy gate vài lần trong 15 phút là 401 biến thành 429, và bộ test đỏ vì một lý do
+không liên quan gì đến mã. `scripts/verify.sh` giờ xoá `throttle_locks` và
+`throttle_hits` trước khi khởi động server — chỉ trong CSDL test; sản phẩm không
+bao giờ tự xoá. Cùng họ với ba biến môi trường ở mục 2, và cùng một bài học: một
+cơ chế chống lạm dụng **có trạng thái** thì bộ test cũng là một người dùng của nó.
+
 Đổi lại: khoá **không còn tự mất khi khởi động lại**, nên lối thoát bây giờ là
 `node scripts/accounts.js unlock` — lệnh đó xoá cả hai thứ cùng tên "khoá":
 tài khoản bị quản trị viên vô hiệu hoá, *và* khoá do sai mật khẩu quá nhiều.
@@ -288,6 +297,10 @@ guard đăng nhập, 8 route còn lại là danh sách ở mục 3.
 | POST | `/api/admin/tests/:id/sections` | `requireAdmin` + `csrfGuard` | yes |
 | POST | `/api/admin/tests/:id/status` | `requireAdmin` + `csrfGuard` | yes |
 | POST | `/api/admin/tests/generate` | `requireAdmin` + `csrfGuard` | yes |
+| GET | `/api/admin/totp` | `requireAdmin` + `csrfGuard` | n/a (read) |
+| POST | `/api/admin/totp/disable` | `requireAdmin` + `csrfGuard` | yes |
+| POST | `/api/admin/totp/enable` | `requireAdmin` + `csrfGuard` | yes |
+| POST | `/api/admin/totp/start` | `requireAdmin` + `csrfGuard` | yes |
 | GET | `/api/admin/users` | `requireAdmin` + `csrfGuard` | n/a (read) |
 | GET | `/api/admin/users/:id` | `requireAdmin` + `csrfGuard` | n/a (read) |
 | PUT | `/api/admin/users/:id` | `requireAdmin` + `csrfGuard` | yes |

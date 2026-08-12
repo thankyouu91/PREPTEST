@@ -10,6 +10,7 @@
 const express = require('express');
 const { q, tx, nowISO, jparse, makeCode, audit } = require('./db');
 const A = require('./auth');
+const totp = require('./totp');
 const EXAM_FORMATS = require('./data/exam-formats');
 const storage = require('./storage');
 const PLANS = require('./data/plans');
@@ -1333,6 +1334,78 @@ router.post('/admin/password', (req, res) => {
   q.run('DELETE FROM sessions WHERE admin_id=?', req.admin.id);   // force every device to sign in again
   audit(req, 'admin.password', 'admins/' + req.admin.username, {});
   res.json({ ok: true, reauth: true });
+});
+
+/* ------------------ Second factor, from the browser ------------------
+   The same two-step flow `scripts/accounts.js totp-enable` runs, so there is one
+   procedure with two front doors rather than two procedures. The CLI stays the
+   authority for the operation that can lock you out of this very screen —
+   turning it OFF when the phone is gone — but enrolling should not need a
+   terminal.
+
+   The pending secret is carried by the client between the two calls rather than
+   parked in a table. It is worthless on its own: using it needs a matching code
+   AND an already-authenticated admin session, and anybody holding that session
+   can enrol a secret of their own choosing anyway. A pending-state table would
+   add a row to expire and clean up, and would buy nothing. */
+
+router.get('/admin/totp', (req, res) => {
+  const me = q.get('SELECT * FROM admins WHERE id=?', req.admin.id);
+  res.json({
+    enabled: A.totpEnabled(me),
+    enabledAt: me.totp_enabled_at || null,
+    recoveryLeft: A.totpEnabled(me) ? A.recoveryCodesLeft(me.id) : 0
+  });
+});
+
+router.post('/admin/totp/start', (req, res) => {
+  const me = q.get('SELECT * FROM admins WHERE id=?', req.admin.id);
+  if (A.totpEnabled(me)) return res.status(409).json({ error: 'Two-factor is already on for this account.' });
+  /* Nothing is written. This step exists to hand over a secret and prove, at the
+     next step, that an authenticator really holds it — enabling in one step would
+     switch on a factor whose codes nobody can produce. */
+  const secret = totp.newSecret();
+  res.json({ secret, uri: totp.otpauthUri(secret, me.username) });
+});
+
+router.post('/admin/totp/enable', (req, res) => {
+  const b = req.body || {};
+  const secret = typeof b.secret === 'string' ? b.secret.replace(/\s/g, '') : '';
+  const code = typeof b.code === 'string' ? b.code.replace(/\s/g, '') : '';
+  const me = q.get('SELECT * FROM admins WHERE id=?', req.admin.id);
+  if (A.totpEnabled(me)) return res.status(409).json({ error: 'Two-factor is already on for this account.' });
+  if (!secret) return bad(res, 'Start again: no secret was carried over from the first step.');
+
+  let counter = null;
+  try { counter = totp.verify(secret, code); }
+  catch (e) { return bad(res, 'That secret is not valid. Start again.'); }
+  if (counter === null) {
+    return res.status(403).json({ error: 'That code does not match. Check the clock on your phone, then try again.' });
+  }
+
+  const codes = A.issueRecoveryCodes(me.id);
+  q.run('UPDATE admins SET totp_secret=?, totp_enabled_at=?, totp_last_counter=? WHERE id=?',
+    secret, nowISO(), counter, me.id);
+  audit(req, 'admin.totp.enabled', 'admins/' + me.username, {});
+  /* Shown once, here and nowhere else: only the hashes are kept, so no later
+     request — and no support conversation — can produce them again. */
+  res.json({ ok: true, recoveryCodes: codes });
+});
+
+router.post('/admin/totp/disable', (req, res) => {
+  const b = req.body || {};
+  const me = q.get('SELECT * FROM admins WHERE id=?', req.admin.id);
+  if (!A.totpEnabled(me)) return res.json({ ok: true, alreadyOff: true });
+  /* The password again, deliberately. Turning a second factor ON is an upgrade
+     and needs no ceremony; turning it OFF is a downgrade, and a downgrade that a
+     borrowed session can perform on its own is not much of a second factor. */
+  if (!A.verifyPassword(typeof b.password === 'string' ? b.password : '', me.pass_hash)) {
+    return res.status(403).json({ error: 'Enter your current password to turn two-factor off.' });
+  }
+  q.run('UPDATE admins SET totp_secret=NULL, totp_enabled_at=NULL, totp_last_counter=NULL WHERE id=?', me.id);
+  q.run('DELETE FROM admin_recovery_codes WHERE admin_id=?', me.id);
+  audit(req, 'admin.totp.disabled', 'admins/' + me.username, {});
+  res.json({ ok: true });
 });
 
 router.get('/admin/audit', (req, res) => {

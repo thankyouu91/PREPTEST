@@ -204,6 +204,158 @@ try {
     ok(/two-factor off/.test(cli('totp-status')), 'Disabling turns it off');
     r = await login({ username: 'admin', password: 'Admin@123456' });
     ok(r.status === 200 && r.data.ok, 'After which the password alone works again');
+
+    head('Enrolling from the browser, through the API');
+
+    /* The admin screen runs the same two steps as the CLI. These checks are on
+       the endpoints behind it, because that is where the rules live — the panel
+       can only be as careful as what it calls. */
+    const jar = [];
+    const page = await fetch(B + '/admin/dang-nhap/');
+    const csrf = (page.headers.getSetCookie() || [])
+      .map(c => (c.match(/prep_csrf=([^;]+)/) || [])[1]).filter(Boolean)[0];
+    const signIn = await fetch(B + '/api/admin/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf, cookie: 'prep_csrf=' + csrf },
+      body: JSON.stringify({ username: 'admin', password: 'Admin@123456' })
+    });
+    for (const c of signIn.headers.getSetCookie() || []) jar.push(c.split(';')[0]);
+    const cookie = ['prep_csrf=' + csrf, ...jar.filter(c => !c.startsWith('prep_csrf'))].join('; ');
+    const adminCsrf = (jar.find(c => c.startsWith('prep_csrf=')) || ('prep_csrf=' + csrf)).split('=')[1];
+    const cookieHeader = jar.concat('prep_csrf=' + adminCsrf).join('; ');
+    const call = async (path, body) => {
+      const res = await fetch(B + '/api' + path, {
+        method: body === undefined ? 'GET' : 'POST',
+        headers: Object.assign({ cookie: cookieHeader, 'X-CSRF-Token': adminCsrf },
+          body === undefined ? {} : { 'Content-Type': 'application/json' }),
+        body: body === undefined ? undefined : JSON.stringify(body)
+      });
+      return { status: res.status, data: await res.json().catch(() => ({})) };
+    };
+
+    let a = await call('/admin/totp');
+    ok(a.status === 200 && a.data.enabled === false, 'The panel reads "off" for an unenrolled account',
+      JSON.stringify(a.data));
+
+    a = await call('/admin/totp/start', {});
+    ok(a.status === 200 && /^[A-Z2-7]{32}$/.test(a.data.secret || ''), 'Step one hands over a secret');
+    ok((a.data.uri || '').startsWith('otpauth://totp/'), 'And the otpauth URI for the app');
+    const webSecret = a.data.secret;
+
+    /* The whole reason for two steps: step one must change nothing. */
+    ok((await call('/admin/totp')).data.enabled === false,
+      'Step one switches nothing on — asking for a secret is not enrolling');
+
+    a = await call('/admin/totp/enable', { secret: webSecret, code: '000000' });
+    ok(a.status === 403, 'A wrong code at step two is refused', 'status ' + a.status);
+    ok((await call('/admin/totp')).data.enabled === false, 'And still nothing is on');
+
+    a = await call('/admin/totp/enable', { secret: webSecret, code: totp.totp(webSecret) });
+    ok(a.status === 200 && a.data.ok, 'The right code turns it on', JSON.stringify(a.data).slice(0, 120));
+    ok(Array.isArray(a.data.recoveryCodes) && a.data.recoveryCodes.length === 10,
+      'And returns ten recovery codes, once');
+    const webRecovery = a.data.recoveryCodes;
+
+    a = await call('/admin/totp');
+    ok(a.status === 200 && a.data.enabled === true && a.data.recoveryLeft === 10,
+      'The panel now reads "on" with ten codes left', JSON.stringify(a.data));
+    ok(!('secret' in a.data) && !('recoveryCodes' in a.data),
+      'And never hands the secret or the codes back on a later read', JSON.stringify(a.data));
+
+    a = await call('/admin/totp/start', {});
+    ok(a.status === 409, 'Starting again while it is on is refused rather than quietly re-keying');
+
+    /* Turning it OFF is a downgrade, so it costs the password again. A borrowed
+       session should not be able to remove the thing standing in its way. */
+    a = await call('/admin/totp/disable', {});
+    ok(a.status === 403, 'Turning it off with no password is refused', 'status ' + a.status);
+    a = await call('/admin/totp/disable', { password: 'not-the-password' });
+    ok(a.status === 403, 'And with the wrong one');
+    ok((await call('/admin/totp')).data.enabled === true, 'It is still on after both attempts');
+
+    /* The enrolment really took: the sign-in demands it. */
+    r = await login({ username: 'admin', password: 'Admin@123456' });
+    ok(r.status === 401 && r.data.needCode === true, 'The sign-in now asks for a code');
+    r = await login({ username: 'admin', password: 'Admin@123456', code: webRecovery[0] });
+    ok(r.status === 200, 'A recovery code from the browser flow works too');
+
+    a = await call('/admin/totp/disable', { password: 'Admin@123456' });
+    ok(a.status === 200 && a.data.ok, 'With the right password it turns off');
+    ok((await call('/admin/totp')).data.enabled === false, 'And reads as off');
+
+    head('The sign-in screen asks for the code only when told to');
+
+    /* The field is hidden until the server answers needCode. Asking everybody
+       for a code they mostly do not have trains people to ignore the field. */
+    const loginHtml = await (await fetch(B + '/admin/dang-nhap/')).text();
+    ok(/id="code-row"[^>]*\shidden/.test(loginHtml), 'It ships hidden');
+    ok(/id="code"/.test(loginHtml) && /autocomplete="one-time-code"/.test(loginHtml),
+      'With the autocomplete hint a phone needs to offer the code');
+    ok(/needCode/.test(loginHtml), 'And the page reacts to the flag the API sends');
+    ok(!/ style="/.test(loginHtml), 'No inline style attribute — the CSP forbids it');
+
+    head('The panel actually renders');
+
+    /* The card sits behind a tab, and shot-admin.mjs shoots the settings page on
+       its default tab — so nothing in the gate had ever drawn this markup. Markup
+       nothing renders is markup nothing has checked: a mistyped component class
+       shows up as unstyled text and a broken template shows up as nothing at all,
+       and neither makes a test fail. So open it in a real browser and look. */
+    const { launchChromium } = await import('./_browser.mjs');
+    const browser = await launchChromium();
+    try {
+      const ctx = await browser.newContext();
+      const errors = [];
+      ctx.on('weberror', e => errors.push(String(e.error())));
+      const p = await ctx.newPage();
+      p.on('console', m => { if (m.type() === 'error') errors.push(m.text()); });
+
+      await p.goto(B + '/admin/dang-nhap/', { waitUntil: 'networkidle' });
+      await p.fill('#username', 'admin');
+      await p.fill('#password', 'Admin@123456');
+      await p.click('#submit');
+      await p.waitForURL(u => !u.pathname.includes('dang-nhap'), { timeout: 10000 });
+
+      await p.goto(B + '/admin/quan-tri/', { waitUntil: 'networkidle' });
+      await p.click('#tab-account');
+      await p.waitForSelector('#tf-card', { timeout: 10000 });
+      ok(await p.locator('#tf-card').isVisible(), 'The two-factor card is on the Admin account tab');
+      await p.waitForSelector('#tf-start', { timeout: 10000 });
+      ok((await p.locator('#tf-state').textContent()).trim() === 'Off',
+        'It reads its state from the server rather than guessing');
+
+      /* Step one in the browser, for real: the secret has to appear and the state
+         must NOT flip to on, which is the property the two steps exist for. */
+      await p.click('#tf-start');
+      await p.waitForSelector('#tf-secret', { timeout: 10000 });
+      const shownSecret = (await p.locator('#tf-secret').textContent()).replace(/\s/g, '');
+      ok(/^[A-Z2-7]{32}$/.test(shownSecret), 'Pressing "Set up" shows a secret to type in', shownSecret);
+      ok((await p.locator('#tf-state').textContent()).trim() === 'Off',
+        'And the badge still says Off, because nothing has been switched on yet');
+
+      await p.fill('#tf-code', totp.totp(shownSecret));
+      await p.click('#tf-confirm');
+      await p.waitForSelector('#tf-done', { timeout: 10000 });
+      const codeItems = await p.locator('#tf-body li').count();
+      ok(codeItems === 10, 'Confirming shows the ten recovery codes', String(codeItems));
+      ok((await p.locator('#tf-state').textContent()).trim() === 'On', 'And the badge flips to On');
+
+      await p.click('#tf-done');
+      await p.waitForSelector('#tf-off', { timeout: 10000 });
+      ok(/10 recovery codes left/.test(await p.locator('#tf-body').innerText()),
+        'Afterwards the card reports how many are left');
+
+      ok(errors.length === 0, 'No console or CSP errors anywhere in that flow',
+        errors.slice(0, 2).join(' | '));
+      await ctx.close();
+    } finally {
+      await browser.close();
+    }
+    /* Left enabled on this throwaway database on purpose — the next line proves the
+       sign-in respects what the panel just did, end to end. */
+    r = await login({ username: 'admin', password: 'Admin@123456' });
+    ok(r.status === 401 && r.data.needCode === true,
+      'And the sign-in screen now demands a code, enrolled entirely from the browser');
   } finally {
     server.kill('SIGTERM');
   }

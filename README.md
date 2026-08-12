@@ -270,9 +270,15 @@ hộ — nó cần CSDL chứ không phải trình duyệt, đó là lý do nó 
 
 `totp-status` cho biết ai đang bật và còn bao nhiêu mã cứu hộ.
 
-Chưa có giao diện tự bật trong `/admin/quan-tri/` — đó là việc riêng đã xếp hàng.
-Vẽ mã QR cũng vậy: vẽ QR cần thêm dependency hoặc tự viết Reed-Solomon, mà mọi
-app authenticator đều cho gõ tay secret, nên QR là tiện chứ không phải thiếu.
+Bật được cả **trong giao diện**: `/admin/quan-tri/` → tab **Admin account** → thẻ
+**Two-factor sign-in**, chạy đúng hai bước như dòng lệnh. Màn đăng nhập tự hiện ô
+nhập mã khi máy chủ trả `needCode`, nên tài khoản chưa bật thì không thấy gì lạ.
+
+Dòng lệnh vẫn là nơi duy nhất **tắt** được khi đã mất điện thoại lẫn mã cứu hộ —
+tắt trong giao diện thì phải nhập lại mật khẩu, mà mất máy thì có vào được đâu.
+
+Không vẽ mã QR: vẽ QR cần thêm dependency hoặc tự viết Reed-Solomon, mà mọi app
+authenticator đều cho gõ tay secret, nên QR là tiện chứ không phải thiếu.
 
 ### Thư đi (xác thực email, đặt lại mật khẩu)
 

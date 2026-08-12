@@ -46,6 +46,21 @@ node scripts/test-totp.mjs || fail=1
 step "Start the server"
 pkill -f 'node server\.js' 2>/dev/null || true
 sleep 0.5
+# The suite signs in wrongly on purpose several times a run — proving that a
+# refused sign-in says the same thing whether or not the account exists. Five of
+# those against one key is a 15-minute lockout, and since 2026-08-12 the lockout
+# lives in the DATABASE rather than in process memory, so it now SURVIVES between
+# runs and accumulates. Running the gate a few times in a quarter of an hour then
+# turns a 401 into a 429 and the suite goes red for a reason that has nothing to
+# do with the code. Same family as the three env ceilings raised below; the fix
+# is the same shape — start each run from a known throttle state, in this test
+# database only. Nothing in the product clears these.
+node -e "
+  const { q } = require('./server/db');
+  const locks = q.val('SELECT COUNT(*) c FROM throttle_locks');
+  q.run('DELETE FROM throttle_locks'); q.run('DELETE FROM throttle_hits');
+  if (locks) console.log('   cleared ' + locks + ' carried-over sign-in lockout(s)');
+" 2>/dev/null || true
 # Both the suite and the screenshot step register accounts from 127.0.0.1, so
 # production's 5-per-hour ceiling would have a later step blocked by an earlier
 # one — red because of ordering, not because of a real fault. Same for the

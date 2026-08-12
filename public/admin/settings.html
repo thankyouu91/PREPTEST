@@ -161,7 +161,133 @@
           '</li>').join('') + '</ul>' +
         '<p class="help mt-4">Adding administrators comes with the detailed permissions work.</p>' +
       '</div>' +
+      /* Two-factor. Rendered as its own card rather than folded into the password
+         form: they are different decisions, and putting a switch that can lock you
+         out next to a field you edit casually is asking for an accident. */
+      '<div class="lg:col-span-12 card p-6 sm:p-7 grid gap-5" id="tf-card">' +
+        '<div class="flex items-start gap-4 flex-wrap">' +
+          '<div class="min-w-0 flex-1">' +
+            '<h2 class="text-lg font-extrabold tracking-tight">Two-factor sign-in</h2>' +
+            '<p class="help mt-1">A code from an authenticator app, on top of your password. ' +
+              'The admin area holds every account, test and activation code.</p>' +
+          '</div>' +
+          '<span class="badge badge-muted shrink-0" id="tf-state">Checking…</span>' +
+        '</div>' +
+        '<div id="tf-body" class="grid gap-5"></div>' +
+      '</div>' +
     '</div>';
+
+  /* ---- Two-factor: the same two-step flow scripts/accounts.js runs ---- */
+  const tfBody = AD.qs('#tf-body'), tfState = AD.qs('#tf-state');
+  let pendingSecret = '';
+
+  const tfError = msg => {
+    const box = AD.qs('#tf-err');
+    if (!box) return;
+    AD.qs('#tf-err-text').textContent = msg;
+    box.classList.add('show');
+  };
+
+  async function tfRender() {
+    const s = await AD.get('/admin/totp');
+    tfState.textContent = s.enabled ? 'On' : 'Off';
+    tfState.className = 'badge shrink-0 ' + (s.enabled ? 'badge-ok' : 'badge-muted');
+
+    if (s.enabled) {
+      tfBody.innerHTML =
+        '<p class="text-[14px]">On since <b>' + AD.esc((s.enabledAt || '').slice(0, 10)) + '</b>. ' +
+          '<b>' + s.recoveryLeft + '</b> recovery code' + (s.recoveryLeft === 1 ? '' : 's') + ' left.</p>' +
+        (s.recoveryLeft <= 2
+          ? '<div class="banner banner-warn show"><span>Few recovery codes left. Turn two-factor off and on again to get a fresh set.</span></div>'
+          : '') +
+        '<div class="banner banner-error" id="tf-err"><span id="tf-err-text"></span></div>' +
+        '<div class="grid sm:grid-cols-[1fr_auto] gap-3 items-end max-w-xl">' +
+          '<div><label class="label" for="tf-pw">Your password, to turn it off</label>' +
+            '<input class="input" id="tf-pw" type="password" autocomplete="current-password"></div>' +
+          '<button type="button" class="btn btn-ghost btn-md" id="tf-off">Turn off</button>' +
+        '</div>' +
+        '<p class="help">Lost the phone and the recovery codes? ' +
+          '<code>node scripts/accounts.js totp-disable</code> on the server is the way back in.</p>';
+      AD.qs('#tf-off').addEventListener('click', async () => {
+        AD.qs('#tf-err').classList.remove('show');
+        try {
+          await AD.post('/admin/totp/disable', { password: AD.qs('#tf-pw').value });
+          await tfRender();
+        } catch (e) { tfError(e.message); }
+      });
+      return;
+    }
+
+    tfBody.innerHTML =
+      '<div class="banner banner-error" id="tf-err"><span id="tf-err-text"></span></div>' +
+      '<button type="button" class="btn btn-primary btn-md justify-self-start" id="tf-start">Set up two-factor</button>';
+    AD.qs('#tf-start').addEventListener('click', async () => {
+      AD.qs('#tf-err').classList.remove('show');
+      try {
+        const r = await AD.post('/admin/totp/start');
+        pendingSecret = r.secret;
+        tfStep2(r);
+      } catch (e) { tfError(e.message); }
+    });
+  }
+
+  /* Step two shows the secret and asks for a code from it. Nothing is switched on
+     until that code checks out — the point of the two steps is that an
+     authenticator which never received the secret cannot pass this. */
+  function tfStep2(r) {
+    tfBody.innerHTML =
+      '<ol class="grid gap-2 text-[14px] list-decimal ms-5">' +
+        '<li>Add this to your authenticator app.</li>' +
+        '<li>Type the six digits it shows.</li>' +
+      '</ol>' +
+      '<div><span class="label">Secret</span>' +
+        '<code class="block card p-3 text-[15px] tracking-[0.2em] break-all select-all" id="tf-secret">' +
+          AD.esc(r.secret.replace(/(.{4})/g, '$1 ').trim()) + '</code>' +
+        '<p class="help">Type it in by hand — the app will ask for a name too, use ' +
+          '<b>VPET Prep</b>. There is no QR code yet.</p></div>' +
+      '<div class="banner banner-error" id="tf-err"><span id="tf-err-text"></span></div>' +
+      '<div class="grid sm:grid-cols-[1fr_auto_auto] gap-3 items-end max-w-xl">' +
+        '<div><label class="label" for="tf-code">Code from the app</label>' +
+          '<input class="input tracking-[0.3em] text-center" id="tf-code" inputmode="numeric" ' +
+            'maxlength="6" placeholder="000000" autocomplete="one-time-code"></div>' +
+        '<button type="button" class="btn btn-primary btn-md" id="tf-confirm">Turn on</button>' +
+        '<button type="button" class="btn btn-ghost btn-md" id="tf-cancel">Cancel</button>' +
+      '</div>' +
+      '<p class="help">Nothing is switched on until that code checks out.</p>';
+
+    AD.qs('#tf-cancel').addEventListener('click', () => { pendingSecret = ''; tfRender(); });
+    AD.qs('#tf-confirm').addEventListener('click', async () => {
+      AD.qs('#tf-err').classList.remove('show');
+      try {
+        const done = await AD.post('/admin/totp/enable',
+          { secret: pendingSecret, code: AD.qs('#tf-code').value });
+        pendingSecret = '';
+        tfRecovery(done.recoveryCodes);
+      } catch (e) { tfError(e.message); }
+    });
+  }
+
+  /* The codes are shown exactly here and never again: only their hashes are kept,
+     so no later request can reproduce them. The screen says so plainly rather
+     than letting somebody assume they can come back for them. */
+  function tfRecovery(codes) {
+    tfState.textContent = 'On';
+    tfState.className = 'badge badge-ok shrink-0';
+    tfBody.innerHTML =
+      '<div class="banner banner-success show"><span>Two-factor is on.</span></div>' +
+      '<div><span class="label">Recovery codes — write these down now</span>' +
+        '<ul class="card p-4 grid sm:grid-cols-2 gap-x-8 gap-y-1 mt-1 font-mono text-[14px] select-all">' +
+          codes.map(c => '<li>' + AD.esc(c) + '</li>').join('') + '</ul>' +
+        '<p class="help">Shown once. Only their hashes are stored, so nothing and nobody can print ' +
+          'them again. Each works once, in place of a code from the app.</p></div>' +
+      '<button type="button" class="btn btn-ghost btn-md justify-self-start" id="tf-done">I have written them down</button>';
+    AD.qs('#tf-done').addEventListener('click', tfRender);
+  }
+
+  tfRender().catch(() => {
+    tfState.textContent = 'Unavailable';
+    tfBody.innerHTML = '<p class="help">Could not read the two-factor state.</p>';
+  });
 
   AD.qs('#pw-form').addEventListener('submit', async ev => {
     ev.preventDefault();
