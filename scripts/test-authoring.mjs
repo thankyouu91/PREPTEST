@@ -493,6 +493,57 @@ if (cookie && csrf) {
   ok(laPart.status === 400, 'Part không có rubric bị từ chối');
 }
 
+/* ================= 5a. Đường dựng audio Kokoro ================= */
+
+console.log('\n\x1b[1m== Đường dựng audio Kokoro ==\x1b[0m');
+
+{
+  const fs2 = require('node:fs');
+
+  /* Kokoro không hiểu SSML — đưa thẻ break vào là nó ĐỌC TO cái thẻ. Nên bộ
+     dựng phải gửi `segments` chứ tuyệt đối không gửi `parsed.text`. Đây là thứ
+     nếu hỏng thì mỗi câu nghe trong kho có một giọng đọc "break time one point
+     zero s" ở giữa, và không có kiểm thử nào khác bắt được. */
+  /* Bỏ chú thích trước khi soi: phần đầu file GIẢI THÍCH cái bẫy này bằng
+     đúng chữ `parsed.text`, và một phép kiểm bắt nhầm lời giải thích của
+     chính nó là phép kiểm sẽ bị ai đó tắt đi. */
+  const raw = fs2.readFileSync('scripts/dung-audio-kokoro.mjs', 'utf8');
+  const src = raw.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+  ok(/segments/.test(src), 'Bộ dựng gửi segments sang Python');
+  ok(!/parsed\.text/.test(src), 'Bộ dựng KHÔNG gửi parsed.text (chứa thẻ break)');
+  ok(/segments: p?\w*\.?segments|segments\b/.test(src), 'Payload gửi đi mang trường segments');
+
+  const py = fs2.readFileSync('tools/kokoro/render.py', 'utf8');
+  ok(/np\.zeros/.test(py), 'Python tự chèn im lặng cho mỗi khoảng nghỉ');
+  ok(/seg\["kind"\] == "pause"/.test(py), 'Python phân biệt đoạn nói và đoạn nghỉ');
+  ok(/np\.clip/.test(py), 'Có kẹp biên độ trước khi chuyển int16 — tránh tiếng tách');
+
+  /* Trạng thái sau khi dựng phải là ready, không phải approved: người vẫn phải
+     nghe. Nếu chỗ này thành approved thì cổng phát hành mất tác dụng và một
+     giọng đọc sai tên riêng đi thẳng ra phòng thi. */
+  ok(/audio_status='ready'/.test(src), 'Dựng xong để trạng thái ready');
+  ok(!/audio_status='approved'/.test(src), 'Bộ dựng không tự duyệt audio');
+
+  /* Băm phải gồm cả giọng và tốc độ: đổi giọng mà băm không đổi thì lần dựng
+     sau bỏ qua và câu giữ nguyên giọng cũ. */
+  ok(/voice, speed/.test(src) && /kokoro-v1\.0/.test(src),
+    'Băm nội dung gồm cả giọng, tốc độ và phiên bản model');
+}
+
+{
+  /* Đường dựng đọc segments từ chính parseScript, nên hai thứ phải khớp hình
+     dạng. Nếu parseScript đổi tên trường thì bộ dựng hỏng lặng lẽ. */
+  const p2 = parseScript('One. _ Two.');
+  ok(p2.segments.every(s2 => s2.kind === 'speech' || s2.kind === 'pause'),
+    'Mọi segment chỉ có hai loại: speech hoặc pause');
+  ok(p2.segments.filter(s2 => s2.kind === 'pause').every(s2 => Number.isFinite(s2.ms)),
+    'Mọi đoạn nghỉ mang số mili-giây dùng được');
+  ok(p2.segments.filter(s2 => s2.kind === 'speech').every(s2 => typeof s2.text === 'string'),
+    'Mọi đoạn nói mang chuỗi chữ');
+  ok(p2.segments[0].kind === 'pause' && p2.segments[0].leadIn === true,
+    'Đoạn đầu tiên luôn là khoảng lặng dẫn vào');
+}
+
 /* ================= 5b. Hướng dẫn chấm cho AI ================= */
 
 console.log('\n\x1b[1m== Hướng dẫn chấm cho AI ==\x1b[0m');
