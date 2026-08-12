@@ -538,9 +538,41 @@ Casting rules for an exam:
 POST https://api.elevenlabs.io/v1/text-to-speech/{voice_id}?output_format=mp3_44100_128
   xi-api-key: <ELEVENLABS_API_KEY>
   { "text", "model_id", "voice_settings": { stability, similarity_boost, style,
-    use_speaker_boost }, "seed", "previous_text", "next_text" }
+    use_speaker_boost, speed }, "seed", "previous_text", "next_text" }
   → the response body is MP3 bytes
 ```
+
+**Delivery pacing** (owner, 2026-08-12), all three implemented in
+`server/script-markup.js` and `server/providers/elevenlabs.js`:
+
+| Setting | Value | Where |
+|---|---|---|
+| Silence before the first word | 1.0 s | `DEFAULTS.leadIn`, emitted as a leading `<break>` |
+| Pause after `,` `;` `:` `"` | 0.3 s | `DEFAULTS.short` |
+| Pause after `.` `!` `?` | 0.8 s | `DEFAULTS.long` |
+| Speaking rate | 1.2x | `voice_settings.speed` |
+
+**The requested rate was 1.25x and the API will not take it.** ElevenLabs
+accepts `speed` between 0.7 and 1.2 and rejects anything outside that range, so
+`clampSpeed()` brings any value inside it rather than letting one number fail a
+whole render. The shortfall is about four per cent — one word in a twenty-five
+word sentence. Closing it would mean re-timing the MP3 after the fact, which
+needs a resampling dependency and costs audio quality on a file candidates are
+marked against.
+
+**Why the pauses went up when the speed did.** A `<break>` asks for a fixed
+number of seconds and gets them regardless of the voice's rate — silence does
+not compress. So at 1.2x the words on either side of a pause are shorter while
+the pause is not, and the old 250/600 ms gaps read as hesitation rather than as
+punctuation. Raising them to 300/800 ms restores the ratio. This also means the
+duration estimate has to divide **only** the speech by the speed and leave the
+pause total alone, which is what `parseScript()` does.
+
+**The lead-in belongs in the file, not the player.** A delay added at playback
+would not survive the MP3 being downloaded, cached, or played by anything other
+than our own page — and the reason for it is a scoring one: in part E the whole
+item is a single dictated sentence, so a candidate whose attention arrives late
+has lost the item and must spend a replay, which is a counted resource.
 
 Use `fetch` directly, exactly as the Supabase driver already does — **no SDK**.
 The project has precisely one dependency (`express`) and should keep it that way.

@@ -4,9 +4,13 @@
  * An author writes an exam script the way they would write anything else, and
  * three characters control the pacing:
  *
- *     ,  ;  :  "     short pause   (default 250 ms)
- *     .  !  ?        long pause    (default 600 ms)
+ *     ,  ;  :  "     short pause   (default 300 ms)
+ *     .  !  ?        long pause    (default 800 ms)
  *     _              segment gap   (default 1500 ms, 1-2 s as specified)
+ *
+ * Every script also opens with one second of silence before the first word,
+ * and is rendered at 1.2x. Both are owner decisions from 2026-08-12 and both
+ * are explained at DEFAULTS below.
  *
  * The punctuation stays in the text. Removing it would strip the model of the
  * prosody cues it reads best, so the marks are kept AND an explicit break is
@@ -40,8 +44,29 @@
 /* Defaults in milliseconds. Overridable per call so a dictation part can run
    slower than a conversation without a second copy of this file. */
 const DEFAULTS = {
-  short: 250,
-  long: 600,
+  /* One second of silence before the first word (owner, 2026-08-12).
+     ---------------------------------------------------------------------
+     This is not padding. A candidate hits play and their attention arrives a
+     beat later; without a lead-in the first two or three words land while
+     they are still settling, and in part E — where the whole item is one
+     dictated sentence — those words are the item. Everyone who missed them
+     spends a replay, which is a scored resource.
+
+     It lives here rather than in the player because the silence has to be
+     inside the MP3: a delay added at playback would not survive the file
+     being downloaded, cached, or played by anything but our own page. */
+  leadIn: 1000,
+
+  /* Raised from 250/600 (owner, 2026-08-12): the pause after a comma and a
+     full stop has to be clearly audible. Two reasons it matters more here
+     than in ordinary narration — the voice now runs at 1.2x, so the words
+     around a pause are shorter and a brief silence reads as a stumble
+     rather than a boundary; and in a listening exam the pause is what tells
+     a candidate a clause has ended, which is information they are being
+     tested on. Silence does not stretch with the speed setting, so keeping
+     the rhythm meant lengthening it by hand. */
+  short: 300,
+  long: 800,
   segment: 1500,
   /* ElevenLabs rejects breaks longer than 3 s, and stacking many long ones
      makes some models drift. Cap here rather than discovering it in a 502. */
@@ -49,7 +74,14 @@ const DEFAULTS = {
   /* Above this many breaks the model starts to wander. Past the limit we keep
      the punctuation and drop the explicit tags — the audio is still correct,
      just paced by the model instead of by us. */
-  maxBreaks: 60
+  maxBreaks: 60,
+
+  /* Delivery speed the audio will be rendered at, used only to keep the
+     duration estimate honest — the request itself carries it in voice_settings
+     (server/providers/elevenlabs.js). At 1.2x a passage is a sixth shorter,
+     and an author fitting part G into a six-minute section needs the estimate
+     to know that. Kept in step with the provider's DEFAULT_SPEED. */
+  speed: 1.2
 };
 
 /* Speaking rate used for duration estimates: 140 words per minute at roughly
@@ -153,6 +185,20 @@ function parseScript(raw, opts) {
     return ms;
   };
 
+  /* The lead-in, emitted before anything is read. Counted as a break like any
+     other so the estimate, the billed-character figure and the segment list
+     shown in the preview all include it — an author looking at "18 seconds"
+     should be looking at the length of the file they will actually get.
+
+     Skipped for an empty script: a break tag alone is a billable request that
+     returns one second of silence. */
+  if (cfg.leadIn > 0 && src.trim()) {
+    const ms = Math.min(cfg.leadIn, cfg.maxBreakMs);
+    segments.push({ kind: 'pause', ms, leadIn: true });
+    breaks++;
+    out += breakTag(ms) + ' ';
+  }
+
   for (let i = 0; i < src.length; i++) {
     const ch = src[i];
 
@@ -205,7 +251,11 @@ function parseScript(raw, opts) {
   const providerText = capped ? plainText : text;
 
   const pauseMs = segments.reduce((n, s) => n + (s.kind === 'pause' ? s.ms : 0), 0);
-  const speechMs = Math.round((plainText.length / CHARS_PER_SECOND) * 1000);
+  /* Speech scales with the speed setting; silence does not. A break tag asks
+     for a fixed number of seconds and gets them whatever the voice is doing,
+     so the two are estimated separately and only the words are divided. */
+  const speed = cfg.speed > 0 ? cfg.speed : 1;
+  const speechMs = Math.round((plainText.length / CHARS_PER_SECOND / speed) * 1000);
 
   return {
     text: providerText,

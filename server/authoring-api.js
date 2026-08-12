@@ -195,7 +195,10 @@ router.post('/admin/script/preview', (req, res) => {
   if (!raw) return bad(res, 'The script is empty.');
 
   const turns = markup.splitTurns(raw);
-  const parsed = markup.parseScript(raw);
+  /* Preview at the speed it will actually render at, so the duration shown is
+     the duration of the file the author is about to pay for. */
+  const speed = eleven.clampSpeed(req.body && req.body.speed);
+  const parsed = markup.parseScript(raw, { speed });
 
   res.json({
     text: parsed.text,
@@ -203,7 +206,9 @@ router.post('/admin/script/preview', (req, res) => {
     segments: parsed.segments,
     stats: parsed.stats,
     turns: turns.map(t => ({ speaker: t.speaker, chars: t.script.length })),
-    defaults: markup.DEFAULTS
+    defaults: markup.DEFAULTS,
+    speed,
+    speedRange: { min: eleven.SPEED_MIN, max: eleven.SPEED_MAX }
   });
 });
 
@@ -248,6 +253,10 @@ router.post('/admin/questions/:id/tts', async (req, res) => {
 
   const parsed = markup.parseScript(script);
   const settings = (req.body && typeof req.body.settings === 'object') ? req.body.settings : {};
+  /* Pinned into the settings before hashing, so an item rendered at 1.0 and
+     one rendered at 1.2 are different renders rather than a cache hit on a
+     file that no longer matches what the item claims. */
+  settings.speed = eleven.clampSpeed(settings.speed);
   const seed = Number.isInteger(req.body && req.body.seed) ? req.body.seed : null;
   const modelId = eleven.DEFAULT_MODEL;
   const hash = renderHash(parsed.text, voiceId, modelId, settings, seed);

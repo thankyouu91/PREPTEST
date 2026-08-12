@@ -26,12 +26,29 @@ const { parseScript, splitTurns } = require('../server/script-markup.js');
 
 console.log('\n\x1b[1m== Ký hiệu ngắt nghỉ trong kịch bản ==\x1b[0m');
 
+/* Mọi kịch bản mở đầu bằng 1 giây im lặng (chủ dự án, 2026-08-12), nên số
+   chỗ ngắt dưới đây đều đã cộng thêm một. `noLead` dùng cho những phép kiểm
+   chỉ quan tâm tới dấu câu. */
+const noLead = (t, o) => parseScript(t, Object.assign({ leadIn: 0 }, o || {}));
+
 {
   const r = parseScript('Hello, how are you?');
+  ok(r.text.startsWith('<break time="1.0s" />'), 'Kịch bản mở đầu bằng 1 giây im lặng');
+  ok(r.segments[0].leadIn === true, 'Khoảng lặng mở đầu được đánh dấu riêng trong segments');
   ok(/<break time="0\.3s" \/>/.test(r.text), 'Dấu phẩy sinh ngắt ngắn 0,3 giây');
-  ok(/<break time="0\.6s" \/>/.test(r.text), 'Dấu chấm hỏi sinh ngắt dài 0,6 giây');
+  ok(/<break time="0\.8s" \/>/.test(r.text), 'Dấu chấm hỏi sinh ngắt dài 0,8 giây');
   ok(r.plain === 'Hello, how are you?', 'Bản chữ sạch giữ nguyên dấu câu, không có thẻ');
-  ok(r.stats.breaks === 2, 'Đếm đúng 2 chỗ ngắt');
+  ok(r.stats.breaks === 3, 'Đếm đúng 3 chỗ ngắt (1 mở đầu + 2 dấu câu)');
+
+  /* Thời lượng ước tính phải cộng cả giây mở đầu — tác giả nhìn "18 giây"
+     là đang nhìn độ dài tệp họ sẽ thật sự nhận được. */
+  ok(r.stats.estimatedMs - noLead('Hello, how are you?').stats.estimatedMs === 1000,
+    'Ước tính thời lượng có cộng giây mở đầu');
+
+  /* Kịch bản rỗng không được sinh request: một thẻ ngắt đứng một mình vẫn bị
+     tính tiền và trả về đúng một giây im lặng. */
+  ok(parseScript('   ').stats.breaks === 0, 'Kịch bản rỗng không sinh khoảng lặng mở đầu');
+  ok(parseScript('   ').stats.billedChars === 0, 'Kịch bản rỗng không tốn ký tự nào');
 }
 
 {
@@ -41,11 +58,11 @@ console.log('\n\x1b[1m== Ký hiệu ngắt nghỉ trong kịch bản ==\x1b[0m')
   ok(r.plain === 'First sentence. Second sentence.', 'Hai câu vẫn cách nhau đúng một dấu cách');
   /* Dấu chấm đứng ngay trước "_" không được sinh thêm một ngắt nhỏ rồi mới tới
      khoảng cách lớn — khoảng lớn thắng. */
-  ok(r.stats.breaks === 2, 'Chấm rồi gạch dưới chỉ tính một khoảng nghỉ, không cộng dồn');
+  ok(r.stats.breaks === 3, 'Chấm rồi gạch dưới chỉ tính một khoảng nghỉ, không cộng dồn');
 }
 
 {
-  const r = parseScript('a __ b');
+  const r = noLead('a __ b');
   ok(r.stats.breaks === 1, 'Chuỗi nhiều gạch dưới vẫn chỉ là một khoảng nghỉ');
 }
 
@@ -62,20 +79,20 @@ console.log('\n\x1b[1m== Ký hiệu ngắt nghỉ trong kịch bản ==\x1b[0m')
 
 {
   /* Ba cái bẫy của dấu chấm: số thập phân, viết tắt, và chữ cái đầu tên. */
-  const dec = parseScript('It costs 3.5 dollars');
+  const dec = noLead('It costs 3.5 dollars');
   ok(dec.stats.breaks === 0, 'Số thập phân 3.5 không bị cắt làm hai câu');
 
-  const abbr = parseScript('Mr. Nguyen arrived');
+  const abbr = noLead('Mr. Nguyen arrived');
   ok(abbr.stats.breaks === 0, 'Viết tắt "Mr." không sinh ngắt dài');
 
-  const initial = parseScript('J. K. Rowling wrote it');
+  const initial = noLead('J. K. Rowling wrote it');
   ok(initial.stats.breaks === 0, 'Chữ cái đầu tên không sinh ngắt dài');
 }
 
 {
   /* Dấu nháy đơn nằm trong từ rút gọn — nếu coi nó là ký hiệu ngắt thì mọi
      "don't" trong ngân hàng đề đều vỡ làm đôi. */
-  const r = parseScript("I don't think it's ready");
+  const r = noLead("I don't think it's ready");
   ok(r.stats.breaks === 0, 'Nháy đơn trong từ rút gọn không sinh ngắt nào');
   ok(r.plain === "I don't think it's ready", 'Từ rút gọn giữ nguyên');
 }
@@ -109,6 +126,34 @@ console.log('\n\x1b[1m== Ký hiệu ngắt nghỉ trong kịch bản ==\x1b[0m')
 
   const one = splitTurns('Just one voice.');
   ok(one.length === 1 && one[0].speaker === null, 'Kịch bản không có nhãn trả về một lượt không tên');
+}
+
+{
+  /* Tốc độ đọc (chủ dự án: "nhanh tầm 1.25"). ElevenLabs chỉ nhận 0,7–1,2 và
+     từ chối ngoài dải đó, nên 1.25 bị kẹp xuống 1.2 — chặn ở đây thì render
+     vẫn chạy, không chặn thì cả lần dựng hỏng vì một con số. */
+  const eleven = require('../server/providers/elevenlabs.js');
+  ok(eleven.DEFAULT_SPEED === 1.2, 'Tốc độ mặc định là 1,2 — nhanh nhất API cho phép');
+  ok(eleven.clampSpeed(1.25) === 1.2, '1.25 bị kẹp xuống 1.2 thay vì làm hỏng lần dựng');
+  ok(eleven.clampSpeed(3) === 1.2, 'Tốc độ quá cao bị kẹp về trần');
+  ok(eleven.clampSpeed(0.1) === 0.7, 'Tốc độ quá thấp bị kẹp về sàn');
+  ok(eleven.clampSpeed(undefined) === 1.2, 'Không truyền gì thì dùng mặc định');
+  ok(eleven.clampSpeed('nhanh') === 1.2, 'Giá trị không phải số thì dùng mặc định');
+  ok(eleven.clampSpeed(1.0) === 1.0, 'Tốc độ hợp lệ được giữ nguyên');
+
+  /* Lời nói co lại theo tốc độ, khoảng lặng thì không: thẻ break xin bao nhiêu
+     giây thì được bấy nhiêu, bất kể giọng đang đọc nhanh hay chậm. */
+  const t = 'The library will be closed on Monday, and will reopen on Tuesday.';
+  const cham = parseScript(t, { speed: 1.0 });
+  const nhanh = parseScript(t, { speed: 1.2 });
+  ok(nhanh.stats.estimatedMs < cham.stats.estimatedMs, 'Đọc nhanh hơn thì ước tính ngắn hơn');
+  ok(nhanh.stats.billedChars === cham.stats.billedChars, 'Đổi tốc độ không đổi số ký tự bị tính tiền');
+
+  const pauseMs = cham.segments.filter(x => x.kind === 'pause').reduce((n, x) => n + x.ms, 0);
+  const speechCham = cham.stats.estimatedMs - pauseMs;
+  const speechNhanh = nhanh.stats.estimatedMs - pauseMs;
+  ok(Math.abs(speechCham / speechNhanh - 1.2) < 0.02,
+    'Chỉ phần lời nói bị chia cho tốc độ, khoảng lặng giữ nguyên');
 }
 
 /* ================= 2. Khoá API: mã hoá, che, thứ tự ưu tiên ================= */
@@ -186,7 +231,13 @@ if (cookie && csrf) {
     });
     const b = await r.json();
     ok(r.status === 200, 'POST /admin/script/preview trả 200');
-    ok(b.stats && b.stats.breaks === 3, 'Xem trước đếm đúng số khoảng nghỉ');
+    /* 1 mở đầu + phẩy + chấm + gạch dưới. Dấu chấm đứng ngay trước "_" gộp
+       vào khoảng lớn, nên là 4 chứ không phải 5. */
+    ok(b.stats && b.stats.breaks === 4, 'Xem trước đếm đúng số khoảng nghỉ',
+      b.stats && String(b.stats.breaks));
+    ok(b.speed === 1.2, 'Xem trước dùng đúng tốc độ sẽ dựng thật');
+    ok(b.speedRange && b.speedRange.max === 1.2, 'Xem trước nói rõ trần tốc độ của nhà cung cấp');
+    ok(b.defaults && b.defaults.leadIn === 1000, 'Xem trước trả về cả khoảng lặng mở đầu');
     ok(Array.isArray(b.segments) && b.segments.some(s => s.kind === 'pause'), 'Trả về từng đoạn để dựng giao diện');
   }
 

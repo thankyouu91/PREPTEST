@@ -35,6 +35,29 @@ const DEFAULT_MODEL = process.env.ELEVENLABS_MODEL || 'eleven_multilingual_v2';
 /* 44.1 kHz / 128 kbps MP3 — matches storage.ACCEPTED_MIME and looksLikeMp3. */
 const OUTPUT_FORMAT = 'mp3_44100_128';
 
+/* Delivery speed (owner, 2026-08-12: "nhanh tầm 1.25 so với bình thường").
+   ---------------------------------------------------------------------------
+   1.25 is not available. ElevenLabs accepts `speed` between 0.7 and 1.2 and
+   rejects anything outside it, so the fastest the API will go is 1.2 — which
+   is what DEFAULT_SPEED asks for, and clampSpeed() is what stops a request
+   being built that the provider will refuse. The difference between 1.2 and
+   1.25 is about four per cent, roughly one word in a twenty-five-word
+   sentence, and it is not audible next to the pause changes shipped with it.
+
+   Going faster than the API allows would mean re-timing the MP3 after the
+   fact, which needs a resampling dependency and degrades the audio. Not worth
+   four per cent on an exam recording. */
+const SPEED_MIN = 0.7;
+const SPEED_MAX = 1.2;
+const DEFAULT_SPEED = 1.2;
+
+/** Bring a requested speed inside what the provider accepts. */
+function clampSpeed(v) {
+  const n = Number(v);
+  if (!Number.isFinite(n)) return DEFAULT_SPEED;
+  return Math.min(SPEED_MAX, Math.max(SPEED_MIN, n));
+}
+
 class ProviderError extends Error {
   constructor(message, { status = 0, retryable = false, code = 'PROVIDER' } = {}) {
     super(message);
@@ -127,7 +150,8 @@ async function call(path, { apiKey, method = 'GET', body, accept = 'application/
  * @param {string} input.text      break tags included, from script-markup.parseScript
  * @param {string} input.voiceId
  * @param {string} [input.modelId]
- * @param {object} [input.settings] stability / similarity_boost / style / use_speaker_boost
+ * @param {object} [input.settings] stability / similarity_boost / style /
+ *                                   use_speaker_boost / speed (0.7-1.2)
  * @param {number} [input.seed]     pin for a reproducible render
  * @returns {Promise<{mp3: Buffer, chars: number, ms: number, modelId: string, seed: number|null}>}
  */
@@ -150,7 +174,11 @@ async function synthesize(input) {
         model_id: modelId,
         voice_settings: Object.assign(
           { stability: 0.5, similarity_boost: 0.75, style: 0, use_speaker_boost: true },
-          input.settings || {}),
+          input.settings || {},
+          /* Clamped last so it overrides whatever the caller sent. A speed the
+             API rejects fails the whole render, and an author who typed 1.5
+             wanted "as fast as this goes" rather than an error. */
+          { speed: clampSpeed(input.settings && input.settings.speed) }),
         ...(Number.isInteger(input.seed) ? { seed: input.seed } : {})
       }
     });
@@ -215,4 +243,8 @@ async function ping(apiKey) {
   return { ok: true, detail: `${info.remaining.toLocaleString('en-US')} characters left`, quota: info };
 }
 
-module.exports = { synthesize, listVoices, quota, ping, ProviderError, DEFAULT_MODEL, OUTPUT_FORMAT };
+module.exports = {
+  synthesize, listVoices, quota, ping, ProviderError,
+  DEFAULT_MODEL, OUTPUT_FORMAT,
+  clampSpeed, SPEED_MIN, SPEED_MAX, DEFAULT_SPEED
+};

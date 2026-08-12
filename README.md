@@ -264,9 +264,23 @@ Thu tay từng câu không nhân lên được khi ngân hàng lên vài nghìn 
 
 | Ký hiệu | Ngắt | Mặc định |
 |---|---|---|
-| `,` `;` `:` `"` | ngắn | 0,25 giây |
-| `.` `!` `?` | dài, cuối câu | 0,6 giây |
+| *(mở đầu mỗi kịch bản)* | im lặng dẫn vào | **1 giây** |
+| `,` `;` `:` `"` | ngắn | **0,3 giây** |
+| `.` `!` `?` | dài, cuối câu | **0,8 giây** |
 | `_` | cách một đoạn | 1,5 giây (`_2s` hoặc `_800ms` nếu cần chính xác) |
+
+**Một giây im lặng mở đầu** đứng trước từ đầu tiên của mọi kịch bản. Không phải
+để đệm: thí sinh bấm phát rồi sự chú ý mới tới sau một nhịp, và ở part E — cả
+câu hỏi là một câu đọc chính tả — mấy từ đầu *chính là* đề bài. Ai lỡ mất phải
+tiêu một lượt nghe lại, mà lượt nghe lại là tài nguyên có tính điểm. Khoảng lặng
+nằm **trong tệp MP3** chứ không nằm ở trình phát, vì độ trễ thêm lúc phát sẽ
+không đi theo tệp khi nó được tải về hay phát bằng thứ khác.
+
+**Tốc độ đọc 1,2×.** Chủ dự án yêu cầu ~1,25× nhưng ElevenLabs chỉ nhận
+`speed` trong khoảng 0,7–1,2 và từ chối ngoài dải đó, nên nền tảng kẹp xuống
+1,2 — chênh 4%, khoảng một từ trong câu hai mươi lăm từ. Đây cũng là lý do
+khoảng nghỉ ở `,` và `.` được nâng lên: khoảng lặng **không** co theo tốc độ,
+nên muốn giữ nhịp thì phải kéo dài bằng tay.
 
 Dấu câu **được giữ nguyên** trong lời đọc — bỏ đi là lấy mất tín hiệu ngữ điệu
 mà model đọc tốt nhất. Nền tảng giữ dấu **và** chèn thêm một khoảng nghỉ cố
