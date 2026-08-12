@@ -20,10 +20,13 @@
  *       Put the demo student's password back to the value the README states.
  *
  *   node scripts/accounts.js unlock
- *       Clear the locked flag on every student account.
+ *       Clear both kinds of lock: accounts an administrator disabled, and the
+ *       15-minute lockouts from too many wrong passwords.
  *
- * Note: the brute-force lockout (5 failures, 15 minutes) lives in process memory,
- * so stopping and restarting the server clears it.
+ * Note: the brute-force lockout (5 failures, 15 minutes) lives in the DATABASE,
+ * so restarting the server no longer clears it — this command is the way out.
+ * It used to be held in process memory, which made "restart the server" the
+ * documented fix and, incidentally, the fix for whoever was guessing too.
  */
 'use strict';
 
@@ -123,12 +126,23 @@ function resetStudent() {
   console.log('  Password : ' + DEMO_STUDENT_PASSWORD);
 }
 
+/* Two different things called "locked", and both have to go, or somebody clears
+   one and is still shut out by the other.
+
+   `users.status = 'locked'` is an administrator disabling an account.
+   `throttle_locks` is the 15-minute wall after five wrong passwords.
+
+   The second used to live in process memory, so the answer to being locked out
+   was "restart the server" — which was also the answer for whoever was doing
+   the guessing. It is in the database now, which means it survives a restart,
+   which means this command is the way out rather than a footnote. */
 function unlockAll() {
-  const n = q.val("SELECT COUNT(*) c FROM users WHERE status='locked'");
+  const disabled = q.val("SELECT COUNT(*) c FROM users WHERE status='locked'");
   q.run("UPDATE users SET status='active' WHERE status='locked'");
-  console.log('Unlocked ' + n + ' student account(s).');
-  console.log('If sign-in is blocked after too many wrong attempts, just restart the server:');
-  console.log('that counter lives in process memory and is never written to the database.');
+  const throttled = A.clearAllLocks();
+  console.log('Unlocked ' + disabled + ' student account(s) that an administrator had disabled.');
+  console.log('Cleared ' + throttled + ' sign-in lockout(s) from too many wrong passwords.');
+  console.log('\nBoth survive a restart, so this command is the way out of either.');
 }
 
 const COMMANDS = {

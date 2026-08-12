@@ -82,7 +82,7 @@ Lệnh khác:
 | `node scripts/test-admin.mjs` | kiểm thử API quản trị: phiên, CSRF, phân quyền, CRUD, sinh đề, cấp code |
 | `node scripts/test-catalog.mjs` | kiểm thử trang học viên đọc `/api/catalog` + nhánh dự phòng khi API hỏng, và bảng giá ở trang giới thiệu đọc từ `plans.js` (đổi giá ở máy chủ thì trang phải đổi theo) |
 | `node scripts/test-user-api.mjs` | kiểm thử API tài khoản học viên: đăng ký, đăng nhập, xác thực email, đặt lại mật khẩu, CSRF, chống dò |
-| `node scripts/accounts.js list` | **Vào không được?** Liệt kê tài khoản quản trị và trạng thái học viên demo. Đặt lại bằng `reset-admin` / `reset-student`, mở khoá bằng `unlock`. Trên Windows nhấn đúp `cai-dat\accounts.bat` |
+| `node scripts/accounts.js list` | **Vào không được?** Liệt kê tài khoản quản trị và trạng thái học viên demo. Đặt lại bằng `reset-admin` / `reset-student`. `unlock` gỡ **cả hai** thứ tên "khoá": tài khoản bị quản trị vô hiệu hoá, và khoá 15 phút do sai mật khẩu 5 lần — khoá này nằm trong CSDL nên khởi động lại server không xoá nó. Trên Windows nhấn đúp `cai-dat\accounts.bat` |
 | `node scripts/test-accounts.js` | kiểm thử đường cứu hộ tài khoản (tự phục hồi tài khoản demo, đặt lại mật khẩu quản trị) |
 | `node scripts/test-mail.mjs` | kiểm thử thư đi: soạn thư (mã hoá tiêu đề, chống chèn header), toàn bộ hội thoại SMTP với một server giả chạy tại chỗ, và **token không lọt vào log** |
 | `node scripts/test-health.mjs` | kiểm thử vòng đời tiến trình (sập thì thoát khác 0, SIGTERM thì thoát êm bằng 0, có chặn thời gian) và endpoint `/healthz` |

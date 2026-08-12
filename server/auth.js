@@ -8,7 +8,9 @@
  * - CSRF: double-submit. The prep_csrf cookie (readable by JS) must match the
  *   X-CSRF-Token header on every state-changing request.
  * - Against password guessing: failures are counted per IP and per account, with a
- *   15-minute temporary lock.
+ *   15-minute temporary lock. Both the count and the lock live in the database,
+ *   not in process memory, so a restart does not clear them and a second instance
+ *   shares them.
  */
 'use strict';
 const crypto = require('crypto');
@@ -117,11 +119,17 @@ function currentAdmin(req) {
   return { id: row.id, username: row.username, name: row.name, role: row.role };
 }
 
-/** Sweep out expired sessions (called periodically) */
+/** Sweep out expired sessions and spent throttle rows (called periodically) */
 function purgeSessions() {
   q.run('DELETE FROM sessions WHERE expires_at <= ?', nowISO());
   q.run('DELETE FROM user_sessions WHERE expires_at <= ?', nowISO());
   q.run('DELETE FROM user_tokens WHERE expires_at <= ?', nowISO());
+  /* Throttle rows are the only table here that grows with ordinary traffic
+     rather than with people, so it is the one that needs sweeping rather than
+     merely tidying. The longest window any caller asks for is an hour, so two
+     hours is well clear of anything still being counted. */
+  q.run('DELETE FROM throttle_hits WHERE at <= ?', new Date(Date.now() - 2 * 3600e3).toISOString());
+  q.run('DELETE FROM throttle_locks WHERE locked_until IS NOT NULL AND locked_until <= ?', nowISO());
 }
 
 /* --------------------------- Student sessions ---------------------------
@@ -201,33 +209,58 @@ function requireUser(req, res, next) {
   next();
 }
 
-/* --------------------------- Against guessing --------------------------- */
-const attempts = new Map();          // key → { n, until }
+/* --------------------------- Against guessing ---------------------------
+   Both the lockout and the sliding window live in the database. They used to be
+   two Maps in this process's memory, which was wrong twice over: a restart wiped
+   every lockout — and a counter that forgets is a counter that helps whoever is
+   guessing — and across more than one instance the lockout silently became five
+   attempts PER INSTANCE.
+
+   Reading and writing on every failed sign-in and every write request is the
+   cost. It is a handful of indexed statements against a local database, which
+   is the same order of cost as the scrypt verification standing next to it. */
 const MAX_ATTEMPTS = 5;
 const LOCK_MS = 15 * 60e3;
 
 function throttleKey(req, username) {
   return (req.ip || '?') + '|' + String(username || '').toLowerCase();
 }
+
+/** Seconds still to wait, or 0 when not locked. Clears a lock that has run out. */
 function isLocked(key) {
-  const a = attempts.get(key);
-  if (!a) return 0;
-  if (a.until && a.until > Date.now()) return Math.ceil((a.until - Date.now()) / 1000);
-  if (a.until && a.until <= Date.now()) attempts.delete(key);
+  const row = q.get('SELECT locked_until FROM throttle_locks WHERE bucket=?', key);
+  if (!row || !row.locked_until) return 0;
+  const left = Date.parse(row.locked_until) - Date.now();
+  if (left > 0) return Math.ceil(left / 1000);
+  q.run('DELETE FROM throttle_locks WHERE bucket=?', key);
   return 0;
 }
+
 function noteFailure(key) {
-  const a = attempts.get(key) || { n: 0, until: 0 };
-  a.n++;
-  if (a.n >= MAX_ATTEMPTS) { a.until = Date.now() + LOCK_MS; a.n = 0; }
-  attempts.set(key, a);
+  /* One statement so two processes cannot both read 4 and both write 5. */
+  q.run(`INSERT INTO throttle_locks (bucket, fails) VALUES (?, 1)
+         ON CONFLICT(bucket) DO UPDATE SET fails = throttle_locks.fails + 1`, key);
+  const fails = q.val('SELECT fails FROM throttle_locks WHERE bucket=?', key);
+  if (fails >= MAX_ATTEMPTS) {
+    q.run('UPDATE throttle_locks SET fails=0, locked_until=? WHERE bucket=?',
+      new Date(Date.now() + LOCK_MS).toISOString(), key);
+  }
 }
-function clearFailures(key) { attempts.delete(key); }
+
+function clearFailures(key) { q.run('DELETE FROM throttle_locks WHERE bucket=?', key); }
+
+/** Every lockout, cleared. The escape hatch for an administrator locked out. */
+function clearAllLocks() {
+  const n = q.val('SELECT COUNT(*) c FROM throttle_locks');
+  q.run('DELETE FROM throttle_locks');
+  return n;
+}
 
 /* --------------------- Shared rate limiting ---------------------
-   A sliding-window counter in process memory: enough for a single process.
-   // TODO(scale): move to a shared store if this ever runs as several processes. */
-const buckets = new Map();           // key → { hits: [timestamp…] }
+   A sliding window over one row per hit. A counter column would be cheaper and
+   wrong: the window has to know WHEN each hit landed, and COUNT(*) over a time
+   range is race-free between processes in a way that read-modify-write on a
+   shared row is not. */
 
 /** Returns 0 while there is room, or the seconds to wait once the cap is hit. Spends one. */
 function rateLimit(key, max, windowMs) {
@@ -239,18 +272,18 @@ function rateLimit(key, max, windowMs) {
 /** Like rateLimit but spends NOTHING — for when only a successful action should count. */
 function rateLimitPeek(key, max, windowMs) {
   const now = Date.now();
-  const b = buckets.get(key) || { hits: [], windowMs };
-  b.windowMs = windowMs;
-  b.hits = b.hits.filter(t => now - t < windowMs);
-  buckets.set(key, b);
-  return b.hits.length >= max ? Math.ceil((windowMs - (now - b.hits[0])) / 1000) : 0;
+  const cutoff = new Date(now - windowMs).toISOString();
+  const hits = q.val('SELECT COUNT(*) c FROM throttle_hits WHERE bucket=? AND at > ?', key, cutoff);
+  if (hits < max) return 0;
+  const oldest = q.val('SELECT MIN(at) m FROM throttle_hits WHERE bucket=? AND at > ?', key, cutoff);
+  /* Never 0 while the cap is reached: the caller reads 0 as "go ahead", so a
+     window expiring within the current second must still answer "wait 1". */
+  return Math.max(1, Math.ceil((windowMs - (now - Date.parse(oldest))) / 1000));
 }
 
 /** Spend one allowance against a key. */
 function rateLimitNote(key) {
-  const b = buckets.get(key) || { hits: [] };
-  b.hits.push(Date.now());
-  buckets.set(key, b);
+  q.run('INSERT INTO throttle_hits (bucket, at) VALUES (?,?)', key, nowISO());
 }
 
 /* ------------------ Single-use tokens sent by email ------------------ */
@@ -387,7 +420,7 @@ module.exports = {
   createSession, destroySession, currentAdmin, purgeSessions,
   createUserSession, destroyUserSession, dropUserSessions, currentUser, requireUser,
   ensureCsrfCookie,
-  throttleKey, isLocked, noteFailure, clearFailures,
+  throttleKey, isLocked, noteFailure, clearFailures, clearAllLocks,
   rateLimit, rateLimitPeek, rateLimitNote,
   issueToken, consumeToken,
   requireAdmin, requireOwner, csrfGuard,

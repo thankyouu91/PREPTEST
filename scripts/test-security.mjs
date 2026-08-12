@@ -15,6 +15,7 @@
  *   Add an endpoint without a guard and it breaks here, not at the next sweep.
  */
 import { readFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -85,6 +86,7 @@ try {
   process.env.PREP_DB = join(tmp, 'probe.sqlite');
   const require_ = createRequire(import.meta.url);
   const security = require_('../server/security.js');
+  const DB_ = require_('../server/db.js');
 
   const fakeRes = () => {
     const r = { headers: {}, code: 0, body: null };
@@ -131,6 +133,71 @@ try {
   ok(last.code === 429, 'The ceiling answers 429', String(last.code));
   ok(Number(last.headers['retry-after']) > 0, 'With Retry-After in seconds',
     String(last.headers['retry-after']));
+
+  head('The throttle is shared, not per-process');
+
+  /* The lockout and the sliding window used to be two Maps in one process's
+     memory. A restart wiped every lockout — so the answer to being locked out
+     was "restart the server", which is also the answer for whoever is guessing —
+     and a second instance meant five attempts PER INSTANCE. Both now live in
+     the database. These checks are what stops either from creeping back. */
+  const A2 = require_('../server/auth.js');
+  const KEY = '198.51.100.44|probe-account';
+  A2.clearFailures(KEY);
+
+  for (let i = 0; i < 4; i++) A2.noteFailure(KEY);
+  ok(A2.isLocked(KEY) === 0, 'Four wrong passwords do not lock the account', String(A2.isLocked(KEY)));
+  A2.noteFailure(KEY);
+  const lockedFor = A2.isLocked(KEY);
+  ok(lockedFor > 0 && lockedFor <= 900, 'The fifth does, for about fifteen minutes', String(lockedFor));
+
+  /* The point of the whole change: another process, same database, same lock.
+     Checked by actually running one, because "it is in a table now" is a claim
+     about storage and this is a claim about behaviour. */
+  const seen = execFileSync(process.execPath, ['-e',
+    "console.log(require('./server/auth.js').isLocked(process.argv[1]))", KEY], {
+    cwd: new URL('..', import.meta.url).pathname,
+    env: { ...process.env, PREP_DB: process.env.PREP_DB },
+    encoding: 'utf8',
+    /* The child seeds a database on boot and Node warns about node:sqlite being
+       experimental. Neither belongs in this suite's output. */
+    stdio: ['ignore', 'pipe', 'ignore']
+  }).trim().split('\n').pop();
+  ok(Number(seen) > 0, 'A separate process sees the same lockout', 'child reported ' + seen);
+
+  ok(A2.isLocked('198.51.100.44|somebody-else') === 0,
+    'And it is that account that is locked, not everyone from that address');
+
+  const cleared = A2.clearAllLocks();
+  ok(cleared >= 1 && A2.isLocked(KEY) === 0,
+    'clearAllLocks is the way out, now that a restart is not', String(cleared));
+
+  /* The sliding window, same story. rateLimitPeek must spend nothing, or the
+     act of asking "may I?" would itself use up the allowance. */
+  const RL = 'probe-window|' + Date.now();
+  ok(A2.rateLimitPeek(RL, 3, 60e3) === 0, 'An untouched key has its full allowance');
+  ok(A2.rateLimitPeek(RL, 3, 60e3) === 0, 'And asking twice does not spend any of it');
+  A2.rateLimit(RL, 3, 60e3);
+  A2.rateLimit(RL, 3, 60e3);
+  ok(A2.rateLimit(RL, 3, 60e3) === 0, 'Three go through');
+  const wait = A2.rateLimit(RL, 3, 60e3);
+  ok(wait > 0, 'The fourth is refused', String(wait));
+  /* 0 means "go ahead" to every caller, so a window with under a second left
+     must still answer 1 rather than rounding down into an open door. */
+  ok(wait >= 1 && wait <= 60, 'With a wait in seconds, never rounded down to zero', String(wait));
+
+  /* A window is a window: an old hit must stop counting. Written directly at a
+     past timestamp rather than by sleeping for a minute. */
+  const OLD = 'probe-expiry|' + Date.now();
+  const dbNow = Date.now();
+  for (let i = 0; i < 5; i++) {
+    DB_.q.run('INSERT INTO throttle_hits (bucket, at) VALUES (?,?)',
+      OLD, new Date(dbNow - 90e3).toISOString());
+  }
+  ok(A2.rateLimitPeek(OLD, 3, 60e3) === 0,
+    'Hits older than the window no longer count against it');
+  ok(A2.rateLimitPeek(OLD, 3, 120e3) > 0,
+    'But the same hits still count for a caller asking about a longer window');
 
   head('How far a proxy is trusted');
 

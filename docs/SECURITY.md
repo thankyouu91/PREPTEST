@@ -146,7 +146,37 @@ Giờ: production tự bật. `FORCE_SECURE_COOKIE` còn lại như một cách 
 ý theo cả hai chiều — `1` để bật cho máy dev nằm sau TLS proxy, `0` để tắt nếu
 một bản production nào đó buộc phải phục vụ HTTP thường.
 
-### 4.3 Token trong thư — không bao giờ vào log
+### 4.3 Khoá đăng nhập và giới hạn tần suất nằm trong CSDL
+
+Trước 2026-08-12 cả hai nằm trong hai `Map` trong bộ nhớ của **một** tiến trình.
+Sai theo hai hướng cùng lúc:
+
+- **Khởi động lại là xoá sạch mọi khoá.** Tài liệu của chính công cụ cứu hộ từng
+  ghi "bị chặn thì cứ khởi động lại server" — mà đó cũng là lối thoát cho chính
+  người đang dò mật khẩu. Một bộ đếm biết quên thì có lợi cho kẻ tấn công hơn là
+  cho người dùng.
+- **Nhiều instance là nhân bản hạn mức.** Trên Cloud Run, 5 lần thử/instance;
+  chạy 4 instance là 20 lần. Nó tự vô hiệu hoá đúng lúc hệ thống đủ đông để cần
+  đến nó — và đúng lúc đó cũng là lúc mục 4.1 (`TRUST_PROXY`) vừa mới sửa xong
+  trở nên vô nghĩa.
+
+Giờ là hai bảng: `throttle_locks` (khoá 15 phút sau 5 lần sai) và `throttle_hits`
+(cửa sổ trượt, **một dòng cho mỗi lượt**). Một dòng mỗi lượt chứ không phải một
+cột đếm, vì cửa sổ trượt cần biết *thời điểm* từng lượt, và `COUNT(*)` trên một
+khoảng thời gian thì không có tranh chấp giữa các tiến trình theo cách mà
+đọc-sửa-ghi trên một dòng chung thì có. `noteFailure` tăng bộ đếm bằng **một câu
+lệnh** `ON CONFLICT DO UPDATE`, nên hai tiến trình không thể cùng đọc 4 rồi cùng
+ghi 5.
+
+Kiểm bằng hành vi chứ không bằng lời: một tiến trình **khác** mở cùng cơ sở dữ
+liệu và thấy đúng cái khoá đó. `throttle_hits` được dọn định kỳ (giữ 2 giờ, dài
+gấp đôi cửa sổ dài nhất mà bất kỳ chỗ gọi nào yêu cầu).
+
+Đổi lại: khoá **không còn tự mất khi khởi động lại**, nên lối thoát bây giờ là
+`node scripts/accounts.js unlock` — lệnh đó xoá cả hai thứ cùng tên "khoá":
+tài khoản bị quản trị viên vô hiệu hoá, *và* khoá do sai mật khẩu quá nhiều.
+
+### 4.4 Token trong thư — không bao giờ vào log
 
 `deliverLink()` từng `console.log` nguyên cả liên kết xác thực và đặt lại mật
 khẩu, ở **mọi** môi trường kể cả production. Một token dùng một lần là thông tin

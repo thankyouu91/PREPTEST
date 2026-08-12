@@ -82,6 +82,33 @@ CREATE TABLE IF NOT EXISTS user_tokens (
 
 CREATE INDEX IF NOT EXISTS idx_user_tokens_user ON user_tokens(user_id, kind);
 
+-- Sign-in lockout and sliding-window rate limiting.
+--
+-- These lived in two Maps in one process's memory, which was wrong in two ways
+-- at once. A restart wiped every lockout, so the answer to "I am locked out"
+-- was "restart the server" -- and it is the attacker who benefits most from a
+-- counter that forgets. And on more than one instance the lockout becomes five
+-- guesses PER INSTANCE, which quietly undoes it at exactly the moment there is
+-- enough traffic to need it.
+--
+-- One row per hit rather than a counter or a JSON array: a sliding window needs
+-- the individual timestamps, and COUNT(*) over a time range is race-free between
+-- processes in a way that read-modify-write on a shared row is not.
+CREATE TABLE IF NOT EXISTS throttle_hits (
+  bucket TEXT NOT NULL,
+  at     TEXT NOT NULL                           -- ISO 8601: sorts chronologically
+);
+
+CREATE INDEX IF NOT EXISTS idx_throttle_hits ON throttle_hits(bucket, at);
+
+CREATE TABLE IF NOT EXISTS throttle_locks (
+  bucket       TEXT PRIMARY KEY,
+  fails        INTEGER NOT NULL DEFAULT 0,
+  locked_until TEXT                              -- null while merely counting
+);
+
+CREATE INDEX IF NOT EXISTS idx_throttle_locks_until ON throttle_locks(locked_until);
+
 -- Self-study: the V1–V2–V3 irregular verb table.
 -- Searchable on any column (typing "went" must find "go"), so all three are indexed.
 CREATE TABLE IF NOT EXISTS irregular_verbs (
