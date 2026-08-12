@@ -350,6 +350,14 @@ addColumnIfMissing('questions', 'key_points_json', "TEXT NOT NULL DEFAULT '[]'")
    pool instead of sharing one skill-wide pool. */
 addColumnIfMissing('questions', 'part', 'TEXT');
 
+/* Reading matter shown alongside the question, kept apart from `prompt`
+   because the two are displayed differently and, in part B, on different
+   timers: the passage appears for a fixed period and is then hidden, while
+   the instruction stays on screen. Joining them into one field would make
+   that impossible to render. Part C uses it for the passage a question
+   refers to; every other part leaves it null. */
+addColumnIfMissing('questions', 'passage', 'TEXT');
+
 const addedAudioStatus = addColumnIfMissing(
   'questions', 'audio_status', "TEXT NOT NULL DEFAULT 'none'");
 /* none → queued → generating → ready → approved, or failed.

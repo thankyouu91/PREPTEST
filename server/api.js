@@ -321,7 +321,7 @@ router.get('/admin/questions', (req, res) => {
   const total = q.val('SELECT COUNT(*) c ' + sql, ...args);
   const rows = q.all(
     `SELECT id, family_id, skill, level, type, prompt, options_json, answer, explanation, tags_json, status, created_at,
-            audio_key, audio_bytes, audio_at, audio_script, audio_status, audio_voice_id, part
+            audio_key, audio_bytes, audio_at, audio_script, audio_status, audio_voice_id, part, passage
        ${sql} ORDER BY id DESC LIMIT ? OFFSET ?`, ...args, limit, offset);
 
   res.json({
@@ -336,7 +336,10 @@ router.get('/admin/questions', (req, res) => {
       /* The script is the author's source text, not answer material the way the
          rendered audio is, so the bank screen gets it in full. */
       audioScript: r.audio_script || '', audioStatus: r.audio_status || 'none',
-      audioVoiceId: r.audio_voice_id || '', part: r.part || null
+      audioVoiceId: r.audio_voice_id || '', part: r.part || null,
+      /* Reading matter for parts B and C, kept apart from the prompt because
+         part B hides it on a timer while the instruction stays put. */
+      passage: r.passage || ''
     }))
   });
 });

@@ -729,6 +729,9 @@ function allItems() {
         skill: d.skill,
         type: item.type,
         script: item.script,
+        /* No reading matter in the audio parts; carried so both content files
+           produce the same shape and the importer needs no branch. */
+        passage: '',
         prompt: item.prompt || d.prompt || '',
         options: item.options || [],
         answer: item.answer != null ? item.answer : (item.part === 'H' ? item.script : ''),

@@ -77,7 +77,7 @@ Queue for this track, in order:
 - [ ] Auto marking for parts A, C, E, F, G plus the score-to-CEFR conversion in `docs/SCORING.md`
 - [ ] Translate the whole interface to English — 12 student screens, 8 admin screens, every banner and empty state
 - [x] **VPET audio scripts**: two complete forms in `server/data/vpet-scripts.js` — one per level, 74 scripts (E8 · F8 · G6 · H10 · I2 · J3 each), written in the pause markup with distractors, answers, explanations and part J key points. `scripts/nhap-kich-ban.js` validates and imports them as drafts, idempotent by `ref:` tag, and prints the ElevenLabs character bill per part before anything is spent
-- [ ] VPET item bank, non-audio parts: A, B, C and D still need real items (**content, deliberately last**)
+- [x] **VPET item bank complete for both levels**: `server/data/vpet-items.js` adds parts A, B, C and D (18 per level) alongside the audio parts, so each level now has the full 55 items. New `questions.passage` column keeps reading matter apart from the instruction, because part B hides the passage on a timer while the instruction stays on screen. `scripts/nhap-kich-ban.js` imports both sources and checks each part against the shape it should have — an audio part without a script, or a part A item carrying one, both fail before anything is written
 
 ## Hàng đợi
 

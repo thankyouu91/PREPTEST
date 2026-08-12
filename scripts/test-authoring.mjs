@@ -299,6 +299,55 @@ console.log('\n\x1b[1m== Kịch bản audio VPET ==\x1b[0m');
   ok(items.filter(i => i.level === 2).every(i => i.cefr === 'B2'), 'Level 2 gắn bậc B2');
 }
 
+/* Part A–D: bốn part không cần audio, hoàn thiện nốt blueprint 55 câu. */
+{
+  const { allItems } = require('../server/data/vpet-items.js');
+  const items = allItems();
+
+  const MONG_DOI = { A: 10, B: 3, C: 3, D: 2 };
+  const dem = {};
+  items.forEach(i => { dem[i.part + i.level] = (dem[i.part + i.level] || 0) + 1; });
+  const duSo = Object.entries(MONG_DOI).every(([p, n]) => dem[p + 1] === n && dem[p + 2] === n);
+  ok(duSo, 'Part A–D đủ số câu cho cả hai level (A10 B3 C3 D2)');
+
+  /* Cộng với 37 câu có audio là tròn 55 — đúng blueprint, không thừa không thiếu. */
+  const coAudio = require('../server/data/vpet-scripts.js').allItems();
+  [1, 2].forEach(lv => {
+    const n = items.filter(i => i.level === lv).length + coAudio.filter(i => i.level === lv).length;
+    ok(n === 55, 'Level ' + lv + ' tròn 55 câu theo blueprint', 'thấy ' + n);
+  });
+
+  /* Part A–D không được mang kịch bản đọc: có kịch bản là hiện nút Dựng MP3 ở
+     chỗ không cần audio, và tốn tiền cho thứ không ai nghe. */
+  ok(items.every(i => !i.script), 'Part A–D không câu nào mang kịch bản audio');
+  ok(items.every(i => i.prompt.trim()), 'Part A–D câu nào cũng có đề bài hiển thị');
+
+  /* Part B và C đọc từ một đoạn văn; A và D thì không. */
+  ok(items.filter(i => ['B', 'C'].includes(i.part)).every(i => i.passage.trim()),
+    'Part B và C đều có đoạn văn kèm theo');
+  ok(items.filter(i => ['A', 'D'].includes(i.part)).every(i => !i.passage),
+    'Part A và D không kèm đoạn văn');
+
+  /* Bài tự luận chấm theo rubric, phần nội dung dựa vào ý chính — thiếu là chỉ
+     chấm được tiếng Anh, mất một nửa nhiệm vụ. */
+  ok(items.filter(i => i.type === 'essay').every(i => i.keyPoints.length >= 4),
+    'Mọi bài tự luận (B và D) có ít nhất 4 ý chính để chấm nội dung');
+
+  const a = items.filter(i => i.part === 'A');
+  ok(a.every(i => i.answer.trim()), 'Mọi câu part A đều có đáp án');
+  ok(a.every(i => i.prompt.includes('______')), 'Mọi câu part A đều có chỗ trống nhìn thấy được');
+  /* Đáp án nhiều biến thể ngăn bằng "|" — mỗi biến thể phải là một từ, vì đề
+     bài chỉ chừa đúng một chỗ trống. */
+  ok(a.every(i => i.answer.split('|').every(v => v.trim() && !/\s{2,}/.test(v.trim()))),
+    'Biến thể đáp án part A đều hợp lệ');
+
+  const c = items.filter(i => i.part === 'C');
+  ok(c.every(i => i.options.includes(i.answer)), 'Part C: đáp án luôn nằm trong phương án');
+  ok(c.every(i => i.options.length === 4), 'Part C: đúng 4 phương án mỗi câu');
+
+  ok(new Set(items.map(i => i.ref)).size === items.length, 'Mã tham chiếu part A–D không trùng');
+}
+
 /* ================= 5. Khung đo và bộ mô tả năng lực ================= */
 
 console.log('\n\x1b[1m== Khung đo · mô tả năng lực ==\x1b[0m');

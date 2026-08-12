@@ -1,9 +1,12 @@
 /**
- * Nhập kịch bản audio VPET vào ngân hàng câu hỏi.
+ * Nhập toàn bộ nội dung VPET vào ngân hàng câu hỏi.
  *
- * Đọc server/data/vpet-scripts.js, dựng câu hỏi tương ứng và gắn sẵn kịch bản
- * đọc vào từng câu. Sau bước này, vào Quản trị → Ngân hàng câu hỏi, mở một câu
- * bất kỳ có audio, chọn giọng rồi bấm Dựng MP3.
+ * Hai nguồn, một đường nhập:
+ *   server/data/vpet-scripts.js   part E F G H I J — có kịch bản đọc
+ *   server/data/vpet-items.js     part A B C D     — không cần audio
+ *
+ * Sau bước này, vào Quản trị → Ngân hàng câu hỏi, mở một câu có audio, chọn
+ * giọng rồi bấm Dựng MP3. Các part A–D dùng được ngay, không phải dựng gì.
  *
  * Chạy được nhiều lần: mỗi câu mang một tag `ref:E1-L1`, câu đã có thì bỏ qua,
  * nên nhập lại sau khi sửa nội dung chỉ thêm phần mới chứ không nhân đôi kho.
@@ -18,14 +21,19 @@
 'use strict';
 
 const { q, nowISO, jparse } = require('../server/db');
-const { allItems } = require('../server/data/vpet-scripts');
 const { parseScript } = require('../server/script-markup');
+
+/* Đánh dấu nguồn ngay lúc đọc: part nào phải có kịch bản, part nào phải không
+   có. Kiểm cả hai chiều — một câu part C mang kịch bản đọc là lỗi soạn thảo
+   im lặng, vì nó sẽ hiện nút Dựng MP3 ở chỗ không cần audio. */
+const items = [
+  ...require('../server/data/vpet-scripts').allItems().map(i => ({ ...i, coAudio: true })),
+  ...require('../server/data/vpet-items').allItems().map(i => ({ ...i, coAudio: false }))
+];
 
 const args = process.argv.slice(2);
 const THU = args.includes('--thu') || args.includes('--dry-run');
 const LAM_MOI = args.includes('--lam-moi') || args.includes('--refresh');
-
-const items = allItems();
 
 /* Kiểm tra trước khi ghi: một kịch bản hỏng ký hiệu ngắt nghỉ mà lọt vào kho
    thì phải tới lúc dựng MP3 mới lộ, và lúc đó đã tốn tiền rồi. */
@@ -34,7 +42,12 @@ let tongKyTu = 0, tongGiay = 0;
 const theoPart = {};
 
 for (const it of items) {
-  if (!it.script || !it.script.trim()) loi.push(`${it.ref}: kịch bản rỗng`);
+  if (it.coAudio && !it.script.trim()) loi.push(`${it.ref}: part có audio nhưng kịch bản rỗng`);
+  if (!it.coAudio && it.script.trim()) loi.push(`${it.ref}: part không cần audio nhưng lại có kịch bản`);
+  if (!it.coAudio && !it.prompt.trim()) loi.push(`${it.ref}: chưa có đề bài hiển thị`);
+  if (it.type === 'essay' && it.keyPoints.length < 4) {
+    loi.push(`${it.ref}: bài tự luận cần ít nhất 4 ý chính để chấm phần nội dung`);
+  }
   if (it.type === 'mcq') {
     if (it.options.length < 2) loi.push(`${it.ref}: câu trắc nghiệm cần ít nhất 2 phương án`);
     else if (!it.options.includes(it.answer)) loi.push(`${it.ref}: đáp án không nằm trong các phương án`);
@@ -42,16 +55,14 @@ for (const it of items) {
   }
   if (it.type === 'gap' && !it.answer) loi.push(`${it.ref}: câu điền từ chưa có đáp án`);
 
-  const p = parseScript(it.script);
-  if (p.stats.capped) loi.push(`${it.ref}: quá nhiều chỗ nghỉ, nên tách thành nhiều câu`);
+  const p = it.coAudio ? parseScript(it.script) : null;
+  if (p && p.stats.capped) loi.push(`${it.ref}: quá nhiều chỗ nghỉ, nên tách thành nhiều câu`);
 
-  tongKyTu += p.stats.billedChars;
-  tongGiay += p.stats.estimatedMs / 1000;
+  if (p) { tongKyTu += p.stats.billedChars; tongGiay += p.stats.estimatedMs / 1000; }
   const k = `${it.part}-L${it.level}`;
   theoPart[k] = theoPart[k] || { n: 0, chars: 0, secs: 0 };
   theoPart[k].n++;
-  theoPart[k].chars += p.stats.billedChars;
-  theoPart[k].secs += p.stats.estimatedMs / 1000;
+  if (p) { theoPart[k].chars += p.stats.billedChars; theoPart[k].secs += p.stats.estimatedMs / 1000; }
 }
 
 if (loi.length) {
@@ -60,14 +71,14 @@ if (loi.length) {
   process.exit(1);
 }
 
-console.log(`\n${items.length} kịch bản, không có lỗi nội dung.\n`);
+console.log(`\n${items.length} câu, không có lỗi nội dung.\n`);
 console.log('  Part      Số câu   Ký tự tính tiền   Thời lượng ước tính');
 console.log('  ' + '─'.repeat(56));
 for (const k of Object.keys(theoPart).sort()) {
   const t = theoPart[k];
   console.log('  ' + k.padEnd(10) + String(t.n).padStart(5) +
-    String(Math.round(t.chars)).padStart(17) +
-    (Math.round(t.secs) + ' giây').padStart(22));
+    (t.chars ? String(Math.round(t.chars)) : '—').padStart(17) +
+    (t.chars ? Math.round(t.secs) + ' giây' : '—').padStart(22));
 }
 console.log('  ' + '─'.repeat(56));
 console.log('  ' + 'Tổng'.padEnd(10) + String(items.length).padStart(5) +
@@ -104,21 +115,23 @@ for (const it of items) {
   if (daCo) {
     const doi = daCo.audio_script !== it.script;
     q.run(
-      `UPDATE questions SET skill=?, level=?, type=?, part=?, prompt=?, options_json=?, answer=?,
+      `UPDATE questions SET skill=?, level=?, type=?, part=?, prompt=?, passage=?, options_json=?, answer=?,
          explanation=?, tags_json=?, audio_script=?, key_points_json=?,
          audio_status = CASE WHEN ? AND audio_status='approved' THEN 'none' ELSE audio_status END
        WHERE id=?`,
-      it.skill, it.cefr, it.type, it.part, it.prompt, JSON.stringify(it.options), it.answer,
-      it.explanation, tags, it.script, JSON.stringify(it.keyPoints), doi ? 1 : 0, daCo.id);
+      it.skill, it.cefr, it.type, it.part, it.prompt, it.passage || null,
+      JSON.stringify(it.options), it.answer,
+      it.explanation, tags, it.script || null, JSON.stringify(it.keyPoints), doi ? 1 : 0, daCo.id);
     capNhat++;
   } else {
     q.run(
       `INSERT INTO questions
-         (family_id, skill, level, type, part, prompt, options_json, answer, explanation,
+         (family_id, skill, level, type, part, prompt, passage, options_json, answer, explanation,
           tags_json, audio_script, key_points_json, audio_status, status, created_at, created_by)
-       VALUES ('vpet',?,?,?,?,?,?,?,?,?,?,?,'none','draft',?,?)`,
-      it.skill, it.cefr, it.type, it.part, it.prompt, JSON.stringify(it.options), it.answer,
-      it.explanation, tags, it.script, JSON.stringify(it.keyPoints), nowISO(), admin.id);
+       VALUES ('vpet',?,?,?,?,?,?,?,?,?,?,?,?,'none','draft',?,?)`,
+      it.skill, it.cefr, it.type, it.part, it.prompt, it.passage || null,
+      JSON.stringify(it.options), it.answer,
+      it.explanation, tags, it.script || null, JSON.stringify(it.keyPoints), nowISO(), admin.id);
     them++;
   }
 }
