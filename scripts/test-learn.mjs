@@ -155,33 +155,33 @@ try {
      for the "never inflate the count to look generous" rule. */
   const tByLevel = gr.points.reduce((a, p) => (a[p.level] = (a[p.level] || 0) + 1, a), {});
   const T_QUOTA = { A1: 4, A2: 4, B1: 4, B2: 4, C1: 3, C2: 2 };
-  const tLech = Object.keys(T_QUOTA).filter(l => tByLevel[l] !== T_QUOTA[l]);
-  ok(tLech.length === 0, 'Exactly the quota A1 4, A2 4, B1 4, B2 4, C1 3, C2 2' +
-    (tLech.length ? ' (off: ' + tLech.map(l => l + ' ' + (tByLevel[l] || 0) + '/' + T_QUOTA[l]).join(', ') + ')' : ''));
+  const tenseOff = Object.keys(T_QUOTA).filter(l => tByLevel[l] !== T_QUOTA[l]);
+  ok(tenseOff.length === 0, 'Exactly the quota A1 4, A2 4, B1 4, B2 4, C1 3, C2 2' +
+    (tenseOff.length ? ' (off: ' + tenseOff.map(l => l + ' ' + (tByLevel[l] || 0) + '/' + T_QUOTA[l]).join(', ') + ')' : ''));
 
   /* Two halves written to two different standards: the 12 tenses carry a three-row
      formula and 8+12 sentences; the 9 sequencing points use a free-form formula table
      and 6+10, like every group written later. Checked apart, not levelled down. */
-  const MUOI_HAI_THI = ['present-simple', 'present-continuous', 'present-perfect',
+  const TWELVE_TENSES = ['present-simple', 'present-continuous', 'present-perfect',
     'present-perfect-continuous', 'past-simple', 'past-continuous', 'past-perfect',
     'past-perfect-continuous', 'future-simple', 'future-continuous', 'future-perfect',
     'future-perfect-continuous'];
-  const thi = gr.points.filter(p => MUOI_HAI_THI.includes(p.slug));
-  const phoiHop = gr.points.filter(p => !MUOI_HAI_THI.includes(p.slug));
-  ok(thi.length === 12 && phoiHop.length === 9,
-    'All 12 tenses and all 9 sequencing points (' + thi.length + ' + ' + phoiHop.length + ')');
+  const tenses = gr.points.filter(p => TWELVE_TENSES.includes(p.slug));
+  const sequencingPoints = gr.points.filter(p => !TWELVE_TENSES.includes(p.slug));
+  ok(tenses.length === 12 && sequencingPoints.length === 9,
+    'All 12 tenses and all 9 sequencing points (' + tenses.length + ' + ' + sequencingPoints.length + ')');
 
   /* The formula needs all three forms, or the lesson is only half written */
   const formRows = p => (p.formula && p.formula.rows || []).filter(r => r && r[1]);
-  const noForm = thi.filter(p => formRows(p).length !== 3);
+  const noForm = tenses.filter(p => formRows(p).length !== 3);
   ok(noForm.length === 0, 'Every tense has an affirmative, a negative and a question formula' +
     (noForm.length ? ' (missing: ' + noForm.map(p => p.slug).join(', ') + ')' : ''));
-  ok(phoiHop.every(p => formRows(p).length >= 2), 'Every sequencing point has at least two formula rows');
+  ok(sequencingPoints.every(p => formRows(p).length >= 2), 'Every sequencing point has at least two formula rows');
   ok(gr.points.every(p => p.signals && p.signals.length), 'Every point has its signal words');
-  ok(thi.every(p => p.counts.example === 8), 'Every tense has exactly 8 examples');
-  ok(thi.every(p => p.counts.practice === 12), 'Every tense has exactly 12 practice sentences');
-  ok(phoiHop.every(p => p.counts.example === 6), 'Every sequencing point has exactly 6 examples');
-  ok(phoiHop.every(p => p.counts.practice === 10), 'Every sequencing point has exactly 10 practice sentences');
+  ok(tenses.every(p => p.counts.example === 8), 'Every tense has exactly 8 examples');
+  ok(tenses.every(p => p.counts.practice === 12), 'Every tense has exactly 12 practice sentences');
+  ok(sequencingPoints.every(p => p.counts.example === 6), 'Every sequencing point has exactly 6 examples');
+  ok(sequencingPoints.every(p => p.counts.practice === 10), 'Every sequencing point has exactly 10 practice sentences');
 
   const grLvl = await get('/api/learn/grammar?grp=tense&level=a1');
   ok(grLvl.count > 0 && grLvl.points.every(p => p.level === 'A1'), 'Filtering by level accepts lower case');
@@ -269,14 +269,14 @@ try {
      The backstop for the "never inflate the count to look generous" rule. */
   const byLevel = nn.points.reduce((a, p) => (a[p.level] = (a[p.level] || 0) + 1, a), {});
   const QUOTA = { A1: 8, A2: 6, B1: 5, B2: 4, C1: 3, C2: 2 };
-  const lech = Object.keys(QUOTA).filter(l => byLevel[l] !== QUOTA[l]);
-  ok(lech.length === 0, 'Exactly the per-level quota from the band table' +
-    (lech.length ? ' (off: ' + lech.map(l => l + ' ' + (byLevel[l] || 0) + '/' + QUOTA[l]).join(', ') + ')' : ''));
+  const nounOff = Object.keys(QUOTA).filter(l => byLevel[l] !== QUOTA[l]);
+  ok(nounOff.length === 0, 'Exactly the per-level quota from the band table' +
+    (nounOff.length ? ' (off: ' + nounOff.map(l => l + ' ' + (byLevel[l] || 0) + '/' + QUOTA[l]).join(', ') + ')' : ''));
 
   /* The display order has to run from the lowest level up, not interleaved */
-  const bacSo = { A1: 1, A2: 2, B1: 3, B2: 4, C1: 5, C2: 6 };
-  const daSap = nn.points.every((p, i) => i === 0 || bacSo[p.level] >= bacSo[nn.points[i - 1].level]);
-  ok(daSap, 'The list is sorted from the lowest level up');
+  const LEVEL_RANK = { A1: 1, A2: 2, B1: 3, B2: 4, C1: 5, C2: 6 };
+  const sortedByLevel = nn.points.every((p, i) => i === 0 || LEVEL_RANK[p.level] >= LEVEL_RANK[nn.points[i - 1].level]);
+  ok(sortedByLevel, 'The list is sorted from the lowest level up');
 
   ok(nn.points.every(p => formRows(p).length >= 2), 'Every point has at least two formula rows');
   ok(nn.points.every(p => p.counts.example === 6), 'Every point has exactly 6 examples');
@@ -380,12 +380,12 @@ try {
      part taken on, without reaching into the next pass's share. */
   const ttLevel = tt.points.reduce((a, p) => (a[p.level] = (a[p.level] || 0) + 1, a), {});
   const TT_QUOTA = { A1: 5, A2: 6, B1: 5, B2: 0, C1: 0, C2: 0 };
-  const ttLech = Object.keys(TT_QUOTA).filter(l => (ttLevel[l] || 0) !== TT_QUOTA[l]);
-  ok(ttLech.length === 0, 'Exactly the quota A1 5, A2 6, B1 5, with nothing yet at B2-C2' +
-    (ttLech.length ? ' (off: ' + ttLech.map(l => l + ' ' + (ttLevel[l] || 0) + '/' + TT_QUOTA[l]).join(', ') + ')' : ''));
+  const adjOff = Object.keys(TT_QUOTA).filter(l => (ttLevel[l] || 0) !== TT_QUOTA[l]);
+  ok(adjOff.length === 0, 'Exactly the quota A1 5, A2 6, B1 5, with nothing yet at B2-C2' +
+    (adjOff.length ? ' (off: ' + adjOff.map(l => l + ' ' + (ttLevel[l] || 0) + '/' + TT_QUOTA[l]).join(', ') + ')' : ''));
 
-  const ttSap = tt.points.every((p, i) => i === 0 || bacSo[p.level] >= bacSo[tt.points[i - 1].level]);
-  ok(ttSap, 'The list is sorted from the lowest level up');
+  const adjSorted = tt.points.every((p, i) => i === 0 || LEVEL_RANK[p.level] >= LEVEL_RANK[tt.points[i - 1].level]);
+  ok(adjSorted, 'The list is sorted from the lowest level up');
   ok(tt.points.every(p => formRows(p).length >= 2), 'Every point has at least two formula rows');
   ok(tt.points.every(p => p.counts.example === 6), 'Every point has exactly 6 examples');
   ok(tt.points.every(p => p.counts.practice === 10), 'Every point has exactly 10 practice sentences');
@@ -411,9 +411,9 @@ try {
     if (d.examples.some(x => !x.ok && !x.note)) ttFlaws.push(p.slug + ': a counter-example has no fix');
     if (d.examples.filter(x => !x.ok).length < 2) ttFlaws.push(p.slug + ': fewer than two counter-examples');
 
-    const lech = d.practice.filter(x =>
+    const gapOff = d.practice.filter(x =>
       (x.en.match(/___/g) || []).length !== x.answer.split('…').length);
-    if (lech.length) ttFlaws.push(p.slug + ': ' + lech.length + ' practice sentences with gaps and answers out of step');
+    if (gapOff.length) ttFlaws.push(p.slug + ': ' + gapOff.length + ' practice sentences with gaps and answers out of step');
   }
   ok(ttEx === 96, 'All 96 examples (' + ttEx + ')');
   ok(ttPr === 160, 'All 160 practice sentences (' + ttPr + ')');
@@ -421,10 +421,10 @@ try {
     (ttFlaws.length ? ' — ' + ttFlaws.slice(0, 6).join('; ') : ''));
 
   /* Look at the four places Vietnamese learners get this group wrong most */
-  const viTriTinhTu = await get('/api/learn/grammar/adj-position');
-  ok(viTriTinhTu.point.formula.note && /tiếng Việt/i.test(viTriTinhTu.point.formula.note),
+  const adjPosition = await get('/api/learn/grammar/adj-position');
+  ok(adjPosition.point.formula.note && /tiếng Việt/i.test(adjPosition.point.formula.note),
     'The adjective-position point says outright that Vietnamese orders these the other way round');
-  ok(viTriTinhTu.point.useNot.some(u => /-s|số nhiều/i.test(u.what + u.why)),
+  ok(adjPosition.point.useNot.some(u => /-s|số nhiều/i.test(u.what + u.why)),
     'The adjective-position point warns that an adjective takes no -s');
 
   const canBe = await get('/api/learn/grammar/adj-need-be');
@@ -437,12 +437,12 @@ try {
   ok(edIng.point.confuse.some(c => c.pair.some(x => /is bored/i.test(x.en)) && c.pair.some(x => /is boring/i.test(x.en))),
     'The -ed/-ing point puts "He is bored" beside "He is boring"');
 
-  const trangTu = await get('/api/learn/grammar/adv-manner-ly');
-  ok(trangTu.point.confuse.some(c => /hardly/i.test(c.with)),
+  const advMannerLy = await get('/api/learn/grammar/adv-manner-ly');
+  ok(advMannerLy.point.confuse.some(c => /hardly/i.test(c.with)),
     'The manner-adverb point traps "hard" against "hardly"');
 
-  const ghep = await get('/api/learn/grammar/compound-adjective');
-  ok(ghep.point.errors.some(e => /five-years-old/i.test(e.wrong)),
+  const compoundAdjective = await get('/api/learn/grammar/compound-adjective');
+  ok(compoundAdjective.point.errors.some(e => /five-years-old/i.test(e.wrong)),
     'The compound-adjective point catches "a five-years-old boy"');
 
   /* ============ 5. Grammar: modal verbs ============ */
@@ -455,11 +455,11 @@ try {
   /* This group's quota is A1 x3, A2 x5, B1 x6 */
   const mdLevel = md.points.reduce((a, p) => (a[p.level] = (a[p.level] || 0) + 1, a), {});
   const MD_QUOTA = { A1: 3, A2: 5, B1: 6, B2: 6, C1: 5, C2: 4 };
-  const mdLech = Object.keys(MD_QUOTA).filter(l => mdLevel[l] !== MD_QUOTA[l]);
-  ok(mdLech.length === 0, 'Exactly the quota A1 3, A2 5, B1 6, B2 6, C1 5, C2 4' +
-    (mdLech.length ? ' (off: ' + mdLech.map(l => l + ' ' + (mdLevel[l] || 0)).join(', ') + ')' : ''));
-  const mdBac = { A1: 1, A2: 2, B1: 3, B2: 4, C1: 5, C2: 6 };
-  ok(md.points.every((p, i) => i === 0 || mdBac[p.level] >= mdBac[md.points[i - 1].level]),
+  const modalOff = Object.keys(MD_QUOTA).filter(l => mdLevel[l] !== MD_QUOTA[l]);
+  ok(modalOff.length === 0, 'Exactly the quota A1 3, A2 5, B1 6, B2 6, C1 5, C2 4' +
+    (modalOff.length ? ' (off: ' + modalOff.map(l => l + ' ' + (mdLevel[l] || 0)).join(', ') + ')' : ''));
+  const MODAL_RANK = { A1: 1, A2: 2, B1: 3, B2: 4, C1: 5, C2: 6 };
+  ok(md.points.every((p, i) => i === 0 || MODAL_RANK[p.level] >= MODAL_RANK[md.points[i - 1].level]),
     'The modal group is sorted from the lowest level up');
   ok(md.points.every(p => p.counts.example === 6 && p.counts.practice === 10),
     'Every point has its 6 examples and 10 practice sentences');
@@ -501,21 +501,21 @@ try {
   ok(cd.count === 20, 'The conditional group has all 20 points A2-C2 (' + cd.count + ')');
   const cdLevel = cd.points.reduce((a, p) => (a[p.level] = (a[p.level] || 0) + 1, a), {});
   const CD_QUOTA = { A2: 2, B1: 4, B2: 5, C1: 5, C2: 4 };
-  const cdLech = Object.keys(CD_QUOTA).filter(l => cdLevel[l] !== CD_QUOTA[l]);
-  ok(cdLech.length === 0, 'Exactly the quota A2 2, B1 4, B2 5, C1 5, C2 4' +
-    (cdLech.length ? ' (off: ' + cdLech.map(l => l + ' ' + (cdLevel[l] || 0)).join(', ') + ')' : ''));
-  const cdBac = { A1: 1, A2: 2, B1: 3, B2: 4, C1: 5, C2: 6 };
-  ok(cd.points.every((p, i) => i === 0 || cdBac[p.level] >= cdBac[cd.points[i - 1].level]),
+  const conditionalOff = Object.keys(CD_QUOTA).filter(l => cdLevel[l] !== CD_QUOTA[l]);
+  ok(conditionalOff.length === 0, 'Exactly the quota A2 2, B1 4, B2 5, C1 5, C2 4' +
+    (conditionalOff.length ? ' (off: ' + conditionalOff.map(l => l + ' ' + (cdLevel[l] || 0)).join(', ') + ')' : ''));
+  const CONDITIONAL_RANK = { A1: 1, A2: 2, B1: 3, B2: 4, C1: 5, C2: 6 };
+  ok(cd.points.every((p, i) => i === 0 || CONDITIONAL_RANK[p.level] >= CONDITIONAL_RANK[cd.points[i - 1].level]),
     'The conditional group is sorted from the lowest level up');
   ok(cd.points.every(p => p.counts.example === 6 && p.counts.practice === 10),
     'Every point has its 6 examples and 10 practice sentences');
 
   /* The two classic errors of this group have to be warned about properly */
-  const loai1 = await get('/api/learn/grammar/conditional-first');
-  ok(loai1.point.errors.some(e => /will/i.test(e.wrong)),
+  const conditionalFirst = await get('/api/learn/grammar/conditional-first');
+  ok(conditionalFirst.point.errors.some(e => /will/i.test(e.wrong)),
     'The first conditional warns against putting "will" in the if clause');
-  const loai3 = await get('/api/learn/grammar/conditional-third');
-  ok(loai3.point.errors.some(e => /would have known|would/i.test(e.wrong)),
+  const conditionalThird = await get('/api/learn/grammar/conditional-third');
+  ok(conditionalThird.point.errors.some(e => /would have known|would/i.test(e.wrong)),
     'The third conditional warns against putting "would" in the if clause');
 
   const unless = await get('/api/learn/grammar/unless-and-conjunctions');
@@ -524,19 +524,19 @@ try {
   ok(unless.point.confuse.some(c => /in case/i.test(c.with)),
     'The unless point separates "in case" from "if"');
 
-  const honHop = await get('/api/learn/grammar/mixed-conditionals');
-  ok(/now|today/i.test(JSON.stringify(honHop.point)),
+  const mixedConditionals = await get('/api/learn/grammar/mixed-conditionals');
+  ok(/now|today/i.test(JSON.stringify(mixedConditionals.point)),
     'The mixed-conditional point names the "now" time marker as the signal');
 
   /* Higher levels: a conditional with no "if" left in it — where learners skim past */
-  const daoNgu = await get('/api/learn/grammar/conditional-inversion');
-  ok(daoNgu.point.useNot.some(u => /if/i.test(u.what + u.why)),
+  const conditionalInversion = await get('/api/learn/grammar/conditional-inversion');
+  ok(conditionalInversion.point.useNot.some(u => /if/i.test(u.what + u.why)),
     'The inversion point warns that "if" has to go entirely');
-  const giaDinh = await get('/api/learn/grammar/mandative-subjunctive');
-  ok(/suggest/i.test(JSON.stringify(giaDinh.point)),
+  const mandativeSubjunctive = await get('/api/learn/grammar/mandative-subjunctive');
+  ok(/suggest/i.test(JSON.stringify(mandativeSubjunctive.point)),
     'The mandative-subjunctive point names the triggering verbs such as "suggest"');
-  const ngam = await get('/api/learn/grammar/implied-conditionals');
-  ok(/would/i.test(JSON.stringify(ngam.point.formula)),
+  const impliedConditionals = await get('/api/learn/grammar/implied-conditionals');
+  ok(/would/i.test(JSON.stringify(impliedConditionals.point.formula)),
     'The implied-conditional point points to "would" as the signal');
 
   /* ============ 5c. Grammar: passive and reported speech ============ */
@@ -546,34 +546,34 @@ try {
   ok(bd.count === 22, 'All 22 points A2-C2, per the quota (' + bd.count + ')');
   const bdLevel = bd.points.reduce((a, p) => (a[p.level] = (a[p.level] || 0) + 1, a), {});
   const BD_QUOTA = { A2: 2, B1: 5, B2: 6, C1: 5, C2: 4 };
-  const bdLech = Object.keys(BD_QUOTA).filter(l => bdLevel[l] !== BD_QUOTA[l]);
-  ok(bdLech.length === 0, 'Exactly the quota A2 2, B1 5, B2 6, C1 5, C2 4' +
-    (bdLech.length ? ' (off: ' + bdLech.map(l => l + ' ' + (bdLevel[l] || 0) + '/' + BD_QUOTA[l]).join(', ') + ')' : ''));
+  const passiveOff = Object.keys(BD_QUOTA).filter(l => bdLevel[l] !== BD_QUOTA[l]);
+  ok(passiveOff.length === 0, 'Exactly the quota A2 2, B1 5, B2 6, C1 5, C2 4' +
+    (passiveOff.length ? ' (off: ' + passiveOff.map(l => l + ' ' + (bdLevel[l] || 0) + '/' + BD_QUOTA[l]).join(', ') + ')' : ''));
   ok(bd.points.every(p => p.counts.example === 6 && p.counts.practice === 10),
     'Every point has its 6 examples and 10 practice sentences');
 
   /* Two data files joined together have to run level by level, not interleaved */
-  const bacBd = { A2: 2, B1: 3, B2: 4, C1: 5, C2: 6 };
-  ok(bd.points.every((p, i) => i === 0 || bacBd[p.level] >= bacBd[bd.points[i - 1].level]),
+  const PASSIVE_RANK = { A2: 2, B1: 3, B2: 4, C1: 5, C2: 6 };
+  ok(bd.points.every((p, i) => i === 0 || PASSIVE_RANK[p.level] >= PASSIVE_RANK[bd.points[i - 1].level]),
     'The A2-B2 and C1-C2 files join seamlessly, sorted from the lowest level up');
 
   /* The three classic errors of this group have to be warned about */
-  const bdCoBan = await get('/api/learn/grammar/passive-basic');
-  ok(bdCoBan.point.useNot.some(u => /nội động từ/i.test(u.what + u.why)),
+  const passiveBasic = await get('/api/learn/grammar/passive-basic');
+  ok(passiveBasic.point.useNot.some(u => /nội động từ/i.test(u.what + u.why)),
     'The basic passive warns that an intransitive verb has no passive');
-  const cauHoi = await get('/api/learn/grammar/reported-questions');
-  ok(cauHoi.point.useNot.some(u => /đảo ngữ/i.test(u.what + u.why)),
+  const reportedQuestions = await get('/api/learn/grammar/reported-questions');
+  ok(reportedQuestions.point.useNot.some(u => /đảo ngữ/i.test(u.what + u.why)),
     'Reported questions warn against keeping the inversion');
-  const noiTuongThuat = await get('/api/learn/grammar/reported-statements');
-  ok(/said me|say/i.test(JSON.stringify(noiTuongThuat.point.errors)),
+  const reportedStatements = await get('/api/learn/grammar/reported-statements');
+  ok(/said me|say/i.test(JSON.stringify(reportedStatements.point.errors)),
     'The reported-statement point warns about the "say me" error');
-  const nhoLam = await get('/api/learn/grammar/have-get-done');
-  ok(nhoLam.point.confuse.some(c => /tự làm/i.test(c.with + c.tell)),
+  const haveGetDone = await get('/api/learn/grammar/have-get-done');
+  ok(haveGetDone.point.confuse.some(c => /tự làm/i.test(c.with + c.tell)),
     'The have/get done point separates doing it yourself from having it done');
 
   /* C1-C2: the core lessons — lose one and the point has no point */
-  const triGiac = await get('/api/learn/grammar/passive-perception-causative');
-  ok(/was made to sign|made to sign/i.test(JSON.stringify(triGiac.point.errors)),
+  const passivePerceptionCausative = await get('/api/learn/grammar/passive-perception-causative');
+  ok(/was made to sign|made to sign/i.test(JSON.stringify(passivePerceptionCausative.point.errors)),
     'Perception and causative verbs warn about dropping "to" in the passive');
 
   const thereSaid = await get('/api/learn/grammar/there-said-to-be');
@@ -582,24 +582,24 @@ try {
   ok(/There are believed/i.test(JSON.stringify(thereSaid.point.errors)),
     'The "there is said to be" point catches the plural-agreement error');
 
-  const sacThai = await get('/api/learn/grammar/reporting-verb-stance');
-  ok(sacThai.point.confuse.some(c => /point out/i.test(c.with + c.tell) && /claim/i.test(c.with + c.tell)),
+  const reportingVerbStance = await get('/api/learn/grammar/reporting-verb-stance');
+  ok(reportingVerbStance.point.confuse.some(c => /point out/i.test(c.with + c.tell) && /claim/i.test(c.with + c.tell)),
     'Reporting verbs separate the agreeing "point out" from the doubting "claim"');
 
-  const tuDo = await get('/api/learn/grammar/free-indirect-speech');
-  ok(tuDo.point.level === 'C2' && /ngôi thứ ba/i.test(JSON.stringify(tuDo.point)),
+  const freeIndirectSpeech = await get('/api/learn/grammar/free-indirect-speech');
+  ok(freeIndirectSpeech.point.level === 'C2' && /ngôi thứ ba/i.test(JSON.stringify(freeIndirectSpeech.point)),
     'Free indirect speech is C2 and states that it uses the third person');
 
-  const phapLy = await get('/api/learn/grammar/reported-legal');
-  ok(phapLy.point.useNot.some(u => /shall/i.test(u.what + u.why) && /tương lai/i.test(u.what + u.why)),
+  const reportedLegal = await get('/api/learn/grammar/reported-legal');
+  ok(reportedLegal.point.useNot.some(u => /shall/i.test(u.what + u.why) && /tương lai/i.test(u.what + u.why)),
     'The legal point warns that "shall" is an obligation, not the future tense');
 
-  const giauTacNhan = await get('/api/learn/grammar/passive-agent-deletion');
-  ok(/by/i.test(giauTacNhan.point.formula.note) && /chính đáng|né/i.test(JSON.stringify(giauTacNhan.point)),
+  const passiveAgentDeletion = await get('/api/learn/grammar/passive-agent-deletion');
+  ok(/by/i.test(passiveAgentDeletion.point.formula.note) && /chính đáng|né/i.test(JSON.stringify(passiveAgentDeletion.point)),
     'The agent-deletion point has the "by…" test that separates a legitimate passive from evasion');
 
-  const danhTuTT = await get('/api/learn/grammar/reporting-nouns');
-  ok(danhTuTT.point.useNot.some(u => /which/i.test(u.what + u.why)),
+  const reportingNouns = await get('/api/learn/grammar/reporting-nouns');
+  ok(reportingNouns.point.useNot.some(u => /which/i.test(u.what + u.why)),
     'Reporting nouns warn against replacing "that" with "which"');
 
   /* ============ 5d. Grammar: relative and subordinate clauses ============ */
@@ -609,145 +609,145 @@ try {
   ok(mq.count === 29, 'All 29 points A2-C2, per the quota (' + mq.count + ')');
   const mqLevel = mq.points.reduce((a, p) => (a[p.level] = (a[p.level] || 0) + 1, a), {});
   const MQ_QUOTA = { A2: 3, B1: 6, B2: 8, C1: 7, C2: 5 };
-  const mqLech = Object.keys(MQ_QUOTA).filter(l => mqLevel[l] !== MQ_QUOTA[l]);
-  ok(mqLech.length === 0, 'Exactly the quota A2 3, B1 6, B2 8, C1 7, C2 5' +
-    (mqLech.length ? ' (off: ' + mqLech.map(l => l + ' ' + (mqLevel[l] || 0) + '/' + MQ_QUOTA[l]).join(', ') + ')' : ''));
+  const clauseOff = Object.keys(MQ_QUOTA).filter(l => mqLevel[l] !== MQ_QUOTA[l]);
+  ok(clauseOff.length === 0, 'Exactly the quota A2 3, B1 6, B2 8, C1 7, C2 5' +
+    (clauseOff.length ? ' (off: ' + clauseOff.map(l => l + ' ' + (mqLevel[l] || 0) + '/' + MQ_QUOTA[l]).join(', ') + ')' : ''));
   ok(mq.points.every(p => p.counts.example === 6 && p.counts.practice === 10),
     'Every point has its 6 examples and 10 practice sentences');
-  const bacMq = { A2: 2, B1: 3, B2: 4, C1: 5, C2: 6 };
-  ok(mq.points.every((p, i) => i === 0 || bacMq[p.level] >= bacMq[mq.points[i - 1].level]),
+  const CLAUSE_RANK = { A2: 2, B1: 3, B2: 4, C1: 5, C2: 6 };
+  ok(mq.points.every((p, i) => i === 0 || CLAUSE_RANK[p.level] >= CLAUSE_RANK[mq.points[i - 1].level]),
     'The A2-B1, B2 and C1-C2 files join seamlessly, sorted from the lowest level up');
 
   /* Two paired-conjunction habits are a signature Vietnamese error, so both need a warning.
      That is the main reason these two points are kept separate; lose one and the point loses its focus. */
-  const nguyenNhan = await get('/api/learn/grammar/adverbial-reason-basic');
-  ok(nguyenNhan.point.useNot.some(u => /because/i.test(u.what + u.why) && /\bso\b/i.test(u.what + u.why)),
+  const adverbialReasonBasic = await get('/api/learn/grammar/adverbial-reason-basic');
+  ok(adverbialReasonBasic.point.useNot.some(u => /because/i.test(u.what + u.why) && /\bso\b/i.test(u.what + u.why)),
     'The reason clause warns about the paired "Because… so…"');
-  ok(nguyenNhan.point.confuse.some(c => /because of/i.test(c.with + c.tell)),
+  ok(adverbialReasonBasic.point.confuse.some(c => /because of/i.test(c.with + c.tell)),
     'The reason clause separates "because" from "because of"');
 
-  const nhuongBo = await get('/api/learn/grammar/adverbial-concession');
-  ok(nhuongBo.point.useNot.some(u => /although/i.test(u.what + u.why) && /\bbut\b/i.test(u.what + u.why)),
+  const adverbialConcession = await get('/api/learn/grammar/adverbial-concession');
+  ok(adverbialConcession.point.useNot.some(u => /although/i.test(u.what + u.why) && /\bbut\b/i.test(u.what + u.why)),
     'The concession clause warns about the paired "Although… but…"');
-  ok(nhuongBo.point.useNot.some(u => /despite/i.test(u.what + u.why)),
+  ok(adverbialConcession.point.useNot.some(u => /despite/i.test(u.what + u.why)),
     'The concession clause warns that "despite" does not take a clause');
 
-  const daiTu = await get('/api/learn/grammar/relative-who-which-that');
-  ok(/who he lives|he lives next door/i.test(JSON.stringify(daiTu.point.errors)),
+  const relativeWhoWhichThat = await get('/api/learn/grammar/relative-who-which-that');
+  ok(/who he lives|he lives next door/i.test(JSON.stringify(relativeWhoWhichThat.point.errors)),
     'Relative pronouns warn about repeating the pronoun after "who"');
 
-  const thoiGian = await get('/api/learn/grammar/adverbial-time-basic');
-  ok(thoiGian.point.useNot.some(u => /will/i.test(u.what + u.why)),
+  const adverbialTimeBasic = await get('/api/learn/grammar/adverbial-time-basic');
+  ok(adverbialTimeBasic.point.useNot.some(u => /will/i.test(u.what + u.why)),
     'The time clause warns against "will" after when / until');
 
-  const xacDinh = await get('/api/learn/grammar/relative-defining-nondefining');
-  ok(xacDinh.point.useNot.some(u => /that/i.test(u.what + u.why)),
+  const relativeDefiningNondefining = await get('/api/learn/grammar/relative-defining-nondefining');
+  ok(relativeDefiningNondefining.point.useNot.some(u => /that/i.test(u.what + u.why)),
     'The non-defining clause warns against "that"');
-  ok(xacDinh.point.confuse.some(c => c.pair.some(s => /^My sister who/.test(s.en)) &&
+  ok(relativeDefiningNondefining.point.confuse.some(c => c.pair.some(s => /^My sister who/.test(s.en)) &&
                                      c.pair.some(s => /^My sister, who/.test(s.en))),
     'The telling-apart pair shows a comma changing the meaning of the whole sentence');
 
-  const luocBo = await get('/api/learn/grammar/relative-omit-object');
-  ok(luocBo.point.useNot.some(u => /chủ ngữ/i.test(u.what + u.why)),
+  const relativeOmitObject = await get('/api/learn/grammar/relative-omit-object');
+  ok(relativeOmitObject.point.useNot.some(u => /chủ ngữ/i.test(u.what + u.why)),
     'The omitted-pronoun point warns against dropping it when it is the subject');
 
-  const mucDich = await get('/api/learn/grammar/adverbial-purpose');
-  ok(mucDich.point.useNot.some(u => /for/i.test(u.what + u.why) && /ing/i.test(u.what + u.why)),
+  const adverbialPurpose = await get('/api/learn/grammar/adverbial-purpose');
+  ok(adverbialPurpose.point.useNot.some(u => /for/i.test(u.what + u.why) && /ing/i.test(u.what + u.why)),
     'The purpose clause separates "to + V" from "for + V-ing"');
 
   /* B2: four signature errors, one point owning each — lose a warning and that point loses its focus */
-  const rutGon = await get('/api/learn/grammar/relative-reduced');
-  ok(rutGon.point.useNot.some(u => /tân ngữ/i.test(u.what + u.why)),
+  const relativeReduced = await get('/api/learn/grammar/relative-reduced');
+  ok(relativeReduced.point.useNot.some(u => /tân ngữ/i.test(u.what + u.why)),
     'The reduced relative clause warns against reducing when the pronoun is the object');
 
-  const gioiTu = await get('/api/learn/grammar/relative-preposition');
-  ok(gioiTu.point.useNot.some(u => /that/i.test(u.what + u.why)) &&
-     gioiTu.point.useNot.some(u => /whom/i.test(u.what + u.why)),
+  const relativePreposition = await get('/api/learn/grammar/relative-preposition');
+  ok(relativePreposition.point.useNot.some(u => /that/i.test(u.what + u.why)) &&
+     relativePreposition.point.useNot.some(u => /whom/i.test(u.what + u.why)),
     'Preposition + relative pronoun bars both "that" and "who" after a preposition');
 
-  const luongTu = await get('/api/learn/grammar/relative-quantifier');
-  ok(luongTu.point.useNot.some(u => /them/i.test(u.what + u.why)),
+  const relativeQuantifier = await get('/api/learn/grammar/relative-quantifier');
+  ok(relativeQuantifier.point.useNot.some(u => /them/i.test(u.what + u.why)),
     'The quantifier point warns about using "them" instead of "whom"');
 
-  const whichCaMenhDe = await get('/api/learn/grammar/relative-which-clause');
-  ok(whichCaMenhDe.point.useNot.some(u => /what/i.test(u.what + u.why)),
+  const relativeWhichClause = await get('/api/learn/grammar/relative-which-clause');
+  ok(relativeWhichClause.point.useNot.some(u => /what/i.test(u.what + u.why)),
     'The "which for a whole clause" point warns against "what"');
-  ok(whichCaMenhDe.point.confuse.some(c => /phẩy/i.test(c.with + c.tell)),
+  ok(relativeWhichClause.point.confuse.some(c => /phẩy/i.test(c.with + c.tell)),
     'The "which for a whole clause" point shows a missing comma changing the meaning');
 
-  const doiChieu = await get('/api/learn/grammar/adverbial-contrast');
-  ok(doiChieu.point.confuse.some(c => /whereas/i.test(c.with + c.tell) && /although/i.test(c.with + c.tell)),
+  const adverbialContrast = await get('/api/learn/grammar/adverbial-contrast');
+  ok(adverbialContrast.point.confuse.some(c => /whereas/i.test(c.with + c.tell) && /although/i.test(c.with + c.tell)),
     'The contrast clause separates "whereas" from "although"');
 
-  const cachThuc = await get('/api/learn/grammar/adverbial-manner');
-  ok(cachThuc.point.useNot.some(u => /like/i.test(u.what + u.why)),
+  const adverbialManner = await get('/api/learn/grammar/adverbial-manner');
+  ok(adverbialManner.point.useNot.some(u => /like/i.test(u.what + u.why)),
     'The manner clause warns that "like" is not a conjunction in formal writing');
 
-  const nhomEver = await get('/api/learn/grammar/adverbial-ever');
-  ok(nhomEver.point.useNot.some(u => /however/i.test(u.what + u.why)),
+  const adverbialEver = await get('/api/learn/grammar/adverbial-ever');
+  ok(adverbialEver.point.useNot.some(u => /however/i.test(u.what + u.why)),
     'The "-ever" group warns about the wrong order after "however"');
-  ok(/However hard he tried/.test(JSON.stringify(nhomEver.point.errors)),
+  ok(/However hard he tried/.test(JSON.stringify(adverbialEver.point.errors)),
     'The "-ever" group gives the right fix, "However hard he tried"');
 
-  const danhNgu = await get('/api/learn/grammar/noun-clause-what-whether');
-  ok(danhNgu.point.useNot.some(u => /giới từ/i.test(u.what + u.why) && /whether/i.test(u.what + u.why)),
+  const nounClauseWhatWhether = await get('/api/learn/grammar/noun-clause-what-whether');
+  ok(nounClauseWhatWhether.point.useNot.some(u => /giới từ/i.test(u.what + u.why) && /whether/i.test(u.what + u.why)),
     'The noun clause warns that a preposition takes "whether"');
-  ok(danhNgu.point.confuse.some(c => /what/i.test(c.with + c.tell) && /that/i.test(c.with + c.tell)),
+  ok(nounClauseWhatWhether.point.confuse.some(c => /what/i.test(c.with + c.tell) && /that/i.test(c.with + c.tell)),
     'The noun clause separates "what" from "that"');
 
   /* C1-C2: the dangling participle is the spine, and has to show up in all three related points */
-  const phanTu = await get('/api/learn/grammar/participle-clause-adverbial');
-  ok(phanTu.point.useNot.some(u => /treo/i.test(u.what + u.why)),
+  const participleClauseAdverbial = await get('/api/learn/grammar/participle-clause-adverbial');
+  ok(participleClauseAdverbial.point.useNot.some(u => /treo/i.test(u.what + u.why)),
     'The participle clause warns about the dangling participle');
-  ok(/building came into view/i.test(JSON.stringify(phanTu.point.errors)),
+  ok(/building came into view/i.test(JSON.stringify(participleClauseAdverbial.point.errors)),
     'The participle clause gives the classic dangling example');
 
-  const luocBoPhu = await get('/api/learn/grammar/ellipsis-subordinate');
-  ok(luocBoPhu.point.useNot.some(u => /chủ ngữ/i.test(u.what + u.why)),
+  const ellipsisSubordinate = await get('/api/learn/grammar/ellipsis-subordinate');
+  ok(ellipsisSubordinate.point.useNot.some(u => /chủ ngữ/i.test(u.what + u.why)),
     'Ellipsis in a subordinate clause warns that the two subjects have to be the same');
 
-  const tuyetDoi = await get('/api/learn/grammar/absolute-construction');
-  ok(tuyetDoi.point.confuse.some(c => /chủ ngữ riêng/i.test(c.with + c.tell)),
+  const absoluteConstruction = await get('/api/learn/grammar/absolute-construction');
+  ok(absoluteConstruction.point.confuse.some(c => /chủ ngữ riêng/i.test(c.with + c.tell)),
     'The absolute construction is separated from the participle clause by its own subject');
 
-  const ketQua = await get('/api/learn/grammar/result-clause');
-  ok(ketQua.point.confuse.some(c => /kết quả/i.test(c.with + c.tell) && /mục đích/i.test(c.with + c.tell)),
+  const resultClause = await get('/api/learn/grammar/result-clause');
+  ok(resultClause.point.confuse.some(c => /kết quả/i.test(c.with + c.tell) && /mục đích/i.test(c.with + c.tell)),
     'The result clause separates "so…that" from the purpose "so that"');
 
-  const chuNguGia = await get('/api/learn/grammar/extraposition-it');
-  ok(chuNguGia.point.useNot.some(u => /chủ ngữ/i.test(u.what + u.why)),
+  const extrapositionIt = await get('/api/learn/grammar/extraposition-it');
+  ok(extrapositionIt.point.useNot.some(u => /chủ ngữ/i.test(u.what + u.why)),
     'The dummy subject "it" warns that "it" cannot be dropped from the front');
 
   const forTo = await get('/api/learn/grammar/for-to-clause');
   ok(forTo.point.useNot.some(u => /sở hữu/i.test(u.what + u.why)),
     'The "for + to-V" clause warns to use an object pronoun, not a possessive');
 
-  const deThuong = await get('/api/learn/grammar/clause-in-case');
-  ok(deThuong.point.confuse.some(c => /in case/i.test(c.with + c.tell) && /\bif\b/i.test(c.with + c.tell)),
+  const clauseInCase = await get('/api/learn/grammar/clause-in-case');
+  ok(clauseInCase.point.confuse.some(c => /in case/i.test(c.with + c.tell) && /\bif\b/i.test(c.with + c.tell)),
     'The "in case" point separates precaution from the "if" condition');
-  ok(deThuong.point.useNot.some(u => /will/i.test(u.what + u.why)),
+  ok(clauseInCase.point.useNot.some(u => /will/i.test(u.what + u.why)),
     'The "in case" point warns against "will" after it');
 
-  const asHocThuat = await get('/api/learn/grammar/as-clause-academic');
-  ok(asHocThuat.point.useNot.some(u => /\bit\b/i.test(u.what + u.why)),
+  const asClauseAcademic = await get('/api/learn/grammar/as-clause-academic');
+  ok(asClauseAcademic.point.useNot.some(u => /\bit\b/i.test(u.what + u.why)),
     'The academic "as" clause warns against slipping "it" in between');
 
-  const wherebyC2 = await get('/api/learn/grammar/relative-whereby');
-  ok(wherebyC2.point.useNot.some(u => /whereby/i.test(u.what + u.why)),
+  const relativeWhereby = await get('/api/learn/grammar/relative-whereby');
+  ok(relativeWhereby.point.useNot.some(u => /whereby/i.test(u.what + u.why)),
     'The "whereby" point warns that it does not mean a place');
 
-  const tachXa = await get('/api/learn/grammar/relative-postponed');
-  ok(tachXa.point.useNot.some(u => /danh từ/i.test(u.what + u.why)),
+  const relativePostponed = await get('/api/learn/grammar/relative-postponed');
+  ok(relativePostponed.point.useNot.some(u => /danh từ/i.test(u.what + u.why)),
     'The postponed clause warns that another noun in between causes a misreading');
 
-  const nhuongBoTrangTrong = await get('/api/learn/grammar/concessive-formal');
-  ok(nhuongBoTrangTrong.point.useNot.some(u => /\bbut\b/i.test(u.what + u.why)),
+  const concessiveFormal = await get('/api/learn/grammar/concessive-formal');
+  ok(concessiveFormal.point.useNot.some(u => /\bbut\b/i.test(u.what + u.why)),
     'Formal concession still bars pairing with "but"');
-  ok(/Try as he might/.test(JSON.stringify(nhuongBoTrangTrong.point.errors)),
+  ok(/Try as he might/.test(JSON.stringify(concessiveFormal.point.errors)),
     'Formal concession keeps the fixed phrase "Try as he might" intact');
 
-  const ganNham = await get('/api/learn/grammar/clause-attachment');
-  ok(ganNham.point.confuse.some(c => /hai nghĩa/i.test(c.with + c.tell)),
+  const clauseAttachment = await get('/api/learn/grammar/clause-attachment');
+  ok(clauseAttachment.point.confuse.some(c => /hai nghĩa/i.test(c.with + c.tell)),
     'The attachment point states outright that the problem is a two-way reading');
 
   /* ============ 5e. Grammar: inversion, emphasis, cleft sentences ============ */
@@ -757,89 +757,89 @@ try {
   ok(nm.count === 21, 'All 21 points B1-C2, per the quota (' + nm.count + ')');
   const nmLevel = nm.points.reduce((a, p) => (a[p.level] = (a[p.level] || 0) + 1, a), {});
   const NM_QUOTA = { B1: 2, B2: 5, C1: 7, C2: 7 };
-  const nmLech = Object.keys(NM_QUOTA).filter(l => nmLevel[l] !== NM_QUOTA[l]);
-  ok(nmLech.length === 0, 'Exactly the quota B1 2, B2 5, C1 7, C2 7' +
-    (nmLech.length ? ' (off: ' + nmLech.map(l => l + ' ' + (nmLevel[l] || 0) + '/' + NM_QUOTA[l]).join(', ') + ')' : ''));
+  const emphasisOff = Object.keys(NM_QUOTA).filter(l => nmLevel[l] !== NM_QUOTA[l]);
+  ok(emphasisOff.length === 0, 'Exactly the quota B1 2, B2 5, C1 7, C2 7' +
+    (emphasisOff.length ? ' (off: ' + emphasisOff.map(l => l + ' ' + (nmLevel[l] || 0) + '/' + NM_QUOTA[l]).join(', ') + ')' : ''));
   ok(nm.points.every(p => p.counts.example === 6 && p.counts.practice === 10),
     'Every point has its 6 examples and 10 practice sentences');
-  const bacNm = { B1: 3, B2: 4, C1: 5, C2: 6 };
-  ok(nm.points.every((p, i) => i === 0 || bacNm[p.level] >= bacNm[nm.points[i - 1].level]),
+  const EMPHASIS_RANK = { B1: 3, B2: 4, C1: 5, C2: 6 };
+  ok(nm.points.every((p, i) => i === 0 || EMPHASIS_RANK[p.level] >= EMPHASIS_RANK[nm.points[i - 1].level]),
     'The B1-C1 and C2 files join seamlessly, sorted from the lowest level up');
 
   /* The spine of the group: invert or do not. The two points have to be comparable,
      or the learner has nowhere to see the two opposite rules side by side. */
-  const daoPhuDinh = await get('/api/learn/grammar/negative-inversion-basic');
-  ok(/Never have I/.test(JSON.stringify(daoPhuDinh.point.errors)),
+  const negativeInversionBasic = await get('/api/learn/grammar/negative-inversion-basic');
+  ok(/Never have I/.test(JSON.stringify(negativeInversionBasic.point.errors)),
     'Negative inversion gives the right fix, "Never have I…"');
-  const khongDao = await get('/api/learn/grammar/fronting-no-inversion');
-  ok(khongDao.point.confuse.some(c => /tân ngữ/i.test(c.with + c.tell) && /phủ định/i.test(c.with + c.tell)),
+  const frontingNoInversion = await get('/api/learn/grammar/fronting-no-inversion');
+  ok(frontingNoInversion.point.confuse.some(c => /tân ngữ/i.test(c.with + c.tell) && /phủ định/i.test(c.with + c.tell)),
     'The fronting-without-inversion point is set directly against negative inversion');
-  ok(khongDao.point.useNot.some(u => /không đảo/i.test(u.what + u.why)),
+  ok(frontingNoInversion.point.useNot.some(u => /không đảo/i.test(u.what + u.why)),
     'The fronting point warns against inverting when an object is brought forward');
 
   /* The paired words of advanced inversion are the classic C1 trap */
-  const daoNangCao = await get('/api/learn/grammar/negative-inversion-advanced');
-  ok(daoNangCao.point.useNot.some(u => /than/i.test(u.what + u.why) && /when/i.test(u.what + u.why)),
+  const negativeInversionAdvanced = await get('/api/learn/grammar/negative-inversion-advanced');
+  ok(negativeInversionAdvanced.point.useNot.some(u => /than/i.test(u.what + u.why) && /when/i.test(u.what + u.why)),
     'Advanced inversion warns that "No sooner… than" differs from "Hardly… when"');
 
-  const daoOnly = await get('/api/learn/grammar/only-inversion');
-  ok(daoOnly.point.useNot.some(u => /chủ ngữ/i.test(u.what + u.why)),
+  const onlyInversion = await get('/api/learn/grammar/only-inversion');
+  ok(onlyInversion.point.useNot.some(u => /chủ ngữ/i.test(u.what + u.why)),
     'The "Only" inversion names the exception where only modifies the subject');
 
-  const cheIt = await get('/api/learn/grammar/it-cleft');
-  ok(cheIt.point.useNot.some(u => /that/i.test(u.what + u.why) && /who/i.test(u.what + u.why)),
+  const itCleft = await get('/api/learn/grammar/it-cleft');
+  ok(itCleft.point.useNot.some(u => /that/i.test(u.what + u.why) && /who/i.test(u.what + u.why)),
     'The "It" cleft warns that "that" or "who" cannot be dropped');
-  const cheWhat = await get('/api/learn/grammar/wh-cleft');
-  ok(cheWhat.point.confuse.some(c => /cuối/i.test(c.with + c.tell) || /đầu/i.test(c.with + c.tell)),
+  const whCleft = await get('/api/learn/grammar/wh-cleft');
+  ok(whCleft.point.confuse.some(c => /cuối/i.test(c.with + c.tell) || /đầu/i.test(c.with + c.tell)),
     'The "What" cleft is set against the "It" cleft on where the stress falls');
 
-  const nhanDo = await get('/api/learn/grammar/do-emphasis');
-  ok(/did call/.test(JSON.stringify(nhanDo.point.errors)),
+  const doEmphasis = await get('/api/learn/grammar/do-emphasis');
+  ok(/did call/.test(JSON.stringify(doEmphasis.point.errors)),
     'Emphatic "do" catches conjugating the main verb after "did"');
 
-  const traTuNhan = await get('/api/learn/grammar/emphasis-adverbs');
-  ok(traTuNhan.point.useNot.some(u => /whatsoever/i.test(u.what + u.why)),
+  const emphasisAdverbs = await get('/api/learn/grammar/emphasis-adverbs');
+  ok(emphasisAdverbs.point.useNot.some(u => /whatsoever/i.test(u.what + u.why)),
     'Emphatic adverbs warn that "whatsoever" belongs only in a negative sentence');
 
-  const bienThe = await get('/api/learn/grammar/cleft-variants');
-  ok(/All what/.test(JSON.stringify(bienThe.point.errors)),
+  const cleftVariants = await get('/api/learn/grammar/cleft-variants');
+  ok(/All what/.test(JSON.stringify(cleftVariants.point.errors)),
     'Cleft variants catch "All what I want"');
 
   /* C2: the spine is telling the two kinds of inversion apart, plus the inversion and cleft pair that mean the same */
-  const haiKieuDao = await get('/api/learn/grammar/inversion-full-vs-auxiliary');
-  ok(haiKieuDao.point.confuse.some(c => /toàn phần/i.test(c.with + c.tell) && /trợ động từ/i.test(c.with + c.tell)),
+  const inversionFullVsAuxiliary = await get('/api/learn/grammar/inversion-full-vs-auxiliary');
+  ok(inversionFullVsAuxiliary.point.confuse.some(c => /toàn phần/i.test(c.with + c.tell) && /trợ động từ/i.test(c.with + c.tell)),
     'The two-kinds point separates full inversion from auxiliary inversion');
-  ok(haiKieuDao.point.useNot.some(u => /đại từ/i.test(u.what + u.why)),
+  ok(inversionFullVsAuxiliary.point.useNot.some(u => /đại từ/i.test(u.what + u.why)),
     'The two-kinds point warns that full inversion does not take a pronoun');
 
-  const phanTuDauCau = await get('/api/learn/grammar/fronting-participle-adjective');
-  ok(phanTuDauCau.point.useNot.some(u => /hợp/i.test(u.what + u.why) || /chia động từ/i.test(u.what + u.why)),
+  const frontingParticipleAdjective = await get('/api/learn/grammar/fronting-participle-adjective');
+  ok(frontingParticipleAdjective.point.useNot.some(u => /hợp/i.test(u.what + u.why) || /chia động từ/i.test(u.what + u.why)),
     'The fronted-participle point warns about agreement with the subject at the end');
-  ok(/Gone are the days/.test(JSON.stringify(phanTuDauCau.point.errors)),
+  ok(/Gone are the days/.test(JSON.stringify(frontingParticipleAdjective.point.errors)),
     'The fronted-participle point gives the right fix, "Gone are the days"');
 
-  const daoSoSanh = await get('/api/learn/grammar/inversion-comparative');
-  ok(daoSoSanh.point.confuse.some(c => /tuỳ chọn/i.test(c.with + c.tell) && /bắt buộc/i.test(c.with + c.tell)),
+  const inversionComparative = await get('/api/learn/grammar/inversion-comparative');
+  ok(inversionComparative.point.confuse.some(c => /tuỳ chọn/i.test(c.with + c.tell) && /bắt buộc/i.test(c.with + c.tell)),
     'Comparative inversion states that this inversion is optional, unlike the obligatory kind');
 
   /* These two points have to cross-reference each other: one idea, two ways of saying it */
-  const cheNotUntil = await get('/api/learn/grammar/cleft-not-until');
-  ok(cheNotUntil.point.useNot.some(u => /when/i.test(u.what + u.why) && /that/i.test(u.what + u.why)),
+  const cleftNotUntil = await get('/api/learn/grammar/cleft-not-until');
+  ok(cleftNotUntil.point.useNot.some(u => /when/i.test(u.what + u.why) && /that/i.test(u.what + u.why)),
     'The negative cleft warns against "when" in place of "that"');
-  ok(cheNotUntil.point.confuse.some(c => /đảo ngữ/i.test(c.with + c.tell)),
+  ok(cleftNotUntil.point.confuse.some(c => /đảo ngữ/i.test(c.with + c.tell)),
     'The negative cleft is set against the inversion that means the same');
-  const daoNotPhrase = await get('/api/learn/grammar/inversion-not-phrases');
-  ok(/Not once did she complain/.test(JSON.stringify(daoNotPhrase.point.errors)),
+  const inversionNotPhrases = await get('/api/learn/grammar/inversion-not-phrases');
+  ok(/Not once did she complain/.test(JSON.stringify(inversionNotPhrases.point.errors)),
     'The "Not" phrase inversion gives the right fix, "Not once did she complain"');
 
-  const noiMach = await get('/api/learn/grammar/fronting-cohesion');
-  ok(noiMach.point.useNot.some(u => /chưa biết/i.test(u.what + u.why) || /thông tin mới/i.test(u.what + u.why)),
+  const frontingCohesion = await get('/api/learn/grammar/fronting-cohesion');
+  ok(frontingCohesion.point.useNot.some(u => /chưa biết/i.test(u.what + u.why) || /thông tin mới/i.test(u.what + u.why)),
     'The cohesion point warns against fronting new information');
 
-  const phuDinhGianTiep = await get('/api/learn/grammar/emphasis-far-from');
-  ok(phuDinhGianTiep.point.useNot.some(u => /anything but/i.test(u.what + u.why)),
+  const emphasisFarFrom = await get('/api/learn/grammar/emphasis-far-from');
+  ok(emphasisFarFrom.point.useNot.some(u => /anything but/i.test(u.what + u.why)),
     'The indirect-negation point warns against reading "anything but" literally');
-  ok(phuDinhGianTiep.point.confuse.some(c => /nothing but/i.test(c.with + c.tell)),
+  ok(emphasisFarFrom.point.confuse.some(c => /nothing but/i.test(c.with + c.tell)),
     'The indirect-negation point separates "anything but" from "nothing but"');
 
   /* ============ 5f. Grammar: nuance, register, hedging ============ */
@@ -849,155 +849,155 @@ try {
   ok(st.count === 33, 'All 33 points A1-C2, per the quota (' + st.count + ')');
   const stLevel = st.points.reduce((a, p) => (a[p.level] = (a[p.level] || 0) + 1, a), {});
   const ST_QUOTA = { A1: 1, A2: 2, B1: 4, B2: 7, C1: 9, C2: 10 };
-  const stLech = Object.keys(ST_QUOTA).filter(l => stLevel[l] !== ST_QUOTA[l]);
-  ok(stLech.length === 0, 'Exactly the quota A1 1, A2 2, B1 4, B2 7, C1 9, C2 10' +
-    (stLech.length ? ' (off: ' + stLech.map(l => l + ' ' + (stLevel[l] || 0) + '/' + ST_QUOTA[l]).join(', ') + ')' : ''));
+  const registerOff = Object.keys(ST_QUOTA).filter(l => stLevel[l] !== ST_QUOTA[l]);
+  ok(registerOff.length === 0, 'Exactly the quota A1 1, A2 2, B1 4, B2 7, C1 9, C2 10' +
+    (registerOff.length ? ' (off: ' + registerOff.map(l => l + ' ' + (stLevel[l] || 0) + '/' + ST_QUOTA[l]).join(', ') + ')' : ''));
   ok(st.points.every(p => p.counts.example === 6 && p.counts.practice === 10),
     'Every point has its 6 examples and 10 practice sentences');
-  const bacSt = { A1: 1, A2: 2, B1: 3, B2: 4, C1: 5, C2: 6 };
-  ok(st.points.every((p, i) => i === 0 || bacSt[p.level] >= bacSt[st.points[i - 1].level]),
+  const REGISTER_RANK = { A1: 1, A2: 2, B1: 3, B2: 4, C1: 5, C2: 6 };
+  ok(st.points.every((p, i) => i === 0 || REGISTER_RANK[p.level] >= REGISTER_RANK[st.points[i - 1].level]),
     'The A1-B2, C1 and C2 files join seamlessly, sorted from the lowest level up');
 
   /* This group is about nuance, so a counter-example is often a GRAMMATICAL sentence
      in the WRONG TONE. The note still has to give the fix, or the learner sees a mark
      against it and no idea how to rewrite it.
      Note: the API returns 'ok' as a boolean (ok: r.ok === 1), so a counter-example is ok === false. */
-  const stThieu = [];
+  const registerMissing = [];
   for (const p of st.points) {
     const d = await get('/api/learn/grammar/' + p.slug);
-    const phanViDu = d.examples.filter(x => x.ok === false);
-    if (phanViDu.length < 2) stThieu.push(p.slug + ': only ' + phanViDu.length + ' counter-examples');
-    else if (phanViDu.some(x => !x.note || !x.note.trim())) stThieu.push(p.slug + ': a counter-example has no explanation');
+    const counterExamples = d.examples.filter(x => x.ok === false);
+    if (counterExamples.length < 2) registerMissing.push(p.slug + ': only ' + counterExamples.length + ' counter-examples');
+    else if (counterExamples.some(x => !x.note || !x.note.trim())) registerMissing.push(p.slug + ': a counter-example has no explanation');
   }
-  ok(stThieu.length === 0, 'Every point has 2 counter-examples with an explanation' +
-    (stThieu.length ? ' (missing: ' + stThieu.join('; ') + ')' : ''));
+  ok(registerMissing.length === 0, 'Every point has 2 counter-examples with an explanation' +
+    (registerMissing.length ? ' (missing: ' + registerMissing.join('; ') + ')' : ''));
 
-  const lichSu = await get('/api/learn/grammar/politeness-basics');
-  ok(lichSu.point.confuse.some(c => /excuse me/i.test(c.with + c.tell) && /sorry/i.test(c.with + c.tell)),
+  const politenessBasics = await get('/api/learn/grammar/politeness-basics');
+  ok(politenessBasics.point.confuse.some(c => /excuse me/i.test(c.with + c.tell) && /sorry/i.test(c.with + c.tell)),
     'The politeness point separates "excuse me" from "sorry"');
 
-  const hoiGianTiep = await get('/api/learn/grammar/indirect-questions');
-  ok(hoiGianTiep.point.useNot.some(u => /đảo/i.test(u.what + u.why)),
+  const indirectQuestions = await get('/api/learn/grammar/indirect-questions');
+  ok(indirectQuestions.point.useNot.some(u => /đảo/i.test(u.what + u.why)),
     'The indirect question warns against keeping the inverted order inside');
-  ok(/where the station is/.test(JSON.stringify(hoiGianTiep.point.errors)),
+  ok(/where the station is/.test(JSON.stringify(indirectQuestions.point.errors)),
     'The indirect question gives the right fix, "where the station is"');
 
-  const duoiCau = await get('/api/learn/grammar/question-tags');
-  ok(duoiCau.point.useNot.some(u => /amn/i.test(u.what + u.why)),
+  const questionTags = await get('/api/learn/grammar/question-tags');
+  ok(questionTags.point.useNot.some(u => /amn/i.test(u.what + u.why)),
     'Question tags warn that there is no "amn\'t I"');
 
-  const mucDo = await get('/api/learn/grammar/quite-rather-fairly');
-  ok(mucDo.point.confuse.some(c => /tuyệt đối/i.test(c.with + c.tell)),
+  const quiteRatherFairly = await get('/api/learn/grammar/quite-rather-fairly');
+  ok(quiteRatherFairly.point.confuse.some(c => /tuyệt đối/i.test(c.with + c.tell)),
     'The degree point traps "quite" with an absolute adjective');
 
-  const uocChung = await get('/api/learn/grammar/vague-language');
-  ok(uocChung.point.useNot.some(u => /học thuật/i.test(u.what + u.why)),
+  const vagueLanguage = await get('/api/learn/grammar/vague-language');
+  ok(vagueLanguage.point.useNot.some(u => /học thuật/i.test(u.what + u.why)),
     'The vague-language point warns against using it in academic writing');
 
-  const raoDonDongTu = await get('/api/learn/grammar/hedging-verbs');
-  ok(raoDonDongTu.point.useNot.some(u => /tiếp diễn/i.test(u.what + u.why)),
+  const hedgingVerbs = await get('/api/learn/grammar/hedging-verbs');
+  ok(hedgingVerbs.point.useNot.some(u => /tiếp diễn/i.test(u.what + u.why)),
     'Hedging verbs warn that "seem" takes no continuous form');
 
-  const raoDonTrangTu = await get('/api/learn/grammar/hedging-adverbs');
-  ok(raoDonTrangTu.point.confuse.some(c => /apparently/i.test(c.with + c.tell) && /clearly/i.test(c.with + c.tell)),
+  const hedgingAdverbs = await get('/api/learn/grammar/hedging-adverbs');
+  ok(hedgingAdverbs.point.confuse.some(c => /apparently/i.test(c.with + c.tell) && /clearly/i.test(c.with + c.tell)),
     'Hedging adverbs separate "apparently" from "clearly"');
 
-  const tangCam = await get('/api/learn/grammar/boosters');
-  ok(tangCam.point.useNot.some(u => /obviously/i.test(u.what + u.why)),
+  const boosters = await get('/api/learn/grammar/boosters');
+  ok(boosters.point.useNot.some(u => /obviously/i.test(u.what + u.why)),
     'The booster point warns about the trap in "obviously"');
 
-  const phiNgoi = await get('/api/learn/grammar/impersonal-distance');
-  ok(phiNgoi.point.useNot.some(u => /one/i.test(u.what + u.why) && /you/i.test(u.what + u.why)),
+  const impersonalDistance = await get('/api/learn/grammar/impersonal-distance');
+  ok(impersonalDistance.point.useNot.some(u => /one/i.test(u.what + u.why) && /you/i.test(u.what + u.why)),
     'The impersonal point warns against mixing "one" with "you"');
 
   /* C1: the spine is calibrating the dose of hedging, plus the pair set against the B2 impersonal style */
-  const phamVi = await get('/api/learn/grammar/hedging-scope-quantity');
-  ok(/All Vietnamese people/.test(JSON.stringify(phamVi.point.errors)),
+  const hedgingScopeQuantity = await get('/api/learn/grammar/hedging-scope-quantity');
+  ok(/All Vietnamese people/.test(JSON.stringify(hedgingScopeQuantity.point.errors)),
     'Scope hedging catches the overclaim "All Vietnamese people…"');
-  ok(phamVi.point.useNot.some(u => /sự thật/i.test(u.what + u.why)),
+  ok(hedgingScopeQuantity.point.useNot.some(u => /sự thật/i.test(u.what + u.why)),
     'Scope hedging notes not to hedge an established fact');
 
-  const khoanhVung = await get('/api/learn/grammar/hedging-conditions-limits');
-  ok(khoanhVung.point.useNot.some(u => /principal/i.test(u.what + u.why)),
+  const hedgingConditionsLimits = await get('/api/learn/grammar/hedging-conditions-limits');
+  ok(hedgingConditionsLimits.point.useNot.some(u => /principal/i.test(u.what + u.why)),
     'The limits point warns about the spelling error "in principal"');
 
-  const canLieu = await get('/api/learn/grammar/hedging-calibration');
-  ok(canLieu.point.useNot.some(u => /prove/i.test(u.what + u.why)),
+  const hedgingCalibration = await get('/api/learn/grammar/hedging-calibration');
+  ok(hedgingCalibration.point.useNot.some(u => /prove/i.test(u.what + u.why)),
     'The calibration point warns against "prove" for correlational data');
-  ok(canLieu.point.confuse.some(c => /quá tay/i.test(c.with + c.tell)),
+  ok(hedgingCalibration.point.confuse.some(c => /quá tay/i.test(c.with + c.tell)),
     'The calibration point sets a right-sized hedge against an overdone one');
 
-  const nhoTrongThu = await get('/api/learn/grammar/written-request-formulae');
-  ok(nhoTrongThu.point.useNot.some(u => /appreciate/i.test(u.what + u.why) && /\bit\b/i.test(u.what + u.why)),
+  const writtenRequestFormulae = await get('/api/learn/grammar/written-request-formulae');
+  ok(writtenRequestFormulae.point.useNot.some(u => /appreciate/i.test(u.what + u.why) && /\bit\b/i.test(u.what + u.why)),
     'The written-request point warns against dropping "it" from "I would appreciate it if"');
 
-  const gopY = await get('/api/learn/grammar/softening-criticism');
-  ok(gopY.point.useNot.some(u => /an toàn/i.test(u.what + u.why)),
+  const softeningCriticism = await get('/api/learn/grammar/softening-criticism');
+  ok(softeningCriticism.point.useNot.some(u => /an toàn/i.test(u.what + u.why)),
     'Softening criticism names the exception: on safety you say it straight');
 
-  const noiGiam = await get('/api/learn/grammar/understatement-litotes');
-  ok(noiGiam.point.useNot.some(u => /not bad/i.test(u.what + u.why)),
+  const understatementLitotes = await get('/api/learn/grammar/understatement-litotes');
+  ok(understatementLitotes.point.useNot.some(u => /not bad/i.test(u.what + u.why)),
     'The understatement point warns that "not bad" is praise, not criticism');
-  ok(noiGiam.point.confuse.some(c => {
-    const cau = c.pair.map(x => x.en).join(' ');
-    return /not bad/i.test(cau) && /not very good/i.test(cau);
+  ok(understatementLitotes.point.confuse.some(c => {
+    const pairText = c.pair.map(x => x.en).join(' ');
+    return /not bad/i.test(pairText) && /not very good/i.test(pairText);
   }), 'The understatement point sets "not bad" against "not very good"');
 
-  const uyenNgu = await get('/api/learn/grammar/euphemism');
-  ok(uyenNgu.point.confuse.some(c => /né tránh/i.test(c.with + c.tell)),
+  const euphemismPoint = await get('/api/learn/grammar/euphemism');
+  ok(euphemismPoint.point.confuse.some(c => /né tránh/i.test(c.with + c.tell)),
     'The euphemism point separates the kind sort from the evasive sort');
 
-  const vanNoi = await get('/api/learn/grammar/spoken-vs-written-grammar');
-  ok(vanNoi.point.useNot.some(u => /sai/i.test(u.what + u.why)),
+  const spokenVsWrittenGrammar = await get('/api/learn/grammar/spoken-vs-written-grammar');
+  ok(spokenVsWrittenGrammar.point.useNot.some(u => /sai/i.test(u.what + u.why)),
     'The spoken-grammar point stresses that these habits are not bad English');
 
-  const lapTruong = await get('/api/learn/grammar/stance-markers');
-  ok(/According to me/.test(JSON.stringify(lapTruong.point.errors)),
+  const stanceMarkers = await get('/api/learn/grammar/stance-markers');
+  ok(/According to me/.test(JSON.stringify(stanceMarkers.point.errors)),
     'The stance-marker point catches "According to me"');
-  ok(lapTruong.point.confuse.some(c => /phi ngôi/i.test(c.with + c.tell)),
+  ok(stanceMarkers.point.confuse.some(c => /phi ngôi/i.test(c.with + c.tell)),
     'The stance-marker point is set against the B2 impersonal style');
 
   /* C2: the spine is reading what is not said out loud.
      The three points — implicature, presupposition, irony — have to stay distinguishable. */
-  const miaMai = await get('/api/learn/grammar/irony-and-sarcasm');
-  ok(miaMai.point.useNot.some(u => /email/i.test(u.what + u.why)),
+  const ironyAndSarcasm = await get('/api/learn/grammar/irony-and-sarcasm');
+  ok(ironyAndSarcasm.point.useNot.some(u => /email/i.test(u.what + u.why)),
     'The irony point warns against using it in a work email');
 
-  const hamY = await get('/api/learn/grammar/implicature');
-  ok(hamY.point.confuse.some(c => /tiền giả định/i.test(c.with + c.tell)),
+  const implicaturePoint = await get('/api/learn/grammar/implicature');
+  ok(implicaturePoint.point.confuse.some(c => /tiền giả định/i.test(c.with + c.tell)),
     'The implicature point is separated from presupposition');
-  const tienGiaDinh = await get('/api/learn/grammar/presupposition');
-  ok(tienGiaDinh.point.formula.note && /phủ định/i.test(tienGiaDinh.point.formula.note),
+  const presuppositionPoint = await get('/api/learn/grammar/presupposition');
+  ok(presuppositionPoint.point.formula.note && /phủ định/i.test(presuppositionPoint.point.formula.note),
     'The presupposition point names the negation test');
-  ok(tienGiaDinh.point.useNot.some(u => /khảo sát/i.test(u.what + u.why)),
+  ok(presuppositionPoint.point.useNot.some(u => /khảo sát/i.test(u.what + u.why)),
     'The presupposition point warns that a loaded survey question skews the numbers');
 
-  const pheBinh = await get('/api/learn/grammar/academic-critique');
-  ok(pheBinh.point.confuse.some(c => /cá nhân/i.test(c.with + c.tell)),
+  const academicCritique = await get('/api/learn/grammar/academic-critique');
+  ok(academicCritique.point.confuse.some(c => /cá nhân/i.test(c.with + c.tell)),
     'Academic critique separates criticising the work from attacking the person');
 
-  const khuonChinhThuc = await get('/api/learn/grammar/institutional-formulae');
-  ok(khuonChinhThuc.point.confuse.some(c => /faithfully/i.test(JSON.stringify(c))),
+  const institutionalFormulae = await get('/api/learn/grammar/institutional-formulae');
+  ok(institutionalFormulae.point.confuse.some(c => /faithfully/i.test(JSON.stringify(c))),
     'Institutional formulae separate "Yours sincerely" from "Yours faithfully"');
 
-  const tuDanhGia = await get('/api/learn/grammar/evaluative-lexis');
-  ok(/regime/i.test(JSON.stringify(tuDanhGia.point.errors)),
+  const evaluativeLexis = await get('/api/learn/grammar/evaluative-lexis');
+  ok(/regime/i.test(JSON.stringify(evaluativeLexis.point.errors)),
     'The evaluative-lexis point catches "regime" in a neutral report');
 
-  const ngoacKep = await get('/api/learn/grammar/scare-quotes-distancing');
-  ok(ngoacKep.point.useNot.some(u => /nhấn mạnh/i.test(u.what + u.why)),
+  const scareQuotesDistancing = await get('/api/learn/grammar/scare-quotes-distancing');
+  ok(scareQuotesDistancing.point.useNot.some(u => /nhấn mạnh/i.test(u.what + u.why)),
     'The scare-quotes point warns against using quotation marks for emphasis');
 
-  const donDuong = await get('/api/learn/grammar/discourse-softeners');
-  ok(donDuong.point.useNot.some(u => /chồng/i.test(u.what + u.why)),
+  const discourseSofteners = await get('/api/learn/grammar/discourse-softeners');
+  ok(discourseSofteners.point.useNot.some(u => /chồng/i.test(u.what + u.why)),
     'The discourse-softener point warns against stacking too many layers');
 
-  const thangXinLoi = await get('/api/learn/grammar/apology-scale');
-  ok(thangXinLoi.point.confuse.some(c => /apologise/i.test(JSON.stringify(c))),
+  const apologyScale = await get('/api/learn/grammar/apology-scale');
+  ok(apologyScale.point.confuse.some(c => /apologise/i.test(JSON.stringify(c))),
     'The apology scale separates "I am sorry" from "I apologise"');
 
-  const doiGiong = await get('/api/learn/grammar/register-shift-for-effect');
-  ok(doiGiong.point.useNot.some(u => /vô ý/i.test(u.what + u.why) || /chủ ý/i.test(u.what + u.why)),
+  const registerShiftForEffect = await get('/api/learn/grammar/register-shift-for-effect');
+  ok(registerShiftForEffect.point.useNot.some(u => /vô ý/i.test(u.what + u.why) || /chủ ý/i.test(u.what + u.why)),
     'The register-shift point separates a deliberate shift from an accidental mix');
 
   /* ============ 6. Practice-sentence quality across ALL of grammar ============
@@ -1014,11 +1014,11 @@ try {
 
   const CUE = ['not', 'already', 'just', 'never', 'always', 'probably', 'ever', 'still'];
   const allPoints = (await get('/api/learn/grammar')).points;
-  let lechDapAn = [], soTracNghiem = 0, tongLuyen = 0;
+  let answerOutsideOptions = [], multipleChoiceCount = 0, practiceTotal = 0;
 
   for (const p of allPoints) {
     const d = await get('/api/learn/grammar/' + p.slug);
-    tongLuyen += d.practice.length;
+    practiceTotal += d.practice.length;
     for (const x of d.practice) {
       const brackets = [...x.en.matchAll(/\(([^)]*)\)/g)].map(m => m[1]);
       const parts = x.answer.split('…').map(s => s.trim());
@@ -1028,42 +1028,42 @@ try {
         if (!b.includes('/')) return;                    // one word in brackets: a conjugation cue, not a choice
         const opts = b.split('/').map(s => s.trim());
         if (CUE.includes(opts[0].toLowerCase())) return; // a conjugation cue carrying an adverb
-        soTracNghiem++;
+        multipleChoiceCount++;
         if (!opts.includes(parts[i])) {
-          lechDapAn.push(p.slug + ': ' + x.en + ' → ' + parts[i] + ' (options: ' + opts.join(' | ') + ')');
+          answerOutsideOptions.push(p.slug + ': ' + x.en + ' → ' + parts[i] + ' (options: ' + opts.join(' | ') + ')');
         }
       });
     }
   }
 
-  ok(soTracNghiem > 200, 'Enough multiple-choice sentences for this check to mean anything (' + soTracNghiem + ')');
+  ok(multipleChoiceCount > 200, 'Enough multiple-choice sentences for this check to mean anything (' + multipleChoiceCount + ')');
 
   /* An English sentence may hold only Latin letters, digits and familiar punctuation.
      A character from another script, slipped in by a keyboard-layout mistake, is nearly
      invisible among a thousand sentences — but shows on the page at once, and TTS says it. */
-  const CHU_LATIN = /^[\x20-\x7E‘’“”–—…→]*$/;
-  const viTri = s => [...s].filter(c => !CHU_LATIN.test(c)).join('');
-  let kyTuLa = [];
+  const LATIN_ONLY = /^[\x20-\x7E‘’“”–—…→]*$/;
+  const foreignChars = s => [...s].filter(c => !LATIN_ONLY.test(c)).join('');
+  let foreign = [];
   for (const p of allPoints) {
     const d = await get('/api/learn/grammar/' + p.slug);
-    const cauAnh = [
+    const englishSentences = [
       ...d.examples.map(x => x.en),
       ...d.practice.map(x => x.en),
       ...d.point.confuse.flatMap(c => (c.pair || []).map(s => s.en)),
       ...d.point.errors.flatMap(e => [e.wrong, e.right])
     ];
-    for (const s of cauAnh) {
+    for (const s of englishSentences) {
       /* A Vietnamese proper name in an example is deliberate, so strip Vietnamese diacritics */
-      const la = viTri(s.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/đ/gi, 'd'));
-      if (la) kyTuLa.push(p.slug + ': ' + JSON.stringify(la) + ' in "' + s + '"');
+      const stray = foreignChars(s.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/đ/gi, 'd'));
+      if (stray) foreign.push(p.slug + ': ' + JSON.stringify(stray) + ' in "' + s + '"');
     }
   }
-  ok(kyTuLa.length === 0, 'No English sentence carries a character from another script' +
-    (kyTuLa.length ? ' (' + kyTuLa.length + ' places, e.g. ' + kyTuLa[0] + ')' : ''));
-  ok(lechDapAn.length === 0, 'The answer is always among the options of a multiple-choice sentence' +
-    (lechDapAn.length ? ' (' + lechDapAn.length + ' wrong, e.g. ' + lechDapAn[0] + ')' : ''));
-  ok(tongLuyen === 12 * 12 + 9 * 10 + 28 * 10 + 16 * 10 + 29 * 10 + 20 * 10 + 22 * 10 + 29 * 10 + 21 * 10 + 33 * 10,
-    'All of grammar comes to ' + (12 * 12 + 9 * 10 + 28 * 10 + 16 * 10 + 29 * 10 + 20 * 10 + 22 * 10 + 29 * 10 + 21 * 10 + 33 * 10) + ' practice sentences (' + tongLuyen + ')');
+  ok(foreign.length === 0, 'No English sentence carries a character from another script' +
+    (foreign.length ? ' (' + foreign.length + ' places, e.g. ' + foreign[0] + ')' : ''));
+  ok(answerOutsideOptions.length === 0, 'The answer is always among the options of a multiple-choice sentence' +
+    (answerOutsideOptions.length ? ' (' + answerOutsideOptions.length + ' wrong, e.g. ' + answerOutsideOptions[0] + ')' : ''));
+  ok(practiceTotal === 12 * 12 + 9 * 10 + 28 * 10 + 16 * 10 + 29 * 10 + 20 * 10 + 22 * 10 + 29 * 10 + 21 * 10 + 33 * 10,
+    'All of grammar comes to ' + (12 * 12 + 9 * 10 + 28 * 10 + 16 * 10 + 29 * 10 + 20 * 10 + 22 * 10 + 29 * 10 + 21 * 10 + 33 * 10) + ' practice sentences (' + practiceTotal + ')');
 
   /* ============ 7. The self-study pages ============ */
   console.log('\n\x1b[1m== Self-study pages ==\x1b[0m');
@@ -1377,36 +1377,36 @@ try {
   ok(await page.locator('nav[aria-label="Self-study topics"].navscroll-track').count() === 1,
     'The chip row switches to a visible scrollbar');
 
-  const traiSau = () => page.evaluate(
+  const chipScrollLeft = () => page.evaluate(
     () => document.querySelector('nav[aria-label="Self-study topics"]').scrollLeft);
-  const tranNgang = await page.evaluate(() => {
+  const overflowPx = await page.evaluate(() => {
     const n = document.querySelector('nav[aria-label="Self-study topics"]');
     return n.scrollWidth - n.clientWidth;
   });
-  ok(tranNgang > 0, 'In a narrow viewport the chip row really does overflow (' + tranNgang + 'px)');
+  ok(overflowPx > 0, 'In a narrow viewport the chip row really does overflow (' + overflowPx + 'px)');
 
   /* The register page is the last chip in the row: opening it has to bring the chip into view */
-  ok(await traiSau() > 0, 'Opening the page scrolls the current chip into view');
+  ok(await chipScrollLeft() > 0, 'Opening the page scrolls the current chip into view');
 
   /* Checked properly: the chip has to sit WHOLLY inside the visible strip of the row.
      isVisible() is no good — it only asks whether an element has a size, not where the
      scroll sits — and the page carries a second [aria-current] in the main navigation,
      which collapses in a narrow viewport and answers the wrong question entirely. */
-  const chipTronTam = await page.evaluate(() => {
+  const chipFullyVisible = await page.evaluate(() => {
     const nav = document.querySelector('nav[aria-label="Self-study topics"]');
     const chip = nav.querySelector('[aria-current="page"]');
     if (!chip) return false;
     const n = nav.getBoundingClientRect(), c = chip.getBoundingClientRect();
     return c.left >= n.left - 1 && c.right <= n.right + 1;
   });
-  ok(chipTronTam, 'The chip for the current page sits wholly inside the visible strip');
+  ok(chipFullyVisible, 'The chip for the current page sits wholly inside the visible strip');
 
   /* Scrolled right, the back button has to show and the forward one hide, being out of road */
   ok(await page.locator('.navscroll-prev').isVisible(), 'The back button shows while items are hidden to the left');
-  const truocKhiLui = await traiSau();
+  const beforeScrollBack = await chipScrollLeft();
   await page.click('.navscroll-prev');
   await page.waitForTimeout(600);
-  ok(await traiSau() < truocKhiLui, 'Pressing back really scrolls the chip row left');
+  ok(await chipScrollLeft() < beforeScrollBack, 'Pressing back really scrolls the chip row left');
 
   /* Back at the start, the back button hides itself and the forward button appears */
   await page.evaluate(() => { document.querySelector('nav[aria-label="Self-study topics"]').scrollLeft = 0; });

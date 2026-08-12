@@ -144,8 +144,8 @@ const run = async () => {
     JSON.stringify(rep30.todo.map(t => t.sev)));
   check('The to-do list puts the urgent first',
     (() => {
-      const bac = { cao: 0, vua: 1, thap: 2 };
-      return rep30.todo.every((t, i) => i === 0 || bac[t.sev] >= bac[rep30.todo[i - 1].sev]);
+      const sevRank = { cao: 0, vua: 1, thap: 2 };
+      return rep30.todo.every((t, i) => i === 0 || sevRank[t.sev] >= sevRank[rep30.todo[i - 1].sev]);
     })(),
     rep30.todo.map(t => t.sev).join(','));
 
