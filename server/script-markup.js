@@ -9,8 +9,9 @@
  *     _              segment gap   (default 1500 ms, 1-2 s as specified)
  *
  * Every script also opens with one second of silence before the first word,
- * and is rendered at 1.2x. Both are owner decisions from 2026-08-12 and both
- * are explained at DEFAULTS below.
+ * and is rendered fast — 1.25x through Kokoro, clamped to 1.2x if the hosted
+ * ElevenLabs path is used instead. Both are owner decisions from 2026-08-12
+ * and both are explained at DEFAULTS below.
  *
  * The punctuation stays in the text. Removing it would strip the model of the
  * prosody cues it reads best, so the marks are kept AND an explicit break is
@@ -35,9 +36,21 @@
  * alone deliberately. Authors who want a pause at a quote can type a comma.
  * ---------------------------------------------------------------------------
  *
- * Output goes to ElevenLabs as `<break time="0.25s" />` tags, which the v2
- * models honour. One request per script, no audio splicing — see
- * docs/VOICE.md section 4.
+ * TWO RENDERERS, TWO WAYS OF SPENDING `segments`
+ *
+ * `text` carries `<break time="0.3s" />` tags for ElevenLabs, whose v2 models
+ * honour them: one request per script, no splicing.
+ *
+ * `segments` carries the same thing as data — an ordered list of speech runs
+ * and pauses — and that is what the Kokoro path uses
+ * (scripts/dung-audio-kokoro.mjs). Kokoro is not an SSML engine and will read
+ * a break tag out loud, so it gets the list and the silence is spliced in
+ * locally. That turns out to be the better half of the two: a spliced pause is
+ * exactly the requested length on every render, while a tag is a request the
+ * model interprets.
+ *
+ * Both consume the same parse. Neither knows about the other.
+ * See docs/VOICE.md section 4 and tools/kokoro/README.md.
  */
 'use strict';
 
@@ -84,11 +97,24 @@ const DEFAULTS = {
   speed: 1.2
 };
 
-/* Speaking rate used for duration estimates: 140 words per minute at roughly
-   6 characters per word including the space. Only an estimate — the real
-   length comes back from the render — but good enough to warn an author that
-   a part will not fit its timer before they spend the characters. */
-const CHARS_PER_SECOND = 14;
+/* Speaking rate used for duration estimates, at speed 1.0.
+   ---------------------------------------------------------------------------
+   Measured, not assumed. This was 14 — 140 words a minute at six characters a
+   word — which is a reasonable figure for a person and turned out to be 21%
+   slow for the voice actually used. Every part's estimate ran long by about a
+   fifth, which is the direction that hides a problem rather than raising a
+   false alarm: a part whose audio really does overrun its clock would have
+   looked fine.
+
+   17.0 comes from 70 rendered items: total characters over total speaking
+   time, with the lead-in and every spliced pause subtracted so only speech is
+   counted, then divided by the 1.25 rate they were rendered at.
+
+   Recalibrate when the voice changes. `npm run soat-de` prefers the measured
+   duration from tts_renders wherever a render exists, so this figure only
+   matters for scripts nobody has built yet — which is exactly when an author
+   needs it. */
+const CHARS_PER_SECOND = 17;
 
 const SHORT_MARKS = new Set([',', ';', ':', '"', '”']);   // incl. curly close quote
 const LONG_MARKS = new Set(['.', '!', '?', '…']);         // incl. ellipsis

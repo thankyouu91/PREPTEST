@@ -11,7 +11,7 @@
  *   Loại    kiểu câu có khớp blueprint không — part C mà có câu tự luận là hỏng
  *   Audio   part cần audio đã dựng và đã DUYỆT chưa (có tệp ≠ đã nghe)
  *   Chấm    part chấm rubric đã có thang chấm chưa
- *   Nhịp    thời lượng audio ước tính có vừa đồng hồ của part không
+ *   Nhịp    nghe + LÀM BÀI có vừa đồng hồ của part không (không chỉ audio)
  *   Dữ liệu đã có bài làm thật để nói được gì về độ khó chưa
  *
  * Cột "Nhịp" là cột hay bị bỏ sót nhất và tốn tiền nhất: một part G dài 6 phút
@@ -55,7 +55,7 @@ const BLUEPRINT = (() => {
 })();
 
 const bank = q.all(
-  `SELECT id, part, type, skill, level, status, audio_status, audio_script, tags_json
+  `SELECT id, part, type, skill, level, status, audio_status, audio_script, audio_key, tags_json
      FROM questions WHERE family_id='vpet' AND part IS NOT NULL`);
 
 const marked = q.all(
@@ -66,16 +66,85 @@ const marked = q.all(
     GROUP BY qq.part`);
 const marksBy = Object.fromEntries(marked.map(r => [r.part, r.n]));
 
-/* Thời lượng audio ước tính cho một đề: lấy đúng số câu blueprint yêu cầu,
-   chọn các kịch bản dài nhất của part — vì đề xấu nhất mới là đề làm vỡ
-   đồng hồ, và bộ sinh đề có quyền rút đúng những câu đó. */
+/* Thời lượng audio cho một đề: lấy đúng số câu blueprint yêu cầu, chọn các
+   câu DÀI NHẤT của part — vì đề xấu nhất mới là đề làm vỡ đồng hồ, và bộ sinh
+   đề có quyền rút đúng những câu đó. */
 function audioSeconds(part, need) {
-  const list = SCRIPTS.allItems()
+  /* Thời lượng THẬT nếu đã dựng, ước tính nếu chưa. Một khi tệp đã tồn tại thì
+     ước tính chỉ còn là phỏng đoán về một con số đang nằm sẵn trong CSDL. */
+  const thuc = q.all(
+    `SELECT MAX(r.ms) ms FROM tts_renders r
+       JOIN questions qq ON qq.id = r.question_id
+      WHERE qq.part = ? AND r.status='ok' AND r.ms > 0
+      GROUP BY r.question_id`, part).map(r => r.ms / 1000);
+
+  const list = (thuc.length >= need ? thuc : SCRIPTS.allItems()
     .filter(i => i.part === part && i.script)
-    .map(i => parseScript(i.script).stats.estimatedMs / 1000)
+    .map(i => parseScript(i.script).stats.estimatedMs / 1000))
     .sort((a, b) => b - a)
     .slice(0, need);
-  return { total: list.reduce((a, b) => a + b, 0), counted: list.length };
+
+  return { list, total: list.reduce((a, b) => a + b, 0), counted: list.length, real: thuc.length >= need };
+}
+
+/* Bao nhiêu lần thí sinh được nghe lại. Nghe lại là một phần của đồng hồ chứ
+   không phải ngoài nó: cho phép 2 lần nghe lại nghĩa là part E có thể phát
+   mỗi câu ba lần, và ba lần thì gấp ba thời lượng. */
+const NGHE_LAI = 2;
+
+/**
+ * Thời gian một part THẬT SỰ cần, không phải chỉ thời lượng audio.
+ *
+ * ---------------------------------------------------------------------------
+ * VÌ SAO PHÉP KIỂM CŨ QUÁ YẾU
+ *
+ * Nó chỉ hỏi "audio có ngắn hơn đồng hồ không". Nhưng nghe xong thí sinh còn
+ * phải gõ lại cả câu, đọc bốn phương án, hoặc nói lại chín mươi giây. Một part
+ * E có 45 giây audio trong đồng hồ 360 giây trông rất thoải mái, cho tới khi
+ * cộng thời gian gõ tám câu vào thì gần chạm trần.
+ *
+ * Các hệ số dưới đây là ƯỚC LƯỢNG THIẾT KẾ, không phải số đo từ thí sinh thật.
+ * Chúng cố tình thiên về phía chậm — người gõ chậm và người nghĩ lâu mới là
+ * người bị đồng hồ cắt, và họ là người phép kiểm này tồn tại để bảo vệ. Khi có
+ * bài làm thật thì thay bằng số đo (docs/ACADEMIC.md §9).
+ * ---------------------------------------------------------------------------
+ */
+function thoiGianCanThuc(part, audio) {
+  const n = audio.list.length;
+  const tongAudio = audio.total;
+
+  switch (part) {
+    case 'E': {
+      /* Chép chính tả: nghe, rồi GÕ LẠI CẢ CÂU. Phần gõ mới là phần dài, và
+         nó tỉ lệ với độ dài câu chứ không với thời lượng audio. Người học
+         Việt gõ tiếng Anh khoảng 25 từ/phút, tức ~2 ký tự/giây. */
+      const chuTB = 60;                       // ký tự một câu, đo từ kho
+      const go = (chuTB / 2) * n;
+      /* Nghe lại là quyền của thí sinh, và part chép chính tả thì hầu như ai
+         cũng dùng hết. Tính cả. */
+      return { can: tongAudio * (1 + NGHE_LAI) + go, giaiThich: `nghe ${Math.round(tongAudio)}s ×${1 + NGHE_LAI} + gõ ${Math.round(go)}s` };
+    }
+    case 'F': {
+      const chon = 12 * n;                    // đọc 4 phương án rồi chọn
+      return { can: tongAudio * (1 + NGHE_LAI) + chon, giaiThich: `nghe ${Math.round(tongAudio)}s ×${1 + NGHE_LAI} + chọn ${chon}s` };
+    }
+    case 'G': {
+      const chon = 20 * n;                    // đoạn dài hơn, câu hỏi dài hơn
+      return { can: tongAudio * (1 + NGHE_LAI) + chon, giaiThich: `nghe ${Math.round(tongAudio)}s ×${1 + NGHE_LAI} + đọc/chọn ${chon}s` };
+    }
+    case 'H': {
+      /* Nhắc lại: nói lại dài bằng câu vừa nghe, cộng một nhịp lấy hơi. */
+      const noi = tongAudio + 1.5 * n;
+      return { can: tongAudio + noi, giaiThich: `nghe ${Math.round(tongAudio)}s + nói lại ${Math.round(noi)}s` };
+    }
+    case 'J': {
+      /* Chủ dự án chốt 3 phút mỗi bài: nghe + 20 giây nghĩ + 90 giây nói. */
+      const nghi = 20 * n, noi = 90 * n;
+      return { can: tongAudio + nghi + noi, giaiThich: `nghe ${Math.round(tongAudio)}s + nghĩ ${nghi}s + nói ${noi}s` };
+    }
+    default:
+      return { can: tongAudio, giaiThich: `nghe ${Math.round(tongAudio)}s` };
+  }
 }
 
 const rows = [];
@@ -105,11 +174,18 @@ for (const bp of Object.values(BLUEPRINT)) {
   let audio = C.d + '—' + C.x;
   if (bp.needsAudio) {
     const duyet = mine.filter(i => i.audio_status === 'approved').length;
+    const daDung = mine.filter(i => i.audio_key).length;
     const coScript = mine.filter(i => (i.audio_script || '').trim()).length;
     if (duyet >= bp.items) audio = OK;
-    else if (coScript >= bp.items) {
+    else if (daDung >= bp.items) {
+      /* Đã có tệp nhưng chưa ai nghe. Khác hẳn với chưa dựng, và trộn hai
+         trạng thái vào một dòng khiến người đọc không biết việc tiếp theo là
+         chạy bộ dựng hay là ngồi nghe. */
       audio = WARN; canh++;
-      issues.push(`${duyet}/${bp.items} câu đã duyệt audio — có kịch bản nhưng chưa dựng/chưa nghe`);
+      issues.push(`${daDung}/${bp.items} câu đã dựng xong nhưng mới ${duyet} câu được duyệt — cần người nghe`);
+    } else if (coScript >= bp.items) {
+      audio = WARN; canh++;
+      issues.push(`${daDung}/${bp.items} câu đã dựng — chạy node scripts/dung-audio-kokoro.mjs`);
     } else {
       audio = BAD; hong++;
       issues.push(`chỉ ${coScript}/${bp.items} câu có kịch bản đọc`);
@@ -137,14 +213,19 @@ for (const bp of Object.values(BLUEPRINT)) {
   /* ---- Nhịp ---- */
   let nhip = C.d + '—' + C.x, nhipTxt = '';
   if (bp.needsAudio) {
-    const { total, counted } = audioSeconds(bp.part, bp.items);
+    const audio = audioSeconds(bp.part, bp.items);
     const budget = bp.minutes * 60;
-    nhipTxt = `${Math.round(total)}s/${budget}s`;
-    if (counted < bp.items) { nhip = C.d + '?' + C.x; }
-    else if (total > budget) { nhip = BAD; hong++; issues.push(`audio ${Math.round(total)}s vượt đồng hồ ${budget}s của part`); }
-    else if (total > budget * 0.75) {
+    const { can, giaiThich } = thoiGianCanThuc(bp.part, audio);
+    nhipTxt = `${audio.real ? 'đo thật' : 'ước tính'}: ${giaiThich} = ${Math.round(can)}s / đồng hồ ${budget}s ` +
+      `(${Math.round(can / budget * 100)}%)`;
+
+    if (audio.counted < bp.items) { nhip = C.d + '?' + C.x; }
+    else if (can > budget) {
+      nhip = BAD; hong++;
+      issues.push(`part cần ~${Math.round(can)}s nhưng đồng hồ chỉ ${budget}s — thí sinh chậm sẽ bị cắt giữa chừng`);
+    } else if (can > budget * 0.85) {
       nhip = WARN; canh++;
-      issues.push(`audio chiếm ${Math.round(total / budget * 100)}% đồng hồ — còn rất ít chỗ cho thí sinh nghĩ và trả lời`);
+      issues.push(`chiếm ${Math.round(can / budget * 100)}% đồng hồ — người gõ chậm hoặc nghe lại nhiều sẽ không kịp`);
     } else nhip = OK;
   }
 
@@ -177,7 +258,7 @@ if (coVanDe.length) {
   for (const r of coVanDe) {
     console.log(`\n  ${C.b}Part ${r.bp.part} · ${r.bp.name}${C.x}  ${C.d}${r.bp.items} câu · ${r.bp.minutes} phút · ${r.bp.skill}${C.x}`);
     for (const i of r.issues) console.log(`    · ${i}`);
-    if (r.nhipTxt) console.log(`    ${C.d}audio ước tính ${r.nhipTxt}${C.x}`);
+    if (r.nhipTxt) console.log(`    ${C.d}audio ${r.nhipTxt}${C.x}`);
   }
 }
 
