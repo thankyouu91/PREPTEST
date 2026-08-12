@@ -57,7 +57,7 @@ check('Không trả 200 cho trang bị chặn', guarded.status() === 200 && page
 await login('student', 'Goodmorning01');
 check('Đăng nhập thành công vào dashboard', page.url().endsWith('/prep/'), page.url());
 const name = (await page.locator('#greet-name').textContent()).trim();
-check('Hiện đúng tên học viên', name === 'Học viên Demo', name);
+check('Hiện đúng tên học viên', name === 'Demo Student', name);
 await page.waitForTimeout(700);
 const unlocked = await page.locator('#mytests-grid article').count();
 check('Có 1 bài đã mở khoá sẵn (từ code trong CSDL)', unlocked === 1, 'đếm được ' + unlocked);
@@ -76,13 +76,30 @@ await page.goto(BASE + '/prep/nhap-code/', { waitUntil: 'networkidle' });
 await page.fill('#code', 'IELT-AC12-96HD');
 await page.click('#submit');
 await page.waitForTimeout(1300);
-check('Kích hoạt code thành công', await page.locator('#success-box').isVisible());
+check('Kích hoạt code: màn hình đi tới trạng thái thành công',
+  await page.locator('#success-box').isVisible());
+/* CSDL không được dựng lại giữa các lần chạy, nên lần chạy đầu là "vừa mở
+   khoá" còn những lần sau là "mã này bạn đã kích hoạt rồi". Cả hai đều đúng và
+   đều phải dẫn tới màn thành công — cái sai duy nhất là báo nhầm giữa hai
+   trạng thái, nên kiểm chính chữ hiện ra chứ không chỉ kiểm hộp có hiện. */
+const okTitle = (await page.locator('#ok-title').textContent()).trim();
+check('Nói đúng việc vừa xảy ra: mở khoá mới, hoặc mã đã có hiệu lực từ trước',
+  okTitle === 'Unlocked.' || okTitle === 'This code is already active', okTitle);
+check('Không hiện lỗi khi kích hoạt thành công',
+  !(await page.locator('#code-err').evaluate(el => el.classList.contains('show'))));
 
 await logout();
 await login('student', 'Goodmorning01');
 await page.waitForTimeout(700);
 const afterRelogin = await page.locator('#mytests-grid article').count();
-check('Bài mở khoá còn sau khi đăng nhập lại', afterRelogin === 3, 'đếm được ' + afterRelogin);
+/* Code này mở khoá cả kỳ IELTS, mà IELTS đang ở trạng thái chưa sẵn sàng nên
+   không có đề nào đã phát hành. Quyền vẫn được ghi nhận — người đã mua không
+   bị mất — nhưng chưa có bài nào hiện ra. Ngày mở IELTS thì chúng xuất hiện. */
+check('Kích hoạt code kỳ thi đang park: quyền được giữ nhưng chưa có bài nào hiện ra',
+  afterRelogin === 1, 'đếm được ' + afterRelogin);
+const codeStillThere = await page.evaluate(() =>
+  (PrepState.load().myCodes || []).some(c => String(c.code).startsWith('IELT-')));
+check('Code đã kích hoạt vẫn nằm trong tài khoản, không bị mất', codeStillThere === true);
 
 /* ---------- 6. Đăng xuất bằng nút trên màn Tài khoản ---------- */
 await page.goto(BASE + '/prep/tai-khoan/', { waitUntil: 'networkidle' });
@@ -113,6 +130,35 @@ check('Bản chạy thử hiện liên kết xác thực', await page.locator('#
 await page.click('#dev-link-a');
 await page.waitForTimeout(1200);
 check('Xác thực email thành công', await page.locator('#verify-result').isVisible());
+
+/* ---------- 7b. Phân quyền: tài khoản chưa có gói nào ----------
+   Tài khoản vừa đăng ký chưa nhập code nào nên không có quyền gì. Đây là chỗ
+   duy nhất trong bộ test có một tài khoản "trắng", nên cũng là chỗ duy nhất
+   kiểm được phần bị khoá. Kiểm cả hai lớp: máy chủ có chặn thật không, và
+   giao diện có làm mờ đúng chỗ không. */
+await page.goto(BASE + '/prep/hoc/tu-noi/', { waitUntil: 'networkidle' });
+check('Chưa có gói thì khu tự học bị máy chủ chặn, đá sang bảng giá',
+  page.url().includes('/prep/mua-code/') && page.url().includes('locked=self-study'), page.url());
+await page.waitForTimeout(500);
+check('Bảng giá nói rõ vì sao vừa bị đá sang đây',
+  await page.locator('#locked-note').isVisible());
+check('Bảng giá liệt kê đủ ba gói',
+  await page.locator('#pkg-grid article').count() === 3,
+  'đếm được ' + (await page.locator('#pkg-grid article').count()));
+check('Mục Tự học trên thanh điều hướng bị làm mờ, không dẫn thẳng vào khu tự học',
+  await page.locator('.nav-item.is-locked[href*="locked=self-study"]').count() === 1);
+
+/* Tài khoản demo có gói Plus nên KHÔNG được khoá — nếu làm mờ cả người đã trả
+   tiền thì lỗi này im lặng và rất khó thấy. */
+await logout();
+await login('student', 'Goodmorning01');
+await page.goto(BASE + '/prep/hoc/tu-noi/', { waitUntil: 'networkidle' });
+check('Có gói Plus thì vào thẳng khu tự học', page.url().includes('/prep/hoc/tu-noi/'), page.url());
+await page.waitForTimeout(400);
+check('Có quyền thì không mục nào bị làm mờ',
+  await page.locator('.nav-item.is-locked').count() === 0);
+await logout();
+await login(TMP_EMAIL, TMP_PASS);
 
 /* ---------- 8. Đổi mật khẩu trên tài khoản dùng một lần ---------- */
 await page.goto(BASE + '/prep/tai-khoan/', { waitUntil: 'networkidle' });
@@ -177,6 +223,67 @@ check('Nút điền sẵn hoạt động',
 await page.click('#submit');
 await page.waitForTimeout(1200);
 check('Tài khoản demo vẫn đăng nhập được sau toàn bộ bài test', page.url().endsWith('/prep/'), page.url());
+
+/* ---------------- PWA ----------------
+   Ba câu hỏi: cài đặt được không, service worker có chạy không, và — quan
+   trọng nhất — nó có cache nhầm thứ không được cache không. Bộ nhớ đệm trên
+   máy dùng chung là chỗ đáp án đề thi rò ra. */
+{
+  const mres = await fetch(BASE + '/manifest.webmanifest');
+  const mtype = mres.headers.get('content-type') || '';
+  const man = await mres.json().catch(() => null);
+  check('Manifest phục vụ đúng kiểu nội dung', mres.status === 200 && mtype.includes('manifest+json'), mtype);
+  check('Manifest đủ trường để Chrome cho cài',
+    !!man && man.name && man.start_url && man.display === 'standalone' &&
+    (man.icons || []).some(i => /(^|\s)512x512(\s|$)/.test(i.sizes)) &&
+    (man.icons || []).some(i => String(i.purpose).includes('maskable')),
+    JSON.stringify(man && man.icons));
+
+  const swres = await fetch(BASE + '/sw.js');
+  check('Service worker phục vụ ở gốc với phạm vi toàn site',
+    swres.status === 200 && swres.headers.get('service-worker-allowed') === '/',
+    'status ' + swres.status);
+
+  for (const icon of ['icon-192', 'icon-512', 'maskable-512']) {
+    const r = await fetch(BASE + '/icons/' + icon + '.png');
+    check('Icon ' + icon + ' tải được', r.status === 200 && (r.headers.get('content-type') || '').includes('image/png'));
+  }
+
+  const off = await fetch(BASE + '/prep/offline/');
+  check('Trang offline mở được khi chưa đăng nhập', off.status === 200, 'status ' + off.status);
+
+  /* Chạy trong ngữ cảnh riêng: đăng ký service worker rồi soi đúng những gì
+     nó đã cache. */
+  const swCtx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+  const swPage = await swCtx.newPage();
+  await swPage.goto(BASE + '/prep/landing/', { waitUntil: 'load' });
+  const ready = await swPage.evaluate(() =>
+    navigator.serviceWorker.ready.then(r => !!r.active).catch(() => false));
+  check('Service worker đăng ký và hoạt động', ready === true, String(ready));
+
+  await swPage.goto(BASE + '/prep/landing/', { waitUntil: 'load' });
+  await swPage.waitForTimeout(800);
+  const cached = await swPage.evaluate(async () => {
+    const names = await caches.keys();
+    const urls = [];
+    for (const n of names) {
+      const keys = await (await caches.open(n)).keys();
+      keys.forEach(r => urls.push(r.url));
+    }
+    return urls;
+  });
+  check('Có cache vỏ ứng dụng để dùng offline', cached.length > 0, String(cached.length));
+  check('Không cache bất cứ thứ gì dưới /api — đáp án đề thi không nằm trong bộ nhớ đệm',
+    !cached.some(u => new URL(u).pathname.startsWith('/api/')),
+    cached.filter(u => u.includes('/api/'))[0] || '');
+  check('Không cache trang HTML nào ngoài trang offline',
+    cached.every(u => {
+      const p = new URL(u).pathname;
+      return p === '/prep/offline/' || /\.[a-z0-9]+$/i.test(p);
+    }),
+    cached.filter(u => { const p = new URL(u).pathname; return p !== '/prep/offline/' && !/\.[a-z0-9]+$/i.test(p); })[0] || '');
+  await swCtx.close();
+}
 
 await browser.close();
 

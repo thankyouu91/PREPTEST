@@ -5,9 +5,61 @@ Giao diện nền tảng luyện thi thử (mock test) cho 6 nhóm chứng chỉ
 Cơ chế truy cập: đăng ký tài khoản → mua/nhập code → mở khoá bài thi.
 
 > **Phạm vi hiện tại: khu học viên và khu quản trị đều chạy trên backend thật.**
-> Chưa có engine làm bài, chưa chấm điểm.
+> Engine làm bài đã chạy được đầu-cuối: mở lượt thi, đồng hồ từng phần, nghe lại có
+> hạn, ghi âm phần nói, tự lưu, nộp bài, trừ lượt theo gói — màn làm bài ở `/prep/lam-bai/`.
+> Chấm điểm: trắc nghiệm và điền từ chấm ngay khi nộp, quy đổi thang 10 và bậc
+> VSTEP; Viết và Nói để trạng thái chờ chấm. Màn kết quả ở `/prep/ket-qua/:id/`,
+> chi tiết tới từng câu với gói Plus trở lên, rút gọn với gói Starter.
 > Danh mục đọc từ `GET /api/catalog`; tài khoản học viên có đăng ký / đăng nhập / xác thực
 > email / đặt lại mật khẩu thật với phiên cookie. Kích hoạt code còn ở phía client.
+
+## Ngôn ngữ giao diện
+
+Đang chuyển sang tiếng Anh theo từng mảng. Xong: **toàn bộ phần trước khi đăng
+nhập** (trang giới thiệu, năm màn tài khoản, thông báo `/api/auth/*`) và **khu
+học viên đã đăng nhập** — chrome dùng chung, trang chủ, thư viện, chi tiết bài
+thi, màn làm bài, màn kết quả, ba màn code, hồ sơ, `_mock.js`, cùng
+`server/exam-api.js` và `server/user-api.js`. Điểm số nay viết theo lối tiếng
+Anh (`7.5` chứ không phải `7,5`); giá tiền vẫn giữ đơn vị đồng.
+
+Tài khoản demo hiển thị tên **Demo Student**. Tên này được kéo về đúng tài liệu
+ở mỗi lần khởi động ngoài production, cùng lúc với mật khẩu và trạng thái, nên
+một CSDL cũ không giữ mãi tên cũ (`ensureDemoStudent` trong `server/auth.js`).
+
+**Mười một trang tự học** đã đổi phần vỏ sang tiếng Anh: tiêu đề, hàng chip, bộ
+lọc, trạng thái rỗng, tiêu đề cột, và các nhãn khối do `_grammar.js` dựng (When
+to use it, When NOT to use it, Mistakes Vietnamese learners make, Examples,
+Practice). Phần **giảng giải vẫn nguyên tiếng Việt**: đoạn dẫn mỗi trang và mọi
+thứ đọc từ CSDL. Một thẻ giờ có tiêu đề tiếng Anh, nội dung tiếng Việt — đúng
+hình dạng của một cuốn tra cứu song ngữ.
+
+**Các tệp máy chủ dùng chung** cũng đã sang tiếng Anh: `auth.js`, `marking.js`,
+phần mã của `db.js` (`storage.js` vốn đã là tiếng Anh). Giữ nguyên tiếng Việt có
+chủ đích: tên bậc VSTEP (`Bậc 3/4/5`) vì đó là tên chính thức ghi trên chứng
+chỉ, tên các tài khoản demo, và ngân hàng câu hỏi mẫu trong `db.js` — phần này
+sẽ bị ngân hàng đề VPET thay toàn bộ.
+
+**Bộ format đề** (`server/data/exam-formats.js`) cũng đã sang tiếng Anh: cả
+mười một format, nhãn từng khối, ghi chú từng phần và phần tài liệu của tệp.
+Số câu và số phút giữ nguyên từng con số — đây là bất biến, không phải văn bản.
+
+**Tám màn quản trị** đã sang tiếng Anh: đăng nhập, báo cáo, đề thi, trình xây
+đề, ngân hàng câu hỏi, format, học viên, code, quản trị, cùng chrome dùng chung.
+Tên cột CSV khi nhập hàng loạt (`ky_thi`, `ky_nang`, `do_kho`, …) giữ nguyên —
+đó là hợp đồng định dạng, đổi tên là đổi chức năng chứ không phải dịch.
+
+`server/api.js` cũng đã sang tiếng Anh: thông báo lỗi `/api/admin/*`, phần chú
+thích, nhãn phễu và việc cần làm, và các dòng CSV mẫu.
+
+**Toàn bộ giao diện — trước đăng nhập, khu học viên, khu tự học và khu quản trị
+— nay là tiếng Anh.** Phần cố ý giữ tiếng Việt: nội dung giảng dạy ở khu tự
+học, tên bậc VSTEP (`Bậc 3/4/5`), giá tiền theo đồng, tên các tài khoản demo,
+tên cột CSV khi nhập hàng loạt, và ngân hàng câu hỏi mẫu trong `db.js` — phần
+này sẽ bị ngân hàng đề VPET thay toàn bộ.
+
+**Nội dung khu tự học giữ nguyên tiếng Việt**: phần nghĩa, ví dụ song ngữ và
+"lỗi người Việt hay mắc" tồn tại để giải thích tiếng Anh bằng tiếng mẹ đẻ của
+người học; dịch sang tiếng Anh là bỏ đi chính công dụng của chúng.
 
 ## Chạy thử
 
@@ -28,10 +80,11 @@ Lệnh khác:
 | `node scripts/audit.mjs` | audit tràn ngang, tương phản WCAG AA, nút xuống dòng, chiều cao nav (light + dark, 5 bề rộng) |
 | `node scripts/test-auth.mjs` | kiểm thử luồng tài khoản trên giao diện: đăng ký, đăng nhập, guard, xác thực email, đặt lại mật khẩu |
 | `node scripts/test-admin.mjs` | kiểm thử API quản trị: phiên, CSRF, phân quyền, CRUD, sinh đề, cấp code |
-| `node scripts/test-catalog.mjs` | kiểm thử trang học viên đọc `/api/catalog` + nhánh dự phòng khi API hỏng |
+| `node scripts/test-catalog.mjs` | kiểm thử trang học viên đọc `/api/catalog` + nhánh dự phòng khi API hỏng, và bảng giá ở trang giới thiệu đọc từ `plans.js` (đổi giá ở máy chủ thì trang phải đổi theo) |
 | `node scripts/test-user-api.mjs` | kiểm thử API tài khoản học viên: đăng ký, đăng nhập, xác thực email, đặt lại mật khẩu, CSRF, chống dò |
 | `node scripts/tai-khoan.js xem` | **Vào không được?** Liệt kê tài khoản quản trị và trạng thái học viên demo. Đặt lại bằng `dat-lai-admin` / `dat-lai-student`, mở khoá bằng `mo-khoa`. Trên Windows nhấn đúp `cai-dat\tai-khoan.bat` |
 | `node scripts/test-taikhoan.js` | kiểm thử đường cứu hộ tài khoản (tự phục hồi tài khoản demo, đặt lại mật khẩu quản trị) |
+| `node scripts/test-exam.mjs` | kiểm thử engine làm bài: mở/nối lại lượt thi, đồng hồ từng phần, số lần nghe lại đếm ở máy chủ, ghi âm câu trả lời, nộp bài, hạn mức lượt của gói Starter, và **đáp án không lọt ra trình duyệt** |
 | `node scripts/test-learn.mjs` | kiểm thử khu tự học: chất lượng dữ liệu động từ bất quy tắc, từ nối và hai nhóm ngữ pháp (nhóm khớp hình thái, ví dụ chứa đúng mục từ, đủ bốn lát cắt, chỗ trống khớp đáp án, đúng hạn mức bậc) + bộ lọc bốn trang |
 | `node scripts/xuat-supabase.mjs --count` | xuất nội dung ra Supabase (SQL hoặc JSON) — xem [Bản sao nội dung trên Supabase](#bản-sao-nội-dung-trên-supabase) |
 | `npm run screenshot:admin` | chụp các màn quản trị |
@@ -54,10 +107,39 @@ nếu chưa có tài khoản nào và cũng không có `ADMIN_PASSWORD`.
 | Đề thi | `/admin/de-thi/` | Danh sách, lọc theo kỳ thi và trạng thái, tạo thủ công, **sinh đề tự động** |
 | Format đề | `/admin/format/` | 11 format chuẩn của 6 kỳ thi, phân tích độ phủ ngân hàng, **sinh đề một chạm** |
 | Xây đề | `/admin/de-thi/:id/` | Sửa thông tin, thêm/xoá phần, chọn câu từ ngân hàng, bốc lại cả phần, phát hành |
-| Ngân hàng câu hỏi | `/admin/ngan-hang/` | Lọc đa tiêu chí, thêm/sửa câu, ngưng dùng, **nhập hàng loạt từ CSV** (tải mẫu, xem trước, báo lỗi từng dòng) hoặc JSON, **gắn MP3 cho câu Nghe / Nói** (nghe thử ngay trong danh sách, thay hoặc gỡ) |
+| Ngân hàng câu hỏi | `/admin/ngan-hang/` | Lọc đa tiêu chí, thêm/sửa câu, ngưng dùng, **nhập hàng loạt từ CSV** (tải mẫu, xem trước, báo lỗi từng dòng) hoặc JSON, **gắn MP3 cho câu Nghe / Nói** (nghe thử ngay trong danh sách, thay hoặc gỡ), **gắn nhãn phần thi VPET (A–J)** — lọc theo phần, lọc riêng câu chưa gắn phần |
 | Học viên | `/admin/hoc-vien/` | Tìm kiếm, xem code và đơn, ghi chú, khoá/mở, đánh dấu xác thực, cấp code |
 | Code | `/admin/code/` | Lô code, cấp theo lô hoặc cho một học viên, thu hồi, xuất CSV |
 | Quản trị | `/admin/quan-tri/` | Thương hiệu, giá gói, đổi mật khẩu, nhật ký thao tác |
+
+### Ngân hàng đề VPET
+
+`server/data/vpet-items.js` giữ **62 câu** cho năm phần không cần audio:
+A (30 điền từ) · B (8 dựng lại đoạn) · C (8 đọc hiểu) · D (8 email) · I (8 nói
+theo tình huống). Ngân hàng là pool: trình sinh đề bốc đúng số câu blueprint
+yêu cầu, nên thi lại là bốc ra bộ khác.
+
+Độ sâu đếm **theo bậc**, không theo phần, vì bậc mới là thứ trình sinh đề phản
+ứng: nó xếp câu đúng bậc lên trước rồi mới lấy đủ số lượng. Một phần có ít câu ở
+bậc của đề hơn số blueprint yêu cầu sẽ lặp lại toàn bộ số câu ấy ở lượt sau — và
+một phần có *đúng bằng* số blueprint thì lặp lại chắc chắn cả phần, trường hợp tệ
+hơn trong hai cái. Luật của ngân hàng: ở mỗi bậc, một phần hoặc **nông** (ít hơn
+số blueprint, phần bù lấy từ bậc khác nên vẫn đổi giữa hai lượt) hoặc **sâu** (ít
+nhất gấp đôi, đủ hai đề khác nhau) — không được rơi vào khoảng giữa. Hiện mọi
+phần đều sâu ở B2, riêng D và I sâu cả ở B1; A, B và C còn nông ở B1, còn A2 và
+C1 nông ở mọi phần.
+
+Seed chạy lại được: upsert theo `questions.ext_key`, không xoá rồi nạp lại —
+`section_items` trỏ khoá ngoại vào `questions`, xoá ngân hàng là xoá luôn mọi đề
+đã dựng từ nó. Câu do admin tự nhập không có `ext_key` nên không bao giờ bị đụng.
+
+Năm phần còn lại (E, F, G, H, J — 35 câu) **chưa có**, và đó là chủ ý: với các
+phần này bản ghi chính là đề bài, kịch bản không kèm MP3 thì thí sinh không làm
+được. Chúng đi cùng phần giọng nói. `scripts/test-items.mjs` đọc thẳng blueprint
+để kiểm, nên bài test không thể "đúng" khi blueprint đã đổi; nó cũng giữ luật
+nông/sâu ở trên. `scripts/test-admin.mjs` kiểm cùng điều đó qua API thay vì qua
+tệp dữ liệu: đề B2 phải bốc toàn câu B2, và hai lượt bốc phần A không được trùng
+khít.
 
 ### Format đề chuẩn
 
@@ -78,6 +160,18 @@ nếu chưa có tài khoản nào và cũng không có `ADMIN_PASSWORD`.
 chưa dựng đề. Cờ này nằm trong CSDL, trả ra ở `GET /api/catalog`, đổi được bằng
 cách sửa `FAMILIES` trong `server/db.js` — bảng `families` được đồng bộ lại mỗi
 lần khởi động.
+
+Cờ đó được **thi hành ở ba chỗ**, không chỉ là nhãn hiển thị:
+
+1. Đề seed của kỳ thi đang park nằm ở trạng thái nháp ngay từ đầu.
+2. Mỗi lần khởi động, đề nào của kỳ thi đang park mà lỡ đang phát hành sẽ bị kéo
+   về nháp và ghi cảnh báo ra console — CSDL cũ cũng phải tuân luật, không chỉ
+   CSDL mới.
+3. `POST /api/admin/tests/:id/status` từ chối phát hành đề thuộc kỳ thi đang
+   park, kèm chỉ dẫn phải mở kỳ thi trong `FAMILIES` trước.
+
+Bảng "Việc cần làm" ở màn Tổng quan cũng bỏ qua các kỳ thi đang park: chúng
+không có đề đang bán là **đúng ý đồ**, không phải việc cần xử lý.
 
 #### Format VPET — 10 phần, 55 câu
 
@@ -128,9 +222,15 @@ chỉ cần viết thêm một object trong `server/storage.js`, chỗ gọi kh�
 
 ### Kịch bản có sẵn cho VPET
 
-`server/data/vpet-scripts.js` chứa **hai đề đầy đủ** — một Level 1 (B1 đổ xuống),
-một Level 2 (B2 trở lên) — tổng **74 kịch bản audio**: E8 · F8 · G6 · H10 · I2 · J3
-cho mỗi level, đúng blueprint.
+`server/data/vpet-scripts.js` chứa kịch bản cho **các part thật sự phát audio**,
+hai bộ — một Level 1 (B1 đổ xuống), một Level 2 (B2 trở lên) — tổng **70 kịch
+bản**: E8 · F8 · G6 · H10 · J3 cho mỗi level.
+
+Part I không có ở đây dù cũng là phần nói: blueprint đánh `needsAudio: false`
+cho nó, thí sinh đọc tình huống trên màn hình rồi nói. Viết kịch bản cho part I
+là hiện nút Dựng MP3 ở chỗ không phát gì và trả tiền cho một tệp không ai nghe.
+Bể part I nằm ở `server/data/vpet-items.js`, dạng đề bài chữ, và được nạp sẵn
+lúc khởi động chứ không qua lệnh dưới đây.
 
 ```bash
 node scripts/nhap-kich-ban.js --thu   # xem sẽ nhập gì + hoá đơn ký tự, không ghi
@@ -141,7 +241,7 @@ Chạy được nhiều lần: mỗi câu mang tag `ref:E1-L1`, câu đã có th
 dung rồi muốn đẩy xuống thì thêm `--lam-moi` — cờ này cũng huỷ trạng thái đã
 duyệt của câu bị sửa kịch bản, vì tệp MP3 cũ không còn khớp lời đọc mới.
 
-Toàn bộ 74 kịch bản tốn khoảng **20 nghìn ký tự** ElevenLabs cho một lần dựng
+Toàn bộ 70 kịch bản tốn khoảng **19 nghìn ký tự** ElevenLabs cho một lần dựng
 hết. Lệnh `--thu` in bảng chi tiết theo từng part trước khi anh tiêu đồng nào.
 
 **Kiểm tra khi nhận tệp** — đây là chỗ duy nhất nền tảng nhận file từ ngoài:
@@ -271,6 +371,80 @@ Quản trị (đều cần phiên + CSRF): `/api/admin/reports` (nhận `?days=7
 `/api/admin/codes` (+ `/export`, `/:id/revoke`), `/api/admin/batches`, `/api/admin/settings`,
 `/api/admin/packages/:id`, `/api/admin/password`, `/api/admin/audit`.
 
+## Cài như ứng dụng (PWA)
+
+Nền tảng cài được thẳng từ Chrome trên Android — không cần lên Play Store. Trên
+máy tính, Chrome hiện nút cài ở thanh địa chỉ.
+
+- `public/manifest.webmanifest` — tên, màu, lối tắt tới Thư viện đề và Khu tự học.
+- `public/icons/` — sinh từ `public/favicon.svg` bằng `npm run icons`, gồm bản
+  **maskable** (Android cắt icon theo hình của launcher, nên phần mark phải nằm
+  gọn trong 80% ở giữa, nền lấp đầy khung).
+- `public/sw.js` — service worker.
+- `/prep/offline/` — màn hiện khi mất mạng.
+
+**Service worker cố tình cache rất ít**, vì bộ nhớ đệm trên máy dùng chung là
+chỗ đáp án rò ra:
+
+| Loại | Xử lý | Vì sao |
+|---|---|---|
+| `/api/**` | không đụng tới | Câu hỏi, đáp án, audio và phiên đăng nhập đều ở đây. Đáp án nằm lại trong cache sẽ sống lâu hơn cái phiên được phép xem nó |
+| Trang HTML | không cache | Trang nằm sau guard đăng nhập và trả `no-store`; cache lại là đưa bản chụp màn hình đã đăng nhập cho người dùng máy tiếp theo |
+| `/admin/**`, `/auth/**` | không đụng tới | Khu quản trị chạy online; OAuth phải đi thẳng ra mạng |
+| CSS, JS, font, icon | cache, nền tự làm mới | Không mang dữ liệu người dùng nào |
+
+Bộ kiểm thử soi đúng chỗ này: sau khi service worker chạy, nó liệt kê toàn bộ
+cache và bắt buộc không có mục nào thuộc `/api`, cũng không có trang HTML nào
+ngoài trang offline.
+
+Đổi nhận diện thương hiệu thì chạy lại `npm run icons` — nguồn duy nhất vẫn là
+`favicon.svg`, mọi kích thước sinh lại theo.
+
+## Đăng nhập bằng Google
+
+Học viên đăng nhập bằng Google hoặc bằng email + mật khẩu như cũ. Chưa cấu hình
+khoá thì nút Google **không hiện**, nền tảng chạy y như trước.
+
+```
+GOOGLE_CLIENT_ID       OAuth client id (loại Web application)
+GOOGLE_CLIENT_SECRET   OAuth client secret
+GOOGLE_REDIRECT_URI    tuỳ chọn; mặc định <origin>/auth/google/callback
+```
+
+Lấy khoá ở Google Cloud Console → APIs & Services → Credentials → OAuth client ID,
+khai đúng redirect URI ở trên.
+
+**Vì sao không dùng nút "Sign in with Google" quen thuộc**: nút đó nạp script từ
+`accounts.google.com`, mà nền tảng chạy CSP nghiêm ngặt cấm mọi script ngoài.
+Thay vì mở ngoại lệ CSP cho script bên thứ ba, toàn bộ trao đổi làm ở máy chủ:
+
+```
+/auth/google           → 302 sang Google, kèm state + nonce
+/auth/google/callback  ← Google trả code, server đổi lấy id_token,
+                         tìm hoặc tạo tài khoản, mở phiên
+```
+
+Trình duyệt không chạy dòng mã nào của Google và không bao giờ thấy token.
+
+**Những chỗ đã phòng**:
+
+- `state` chống callback giả mạo, `nonce` buộc id_token phải thuộc đúng lần đăng
+  nhập này; cả hai so bằng thời gian hằng định.
+- Kiểm `iss`, `aud`, `exp` và `email_verified` trên id_token. Chữ ký không kiểm
+  vì token lấy trực tiếp từ endpoint của Google qua TLS ngay trên máy chủ —
+  Google ghi rõ trường hợp này không cần kiểm chữ ký.
+- Tham số `next` chỉ nhận đường dẫn nội bộ: chặn `//evil.example`,
+  `https://…`, dấu gạch chéo ngược và ký tự điều khiển.
+- Cookie `state` để `SameSite=Lax` (bắt buộc, vì cookie `Strict` không được gửi
+  khi quay về từ Google); cookie phiên vẫn `Strict`.
+- Callback trả về một trang chuyển tiếp nhỏ thay vì 302 thẳng: cookie phiên là
+  `Strict` nên nếu redirect tiếp trong cùng chuỗi điều hướng do Google khởi
+  tạo, trình duyệt sẽ không gửi cookie và học viên bị đá về màn đăng nhập.
+- Ghép tài khoản theo email **chỉ khi Google xác nhận email đã xác thực**, để
+  không ai chiếm được tài khoản người khác.
+- Tài khoản tạo qua Google không có mật khẩu; đăng nhập bằng mật khẩu vào tài
+  khoản đó sẽ được chỉ sang nút Google hoặc luồng đặt lại mật khẩu.
+
 ## Tự động hoá
 
 `docs/ROADMAP.md` là hàng đợi công việc. Một Routine chạy **mỗi giờ** sẽ lấy mục chưa tick đầu tiên,
@@ -319,6 +493,43 @@ báo và vẫn tra được IPA.
 Kế hoạch chi tiết cho từ vựng, ngữ pháp, collocations và linking words nằm trong
 [`docs/LEARNING.md`](docs/LEARNING.md) — kèm **định mức từ vựng theo bậc A1–C2** và
 danh sách nguồn dữ liệu mở có giấy phép rõ ràng.
+
+### Lược đồ từ vựng
+
+Năm bảng theo đúng `docs/LEARNING.md` mục 6: `vocab_entries` (từ gốc, khoá tự
+nhiên là **(headword, pos)** — `book` danh từ A1 và `book` động từ A2 là hai
+mục), `vocab_senses` (nghĩa, **mang bậc riêng** vì một nghĩa có thể cao hơn bậc
+của từ gốc), `vocab_examples` (câu song ngữ, treo dưới *nghĩa* chứ không phải
+dưới từ), `vocab_forms` (dạng biến đổi, có index riêng để gõ `children` vẫn ra
+`child`) và `collocations`.
+
+Trình nhập `seedVocab()` **upsert theo khoá tự nhiên**, không xoá-rồi-nạp như
+các bảng nội dung khác. Lý do: `learn_progress` sắp trỏ vào id của nghĩa, nên
+nhập lại danh sách từ không được phép đánh số lại hàng bên dưới lịch ôn của
+người học. Ba luật kèm theo:
+
+- Bậc có `level_source = 'manual'` **không bị ghi đè** — mục 1.4 nói sửa tay
+  luôn thắng ba luật tự động, một lần nhập lại lặng lẽ trả về cũ sẽ khiến câu đó
+  thành sai. Mọi thứ khác của mục đó vẫn được làm mới.
+- Nhánh dưới mà nguồn đã bỏ thì bị xoá, nhưng chỉ trong những mục đang được
+  nhập. Nghĩa còn trong nguồn giữ nguyên id; nghĩa mất đi kéo theo câu ví dụ của
+  nó qua `ON DELETE CASCADE`.
+- Mục nguồn **không** nhắc tới thì không bị đụng, nên từ do quản trị viên tự
+  thêm không bị quét đi.
+
+`server/data/vocab.js` hiện giữ **12 mục khởi tạo** — không phải danh sách từ.
+Chúng được chọn để mọi bảng và mọi quan hệ đều có dữ liệu thật: hai mục chung
+mặt chữ khác từ loại, nghĩa cao hơn bậc từ gốc, số nhiều bất quy tắc, đủ bốn
+dạng động từ, so sánh bất quy tắc, dạng phái sinh, danh từ không đếm được, và
+collocation đủ các kiểu. Cột `freq_rank` để trống ở mọi dòng: hạng tần suất là
+dữ liệu của NGSL, bịa ra một con số còn tệ hơn để trống. Việc nhập NGSL / NAWL /
+TSL / Tatoeba nằm ở hàng đợi nội dung.
+
+Đọc qua `GET /api/learn/vocab` (lọc theo bậc, từ loại, tìm theo mặt chữ / dạng
+biến đổi / nghĩa tiếng Việt) và `GET /api/learn/vocab/:headword` (một mặt chữ,
+trả về **mọi từ loại** cùng lúc — người tra chưa biết mình cần từ loại nào).
+`scripts/test-vocab.mjs` kiểm cả hai nửa: API trên server đang chạy, và ngữ
+nghĩa của trình nhập trên một cơ sở dữ liệu tạm qua `PREP_DB`.
 
 Cơ cấu và cách chấm điểm của 6 kỳ thi, cùng thiết kế engine chấm, nằm trong
 [`docs/SCORING.md`](docs/SCORING.md).

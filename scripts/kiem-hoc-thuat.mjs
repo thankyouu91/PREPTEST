@@ -49,10 +49,17 @@ const ok = (dieuKien, ten, chiTiet) => {
   }
 };
 
-const allItems = [...SCRIPTS.allItems(), ...ITEMS.allItems()];
+/* Hai nguồn nội dung, hai hình dạng khác nhau:
+     vpet-scripts.js  các part có audio, gắn level VPET 1/2 qua `level`
+     vpet-items.js    các part không cần audio, gắn bậc CEFR qua `level`
+   Gộp về một hình dạng chung ở đây, và chỉ giữ những trường vòng kiểm cần. */
+const allItems = [
+  ...SCRIPTS.allItems().map(i => ({ part: i.part, type: i.type, skill: i.skill, cefr: i.cefr })),
+  ...ITEMS.rows().map(i => ({ part: i.part, type: i.type, skill: i.skill, cefr: i.level }))
+];
 
 /* ================= 1. Blueprint ================= */
-nhom('1 · Blueprint 55 câu');
+nhom('1 · Ngân hàng đủ dựng được đề');
 
 const BLUEPRINT = (() => {
   const fmt = FORMATS.FORMATS.find(f => f.id === 'vpet-full');
@@ -64,16 +71,35 @@ const BLUEPRINT = (() => {
   return out;
 })();
 
-for (const level of [1, 2]) {
-  const dem = {};
-  allItems.filter(i => i.level === level).forEach(i => { dem[i.part] = (dem[i.part] || 0) + 1; });
-  for (const [part, can] of Object.entries(BLUEPRINT)) {
-    const co = dem[part] || 0;
-    ok(co === can, `Level ${level} part ${part}: ${can} câu`,
-      co === can ? null : `đang có ${co}, thiếu ${can - co}`);
-  }
-  const tong = Object.values(dem).reduce((a, b) => a + b, 0);
-  ok(tong === 55, `Level ${level} tròn 55 câu`, tong === 55 ? null : `đang có ${tong}`);
+/* Ngân hàng là một *bể*, không phải một đề cố định: bộ sinh đề rút số câu
+   blueprint yêu cầu từ những gì part đó đang có. Nên câu hỏi đúng không phải
+   "có đúng 55 câu chưa" mà "rút được một đề đầy đủ chưa" — và với part nào
+   muốn hai lượt thi khác nhau thì cần gấp đôi. Quy tắc nông/sâu theo từng bậc
+   do scripts/test-items.mjs giữ; ở đây chỉ kiểm phần học thuật: đủ để dựng. */
+const dem = {};
+allItems.forEach(i => { dem[i.part] = (dem[i.part] || 0) + 1; });
+
+let thieuBaoNhieu = 0;
+for (const [part, can] of Object.entries(BLUEPRINT)) {
+  const co = dem[part] || 0;
+  ok(co >= can, `Part ${part}: đủ ${can} câu để dựng một đề`,
+    co >= can ? null : `đang có ${co}, thiếu ${can - co}`);
+  if (co < can) thieuBaoNhieu += can - co;
+}
+
+const tongBe = Object.values(dem).reduce((a, b) => a + b, 0);
+const canTong = Object.values(BLUEPRINT).reduce((a, b) => a + b, 0);
+ok(thieuBaoNhieu === 0, `Dựng được trọn một đề ${canTong} câu`,
+  thieuBaoNhieu ? `còn thiếu ${thieuBaoNhieu} câu` : null);
+console.log(`  ${'\x1b[2m'}bể hiện có ${tongBe} câu cho blueprint ${canTong} câu${'\x1b[0m'}`);
+
+/* Part nào chỉ vừa đủ thì lượt thi lại sẽ lặp nguyên si — không phải lỗi,
+   nhưng là việc còn bỏ ngỏ và đáng nói ra thay vì để người đọc tự phát hiện. */
+const vuaDu = Object.entries(BLUEPRINT)
+  .filter(([p, can]) => (dem[p] || 0) >= can && (dem[p] || 0) < can * 2)
+  .map(([p, can]) => `${p} (${dem[p]}/${can})`);
+if (vuaDu.length && !GON) {
+  console.log('  \x1b[33m·\x1b[0m Part chưa đủ cho hai lượt thi khác nhau: ' + vuaDu.join(', '));
 }
 
 /* ================= 2. Mô tả năng lực ================= */

@@ -1,12 +1,13 @@
 <!doctype html>
-<html lang="vi">
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Đặt lại mật khẩu · VPET Prep</title>
-  <meta name="description" content="Đặt mật khẩu mới cho tài khoản VPET Prep bằng liên kết gửi qua email.">
+  <title>Reset password · VPET Prep</title>
+  <meta name="description" content="Set a new password on your VPET Prep account using the emailed link.">
   <meta name="theme-color" content="#1c3d8f">
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="manifest" href="/manifest.webmanifest">
   <link rel="preload" href="/fonts/pjs-700-latin.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/pjs-400-latin.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="/tailwind-built.css">
@@ -23,7 +24,7 @@
 <body class="bg-surface text-ink">
 
 <div class="min-h-[100dvh] flex flex-col px-4 sm:px-10 py-7">
-  <a href="/prep/landing/" class="flex items-center gap-2.5 self-start" aria-label="Về trang giới thiệu">
+  <a href="/prep/landing/" class="flex items-center gap-2.5 self-start" aria-label="Back to the home page">
     <span class="inline-flex items-center justify-center rounded-xl text-white panel-brand w-9 h-9">
       <svg viewBox="0 0 24 24" class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21.4 10.9a1 1 0 0 0 0-1.8L12.8 5.2a2 2 0 0 0-1.6 0L2.6 9.1a1 1 0 0 0 0 1.8l8.6 3.9a2 2 0 0 0 1.6 0Z"/><path d="M22 10.5V16"/><path d="M6 12.5V16a6 3 0 0 0 12 0v-3.5"/></svg>
     </span>
@@ -32,26 +33,26 @@
 
   <main id="main" class="w-full max-w-md mx-auto my-auto py-10">
 
-    <!-- Thiếu token: không có gì để đặt lại -->
+    <!-- No token: nothing to reset -->
     <section id="step-invalid" hidden class="card p-8 text-center">
       <span class="w-14 h-14 rounded-full bg-brand-soft text-brand-strong inline-flex items-center justify-center mx-auto">
         <svg viewBox="0 0 24 24" class="w-7 h-7" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>
       </span>
-      <h1 class="text-xl font-extrabold tracking-tight mt-5">Liên kết không hợp lệ</h1>
+      <h1 class="text-xl font-extrabold tracking-tight mt-5">That link is not valid</h1>
       <p class="text-muted text-[15px] leading-relaxed mt-2">
-        Liên kết đặt lại thiếu mã hoặc đã hết hạn. Gửi lại yêu cầu để nhận liên kết mới nhé.
+        The reset link is missing its token or has expired. Ask for a new one.
       </p>
       <div class="grid gap-2.5 mt-7">
-        <a href="/prep/quen-mat-khau/" class="btn btn-primary btn-md w-full">Gửi lại yêu cầu</a>
-        <a href="/prep/dang-nhap/" class="btn btn-ghost btn-md w-full">Về trang đăng nhập</a>
+        <a href="/prep/quen-mat-khau/" class="btn btn-primary btn-md w-full">Request a new link</a>
+        <a href="/prep/dang-nhap/" class="btn btn-ghost btn-md w-full">Back to sign in</a>
       </div>
     </section>
 
-    <!-- Form đặt mật khẩu mới -->
+    <!-- New-password form -->
     <section id="step-form">
-      <h1 class="text-3xl font-extrabold tracking-tight rise">Đặt mật khẩu mới</h1>
+      <h1 class="text-3xl font-extrabold tracking-tight rise">Set a new password</h1>
       <p class="text-muted text-[15px] leading-relaxed mt-2 rise rise-1">
-        Chọn mật khẩu mới cho tài khoản của bạn. Mọi thiết bị đang đăng nhập sẽ phải đăng nhập lại.
+        Choose a new password. Every signed-in device will have to sign in again.
       </p>
 
       <div id="form-banner" class="banner banner-error mt-6" role="alert" aria-live="polite">
@@ -61,28 +62,28 @@
 
       <form id="f" class="grid gap-5 mt-7" novalidate>
         <div>
-          <label class="label" for="password">Mật khẩu mới</label>
+          <label class="label" for="password">New password</label>
           <div class="relative">
             <input class="input pe-12" id="password" type="password" autocomplete="new-password"
-                   placeholder="Tối thiểu 8 ký tự, có chữ và số" required>
-            <button type="button" id="toggle-pass" class="absolute inset-y-0 right-0 px-3.5 text-muted hover:text-ink transition" aria-label="Hiện mật khẩu" aria-pressed="false"></button>
+                   placeholder="At least 8 characters, letters and numbers" required>
+            <button type="button" id="toggle-pass" class="absolute inset-y-0 right-0 px-3.5 text-muted hover:text-ink transition" aria-label="Show password" aria-pressed="false"></button>
           </div>
           <div class="flex items-center gap-2 mt-2.5" id="strength" hidden>
             <span class="meter flex-1" aria-hidden="true"><i id="strength-bar"></i></span>
             <b id="strength-label" class="text-[12px] font-bold text-muted w-20 text-right"></b>
           </div>
-          <p class="field-error" id="err-password">Mật khẩu cần tối thiểu 8 ký tự, có cả chữ và số.</p>
+          <p class="field-error" id="err-password">Password needs at least 8 characters, with both letters and numbers.</p>
         </div>
         <div>
-          <label class="label" for="repass">Nhập lại mật khẩu mới</label>
+          <label class="label" for="repass">Repeat the new password</label>
           <input class="input" id="repass" type="password" autocomplete="new-password" required>
-          <p class="field-error" id="err-repass">Hai mật khẩu chưa khớp.</p>
+          <p class="field-error" id="err-repass">The two passwords do not match.</p>
         </div>
-        <button type="submit" id="submit" class="btn btn-primary btn-lg w-full mt-1">Đặt lại mật khẩu</button>
+        <button type="submit" id="submit" class="btn btn-primary btn-lg w-full mt-1">Reset password</button>
       </form>
 
       <p class="text-[14.5px] font-medium text-muted mt-7">
-        Nhớ ra mật khẩu rồi? <a href="/prep/dang-nhap/" class="font-bold text-brand-strong hover:underline">Đăng nhập</a>
+        Remembered your password? <a href="/prep/dang-nhap/" class="font-bold text-brand-strong hover:underline">Sign in</a>
       </p>
     </section>
 
@@ -91,11 +92,11 @@
       <span class="w-16 h-16 rounded-full bg-accent-soft text-accent-strong inline-flex items-center justify-center mx-auto">
         <svg viewBox="0 0 24 24" class="w-8 h-8" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21.8 10.1A10 10 0 1 1 14 2.2"/><path d="m9 11 3 3L22 4"/></svg>
       </span>
-      <h1 class="text-xl font-extrabold tracking-tight mt-5">Đã đổi mật khẩu</h1>
+      <h1 class="text-xl font-extrabold tracking-tight mt-5">Password changed</h1>
       <p class="text-muted text-[15px] leading-relaxed mt-2">
-        Đăng nhập lại bằng mật khẩu mới để tiếp tục luyện đề.
+        Sign in with the new password to carry on practising.
       </p>
-      <a href="/prep/dang-nhap/" class="btn btn-primary btn-md w-full mt-7">Đăng nhập</a>
+      <a href="/prep/dang-nhap/" class="btn btn-primary btn-md w-full mt-7">Sign in</a>
     </section>
   </main>
 </div>
@@ -121,12 +122,12 @@
     const show = pass.type === 'password';
     pass.type = show ? 'text' : 'password';
     tg.setAttribute('aria-pressed', String(show));
-    tg.setAttribute('aria-label', show ? 'Ẩn mật khẩu' : 'Hiện mật khẩu');
+    tg.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
     setEye(show);
   });
 
-  /* Thanh đo độ mạnh, chỉ để gợi ý */
-  const LABELS = ['Yếu', 'Yếu', 'Trung bình', 'Khá', 'Mạnh'];
+  /* Strength meter, guidance only */
+  const LABELS = ['Weak', 'Weak', 'Fair', 'Good', 'Strong'];
   pass.addEventListener('input', () => {
     PREP.qs('#err-password').classList.remove('show');
     pass.classList.remove('input-invalid');
@@ -148,7 +149,7 @@
   f.addEventListener('submit', ev => {
     ev.preventDefault();
     banner.classList.remove('show');
-    // Cùng quy tắc với server: tối thiểu 8 ký tự, có cả chữ và số
+    // Same rule as the server: at least 8 characters, letters and numbers
     const pwOk = pass.value.length >= 8 && /[A-Za-z]/.test(pass.value) && /\d/.test(pass.value);
     PREP.qs('#err-password').classList.toggle('show', !pwOk);
     pass.classList.toggle('input-invalid', !pwOk);
@@ -158,10 +159,10 @@
     if (!pwOk || !match) return;
 
     btn.disabled = true;
-    btn.innerHTML = PREP.icon('loader', 'w-5 h-5 animate-spin-slow') + 'Đang đổi mật khẩu';
+    btn.innerHTML = PREP.icon('loader', 'w-5 h-5 animate-spin-slow') + 'Changing your password';
     PrepAuth.reset(token, pass.value).then(res => {
       if (!res.ok) {
-        btn.disabled = false; btn.textContent = 'Đặt lại mật khẩu';
+        btn.disabled = false; btn.textContent = 'Reset password';
         bannerText.textContent = res.error;
         banner.classList.add('show');
         return;

@@ -201,5 +201,49 @@ ok(lastStatus === 429, 'Khoá tạm sau nhiều lần sai liên tiếp');
 r = await brute.post('/api/auth/login', { username: bruteEmail, password: 'Matkhau123' });
 ok(r.status === 429, 'Mật khẩu đúng cũng phải chờ hết thời gian khoá');
 
+/* ---------------- Đăng nhập Google ----------------
+   Môi trường kiểm thử không có GOOGLE_CLIENT_ID nên phần kiểm ở đây lo hai
+   việc: tính năng chưa cấu hình phải TẮT một cách an toàn, và hàm chặn
+   open-redirect phải đúng — đó là chỗ nguy hiểm nhất của luồng OAuth. */
+
+r = await fetch(BASE + '/api/me').then(x => x.json());
+ok(r && r.providers && r.providers.google === false,
+  'Chưa cấu hình thì /api/me báo Google đang tắt');
+
+let g = await fetch(BASE + '/auth/google', { redirect: 'manual' });
+ok(g.status === 302 && String(g.headers.get('location')).includes('oauth=disabled'),
+  'Chưa cấu hình thì /auth/google đưa về màn đăng nhập, không lỗi 500');
+
+g = await fetch(BASE + '/auth/google/callback?code=x&state=gia-mao', { redirect: 'manual' });
+ok(g.status === 302 && String(g.headers.get('location')).startsWith('/prep/dang-nhap/'),
+  'Callback với state giả mạo không tạo phiên, chỉ quay về màn đăng nhập');
+ok(!(g.headers.getSetCookie ? g.headers.getSetCookie() : []).some(c => c.startsWith('prep_user=') && !c.includes('Max-Age=0')),
+  'Callback hỏng không phát cookie phiên nào');
+
+const loginPage = await fetch(BASE + '/prep/dang-nhap/').then(x => x.text());
+ok(loginPage.includes('id="oauth-block"') && loginPage.includes('hidden'),
+  'Nút Google có sẵn trong trang nhưng ẩn khi chưa cấu hình');
+ok(!/accounts\.google\.com\/gsi/.test(loginPage),
+  'Trang không nhúng script ngoài của Google — CSP giữ nguyên');
+
+/* Hàm thuần: nạp module với CSDL trong bộ nhớ để không đụng vào DB đang chạy */
+process.env.PREP_DB = ':memory:';
+const { safeNext, freeUsername } = await import('../server/google-auth.js');
+const REDIRECT_CASES = [
+  ['/prep/thu-vien/', '/prep/thu-vien/', 'giữ nguyên đường dẫn nội bộ'],
+  ['//evil.example/x', '/prep/', 'chặn URL giao thức tương đối //evil'],
+  ['/\\evil.example', '/prep/', 'chặn dấu gạch chéo ngược'],
+  ['https://evil.example', '/prep/', 'chặn URL tuyệt đối'],
+  ['/prep/\u0000x', '/prep/', 'chặn ký tự điều khiển'],
+  ['', '/prep/', 'thiếu next thì về trang mặc định']
+];
+let redirOk = true;
+for (const [input, want, why] of REDIRECT_CASES) {
+  if (safeNext(input) !== want) { redirOk = false; console.log('   → hỏng: ' + why + ' (' + JSON.stringify(input) + ')'); }
+}
+ok(redirOk, 'Chỉ chuyển hướng về đường dẫn nội bộ, chặn mọi kiểu open-redirect');
+ok(typeof freeUsername('Nguyen.Van-A@gmail.com') === 'string' && /^[a-z0-9._-]+$/.test(freeUsername('Nguyen.Van-A@gmail.com')),
+  'Tên đăng nhập sinh từ email chỉ chứa ký tự an toàn');
+
 console.log('\n' + pass + '/' + (pass + fail) + ' kiểm thử đạt');
 if (fail) process.exit(1);

@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Đăng nhập quản trị · VPET Prep</title>
+  <title>Admin sign-in · VPET Prep</title>
   <meta name="robots" content="noindex, nofollow">
   <meta name="theme-color" content="#1c3d8f">
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
@@ -29,10 +29,10 @@
     </a>
 
     <div class="w-full max-w-sm mx-auto my-auto py-10">
-      <span class="badge badge-muted">Khu quản trị</span>
-      <h1 class="text-3xl font-extrabold tracking-tight mt-3 rise">Đăng nhập</h1>
+      <span class="badge badge-muted">Admin area</span>
+      <h1 class="text-3xl font-extrabold tracking-tight mt-3 rise">Sign in</h1>
       <p class="text-muted text-[15px] leading-relaxed mt-2 rise rise-1">
-        Khu vực dành cho người quản trị nội dung và học viên.
+        For the people who administer the content and the students.
       </p>
 
       <div id="banner" class="banner banner-error mt-6" role="alert" aria-live="polite">
@@ -42,42 +42,42 @@
 
       <form id="f" class="grid gap-5 mt-7" novalidate>
         <div>
-          <label class="label" for="username">Tên đăng nhập</label>
+          <label class="label" for="username">Username</label>
           <input class="input" id="username" name="username" type="text" autocomplete="username" spellcheck="false" required>
-          <p class="field-error" id="err-username">Nhập tên đăng nhập.</p>
+          <p class="field-error" id="err-username">Enter your username.</p>
         </div>
         <div>
-          <label class="label" for="password">Mật khẩu</label>
+          <label class="label" for="password">Password</label>
           <div class="relative">
             <input class="input pe-12" id="password" name="password" type="password" autocomplete="current-password" required>
-            <button type="button" id="toggle" class="absolute inset-y-0 right-0 px-3.5 text-muted hover:text-ink transition" aria-label="Hiện mật khẩu" aria-pressed="false"></button>
+            <button type="button" id="toggle" class="absolute inset-y-0 right-0 px-3.5 text-muted hover:text-ink transition" aria-label="Show password" aria-pressed="false"></button>
           </div>
-          <p class="field-error" id="err-password">Nhập mật khẩu.</p>
+          <p class="field-error" id="err-password">Enter your password.</p>
         </div>
-        <button type="submit" id="submit" class="btn btn-primary btn-lg w-full">Đăng nhập</button>
+        <button type="submit" id="submit" class="btn btn-primary btn-lg w-full">Sign in</button>
       </form>
 
       <p class="text-[12.5px] text-muted/80 mt-7 leading-relaxed">
-        Sai 5 lần liên tiếp sẽ bị tạm khoá 15 phút. Mọi thao tác quản trị đều được ghi nhật ký.
+        Five failures in a row locks the account for 15 minutes. Every administrative action is recorded in the audit log.
       </p>
     </div>
   </div>
 
   <aside class="hidden lg:flex flex-col justify-between panel-brand text-white p-12 xl:p-16" aria-hidden="true">
     <div class="max-w-md">
-      <h2 class="text-3xl xl:text-4xl font-extrabold tracking-tight leading-tight text-balance">Nội dung tới đâu, học viên thấy tới đó.</h2>
+      <h2 class="text-3xl xl:text-4xl font-extrabold tracking-tight leading-tight text-balance">Students see the content the moment it is ready.</h2>
       <ul class="grid gap-4 mt-9 text-[15.5px] font-medium text-white/90">
         <li class="flex items-center gap-3.5">
           <span class="w-9 h-9 rounded-xl bg-white/15 inline-flex items-center justify-center shrink-0"><svg viewBox="0 0 24 24" class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z"/></svg></span>
-          Sinh đề tự động từ ngân hàng câu hỏi
+          Generate papers from the question bank
         </li>
         <li class="flex items-center gap-3.5">
           <span class="w-9 h-9 rounded-xl bg-white/15 inline-flex items-center justify-center shrink-0"><svg viewBox="0 0 24 24" class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M2 9.5a2.5 2.5 0 0 1 0 5V17a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2.5a2.5 2.5 0 0 1 0-5V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z"/><path d="M13 5v2.5"/><path d="M13 16.5V19"/></svg></span>
-          Cấp code theo lô cho từng lớp
+          Issue codes in batches, class by class
         </li>
         <li class="flex items-center gap-3.5">
           <span class="w-9 h-9 rounded-xl bg-white/15 inline-flex items-center justify-center shrink-0"><svg viewBox="0 0 24 24" class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M22 7 13.5 15.5 8.5 10.5 2 17"/><path d="M16 7h6v6"/></svg></span>
-          Báo cáo người dùng, code và doanh thu
+          Reports on users, codes and revenue
         </li>
       </ul>
     </div>
@@ -93,7 +93,7 @@
     const show = pass.type === 'password';
     pass.type = show ? 'text' : 'password';
     tg.setAttribute('aria-pressed', String(show));
-    tg.setAttribute('aria-label', show ? 'Ẩn mật khẩu' : 'Hiện mật khẩu');
+    tg.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
     setEye(show);
   });
 
@@ -115,13 +115,13 @@
 
     const btn = AD.qs('#submit');
     btn.disabled = true;
-    btn.innerHTML = AD.icon('loader', 'w-5 h-5 animate-spin-slow') + 'Đang đăng nhập';
+    btn.innerHTML = AD.icon('loader', 'w-5 h-5 animate-spin-slow') + 'Signing in';
     try {
       await AD.post('/admin/login', { username, password: pass.value });
       const next = new URLSearchParams(location.search).get('next');
       location.href = next && next.startsWith('/admin') ? next : '/admin/';
     } catch (e) {
-      btn.disabled = false; btn.textContent = 'Đăng nhập';
+      btn.disabled = false; btn.textContent = 'Sign in';
       bannerText.textContent = e.message;
       banner.classList.add('show');
       pass.value = '';

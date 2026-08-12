@@ -266,25 +266,6 @@ const LEVEL_1 = [
   { ref: 'H10', part: 'H', type: 'speaking',
     script: 'Although it was raining heavily, they decided to walk to the station together.' },
 
-  /* ---------------- Part I · Speaking Situations ----------------
-     The situation is shown on screen and can also be played. The `_` splits
-     the scenario from the instruction so the candidate hears the task
-     separately from the setup. */
-
-  { ref: 'I1', part: 'I', type: 'speaking',
-    script:
-      'You have just arrived at a hotel, and the key card for your room does not work. ' +
-      'You go back down to the reception desk. _ ' +
-      'Explain the problem, and ask the receptionist to help you.',
-    prompt: 'You have just arrived at a hotel and your key card does not work. Go back to reception, explain the problem, and ask for help.' },
-
-  { ref: 'I2', part: 'I', type: 'speaking',
-    script:
-      'A friend has invited you to a party on Saturday, but you already have other plans. ' +
-      'You are calling to tell them. _ ' +
-      'Thank your friend, say why you cannot come, and suggest meeting another day.',
-    prompt: 'A friend has invited you to a party on Saturday but you are busy. Thank them, explain why you cannot come, and suggest another day.' },
-
   /* ---------------- Part J · Story Retellings ----------------
      Heard once, then retold. `keyPoints` is what the marker checks coverage
      against (docs/VOICE.md section 6.1) — write them as facts, not themes. */
@@ -620,21 +601,6 @@ const LEVEL_2 = [
   { ref: 'H10', part: 'H', type: 'speaking',
     script: 'Only after several attempts did they succeed in reproducing the original result.' },
 
-  /* ---------------- Part I · Speaking Situations ---------------- */
-
-  { ref: 'I1', part: 'I', type: 'speaking',
-    script:
-      'A colleague has sent round a proposal that you think has a serious weakness, ' +
-      'but they have worked on it for weeks and the team seems broadly in favour. _ ' +
-      'Explain your concern, acknowledge the work that has gone into it, and suggest how it might be tested before a decision is made.',
-    prompt: 'A colleague’s proposal has a weakness you have spotted, but they have worked hard on it and the team likes it. Raise your concern, acknowledge their work, and suggest how to test it.' },
-
-  { ref: 'I2', part: 'I', type: 'speaking',
-    script:
-      'You agreed to take on an extra piece of work, and it is now clear that you cannot finish it on time without the rest of your work suffering. _ ' +
-      'Tell your manager, explain how the situation arose, and propose two realistic ways forward.',
-    prompt: 'You cannot finish extra work you agreed to without your other work suffering. Tell your manager, explain how it happened, and propose two realistic options.' },
-
   /* ---------------- Part J · Story Retellings ---------------- */
 
   { ref: 'J1', part: 'J', type: 'speaking',
@@ -702,7 +668,6 @@ const PART_DEFAULTS = {
   F: { skill: 'listening' },
   G: { skill: 'listening' },
   H: { skill: 'speaking', prompt: 'Repeat the sentence exactly as you hear it.' },
-  I: { skill: 'speaking' },
   J: { skill: 'speaking', prompt: 'You will hear a short story once. Retell it in your own words.' }
 };
 

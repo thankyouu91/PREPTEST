@@ -1,29 +1,28 @@
 /**
- * Thanh kéo cho hàng chip điều hướng khu tự học.
+ * The scroller for the self-study navigation chip rail.
  *
- * Hàng chip dài hơn bề ngang màn hình nên các mục cuối bị cắt mất, mà lại
- * không có gì báo cho người dùng biết là còn nội dung phía sau. Tệp này gắn
- * thêm ba thứ, đều là nâng cấp dần (không có JS thì hàng chip vẫn cuộn được
- * bằng ngón tay và bằng phím Tab như cũ):
+ * The rail is wider than the screen, so the last entries are cut off with nothing
+ * to tell anyone there is more. This file adds three things, all progressive
+ * enhancement (without JS the rail still scrolls by finger and by Tab as before):
  *
- *   1. Hai nút mũi tên ở hai mép, chỉ hiện khi thật sự còn nội dung bị che.
- *   2. Vệt mờ ở mép để mắt nhận ra ngay là hàng còn kéo được.
- *   3. Thanh cuộn mảnh nhìn thấy được, kéo bằng chuột.
+ *   1. An arrow button at each edge, shown only when something really is hidden.
+ *   2. A fade at the edge, so the eye reads the rail as scrollable at a glance.
+ *   3. A thin visible scrollbar that can be dragged with the mouse.
  *
- * Ngoài ra, lúc mở trang thì tự kéo mục đang xem vào giữa tầm nhìn — trước
- * đây vào trang cuối danh sách thì chip của chính nó nằm ngoài màn hình.
+ * It also scrolls the current entry into view on load — before this, opening the
+ * last page in the list left its own chip off screen.
  *
- * Không có style inline: mọi thứ đi qua class trong src/tailwind.css để hợp
- * với CSP nghiêm ngặt của dự án.
+ * No inline styles: everything goes through classes in src/tailwind.css, to stay
+ * inside the project's strict CSP.
  */
 (function () {
   'use strict';
 
   var LE = 'http://www.w3.org/2000/svg';
 
-  /** Nút mũi tên; cls phải là tên class VIẾT NGUYÊN, không ghép chuỗi —
-      Tailwind quét mã nguồn tìm tên class, ghép chuỗi thì nó không thấy và
-      class bị loại khỏi bản CSS đã build. */
+  /** An arrow button; cls must be a class name written out IN FULL, never built
+      by concatenation — Tailwind scans the source for class names, and a name it
+      cannot see is dropped from the built CSS. */
   function taoNut(cls, nhan, d) {
     var b = document.createElement('button');
     b.type = 'button';
@@ -44,18 +43,18 @@
     if (nav.dataset.navscroll) return;
     nav.dataset.navscroll = '1';
 
-    /* Bọc nav lại để đặt nút và vệt mờ theo toạ độ tương đối */
+    /* Wrap the nav so the buttons and fades can be positioned relative to it */
     var voc = document.createElement('div');
     voc.className = 'navscroll';
     nav.parentNode.insertBefore(voc, nav);
     voc.appendChild(nav);
 
-    /* Đổi sang thanh cuộn mảnh nhìn thấy được thay cho bản ẩn hẳn */
+    /* Swap the fully hidden scrollbar for a thin visible one */
     nav.classList.remove('no-scrollbar');
     nav.classList.add('navscroll-track');
 
-    var truoc = taoNut('navscroll-prev', 'Xem các mục phía trước', 'm15 18-6-6 6-6');
-    var sau = taoNut('navscroll-next', 'Xem các mục phía sau', 'm9 18 6-6-6-6');
+    var truoc = taoNut('navscroll-prev', 'Show earlier topics', 'm15 18-6-6 6-6');
+    var sau = taoNut('navscroll-next', 'Show later topics', 'm9 18 6-6-6-6');
     voc.appendChild(truoc);
     voc.appendChild(sau);
 
@@ -66,7 +65,7 @@
     function capNhat() {
       var max = conLai();
       var x = nav.scrollLeft;
-      /* Ngưỡng 2px cho chắc: bề rộng phân số hay lệch một chút sau khi zoom */
+      /* A 2px threshold for safety: fractional widths drift a little after zooming */
       var traiCon = x > 2;
       var phaiCon = x < max - 2;
       truoc.hidden = !traiCon;
@@ -85,8 +84,8 @@
     window.addEventListener('resize', capNhat);
     if (window.ResizeObserver) new ResizeObserver(capNhat).observe(nav);
 
-    /* Mở trang nào thì kéo chip của trang đó vào giữa, không cuộn mượt vì
-       đang ở thời điểm dựng trang. */
+    /* Bring the current page's own chip into the middle; no smooth scrolling,
+       because this runs while the page is still being built. */
     var dangXem = nav.querySelector('[aria-current="page"]');
     if (dangXem) {
       var giua = dangXem.offsetLeft - (nav.clientWidth - dangXem.offsetWidth) / 2;
@@ -96,7 +95,7 @@
   }
 
   function chay() {
-    var ds = document.querySelectorAll('nav[aria-label="Mục tự học"]');
+    var ds = document.querySelectorAll('nav[aria-label="Self-study topics"]');
     for (var i = 0; i < ds.length; i++) gan(ds[i]);
   }
 

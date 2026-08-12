@@ -8,7 +8,6 @@
  *
  *   node scripts/phan-tich-cau-hoi.mjs               tính và ghi lại kết quả
  *   node scripts/phan-tich-cau-hoi.mjs --thu         chỉ tính, không ghi
- *   node scripts/phan-tich-cau-hoi.mjs --nguon=exam  chỉ tính trên bài thi thật
  *   node scripts/phan-tich-cau-hoi.mjs --tu=2026-01-01   chỉ tính từ ngày đó
  *
  * Hai lệnh dùng để xem trước khi có dữ liệu thật:
@@ -16,11 +15,12 @@
  *   node scripts/phan-tich-cau-hoi.mjs --gia-lap=300   sinh 300 lượt thi giả
  *   node scripts/phan-tich-cau-hoi.mjs --xoa-gia-lap   xoá sạch dữ liệu giả
  *
- * Dữ liệu giả luôn mang source='simulated', không bao giờ lẫn vào bài thi
- * thật, và `--nguon=exam` loại nó ra. Nó có ích ở một việc: xem báo cáo này
- * trông thế nào và máy có bắt được câu hỏng không, trước khi có thí sinh đầu
- * tiên. Nó không có ích ở việc nào khác, và không được dùng để nói bất cứ
- * điều gì về chất lượng đề.
+ * Lượt thi giả ghi vào chính `attempts` / `attempt_answers` mà phần thi dùng,
+ * vì đó là nơi phân tích đọc — một bảng riêng cho dữ liệu giả sẽ chỉ kiểm được
+ * cái bảng riêng đó. Chúng gắn với tài khoản `sim-*` và `--xoa-gia-lap` xoá
+ * sạch theo dấu đó. Chỉ có ích ở một việc: xem báo cáo trông thế nào và máy có
+ * bắt được câu hỏng không, trước khi có thí sinh đầu tiên. Không được dùng để
+ * nói bất cứ điều gì về chất lượng đề.
  */
 import { createRequire } from 'node:module';
 
@@ -34,7 +34,6 @@ const has = f => args.includes(f);
 const val = f => { const a = args.find(x => x.startsWith(f + '=')); return a ? a.slice(f.length + 1) : null; };
 
 const THU = has('--thu') || has('--dry-run');
-const NGUON = val('--nguon') || val('--source');
 const TU = val('--tu') || val('--since');
 
 const C = { d: '\x1b[2m', b: '\x1b[1m', r: '\x1b[31m', y: '\x1b[33m', g: '\x1b[32m', x: '\x1b[0m' };
@@ -42,10 +41,15 @@ const num = (v, dp = 2) => (v == null ? '—' : v.toFixed(dp));
 
 /* ==================== xoá dữ liệu giả ==================== */
 if (has('--xoa-gia-lap')) {
-  const n = q.run("DELETE FROM item_responses WHERE source='simulated'").changes;
+  const ids = q.all("SELECT id FROM users WHERE username LIKE 'sim-%'").map(r => r.id);
+  let n = 0;
+  for (const id of ids) {
+    n += q.run('DELETE FROM attempts WHERE user_id=?', id).changes;   // cascades to answers
+    q.run('DELETE FROM users WHERE id=?', id);
+  }
   q.run('DELETE FROM item_stats');
   q.run('DELETE FROM section_stats');
-  console.log(`\nĐã xoá ${n} câu trả lời giả và toàn bộ thống kê đã tính.`);
+  console.log(`\nĐã xoá ${n} lượt thi giả của ${ids.length} tài khoản, và toàn bộ thống kê đã tính.`);
   console.log('Chạy lại lệnh này không có cờ để tính lại trên dữ liệu thật.\n');
   process.exit(0);
 }
@@ -68,7 +72,7 @@ console.log('─'.repeat(72));
 
 if (!cov.responses) {
   console.log(`
-Chưa có bài làm nào trong bảng item_responses, nên chưa tính được gì.
+Chưa có bài làm nào đã nộp và đã chấm, nên chưa tính được gì.
 
 Đây là trạng thái đúng của một nền tảng chưa có thí sinh, không phải lỗi.
 docs/ACADEMIC.md §7 và §10 đã nói rõ: mọi con số về độ tin cậy hiện là quyết
@@ -87,7 +91,7 @@ if (cov.itemsBelowThreshold) {
   console.log(`  ${C.y}${cov.itemsBelowThreshold} câu chưa đủ ${cov.needPerItem} lượt — số của những câu đó chưa dùng được${C.x}`);
 }
 
-const rep = IS.computeAll({ source: NGUON || undefined, since: TU || undefined, dryRun: THU });
+const rep = IS.computeAll({ since: TU || undefined, dryRun: THU });
 
 /* ---- độ tin cậy từng phần ---- */
 console.log(`\n${C.b}Độ tin cậy nội bộ${C.x}  ${C.d}(alpha: các câu trong phần có cùng đo một thứ không)${C.x}`);
@@ -198,12 +202,35 @@ function simulate(soLuot) {
 
   const b = new Map(items.map((it, i) => [it.id, ((i * 37) % 41) / 10 - 2]));  // −2.0 … +1.9
   const now = nowISO();
-  const batDau = `sim-${now.slice(0, 10)}`;
+  /* Lượt thi giả đi qua đúng hai bảng mà phần thi dùng — `attempts` và
+     `attempt_answers` — vì đó là nơi phân tích đọc. Ghi vào một bảng riêng thì
+     chỉ kiểm được cái bảng riêng đó, còn đường thật vẫn chưa ai chạy thử. */
+  const test = q.get("SELECT id FROM tests WHERE family_id='vpet' LIMIT 1");
+  if (!test) {
+    console.error('\nChưa có đề VPET nào để gắn lượt thi vào.\n');
+    process.exit(1);
+  }
+  const section = q.get('SELECT id FROM sections WHERE test_id=? LIMIT 1', test.id);
+  if (!section) {
+    console.error('\nĐề VPET chưa có phần nào.\n');
+    process.exit(1);
+  }
 
   let ghi = 0;
   for (let s = 0; s < soLuot; s++) {
     const theta = gauss();
-    const ref = `${batDau}-${String(s).padStart(4, '0')}`;
+    const uname = `sim-${String(s).padStart(4, '0')}`;
+
+    let u = q.get('SELECT id FROM users WHERE username=?', uname);
+    if (!u) {
+      q.run(`INSERT INTO users (username, email, name, status, created_at)
+             VALUES (?,?,?,'active',?)`, uname, uname + '@mo-phong.invalid', 'Mô phỏng ' + s, now);
+      u = q.get('SELECT id FROM users WHERE username=?', uname);
+    }
+
+    q.run(`INSERT INTO attempts (user_id, test_id, status, started_at, submitted_at, updated_at)
+           VALUES (?,?,'submitted',?,?,?)`, u.id, test.id, now, now, now);
+    const attemptId = q.val('SELECT last_insert_rowid()');
 
     for (const it of items) {
       const opts = JSON.parse(it.options_json || '[]');
@@ -234,16 +261,16 @@ function simulate(soLuot) {
         : null;
 
       q.run(
-        `INSERT OR IGNORE INTO item_responses
-           (attempt_ref, question_id, part, chosen, correct, score, max_score, source, created_at)
-         VALUES (?,?,?,?,?,?,?, 'simulated', ?)`,
-        ref, it.id, it.part, chon, rubric ? (diem >= 4 ? 1 : 0) : (dung ? 1 : 0),
-        diem, rubric ? 6 : null, now);
+        `INSERT OR IGNORE INTO attempt_answers
+           (attempt_id, question_id, section_id, answer, earned, max_score, marked_at, updated_at)
+         VALUES (?,?,?,?,?,?,?,?)`,
+        attemptId, it.id, section.id, chon || '',
+        rubric ? diem : (dung ? 1 : 0), rubric ? 6 : 1, now, now);
       ghi++;
     }
   }
 
-  console.log(`\n${C.y}Đã sinh ${soLuot} lượt thi giả (${ghi} câu trả lời), source='simulated'.${C.x}`);
+  console.log(`\n${C.y}Đã sinh ${soLuot} lượt thi giả (${ghi} câu trả lời) trên tài khoản sim-*.${C.x}`);
   console.log(`${C.d}Ba câu được cố tình làm hỏng — dễ quá, sai khoá, và nhiễu chết —`);
   console.log(`để xem báo cáo có bắt được không. Xoá bằng --xoa-gia-lap.${C.x}`);
 }

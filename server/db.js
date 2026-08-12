@@ -1,11 +1,11 @@
 /**
- * Lớp dữ liệu — SQLite nhúng qua node:sqlite (không cần dependency native).
- * File DB: data/prep.sqlite (bỏ qua trong git, tự tạo + seed ở lần chạy đầu).
+ * The data layer — SQLite embedded through node:sqlite (no native dependency).
+ * Database file: data/prep.sqlite (gitignored, created and seeded on the first run).
  *
- * Quy ước:
- * - Mọi truy vấn dùng prepared statement có tham số (chống SQL injection).
- * - Cột *_json lưu chuỗi JSON; đọc ra bằng jparse().
- * - Thời gian lưu ISO-8601 UTC dạng chuỗi để so sánh và sắp xếp bằng text.
+ * Conventions:
+ * - Every query is a prepared statement with bound parameters (against SQL injection).
+ * - A *_json column holds a JSON string; read it back with jparse().
+ * - Times are stored as ISO-8601 UTC strings, so comparing and sorting is textual.
  */
 'use strict';
 const { DatabaseSync } = require('node:sqlite');
@@ -36,7 +36,7 @@ CREATE TABLE IF NOT EXISTS admins (
 );
 
 CREATE TABLE IF NOT EXISTS sessions (
-  token_hash TEXT PRIMARY KEY,                  -- chỉ lưu bản băm của token
+  token_hash TEXT PRIMARY KEY,                  -- only the token's hash is stored
   admin_id INTEGER NOT NULL REFERENCES admins(id) ON DELETE CASCADE,
   created_at TEXT NOT NULL,
   expires_at TEXT NOT NULL,
@@ -58,8 +58,8 @@ CREATE TABLE IF NOT EXISTS users (
   last_login_at TEXT
 );
 
--- Phiên đăng nhập của học viên. Tách khỏi bảng sessions của quản trị để hai khu
--- không bao giờ dùng nhầm phiên của nhau; cũng chỉ lưu BẢN BĂM của token.
+-- Student sessions. Kept apart from the admin sessions table so neither area
+-- can ever pick up the other's session; again, only the token's HASH is stored.
 CREATE TABLE IF NOT EXISTS user_sessions (
   token_hash TEXT PRIMARY KEY,
   user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -69,8 +69,8 @@ CREATE TABLE IF NOT EXISTS user_sessions (
   ua TEXT
 );
 
--- Token dùng một lần gửi qua email: xác thực tài khoản và đặt lại mật khẩu.
--- Lưu bản băm để rò rỉ DB không dựng lại được liên kết trong hộp thư.
+-- Single-use tokens sent by email: account verification and password reset.
+-- The hash is stored, so a leaked database cannot rebuild the link in an inbox.
 CREATE TABLE IF NOT EXISTS user_tokens (
   token_hash TEXT PRIMARY KEY,
   user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -82,8 +82,8 @@ CREATE TABLE IF NOT EXISTS user_tokens (
 
 CREATE INDEX IF NOT EXISTS idx_user_tokens_user ON user_tokens(user_id, kind);
 
--- Khu tự học: bảng động từ bất quy tắc V1–V2–V3.
--- Tra được theo bất kỳ cột nào (gõ "went" phải ra "go") nên đánh index cả ba.
+-- Self-study: the V1–V2–V3 irregular verb table.
+-- Searchable on any column (typing "went" must find "go"), so all three are indexed.
 CREATE TABLE IF NOT EXISTS irregular_verbs (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   v1 TEXT NOT NULL UNIQUE,
@@ -92,10 +92,10 @@ CREATE TABLE IF NOT EXISTS irregular_verbs (
   ving TEXT NOT NULL,
   ipa_uk TEXT,
   ipa_us TEXT,
-  vi TEXT NOT NULL,                             -- nghĩa tiếng Việt
+  vi TEXT NOT NULL,                             -- the Vietnamese gloss
   grp TEXT NOT NULL,                            -- aaa | aba | abb | abc
   level TEXT NOT NULL,                          -- A1…C2
-  note TEXT,                                    -- biến thể Anh–Mỹ, bẫy phát âm
+  note TEXT,                                    -- British/American variants, pronunciation traps
   ex_en TEXT,
   ex_vi TEXT,
   sort INTEGER NOT NULL DEFAULT 0
@@ -105,31 +105,31 @@ CREATE INDEX IF NOT EXISTS idx_irr_v2 ON irregular_verbs(v2);
 CREATE INDEX IF NOT EXISTS idx_irr_v3 ON irregular_verbs(v3);
 CREATE INDEX IF NOT EXISTS idx_irr_level ON irregular_verbs(level);
 
--- Từ nối: xếp theo chức năng × độ trang trọng, kèm vị trí trong câu,
--- quy tắc dấu câu và cảnh báo dùng sai / lạm dụng.
+-- Linking words: arranged by function × register, with sentence position,
+-- punctuation rules and warnings about misuse and overuse.
 CREATE TABLE IF NOT EXISTS linking_words (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   word TEXT NOT NULL,
   fn TEXT NOT NULL,                             -- add | contrast | concession | cause | …
   register TEXT NOT NULL,                       -- spoken | neutral | academic
   pos TEXT NOT NULL,                            -- start | mid | end | start-mid | conj | prep
-  punct TEXT NOT NULL,                          -- quy tắc dấu câu
+  punct TEXT NOT NULL,                          -- punctuation rule
   vi TEXT NOT NULL,
   level TEXT NOT NULL,
   ex_en TEXT NOT NULL,
   ex_vi TEXT NOT NULL,
-  warn TEXT,                                    -- cảnh báo lạm dụng / dùng sai
+  warn TEXT,                                    -- warning about overuse or misuse
   sort INTEGER NOT NULL DEFAULT 0,
-  UNIQUE(word, fn)                              -- một từ có thể mang nhiều chức năng
+  UNIQUE(word, fn)                              -- one word can serve several functions
 );
 
 CREATE INDEX IF NOT EXISTS idx_link_fn ON linking_words(fn);
 CREATE INDEX IF NOT EXISTS idx_link_reg ON linking_words(register);
 CREATE INDEX IF NOT EXISTS idx_link_level ON linking_words(level);
 
--- Điểm ngữ pháp. Mỗi mục có đủ bốn lát cắt mà docs/LEARNING.md mục 2 đòi:
--- công thức, dùng khi nào, KHÔNG dùng khi nào, phân biệt với điểm dễ nhầm.
--- Các cột *_json giữ mảng/đối tượng, đọc ra bằng jparse().
+-- Grammar points. Each carries all four cuts docs/LEARNING.md §2 requires:
+-- the form, when to use it, when NOT to, and telling it apart from confusable points.
+-- The *_json columns hold arrays or objects, read back with jparse().
 CREATE TABLE IF NOT EXISTS grammar_points (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   slug TEXT NOT NULL UNIQUE,
@@ -137,10 +137,10 @@ CREATE TABLE IF NOT EXISTS grammar_points (
   name_vi TEXT NOT NULL,
   grp TEXT NOT NULL,                            -- tense | noun | modal | passive | …
   level TEXT NOT NULL,                          -- A1…C2
-  summary TEXT NOT NULL,                        -- một câu tóm tắt tiếng Việt
+  summary TEXT NOT NULL,                        -- a one-sentence Vietnamese summary
   formula_json TEXT NOT NULL,                   -- {pos, neg, que, note}
   signals_json TEXT NOT NULL,                   -- ["every day", "always", …]
-  use_when_json TEXT NOT NULL,                  -- ["dùng khi …", …]
+  use_when_json TEXT NOT NULL,                  -- ["use it when …", …]
   use_not_json TEXT NOT NULL,                   -- [{what, why}]
   confuse_json TEXT NOT NULL,                   -- [{with, tell, pair:[{en,vi},{en,vi}]}]
   errors_json TEXT NOT NULL,                    -- [{wrong, right, why}]
@@ -150,24 +150,120 @@ CREATE TABLE IF NOT EXISTS grammar_points (
 CREATE INDEX IF NOT EXISTS idx_gp_grp ON grammar_points(grp);
 CREATE INDEX IF NOT EXISTS idx_gp_level ON grammar_points(level);
 
--- Câu ví dụ và câu luyện tập của từng điểm ngữ pháp.
+-- Example sentences and practice items for each grammar point.
 CREATE TABLE IF NOT EXISTS grammar_examples (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   point_id INTEGER NOT NULL REFERENCES grammar_points(id) ON DELETE CASCADE,
   kind TEXT NOT NULL,                           -- example | practice
-  en TEXT NOT NULL,                             -- câu Anh, câu luyện có '___'
+  en TEXT NOT NULL,                             -- the English sentence; a practice item contains '___'
   vi TEXT NOT NULL,
-  ok INTEGER,                                   -- 1 câu đúng, 0 phản ví dụ, NULL với câu luyện
-  answer TEXT,                                  -- đáp án, chỉ có ở câu luyện
-  note TEXT,                                    -- giải thích
+  ok INTEGER,                                   -- 1 correct, 0 counter-example, NULL for a practice item
+  answer TEXT,                                  -- the answer, present only on a practice item
+  note TEXT,                                    -- the explanation
   sort INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE INDEX IF NOT EXISTS idx_ge_point ON grammar_examples(point_id, kind, sort);
 
--- Vân tay của các bảng nội dung soạn sẵn (động từ bất quy tắc, từ nối, …).
--- Nạp lại khi vân tay đổi, nhờ vậy sửa nội dung hay bỏ bớt mục cũng xuống
--- được CSDL đang chạy — không chỉ khi thêm dòng mới.
+-- Self-study vocabulary, the five tables docs/LEARNING.md §6 sets out: the
+-- headword, its meanings, example sentences under each meaning, its inflected
+-- forms, and the chunks it lives in.
+--
+-- These are keyed on natural keys and upserted, not cleared and reloaded like
+-- the other authored tables, for the reason seedVpetItems() gives about the
+-- question bank. learn_progress will hold a sense id and a review date per
+-- learner, so a row id has to survive a re-import: reloading the word list must
+-- not reset somebody's spaced repetition. Clearing the table cannot promise
+-- that; upserting on (headword, pos) can.
+CREATE TABLE IF NOT EXISTS vocab_entries (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  headword TEXT NOT NULL,
+  pos TEXT NOT NULL,                            -- noun | verb | adj | adv | prep | conj | det | pron | phrase
+  level TEXT NOT NULL,                          -- A1…C2
+  level_source TEXT NOT NULL,                   -- ngsl-rank | nawl | tsl | bsl | corpus | manual
+  ipa_uk TEXT,
+  ipa_us TEXT,
+  freq_rank INTEGER,                            -- rank in the source list; NULL when the level came from a corpus count
+  source TEXT NOT NULL,                         -- which open list the entry came from
+  licence TEXT NOT NULL,                        -- and under what licence, per docs/LEARNING.md §1.3
+  sort INTEGER NOT NULL DEFAULT 0,
+  UNIQUE(headword, pos)                         -- "book" the noun and "book" the verb are two entries
+);
+
+CREATE INDEX IF NOT EXISTS idx_vocab_level ON vocab_entries(level);
+CREATE INDEX IF NOT EXISTS idx_vocab_rank  ON vocab_entries(freq_rank);
+CREATE INDEX IF NOT EXISTS idx_vocab_head  ON vocab_entries(headword);
+
+-- One meaning. A sense carries its own level because the headword's level is the
+-- level of its commonest meaning: "book" the object is A1, "book" as in reserve
+-- a table is A2, and docs/LEARNING.md §1.2 counts them as two items.
+CREATE TABLE IF NOT EXISTS vocab_senses (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  entry_id INTEGER NOT NULL REFERENCES vocab_entries(id) ON DELETE CASCADE,
+  en TEXT NOT NULL,                             -- the English definition
+  vi TEXT NOT NULL,                             -- the Vietnamese gloss
+  level TEXT NOT NULL,
+  note TEXT,                                    -- register, usage traps, what it is not
+  sort INTEGER NOT NULL DEFAULT 0,
+  UNIQUE(entry_id, en)
+);
+
+CREATE INDEX IF NOT EXISTS idx_vsense_entry ON vocab_senses(entry_id, sort);
+CREATE INDEX IF NOT EXISTS idx_vsense_level ON vocab_senses(level);
+
+-- Bilingual example sentences, hung off the meaning rather than the headword so
+-- a sentence illustrates the sense it was chosen for. Source and licence are per
+-- row because these arrive from Tatoeba one sentence at a time.
+CREATE TABLE IF NOT EXISTS vocab_examples (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  sense_id INTEGER NOT NULL REFERENCES vocab_senses(id) ON DELETE CASCADE,
+  en TEXT NOT NULL,
+  vi TEXT NOT NULL,
+  source TEXT NOT NULL,
+  licence TEXT NOT NULL,
+  sort INTEGER NOT NULL DEFAULT 0,
+  UNIQUE(sense_id, en)
+);
+
+CREATE INDEX IF NOT EXISTS idx_vex_sense ON vocab_examples(sense_id, sort);
+
+-- Inflected and derived forms. Indexed on the form itself because a learner who
+-- types "children" has to land on "child".
+CREATE TABLE IF NOT EXISTS vocab_forms (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  entry_id INTEGER NOT NULL REFERENCES vocab_entries(id) ON DELETE CASCADE,
+  form TEXT NOT NULL,
+  kind TEXT NOT NULL,                           -- plural | past | pastp | ving | third | comparative | superlative | derived
+  note TEXT,                                    -- irregular spellings, British and American splits
+  sort INTEGER NOT NULL DEFAULT 0,
+  UNIQUE(entry_id, form, kind)
+);
+
+CREATE INDEX IF NOT EXISTS idx_vform_entry ON vocab_forms(entry_id, sort);
+CREATE INDEX IF NOT EXISTS idx_vform_form  ON vocab_forms(form);
+
+-- Collocations, docs/LEARNING.md §3.1. Hung off the entry rather than the sense:
+-- a chunk often spans meanings, and forcing a choice would drop the ones that do.
+CREATE TABLE IF NOT EXISTS collocations (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  entry_id INTEGER NOT NULL REFERENCES vocab_entries(id) ON DELETE CASCADE,
+  chunk TEXT NOT NULL,
+  kind TEXT NOT NULL,                           -- verb-noun | adj-noun | noun-noun | noun-prep | verb-prep | adj-prep | adv-adj | phrase
+  level TEXT NOT NULL,
+  ex_en TEXT NOT NULL,
+  ex_vi TEXT NOT NULL,
+  note TEXT,
+  sort INTEGER NOT NULL DEFAULT 0,
+  UNIQUE(entry_id, chunk)
+);
+
+CREATE INDEX IF NOT EXISTS idx_colloc_entry ON collocations(entry_id, sort);
+CREATE INDEX IF NOT EXISTS idx_colloc_level ON collocations(level);
+CREATE INDEX IF NOT EXISTS idx_colloc_kind  ON collocations(kind);
+
+-- Fingerprints of the authored content tables (irregular verbs, linking words, …).
+-- Reloaded when a fingerprint changes, so correcting content or removing an entry
+-- also reaches a running database — not only adding rows.
 CREATE TABLE IF NOT EXISTS seed_meta (
   name TEXT PRIMARY KEY,
   hash TEXT NOT NULL,
@@ -249,7 +345,7 @@ CREATE TABLE IF NOT EXISTS codes (
   code TEXT NOT NULL UNIQUE,
   batch_id INTEGER REFERENCES batches(id) ON DELETE SET NULL,
   unlock_type TEXT NOT NULL,                    -- test | family | bundle
-  unlock_ref TEXT NOT NULL,                     -- id bài / id kỳ thi / danh sách id ngăn bởi dấu phẩy
+  unlock_ref TEXT NOT NULL,                     -- test id / family id / a comma-separated list of ids
   status TEXT NOT NULL DEFAULT 'unused',        -- unused | redeemed | revoked
   expires_at TEXT,
   user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
@@ -293,6 +389,53 @@ CREATE TABLE IF NOT EXISTS audit (
   at TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS attempts (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL REFERENCES users(id),
+  test_id TEXT NOT NULL REFERENCES tests(id),
+  code_id INTEGER REFERENCES codes(id),         -- which purchase paid for this sitting
+  status TEXT NOT NULL DEFAULT 'in_progress',   -- in_progress | submitted
+  started_at TEXT NOT NULL,
+  submitted_at TEXT,
+  updated_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS attempt_parts (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  attempt_id INTEGER NOT NULL REFERENCES attempts(id) ON DELETE CASCADE,
+  section_id INTEGER NOT NULL REFERENCES sections(id),
+  part TEXT,
+  started_at TEXT,                              -- NULL until the candidate enters it
+  ends_at TEXT,                                 -- stamped from started_at + minutes
+  closed_at TEXT,
+  UNIQUE (attempt_id, section_id)
+);
+
+CREATE TABLE IF NOT EXISTS attempt_answers (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  attempt_id INTEGER NOT NULL REFERENCES attempts(id) ON DELETE CASCADE,
+  question_id INTEGER NOT NULL REFERENCES questions(id),
+  section_id INTEGER NOT NULL REFERENCES sections(id),
+  answer TEXT NOT NULL DEFAULT '',
+  audio_key TEXT,                               -- spoken answer, in the storage adapter
+  replays_used INTEGER NOT NULL DEFAULT 0,
+  updated_at TEXT NOT NULL,
+  UNIQUE (attempt_id, question_id)
+);
+
+CREATE TABLE IF NOT EXISTS attempt_scores (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  attempt_id INTEGER NOT NULL REFERENCES attempts(id) ON DELETE CASCADE,
+  skill TEXT NOT NULL,                          -- listening | reading | writing | speaking | overall
+  raw_earned REAL NOT NULL DEFAULT 0,
+  raw_max REAL NOT NULL DEFAULT 0,
+  scaled REAL,                                  -- on the exam's own scale (VPET: 0-10 in steps of 0.5)
+  method TEXT NOT NULL DEFAULT '',              -- the conversion table used
+  pending INTEGER NOT NULL DEFAULT 0,           -- 1 = items are still waiting on a human or AI marker
+  at TEXT NOT NULL,
+  UNIQUE (attempt_id, skill)
+);
+
 CREATE TABLE IF NOT EXISTS settings (
   key TEXT PRIMARY KEY,
   value TEXT NOT NULL
@@ -302,6 +445,9 @@ CREATE INDEX IF NOT EXISTS idx_q_filter  ON questions (family_id, skill, level, 
 CREATE INDEX IF NOT EXISTS idx_codes_st  ON codes (status, expires_at);
 CREATE INDEX IF NOT EXISTS idx_sec_test  ON sections (test_id, sort);
 CREATE INDEX IF NOT EXISTS idx_audit_at  ON audit (at DESC);
+CREATE INDEX IF NOT EXISTS idx_att_user  ON attempts (user_id, status);
+CREATE INDEX IF NOT EXISTS idx_att_ans   ON attempt_answers (attempt_id);
+CREATE INDEX IF NOT EXISTS idx_att_score ON attempt_scores (attempt_id);
 `);
 
 /* ============================ MIGRATIONS ============================
@@ -326,6 +472,23 @@ addColumnIfMissing('families', 'status', "TEXT NOT NULL DEFAULT 'ready'");
 /* VPET parts E, F, G, H and J play an MP3 to the candidate, so a question can
    own one audio file. Only the storage key lives here — the bytes are in
    whichever storage driver is configured (see server/storage.js). */
+/* A student can sign in with Google instead of a password. The subject id is
+   the stable identifier: it survives the person renaming their email address.
+   SQLite cannot add a UNIQUE column with ALTER, so the constraint comes from a
+   unique index — which also permits many NULLs, exactly what is wanted for
+   accounts that never link a Google identity. */
+addColumnIfMissing('users', 'google_sub', 'TEXT');
+db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_users_google_sub ON users (google_sub)');
+
+/* A code now carries a subscription plan rather than a list of tests: what a
+   buyer picks is how long they practise and how much of the platform they get.
+   The access window is stamped at redemption, so a code bought in January and
+   redeemed in March starts counting in March. attempts_used is on the code
+   because the cap belongs to the purchase, not to the account. */
+addColumnIfMissing('codes', 'plan_id', 'TEXT');
+addColumnIfMissing('codes', 'access_expires_at', 'TEXT');
+addColumnIfMissing('codes', 'attempts_used', 'INTEGER NOT NULL DEFAULT 0');
+
 addColumnIfMissing('questions', 'audio_key', 'TEXT');
 addColumnIfMissing('questions', 'audio_bytes', 'INTEGER');
 addColumnIfMissing('questions', 'audio_at', 'TEXT');
@@ -346,10 +509,6 @@ addColumnIfMissing('questions', 'audio_voice_id', 'TEXT');
 addColumnIfMissing('questions', 'audio_hash', 'TEXT');
 /* Facts a candidate should retain, used when marking a part J retelling. */
 addColumnIfMissing('questions', 'key_points_json', "TEXT NOT NULL DEFAULT '[]'");
-/* Which VPET part (A-J) an item belongs to, so each part draws from its own
-   pool instead of sharing one skill-wide pool. */
-addColumnIfMissing('questions', 'part', 'TEXT');
-
 /* Reading matter shown alongside the question, kept apart from `prompt`
    because the two are displayed differently and, in part B, on different
    timers: the passage appears for a fixed period and is then hidden, while
@@ -398,46 +557,18 @@ CREATE INDEX IF NOT EXISTS idx_tts_q    ON tts_renders (question_id, id DESC);
 CREATE INDEX IF NOT EXISTS idx_tts_hash ON tts_renders (hash);
 `);
 
-/* Một dòng cho mỗi câu trả lời của mỗi thí sinh.
+/* Kết luận đã tính của phân tích câu hỏi (docs/ACADEMIC.md §9).
    ---------------------------------------------------------------------------
-   Bảng này tồn tại vì phân tích câu hỏi không làm ngược lại được. Điểm tổng
-   thì tính lại lúc nào cũng được, nhưng "thí sinh này chọn phương án C" mà
-   không ghi lại ngay hôm đó thì mất vĩnh viễn — và đó chính là dữ liệu duy
-   nhất nói được câu nào hỏng. docs/ACADEMIC.md §9 liệt kê việc phải làm khi có
-   dữ liệu; không có bảng này thì mục đó không bao giờ chạy được.
+   Bài làm của thí sinh KHÔNG lưu ở đây. Nó nằm ở `attempt_answers` — bảng mà
+   phần thi đã ghi sẵn, có `answer`, `earned`, `max_score` cho từng câu. Thêm
+   một bảng nữa cho cùng dữ liệu là bảo đảm sớm muộn thống kê và bảng điểm sẽ
+   nói hai chuyện khác nhau về cùng một lượt thi.
 
-   Vì sao lưu cả `correct` lẫn `chosen`: đáp án có thể sửa. Khi phát hiện khoá
-   sai và sửa lại, những bài đã chấm cần giữ nguyên kết quả đã báo cho thí
-   sinh, còn `chosen` cho phép chấm lại và biết ai bị thiệt. Chỉ lưu một trong
-   hai là mất một trong hai khả năng đó.
-
-   `attempt_ref` gom các câu của cùng một lượt thi. Không tham chiếu tới bảng
-   nào cả: lượt thi có thể tới từ mã dùng thử, từ lớp học, hay từ bản nhập tay
-   của giáo viên, và ràng buộc khoá ngoại vào một nguồn sẽ chặn hai nguồn kia.
-
-   docs/ACADEMIC.md §13: giữ 24 tháng. Bảng này chỉ có lựa chọn và điểm, không
-   có bài viết hay bản ghi âm, nên xoá theo hạn không làm mất phần thống kê. */
+   Chỉ phần *kết luận* mới lưu, và lưu vì kết luận "bỏ câu này" cần có ngày
+   tháng và cỡ mẫu đi kèm — để nửa năm sau còn biết nó được rút ra trên 140
+   lượt hồi tháng Ba, chứ không phải trên những gì đang có trong bảng hôm nay.
+   Con số tính lại mỗi lần mở trang thì không có lịch sử và không cãi được. */
 db.exec(`
-CREATE TABLE IF NOT EXISTS item_responses (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  attempt_ref TEXT NOT NULL,
-  question_id INTEGER NOT NULL REFERENCES questions(id) ON DELETE CASCADE,
-  test_id INTEGER REFERENCES tests(id) ON DELETE SET NULL,
-  part TEXT,
-  level INTEGER,
-  chosen TEXT,
-  correct INTEGER NOT NULL DEFAULT 0,          -- 1 đúng, 0 sai
-  score REAL,                                   -- điểm phần chấm rubric, null với trắc nghiệm
-  max_score REAL,
-  ms INTEGER,                                   -- thời gian làm câu này
-  source TEXT NOT NULL DEFAULT 'exam',          -- exam | practice | import | simulated
-  created_at TEXT NOT NULL,
-  UNIQUE (attempt_ref, question_id)
-);
-CREATE INDEX IF NOT EXISTS idx_resp_q      ON item_responses (question_id);
-CREATE INDEX IF NOT EXISTS idx_resp_att    ON item_responses (attempt_ref);
-CREATE INDEX IF NOT EXISTS idx_resp_at     ON item_responses (created_at);
-
 CREATE TABLE IF NOT EXISTS item_stats (
   question_id INTEGER PRIMARY KEY REFERENCES questions(id) ON DELETE CASCADE,
   n INTEGER NOT NULL DEFAULT 0,
@@ -463,7 +594,45 @@ CREATE TABLE IF NOT EXISTS section_stats (
 );
 `);
 
-/* ============================== TIỆN ÍCH ============================== */
+/* Which lettered VPET part an item belongs to (A-J), or NULL for families that
+   have no part table. Skill alone cannot separate them: parts B and D are both
+   writing essays, F and G are both listening multiple choice, H and J are both
+   spoken answers to audio. Drawing those from one skill-wide pool builds an
+   exam that looks right and asks the wrong things - a "repeat this sentence"
+   item landing in "retell the story". The letter is what keeps each part
+   drawing from its own pool. */
+addColumnIfMissing('questions', 'part', 'TEXT');
+db.exec('CREATE INDEX IF NOT EXISTS idx_q_part ON questions (family_id, part, status)');
+
+/* A stable key for authored items, so the item bank can be re-seeded in place.
+   The other content tables are reloaded by clearing them, which cannot work
+   here: section_items holds a foreign key into questions, so clearing the bank
+   would empty every test built from it. An external key gives each authored
+   item an identity that survives, and the seed upserts against it — correcting
+   a typo in an item reaches a running database without disturbing the tests
+   that already use it, and without touching anything an admin wrote by hand.
+   Existing rows keep NULL here; SQLite treats NULLs as distinct, so the unique
+   index does not collide across them. */
+addColumnIfMissing('questions', 'ext_key', 'TEXT');
+addColumnIfMissing('questions', 'source', 'TEXT');
+addColumnIfMissing('questions', 'licence', 'TEXT');
+db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_q_ext_key ON questions (ext_key)');
+
+/* A section on a built test remembers which lettered part it is, so re-drawing
+   its items later pulls from the same pool the generator used. Reading the
+   letter back out of the section name would break the moment an admin renames
+   it, which they are free to do. */
+addColumnIfMissing('sections', 'part', 'TEXT');
+
+/* The marking trail for each item (docs/SCORING.md §2.4). A mark has to be
+explicable: when a candidate disputes one, it must be possible to see which items
+were right, which were wrong and why — not just a final number. */
+addColumnIfMissing('attempt_answers', 'earned', 'REAL');
+addColumnIfMissing('attempt_answers', 'max_score', 'REAL');
+addColumnIfMissing('attempt_answers', 'mark_note', 'TEXT');
+addColumnIfMissing('attempt_answers', 'marked_at', 'TEXT');
+
+/* ============================== HELPERS ============================== */
 const nowISO = () => new Date().toISOString();
 const jparse = (s, fb) => { try { return JSON.parse(s); } catch (e) { return fb; } };
 
@@ -474,14 +643,14 @@ const q = {
   val(sql, ...p) { const r = db.prepare(sql).get(...p); return r ? Object.values(r)[0] : null; }
 };
 
-/** Chạy nhiều lệnh trong một transaction (node:sqlite chưa có API transaction sẵn) */
+/** Run several statements in one transaction (node:sqlite has no transaction API yet) */
 function tx(fn) {
   db.exec('BEGIN');
   try { const out = fn(); db.exec('COMMIT'); return out; }
   catch (e) { db.exec('ROLLBACK'); throw e; }
 }
 
-/** Sinh mã code dạng XXXX-XXXX-XXXX, bỏ ký tự dễ nhầm (I, O, 0, 1) */
+/** Mint a code as XXXX-XXXX-XXXX, leaving out the confusable characters (I, O, 0, 1) */
 const CODE_ALPHA = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
 function makeCode() {
   const chunk = () => Array.from(crypto.randomBytes(4))
@@ -511,63 +680,65 @@ const FAMILIES = [
 ];
 
 const SEED_TESTS = [
-  { id:'vpet-b1-01', family:'vpet', title:'VPET 4 kỹ năng B1', level:'B1', dur:112, status:'published',
-    scoring:'Theo thang CEFR A1-C2, quy đổi từng kỹ năng',
-    guide:['Chuẩn bị tai nghe và micro trước khi vào phần Nghe / Nói.',
-           'Mỗi phần có đồng hồ riêng, hết giờ hệ thống tự chuyển phần.',
-           'Bài Viết và Nói được chấm tự động, trả kết quả kèm nhận xét.'],
-    sections:[['Listening','listening','Trắc nghiệm',25],['Reading','reading','Trắc nghiệm',35],
-              ['Writing','writing','Tự luận',40],['Speaking','speaking','Ghi âm',12]] },
-  { id:'ielts-ac-01', family:'ielts', title:'IELTS Academic Mock 01', level:'B2', dur:164, status:'published',
-    scoring:'Band 0-9, làm tròn 0.5',
-    guide:['Phần Nghe chỉ phát 1 lần, hãy đọc trước câu hỏi.',
-           'Writing Task 2 chiếm 2/3 điểm phần Viết.',
-           'Speaking mô phỏng phỏng vấn 3 part, trả lời theo đồng hồ.'],
-    sections:[['Listening','listening','Trắc nghiệm + điền từ',30],['Reading','reading','Đọc hiểu học thuật',60],
-              ['Writing','writing','Task 1 + Task 2',60],['Speaking','speaking','3 part, ghi âm',14]] },
-  { id:'ielts-ac-02', family:'ielts', title:'IELTS Academic Mock 02', level:'C1', dur:164, status:'published',
-    scoring:'Band 0-9, làm tròn 0.5',
-    guide:['Đề nâng cao: từ vựng học thuật dày hơn Mock 01.',
-           'Phân bổ 20 phút cho mỗi passage phần Đọc.',
-           'Speaking part 3 hỏi sâu quan điểm, luyện trả lời có cấu trúc.'],
-    sections:[['Listening','listening','Trắc nghiệm + điền từ',30],['Reading','reading','Đọc hiểu học thuật',60],
-              ['Writing','writing','Task 1 + Task 2',60],['Speaking','speaking','3 part, ghi âm',14]] },
-  { id:'toeic-lr-01', family:'toeic', title:'TOEIC Listening & Reading 01', level:'B1', dur:120, status:'published',
-    scoring:'Thang 10-990 (mỗi phần 5-495)',
-    guide:['Không có điểm trừ, đừng bỏ trống câu nào.',
-           'Part 7 chiếm nhiều thời gian nhất, làm Part 5-6 thật nhanh.',
-           'Đồng hồ chung cho cả phần Đọc, tự phân bổ thời gian.'],
-    sections:[['Listening','listening','Part 1-4, trắc nghiệm',45],['Reading','reading','Part 5-7, trắc nghiệm',75]] },
-  { id:'toeic-lr-02', family:'toeic', title:'TOEIC Listening & Reading 02', level:'B2', dur:120, status:'published',
-    scoring:'Thang 10-990 (mỗi phần 5-495)',
-    guide:['Đề mô phỏng độ khó kỳ thi thật từ 2024 trở lại đây.',
-           'Luyện kỹ dạng đoạn đôi / đoạn ba ở Part 7.',
-           'Nghe bằng tai nghe để đúng điều kiện phòng thi.'],
-    sections:[['Listening','listening','Part 1-4, trắc nghiệm',45],['Reading','reading','Part 5-7, trắc nghiệm',75]] },
+  { id:'vpet-b1-01', family:'vpet', title:'VPET four skills B1', level:'B1', dur:112, status:'published',
+    scoring:'On the CEFR A1-C2 scale, converted per skill',
+    guide:['Have headphones and a microphone ready before the Listening / Speaking parts.',
+           'Each part has its own clock; when it runs out the system moves on.',
+           'Writing and Speaking are marked automatically and come back with comments.'],
+    sections:[['Listening','listening','Multiple choice',25],['Reading','reading','Multiple choice',35],
+              ['Writing','writing','Essay',40],['Speaking','speaking','Recorded',12]] },
+  { id:'ielts-ac-01', family:'ielts', title:'IELTS Academic Mock 01', level:'B2', dur:164, status:'draft',
+    scoring:'Band 0-9, rounded to 0.5',
+    guide:['The Listening audio plays once only, so read the questions first.',
+           'Writing Task 2 carries two thirds of the Writing mark.',
+           'Speaking mirrors the three-part interview, answered against the clock.'],
+    sections:[['Listening','listening','Multiple choice + gap fill',30],['Reading','reading','Academic reading',60],
+              ['Writing','writing','Task 1 + Task 2',60],['Speaking','speaking','3 parts, recorded',14]] },
+  { id:'ielts-ac-02', family:'ielts', title:'IELTS Academic Mock 02', level:'C1', dur:164, status:'draft',
+    scoring:'Band 0-9, rounded to 0.5',
+    guide:['A harder paper: denser academic vocabulary than Mock 01.',
+           'Allow 20 minutes per Reading passage.',
+           'Speaking part 3 probes your opinions, so practise structured answers.'],
+    sections:[['Listening','listening','Multiple choice + gap fill',30],['Reading','reading','Academic reading',60],
+              ['Writing','writing','Task 1 + Task 2',60],['Speaking','speaking','3 parts, recorded',14]] },
+  { id:'toeic-lr-01', family:'toeic', title:'TOEIC Listening & Reading 01', level:'B1', dur:120, status:'draft',
+    scoring:'Scale 10-990 (5-495 per section)',
+    guide:['There is no penalty for a wrong answer, so never leave one blank.',
+           'Part 7 takes the longest, so move quickly through Parts 5-6.',
+           'One clock covers the whole Reading section; pace yourself.'],
+    sections:[['Listening','listening','Parts 1-4, multiple choice',45],['Reading','reading','Parts 5-7, multiple choice',75]] },
+  { id:'toeic-lr-02', family:'toeic', title:'TOEIC Listening & Reading 02', level:'B2', dur:120, status:'draft',
+    scoring:'Scale 10-990 (5-495 per section)',
+    guide:['Pitched at the difficulty of the real exam from 2024 onwards.',
+           'Practise the double and triple passage sets in Part 7.',
+           'Listen on headphones to match exam-room conditions.'],
+    sections:[['Listening','listening','Parts 1-4, multiple choice',45],['Reading','reading','Parts 5-7, multiple choice',75]] },
   { id:'pte-ac-01', family:'pte', title:'PTE Academic Mock 01', level:'B2', dur:127, status:'draft',
-    scoring:'Thang 10-90, chấm máy toàn phần',
-    guide:['Nói to, rõ, đều nhịp: máy chấm ưu tiên fluency.',
-           'Read Aloud và Repeat Sentence chiếm trọng số lớn.',
-           'Không quay lại câu đã nộp, cân nhắc trước khi bấm Next.'],
-    sections:[['Speaking & Writing','speaking','7 dạng câu, ghi âm + gõ',62],['Reading','reading','5 dạng câu',30],
-              ['Listening','listening','8 dạng câu',35]] }
+    scoring:'Scale 10-90, marked entirely by machine',
+    guide:['Speak up, clearly and evenly: the marker rewards fluency.',
+           'Read Aloud and Repeat Sentence carry a lot of weight.',
+           'You cannot go back to a submitted item, so think before pressing Next.'],
+    sections:[['Speaking & Writing','speaking','7 task types, recorded + typed',62],['Reading','reading','5 task types',30],
+              ['Listening','listening','8 task types',35]] }
 ];
 
 const PACKAGES = [
-  ['pk-single','1 bài thi thử',49000,null,'Mở khoá 1 bài thi thử bất kỳ đang có trong thư viện.',
-   ['Chọn bài khi kích hoạt code','Hạn dùng 6 tháng','Làm lại không giới hạn trong hạn'],0,1],
-  ['pk-vpet','Gói VPET',129000,'vpet','Mọi bài VPET hiện có + bài mới khi admin phát hành.',
-   ['Toàn bộ bài VPET','Cập nhật đề mới miễn phí','Hạn dùng 12 tháng'],0,2],
-  ['pk-toeic','Gói TOEIC',179000,'toeic','Trọn bộ TOEIC Listening & Reading, kèm đề mới.',
-   ['Toàn bộ bài TOEIC','Cập nhật đề mới miễn phí','Hạn dùng 12 tháng'],0,3],
-  ['pk-ielts','Gói IELTS',199000,'ielts','Trọn bộ IELTS Academic, kèm đề mới khi phát hành.',
-   ['Toàn bộ bài IELTS','Cập nhật đề mới miễn phí','Hạn dùng 12 tháng'],0,4],
-  ['pk-combo','Combo 2 kỳ thi',329000,null,'Chọn 2 kỳ thi bất kỳ, mở khoá toàn bộ bài của cả hai.',
-   ['2 kỳ thi tuỳ chọn','Tiết kiệm 49.000đ so với mua lẻ gói','Hạn dùng 12 tháng'],1,5]
+  ['pk-single','One mock test',49000,null,'Unlocks any one mock test currently in the library.',
+   ['Pick the test when you activate the code','Valid for 6 months','Unlimited retakes within the term'],0,1],
+  ['pk-vpet','VPET bundle',129000,'vpet','Every VPET test there is, plus new ones as they are published.',
+   ['Every VPET test','New papers at no extra cost','Valid for 12 months'],0,2],
+  ['pk-toeic','TOEIC bundle',179000,'toeic','The full TOEIC Listening & Reading set, new papers included.',
+   ['Every TOEIC test','New papers at no extra cost','Valid for 12 months'],0,3],
+  ['pk-ielts','IELTS bundle',199000,'ielts','The full IELTS Academic set, new papers included as they land.',
+   ['Every IELTS test','New papers at no extra cost','Valid for 12 months'],0,4],
+  ['pk-combo','Two-exam combo',329000,null,'Pick any two exams and unlock every test in both.',
+   ['Any two exams','Saves 49.000đ against two separate bundles','Valid for 12 months'],1,5]
 ];
 
-/* Ngân hàng câu hỏi mẫu: đủ để trình sinh đề tự động chạy được ngay.
-   Đây là nội dung mẫu do nền tảng tạo, admin sẽ thay bằng đề thật. */
+/* A sample question bank: enough for the paper generator to run straight away.
+   This is placeholder content produced by the platform; real items replace it.
+   Left in Vietnamese on purpose — the VPET item bank replaces every row of it, and
+   translating throwaway exam items would mean writing exam content carelessly. */
 function seedQuestions() {
   const LEVELS = ['A2', 'B1', 'B2', 'C1'];
   const MCQ = {
@@ -622,29 +793,29 @@ function seedQuestions() {
             ins.run(famId, skill, level, 'mcq',
               `[${famId.toUpperCase()} ${level}] ${item[0]}`,
               JSON.stringify(item[1]), item[2],
-              'Câu mẫu do nền tảng tạo sẵn để chạy thử trình sinh đề.',
+              'A sample item generated by the platform, for exercising the paper generator.',
               JSON.stringify(['mẫu', skill]), at);
             n++;
           });
           GAP[skill].forEach((p, i) => {
-            if (i > li) return;                       // level cao hơn thì có nhiều câu điền hơn
+            if (i > li) return;                       // a higher level gets more gap-fill items
             ins.run(famId, skill, level, 'gap',
               `[${famId.toUpperCase()} ${level}] ${p}`, '[]', '',
-              'Câu mẫu do nền tảng tạo sẵn.', JSON.stringify(['mẫu', skill]), at);
+              'A sample item generated by the platform.', JSON.stringify(['mẫu', skill]), at);
             n++;
           });
         }
         if (skill === 'writing') {
           ESSAY.forEach(p => {
             ins.run(famId, skill, level, 'essay', `[${famId.toUpperCase()} ${level}] ${p}`, '[]', '',
-              'Đề viết mẫu, chấm theo tiêu chí của kỳ thi.', JSON.stringify(['mẫu','writing']), at);
+              'A sample writing task, marked against the exam criteria.', JSON.stringify(['mẫu','writing']), at);
             n++;
           });
         }
         if (skill === 'speaking') {
           SPEAK.forEach(p => {
             ins.run(famId, skill, level, 'speaking', `[${famId.toUpperCase()} ${level}] ${p}`, '[]', '',
-              'Đề nói mẫu, thí sinh ghi âm câu trả lời.', JSON.stringify(['mẫu','speaking']), at);
+              'A sample speaking task; the candidate records an answer.', JSON.stringify(['mẫu','speaking']), at);
             n++;
           });
         }
@@ -654,7 +825,7 @@ function seedQuestions() {
   return n;
 }
 
-/** Seed lần đầu (idempotent: chỉ chạy khi bảng rỗng) */
+/** First-run seed (idempotent: it only runs while a table is empty) */
 function seed() {
   const at = nowISO();
 
@@ -682,7 +853,71 @@ function seed() {
     }
   }
 
+  /* A parked family must not have anything on sale. Seeds above only run on an
+     empty table, so an existing database needs the rule applied directly —
+     otherwise tests published before a family was parked stay in the
+     catalogue and students can still buy them. */
+  const pulled = q.run(`UPDATE tests SET status='draft', updated_at=?
+                         WHERE status='published'
+                           AND family_id IN (SELECT id FROM families WHERE status='coming_soon')`, at);
+  if (pulled.changes) {
+    console.warn(`[seed] ${pulled.changes} test(s) of a parked family pulled back to draft.`);
+  }
+
+  /* The shop sells subscription plans now, not per-exam bundles. The plan
+     table in server/data/plans.js is the single source: packages are synced
+     from it on every boot, and anything not in it is retired rather than
+     deleted, because historical orders point at those rows. */
+  const PLANS = require('./data/plans');
+  const insPkg = db.prepare(
+    'INSERT INTO packages (id,name,price,family_id,description,perks_json,featured,active,sort) VALUES (?,?,?,NULL,?,?,?,1,?)');
+  const updPkg = db.prepare(
+    'UPDATE packages SET name=?, price=?, family_id=NULL, description=?, perks_json=?, featured=?, active=1, sort=? WHERE id=?');
+  PLANS.PLANS.forEach((p, i) => {
+    const perks = JSON.stringify(p.perks);
+    /* Plus is the one most people should buy: long enough to matter, and the
+       step that opens the study material. */
+    const featured = p.id === 'plus-6m' ? 1 : 0;
+    if (q.val('SELECT 1 FROM packages WHERE id=?', p.id)) {
+      updPkg.run(p.name, p.price, p.tagline, perks, featured, i, p.id);
+    } else {
+      insPkg.run(p.id, p.name, p.price, p.tagline, perks, featured, i);
+    }
+  });
+  const retired = q.run(
+    `UPDATE packages SET active=0 WHERE active=1 AND id NOT IN (${PLANS.PLANS.map(() => '?').join(',')})`,
+    ...PLANS.PLANS.map(p => p.id));
+  if (retired.changes) console.warn(`[seed] ${retired.changes} old bundle(s) retired in favour of the time-limited plans.`);
+
+  /* The demo codes' plans are reconciled on every boot, not only at seed time. The
+     seed only runs while the codes table is empty, so a database created before the
+     plan model existed would keep plan_id NULL forever — and a code with no plan
+     opens nothing when redeemed. The symptom was the demo account silently losing
+     all access after an upgrade, with no error anywhere.
+     Only the five fixed demo codes are touched: a real buyer's code missing its plan
+     is something to settle by hand, not by issuing a plan automatically. */
+  const DEMO_CODE_PLANS = [
+    ['VPET-B1MK-24TR', 'plus-6m', 6],
+    ['IELT-AC12-96HD', 'starter-3m', 0],
+    ['TOEC-LR20-26CB', 'pro-12m', 0],
+    ['PREP-HHAN-2025', 'starter-3m', 0],
+    ['PREP-DUNG-ROI1', 'starter-3m', 3]
+  ];
+  const monthsFromNow = n => {
+    const d = new Date(); d.setMonth(d.getMonth() + n); return d.toISOString();
+  };
+  let ganLai = 0;
+  for (const [code, planId, months] of DEMO_CODE_PLANS) {
+    const row = q.get('SELECT id, plan_id FROM codes WHERE code=?', code);
+    if (!row || row.plan_id) continue;
+    q.run('UPDATE codes SET plan_id=?, access_expires_at=? WHERE id=?',
+      planId, months ? monthsFromNow(months) : null, row.id);
+    ganLai++;
+  }
+  if (ganLai) console.warn(`[seed] ${ganLai} demo code(s) had their plan reattached.`);
+
   if (!q.val('SELECT COUNT(*) c FROM questions')) seedQuestions();
+  seedVpetItems();
 
   if (!q.val('SELECT COUNT(*) c FROM tests')) {
     const insT = db.prepare(`INSERT INTO tests
@@ -693,7 +928,7 @@ function seed() {
       insT.run(t.id, t.family, t.title, t.level, t.dur, t.scoring, JSON.stringify(t.guide), t.status, at, at);
       t.sections.forEach(([name, skill, type, minutes], i) => {
         insS.run(t.id, name, skill, type, minutes, i);
-        // Gắn sẵn câu hỏi từ bank cho mỗi phần để đề có nội dung ngay
+        // Attach bank questions to each part so the paper has content immediately
         const secId = q.val('SELECT id FROM sections WHERE test_id=? ORDER BY id DESC LIMIT 1', t.id);
         const want = skill === 'writing' ? 2 : skill === 'speaking' ? 3 : 20;
         const pool = q.all(
@@ -706,11 +941,11 @@ function seed() {
   }
 
   if (!q.val('SELECT COUNT(*) c FROM users')) {
-    // Tài khoản học viên demo (khớp với tài khoản seed phía frontend)
+    // The demo student account (matching the seed account on the front end)
     const ins = db.prepare(`INSERT INTO users (username,email,name,verified,status,interests_json,created_at)
                             VALUES (?,?,?,?,?,?,?)`);
     const daysAgo = n => new Date(Date.now() - n * 86400000).toISOString();
-    ins.run('student', 'student@vpetprep.vn', 'Học viên Demo', 1, 'active', JSON.stringify(['vpet','ielts']), daysAgo(21));
+    ins.run('student', 'student@vpetprep.vn', 'Demo Student', 1, 'active', JSON.stringify(['vpet','ielts']), daysAgo(21));
     const DEMO = [
       ['thuhang.nt','thuhang.nt@ftu.edu.vn','Nguyễn Thu Hằng',1,['ielts'],14],
       ['khanhqd','khanh.qd@hcmut.edu.vn','Quốc Khánh',1,['toeic','ielts'],11],
@@ -732,21 +967,21 @@ function seed() {
     const daysFromNow = n => new Date(Date.now() + n * 86400000).toISOString().slice(0, 10);
     const daysAgo = n => new Date(Date.now() - n * 86400000).toISOString();
 
-    // Lô demo cho lớp học
+    // A demo batch for a class
     insB.run('Lớp IELTS K62 - đợt 1', 'family', 'ielts', 8, daysFromNow(120), nowISO());
     const b1 = q.val('SELECT id FROM batches ORDER BY id DESC LIMIT 1');
     for (let i = 0; i < 8; i++) insC.run(makeCode(), b1, 'family', 'ielts', 'unused', daysFromNow(120), null, null, null, nowISO());
 
-    // Code cố định để khớp mã demo phía frontend
+    // Fixed codes, matching the demo codes on the front end
     const studentId = q.val("SELECT id FROM users WHERE username='student'");
-    insC.run('VPET-B1MK-24TR', null, 'test', 'vpet-b1-01', 'redeemed', daysFromNow(144), studentId, daysAgo(8), 'Cấp cho tài khoản demo', daysAgo(10));
+    insC.run('VPET-B1MK-24TR', null, 'test', 'vpet-b1-01', 'redeemed', daysFromNow(144), studentId, daysAgo(8), 'Issued to the demo account', daysAgo(10));
     insC.run('IELT-AC12-96HD', null, 'family', 'ielts', 'unused', daysFromNow(67), null, null, null, daysAgo(9));
     insC.run('TOEC-LR20-26CB', null, 'family', 'toeic', 'unused', daysFromNow(200), null, null, null, daysAgo(7));
-    insC.run('PREP-HHAN-2025', null, 'family', 'pte', 'unused', '2025-12-31', null, null, 'Mã minh hoạ đã hết hạn', daysAgo(300));
+    insC.run('PREP-HHAN-2025', null, 'family', 'pte', 'unused', '2025-12-31', null, null, 'An illustrative code, past its date', daysAgo(300));
     insC.run('PREP-DUNG-ROI1', null, 'test', 'ielts-ac-01', 'redeemed', daysFromNow(140),
       q.val("SELECT id FROM users WHERE username='thuhang.nt'"), daysAgo(12), null, daysAgo(13));
 
-    // Một ít code đã dùng để báo cáo có dữ liệu
+    // A few spent codes so the reports have something to show
     const users = q.all("SELECT id FROM users WHERE username IN ('khanhqd','ngocanh.study','baolong.tb')");
     const refs = [['family','toeic'], ['family','ielts'], ['test','pte-ac-01']];
     users.forEach((u, i) => {
@@ -758,12 +993,12 @@ function seed() {
     const ins = db.prepare('INSERT INTO orders (user_id,package_id,name,amount,status,created_at) VALUES (?,?,?,?,?,?)');
     const daysAgo = n => new Date(Date.now() - n * 86400000).toISOString();
     const rows = [
-      ['ngocanh.study','pk-ielts','Gói IELTS',199000,2],
-      ['khanhqd','pk-toeic','Gói TOEIC',179000,3],
-      ['baolong.tb','pk-single','1 bài thi thử',49000,5],
-      ['thuhang.nt','pk-ielts','Gói IELTS',199000,12],
-      ['mailinh.hu','pk-vpet','Gói VPET',129000,7],
-      ['student','pk-vpet','Gói VPET',129000,10]
+      ['ngocanh.study','pk-ielts','IELTS bundle',199000,2],
+      ['khanhqd','pk-toeic','TOEIC bundle',179000,3],
+      ['baolong.tb','pk-single','One mock test',49000,5],
+      ['thuhang.nt','pk-ielts','IELTS bundle',199000,12],
+      ['mailinh.hu','pk-vpet','VPET bundle',129000,7],
+      ['student','pk-vpet','VPET bundle',129000,10]
     ];
     for (const [u, pk, name, amt, d] of rows) {
       ins.run(q.val('SELECT id FROM users WHERE username=?', u), pk, name, amt, 'paid', daysAgo(d));
@@ -780,20 +1015,21 @@ function seed() {
   seedIrregularVerbs();
   seedLinkingWords();
   seedGrammar();
+  seedVocab();
 }
 
-/* Nạp một bảng nội dung soạn sẵn khi và chỉ khi tệp nguồn đã đổi.
-   Mốc so sánh là vân tay nội dung chứ không phải số dòng: sửa sai một ô, đổi
-   tên một mục hay bỏ bớt mục cũng phải xuống được CSDL đang chạy. Bảng nhỏ và
-   không có khoá ngoại trỏ tới, nên xoá sạch rồi nạp lại là cách chắc chắn
-   nhất — mục đã gỡ khỏi tệp nguồn không còn sót lại. */
+/* Load an authored content table if and only if its source file has changed.
+   The comparison is a fingerprint of the content, not a row count: fixing one cell,
+   renaming an entry or dropping one all have to reach a running database. These
+   tables are small and nothing holds a foreign key into them, so clearing and
+   reloading is the surest way — an entry removed from the source leaves nothing behind. */
 function seedContent(name, rows, tables, apply) {
   const hash = crypto.createHash('sha256')
     .update(JSON.stringify(rows)).digest('hex').slice(0, 32);
   if (q.val('SELECT hash FROM seed_meta WHERE name=?', name) === hash) return;
   tx(() => {
-    // Xoá theo thứ tự truyền vào: bảng con trước, bảng cha sau, để khoá ngoại
-    // không chặn giữa chừng.
+    // Delete in the order given: child tables first, parents after, so a foreign key
+    // cannot block halfway through.
     tables.forEach(t => db.exec(`DELETE FROM ${t}`));
     apply(rows);
     db.prepare(`INSERT INTO seed_meta (name,hash,n,at) VALUES (?,?,?,?)
@@ -803,7 +1039,7 @@ function seedContent(name, rows, tables, apply) {
   });
 }
 
-/** Nạp một bảng phẳng — trường hợp dùng nhiều nhất của seedContent. */
+/** Load one flat table — the commonest use of seedContent. */
 function seedTable(name, table, rows, insertSql, values) {
   seedContent(name, rows, [table], list => {
     const ins = db.prepare(insertSql);
@@ -811,7 +1047,131 @@ function seedTable(name, table, rows, insertSql, values) {
   });
 }
 
-/* Bảng động từ bất quy tắc V1–V2–V3 */
+/* The VPET item bank.
+   Upserted on ext_key rather than cleared and reloaded, because section_items
+   holds a foreign key into questions: clearing the bank would empty every test
+   built from it. An admin's own edits to prompt or status are left alone — only
+   the authored rows carry an ext_key, and only those are touched. */
+function seedVpetItems() {
+  const rows = require('./data/vpet-items').rows();
+  const at = nowISO();
+  const ins = db.prepare(`INSERT INTO questions
+      (ext_key, family_id, skill, level, type, part, prompt, options_json, answer,
+       explanation, tags_json, source, licence, status, created_at)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?, 'active', ?)
+    ON CONFLICT(ext_key) DO UPDATE SET
+      skill=excluded.skill, level=excluded.level, type=excluded.type,
+      part=excluded.part, prompt=excluded.prompt, options_json=excluded.options_json,
+      answer=excluded.answer, explanation=excluded.explanation,
+      tags_json=excluded.tags_json, source=excluded.source, licence=excluded.licence`);
+
+  let n = 0;
+  tx(() => {
+    for (const r of rows) {
+      const before = q.val('SELECT 1 FROM questions WHERE ext_key=?', r.key);
+      ins.run(r.key, 'vpet', r.skill, r.level, r.type, r.part, r.prompt,
+        JSON.stringify(r.options), r.answer, r.explanation,
+        JSON.stringify(r.tags), r.source, r.licence, at);
+      if (!before) n++;
+    }
+  });
+  if (n) console.warn(`[seed] ${n} VPET bank item(s) added.`);
+}
+
+/* The self-study vocabulary, docs/LEARNING.md §6.
+
+   Upserted on natural keys rather than cleared and reloaded, for a reason the
+   other content tables do not have: learn_progress will hold a sense id and a
+   review date per learner, so re-importing the word list must not renumber the
+   rows underneath somebody's spaced repetition.
+
+   Three rules the plain upsert in seedVpetItems() does not need:
+
+   1. A level whose `level_source` is `manual` is left alone. §1.4 says a hand
+      adjustment in the admin area beats the three automatic rules; an import
+      that quietly reverted it would make that sentence untrue. Everything else
+      about the entry is still refreshed — only the level is pinned.
+   2. Children that the source no longer lists are deleted, but only within the
+      entries being imported. A sense that is still there keeps its id, so
+      progress against it survives; a sense that has gone takes its examples
+      with it through ON DELETE CASCADE.
+   3. Entries the import does not mention are not touched at all, so a word an
+      administrator adds by hand is not swept away by the next run. */
+function seedVocab() {
+  const rows = require('./data/vocab').rows();
+
+  const insEntry = db.prepare(`INSERT INTO vocab_entries
+      (headword,pos,level,level_source,ipa_uk,ipa_us,freq_rank,source,licence,sort)
+    VALUES (?,?,?,?,?,?,?,?,?,?)
+    ON CONFLICT(headword,pos) DO UPDATE SET
+      level = CASE WHEN vocab_entries.level_source = 'manual'
+                   THEN vocab_entries.level ELSE excluded.level END,
+      level_source = CASE WHEN vocab_entries.level_source = 'manual'
+                   THEN vocab_entries.level_source ELSE excluded.level_source END,
+      ipa_uk=excluded.ipa_uk, ipa_us=excluded.ipa_us, freq_rank=excluded.freq_rank,
+      source=excluded.source, licence=excluded.licence, sort=excluded.sort`);
+
+  const insSense = db.prepare(`INSERT INTO vocab_senses (entry_id,en,vi,level,note,sort)
+    VALUES (?,?,?,?,?,?)
+    ON CONFLICT(entry_id,en) DO UPDATE SET
+      vi=excluded.vi, level=excluded.level, note=excluded.note, sort=excluded.sort`);
+
+  const insExample = db.prepare(`INSERT INTO vocab_examples (sense_id,en,vi,source,licence,sort)
+    VALUES (?,?,?,?,?,?)
+    ON CONFLICT(sense_id,en) DO UPDATE SET
+      vi=excluded.vi, source=excluded.source, licence=excluded.licence, sort=excluded.sort`);
+
+  const insForm = db.prepare(`INSERT INTO vocab_forms (entry_id,form,kind,note,sort)
+    VALUES (?,?,?,?,?)
+    ON CONFLICT(entry_id,form,kind) DO UPDATE SET note=excluded.note, sort=excluded.sort`);
+
+  const insColloc = db.prepare(`INSERT INTO collocations
+      (entry_id,chunk,kind,level,ex_en,ex_vi,note,sort)
+    VALUES (?,?,?,?,?,?,?,?)
+    ON CONFLICT(entry_id,chunk) DO UPDATE SET
+      kind=excluded.kind, level=excluded.level, ex_en=excluded.ex_en,
+      ex_vi=excluded.ex_vi, note=excluded.note, sort=excluded.sort`);
+
+  /* Delete the children of this entry that the source has stopped listing.
+     Bound parameters only, so the placeholder list is built from the count. */
+  const pruneUnlisted = (table, column, entryId, keep) => {
+    const holes = keep.map(() => '?').join(',');
+    db.prepare(`DELETE FROM ${table} WHERE entry_id = ?` +
+      (keep.length ? ` AND ${column} NOT IN (${holes})` : '')).run(entryId, ...keep);
+  };
+
+  let added = 0;
+  tx(() => {
+    for (const e of rows) {
+      const before = q.val('SELECT id FROM vocab_entries WHERE headword=? AND pos=?', e.headword, e.pos);
+      insEntry.run(e.headword, e.pos, e.level, e.levelSource, e.ipaUk, e.ipaUs,
+        e.freqRank, e.source, e.licence, e.sort);
+      const entryId = q.val('SELECT id FROM vocab_entries WHERE headword=? AND pos=?', e.headword, e.pos);
+      if (!before) added++;
+
+      for (const s of e.senses) {
+        insSense.run(entryId, s.en, s.vi, s.level, s.note, s.sort);
+        const senseId = q.val('SELECT id FROM vocab_senses WHERE entry_id=? AND en=?', entryId, s.en);
+        for (const x of s.examples) insExample.run(senseId, x.en, x.vi, x.source, x.licence, x.sort);
+        const keepEx = s.examples.map(x => x.en);
+        const holes = keepEx.map(() => '?').join(',');
+        db.prepare('DELETE FROM vocab_examples WHERE sense_id = ?' +
+          (keepEx.length ? ` AND en NOT IN (${holes})` : '')).run(senseId, ...keepEx);
+      }
+      pruneUnlisted('vocab_senses', 'en', entryId, e.senses.map(s => s.en));
+
+      for (const f of e.forms) insForm.run(entryId, f.form, f.kind, f.note, f.sort);
+      pruneUnlisted('vocab_forms', 'form', entryId, e.forms.map(f => f.form));
+
+      for (const c of e.collocations)
+        insColloc.run(entryId, c.chunk, c.kind, c.level, c.exEn, c.exVi, c.note, c.sort);
+      pruneUnlisted('collocations', 'chunk', entryId, e.collocations.map(c => c.chunk));
+    }
+  });
+  if (added) console.warn(`[seed] ${added} vocabulary entr${added === 1 ? 'y' : 'ies'} added.`);
+}
+
+/* The V1–V2–V3 irregular verb table */
 function seedIrregularVerbs() {
   seedTable(
     'irregular-verbs', 'irregular_verbs',
@@ -824,7 +1184,7 @@ function seedIrregularVerbs() {
   );
 }
 
-/* Bảng từ nối theo chức năng × độ trang trọng */
+/* The linking-word table, by function × register */
 function seedLinkingWords() {
   seedTable(
     'linking-words', 'linking_words',
@@ -837,13 +1197,14 @@ function seedLinkingWords() {
   );
 }
 
-/* Điểm ngữ pháp + câu ví dụ, câu luyện tập.
-   Hai bảng nối bằng khoá ngoại nên phải nạp trong cùng một giao dịch và cùng
-   một vân tay: dữ liệu con trỏ sang cha bằng slug, đổi bên nào cũng nạp lại cả
-   hai để không bao giờ lệch nhau. */
+/* Grammar points plus their examples and practice items.
+   The two tables are joined by a foreign key, so they load in one transaction under
+   one fingerprint: the children point at the parent by slug, and a change on either
+   side reloads both, so the two can never drift apart. */
 function seedGrammar() {
-  // Mỗi nhóm là một tệp riêng nhưng nạp chung một lượt: hai bảng nối bằng khoá
-  // ngoại, xoá bảng cha là mất hết bản ghi con, nên phải dựng lại trọn bộ.
+  // Each group is its own file but they load together: the two tables are joined by
+  // a foreign key, and clearing the parent takes every child with it, so the whole
+  // set has to be rebuilt at once.
   const src = [
     require('./data/grammar-tenses'),
     require('./data/grammar-tenses-sequence'),
@@ -868,9 +1229,9 @@ function seedGrammar() {
   const points = src.flatMap(s => s.points());
   const examples = src.flatMap(s => s.examples());
 
-  // Đánh lại số thứ tự theo thứ tự xuất hiện trong từng nhóm. Mỗi tệp tự đếm
-  // từ 0 nên nếu giữ nguyên thì hai tệp cùng nhóm sẽ cài răng lược vào nhau;
-  // đánh lại ở đây thì thứ tự tệp trong mảng trên quyết định thứ tự hiển thị.
+  // Renumber by order of appearance within each group. Every file counts from 0, so
+  // leaving those numbers alone would interleave two files of the same group;
+  // renumbering here makes the file order in the array above decide display order.
   const dem = {};
   points.forEach(p => { p.sort = (dem[p.grp] = (dem[p.grp] || 0) + 1) - 1; });
 
@@ -893,7 +1254,7 @@ function seedGrammar() {
         (point_id,kind,en,vi,ok,answer,note,sort) VALUES (?,?,?,?,?,?,?,?)`);
       data.examples.forEach(e => {
         const pid = idOf.get(e.slug);
-        if (!pid) throw new Error('Câu ví dụ trỏ tới điểm ngữ pháp không tồn tại: ' + e.slug);
+        if (!pid) throw new Error('An example points at a grammar point that does not exist: ' + e.slug);
         insE.run(pid, e.kind, e.en, e.vi, e.ok, e.answer, e.note, e.sort);
       });
     });
@@ -901,4 +1262,4 @@ function seedGrammar() {
 
 seed();
 
-module.exports = { db, q, tx, nowISO, jparse, makeCode, audit, DB_FILE };
+module.exports = { db, q, tx, nowISO, jparse, makeCode, audit, DB_FILE, seedVocab };

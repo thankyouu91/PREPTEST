@@ -627,15 +627,10 @@ router.get('/admin/analysis', (req, res) => {
  */
 router.post('/admin/analysis/run', (req, res) => {
   const body = req.body || {};
-  const source = str(body.source, 20);
   const since = str(body.since, 30);
   if (since && !/^\d{4}-\d{2}-\d{2}/.test(since)) return bad(res, 'since must be an ISO date.');
 
-  const report = itemStats.computeAll({
-    source: source || undefined,
-    since: since || undefined,
-    dryRun: !!body.dryRun
-  });
+  const report = itemStats.computeAll({ since: since || undefined, dryRun: !!body.dryRun });
 
   if (!body.dryRun) {
     audit(req, 'analysis.run', 'items', {

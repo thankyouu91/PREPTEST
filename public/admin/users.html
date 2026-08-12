@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Học viên · Quản trị VPET Prep</title>
+  <title>Students · VPET Prep admin</title>
   <meta name="robots" content="noindex, nofollow">
   <meta name="theme-color" content="#1c3d8f">
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
@@ -23,19 +23,19 @@
 
       <div class="flex flex-wrap items-center gap-2.5 mb-6">
         <div class="flex gap-2 flex-wrap">
-          <button type="button" class="chip" data-f="" aria-pressed="true">Tất cả</button>
-          <button type="button" class="chip" data-f="verified" aria-pressed="false">Đã xác thực</button>
-          <button type="button" class="chip" data-f="unverified" aria-pressed="false">Chưa xác thực</button>
-          <button type="button" class="chip" data-f="locked" aria-pressed="false">Đang khoá</button>
+          <button type="button" class="chip" data-f="" aria-pressed="true">All</button>
+          <button type="button" class="chip" data-f="verified" aria-pressed="false">Verified</button>
+          <button type="button" class="chip" data-f="unverified" aria-pressed="false">Not verified</button>
+          <button type="button" class="chip" data-f="locked" aria-pressed="false">Locked</button>
         </div>
         <label class="relative ms-auto min-w-[220px]">
-          <span class="sr-only">Tìm học viên</span>
+          <span class="sr-only">Search students</span>
           <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted pointer-events-none" id="search-icon"></span>
-          <input id="q" type="search" class="input ps-10 py-2.5" placeholder="Tìm theo tên, email…">
+          <input id="q" type="search" class="input ps-10 py-2.5" placeholder="Search by name or email…">
         </label>
       </div>
 
-      <p class="text-[13.5px] font-semibold text-muted mb-3" id="count">Đang tải…</p>
+      <p class="text-[13.5px] font-semibold text-muted mb-3" id="count">Loading…</p>
       <div id="list"><div class="card p-5 grid gap-3.5">
         <div class="skeleton h-6 w-11/12"></div><div class="skeleton h-6 w-full"></div><div class="skeleton h-6 w-4/5"></div>
       </div></div>
@@ -47,7 +47,7 @@
 <script src="/admin/_admin.js"></script>
 <script>
 (async () => {
-  await AD.mount({ title: 'Học viên', subtitle: 'Tra cứu tài khoản, quyền mở khoá và đơn hàng' });
+  await AD.mount({ title: 'Students', subtitle: 'Look up an account, what it unlocks, and its orders' });
   AD.qs('#search-icon').innerHTML = AD.icon('search', 'w-[18px] h-[18px]');
 
   let families = [];
@@ -76,23 +76,23 @@
     try {
       const r = await AD.get('/admin/users?' + p);
       AD.qs('#count').textContent = r.total
-        ? AD.num(r.total) + ' học viên · hiện ' + (r.offset + 1) + '-' + Math.min(r.offset + r.limit, r.total)
-        : 'Không có học viên nào khớp';
+        ? AD.num(r.total) + ' students · showing ' + (r.offset + 1) + '-' + Math.min(r.offset + r.limit, r.total)
+        : 'No students match';
       if (!r.items.length) {
-        AD.qs('#list').innerHTML = AD.emptyBox('users', 'Không có học viên nào khớp',
-          'Thử xoá bộ lọc hoặc đổi từ khoá tìm kiếm.');
+        AD.qs('#list').innerHTML = AD.emptyBox('users', 'No students match',
+          'Try clearing the filter or changing the search.');
         AD.qs('#pager').innerHTML = '';
         return;
       }
       AD.qs('#list').innerHTML =
         '<div class="card overflow-hidden"><div class="overflow-x-auto"><table class="w-full text-[14px]">' +
         '<thead><tr class="text-[12px] uppercase tracking-wide text-muted border-b border-line bg-surface">' +
-          '<th class="text-left font-bold px-5 py-3">Học viên</th>' +
-          '<th class="text-left font-bold px-4 py-3 hidden md:table-cell">Quan tâm</th>' +
+          '<th class="text-left font-bold px-5 py-3">Student</th>' +
+          '<th class="text-left font-bold px-4 py-3 hidden md:table-cell">Following</th>' +
           '<th class="text-right font-bold px-4 py-3 hidden sm:table-cell">Code</th>' +
-          '<th class="text-right font-bold px-4 py-3 hidden lg:table-cell">Đã chi</th>' +
-          '<th class="text-left font-bold px-4 py-3">Trạng thái</th>' +
-          '<th class="px-5 py-3"><span class="sr-only">Thao tác</span></th>' +
+          '<th class="text-right font-bold px-4 py-3 hidden lg:table-cell">Spent</th>' +
+          '<th class="text-left font-bold px-4 py-3">Status</th>' +
+          '<th class="px-5 py-3"><span class="sr-only">Actions</span></th>' +
         '</tr></thead><tbody>' +
         r.items.map(u =>
           '<tr class="border-b border-line last:border-0">' +
@@ -109,11 +109,11 @@
             '<td class="px-4 py-3.5 hidden sm:table-cell text-right font-bold">' + u.codes + '</td>' +
             '<td class="px-4 py-3.5 hidden lg:table-cell text-right font-bold whitespace-nowrap">' + AD.vnd(u.spent) + '</td>' +
             '<td class="px-4 py-3.5 whitespace-nowrap">' +
-              (u.status === 'locked' ? '<span class="badge badge-hl">Đang khoá</span>'
-                : u.verified ? '<span class="badge badge-ok">Đã xác thực</span>'
-                : '<span class="badge badge-muted">Chưa xác thực</span>') + '</td>' +
+              (u.status === 'locked' ? '<span class="badge badge-hl">Locked</span>'
+                : u.verified ? '<span class="badge badge-ok">Verified</span>'
+                : '<span class="badge badge-muted">Not verified</span>') + '</td>' +
             '<td class="px-5 py-3.5 text-right">' +
-              '<button type="button" class="btn btn-ghost btn-sm" data-open="' + u.id + '">Chi tiết</button></td>' +
+              '<button type="button" class="btn btn-ghost btn-sm" data-open="' + u.id + '">Details</button></td>' +
           '</tr>').join('') +
         '</tbody></table></div></div>';
 
@@ -122,7 +122,7 @@
       const pages = Math.ceil(r.total / r.limit);
       const cur = Math.floor(r.offset / r.limit) + 1;
       AD.qs('#pager').innerHTML = pages > 1
-        ? '<button type="button" class="btn btn-ghost btn-sm" data-page="prev" ' + (cur === 1 ? 'disabled' : '') + '>Trước</button>' +
+        ? '<button type="button" class="btn btn-ghost btn-sm" data-page="prev" ' + (cur === 1 ? 'disabled' : '') + '>Previous</button>' +
           '<span class="text-[13.5px] font-bold text-muted self-center px-2">Trang ' + cur + '/' + pages + '</span>' +
           '<button type="button" class="btn btn-ghost btn-sm" data-page="next" ' + (cur === pages ? 'disabled' : '') + '>Sau</button>'
         : '';
@@ -149,7 +149,7 @@
             '<span class="min-w-0 flex-1 truncate text-muted">' + AD.esc(c.label) + '</span>' +
             '<span class="text-muted shrink-0">' + AD.date(c.redeemedAt) + '</span>' +
           '</li>').join('')
-      : '<li class="py-4 text-[14px] text-muted">Chưa kích hoạt code nào.</li>';
+      : '<li class="py-4 text-[14px] text-muted">No codes activated.</li>';
 
     const orderRows = d.orders.length
       ? d.orders.map(o =>
@@ -158,7 +158,7 @@
             '<span class="font-bold shrink-0">' + AD.vnd(o.amount) + '</span>' +
             '<span class="text-muted shrink-0 w-24 text-right">' + AD.date(o.createdAt) + '</span>' +
           '</li>').join('')
-      : '<li class="py-4 text-[14px] text-muted">Chưa có đơn nào.</li>';
+      : '<li class="py-4 text-[14px] text-muted">No orders.</li>';
 
     const mm = AD.modal(
       '<div class="flex items-start gap-3.5">' +
@@ -168,48 +168,48 @@
           '<h3 class="text-lg font-extrabold tracking-tight truncate">' + AD.esc(u.name) + '</h3>' +
           '<p class="text-[13.5px] text-muted truncate">' + AD.esc(u.email) + ' · @' + AD.esc(u.username) + '</p>' +
           '<p class="flex flex-wrap gap-1.5 mt-2">' +
-            (u.status === 'locked' ? '<span class="badge badge-hl">Đang khoá</span>' : '<span class="badge badge-ok">Hoạt động</span>') +
-            (u.verified ? '<span class="badge badge-ok">Đã xác thực</span>' : '<span class="badge badge-muted">Chưa xác thực</span>') +
+            (u.status === 'locked' ? '<span class="badge badge-hl">Locked</span>' : '<span class="badge badge-ok">Active</span>') +
+            (u.verified ? '<span class="badge badge-ok">Verified</span>' : '<span class="badge badge-muted">Not verified</span>') +
             '<span class="badge badge-muted">Tham gia ' + AD.date(u.createdAt) + '</span>' +
           '</p>' +
         '</div>' +
       '</div>' +
 
       '<div class="grid sm:grid-cols-2 gap-5 mt-6">' +
-        '<section><h4 class="text-[13px] font-bold uppercase tracking-wide text-muted mb-1">Code đã kích hoạt</h4>' +
+        '<section><h4 class="text-[13px] font-bold uppercase tracking-wide text-muted mb-1">Activated codes</h4>' +
           '<ul class="max-h-40 overflow-y-auto">' + codeRows + '</ul></section>' +
-        '<section><h4 class="text-[13px] font-bold uppercase tracking-wide text-muted mb-1">Đơn hàng</h4>' +
+        '<section><h4 class="text-[13px] font-bold uppercase tracking-wide text-muted mb-1">Orders</h4>' +
           '<ul class="max-h-40 overflow-y-auto">' + orderRows + '</ul></section>' +
       '</div>' +
 
       '<div class="border-t border-line mt-6 pt-5 grid gap-4">' +
-        '<div><label class="label" for="u-note">Ghi chú nội bộ</label>' +
-          '<input class="input" id="u-note" value="' + AD.esc(u.note || '') + '" placeholder="Chỉ quản trị viên thấy"></div>' +
+        '<div><label class="label" for="u-note">Internal note</label>' +
+          '<input class="input" id="u-note" value="' + AD.esc(u.note || '') + '" placeholder="Visible to administrators only"></div>' +
         '<div class="flex flex-wrap gap-2.5">' +
-          '<button type="button" id="u-save" class="btn btn-primary btn-md">Lưu ghi chú</button>' +
-          (u.verified ? '' : '<button type="button" id="u-verify" class="btn btn-ghost btn-md">Đánh dấu đã xác thực</button>') +
+          '<button type="button" id="u-save" class="btn btn-primary btn-md">Save note</button>' +
+          (u.verified ? '' : '<button type="button" id="u-verify" class="btn btn-ghost btn-md">Mark as verified</button>') +
           '<button type="button" id="u-lock" class="btn btn-ghost btn-md ' + (u.status === 'locked' ? '' : 'text-danger') + '">' +
-            (u.status === 'locked' ? 'Mở khoá tài khoản' : 'Khoá tài khoản') + '</button>' +
-          '<button type="button" id="u-code" class="btn btn-soft btn-md ms-auto">' + AD.icon('ticket', 'w-4 h-4') + 'Cấp code</button>' +
+            (u.status === 'locked' ? 'Unlock the account' : 'Lock the account') + '</button>' +
+          '<button type="button" id="u-code" class="btn btn-soft btn-md ms-auto">' + AD.icon('ticket', 'w-4 h-4') + 'Issue a code</button>' +
         '</div>' +
       '</div>', { wide: true });
 
     mm.el.querySelector('#u-save').addEventListener('click', async () => {
       try {
         await AD.put('/admin/users/' + id, { name: u.name, note: mm.el.querySelector('#u-note').value, interests: u.interests });
-        mm.close(); AD.toast('Đã lưu ghi chú'); load();
+        mm.close(); AD.toast('Note saved'); load();
       } catch (e) { AD.toast(e.message, 'error'); }
     });
     const vb = mm.el.querySelector('#u-verify');
     if (vb) vb.addEventListener('click', async () => {
-      try { await AD.post('/admin/users/' + id + '/verify'); mm.close(); AD.toast('Đã đánh dấu xác thực'); load(); }
+      try { await AD.post('/admin/users/' + id + '/verify'); mm.close(); AD.toast('Marked as verified'); load(); }
       catch (e) { AD.toast(e.message, 'error'); }
     });
     mm.el.querySelector('#u-lock').addEventListener('click', async () => {
       const to = u.status === 'locked' ? 'active' : 'locked';
-      if (to === 'locked' && !await AD.confirm('Khoá tài khoản?',
-        'Học viên ' + u.name + ' sẽ không đăng nhập được cho tới khi bạn mở lại.', 'Khoá tài khoản')) return;
-      try { await AD.post('/admin/users/' + id + '/status', { status: to }); mm.close(); AD.toast(to === 'locked' ? 'Đã khoá tài khoản' : 'Đã mở khoá'); load(); }
+      if (to === 'locked' && !await AD.confirm('Lock this account?',
+        u.name + ' will not be able to sign in until you unlock it.', 'Lock the account')) return;
+      try { await AD.post('/admin/users/' + id + '/status', { status: to }); mm.close(); AD.toast(to === 'locked' ? 'Account locked' : 'Account unlocked'); load(); }
       catch (e) { AD.toast(e.message, 'error'); }
     });
     mm.el.querySelector('#u-code').addEventListener('click', () => {

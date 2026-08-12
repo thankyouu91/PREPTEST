@@ -3,10 +3,11 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Hồ sơ · VPET Prep</title>
-  <meta name="description" content="Hồ sơ, bảo mật, thông báo và lịch sử đơn của tài khoản VPET Prep.">
+  <title>Profile · VPET Prep</title>
+  <meta name="description" content="Profile, security, notifications and order history for a VPET Prep account.">
   <meta name="theme-color" content="#1c3d8f">
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="manifest" href="/manifest.webmanifest">
   <link rel="preload" href="/fonts/pjs-700-latin.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/pjs-400-latin.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="/tailwind-built.css">
@@ -37,86 +38,86 @@
       </section>
 
       <!-- Tabs -->
-      <div role="tablist" aria-label="Mục tài khoản" class="flex gap-2 overflow-x-auto no-scrollbar mt-7 border-b border-line -mx-1 px-1">
-        <button role="tab" id="tab-profile"  aria-controls="p-profile"  aria-selected="true"  class="tabbtn">Hồ sơ</button>
-        <button role="tab" id="tab-security" aria-controls="p-security" aria-selected="false" class="tabbtn">Bảo mật</button>
-        <button role="tab" id="tab-notif"    aria-controls="p-notif"    aria-selected="false" class="tabbtn">Thông báo</button>
-        <button role="tab" id="tab-orders"   aria-controls="p-orders"   aria-selected="false" class="tabbtn">Lịch sử đơn</button>
+      <div role="tablist" aria-label="Account sections" class="flex gap-2 overflow-x-auto no-scrollbar mt-7 border-b border-line -mx-1 px-1">
+        <button role="tab" id="tab-profile"  aria-controls="p-profile"  aria-selected="true"  class="tabbtn">Profile</button>
+        <button role="tab" id="tab-security" aria-controls="p-security" aria-selected="false" class="tabbtn">Security</button>
+        <button role="tab" id="tab-notif"    aria-controls="p-notif"    aria-selected="false" class="tabbtn">Notifications</button>
+        <button role="tab" id="tab-orders"   aria-controls="p-orders"   aria-selected="false" class="tabbtn">Order history</button>
       </div>
 
-      <!-- Hồ sơ -->
+      <!-- Profile -->
       <section role="tabpanel" id="p-profile" aria-labelledby="tab-profile" class="mt-7 grid lg:grid-cols-12 gap-6">
         <form id="profile-form" class="lg:col-span-7 card p-6 sm:p-7 grid gap-5 content-start" novalidate>
-          <h3 class="font-extrabold tracking-tight text-lg">Thông tin cá nhân</h3>
+          <h3 class="font-extrabold tracking-tight text-lg">Personal details</h3>
           <div>
-            <label class="label" for="username">Tên đăng nhập</label>
+            <label class="label" for="username">Username</label>
             <input class="input bg-surface" id="username" type="text" autocomplete="username" readonly>
-            <p class="help">Tên đăng nhập không đổi được. Dùng nó hoặc email để đăng nhập.</p>
+            <p class="help">A username cannot be changed. Sign in with it or with your email.</p>
           </div>
           <div>
-            <label class="label" for="name">Họ và tên</label>
+            <label class="label" for="name">Full name</label>
             <input class="input" id="name" type="text" autocomplete="name">
-            <p class="field-error" id="err-name">Tên không được để trống.</p>
+            <p class="field-error" id="err-name">A name is required.</p>
           </div>
           <div>
             <label class="label" for="email">Email</label>
             <input class="input" id="email" type="email" autocomplete="email">
-            <p class="help">Đổi email cần xác thực lại địa chỉ mới.</p>
-            <p class="field-error" id="err-email">Email chưa đúng định dạng.</p>
+            <p class="help">Changing your email means verifying the new address.</p>
+            <p class="field-error" id="err-email">That email address is not valid.</p>
           </div>
           <fieldset>
-            <legend class="label">Kỳ thi quan tâm</legend>
+            <legend class="label">Exams you follow</legend>
             <div id="interests" class="flex flex-wrap gap-2 mt-1"></div>
           </fieldset>
           <div class="banner banner-success" id="profile-ok" role="status" aria-live="polite">
             <svg viewBox="0 0 24 24" class="w-5 h-5 shrink-0 mt-0.5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
-            <span>Đã lưu thay đổi.</span>
+            <span>Changes saved.</span>
           </div>
-          <button type="submit" id="profile-save" class="btn btn-primary btn-md justify-self-start">Lưu thay đổi</button>
+          <button type="submit" id="profile-save" class="btn btn-primary btn-md justify-self-start">Save changes</button>
         </form>
 
         <aside class="lg:col-span-5 grid gap-6 content-start">
           <div class="card p-6">
-            <h3 class="font-extrabold tracking-tight">Giao diện</h3>
+            <h3 class="font-extrabold tracking-tight">Appearance</h3>
             <label class="flex items-center justify-between gap-4 mt-4">
-              <span class="text-[14.5px] font-semibold">Chế độ tối</span>
-              <input type="checkbox" id="dark-switch" class="toggle" role="switch" aria-label="Bật chế độ tối">
+              <span class="text-[14.5px] font-semibold">Dark mode</span>
+              <input type="checkbox" id="dark-switch" class="toggle" role="switch" aria-label="Turn on dark mode">
             </label>
             <div class="border-t border-line mt-4 pt-4">
-              <p class="text-[14.5px] font-semibold mb-2.5">Thương hiệu (demo white-label)</p>
+              <p class="text-[14.5px] font-semibold mb-2.5">Branding (white-label demo)</p>
               <div id="tenant-pick" class="flex flex-wrap gap-2"></div>
             </div>
           </div>
           <div class="card p-6">
-            <h3 class="font-extrabold tracking-tight">Phiên đăng nhập</h3>
-            <p class="text-muted text-[14px] leading-relaxed mt-2">Đăng xuất khỏi thiết bị này. Đổi mật khẩu sẽ đăng xuất mọi thiết bị khác.</p>
-            <button type="button" id="logout-btn" class="btn btn-ghost btn-md w-full mt-4 text-danger">Đăng xuất</button>
+            <h3 class="font-extrabold tracking-tight">Session</h3>
+            <p class="text-muted text-[14px] leading-relaxed mt-2">Sign out of this device. Changing your password signs out every other device.</p>
+            <button type="button" id="logout-btn" class="btn btn-ghost btn-md w-full mt-4 text-danger">Sign out</button>
           </div>
         </aside>
       </section>
 
-      <!-- Bảo mật -->
+      <!-- Security -->
       <section role="tabpanel" id="p-security" aria-labelledby="tab-security" hidden class="mt-7 grid lg:grid-cols-12 gap-6">
         <form id="pass-form" class="lg:col-span-7 card p-6 sm:p-7 grid gap-5 content-start" novalidate>
-          <h3 class="font-extrabold tracking-tight text-lg">Đổi mật khẩu</h3>
+          <h3 class="font-extrabold tracking-tight text-lg">Change password</h3>
           <div>
-            <label class="label" for="cur-pass">Mật khẩu hiện tại</label>
+            <label class="label" for="cur-pass">Current password</label>
             <input class="input" id="cur-pass" type="password" autocomplete="current-password">
-            <p class="field-error" id="err-cur-pass">Nhập mật khẩu hiện tại.</p>
+            <p class="field-error" id="err-cur-pass">Enter your current password.</p>
           </div>
           <div>
-            <label class="label" for="new-pass">Mật khẩu mới</label>
-            <input class="input" id="new-pass" type="password" autocomplete="new-password" placeholder="Tối thiểu 8 ký tự">
+            <label class="label" for="new-pass">New password</label>
+            <input class="input" id="new-pass" type="password" autocomplete="new-password" placeholder="At least 8 characters">
             <div class="flex items-center gap-2 mt-2.5" id="strength" hidden>
               <span class="meter flex-1" aria-hidden="true"><i id="strength-bar"></i></span>
               <b id="strength-label" class="text-[12px] font-bold text-muted w-20 text-right"></b>
             </div>
-            <p class="field-error" id="err-new-pass">Mật khẩu mới cần tối thiểu 8 ký tự, có cả chữ và số.</p>
+            <p class="field-error" id="err-new-pass">A new password needs at least 8 characters, with both letters and digits.</p>
           </div>
           <div>
-            <label class="label" for="re-pass">Nhập lại mật khẩu mới</label>
+            <label class="label" for="re-pass">Repeat the new password</label>
             <input class="input" id="re-pass" type="password" autocomplete="new-password">
-            <p class="field-error" id="err-re-pass">Hai mật khẩu chưa khớp.</p>
+            <p class="field-error" id="err-re-pass">The two passwords do not match.</p>
           </div>
           <div class="banner banner-error" id="pass-err" role="alert" aria-live="polite">
             <svg viewBox="0 0 24 24" class="w-5 h-5 shrink-0 mt-0.5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>
@@ -124,66 +125,66 @@
           </div>
           <div class="banner banner-success" id="pass-ok" role="status" aria-live="polite">
             <svg viewBox="0 0 24 24" class="w-5 h-5 shrink-0 mt-0.5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
-            <span>Đã đổi mật khẩu. Lần đăng nhập sau dùng mật khẩu mới.</span>
+            <span>Password changed. Use the new one next time you sign in.</span>
           </div>
-          <button type="submit" id="pass-save" class="btn btn-primary btn-md justify-self-start">Cập nhật mật khẩu</button>
+          <button type="submit" id="pass-save" class="btn btn-primary btn-md justify-self-start">Update password</button>
         </form>
         <aside class="lg:col-span-5">
           <div class="card p-6">
             <span class="w-11 h-11 rounded-xl bg-brand-soft text-brand-strong inline-flex items-center justify-center">
               <svg viewBox="0 0 24 24" class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M20 13c0 5-3.5 7.5-7.7 8.9a1 1 0 0 1-.6 0C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.2-2.7a1.2 1.2 0 0 1 1.6 0C14.5 3.8 17 5 19 5a1 1 0 0 1 1 1Z"/></svg>
             </span>
-            <h3 class="font-extrabold tracking-tight mt-4">Giữ tài khoản an toàn</h3>
+            <h3 class="font-extrabold tracking-tight mt-4">Keeping your account safe</h3>
             <ul class="grid gap-2.5 mt-3 text-[14px] text-muted leading-relaxed">
-              <li>Dùng mật khẩu riêng, không trùng với email hay mạng xã hội.</li>
-              <li>Không chia sẻ code đã kích hoạt: mỗi mã chỉ dùng một lần.</li>
-              <li>Đăng xuất khi dùng máy phòng lab hoặc máy chung.</li>
+              <li>Use a password of its own, not the one on your email or social accounts.</li>
+              <li>Do not share an activated code: each one works once.</li>
+              <li>Sign out on lab machines and shared computers.</li>
             </ul>
           </div>
         </aside>
       </section>
 
-      <!-- Thông báo -->
+      <!-- Notifications -->
       <section role="tabpanel" id="p-notif" aria-labelledby="tab-notif" hidden class="mt-7 grid lg:grid-cols-12 gap-6">
         <div class="lg:col-span-7 card p-6 sm:p-7">
-          <h3 class="font-extrabold tracking-tight text-lg">Email thông báo</h3>
+          <h3 class="font-extrabold tracking-tight text-lg">Email notifications</h3>
           <div class="grid divide-y divide-[color:var(--color-border)] mt-2">
             <label class="flex items-start justify-between gap-5 py-4">
               <span>
-                <b class="block font-bold text-[15px]">Đề mới phát hành</b>
-                <span class="block text-[13.5px] text-muted mt-0.5">Báo khi có bài thi thử mới thuộc kỳ thi bạn quan tâm.</span>
+                <b class="block font-bold text-[15px]">New papers released</b>
+                <span class="block text-[13.5px] text-muted mt-0.5">Tells you when a new mock test lands for an exam you follow.</span>
               </span>
               <input type="checkbox" id="n-newTests" class="toggle mt-1 shrink-0" role="switch">
             </label>
             <label class="flex items-start justify-between gap-5 py-4">
               <span>
-                <b class="block font-bold text-[15px]">Nhắc luyện tập</b>
-                <span class="block text-[13.5px] text-muted mt-0.5">Nhắc nhẹ mỗi tuần nếu bạn có bài đang mở khoá chưa làm.</span>
+                <b class="block font-bold text-[15px]">Practice reminders</b>
+                <span class="block text-[13.5px] text-muted mt-0.5">A gentle weekly nudge if you have an unlocked test you have not sat.</span>
               </span>
               <input type="checkbox" id="n-reminder" class="toggle mt-1 shrink-0" role="switch">
             </label>
             <label class="flex items-start justify-between gap-5 py-4">
               <span>
-                <b class="block font-bold text-[15px]">Ưu đãi và khuyến mại</b>
-                <span class="block text-[13.5px] text-muted mt-0.5">Thông tin giảm giá gói code. Không quá một email mỗi tháng.</span>
+                <b class="block font-bold text-[15px]">Offers and promotions</b>
+                <span class="block text-[13.5px] text-muted mt-0.5">News of discounts on code plans. No more than one email a month.</span>
               </span>
               <input type="checkbox" id="n-promo" class="toggle mt-1 shrink-0" role="switch">
             </label>
           </div>
-          <p class="help mt-4">Thay đổi được lưu ngay khi bạn bật hoặc tắt.</p>
+          <p class="help mt-4">Changes are saved the moment you switch one on or off.</p>
         </div>
       </section>
 
-      <!-- Lịch sử đơn -->
+      <!-- Order history -->
       <section role="tabpanel" id="p-orders" aria-labelledby="tab-orders" hidden class="mt-7">
         <div id="orders-list" class="grid gap-4 max-w-3xl"></div>
         <div id="orders-empty" hidden class="card p-10 text-center max-w-3xl">
           <span class="w-14 h-14 rounded-full bg-brand-soft text-brand-strong inline-flex items-center justify-center mx-auto">
             <svg viewBox="0 0 24 24" class="w-7 h-7" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"/><path d="M8 7h8"/><path d="M8 11h8"/><path d="M8 15h5"/></svg>
           </span>
-          <h3 class="font-extrabold text-lg tracking-tight mt-4">Chưa có đơn nào</h3>
-          <p class="text-muted text-[15px] mt-1.5">Đơn mua code sẽ hiện tại đây kèm mã đã cấp.</p>
-          <a href="/prep/mua-code/" class="btn btn-primary btn-md mt-6">Xem gói code</a>
+          <h3 class="font-extrabold text-lg tracking-tight mt-4">No orders yet</h3>
+          <p class="text-muted text-[15px] mt-1.5">Code purchases appear here, along with the codes they issued.</p>
+          <a href="/prep/mua-code/" class="btn btn-primary btn-md mt-6">See the code plans</a>
         </div>
       </section>
     </div>
@@ -194,7 +195,7 @@
 <script src="/prep/_chrome.js"></script>
 <script>
   PREP.boot({ auth: true }).then(() => {
-    PrepChrome.mount({ title: 'Hồ sơ' });
+    PrepChrome.mount({ title: 'Profile' });
     const s = PrepState.load();
     const u = s.user;
 
@@ -203,8 +204,8 @@
     PREP.qs('#u-name').textContent = u.name;
     PREP.qs('#u-email').textContent = u.email;
     PREP.qs('#u-verified').innerHTML = u.verified
-      ? '<span class="badge badge-ok shrink-0">Đã xác thực</span>'
-      : '<a href="/prep/xac-thuc-email/" class="badge badge-hl shrink-0">Chưa xác thực</a>';
+      ? '<span class="badge badge-ok shrink-0">Verified</span>'
+      : '<a href="/prep/xac-thuc-email/" class="badge badge-hl shrink-0">Not verified</a>';
 
     /* Tabs */
     const tabs = [['tab-profile','p-profile'],['tab-security','p-security'],['tab-notif','p-notif'],['tab-orders','p-orders']];
@@ -218,11 +219,11 @@
       });
     });
 
-    /* --- Hồ sơ --- lưu qua PATCH /api/me */
+    /* --- Profile --- saved through PATCH /api/me */
     PREP.qs('#username').value = s.account || u.email;
     PREP.qs('#name').value = u.name;
     PREP.qs('#email').value = u.email;
-    /* Chip kỳ thi quan tâm dựng từ danh mục thật (GET /api/catalog) */
+    /* The exam chips are built from the real catalogue (GET /api/catalog) */
     const box = PREP.qs('#interests');
     PREP.loadCatalog().then(res => {
       PREP.catalogWarning(res);
@@ -249,16 +250,16 @@
       const btn = PREP.qs('#profile-save');
       const interests = PREP.qsa('[data-fam][aria-pressed="true"]').map(b => b.getAttribute('data-fam'));
       btn.disabled = true;
-      btn.innerHTML = PREP.icon('loader', 'w-5 h-5 animate-spin-slow') + 'Đang lưu';
+      btn.innerHTML = PREP.icon('loader', 'w-5 h-5 animate-spin-slow') + 'Saving';
       PrepApi.patch('/api/me', { name, email, interests }).then(res => {
-        btn.disabled = false; btn.textContent = 'Lưu thay đổi';
+        btn.disabled = false; btn.textContent = 'Save changes';
         if (!res.ok) {
-          PREP.qs('#err-email').textContent = PrepApi.err(res, 'Không lưu được thay đổi.');
+          PREP.qs('#err-email').textContent = PrepApi.err(res, 'The changes could not be saved.');
           PREP.qs('#err-email').classList.add('show');
           PREP.qs('#email').classList.add('input-invalid');
           return;
         }
-        // Server là nguồn sự thật: nạp lại hồ sơ thay vì tự đoán
+        // The server is the source of truth: reload the profile rather than guessing
         PrepState.reset();
         PrepState.fetch().then(() => {
           const u = PrepState.user() || { name, email, verified: false };
@@ -266,14 +267,14 @@
           PREP.qs('#u-name').textContent = u.name;
           PREP.qs('#u-email').textContent = u.email;
           PREP.qs('#u-verified').innerHTML = u.verified
-            ? '<span class="badge badge-ok">Đã xác thực</span>'
-            : '<a href="/prep/xac-thuc-email/" class="badge badge-hl">Chưa xác thực</a>';
+            ? '<span class="badge badge-ok">Verified</span>'
+            : '<a href="/prep/xac-thuc-email/" class="badge badge-hl">Not verified</a>';
           PREP.qs('#avatar').textContent = u.name.trim().split(/\s+/).map(w => w[0]).slice(-2).join('').toUpperCase();
         });
       });
     });
 
-    /* Giao diện: dark + tenant */
+    /* Appearance: dark mode + tenant */
     const ds = PREP.qs('#dark-switch');
     ds.checked = PrepTheme.isDark();
     ds.addEventListener('change', () => { PrepTheme.toggleDark(); PrepChrome.syncDarkUI(); });
@@ -289,10 +290,10 @@
     renderTenants();
     PREP.qs('#logout-btn').addEventListener('click', () => PrepAuth.logout());
 
-    /* --- Bảo mật --- POST /api/me/password, các thiết bị khác bị đăng xuất */
+    /* --- Security --- POST /api/me/password; other devices are signed out */
     const np = PREP.qs('#new-pass');
     const sWrap = PREP.qs('#strength'), sBar = PREP.qs('#strength-bar'), sLab = PREP.qs('#strength-label');
-    const S = [['Quá yếu','#c23a52',10],['Yếu','#c23a52',25],['Trung bình','#b98900',50],['Khá','var(--color-accent)',75],['Mạnh','var(--color-success)',100]];
+    const S = [['Far too weak','#c23a52',10],['Weak','#c23a52',25],['Fair','#b98900',50],['Good','var(--color-accent)',75],['Strong','var(--color-success)',100]];
     np.addEventListener('input', () => {
       if (!np.value) { sWrap.setAttribute('hidden',''); return; }
       sWrap.removeAttribute('hidden');
@@ -306,7 +307,7 @@
       PREP.qs('#pass-ok').classList.remove('show');
       PREP.qs('#pass-err').classList.remove('show');
       const cur = PREP.qs('#cur-pass'), re = PREP.qs('#re-pass');
-      // Cùng quy tắc với server: tối thiểu 8 ký tự, có cả chữ và số
+      // The same rule as the server: at least 8 characters, with letters and digits
       const bad1 = !cur.value;
       const bad2 = !(np.value.length >= 8 && /[A-Za-z]/.test(np.value) && /\d/.test(np.value));
       const bad3 = np.value !== re.value || !re.value;
@@ -316,9 +317,9 @@
       if (bad1 || bad2 || bad3) return;
       const btn = PREP.qs('#pass-save');
       btn.disabled = true;
-      btn.innerHTML = PREP.icon('loader', 'w-5 h-5 animate-spin-slow') + 'Đang cập nhật';
+      btn.innerHTML = PREP.icon('loader', 'w-5 h-5 animate-spin-slow') + 'Updating';
       PrepAuth.changePassword(cur.value, np.value).then(res => {
-        btn.disabled = false; btn.textContent = 'Cập nhật mật khẩu';
+        btn.disabled = false; btn.textContent = 'Update password';
         if (!res.ok) {
           PREP.qs('#pass-err-text').textContent = res.error;
           PREP.qs('#pass-err').classList.add('show');
@@ -332,7 +333,7 @@
       });
     });
 
-    /* --- Thông báo --- TODO(backend): PATCH /api/me/notifications */
+    /* --- Notifications --- TODO(backend): PATCH /api/me/notifications */
     const notif = s.notif || { newTests: true, reminder: true, promo: false };
     [['n-newTests','newTests'],['n-reminder','reminder'],['n-promo','promo']].forEach(([id, key]) => {
       const el = PREP.qs('#' + id);
@@ -342,11 +343,11 @@
         st.notif = st.notif || {};
         st.notif[key] = el.checked;
         PrepState.save(st);
-        PrepChrome.toast(el.checked ? 'Đã bật thông báo' : 'Đã tắt thông báo');
+        PrepChrome.toast(el.checked ? 'Notification turned on' : 'Notification turned off');
       });
     });
 
-    /* --- Lịch sử đơn --- TODO(backend): GET /api/me/orders */
+    /* --- Order history --- TODO(backend): GET /api/me/orders */
     const orders = s.orders || [];
     if (!orders.length) {
       PREP.qs('#orders-empty').removeAttribute('hidden');
@@ -355,12 +356,12 @@
         '<article class="card p-5 flex flex-wrap items-center gap-4">' +
           '<span class="min-w-0 flex-1">' +
             '<b class="block font-bold">' + PREP.esc(o.name) + '</b>' +
-            '<span class="block text-[13px] text-muted font-medium mt-0.5">Đơn ' + PREP.esc(o.id) + ' · ' + PREP.fmtDate(o.at) + '</span>' +
+            '<span class="block text-[13px] text-muted font-medium mt-0.5">Order ' + PREP.esc(o.id) + ' · ' + PREP.fmtDate(o.at) + '</span>' +
             (o.code ? '<code class="inline-block mt-2 text-[13px] font-bold tracking-wider bg-brand-soft rounded-lg px-2.5 py-1">' + PREP.esc(PREP.maskCode(o.code)) + '</code>' : '') +
           '</span>' +
           '<span class="text-right">' +
             '<b class="block font-extrabold">' + PREP.vnd(o.amount) + '</b>' +
-            '<span class="badge badge-muted mt-1.5">Đơn demo</span>' +
+            '<span class="badge badge-muted mt-1.5">Demo order</span>' +
           '</span>' +
         '</article>').join('');
     }

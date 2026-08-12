@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Ngân hàng câu hỏi · Quản trị VPET Prep</title>
+  <title>Question bank · VPET Prep admin</title>
   <meta name="robots" content="noindex, nofollow">
   <meta name="theme-color" content="#1c3d8f">
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
@@ -24,38 +24,42 @@
       <div class="card p-4 mb-6 grid gap-3">
         <div class="flex flex-wrap gap-2.5">
           <label class="relative flex-1 min-w-[200px]">
-            <span class="sr-only">Tìm câu hỏi</span>
+            <span class="sr-only">Search questions</span>
             <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted pointer-events-none" id="search-icon"></span>
-            <input id="q" type="search" class="input ps-10 py-2.5" placeholder="Tìm trong nội dung câu hỏi…">
+            <input id="q" type="search" class="input ps-10 py-2.5" placeholder="Search the question text…">
           </label>
-          <label class="sr-only" for="f-skill">Lọc kỹ năng</label>
+          <label class="sr-only" for="f-skill">Filter by skill</label>
           <select id="f-skill" class="input w-auto py-2.5">
-            <option value="">Mọi kỹ năng</option>
-            <option value="listening">Nghe</option><option value="reading">Đọc</option>
-            <option value="writing">Viết</option><option value="speaking">Nói</option>
+            <option value="">Any skill</option>
+            <option value="listening">Listening</option><option value="reading">Reading</option>
+            <option value="writing">Writing</option><option value="speaking">Speaking</option>
           </select>
-          <label class="sr-only" for="f-level">Lọc độ khó</label>
+          <label class="sr-only" for="f-level">Filter by level</label>
           <select id="f-level" class="input w-auto py-2.5">
-            <option value="">Mọi độ khó</option>
+            <option value="">Any level</option>
             <option>A1</option><option>A2</option><option>B1</option><option>B2</option><option>C1</option><option>C2</option>
           </select>
-          <label class="sr-only" for="f-type">Lọc dạng câu</label>
+          <label class="sr-only" for="f-type">Filter by item type</label>
           <select id="f-type" class="input w-auto py-2.5">
-            <option value="">Mọi dạng</option>
-            <option value="mcq">Trắc nghiệm</option><option value="gap">Điền từ</option>
-            <option value="essay">Tự luận</option><option value="speaking">Ghi âm</option>
+            <option value="">Any type</option>
+            <option value="mcq">Multiple choice</option><option value="gap">Gap fill</option>
+            <option value="essay">Essay</option><option value="speaking">Recorded</option>
           </select>
-          <label class="sr-only" for="f-status">Lọc trạng thái</label>
+          <label class="sr-only" for="f-part">Filter by part</label>
+          <select id="f-part" class="input w-auto py-2.5" hidden>
+            <option value="">Any part</option>
+          </select>
+          <label class="sr-only" for="f-status">Filter by status</label>
           <select id="f-status" class="input w-auto py-2.5">
-            <option value="active">Đang dùng</option>
-            <option value="retired">Đã ngưng</option>
-            <option value="">Tất cả</option>
+            <option value="active">In use</option>
+            <option value="retired">Withdrawn</option>
+            <option value="">All</option>
           </select>
         </div>
         <div class="flex gap-2 overflow-x-auto no-scrollbar" id="fam-chips"></div>
       </div>
 
-      <p class="text-[13.5px] font-semibold text-muted mb-3" id="count">Đang tải…</p>
+      <p class="text-[13.5px] font-semibold text-muted mb-3" id="count">Loading…</p>
       <div id="list"><div class="card p-5 grid gap-3.5">
         <div class="skeleton h-6 w-11/12"></div><div class="skeleton h-6 w-full"></div><div class="skeleton h-6 w-4/5"></div>
       </div></div>
@@ -67,30 +71,50 @@
 <script src="/admin/_admin.js"></script>
 <script>
 (async () => {
-  await AD.mount({ title: 'Ngân hàng câu hỏi', subtitle: 'Kho câu dùng chung cho mọi đề của một kỳ thi' });
+  await AD.mount({ title: 'Question bank', subtitle: 'The shared pool every test of an exam draws from' });
   AD.qs('#search-icon').innerHTML = AD.icon('search', 'w-[18px] h-[18px]');
   AD.qs('#page-actions').innerHTML =
-    '<button type="button" id="btn-bulk" class="btn btn-soft btn-sm">' + AD.icon('upload', 'w-4 h-4') + '<span class="hidden sm:inline">Nhập hàng loạt</span></button>' +
-    '<button type="button" id="btn-new" class="btn btn-primary btn-sm">' + AD.icon('plus', 'w-4 h-4') + 'Thêm câu</button>';
+    '<button type="button" id="btn-bulk" class="btn btn-soft btn-sm">' + AD.icon('upload', 'w-4 h-4') + '<span class="hidden sm:inline">Bulk import</span></button>' +
+    '<button type="button" id="btn-new" class="btn btn-primary btn-sm">' + AD.icon('plus', 'w-4 h-4') + 'Add a question</button>';
 
   let families = [];
   try { families = (await AD.get('/catalog')).families; } catch (e) {}
 
-  const state = { family: '', skill: '', level: '', type: '', status: 'active', q: '', offset: 0, limit: 25 };
+  const state = { family: '', skill: '', level: '', type: '', part: '', status: 'active', q: '', offset: 0, limit: 25 };
 
   AD.qs('#fam-chips').innerHTML =
-    '<button type="button" class="chip shrink-0" data-f="" aria-pressed="true">Mọi kỳ thi</button>' +
+    '<button type="button" class="chip shrink-0" data-f="" aria-pressed="true">Any exam</button>' +
     families.map(f => '<button type="button" class="chip shrink-0" data-family="' + f.id + '" data-f="' + f.id + '" aria-pressed="false">' + AD.esc(f.name) + '</button>').join('');
+  /* The part filter only means anything while one exam is selected: across "any
+     exam", VPET's letter A and another family's letter A are not the same thing. */
+  function renderPartFilter() {
+    const sel = AD.qs('#f-part');
+    const fam = families.find(f => f.id === state.family);
+    const list = (fam && fam.parts) || [];
+    if (!list.length) {
+      sel.hidden = true;
+      if (state.part) { state.part = ''; }
+      return;
+    }
+    sel.hidden = false;
+    sel.innerHTML = '<option value="">Any part</option>' +
+      '<option value="none">No part yet</option>' +
+      list.map(p2 => '<option value="' + AD.esc(p2.part) + '"' +
+        (p2.part === state.part ? ' selected' : '') + '>' + AD.esc(p2.name) + '</option>').join('');
+  }
+
   AD.qs('#fam-chips').addEventListener('click', e => {
     const b = e.target.closest('[data-f]');
     if (!b) return;
-    state.family = b.getAttribute('data-f'); state.offset = 0;
+    state.family = b.getAttribute('data-f'); state.part = ''; state.offset = 0;
     AD.qsa('[data-f]').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+    renderPartFilter();
     load();
   });
-  ['skill', 'level', 'type', 'status'].forEach(k => AD.qs('#f-' + k).addEventListener('change', e => {
+  ['skill', 'level', 'type', 'part', 'status'].forEach(k => AD.qs('#f-' + k).addEventListener('change', e => {
     state[k] = e.target.value; state.offset = 0; load();
   }));
+  renderPartFilter();
   let t = null;
   AD.qs('#q').addEventListener('input', e => {
     state.q = e.target.value.trim(); state.offset = 0;
@@ -99,16 +123,16 @@
 
   async function load() {
     const p = new URLSearchParams({ limit: state.limit, offset: state.offset });
-    ['family', 'skill', 'level', 'type', 'status', 'q'].forEach(k => { if (state[k]) p.set(k, state[k]); });
+    ['family', 'skill', 'level', 'type', 'part', 'status', 'q'].forEach(k => { if (state[k]) p.set(k, state[k]); });
     try {
       const r = await AD.get('/admin/questions?' + p);
       AD.qs('#count').textContent = r.total
-        ? AD.num(r.total) + ' câu khớp bộ lọc · hiện ' + (r.offset + 1) + '-' + Math.min(r.offset + r.limit, r.total)
-        : 'Không có câu nào khớp';
+        ? AD.num(r.total) + ' items match · showing ' + (r.offset + 1) + '-' + Math.min(r.offset + r.limit, r.total)
+        : 'No items match';
       if (!r.items.length) {
-        AD.qs('#list').innerHTML = AD.emptyBox('database', 'Ngân hàng chưa có câu nào khớp',
-          'Thêm câu thủ công, hoặc nhập hàng loạt bằng JSON để dựng kho nhanh.',
-          '<button type="button" class="btn btn-primary btn-md" data-empty-new>Thêm câu hỏi</button>');
+        AD.qs('#list').innerHTML = AD.emptyBox('database', 'No items in the bank match',
+          'Add one by hand, or bulk-import to build the pool quickly.',
+          '<button type="button" class="btn btn-primary btn-md" data-empty-new>Add a question</button>');
         const b = AD.qs('[data-empty-new]');
         if (b) b.addEventListener('click', () => openEditor(null));
         AD.qs('#pager').innerHTML = '';
@@ -122,14 +146,14 @@
       AD.qsa('[data-toggle]').forEach(b => b.addEventListener('click', async () => {
         const id = +b.getAttribute('data-toggle');
         const to = b.getAttribute('data-to');
-        try { await AD.post('/admin/questions/' + id + '/status', { status: to }); AD.toast(to === 'retired' ? 'Đã ngưng dùng câu này' : 'Đã dùng lại câu này'); load(); }
+        try { await AD.post('/admin/questions/' + id + '/status', { status: to }); AD.toast(to === 'retired' ? 'Question withdrawn' : 'Question back in use'); load(); }
         catch (e) { AD.toast(e.message, 'error'); }
       }));
 
       const pages = Math.ceil(r.total / r.limit);
       const cur = Math.floor(r.offset / r.limit) + 1;
       AD.qs('#pager').innerHTML = pages > 1
-        ? '<button type="button" class="btn btn-ghost btn-sm" data-page="prev" ' + (cur === 1 ? 'disabled' : '') + '>Trước</button>' +
+        ? '<button type="button" class="btn btn-ghost btn-sm" data-page="prev" ' + (cur === 1 ? 'disabled' : '') + '>Previous</button>' +
           '<span class="text-[13.5px] font-bold text-muted self-center px-2">Trang ' + cur + '/' + pages + '</span>' +
           '<button type="button" class="btn btn-ghost btn-sm" data-page="next" ' + (cur === pages ? 'disabled' : '') + '>Sau</button>'
         : '';
@@ -326,10 +350,17 @@
       '<span class="min-w-0 flex-1">' +
         '<span class="flex flex-wrap items-center gap-1.5 mb-2">' +
           '<span class="exam-chip" data-family="' + i.familyId + '">' + AD.esc(fam ? fam.name : i.familyId) + '</span>' +
-          '<span class="badge badge-muted">' + AD.esc(AD.SKILL_VI[i.skill] || i.skill) + '</span>' +
+          '<span class="badge badge-muted">' + AD.esc(AD.SKILL_LABEL[i.skill] || i.skill) + '</span>' +
           '<span class="badge badge-muted">' + AD.esc(i.level) + '</span>' +
-          '<span class="badge badge-muted">' + AD.esc(AD.TYPE_VI[i.type] || i.type) + '</span>' +
-          (i.status === 'retired' ? '<span class="badge badge-hl">Đã ngưng</span>' : '') +
+          '<span class="badge badge-muted">' + AD.esc(AD.TYPE_LABEL[i.type] || i.type) + '</span>' +
+          /* If the exam has a part table and the item has no letter, say so plainly:
+             it belongs to no pool, so generation will never draw it. */
+          (((fam && fam.parts && fam.parts.length) || i.part)
+            ? (i.part
+                ? '<span class="badge badge-ok">Part ' + AD.esc(i.part) + '</span>'
+                : '<span class="badge badge-hl">No part</span>')
+            : '') +
+          (i.status === 'retired' ? '<span class="badge badge-hl">Withdrawn</span>' : '') +
         '</span>' +
         '<span class="block text-[14.5px] leading-snug">' + AD.esc(i.prompt) + '</span>' +
         (i.options && i.options.length
@@ -339,48 +370,79 @@
         audioBlock(i) +
       '</span>' +
       '<span class="flex flex-col gap-1.5 shrink-0">' +
-        '<button type="button" class="p-2 rounded-full text-muted hover:text-ink transition" data-edit="' + i.id + '" aria-label="Sửa câu hỏi">' + AD.icon('edit', 'w-4 h-4') + '</button>' +
+        '<button type="button" class="p-2 rounded-full text-muted hover:text-ink transition" data-edit="' + i.id + '" aria-label="Edit the question">' + AD.icon('edit', 'w-4 h-4') + '</button>' +
         '<button type="button" class="p-2 rounded-full text-muted hover:text-danger transition" data-toggle="' + i.id + '" data-to="' +
-          (i.status === 'active' ? 'retired' : 'active') + '" aria-label="' + (i.status === 'active' ? 'Ngưng dùng' : 'Dùng lại') + '">' +
+          (i.status === 'active' ? 'retired' : 'active') + '" aria-label="' + (i.status === 'active' ? 'Withdraw' : 'Put back in use') + '">' +
           AD.icon(i.status === 'active' ? 'x' : 'check', 'w-4 h-4') + '</button>' +
       '</span>' +
     '</article>';
   }
 
-  /* ---------- Thêm / sửa câu ---------- */
+  /* ---------- Add and edit an item ---------- */
   function openEditor(item) {
     const isNew = !item;
-    const d = item || { familyId: families[0] && families[0].id, skill: 'listening', level: 'B1', type: 'mcq', prompt: '', options: ['', '', '', ''], answer: '', explanation: '', tags: [] };
+    const d = item || { familyId: families[0] && families[0].id, skill: 'listening', level: 'B1', type: 'mcq', part: '', prompt: '', options: ['', '', '', ''], answer: '', explanation: '', tags: [] };
     const mm = AD.modal(
-      '<h3 class="text-lg font-extrabold tracking-tight">' + (isNew ? 'Thêm câu hỏi' : 'Sửa câu hỏi') + '</h3>' +
+      '<h3 class="text-lg font-extrabold tracking-tight">' + (isNew ? 'Add a question' : 'Edit the question') + '</h3>' +
       '<div class="grid gap-4 mt-5">' +
         '<div class="grid grid-cols-2 gap-3">' +
-          '<div><label class="label" for="q-family">Kỳ thi</label><select class="input" id="q-family">' +
+          '<div><label class="label" for="q-family">Exam</label><select class="input" id="q-family">' +
             families.map(f => '<option value="' + f.id + '"' + (f.id === d.familyId ? ' selected' : '') + '>' + AD.esc(f.name) + '</option>').join('') + '</select></div>' +
-          '<div><label class="label" for="q-skill">Kỹ năng</label><select class="input" id="q-skill">' +
-            ['listening','reading','writing','speaking'].map(s => '<option value="' + s + '"' + (s === d.skill ? ' selected' : '') + '>' + AD.SKILL_VI[s] + '</option>').join('') + '</select></div>' +
-          '<div><label class="label" for="q-level">Độ khó</label><select class="input" id="q-level">' +
+          '<div><label class="label" for="q-skill">Skill</label><select class="input" id="q-skill">' +
+            ['listening','reading','writing','speaking'].map(s => '<option value="' + s + '"' + (s === d.skill ? ' selected' : '') + '>' + AD.SKILL_LABEL[s] + '</option>').join('') + '</select></div>' +
+          '<div><label class="label" for="q-level">Level</label><select class="input" id="q-level">' +
             ['A1','A2','B1','B2','C1','C2'].map(l => '<option' + (l === d.level ? ' selected' : '') + '>' + l + '</option>').join('') + '</select></div>' +
-          '<div><label class="label" for="q-type">Dạng câu</label><select class="input" id="q-type">' +
-            ['mcq','gap','essay','speaking'].map(t2 => '<option value="' + t2 + '"' + (t2 === d.type ? ' selected' : '') + '>' + AD.TYPE_VI[t2] + '</option>').join('') + '</select></div>' +
+          '<div><label class="label" for="q-type">Item type</label><select class="input" id="q-type">' +
+            ['mcq','gap','essay','speaking'].map(t2 => '<option value="' + t2 + '"' + (t2 === d.type ? ' selected' : '') + '>' + AD.TYPE_LABEL[t2] + '</option>').join('') + '</select></div>' +
         '</div>' +
-        '<div><label class="label" for="q-prompt">Nội dung câu hỏi</label>' +
+        /* The part picker only appears for exams with a part table. Choosing a part
+           fixes the skill and item type — the server refuses a mismatch, so they are
+           set here to match rather than left for the operator to guess. */
+        '<div id="q-part-box" hidden><label class="label" for="q-part">Part</label>' +
+          '<select class="input" id="q-part"></select>' +
+          '<p class="help mt-1.5">An item with no part belongs to no pool, so generation can never draw it.</p></div>' +
+        '<div><label class="label" for="q-prompt">Question text</label>' +
           '<textarea class="input" id="q-prompt" rows="3">' + AD.esc(d.prompt) + '</textarea></div>' +
         '<div id="q-mcq">' +
-          '<p class="label">Phương án (đánh dấu đáp án đúng)</p>' +
+          '<p class="label">Options (mark the correct one)</p>' +
           '<div class="grid gap-2" id="q-options"></div>' +
         '</div>' +
-        '<div><label class="label" for="q-exp">Giải thích <span class="font-medium text-muted">(không bắt buộc)</span></label>' +
+        '<div><label class="label" for="q-exp">Explanation <span class="font-medium text-muted">(optional)</span></label>' +
           '<textarea class="input" id="q-exp" rows="2">' + AD.esc(d.explanation) + '</textarea></div>' +
         '<div class="banner banner-error" id="q-err"><span id="q-err-text"></span></div>' +
         '<div class="flex gap-2.5"><button type="button" id="q-save" class="btn btn-primary btn-md flex-1">' +
-          (isNew ? 'Thêm vào ngân hàng' : 'Lưu thay đổi') + '</button>' +
-          '<button type="button" data-close class="btn btn-ghost btn-md">Huỷ</button></div>' +
+          (isNew ? 'Add to the bank' : 'Save changes') + '</button>' +
+          '<button type="button" data-close class="btn btn-ghost btn-md">Cancel</button></div>' +
       '</div>', { wide: true });
 
     const typeEl = mm.el.querySelector('#q-type');
     const optWrap = mm.el.querySelector('#q-options');
     const mcqBox = mm.el.querySelector('#q-mcq');
+    const famEl = mm.el.querySelector('#q-family');
+    const skillEl = mm.el.querySelector('#q-skill');
+    const partEl = mm.el.querySelector('#q-part');
+    const partBox = mm.el.querySelector('#q-part-box');
+
+    /** The parts of the selected exam, taken from the blueprint via /catalog */
+    const partsOf = famId => ((families.find(f => f.id === famId) || {}).parts) || [];
+
+    function renderParts() {
+      const list = partsOf(famEl.value);
+      partBox.hidden = !list.length;
+      if (!list.length) { partEl.innerHTML = ''; return; }
+      partEl.innerHTML = '<option value="">— no part —</option>' +
+        list.map(p2 => '<option value="' + AD.esc(p2.part) + '"' +
+          (p2.part === d.part ? ' selected' : '') + '>' + AD.esc(p2.name) + '</option>').join('');
+    }
+    /* Choosing a part pulls the skill and item type with it — part A is writing and
+       gap fill, and picking anything else is refused by the server anyway. */
+    function syncFromPart() {
+      const p2 = partsOf(famEl.value).find(x => x.part === partEl.value);
+      if (!p2) return;
+      if (p2.skill) skillEl.value = p2.skill;
+      if (p2.types && p2.types.length && !p2.types.includes(typeEl.value)) typeEl.value = p2.types[0];
+      syncType();
+    }
 
     function renderOptions() {
       const opts = (d.options && d.options.length ? d.options : ['', '', '', '']).slice(0, 6);
@@ -388,15 +450,17 @@
       optWrap.innerHTML = opts.map((o, i) =>
         '<label class="flex items-center gap-2.5">' +
           '<input type="radio" name="ans" class="w-4 h-4 accent-[color:var(--color-accent)] shrink-0" ' +
-            (o && o === d.answer ? 'checked' : '') + ' data-ans="' + i + '" aria-label="Đáp án đúng là phương án ' + (i + 1) + '">' +
-          '<input class="input py-2" data-opt="' + i + '" value="' + AD.esc(o) + '" placeholder="Phương án ' + (i + 1) + '" aria-label="Phương án ' + (i + 1) + '">' +
+            (o && o === d.answer ? 'checked' : '') + ' data-ans="' + i + '" aria-label="Correct answer is option ' + (i + 1) + '">' +
+          '<input class="input py-2" data-opt="' + i + '" value="' + AD.esc(o) + '" placeholder="Option ' + (i + 1) + '" aria-label="Option ' + (i + 1) + '">' +
         '</label>').join('');
     }
     function syncType() {
       mcqBox.hidden = typeEl.value !== 'mcq';
     }
-    renderOptions(); syncType();
+    renderOptions(); syncType(); renderParts();
     typeEl.addEventListener('change', syncType);
+    famEl.addEventListener('change', renderParts);
+    partEl.addEventListener('change', syncFromPart);
 
     mm.el.querySelector('#q-save').addEventListener('click', async () => {
       const err = mm.el.querySelector('#q-err');
@@ -409,6 +473,7 @@
         skill: mm.el.querySelector('#q-skill').value,
         level: mm.el.querySelector('#q-level').value,
         type: typeEl.value,
+        part: partBox.hidden ? '' : partEl.value,
         prompt: mm.el.querySelector('#q-prompt').value,
         explanation: mm.el.querySelector('#q-exp').value,
         options: typeEl.value === 'mcq' ? options : [],
@@ -419,7 +484,7 @@
         if (isNew) await AD.post('/admin/questions', body);
         else await AD.put('/admin/questions/' + item.id, body);
         mm.close();
-        AD.toast(isNew ? 'Đã thêm câu hỏi' : 'Đã lưu câu hỏi');
+        AD.toast(isNew ? 'Question added' : 'Question saved');
         load();
       } catch (e) {
         mm.el.querySelector('#q-err-text').textContent = e.message;
@@ -430,13 +495,13 @@
   AD.qs('#btn-new').addEventListener('click', () => openEditor(null));
 
   /* ============================================================
-     Nhập hàng loạt: CSV (mặc định) hoặc JSON
-     CSV được phân tích ngay tại trình duyệt, xem trước rồi mới gửi lên.
+     Bulk import: CSV (the default) or JSON
+     The CSV is parsed in the browser, previewed, and only then sent.
      ============================================================ */
 
-  /** Tách CSV có hỗ trợ dấu ngoặc kép, dấu phẩy trong ô và xuống dòng CRLF/LF */
+  /** Split CSV, handling quotes, commas inside a cell, and CRLF or LF line endings */
   function parseCSV(text) {
-    text = text.replace(/^﻿/, '');              // bỏ BOM nếu có
+    text = text.replace(/^﻿/, '');              // strip the BOM if there is one
     const rows = [];
     let row = [], field = '', inQuotes = false;
     for (let i = 0; i < text.length; i++) {
@@ -447,7 +512,7 @@
         else field += c;
       } else if (c === '"') inQuotes = true;
       else if (c === ',') { row.push(field); field = ''; }
-      else if (c === '\r') { /* bỏ qua, xử lý ở \n */ }
+      else if (c === '\r') { /* skipped; handled at \n */ }
       else if (c === '\n') { row.push(field); rows.push(row); row = []; field = ''; }
       else field += c;
     }
@@ -455,7 +520,7 @@
     return rows.filter(r => r.some(cell => cell.trim() !== ''));
   }
 
-  const CSV_COLS = ['ky_thi','ky_nang','do_kho','dang_cau','noi_dung',
+  const CSV_COLS = ['ky_thi','ky_nang','do_kho','dang_cau','phan_thi','noi_dung',
                     'phuong_an_1','phuong_an_2','phuong_an_3','phuong_an_4','dap_an','giai_thich'];
   const SKILL_ALIAS = { nghe:'listening', doc:'reading', viet:'writing', noi:'speaking',
                         listening:'listening', reading:'reading', writing:'writing', speaking:'speaking' };
@@ -464,7 +529,7 @@
   const norm = s => String(s || '').trim().toLowerCase()
     .normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/đ/g, 'd');
 
-  /** Một dòng CSV → object câu hỏi + lý do lỗi nếu có */
+  /** One CSV row → a question object, or the reason it was rejected */
   function rowToItem(cells, header) {
     const get = name => {
       const i = header.indexOf(name);
@@ -474,76 +539,81 @@
     const skill = SKILL_ALIAS[norm(get('ky_nang'))];
     const level = get('do_kho').toUpperCase();
     const type = TYPE_ALIAS[norm(get('dang_cau'))];
+    /* The part letter: left blank for exams with no part table. The server is what
+       checks the letter exists and matches the skill — all that happens here is
+       upper-casing, so "a" and "A" land in the same place. */
+    const part = get('phan_thi').trim().toUpperCase();
     const prompt = get('noi_dung');
     const options = ['phuong_an_1','phuong_an_2','phuong_an_3','phuong_an_4'].map(get).filter(Boolean);
     const answer = get('dap_an');
 
-    if (!families.some(f => f.id === familyId)) return { error: 'Kỳ thi "' + get('ky_thi') + '" không có trong hệ thống.' };
-    if (!skill) return { error: 'Kỹ năng "' + get('ky_nang') + '" không hợp lệ (nghe/đọc/viết/nói).' };
-    if (!['A1','A2','B1','B2','C1','C2'].includes(level)) return { error: 'Độ khó "' + get('do_kho') + '" không hợp lệ.' };
-    if (!type) return { error: 'Dạng câu "' + get('dang_cau') + '" không hợp lệ.' };
-    if (prompt.length < 5) return { error: 'Nội dung câu hỏi quá ngắn.' };
+    if (!families.some(f => f.id === familyId)) return { error: 'Exam "' + get('ky_thi') + '" is not in the system.' };
+    if (!skill) return { error: 'Skill "' + get('ky_nang') + '" is not valid (nghe/đọc/viết/nói, or the English names).' };
+    if (!['A1','A2','B1','B2','C1','C2'].includes(level)) return { error: 'Level "' + get('do_kho') + '" is not valid.' };
+    if (!type) return { error: 'Item type "' + get('dang_cau') + '" is not valid.' };
+    if (prompt.length < 5) return { error: 'The question text is too short.' };
     if (type === 'mcq') {
-      if (options.length < 2) return { error: 'Câu trắc nghiệm cần ít nhất 2 phương án.' };
-      if (!options.includes(answer)) return { error: 'Đáp án phải trùng một trong các phương án.' };
+      if (options.length < 2) return { error: 'A multiple-choice item needs at least two options.' };
+      if (!options.includes(answer)) return { error: 'The answer must match one of the options.' };
     }
     return {
-      item: { familyId, skill, level, type, prompt,
+      item: { familyId, skill, level, type, part, prompt,
               options: type === 'mcq' ? options : [],
               answer: type === 'mcq' ? answer : '',
-              explanation: get('giai_thich'), tags: ['nhập csv'] }
+              explanation: get('giai_thich'), tags: ['csv import'] }
     };
   }
 
   AD.qs('#btn-bulk').addEventListener('click', () => {
     const sampleJson = JSON.stringify([{
       familyId: families[0] ? families[0].id : 'ielts', skill: 'reading', level: 'B1', type: 'mcq',
-      prompt: 'Nội dung câu hỏi…', options: ['A', 'B', 'C', 'D'], answer: 'A', explanation: ''
+      prompt: 'The question text…', options: ['A', 'B', 'C', 'D'], answer: 'A', explanation: ''
     }], null, 2);
 
     const mm = AD.modal(
-      '<h3 class="text-lg font-extrabold tracking-tight">Nhập câu hỏi hàng loạt</h3>' +
-      '<p class="text-muted text-[14px] mt-1.5 leading-relaxed">Tối đa 500 câu mỗi lần. Dòng lỗi được liệt kê riêng, các dòng hợp lệ vẫn nhập được.</p>' +
+      '<h3 class="text-lg font-extrabold tracking-tight">Bulk import questions</h3>' +
+      '<p class="text-muted text-[14px] mt-1.5 leading-relaxed">Up to 500 items at a time. Rejected rows are listed separately, and the valid ones still import.</p>' +
 
-      '<div role="tablist" aria-label="Cách nhập" class="flex gap-2 border-b border-line mt-5">' +
-        '<button role="tab" id="tb-csv" aria-controls="pn-csv" aria-selected="true" class="tabbtn">Từ CSV</button>' +
-        '<button role="tab" id="tb-json" aria-controls="pn-json" aria-selected="false" class="tabbtn">Từ JSON</button>' +
+      '<div role="tablist" aria-label="Import method" class="flex gap-2 border-b border-line mt-5">' +
+        '<button role="tab" id="tb-csv" aria-controls="pn-csv" aria-selected="true" class="tabbtn">From CSV</button>' +
+        '<button role="tab" id="tb-json" aria-controls="pn-json" aria-selected="false" class="tabbtn">From JSON</button>' +
       '</div>' +
 
       /* ----- Tab CSV ----- */
       '<div role="tabpanel" id="pn-csv" aria-labelledby="tb-csv" class="grid gap-4 mt-5">' +
         '<div class="card bg-brand-soft border-0 p-4">' +
-          '<p class="text-[13.5px] leading-relaxed">Cột theo thứ tự: <b>ky_thi, ky_nang, do_kho, dang_cau, noi_dung, phuong_an_1..4, dap_an, giai_thich</b>. ' +
-            'Kỹ năng nhận cả tiếng Việt (nghe, đọc, viết, nói) lẫn tiếng Anh.</p>' +
+          '<p class="text-[13.5px] leading-relaxed">Columns, in order: <b>ky_thi, ky_nang, do_kho, dang_cau, phan_thi, noi_dung, phuong_an_1..4, dap_an, giai_thich</b>. ' +
+          'The <b>phan_thi</b> column is the part letter (VPET: A–J); leave it blank for an exam with no part table. ' +
+            'The skill column accepts Vietnamese (nghe, đọc, viết, nói) as well as English.</p>' +
           '<a href="/api/admin/questions/template.csv" class="btn btn-soft btn-sm mt-3">' +
-            AD.icon('download', 'w-4 h-4') + 'Tải tệp CSV mẫu</a>' +
+            AD.icon('download', 'w-4 h-4') + 'Download a sample CSV</a>' +
         '</div>' +
-        '<div><label class="label" for="c-file">Chọn tệp CSV</label>' +
+        '<div><label class="label" for="c-file">Choose a CSV file</label>' +
           '<input class="input py-2" id="c-file" type="file" accept=".csv,text/csv"></div>' +
-        '<div><label class="label" for="c-text">Hoặc dán trực tiếp nội dung CSV</label>' +
+        '<div><label class="label" for="c-text">Or paste the CSV directly</label>' +
           '<textarea class="input font-mono text-[12.5px]" id="c-text" rows="6" spellcheck="false" ' +
-            'placeholder="ky_thi,ky_nang,do_kho,dang_cau,noi_dung,..."></textarea></div>' +
-        '<button type="button" id="c-preview" class="btn btn-ghost btn-md">Xem trước</button>' +
+            'placeholder="ky_thi,ky_nang,do_kho,dang_cau,phan_thi,noi_dung,..."></textarea></div>' +
+        '<button type="button" id="c-preview" class="btn btn-ghost btn-md">Preview</button>' +
         '<div id="c-result"></div>' +
       '</div>' +
 
       /* ----- Tab JSON ----- */
       '<div role="tabpanel" id="pn-json" aria-labelledby="tb-json" hidden class="grid gap-4 mt-5">' +
-        '<div><label class="label" for="b-json">Mảng JSON</label>' +
+        '<div><label class="label" for="b-json">A JSON array</label>' +
           '<textarea class="input font-mono text-[12.5px]" id="b-json" rows="10" spellcheck="false">' + AD.esc(sampleJson) + '</textarea></div>' +
-        '<button type="button" id="b-go" class="btn btn-primary btn-md">Nhập vào ngân hàng</button>' +
+        '<button type="button" id="b-go" class="btn btn-primary btn-md">Import into the bank</button>' +
       '</div>' +
 
       '<div class="banner banner-error mt-4" id="b-err"><span id="b-err-text"></span></div>' +
       '<div class="banner banner-success mt-4" id="b-ok"><span id="b-ok-text"></span></div>' +
-      '<div class="flex justify-end mt-5"><button type="button" data-close class="btn btn-ghost btn-md">Đóng</button></div>',
+      '<div class="flex justify-end mt-5"><button type="button" data-close class="btn btn-ghost btn-md">Close</button></div>',
       { wide: true });
 
     const err = mm.el.querySelector('#b-err'), ok = mm.el.querySelector('#b-ok');
     const showErr = html => { mm.el.querySelector('#b-err-text').innerHTML = html; err.classList.add('show'); };
     const clearMsg = () => { err.classList.remove('show'); ok.classList.remove('show'); };
 
-    /* Chuyển tab */
+    /* Switching tabs */
     [['tb-csv','pn-csv'],['tb-json','pn-json']].forEach(([t2, p2], _, all) => {
       mm.el.querySelector('#' + t2).addEventListener('click', () => {
         all.forEach(([t3, p3]) => {
@@ -555,13 +625,13 @@
       });
     });
 
-    /* Đọc tệp vào ô văn bản */
+    /* Read the file into the textarea */
     mm.el.querySelector('#c-file').addEventListener('change', ev => {
       const f = ev.target.files && ev.target.files[0];
       if (!f) return;
       const reader = new FileReader();
       reader.onload = () => { mm.el.querySelector('#c-text').value = String(reader.result || ''); preview(); };
-      reader.onerror = () => showErr('Không đọc được tệp.');
+      reader.onerror = () => showErr('The file could not be read.');
       reader.readAsText(f, 'utf-8');
     });
 
@@ -571,14 +641,14 @@
       pending = [];
       const raw = mm.el.querySelector('#c-text').value.trim();
       const box = mm.el.querySelector('#c-result');
-      if (!raw) { box.innerHTML = ''; showErr('Chưa có nội dung CSV nào.'); return; }
+      if (!raw) { box.innerHTML = ''; showErr('There is no CSV content yet.'); return; }
 
       const rows = parseCSV(raw);
-      if (rows.length < 2) { box.innerHTML = ''; showErr('Cần dòng tiêu đề và ít nhất một dòng dữ liệu.'); return; }
+      if (rows.length < 2) { box.innerHTML = ''; showErr('A header row and at least one data row are needed.'); return; }
 
       const header = rows[0].map(h => norm(h).replace(/\s+/g, '_'));
       const missing = ['ky_thi','ky_nang','do_kho','dang_cau','noi_dung'].filter(c => !header.includes(c));
-      if (missing.length) { box.innerHTML = ''; showErr('Thiếu cột bắt buộc: ' + missing.join(', ')); return; }
+      if (missing.length) { box.innerHTML = ''; showErr('Missing required columns: ' + missing.join(', ')); return; }
 
       const bad = [];
       rows.slice(1).forEach((cells, i) => {
@@ -589,58 +659,58 @@
 
       if (pending.length > 500) {
         box.innerHTML = '';
-        showErr('Tệp có ' + pending.length + ' dòng hợp lệ, vượt giới hạn 500 câu mỗi lần. Hãy chia nhỏ tệp.');
+        showErr('The file has ' + pending.length + ' valid rows, over the 500-item limit. Split it up.');
         pending = [];
         return;
       }
 
       box.innerHTML =
         '<div class="flex flex-wrap items-center gap-2.5 mb-3">' +
-          '<span class="badge badge-ok">' + pending.length + ' dòng hợp lệ</span>' +
-          (bad.length ? '<span class="badge badge-hl">' + bad.length + ' dòng lỗi</span>' : '') +
+          '<span class="badge badge-ok">' + pending.length + ' valid rows</span>' +
+          (bad.length ? '<span class="badge badge-hl">' + bad.length + ' rejected rows</span>' : '') +
         '</div>' +
         (pending.length
           ? '<div class="card overflow-hidden mb-3"><div class="max-h-52 overflow-y-auto"><table class="w-full text-[13px]">' +
             '<thead><tr class="text-[11.5px] uppercase tracking-wide text-muted border-b border-line bg-surface">' +
-              '<th class="text-left font-bold px-3 py-2">Kỳ thi</th>' +
-              '<th class="text-left font-bold px-3 py-2">Kỹ năng</th>' +
-              '<th class="text-left font-bold px-3 py-2">Độ khó</th>' +
-              '<th class="text-left font-bold px-3 py-2">Nội dung</th>' +
+              '<th class="text-left font-bold px-3 py-2">Exam</th>' +
+              '<th class="text-left font-bold px-3 py-2">Skill</th>' +
+              '<th class="text-left font-bold px-3 py-2">Level</th>' +
+              '<th class="text-left font-bold px-3 py-2">Text</th>' +
             '</tr></thead><tbody>' +
             pending.slice(0, 50).map(it =>
               '<tr class="border-b border-line last:border-0">' +
                 '<td class="px-3 py-2"><span class="exam-chip" data-family="' + it.familyId + '">' +
                   AD.esc((families.find(f => f.id === it.familyId) || {}).name || it.familyId) + '</span></td>' +
-                '<td class="px-3 py-2 text-muted">' + AD.esc(AD.SKILL_VI[it.skill]) + '</td>' +
+                '<td class="px-3 py-2 text-muted">' + AD.esc(AD.SKILL_LABEL[it.skill]) + '</td>' +
                 '<td class="px-3 py-2 text-muted">' + AD.esc(it.level) + '</td>' +
                 '<td class="px-3 py-2 truncate max-w-[280px]">' + AD.esc(it.prompt) + '</td>' +
               '</tr>').join('') +
             '</tbody></table></div>' +
-            (pending.length > 50 ? '<p class="text-[12.5px] text-muted px-3 py-2 border-t border-line">Xem trước 50 dòng đầu.</p>' : '') +
+            (pending.length > 50 ? '<p class="text-[12.5px] text-muted px-3 py-2 border-t border-line">Previewing the first 50 rows.</p>' : '') +
             '</div>'
           : '') +
         (bad.length
           ? '<div class="card border-[color:var(--color-danger)] p-3 mb-3 max-h-40 overflow-y-auto">' +
-            '<p class="text-[12.5px] font-bold uppercase tracking-wide text-muted mb-2">Dòng bị bỏ qua</p>' +
+            '<p class="text-[12.5px] font-bold uppercase tracking-wide text-muted mb-2">Rejected rows</p>' +
             bad.slice(0, 30).map(b =>
-              '<p class="text-[13px] leading-relaxed"><b>Dòng ' + b.row + ':</b> ' + AD.esc(b.error) +
+              '<p class="text-[13px] leading-relaxed"><b>Row ' + b.row + ':</b> ' + AD.esc(b.error) +
               (b.preview ? ' <span class="text-muted">— ' + AD.esc(b.preview) + '…</span>' : '') + '</p>').join('') +
-            (bad.length > 30 ? '<p class="text-[12.5px] text-muted mt-2">…và ' + (bad.length - 30) + ' dòng nữa.</p>' : '') +
+            (bad.length > 30 ? '<p class="text-[12.5px] text-muted mt-2">…and ' + (bad.length - 30) + ' more.</p>' : '') +
             '</div>'
           : '') +
         (pending.length
-          ? '<button type="button" id="c-go" class="btn btn-primary btn-md w-full">Nhập ' + pending.length + ' câu hợp lệ</button>'
-          : '<p class="text-[14px] text-muted text-center py-2">Không có dòng nào hợp lệ để nhập.</p>');
+          ? '<button type="button" id="c-go" class="btn btn-primary btn-md w-full">Import ' + pending.length + ' valid items</button>'
+          : '<p class="text-[14px] text-muted text-center py-2">No valid rows to import.</p>');
 
       const go = mm.el.querySelector('#c-go');
       if (go) go.addEventListener('click', async () => {
         go.disabled = true;
-        go.innerHTML = AD.icon('loader', 'w-4 h-4 animate-spin-slow') + 'Đang nhập';
+        go.innerHTML = AD.icon('loader', 'w-4 h-4 animate-spin-slow') + 'Importing';
         try {
           const r = await AD.post('/admin/questions/bulk', { items: pending });
           clearMsg();
           mm.el.querySelector('#b-ok-text').textContent =
-            'Đã nhập ' + r.inserted + ' câu vào ngân hàng.' + (r.failed ? ' Máy chủ từ chối ' + r.failed + ' dòng.' : '');
+            'Imported ' + r.inserted + ' items into the bank.' + (r.failed ? ' The server refused ' + r.failed + ' rows.' : '');
           ok.classList.add('show');
           mm.el.querySelector('#c-result').innerHTML = '';
           mm.el.querySelector('#c-text').value = '';
@@ -648,31 +718,31 @@
           load();
         } catch (e) {
           go.disabled = false;
-          go.textContent = 'Nhập ' + pending.length + ' câu hợp lệ';
+          go.textContent = 'Import ' + pending.length + ' valid items';
           showErr(AD.esc(e.message));
         }
       });
     }
     mm.el.querySelector('#c-preview').addEventListener('click', preview);
 
-    /* Tab JSON giữ nguyên hành vi cũ */
+    /* The JSON tab keeps its old behaviour */
     mm.el.querySelector('#b-go').addEventListener('click', async () => {
       clearMsg();
       let items;
       try {
         items = JSON.parse(mm.el.querySelector('#b-json').value);
-        if (!Array.isArray(items)) throw new Error('Dữ liệu phải là một mảng JSON.');
+        if (!Array.isArray(items)) throw new Error('The data must be a JSON array.');
       } catch (e) {
-        showErr('JSON không hợp lệ: ' + AD.esc(e.message));
+        showErr('Invalid JSON: ' + AD.esc(e.message));
         return;
       }
       try {
         const r = await AD.post('/admin/questions/bulk', { items });
         mm.el.querySelector('#b-ok-text').textContent =
-          'Đã nhập ' + r.inserted + ' câu' + (r.failed ? ', bỏ qua ' + r.failed + ' dòng lỗi.' : '.');
+          'Imported ' + r.inserted + ' items' + (r.failed ? ', skipping ' + r.failed + ' rejected rows.' : '.');
         ok.classList.add('show');
         if (r.errors && r.errors.length) {
-          showErr(r.errors.map(e2 => 'Dòng ' + e2.row + ': ' + AD.esc(e2.error)).join('<br>'));
+          showErr(r.errors.map(e2 => 'Row ' + e2.row + ': ' + AD.esc(e2.error)).join('<br>'));
         }
         load();
       } catch (e) {

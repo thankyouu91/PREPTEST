@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Code · Quản trị VPET Prep</title>
+  <title>Codes · VPET Prep admin</title>
   <meta name="robots" content="noindex, nofollow">
   <meta name="theme-color" content="#1c3d8f">
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
@@ -23,8 +23,8 @@
 
       <section class="mb-7" aria-labelledby="h-batches">
         <div class="flex items-baseline gap-3 mb-3">
-          <h2 id="h-batches" class="text-lg font-extrabold tracking-tight">Lô code</h2>
-          <span class="text-[13.5px] text-muted font-semibold">Nhóm mã cấp cùng lúc cho một lớp hoặc một đợt</span>
+          <h2 id="h-batches" class="text-lg font-extrabold tracking-tight">Code batches</h2>
+          <span class="text-[13.5px] text-muted font-semibold">Codes issued together for one class or one intake</span>
         </div>
         <div id="batches" class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
           <div class="card p-5"><div class="skeleton h-5 w-2/3 mb-3"></div><div class="skeleton h-4 w-1/2"></div></div>
@@ -33,19 +33,19 @@
 
       <div class="flex flex-wrap items-center gap-2.5 mb-5">
         <div class="flex gap-2 flex-wrap">
-          <button type="button" class="chip" data-f="" aria-pressed="true">Tất cả</button>
-          <button type="button" class="chip" data-f="unused" aria-pressed="false">Chưa dùng</button>
-          <button type="button" class="chip" data-f="redeemed" aria-pressed="false">Đã kích hoạt</button>
-          <button type="button" class="chip" data-f="revoked" aria-pressed="false">Đã thu hồi</button>
+          <button type="button" class="chip" data-f="" aria-pressed="true">All</button>
+          <button type="button" class="chip" data-f="unused" aria-pressed="false">Unused</button>
+          <button type="button" class="chip" data-f="redeemed" aria-pressed="false">Activated</button>
+          <button type="button" class="chip" data-f="revoked" aria-pressed="false">Revoked</button>
         </div>
         <label class="relative ms-auto min-w-[200px]">
-          <span class="sr-only">Tìm mã</span>
+          <span class="sr-only">Search codes</span>
           <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted pointer-events-none" id="search-icon"></span>
-          <input id="q" type="search" class="input ps-10 py-2.5" placeholder="Tìm theo mã…">
+          <input id="q" type="search" class="input ps-10 py-2.5" placeholder="Search by code…">
         </label>
       </div>
 
-      <p class="text-[13.5px] font-semibold text-muted mb-3" id="count">Đang tải…</p>
+      <p class="text-[13.5px] font-semibold text-muted mb-3" id="count">Loading…</p>
       <div id="list"><div class="card p-5 grid gap-3.5">
         <div class="skeleton h-6 w-11/12"></div><div class="skeleton h-6 w-full"></div><div class="skeleton h-6 w-4/5"></div>
       </div></div>
@@ -57,16 +57,16 @@
 <script src="/admin/_admin.js"></script>
 <script>
 (async () => {
-  await AD.mount({ title: 'Code', subtitle: 'Cấp mã mở khoá theo lô hoặc cho từng học viên' });
+  await AD.mount({ title: 'Codes', subtitle: 'Issue unlock codes in batches, or one student at a time' });
   AD.qs('#search-icon').innerHTML = AD.icon('search', 'w-[18px] h-[18px]');
   AD.qs('#page-actions').innerHTML =
-    '<button type="button" id="btn-export" class="btn btn-ghost btn-sm">' + AD.icon('download', 'w-4 h-4') + '<span class="hidden sm:inline">Xuất CSV</span></button>' +
-    '<button type="button" id="btn-issue" class="btn btn-primary btn-sm">' + AD.icon('plus', 'w-4 h-4') + 'Cấp code</button>';
+    '<button type="button" id="btn-export" class="btn btn-ghost btn-sm">' + AD.icon('download', 'w-4 h-4') + '<span class="hidden sm:inline">Export CSV</span></button>' +
+    '<button type="button" id="btn-issue" class="btn btn-primary btn-sm">' + AD.icon('plus', 'w-4 h-4') + 'Issue codes</button>';
 
-  let families = [], tests = [];
+  let families = [], tests = [], PLAN_LIST = [];
   try {
     const cat = await AD.get('/catalog');
-    families = cat.families; tests = cat.tests;
+    families = cat.families; tests = cat.tests; PLAN_LIST = cat.plans || [];
   } catch (e) {}
   try {
     const all = await AD.get('/admin/tests');
@@ -97,18 +97,18 @@
               '<div class="flex items-start gap-2.5">' +
                 '<span class="min-w-0"><b class="block truncate">' + AD.esc(b.name) + '</b>' +
                 '<span class="block text-[12.5px] text-muted mt-0.5 truncate">' + AD.esc(b.label) + '</span></span>' +
-                '<span class="badge badge-muted ms-auto shrink-0">' + b.total + ' mã</span>' +
+                '<span class="badge badge-muted ms-auto shrink-0">' + b.total + ' codes</span>' +
               '</div>' +
               '<div class="flex items-center justify-between text-[12.5px] font-bold mt-4 mb-1.5">' +
-                '<span class="text-muted">Đã dùng</span><span>' + b.used + '/' + b.total + '</span></div>' +
+                '<span class="text-muted">Used</span><span>' + b.used + '/' + b.total + '</span></div>' +
               '<div class="meter"><i data-w="' + pct + '"></i></div>' +
               '<div class="flex gap-2 mt-4">' +
-                '<button type="button" class="btn btn-ghost btn-sm flex-1" data-batch="' + b.id + '">Xem mã</button>' +
-                '<a class="btn btn-ghost btn-sm" href="/api/admin/codes/export?batch=' + b.id + '" aria-label="Tải CSV lô này">' + AD.icon('download', 'w-4 h-4') + '</a>' +
+                '<button type="button" class="btn btn-ghost btn-sm flex-1" data-batch="' + b.id + '">View codes</button>' +
+                '<a class="btn btn-ghost btn-sm" href="/api/admin/codes/export?batch=' + b.id + '" aria-label="Download this batch as CSV">' + AD.icon('download', 'w-4 h-4') + '</a>' +
               '</div>' +
             '</article>';
           }).join('')
-        : '<div class="card p-6 sm:col-span-2 lg:col-span-3 text-center text-[14px] text-muted">Chưa có lô nào. Cấp từ 2 mã trở lên sẽ tự tạo lô.</div>';
+        : '<div class="card p-6 sm:col-span-2 lg:col-span-3 text-center text-[14px] text-muted">No batches yet. Issue two or more codes at once and they form one.</div>';
       AD.qsa('#batches .meter > i[data-w]').forEach(el =>
         requestAnimationFrame(() => el.style.setProperty('--w', el.getAttribute('data-w') + '%')));
       AD.qsa('[data-batch]').forEach(b => b.addEventListener('click', () => {
@@ -123,11 +123,11 @@
   }
 
   const statusBadge = c => {
-    if (c.status === 'redeemed') return '<span class="badge badge-ok">Đã kích hoạt</span>';
-    if (c.status === 'revoked') return '<span class="badge badge-muted">Đã thu hồi</span>';
+    if (c.status === 'redeemed') return '<span class="badge badge-ok">Activated</span>';
+    if (c.status === 'revoked') return '<span class="badge badge-muted">Revoked</span>';
     const left = AD.daysUntil(c.expiresAt);
-    if (left !== null && left < 0) return '<span class="badge badge-hl">Hết hạn</span>';
-    return '<span class="badge badge-muted">Chưa dùng</span>';
+    if (left !== null && left < 0) return '<span class="badge badge-hl">Expired</span>';
+    return '<span class="badge badge-muted">Unused</span>';
   };
 
   async function load() {
@@ -138,12 +138,12 @@
     try {
       const r = await AD.get('/admin/codes?' + p);
       AD.qs('#count').textContent = r.total
-        ? AD.num(r.total) + ' mã' + (state.batch ? ' trong lô đang xem' : '') + ' · hiện ' + (r.offset + 1) + '-' + Math.min(r.offset + r.limit, r.total)
-        : 'Không có mã nào khớp';
+        ? AD.num(r.total) + ' codes' + (state.batch ? ' in this batch' : '') + ' · showing ' + (r.offset + 1) + '-' + Math.min(r.offset + r.limit, r.total)
+        : 'No codes match';
       if (!r.items.length) {
-        AD.qs('#list').innerHTML = AD.emptyBox('ticket', 'Chưa có mã nào khớp',
-          'Cấp mã mới cho một lớp, hoặc đổi bộ lọc để xem các mã khác.',
-          '<button type="button" class="btn btn-primary btn-md" data-empty-issue>Cấp code</button>');
+        AD.qs('#list').innerHTML = AD.emptyBox('ticket', 'No codes match',
+          'Issue codes for a class, or change the filter to see others.',
+          '<button type="button" class="btn btn-primary btn-md" data-empty-issue>Issue codes</button>');
         const b = AD.qs('[data-empty-issue]');
         if (b) b.addEventListener('click', openIssue);
         AD.qs('#pager').innerHTML = '';
@@ -152,12 +152,12 @@
       AD.qs('#list').innerHTML =
         '<div class="card overflow-hidden"><div class="overflow-x-auto"><table class="w-full text-[14px]">' +
         '<thead><tr class="text-[12px] uppercase tracking-wide text-muted border-b border-line bg-surface">' +
-          '<th class="text-left font-bold px-5 py-3">Mã</th>' +
-          '<th class="text-left font-bold px-4 py-3">Mở khoá</th>' +
-          '<th class="text-left font-bold px-4 py-3 hidden lg:table-cell">Học viên</th>' +
-          '<th class="text-left font-bold px-4 py-3 hidden sm:table-cell">Hạn dùng</th>' +
-          '<th class="text-left font-bold px-4 py-3">Trạng thái</th>' +
-          '<th class="px-5 py-3"><span class="sr-only">Thao tác</span></th>' +
+          '<th class="text-left font-bold px-5 py-3">Code</th>' +
+          '<th class="text-left font-bold px-4 py-3">Unlocks</th>' +
+          '<th class="text-left font-bold px-4 py-3 hidden lg:table-cell">Student</th>' +
+          '<th class="text-left font-bold px-4 py-3 hidden sm:table-cell">Expires</th>' +
+          '<th class="text-left font-bold px-4 py-3">Status</th>' +
+          '<th class="px-5 py-3"><span class="sr-only">Actions</span></th>' +
         '</tr></thead><tbody>' +
         r.items.map(c =>
           '<tr class="border-b border-line last:border-0">' +
@@ -168,27 +168,27 @@
             '<td class="px-4 py-3.5 hidden sm:table-cell text-muted whitespace-nowrap">' + AD.date(c.expiresAt) + '</td>' +
             '<td class="px-4 py-3.5">' + statusBadge(c) + '</td>' +
             '<td class="px-5 py-3.5 text-right whitespace-nowrap">' +
-              '<button type="button" class="p-2 rounded-full text-muted hover:text-ink transition" data-copy="' + AD.esc(c.code) + '" aria-label="Sao chép mã">' + AD.icon('copy', 'w-4 h-4') + '</button>' +
+              '<button type="button" class="p-2 rounded-full text-muted hover:text-ink transition" data-copy="' + AD.esc(c.code) + '" aria-label="Copy the code">' + AD.icon('copy', 'w-4 h-4') + '</button>' +
               (c.status === 'revoked' ? '' :
-                '<button type="button" class="p-2 rounded-full text-muted hover:text-danger transition" data-revoke="' + c.id + '" aria-label="Thu hồi mã">' + AD.icon('x', 'w-4 h-4') + '</button>') +
+                '<button type="button" class="p-2 rounded-full text-muted hover:text-danger transition" data-revoke="' + c.id + '" aria-label="Revoke the code">' + AD.icon('x', 'w-4 h-4') + '</button>') +
             '</td>' +
           '</tr>').join('') +
         '</tbody></table></div></div>';
 
       AD.qsa('[data-copy]').forEach(b => b.addEventListener('click', () => {
         navigator.clipboard && navigator.clipboard.writeText(b.getAttribute('data-copy'))
-          .then(() => AD.toast('Đã sao chép mã')).catch(() => AD.toast('Không sao chép được', 'error'));
+          .then(() => AD.toast('Code copied')).catch(() => AD.toast('Could not copy', 'error'));
       }));
       AD.qsa('[data-revoke]').forEach(b => b.addEventListener('click', async () => {
-        if (!await AD.confirm('Thu hồi mã?', 'Mã sẽ không dùng để mở khoá được nữa. Thao tác này được ghi nhật ký.', 'Thu hồi')) return;
-        try { await AD.post('/admin/codes/' + b.getAttribute('data-revoke') + '/revoke'); AD.toast('Đã thu hồi mã'); load(); loadBatches(); }
+        if (!await AD.confirm('Revoke this code?', 'It will no longer unlock anything. The action is recorded in the audit log.', 'Revoke')) return;
+        try { await AD.post('/admin/codes/' + b.getAttribute('data-revoke') + '/revoke'); AD.toast('Code revoked'); load(); loadBatches(); }
         catch (e) { AD.toast(e.message, 'error'); }
       }));
 
       const pages = Math.ceil(r.total / r.limit);
       const cur = Math.floor(r.offset / r.limit) + 1;
       AD.qs('#pager').innerHTML = pages > 1
-        ? '<button type="button" class="btn btn-ghost btn-sm" data-page="prev" ' + (cur === 1 ? 'disabled' : '') + '>Trước</button>' +
+        ? '<button type="button" class="btn btn-ghost btn-sm" data-page="prev" ' + (cur === 1 ? 'disabled' : '') + '>Previous</button>' +
           '<span class="text-[13.5px] font-bold text-muted self-center px-2">Trang ' + cur + '/' + pages + '</span>' +
           '<button type="button" class="btn btn-ghost btn-sm" data-page="next" ' + (cur === pages ? 'disabled' : '') + '>Sau</button>'
         : '';
@@ -202,44 +202,56 @@
     }
   }
 
-  /* ---------- Cấp code ---------- */
+  /* ---------- Issuing codes ---------- */
   function openIssue() {
     const in6mo = new Date(Date.now() + 180 * 86400000).toISOString().slice(0, 10);
     const mm = AD.modal(
-      '<h3 class="text-lg font-extrabold tracking-tight">Cấp code mở khoá</h3>' +
-      '<p class="text-muted text-[14px] mt-1.5">Từ 2 mã trở lên sẽ tự gom thành một lô để theo dõi.</p>' +
+      '<h3 class="text-lg font-extrabold tracking-tight">Issue unlock codes</h3>' +
+      '<p class="text-muted text-[14px] mt-1.5">Two or more codes are grouped into a batch so they can be tracked.</p>' +
       '<div class="grid gap-4 mt-5">' +
-        '<div><p class="label">Mở khoá gì</p>' +
+        /* The plan decides what the holder gets and for how long, so it is asked first.
+           There is no silent default: the server refuses a code with no plan outright,
+           rather than letting the mistake surface when a student redeems it. */
+        '<div><label class="label" for="i-plan">Plan</label>' +
+          '<select class="input" id="i-plan">' +
+            (PLAN_LIST.length
+              ? PLAN_LIST.map(p => '<option value="' + AD.esc(p.id) + '">' +
+                  AD.esc(p.name + ' · ' + p.months + ' months · ' + p.price.toLocaleString('vi-VN') + 'đ') +
+                  '</option>').join('')
+              : '<option value="">The price list could not be loaded — reload the page</option>') +
+          '</select>' +
+          '<p class="help mt-1.5">Sets the term, the number of sittings, and access to self-study.</p></div>' +
+        '<div><p class="label">What it unlocks</p>' +
           '<div class="flex gap-2 flex-wrap">' +
-            '<button type="button" class="chip" data-t="family" aria-pressed="true">Trọn bộ một kỳ thi</button>' +
-            '<button type="button" class="chip" data-t="test" aria-pressed="false">Một bài cụ thể</button>' +
-            '<button type="button" class="chip" data-t="bundle" aria-pressed="false">Combo nhiều kỳ thi</button>' +
+            '<button type="button" class="chip" data-t="family" aria-pressed="true">A whole exam</button>' +
+            '<button type="button" class="chip" data-t="test" aria-pressed="false">One specific test</button>' +
+            '<button type="button" class="chip" data-t="bundle" aria-pressed="false">Several exams</button>' +
           '</div></div>' +
         '<div id="ref-box"></div>' +
         '<div class="grid grid-cols-2 gap-4">' +
-          '<div><label class="label" for="i-qty">Số lượng mã</label>' +
+          '<div><label class="label" for="i-qty">How many codes</label>' +
             '<input class="input" id="i-qty" type="number" min="1" max="500" value="10"></div>' +
-          '<div><label class="label" for="i-exp">Hạn dùng</label>' +
+          '<div><label class="label" for="i-exp">Expires</label>' +
             '<input class="input" id="i-exp" type="date" value="' + in6mo + '"></div>' +
         '</div>' +
-        '<div><label class="label" for="i-name">Tên lô <span class="font-medium text-muted">(để trống sẽ tự đặt)</span></label>' +
-          '<input class="input" id="i-name" placeholder="VD: Lớp IELTS K63 đợt 1"></div>' +
+        '<div><label class="label" for="i-name">Batch name <span class="font-medium text-muted">(left blank, one is chosen for you)</span></label>' +
+          '<input class="input" id="i-name" placeholder="e.g. IELTS class K63, intake 1"></div>' +
         '<div class="banner banner-error" id="i-err"><span id="i-err-text"></span></div>' +
-        '<div class="flex gap-2.5"><button type="button" id="i-go" class="btn btn-primary btn-md flex-1">Cấp mã</button>' +
-          '<button type="button" data-close class="btn btn-ghost btn-md">Huỷ</button></div>' +
+        '<div class="flex gap-2.5"><button type="button" id="i-go" class="btn btn-primary btn-md flex-1">Issue</button>' +
+          '<button type="button" data-close class="btn btn-ghost btn-md">Cancel</button></div>' +
       '</div>', { wide: true });
 
     let type = 'family';
     const refBox = mm.el.querySelector('#ref-box');
     function renderRef() {
       if (type === 'family') {
-        refBox.innerHTML = '<label class="label" for="i-ref">Kỳ thi</label><select class="input" id="i-ref">' +
+        refBox.innerHTML = '<label class="label" for="i-ref">Exam</label><select class="input" id="i-ref">' +
           families.map(f => '<option value="' + f.id + '">' + AD.esc(f.name) + '</option>').join('') + '</select>';
       } else if (type === 'test') {
-        refBox.innerHTML = '<label class="label" for="i-ref">Bài thi</label><select class="input" id="i-ref">' +
+        refBox.innerHTML = '<label class="label" for="i-ref">Test</label><select class="input" id="i-ref">' +
           tests.map(t2 => '<option value="' + AD.esc(t2.id) + '">' + AD.esc((t2.familyName || t2.familyId || '').toUpperCase() + ' · ' + t2.title) + '</option>').join('') + '</select>';
       } else {
-        refBox.innerHTML = '<p class="label">Chọn từ 2 kỳ thi trở lên</p><div class="flex flex-wrap gap-2" id="i-bundle">' +
+        refBox.innerHTML = '<p class="label">Choose two or more exams</p><div class="flex flex-wrap gap-2" id="i-bundle">' +
           families.map(f => '<button type="button" class="chip" data-family="' + f.id + '" data-b="' + f.id + '" aria-pressed="false">' + AD.esc(f.name) + '</button>').join('') + '</div>';
         AD.qsa('[data-b]', refBox).forEach(b => b.addEventListener('click', () =>
           b.setAttribute('aria-pressed', b.getAttribute('aria-pressed') !== 'true')));
@@ -259,7 +271,7 @@
       if (type === 'bundle') {
         ref = AD.qsa('[data-b][aria-pressed="true"]', mm.el).map(x => x.getAttribute('data-b')).join(',');
         if (ref.split(',').filter(Boolean).length < 2) {
-          mm.el.querySelector('#i-err-text').textContent = 'Combo cần ít nhất 2 kỳ thi.';
+          mm.el.querySelector('#i-err-text').textContent = 'A combo needs at least two exams.';
           err.classList.add('show');
           return;
         }
@@ -267,6 +279,7 @@
         ref = mm.el.querySelector('#i-ref').value;
       }
       const body = {
+        planId: mm.el.querySelector('#i-plan').value,
         unlockType: type, unlockRef: ref,
         qty: +mm.el.querySelector('#i-qty').value || 1,
         expiresAt: mm.el.querySelector('#i-exp').value,
@@ -275,14 +288,14 @@
       if (preUser) { body.userId = +preUser; body.qty = 1; }
       const btn = mm.el.querySelector('#i-go');
       btn.disabled = true;
-      btn.innerHTML = AD.icon('loader', 'w-4 h-4 animate-spin-slow') + 'Đang cấp';
+      btn.innerHTML = AD.icon('loader', 'w-4 h-4 animate-spin-slow') + 'Issuing';
       try {
         const r = await AD.post('/admin/codes', body);
         mm.close();
         showResult(r.created, r.batchId);
         load(); loadBatches();
       } catch (e) {
-        btn.disabled = false; btn.textContent = 'Cấp mã';
+        btn.disabled = false; btn.textContent = 'Issue';
         mm.el.querySelector('#i-err-text').textContent = e.message;
         err.classList.add('show');
       }
@@ -294,19 +307,19 @@
       '<div class="text-center">' +
         '<span class="w-14 h-14 rounded-full bg-accent-soft text-accent-strong inline-flex items-center justify-center mx-auto">' +
           AD.icon('check', 'w-7 h-7') + '</span>' +
-        '<h3 class="text-lg font-extrabold tracking-tight mt-4">Đã cấp ' + codes.length + ' mã</h3>' +
-        '<p class="text-muted text-[14px] mt-1.5">Sao chép hoặc tải CSV để gửi cho học viên.</p>' +
+        '<h3 class="text-lg font-extrabold tracking-tight mt-4">Issued ' + codes.length + ' codes</h3>' +
+        '<p class="text-muted text-[14px] mt-1.5">Copy them, or download the CSV to send out.</p>' +
       '</div>' +
       '<pre class="card bg-brand-soft border-0 p-4 mt-5 max-h-52 overflow-y-auto text-[13px] font-bold tracking-wide whitespace-pre-wrap break-all">' +
         AD.esc(codes.join('\n')) + '</pre>' +
       '<div class="flex flex-wrap gap-2.5 mt-5">' +
-        '<button type="button" id="r-copy" class="btn btn-primary btn-md flex-1">' + AD.icon('copy', 'w-4 h-4') + 'Sao chép tất cả</button>' +
-        (batchId ? '<a class="btn btn-ghost btn-md" href="/api/admin/codes/export?batch=' + batchId + '">' + AD.icon('download', 'w-4 h-4') + 'Tải CSV</a>' : '') +
-        '<button type="button" data-close class="btn btn-ghost btn-md">Đóng</button>' +
+        '<button type="button" id="r-copy" class="btn btn-primary btn-md flex-1">' + AD.icon('copy', 'w-4 h-4') + 'Copy them all</button>' +
+        (batchId ? '<a class="btn btn-ghost btn-md" href="/api/admin/codes/export?batch=' + batchId + '">' + AD.icon('download', 'w-4 h-4') + 'Download CSV</a>' : '') +
+        '<button type="button" data-close class="btn btn-ghost btn-md">Close</button>' +
       '</div>', { wide: true });
     mm.el.querySelector('#r-copy').addEventListener('click', () => {
       navigator.clipboard && navigator.clipboard.writeText(codes.join('\n'))
-        .then(() => AD.toast('Đã sao chép ' + codes.length + ' mã')).catch(() => AD.toast('Không sao chép được', 'error'));
+        .then(() => AD.toast('Copied ' + codes.length + ' codes')).catch(() => AD.toast('Could not copy', 'error'));
     });
   }
 
@@ -319,7 +332,7 @@
   });
 
   if (preUser) {
-    AD.toast('Đang cấp code cho học viên đã chọn');
+    AD.toast('Issuing a code for the selected student');
     openIssue();
   }
   loadBatches();

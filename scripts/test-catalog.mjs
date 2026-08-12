@@ -10,7 +10,12 @@ const BASE = process.env.BASE || 'http://127.0.0.1:3000';
 const EXEC = process.env.CHROMIUM || '/opt/pw-browsers/chromium';
 
 let pass = 0, fail = 0;
-const ok = (c, name) => { c ? (pass++, console.log('✓ ' + name)) : (fail++, console.log('✗ ' + name)); };
+/* detail chỉ in khi đỏ: một dòng đủ để biết thấy gì thay vì phải chạy lại tay */
+const ok = (c, name, detail) => {
+  if (c) { pass++; console.log('✓ ' + name); return; }
+  fail++;
+  console.log('✗ ' + name + (detail === undefined ? '' : '  → ' + detail));
+};
 
 /** Đăng nhập tài khoản demo rồi trả về page đã vào được khu học viên */
 async function login(ctx) {
@@ -70,6 +75,76 @@ try {
   await page.goto(BASE + '/prep/bai-thi/khong-co-that/', { waitUntil: 'networkidle' });
   await page.waitForTimeout(400);
   ok(await page.locator('#nf:not([hidden])').count() === 1, 'Bài không tồn tại hiện trạng thái "không tìm thấy"');
+
+  /* --- 2b. Bảng giá ở trang giới thiệu đọc từ máy chủ ---
+     Landing là mặt tiền: gõ tay giá ở đây thì lần đổi giá tới sẽ có một trang
+     nói sai. Đối chiếu từng thẻ với bảng giá máy chủ công bố, nên nếu ai đó
+     đổi giá trong plans.js mà quên trang này, bài test đỏ ngay. */
+  const me = await (await fetch(BASE + '/api/me')).json();
+  const apiPlans = me.plans || [];
+  ok(apiPlans.length > 0, 'API công bố bảng giá (' + apiPlans.length + ' gói)');
+
+  await page.goto(BASE + '/prep/landing/', { waitUntil: 'networkidle' });
+  await page.waitForTimeout(600);
+  const shownPlans = await page.$$eval('.plan:not([hidden])', els => els.map(e => ({
+    id: e.getAttribute('data-plan'),
+    price: e.querySelector('[data-plan-price]').textContent.trim(),
+    months: e.querySelector('[data-plan-months]').textContent.trim()
+  })));
+  const vnd = n => n.toLocaleString('vi-VN') + 'đ';
+  ok(shownPlans.length === apiPlans.length,
+    'Trang giới thiệu hiện đúng số gói đang bán (' + shownPlans.length + '/' + apiPlans.length + ')');
+  const mismatch = shownPlans.filter(c => {
+    const p = apiPlans.find(x => x.id === c.id);
+    return !p || c.price !== vnd(p.price) || c.months !== String(p.months);
+  });
+  ok(mismatch.length === 0, 'Giá và thời hạn từng gói khớp bảng giá máy chủ',
+    JSON.stringify(mismatch));
+
+  /* Dòng ghi chú dưới nút phải nói đúng giá của thẻ đang chọn, không phải một
+     bản sao gõ tay đứng im. */
+  await page.click('.plan[data-plan="' + apiPlans[0].id + '"]');
+  await page.waitForTimeout(200);
+  const note = (await page.locator('#plan-cta-note').innerText()).trim();
+  ok(note.startsWith(vnd(apiPlans[0].price)),
+    'Ghi chú dưới nút đi theo gói đang chọn', note);
+
+  /* So trang với API thôi thì chưa chứng minh được gì: số gõ sẵn trong HTML
+     đang trùng giá thật, nên trang vẫn "khớp" kể cả khi nó chẳng đọc gì. Đổi
+     giá ngay trong câu trả lời của máy chủ rồi xem trang có đi theo không —
+     đây mới là phép thử không thể đúng nhờ trùng hợp. */
+  await page.route('**/api/me', async route => {
+    const res = await route.fetch();
+    const body = await res.json();
+    (body.plans || []).forEach(p => { p.price += 7000; p.months += 1; });
+    await route.fulfill({ response: res, body: JSON.stringify(body) });
+  });
+  await page.goto(BASE + '/prep/landing/', { waitUntil: 'networkidle' });
+  await page.waitForTimeout(600);
+  const doctored = await page.$$eval('.plan:not([hidden])', els => els.map(e => ({
+    id: e.getAttribute('data-plan'),
+    price: e.querySelector('[data-plan-price]').textContent.trim(),
+    months: e.querySelector('[data-plan-months]').textContent.trim()
+  })));
+  const followed = doctored.filter(c => {
+    const p = apiPlans.find(x => x.id === c.id);
+    return p && c.price === vnd(p.price + 7000) && c.months === String(p.months + 1);
+  });
+  ok(followed.length === apiPlans.length,
+    'Đổi giá ở máy chủ thì trang giới thiệu đổi theo (không gõ tay)',
+    JSON.stringify(doctored));
+
+  /* Máy chủ im lặng thì vẫn phải thấy một cái giá: thà giá cũ còn hơn ô trống
+     ở đúng chỗ người ta cần đọc. */
+  await page.unroute('**/api/me');
+  await page.route('**/api/me', r => r.abort());
+  await page.goto(BASE + '/prep/landing/', { waitUntil: 'networkidle' });
+  await page.waitForTimeout(600);
+  const offline = await page.$$eval('.plan:not([hidden])', els => els.map(e =>
+    e.querySelector('[data-plan-price]').textContent.trim()));
+  ok(offline.length === 3 && offline.every(t => /\d/.test(t)),
+    'API im thì bảng giá rơi về số dự phòng, không để trống', JSON.stringify(offline));
+  await page.unroute('**/api/me');
 
   ok(errs.length === 0, 'Không có lỗi console khi API chạy tốt');
   await ctx.close();

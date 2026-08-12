@@ -397,16 +397,26 @@ is not empty.
 |---|---|
 | The statistics, as pure functions over arrays | `server/item-analysis.js` |
 | Reading responses, grouping, storing verdicts | `server/item-stats.js` |
-| The durable record of what each candidate answered | `item_responses` table |
+| The record of what each candidate answered | `attempt_answers`, written by the exam engine |
 | Command-line report | `npm run phan-tich` |
 | Admin API | `GET /api/admin/analysis`, `POST /api/admin/analysis/run` |
 | Hand-worked tests of the maths | `scripts/test-authoring.mjs` |
 
-**The table is the part that cannot wait.** Facility can be recomputed at any
-time from stored responses; a response that was never stored is gone. Every
-attempt sat before `item_responses` exists is an attempt that can never
-contribute to any figure in this document, which is why the table landed
-before the exam-delivery code that will fill it.
+**It reads the exam engine's own table rather than keeping a copy.** The engine
+already writes one row per candidate per item, carrying the answer given and
+the marks earned. A second table holding the same responses would be two
+records of one event, and two records of one event disagree eventually — at
+which point the item statistics and the candidate's score report are both
+defensible and one of them is wrong.
+
+Two filters are applied there and are worth stating, because both change what
+the numbers mean. Only **submitted** attempts count: a sitting still in
+progress has blanks that are unreached rather than wrong, and counting them as
+wrong makes every item at the end of a paper look harder than it is. Only
+**marked** responses count: an unmarked rubric item is waiting for a human, and
+treating "not yet judged" as zero would retire every speaking item in the bank
+on the strength of a queue. `coverage()` reports the unmarked backlog
+separately for that reason — a bank can look starved when it is only waiting.
 
 **Three design decisions worth knowing about**, because each one changes what a
 verdict means:
@@ -429,10 +439,14 @@ verdict means:
    strongest, and it is the only thing in the bank doing so. The verdict is
    *review the level it is tagged to*, which is step 3 above, not *retire*.
 
-Internal consistency is grouped by skill and level rather than by part, because
-the claim being tested is that the listening items measure listening. Parts E,
-F and G together are 22 items; part I alone is two, and an alpha computed on
-two items would look like evidence and would not be any.
+Internal consistency is grouped by skill rather than by part, because the claim
+being tested is that the listening items measure listening — and because the
+skill is the number actually reported (`attempt_scores.skill`). Grouping any
+finer would compute a reliability for a total nobody is ever given. Parts E, F
+and G together give alpha something to work with; part I alone is two items,
+and an alpha computed on two items would look like evidence and would not be
+any. When `tests.level` lands, this becomes skill and level together: a Level 1
+and a Level 2 paper are then two measurements, and pooling them flatters both.
 
 Steps 5 to 8 are not implemented. They need decisions no code can make: what
 counts as a benchmark mark, who marks it, and what disagreement is tolerable.

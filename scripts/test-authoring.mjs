@@ -249,9 +249,13 @@ console.log('\n\x1b[1m== Kịch bản audio VPET ==\x1b[0m');
   const { allItems } = require('../server/data/vpet-scripts.js');
   const items = allItems();
 
-  /* Blueprint cố định 55 câu, trong đó các part có audio là E8 F8 G6 H10 I2 J3
-     = 37 câu mỗi level (docs/VOICE.md mục 1.1). */
-  const MONG_DOI = { E: 8, F: 8, G: 6, H: 10, I: 2, J: 3 };
+  /* Các part thật sự phát audio: E8 F8 G6 H10 J3 = 35 câu mỗi level.
+     Part I nằm ngoài danh sách này dù cũng là phần nói — blueprint đánh
+     `needsAudio: false` cho nó, thí sinh đọc tình huống trên màn hình rồi nói.
+     Viết kịch bản cho part I là hiện nút Dựng MP3 ở chỗ không phát gì và trả
+     tiền ElevenLabs cho một tệp không ai nghe; bể part I do
+     server/data/vpet-items.js giữ, dạng đề bài chữ. */
+  const MONG_DOI = { E: 8, F: 8, G: 6, H: 10, J: 3 };
   const dem = {};
   items.forEach(i => { dem[i.part + i.level] = (dem[i.part + i.level] || 0) + 1; });
 
@@ -259,8 +263,9 @@ console.log('\n\x1b[1m== Kịch bản audio VPET ==\x1b[0m');
   for (const [part, n] of Object.entries(MONG_DOI)) {
     for (const level of [1, 2]) if (dem[part + level] !== n) duSo = false;
   }
-  ok(duSo, 'Đủ số câu theo blueprint cho cả hai level (E8 F8 G6 H10 I2 J3)');
-  ok(items.length === 74, 'Tổng 74 kịch bản — 37 câu × 2 level', 'thấy ' + items.length);
+  ok(duSo, 'Đủ số câu theo blueprint cho cả hai level (E8 F8 G6 H10 J3)');
+  ok(items.length === 70, 'Tổng 70 kịch bản — 35 câu × 2 level', 'thấy ' + items.length);
+  ok(items.every(i => i.part !== 'I'), 'Không kịch bản nào thuộc part I — part đó không phát audio');
 
   ok(items.every(i => i.script && i.script.trim()), 'Không kịch bản nào rỗng');
   ok(new Set(items.map(i => i.ref)).size === items.length, 'Mã tham chiếu không trùng nhau');
@@ -299,54 +304,12 @@ console.log('\n\x1b[1m== Kịch bản audio VPET ==\x1b[0m');
   ok(items.filter(i => i.level === 2).every(i => i.cefr === 'B2'), 'Level 2 gắn bậc B2');
 }
 
-/* Part A–D: bốn part không cần audio, hoàn thiện nốt blueprint 55 câu. */
-{
-  const { allItems } = require('../server/data/vpet-items.js');
-  const items = allItems();
-
-  const MONG_DOI = { A: 10, B: 3, C: 3, D: 2 };
-  const dem = {};
-  items.forEach(i => { dem[i.part + i.level] = (dem[i.part + i.level] || 0) + 1; });
-  const duSo = Object.entries(MONG_DOI).every(([p, n]) => dem[p + 1] === n && dem[p + 2] === n);
-  ok(duSo, 'Part A–D đủ số câu cho cả hai level (A10 B3 C3 D2)');
-
-  /* Cộng với 37 câu có audio là tròn 55 — đúng blueprint, không thừa không thiếu. */
-  const coAudio = require('../server/data/vpet-scripts.js').allItems();
-  [1, 2].forEach(lv => {
-    const n = items.filter(i => i.level === lv).length + coAudio.filter(i => i.level === lv).length;
-    ok(n === 55, 'Level ' + lv + ' tròn 55 câu theo blueprint', 'thấy ' + n);
-  });
-
-  /* Part A–D không được mang kịch bản đọc: có kịch bản là hiện nút Dựng MP3 ở
-     chỗ không cần audio, và tốn tiền cho thứ không ai nghe. */
-  ok(items.every(i => !i.script), 'Part A–D không câu nào mang kịch bản audio');
-  ok(items.every(i => i.prompt.trim()), 'Part A–D câu nào cũng có đề bài hiển thị');
-
-  /* Part B và C đọc từ một đoạn văn; A và D thì không. */
-  ok(items.filter(i => ['B', 'C'].includes(i.part)).every(i => i.passage.trim()),
-    'Part B và C đều có đoạn văn kèm theo');
-  ok(items.filter(i => ['A', 'D'].includes(i.part)).every(i => !i.passage),
-    'Part A và D không kèm đoạn văn');
-
-  /* Bài tự luận chấm theo rubric, phần nội dung dựa vào ý chính — thiếu là chỉ
-     chấm được tiếng Anh, mất một nửa nhiệm vụ. */
-  ok(items.filter(i => i.type === 'essay').every(i => i.keyPoints.length >= 4),
-    'Mọi bài tự luận (B và D) có ít nhất 4 ý chính để chấm nội dung');
-
-  const a = items.filter(i => i.part === 'A');
-  ok(a.every(i => i.answer.trim()), 'Mọi câu part A đều có đáp án');
-  ok(a.every(i => i.prompt.includes('______')), 'Mọi câu part A đều có chỗ trống nhìn thấy được');
-  /* Đáp án nhiều biến thể ngăn bằng "|" — mỗi biến thể phải là một từ, vì đề
-     bài chỉ chừa đúng một chỗ trống. */
-  ok(a.every(i => i.answer.split('|').every(v => v.trim() && !/\s{2,}/.test(v.trim()))),
-    'Biến thể đáp án part A đều hợp lệ');
-
-  const c = items.filter(i => i.part === 'C');
-  ok(c.every(i => i.options.includes(i.answer)), 'Part C: đáp án luôn nằm trong phương án');
-  ok(c.every(i => i.options.length === 4), 'Part C: đúng 4 phương án mỗi câu');
-
-  ok(new Set(items.map(i => i.ref)).size === items.length, 'Mã tham chiếu part A–D không trùng');
-}
+/* Part A-D và I: bể câu không cần audio giờ do server/data/vpet-items.js
+   giữ, được seedVpetItems() nạp lúc khởi động và được scripts/test-items.mjs
+   kiểm (38 mục). Phần kiểm cũ ở đây đã bỏ: nó đòi mỗi part đúng số câu
+   blueprint cho từng level, mà bể thì cố ý hoặc nông hơn hoặc gấp đôi —
+   đúng bằng số blueprint là trường hợp tệ nhất, vì lượt thi lại sẽ lặp lại
+   nguyên si. Giữ lại sẽ là hai bộ kiểm nói ngược nhau về cùng một bể. */
 
 /* ================= 5. Khung đo và bộ mô tả năng lực ================= */
 
@@ -806,10 +769,25 @@ const gan = (a, b, eps = 1e-9) => a != null && Math.abs(a - b) < eps;
 
 {
   const IS = require('../server/item-stats.js');
-  ok(IS.sectionKey('listening', 1) === 'listening-L1', 'Khoá phần ghép từ kỹ năng và level');
-  ok(IS.sectionKey('reading', null) === 'reading-L?', 'Câu chưa gắn level vẫn gom được, và lộ ra là chưa gắn');
+  /* Alpha gom theo kỹ năng, vì kỹ năng là con số thật sự báo cho thí sinh
+     (attempt_scores.skill). Gom nhỏ hơn là tính độ tin cậy cho một tổng mà
+     không ai từng được nhận. */
+  ok(IS.sectionKey('listening') === 'listening', 'Khoá phần là kỹ năng');
+  ok(IS.sectionKey(null) === 'unknown', 'Câu chưa gắn kỹ năng vẫn gom được, và lộ ra là chưa gắn');
   ok(IS.vpetLevel({ tags_json: '["ref:E1-L2","part-E","level-2"]' }) === 2, 'Đọc được level từ tag');
   ok(IS.vpetLevel({ tags_json: '["part-E"]' }) === null, 'Không có tag level thì trả null, không đoán bừa');
+
+  /* Phân tích đọc thẳng bảng của phần thi, không giữ bản sao riêng. Hai bản
+     ghi cho cùng một sự kiện thì sớm muộn sẽ lệch nhau, và lúc đó thống kê
+     câu hỏi lẫn bảng điểm đều có lý mà một trong hai sai. */
+  const src = require('node:fs').readFileSync('server/item-stats.js', 'utf8');
+  ok(/FROM attempt_answers/.test(src), 'Đọc từ attempt_answers của phần thi');
+  ok(!/item_responses/.test(src), 'Không còn bảng bài làm riêng nào');
+  ok(/a\.status = 'submitted'/.test(src), 'Chỉ tính lượt đã nộp');
+  ok(/marked_at IS NOT NULL/.test(src), 'Chỉ tính câu đã chấm — chưa chấm không phải là sai');
+
+  const cov = IS.coverage();
+  ok(typeof cov.unmarked === 'number', 'Độ phủ báo riêng số câu còn chờ chấm');
 }
 
 if (cookie && csrf) {

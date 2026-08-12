@@ -1,0 +1,24 @@
+{
+  "name": "VPET Prep",
+  "short_name": "VPET Prep",
+  "description": "VPET mock test practice: full A-J test, self-study grammar, vocabulary and pronunciation.",
+  "id": "/prep/",
+  "start_url": "/prep/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "theme_color": "#1c3d8f",
+  "background_color": "#ffffff",
+  "lang": "vi",
+  "dir": "ltr",
+  "categories": ["education"],
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Thư viện đề thi", "url": "/prep/thu-vien/" },
+    { "name": "Khu tự học", "url": "/prep/hoc/thi/" }
+  ]
+}

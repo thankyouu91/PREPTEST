@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>No connection · VPET Prep</title>
+  <meta name="description" content="The device is offline. Reconnect to carry on practising for VPET.">
+  <meta name="theme-color" content="#1c3d8f">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="preload" href="/fonts/pjs-700-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/tailwind-built.css">
+  <style>body{font-family:'Plus Jakarta Sans',system-ui,sans-serif}</style>
+</head>
+<!-- Served from the service worker cache when a navigation cannot reach the
+     network, so it carries no script and no data of its own: whatever is here
+     has to work with the radio off. -->
+<body class="bg-surface text-ink">
+  <main class="min-h-[100dvh] grid place-items-center px-6">
+    <div class="card p-10 max-w-[52ch] text-center">
+      <span class="w-14 h-14 rounded-full bg-brand-soft text-brand-strong inline-flex items-center justify-center mx-auto">
+        <svg viewBox="0 0 24 24" class="w-7 h-7" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M1 1l22 22"/><path d="M16.7 16.7A10.9 10.9 0 0 1 12 18"/>
+          <path d="M5 12.5a10.9 10.9 0 0 1 3.6-2.4"/><path d="M2 8.8a16 16 0 0 1 4.4-2.7"/>
+          <path d="M22 8.8a16 16 0 0 0-8.9-3.7"/><path d="M12 21h.01"/>
+        </svg>
+      </span>
+      <h1 class="text-2xl font-extrabold tracking-tight mt-5">No network connection</h1>
+      <p class="text-muted text-[15.5px] leading-relaxed mt-3">
+        Your device is offline, so this page could not load. Turn Wi-Fi or mobile data
+        back on and try again — anything you had in progress is still there.
+      </p>
+      <a href="/prep/" class="btn btn-primary btn-lg mt-7">Try again</a>
+    </div>
+  </main>
+</body>
+</html>

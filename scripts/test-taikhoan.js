@@ -56,7 +56,7 @@ try {
   ok(soAdmin === '1', 'CSDL mới tự tạo một tài khoản quản trị', 'thấy ' + soAdmin);
 
   /* 2. Tài khoản demo về đúng tài liệu ở lần khởi động đầu */
-  chay("require('./server/auth').ensureDemoStudentPassword();");
+  chay("require('./server/auth').ensureDemoStudent();");
   const dungNgay = chay(
     "const A=require('./server/auth'),{q}=require('./server/db');" +
     "const u=q.get(\"SELECT pass_hash FROM users WHERE username='student'\");" +
@@ -72,7 +72,7 @@ try {
     "console.log(A.verifyPassword('Goodmorning01', u.pass_hash))").trim();
   ok(daLech === 'false', 'Dựng được tình huống mật khẩu demo đã lệch khỏi tài liệu');
 
-  const daSua = chay("console.log(require('./server/auth').ensureDemoStudentPassword())").trim();
+  const daSua = chay("console.log(require('./server/auth').ensureDemoStudent())").trim();
   ok(daSua.includes('true'), 'Khởi động lại phát hiện lệch và tự đặt lại');
 
   const hetLech = chay(
@@ -82,21 +82,32 @@ try {
   ok(hetLech === 'true', 'Mật khẩu demo đã về đúng tài liệu');
 
   /* 4. Không sửa gì khi đã đúng — tránh ghi CSDL và in cảnh báo mỗi lần chạy */
-  const lanHai = chay("console.log(require('./server/auth').ensureDemoStudentPassword())").trim();
+  const lanHai = chay("console.log(require('./server/auth').ensureDemoStudent())").trim();
   ok(lanHai.includes('false'), 'Đã đúng rồi thì không đụng vào nữa');
 
   /* 5. Tài khoản demo bị khoá hoặc chưa xác thực cũng được kéo về */
   chay("const{q}=require('./server/db');q.run(\"UPDATE users SET status='locked', verified=0 WHERE username='student'\");");
-  chay("require('./server/auth').ensureDemoStudentPassword();");
+  chay("require('./server/auth').ensureDemoStudent();");
   const trangThai = chay(
     "const{q}=require('./server/db');" +
     "const u=q.get(\"SELECT verified, status FROM users WHERE username='student'\");" +
     "console.log(u.verified + '/' + u.status)").trim();
   ok(trangThai === '1/active', 'Tài khoản demo bị khoá cũng được mở lại', trangThai);
 
+  /* 5b. Tên hiển thị cũng được kéo về. Tên nằm trong bản seed chạy một lần, nên
+     một CSDL đã tồn tại giữ mãi giá trị cũ dù seed có ghi gì — mà tên này hiện
+     ở lời chào trên mọi màn đã đăng nhập. */
+  chay("const{q}=require('./server/db');q.run(\"UPDATE users SET name='Tên Cũ' WHERE username='student'\");");
+  const daSuaTen = chay("console.log(require('./server/auth').ensureDemoStudent())").trim();
+  ok(daSuaTen.includes('true'), 'Tên hiển thị lệch cũng bị phát hiện');
+  const ten = chay(
+    "const{q}=require('./server/db');" +
+    "console.log(q.val(\"SELECT name FROM users WHERE username='student'\"))").trim();
+  ok(ten === 'Demo Student', 'Tên hiển thị được kéo về đúng tài liệu', ten);
+
   /* 6. Ở production thì tuyệt đối không đụng vào tài khoản demo */
   const oProd = execFileSync(process.execPath,
-    ['-e', "console.log(require('./server/auth').ensureDemoStudentPassword())"],
+    ['-e', "console.log(require('./server/auth').ensureDemoStudent())"],
     { cwd: GOC, encoding: 'utf8', env: { ...process.env, PREP_DB: DB, NODE_ENV: 'production' } }).trim();
   ok(oProd.includes('false'), 'Ở production không tự đặt lại tài khoản demo');
 
@@ -189,6 +200,38 @@ try {
   let choiLenhLa = false;
   try { cli('xoa-het-du-lieu'); } catch (e) { choiLenhLa = true; }
   ok(choiLenhLa, 'Lệnh không hợp lệ bị từ chối');
+
+  /* 13. Kỳ thi chưa sẵn sàng thì không được có đề đang bán.
+     Đây là luật áp lúc khởi động, nên phải thử đúng cách nó xảy ra thật: đẩy
+     một đề của kỳ thi đã park lên 'published' bằng SQL, rồi khởi động lại và
+     xem nó có bị kéo về nháp không. */
+  const kyThiPark = chay(
+    "const{q}=require('./server/db');" +
+    "console.log(q.val(\"SELECT f.id FROM families f WHERE f.status='coming_soon' " +
+    "AND EXISTS (SELECT 1 FROM tests t WHERE t.family_id=f.id) ORDER BY f.sort LIMIT 1\") || '')"
+  ).trim();
+  ok(!!kyThiPark, 'Có kỳ thi chưa sẵn sàng nhưng vẫn còn đề trong CSDL', kyThiPark);
+
+  const daDay = chay(
+    "const{q}=require('./server/db');" +
+    "const id=q.val(\"SELECT id FROM tests WHERE family_id=? LIMIT 1\", '" + kyThiPark + "');" +
+    "if(id){q.run(\"UPDATE tests SET status='published' WHERE id=?\", id);console.log(id)}else{console.log('')}"
+  ).trim();
+  ok(!!daDay, 'Dựng được tình huống đề của kỳ thi chưa sẵn sàng bị phát hành', daDay);
+
+  const conBan = chay(
+    "const{q}=require('./server/db');" +
+    "console.log(q.val(\"SELECT COUNT(*) c FROM tests t JOIN families f ON f.id=t.family_id " +
+    "WHERE t.status='published' AND f.status='coming_soon'\"))"
+  ).trim();
+  ok(conBan === '0', 'Khởi động lại kéo đề của kỳ thi chưa sẵn sàng về nháp', conBan + ' đề còn đang bán');
+
+  const vpetConNguyen = chay(
+    "const{q}=require('./server/db');" +
+    "console.log(q.val(\"SELECT COUNT(*) c FROM tests t JOIN families f ON f.id=t.family_id " +
+    "WHERE t.status='published' AND f.status='ready'\"))"
+  ).trim();
+  ok(Number(vpetConNguyen) > 0, 'Đề của kỳ thi đang mở không bị đụng tới', vpetConNguyen);
 
 } finally {
   fs.rmSync(thuMuc, { recursive: true, force: true });

@@ -1,19 +1,19 @@
 /* ============================================================
-   PrepTTS — phát âm bằng Web Speech API có sẵn trong trình duyệt
+   PrepTTS — pronunciation through the browser's built-in Web Speech API
    ------------------------------------------------------------
-   Miễn phí hoàn toàn, không khoá API, không gọi mạng ngoài nên
-   không đụng CSP nghiêm ngặt của nền tảng.
+   Free, no API key, no outbound request — so it never touches the platform's
+   strict CSP.
 
-   Ba cách kích hoạt:
-     1. Nhấn vào một từ  → đọc riêng từ đó
-     2. Bôi đen đoạn chữ → hiện nút phát nổi cạnh vùng bôi đen
-     3. Nút loa          → đọc trọn câu
+   Three ways to trigger it:
+     1. Tap a word        → reads that word alone
+     2. Select some text  → a floating play button appears beside the selection
+     3. The speaker button → reads the whole sentence
 
-   Giọng Anh (en-GB) / Mỹ (en-US) chọn được, lưu vào localStorage.
+   British (en-GB) / American (en-US) is selectable and remembered in localStorage.
 
-   Giới hạn: giọng do hệ điều hành cung cấp. Máy không cài giọng tiếng
-   Anh sẽ không phát được — khi đó gọi onUnavailable() để giao diện hiện
-   IPA thay vì im lặng.
+   Limit: the voices come from the operating system. A machine with no English
+   voice installed cannot speak — onUnavailable() fires then, so the interface can
+   show IPA rather than saying nothing.
    ============================================================ */
 const PrepTTS = {
   KEY_ACCENT: 'prep.tts.accent',
@@ -27,8 +27,8 @@ const PrepTTS = {
     return typeof window !== 'undefined' && 'speechSynthesis' in window;
   },
 
-  /* Trình duyệt nạp danh sách giọng bất đồng bộ; Chrome trả mảng rỗng ở lần
-     gọi đầu rồi mới bắn voiceschanged. */
+  /* Browsers load the voice list asynchronously; Chrome returns an empty array on
+     the first call and only then fires voiceschanged. */
   init() {
     if (!this.supported() || this._ready) return Promise.resolve(this._voices);
     return new Promise(resolve => {
@@ -47,7 +47,7 @@ const PrepTTS = {
         load();
         resolve(PrepTTS._voices);
       });
-      // Một số trình duyệt không bao giờ bắn voiceschanged
+      // Some browsers never fire voiceschanged at all
       setTimeout(() => { load(); resolve(this._voices); }, 1200);
     });
   },
@@ -69,7 +69,7 @@ const PrepTTS = {
     try { localStorage.setItem(this.KEY_RATE, String(r)); } catch (e) {}
   },
 
-  /** Giọng khớp giọng đang chọn; null nếu máy không có giọng tiếng Anh nào */
+  /** The voice matching the current choice; null if the machine has no English voice */
   voiceFor(accent) {
     const want = (accent || this.accent()) === 'uk' ? 'en-GB' : 'en-US';
     const vs = this._voices;
@@ -80,12 +80,12 @@ const PrepTTS = {
         || null;
   },
 
-  /** Có phát được tiếng Anh không */
+  /** Whether English can be spoken at all */
   available() {
     return this.supported() && !!this.voiceFor();
   },
 
-  /** Đọc một đoạn chữ. Trả true nếu phát được. */
+  /** Speak a piece of text. Returns true if it could be spoken. */
   speak(text, opts) {
     opts = opts || {};
     const t = String(text || '').trim();
@@ -100,7 +100,7 @@ const PrepTTS = {
       return false;
     }
 
-    window.speechSynthesis.cancel();          // cắt câu đang đọc dở
+    window.speechSynthesis.cancel();          // cut off whatever is mid-sentence
     const u = new SpeechSynthesisUtterance(t);
     u.voice = voice;
     u.lang = voice.lang;
@@ -113,15 +113,15 @@ const PrepTTS = {
 
   stop() { if (this.supported()) window.speechSynthesis.cancel(); },
 
-  /* ---------- Tách câu thành từng từ bấm được ----------
-     Trả HTML: mỗi từ bọc trong <button data-say>, dấu câu để nguyên.
-     Dùng cho câu ví dụ — học viên nhấn từ nào nghe từ đó. */
+  /* ---------- Split a sentence into tappable words ----------
+     Returns HTML: each word wrapped in <button data-say>, punctuation left alone.
+     Used on example sentences — tap a word, hear that word. */
   wordify(sentence, cls) {
     const esc = s => String(s).replace(/[&<>"']/g, c =>
       ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
     return String(sentence || '').split(/(\s+)/).map(chunk => {
       if (/^\s+$/.test(chunk)) return chunk;
-      // Tách dấu câu ở hai đầu để không đọc cả dấu chấm
+      // Peel punctuation off both ends so the full stop is not read aloud
       const m = chunk.match(/^([^\wÀ-ỹ]*)([\wÀ-ỹ'’-]+)([^\wÀ-ỹ]*)$/);
       if (!m) return esc(chunk);
       const [, before, word, after] = m;
@@ -132,9 +132,9 @@ const PrepTTS = {
     }).join('');
   },
 
-  /* ---------- Gắn các cách kích hoạt vào một vùng ---------- */
+  /* ---------- Wire the triggers into a region ---------- */
 
-  /** Uỷ quyền: mọi phần tử [data-say] bên trong root, nhấn là đọc */
+  /** Delegated: any [data-say] inside root speaks when tapped */
   bindClicks(root) {
     (root || document).addEventListener('click', e => {
       const b = e.target.closest('[data-say]');
@@ -144,7 +144,7 @@ const PrepTTS = {
     });
   },
 
-  /** Bôi đen chữ trong root → hiện nút phát nổi ngay cạnh vùng bôi đen */
+  /** Select text inside root → a floating play button appears beside the selection */
   bindSelection(root) {
     if (!this.supported()) return;
     const host = root || document.body;
@@ -154,7 +154,7 @@ const PrepTTS = {
     bubble.id = 'tts-bubble';
     bubble.hidden = true;
     bubble.className = 'tts-bubble';
-    bubble.setAttribute('aria-label', 'Phát âm đoạn đã chọn');
+    bubble.setAttribute('aria-label', 'Speak the selected text');
     bubble.innerHTML = PREP.icon('headphones', 'w-4 h-4') + '<span>Nghe</span>';
     document.body.appendChild(bubble);
 
@@ -164,7 +164,7 @@ const PrepTTS = {
     document.addEventListener('selectionchange', () => {
       const sel = document.getSelection();
       const text = sel ? String(sel).trim() : '';
-      // Chỉ hiện khi bôi đen chữ Latin nằm trong vùng cho phép
+      // Only shown for a Latin-script selection inside the permitted region
       if (!text || text.length > 300 || !/[A-Za-z]/.test(text)) return hide();
       const node = sel.anchorNode;
       if (!node || !host.contains(node.nodeType === 1 ? node : node.parentNode)) return hide();
@@ -177,27 +177,27 @@ const PrepTTS = {
       bubble.style.left = (rect.left + window.scrollX + rect.width / 2) + 'px';
     });
 
-    bubble.addEventListener('mousedown', e => e.preventDefault());  // giữ vùng bôi đen
+    bubble.addEventListener('mousedown', e => e.preventDefault());  // keep the selection
     bubble.addEventListener('click', () => { if (picked) this.speak(picked); });
     document.addEventListener('scroll', hide, { passive: true });
   },
 
-  /** Dựng cụm nút chọn giọng Anh/Mỹ + tốc độ vào một phần tử */
+  /** Build the British/American voice picker and speed control into an element */
   mountControls(el, onChange) {
     if (!el) return;
     const render = () => {
       const a = this.accent();
       el.innerHTML =
         '<div class="flex flex-wrap items-center gap-2">' +
-          '<span class="text-[13px] font-semibold text-muted">Giọng</span>' +
-          '<div class="seg" role="group" aria-label="Chọn giọng phát âm">' +
-            '<button type="button" class="seg-btn" data-accent="us" aria-pressed="' + (a === 'us') + '">Mỹ</button>' +
+          '<span class="text-[13px] font-semibold text-muted">Voice</span>' +
+          '<div class="seg" role="group" aria-label="Choose the pronunciation voice">' +
+            '<button type="button" class="seg-btn" data-accent="us" aria-pressed="' + (a === 'us') + '">US</button>' +
             '<button type="button" class="seg-btn" data-accent="uk" aria-pressed="' + (a === 'uk') + '">Anh</button>' +
           '</div>' +
           '<label class="flex items-center gap-2 text-[13px] font-semibold text-muted ms-1">' +
-            'Tốc độ' +
+            'Speed' +
             '<input type="range" id="tts-rate" min="0.5" max="1.2" step="0.05" value="' + this.rate() + '" ' +
-              'class="w-24 accent-[color:var(--color-accent)]" aria-label="Tốc độ đọc">' +
+              'class="w-24 accent-[color:var(--color-accent)]" aria-label="Reading speed">' +
           '</label>' +
         '</div>';
       PREP.qsa('[data-accent]', el).forEach(b => b.addEventListener('click', () => {

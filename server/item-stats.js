@@ -1,9 +1,23 @@
 /**
- * Item statistics over the live response table.
+ * Item statistics over the responses the exam engine already records.
  *
  * `server/item-analysis.js` holds the maths and touches no database.
- * This file is the other half: it reads `item_responses`, feeds the maths,
+ * This file is the other half: it reads `attempt_answers`, feeds the maths,
  * and writes the answers into `item_stats` and `section_stats`.
+ *
+ * ---------------------------------------------------------------------------
+ * WHY IT READS attempt_answers RATHER THAN A TABLE OF ITS OWN
+ *
+ * Because the exam engine already writes one row per candidate per item, with
+ * the answer given and the marks earned. A second table holding the same
+ * responses would be two records of one event, and two records of one event
+ * disagree eventually — at which point the item statistics and the candidate's
+ * score report are both defensible and one of them is wrong.
+ *
+ * The cost of reading the engine's table is a join and a dependency on its
+ * column names. The cost of not doing so is a bank retired on numbers that no
+ * longer match the marks anybody was given.
+ * ---------------------------------------------------------------------------
  *
  * ---------------------------------------------------------------------------
  * WHY THE RESULT IS STORED RATHER THAN COMPUTED ON REQUEST
@@ -15,12 +29,11 @@
  * every page load has no history and cannot be argued with.
  * ---------------------------------------------------------------------------
  *
- * Grouping for internal consistency is by skill and level, not by part.
- * Cronbach's alpha asks whether a set of items measures one thing; the thing
- * VPET claims to measure is listening, not part F. Parts E, F and G together
- * are twenty-two listening items and give alpha something to work with, while
- * part I on its own is two items and would produce a number that looks like
- * evidence and is not.
+ * Grouping for internal consistency is by skill, not by part. Cronbach's alpha
+ * asks whether a set of items measures one thing; the thing VPET claims to
+ * measure is listening, not part F. Parts E, F and G together give alpha
+ * something to work with, while part I on its own is two items and would
+ * produce a number that looks like evidence and is not.
  */
 'use strict';
 
@@ -36,43 +49,63 @@ function vpetLevel(row) {
   return tag ? Number(tag.slice(6)) : null;
 }
 
-const sectionKey = (skill, level) => `${skill}-L${level == null ? '?' : level}`;
+/**
+ * Which set of items an alpha is computed over.
+ *
+ * The skill, not the part and not the CEFR tag. Alpha asks whether a set of
+ * items measures one thing, and the one thing being claimed is the number on
+ * the report — `attempt_scores.skill`. Grouping any finer would compute a
+ * reliability for a total nobody is ever given.
+ *
+ * When `tests.level` lands (ROADMAP, two exam levels) this becomes skill and
+ * level together, because a Level 1 and a Level 2 paper are then two different
+ * measurements and pooling them would flatter both.
+ */
+const sectionKey = skill => skill || 'unknown';
 
 /**
- * Every response, arranged the way the maths needs it.
+ * Every marked response, arranged the way the maths needs it.
  *
- * One pass over the table rather than a query per item: with 55 items and a
- * few hundred attempts this is a small read, and doing it once means every
- * statistic below is computed from the same snapshot. Two queries a second
- * apart during an exam window would otherwise disagree with each other.
+ * One pass over the table rather than a query per item: doing it once means
+ * every statistic below is computed from the same snapshot. Two queries a
+ * second apart during an exam window would otherwise disagree with each other.
+ *
+ * Only submitted attempts. A sitting still in progress has blanks that are not
+ * wrong answers — they are unreached ones — and counting them as wrong makes
+ * every item at the end of a paper look harder than it is.
+ *
+ * Only marked responses. An unmarked rubric item is waiting for a human, and
+ * treating "not yet judged" as zero would retire every speaking item in the
+ * bank on the strength of a queue.
  *
  * @param {object} opts
- * @param {string} [opts.source]  restrict to one source, e.g. 'exam'
- * @param {string} [opts.since]   ISO date; only responses at or after it
+ * @param {string} [opts.since]  ISO date; only attempts submitted at or after it
  */
-function snapshot({ source, since } = {}) {
-  const where = [];
+function snapshot({ since } = {}) {
+  const where = ["a.status = 'submitted'", 'r.marked_at IS NOT NULL'];
   const args = [];
-  if (source) { where.push('r.source = ?'); args.push(source); }
-  if (since) { where.push('r.created_at >= ?'); args.push(since); }
+  if (since) { where.push('a.submitted_at >= ?'); args.push(since); }
 
   const rows = q.all(
-    `SELECT r.attempt_ref, r.question_id, r.chosen, r.correct, r.score, r.max_score,
-            qq.skill, qq.part, qq.type, qq.options_json, qq.answer, qq.tags_json, qq.prompt
-       FROM item_responses r
+    `SELECT r.attempt_id, r.question_id, r.answer AS chosen, r.earned, r.max_score,
+            qq.skill, qq.part, qq.type, qq.options_json, qq.answer AS key_answer,
+            qq.tags_json, qq.prompt
+       FROM attempt_answers r
+       JOIN attempts  a  ON a.id = r.attempt_id
        JOIN questions qq ON qq.id = r.question_id
-      ${where.length ? 'WHERE ' + where.join(' AND ') : ''}
-      ORDER BY r.attempt_ref, r.question_id`, ...args);
+      WHERE ${where.join(' AND ')}
+      ORDER BY r.attempt_id, r.question_id`, ...args);
 
-  /* value() is what goes in the matrix. A rubric-marked response carries a
-     score out of a maximum; a multiple-choice one carries 1 or 0. Normalising
-     the rubric score to its maximum would flatten the variance that alpha is
-     built on, so the raw score is kept and the maximum recorded beside it. */
+  /* `value` is what goes in the matrix: the mark earned, whatever the scale.
+     Normalising a rubric score to its maximum would flatten the variance alpha
+     is built on, so the raw mark is kept and the maximum recorded beside it. */
   const items = new Map();     // question_id → { meta, byAttempt: Map }
   const attempts = new Set();
 
   for (const r of rows) {
-    attempts.add(r.attempt_ref);
+    const max = r.max_score > 0 ? r.max_score : 1;
+    attempts.add(r.attempt_id);
+
     if (!items.has(r.question_id)) {
       items.set(r.question_id, {
         id: r.question_id,
@@ -82,21 +115,27 @@ function snapshot({ source, since } = {}) {
         level: vpetLevel(r),
         prompt: r.prompt,
         options: jparse(r.options_json, []),
-        answer: r.answer,
-        rubricMarked: r.score != null,
+        answer: r.key_answer,
+        /* A response is rubric-marked when its scale has more than two points.
+           Facility then has to be a mean over the maximum rather than a pass
+           rate — see item-analysis.facility. */
+        rubricMarked: max > 1,
         byAttempt: new Map()
       });
     }
     const it = items.get(r.question_id);
-    it.byAttempt.set(r.attempt_ref, {
-      value: r.score != null ? r.score : (r.correct ? 1 : 0),
-      correct: r.correct ? 1 : 0,
+    it.byAttempt.set(r.attempt_id, {
+      value: r.earned || 0,
+      /* Full marks is the only thing that means "right" across both scales.
+         For a 0/1 item it is the item; for a rubric item it is a top band,
+         and the distractor analysis below is the only consumer either way. */
+      correct: r.earned >= max ? 1 : 0,
       chosen: r.chosen,
-      max: r.max_score
+      max
     });
   }
 
-  return { items, attempts: [...attempts].sort() };
+  return { items, attempts: [...attempts].sort((a, b) => a - b) };
 }
 
 /**
@@ -125,8 +164,8 @@ function sectionTotals(itemList, attempts) {
  * endpoint show the same numbers and there is no second implementation to
  * drift.
  */
-function computeAll({ source, since, dryRun = false } = {}) {
-  const { items, attempts } = snapshot({ source, since });
+function computeAll({ since, dryRun = false } = {}) {
+  const { items, attempts } = snapshot({ since });
   const at = nowISO();
 
   if (!items.size) {
@@ -137,7 +176,7 @@ function computeAll({ source, since, dryRun = false } = {}) {
      section it sits in has told us who is stronger. */
   const sections = new Map();
   for (const it of items.values()) {
-    const key = sectionKey(it.skill, it.level);
+    const key = sectionKey(it.skill);
     if (!sections.has(key)) sections.set(key, []);
     sections.get(key).push(it);
   }
@@ -292,15 +331,29 @@ function stored({ recommend } = {}) {
 function coverage() {
   const row = q.get(
     `SELECT COUNT(*) AS responses,
-            COUNT(DISTINCT attempt_ref) AS attempts,
-            COUNT(DISTINCT question_id) AS items,
-            MIN(created_at) AS first_at, MAX(created_at) AS last_at
-       FROM item_responses`);
+            COUNT(DISTINCT r.attempt_id) AS attempts,
+            COUNT(DISTINCT r.question_id) AS items,
+            MIN(a.submitted_at) AS first_at, MAX(a.submitted_at) AS last_at
+       FROM attempt_answers r
+       JOIN attempts a ON a.id = r.attempt_id
+      WHERE a.status = 'submitted' AND r.marked_at IS NOT NULL`);
+
+  /* Counted separately rather than as part of the row above, because it is a
+     different question: not "how much data is there" but "how much of it is
+     still queued behind a marker". A bank can look starved when it is only
+     waiting. */
+  const pending = q.val(
+    `SELECT COUNT(*) FROM attempt_answers r JOIN attempts a ON a.id = r.attempt_id
+      WHERE a.status = 'submitted' AND r.marked_at IS NULL`) || 0;
+
   const need = stats.MIN_N.discrimination;
   const thin = q.all(
-    `SELECT question_id, COUNT(*) AS n FROM item_responses
-      GROUP BY question_id HAVING n < ? ORDER BY n`, need).length;
-  return { ...row, needPerItem: need, itemsBelowThreshold: thin };
+    `SELECT r.question_id, COUNT(*) AS n
+       FROM attempt_answers r JOIN attempts a ON a.id = r.attempt_id
+      WHERE a.status = 'submitted' AND r.marked_at IS NOT NULL
+      GROUP BY r.question_id HAVING n < ?`, need).length;
+
+  return { ...row, unmarked: pending, needPerItem: need, itemsBelowThreshold: thin };
 }
 
 module.exports = { snapshot, computeAll, stored, coverage, sectionKey, vpetLevel };

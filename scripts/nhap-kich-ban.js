@@ -1,12 +1,14 @@
 /**
- * Nhập toàn bộ nội dung VPET vào ngân hàng câu hỏi.
+ * Nhập các bài có kịch bản đọc vào ngân hàng câu hỏi.
  *
- * Hai nguồn, một đường nhập:
- *   server/data/vpet-scripts.js   part E F G H I J — có kịch bản đọc
- *   server/data/vpet-items.js     part A B C D     — không cần audio
+ * Chỉ `server/data/vpet-scripts.js` — các part E F G H I J, phần cần dựng
+ * audio. Các part không cần audio (A B C D I) đi đường khác:
+ * `seedVpetItems()` trong server/db.js nạp chúng từ `server/data/vpet-items.js`
+ * ngay lúc khởi động, khớp theo `ext_key`. Hai đường nhập cùng ghi một bộ câu
+ * thì kho sẽ có hai bản của mỗi câu, và bộ sinh đề sẽ rút phải bản nào tuỳ may.
  *
  * Sau bước này, vào Quản trị → Ngân hàng câu hỏi, mở một câu có audio, chọn
- * giọng rồi bấm Dựng MP3. Các part A–D dùng được ngay, không phải dựng gì.
+ * giọng rồi bấm Dựng MP3.
  *
  * Chạy được nhiều lần: mỗi câu mang một tag `ref:E1-L1`, câu đã có thì bỏ qua,
  * nên nhập lại sau khi sửa nội dung chỉ thêm phần mới chứ không nhân đôi kho.
@@ -23,13 +25,11 @@
 const { q, nowISO, jparse } = require('../server/db');
 const { parseScript } = require('../server/script-markup');
 
-/* Đánh dấu nguồn ngay lúc đọc: part nào phải có kịch bản, part nào phải không
-   có. Kiểm cả hai chiều — một câu part C mang kịch bản đọc là lỗi soạn thảo
-   im lặng, vì nó sẽ hiện nút Dựng MP3 ở chỗ không cần audio. */
-const items = [
-  ...require('../server/data/vpet-scripts').allItems().map(i => ({ ...i, coAudio: true })),
-  ...require('../server/data/vpet-items').allItems().map(i => ({ ...i, coAudio: false }))
-];
+/* Mọi câu ở đây đều phải có kịch bản đọc — đó là lý do chúng đi đường này chứ
+   không đi qua seedVpetItems(). Một câu rỗng kịch bản lọt vào kho sẽ hiện nút
+   Dựng MP3 rồi hỏng lúc bấm, nên chặn ngay tại đây. */
+const items = require('../server/data/vpet-scripts').allItems()
+  .map(i => ({ ...i, coAudio: true }));
 
 const args = process.argv.slice(2);
 const THU = args.includes('--thu') || args.includes('--dry-run');
