@@ -303,6 +303,39 @@ CREATE INDEX IF NOT EXISTS idx_colloc_entry ON collocations(entry_id, sort);
 CREATE INDEX IF NOT EXISTS idx_colloc_level ON collocations(level);
 CREATE INDEX IF NOT EXISTS idx_colloc_kind  ON collocations(kind);
 
+-- One learner's schedule for one study item, docs/LEARNING.md §6. The numbers
+-- are SM-2's and they are computed in server/srs.js, never here and never in
+-- the browser: a schedule the client can write is a schedule that resets itself
+-- the first time somebody wants an easier session.
+--
+-- item_type names the table item_id points into, and there is deliberately
+-- NO foreign key: the three content tables are re-seeded from files, and a
+-- cascade delete would mean a corrected spelling in a word list silently wiping
+-- somebody's six months of review history. The reference is checked when a
+-- review is graded and dangling rows are simply skipped when the queue is built,
+-- which is the failure that loses nothing.
+CREATE TABLE IF NOT EXISTS learn_progress (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  item_type TEXT NOT NULL,                      -- vocab_sense | irregular_verb | linking_word
+  item_id INTEGER NOT NULL,
+  ease REAL NOT NULL DEFAULT 2.5,
+  interval_days INTEGER NOT NULL DEFAULT 0,     -- 0 means "still being learned"
+  reps INTEGER NOT NULL DEFAULT 0,              -- consecutive successes; reset by a failure
+  lapses INTEGER NOT NULL DEFAULT 0,            -- total failures, never reset
+  state TEXT NOT NULL DEFAULT 'learning',       -- learning | review
+  last_grade TEXT,
+  due_at TEXT NOT NULL,
+  reviewed_at TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  UNIQUE(user_id, item_type, item_id)
+);
+
+-- The queue query is "my cards, due before now, soonest first", and the daily
+-- new-card cap counts rows created today; both are covered here.
+CREATE INDEX IF NOT EXISTS idx_lp_due     ON learn_progress(user_id, due_at);
+CREATE INDEX IF NOT EXISTS idx_lp_created ON learn_progress(user_id, created_at);
+
 -- Fingerprints of the authored content tables (irregular verbs, linking words, …).
 -- Reloaded when a fingerprint changes, so correcting content or removing an entry
 -- also reaches a running database — not only adding rows.

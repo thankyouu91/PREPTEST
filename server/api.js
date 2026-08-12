@@ -1671,4 +1671,274 @@ router.get('/learn/vocab/:headword', (req, res) => {
   });
 });
 
+/* ==================================================================== *
+ * Spaced repetition — the review queue and the grading of one card
+ *
+ * docs/LEARNING.md §6: a learner sees what is DUE, not the whole word list.
+ * The schedule itself is in server/srs.js; this part decides which cards exist,
+ * which of them are due, and how many unseen ones to let through in a day.
+ *
+ * Two decisions worth stating, because both look like mistakes from the exam
+ * engine's side of the house:
+ *
+ *  · The answer is sent with the question. The exam router strips `answer` from
+ *    every item it serialises, and must. A recall card is the opposite: the back
+ *    of the card IS the study material, the learner grades themselves, and there
+ *    is nothing to cheat at. Sending both halves means a session runs without a
+ *    round trip per card.
+ *  · Grades are self-reported and taken at face value, for the same reason.
+ * ==================================================================== */
+
+const srs = require('./srs');
+
+/* Which content tables can be reviewed, and how a row from each becomes a card.
+   Adding a deck is adding an entry here: the queue, the counts, the validation
+   and the screen all read this one object. */
+const DECKS = {
+  irregular_verb: {
+    label: 'Irregular verbs',
+    idsSql: 'SELECT id FROM irregular_verbs ORDER BY sort, v1',
+    rowsSql: holes => `SELECT * FROM irregular_verbs WHERE id IN (${holes})`,
+    card: r => ({
+      prompt: r.v1,
+      ipa: r.ipa_uk || r.ipa_us || '',
+      ask: 'Past simple, past participle, and what it means',
+      answer: [r.v2, r.v3].join(' · '),
+      gloss: r.vi,
+      exEn: r.ex_en || '',
+      exVi: r.ex_vi || '',
+      note: r.note || '',
+      level: r.level
+    })
+  },
+  linking_word: {
+    label: 'Linking words',
+    idsSql: 'SELECT id FROM linking_words ORDER BY sort, word',
+    rowsSql: holes => `SELECT * FROM linking_words WHERE id IN (${holes})`,
+    card: r => ({
+      prompt: r.word,
+      ipa: '',
+      ask: 'What does it signal, and where does it go in the sentence?',
+      answer: r.vi,
+      gloss: `${r.register} · ${r.punct}`,
+      exEn: r.ex_en || '',
+      exVi: r.ex_vi || '',
+      note: r.warn || '',
+      level: r.level
+    })
+  },
+  /* A sense, not a headword: "book" the object and "book" the verb are two
+     cards, which is what docs/LEARNING.md §1.2 counts as two items. */
+  vocab_sense: {
+    label: 'Vocabulary',
+    idsSql: 'SELECT id FROM vocab_senses ORDER BY sort, id',
+    rowsSql: holes => `SELECT s.*, e.headword, e.pos, e.ipa_uk, e.ipa_us
+                         FROM vocab_senses s JOIN vocab_entries e ON e.id = s.entry_id
+                        WHERE s.id IN (${holes})`,
+    card: r => ({
+      prompt: r.headword,
+      ipa: r.ipa_uk || r.ipa_us || '',
+      ask: `What does it mean as a ${r.pos}?`,
+      answer: r.en,
+      gloss: r.vi,
+      exEn: '',
+      exVi: '',
+      note: r.note || '',
+      level: r.level
+    })
+  }
+};
+const DECK_IDS = Object.keys(DECKS);
+
+/** How many cards a learner has never seen may be introduced in one day. */
+const NEW_PER_DAY = Math.max(1, parseInt(process.env.LEARN_NEW_PER_DAY, 10) || 20);
+/** How many cards one queue request hands over. A session, not a word list. */
+const BATCH = 20;
+
+/* A daily cap has to roll over at a time that means something to the person it
+   limits. The audience is in Vietnam, so the day boundary is UTC+7 by default
+   rather than UTC: at UTC a session before 07:00 local would be handed
+   yesterday's allowance, which reads as the cap being broken. */
+const DAY_OFFSET_MIN = (() => {
+  const raw = process.env.LEARN_DAY_OFFSET_MIN;
+  const n = Number(raw);
+  return raw !== undefined && raw !== '' && Number.isInteger(n) ? n : 420;
+})();
+
+/** Midnight of the learner's day, as the UTC instant `created_at` is compared to. */
+function dayStartISO(now) {
+  const shifted = new Date(now.getTime() + DAY_OFFSET_MIN * 60000);
+  const midnight = Date.UTC(shifted.getUTCFullYear(), shifted.getUTCMonth(), shifted.getUTCDate());
+  return new Date(midnight - DAY_OFFSET_MIN * 60000).toISOString();
+}
+
+/* The `IN (…)` lists below are built from `ids.length` question marks — never
+   from a value — and every id is bound. node:sqlite has no array binding. */
+const holesFor = ids => ids.map(() => '?').join(',');
+
+/** Rows of a deck by id, in one query rather than one per card. */
+function deckRows(deckId, ids) {
+  const d = DECKS[deckId];
+  if (!d || !ids.length) return new Map();
+  return new Map(q.all(d.rowsSql(holesFor(ids)), ...ids).map(r => [r.id, r]));
+}
+
+/** Every reviewable id in a deck, in teaching order. */
+function deckIds(deckId) {
+  return q.all(DECKS[deckId].idsSql).map(r => r.id);
+}
+
+/** The learner's rows for a deck, keyed by item id. */
+function progressOf(userId, deckId) {
+  return new Map(q.all(
+    'SELECT * FROM learn_progress WHERE user_id=? AND item_type=?', userId, deckId)
+    .map(r => [r.item_id, r]));
+}
+
+const asState = row => ({
+  ease: row.ease, interval: row.interval_days, reps: row.reps,
+  lapses: row.lapses, state: row.state
+});
+
+/**
+ * GET /api/learn/review — what to study now.
+ *
+ * `?deck=` narrows to one deck; anything else means all of them. Due cards come
+ * first and in due order, oldest first, so a backlog is worked off rather than
+ * shuffled around; unseen cards fill the rest of the batch up to the daily cap.
+ */
+router.get('/learn/review', A.requireUser, (req, res) => {
+  const want = str(req.query.deck, 30);
+  const decks = DECK_IDS.includes(want) ? [want] : DECK_IDS;
+  const now = new Date();
+  const nowIso = now.toISOString();
+
+  /* The daily cap counts rows CREATED today rather than reviews done today: a
+     card seen for the first time is the expensive one, and re-reviewing it in
+     the same session must not eat the allowance twice. */
+  const introducedToday = q.val(
+    'SELECT COUNT(*) c FROM learn_progress WHERE user_id=? AND created_at >= ?',
+    req.user.id, dayStartISO(now)) || 0;
+  let newAllowance = Math.max(0, NEW_PER_DAY - introducedToday);
+
+  const summary = [];
+  const due = [];
+  const unseen = [];
+
+  for (const id of decks) {
+    const ids = deckIds(id);
+    const known = progressOf(req.user.id, id);
+    let dueCount = 0;
+    for (const itemId of ids) {
+      const row = known.get(itemId);
+      if (!row) { unseen.push({ deck: id, itemId }); continue; }
+      if (row.due_at <= nowIso) { dueCount++; due.push({ deck: id, itemId, row }); }
+    }
+    summary.push({
+      id, label: DECKS[id].label,
+      total: ids.length,
+      seen: known.size,
+      due: dueCount,
+      review: [...known.values()].filter(r => r.state === 'review').length
+    });
+  }
+
+  /* Oldest due first. Two learners with the same backlog get the same order,
+     and the order does not change under them as the clock moves. */
+  due.sort((a, b) => (a.row.due_at < b.row.due_at ? -1 : a.row.due_at > b.row.due_at ? 1 : 0));
+
+  const picked = due.slice(0, BATCH);
+  for (const u of unseen) {
+    if (picked.length >= BATCH || newAllowance <= 0) break;
+    picked.push(u);
+    newAllowance--;
+  }
+
+  /* One query per deck for the rows actually picked, not one per card. */
+  const byDeck = new Map();
+  picked.forEach(p => {
+    if (!byDeck.has(p.deck)) byDeck.set(p.deck, []);
+    byDeck.get(p.deck).push(p.itemId);
+  });
+  const rows = new Map();
+  for (const [deckId, ids] of byDeck) rows.set(deckId, deckRows(deckId, ids));
+
+  const cards = picked.map(p => {
+    const row = rows.get(p.deck).get(p.itemId);
+    if (!row) return null;             // content re-seeded away under a saved row
+    const state = p.row ? asState(p.row) : null;
+    return Object.assign({
+      deck: p.deck,
+      deckLabel: DECKS[p.deck].label,
+      itemId: p.itemId,
+      isNew: !p.row,
+      state: p.row ? p.row.state : 'new',
+      lapses: p.row ? p.row.lapses : 0,
+      /* What each button would schedule, worked out where the algorithm lives
+         so the screen never has to reimplement it to print "6 days". */
+      preview: Object.fromEntries(
+        srs.GRADES.map(g => [g, srs.previewLabel(state, g, now)]))
+    }, DECKS[p.deck].card(row));
+  }).filter(Boolean);
+
+  res.set('Cache-Control', 'no-store').json({
+    decks: summary,
+    grades: srs.GRADES,
+    newPerDay: NEW_PER_DAY,
+    newLeftToday: Math.max(0, NEW_PER_DAY - introducedToday),
+    dueTotal: due.length,
+    cards
+  });
+});
+
+/**
+ * POST /api/learn/review — grade one card and schedule the next sight of it.
+ *
+ * Body: { deck, itemId, grade }. The schedule is computed from the server's
+ * clock and the stored state; nothing about timing is taken from the caller.
+ */
+router.post('/learn/review', A.requireUser, A.csrfGuard, (req, res) => {
+  const b = req.body || {};
+  const deck = str(b.deck, 30);
+  const itemId = int(b.itemId, 0);
+  const grade = str(b.grade, 10);
+
+  if (!DECKS[deck]) return bad(res, 'Unknown deck');
+  if (!srs.GRADES.includes(grade)) return bad(res, 'Unknown grade');
+  if (itemId <= 0) return bad(res, 'Missing item');
+  /* The item has to exist in the deck it claims to belong to. Without this a
+     caller could file progress against any integer and grow the table. */
+  if (!deckRows(deck, [itemId]).has(itemId)) return res.status(404).json({ error: 'No such card' });
+
+  const now = new Date();
+  const at = now.toISOString();
+  const prev = q.get(
+    'SELECT * FROM learn_progress WHERE user_id=? AND item_type=? AND item_id=?',
+    req.user.id, deck, itemId);
+  const next = srs.schedule(prev ? asState(prev) : null, grade, now);
+
+  q.run(
+    `INSERT INTO learn_progress
+       (user_id, item_type, item_id, ease, interval_days, reps, lapses, state,
+        last_grade, due_at, reviewed_at, created_at)
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,?)
+     ON CONFLICT(user_id, item_type, item_id) DO UPDATE SET
+       ease=excluded.ease, interval_days=excluded.interval_days, reps=excluded.reps,
+       lapses=excluded.lapses, state=excluded.state, last_grade=excluded.last_grade,
+       due_at=excluded.due_at, reviewed_at=excluded.reviewed_at`,
+    req.user.id, deck, itemId, next.ease, next.interval, next.reps, next.lapses,
+    next.state, grade, next.dueAt, at, at);
+
+  res.json({
+    deck, itemId, grade,
+    ease: next.ease,
+    interval: next.interval,
+    reps: next.reps,
+    lapses: next.lapses,
+    state: next.state,
+    dueAt: next.dueAt,
+    dueIn: srs.previewLabel(prev ? asState(prev) : null, grade, now)
+  });
+});
+
 module.exports = router;

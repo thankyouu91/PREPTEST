@@ -86,6 +86,7 @@ Lệnh khác:
 | `node scripts/test-accounts.js` | kiểm thử đường cứu hộ tài khoản (tự phục hồi tài khoản demo, đặt lại mật khẩu quản trị) |
 | `node scripts/test-mail.mjs` | kiểm thử thư đi: soạn thư (mã hoá tiêu đề, chống chèn header), toàn bộ hội thoại SMTP với một server giả chạy tại chỗ, và **token không lọt vào log** |
 | `node scripts/test-totp.mjs` | kiểm thử lớp xác thực thứ hai: **sáu vector chuẩn RFC 6238**, cửa sổ lệch giờ, mã đã dùng không dùng lại được, mã cứu hộ, và toàn bộ luồng đăng nhập thật |
+| `node scripts/test-srs.mjs` | kiểm thử lặp lại ngắt quãng: **lịch SM-2 tính chính xác từng ngày** (hàm thuần, đồng hồ truyền vào nên không phải chờ), rồi hàng đợi ôn tập qua API — ai được hỏi, chấm điểm lưu đúng cái lịch đã tính, hai học viên không thấy tiến độ của nhau |
 | `node scripts/test-health.mjs` | kiểm thử vòng đời tiến trình (sập thì thoát khác 0, SIGTERM thì thoát êm bằng 0, có chặn thời gian) và endpoint `/healthz` |
 | `node scripts/test-harness.mjs` | kiểm thử **chính bộ máy chạy test**: lớp thử lại có chặn trên (kiểm bằng một socket bị ngắt thật, không chỉ bằng chuỗi lỗi tự gõ), pool báo đúng job nào hỏng thay vì kéo sập cả lượt, và bước hâm nóng CSRF. Không cần server, không cần trình duyệt |
 | `node scripts/test-exam.mjs` | kiểm thử engine làm bài: mở/nối lại lượt thi, đồng hồ từng phần, số lần nghe lại đếm ở máy chủ, ghi âm câu trả lời, nộp bài, hạn mức lượt của gói Starter, và **đáp án không lọt ra trình duyệt** |
@@ -489,7 +490,7 @@ trong số đó truyền `executablePath` có thể bằng `null` — nay cả b
 
 `npm run verify` chạy hết trong khoảng **sáu phút** và in **bảng thời gian từng
 bước** ở cuối, nên lần chậm sau tự tố cáo chính nó thay vì lẫn trong một bức
-tường dấu tích. Bước audit và bước chụp ảnh — 306 lượt tải trang, mỗi lượt một
+tường dấu tích. Bước audit và bước chụp ảnh — 318 lượt tải trang, mỗi lượt một
 `BrowserContext` riêng và không dùng chung state nào — chạy song song qua
 `scripts/_pool.mjs`, số luồng lấy theo số lõi máy và chặn trên ở 4 (ép bằng
 `PW_JOBS`). Kết quả thu theo đúng thứ tự đầu vào rồi mới in: báo cáo mà đổi thứ
@@ -534,6 +535,7 @@ thiết bị khác.
 
 | Màn | Đường dẫn | Nội dung |
 |---|---|---|
+| Ôn tập ngắt quãng | `/prep/hoc/on-tap/` | Hàng đợi thẻ ghi nhớ theo lịch SM-2 rút gọn, rút từ ba bộ: động từ bất quy tắc, từ nối, và nghĩa từ vựng. Chỉ hiện thẻ **đến hạn**; tự chấm bằng bốn nút, bấm phím `Space` để lật và `1`–`4` để chấm. Lịch tính ở máy chủ nên đổi máy vẫn đúng — xem [Lịch ôn tập](#lịch-ôn-tập-sm-2-rút-gọn) |
 | Động từ bất quy tắc | `/prep/hoc/dong-tu-bat-quy-tac/` | 193 động từ, tra theo V1/V2/V3 hoặc nghĩa tiếng Việt, lọc theo bậc và nhóm biến đổi, phát âm từng dạng |
 | Từ nối | `/prep/hoc/tu-noi/` | 123 từ nối theo 13 chức năng × 3 mức trang trọng, kèm vị trí trong câu, quy tắc dấu câu, ví dụ song ngữ và cảnh báo dùng sai |
 | Thì, phối hợp thì | `/prep/hoc/thi/` | Đủ 21 điểm A1–C2. **12 thì**: mỗi thì đủ bốn lát cắt — công thức, dùng khi nào, **không** dùng khi nào, phân biệt với thì dễ nhầm, kèm 8 ví dụ và 12 câu luyện. **9 điểm phối hợp thì**: chỗ tiếng Việt chỉ cần một chữ *đã* cho cả câu còn tiếng Anh bắt từng động từ tự mang thì. Bậc thấp lo hai vế nối bằng `and`/`but` phải chia cả hai, và vì sao có `before`/`after` thì quá khứ đơn là đủ. Bậc B1–B2 lo bộ ba thì kể chuyện (nền tiếp diễn → chuỗi việc quá khứ đơn → quá khứ hoàn thành lùi về trước), giữ mốc thì nhất quán trong cả đoạn (**lỗi trôi thì** bị trừ điểm nặng ở bài Viết), và tương lai nhìn từ quá khứ (`would`, `was going to`, `was to`). Bậc C1–C2 lo ba thì hoàn thành quanh một mốc quy chiếu (`by the time` không bao giờ đi với `will`), thì theo từng phần của bài học thuật (tổng quan / phương pháp / bàn luận), hiện tại lịch sử, và cách điều khiển một đoạn hồi tưởng |
@@ -555,6 +557,46 @@ báo và vẫn tra được IPA.
 Kế hoạch chi tiết cho từ vựng, ngữ pháp, collocations và linking words nằm trong
 [`docs/LEARNING.md`](docs/LEARNING.md) — kèm **định mức từ vựng theo bậc A1–C2** và
 danh sách nguồn dữ liệu mở có giấy phép rõ ràng.
+
+### Lịch ôn tập (SM-2 rút gọn)
+
+`docs/LEARNING.md` §6 đặt ra `ease`, `interval`, `due_at` và "chỉ thấy mục đến
+hạn", nhưng không chốt con số. Con số nằm ở `server/srs.js`, và **chỉ ở đó**: mọi
+hàm trong file là hàm thuần — trạng thái vào, trạng thái ra, đồng hồ truyền vào
+làm tham số — nên kiểm được chính xác từng ngày mà không phải chờ một ngày.
+
+SM-2 gốc chấm 0–5 rồi chạy đa thức. Sáu nút là nhiều hơn mức một người tự phân
+biệt được thật lòng, nên bản này giữ **hình dạng** của SM-2 (mỗi thẻ một hệ số
+`ease`, nhân vào khoảng cách đang lớn dần, có sàn) và rút xuống bốn nút:
+
+| Nút | Nghĩa | Làm gì với lịch | `ease` |
+|---|---|---|---|
+| **Again** | không nhớ ra | **vứt** khoảng cách, học lại từ đầu, hẹn lại sau 10 phút, `lapses` +1 | −0.20 |
+| **Hard** | nhớ ra, chật vật | ×1.2 (ít nhất +1 ngày) | −0.15 |
+| **Good** | nhớ ra | bước SM-2 bình thường | 0 |
+| **Easy** | nhớ ngay, quá dễ | bước bình thường rồi ×1.3 | +0.15 |
+
+- `ease` bắt đầu 2.5 và **không bao giờ xuống dưới 1.3** — sàn của chính SM-2, và
+  nó quan trọng: không có sàn thì một thẻ sai đủ nhiều lần sẽ về 0 và vĩnh viễn
+  không rời khỏi hàng đợi.
+- Hai khoảng cách đầu **cố định 1 ngày rồi 6 ngày**, đúng như SM-2 công bố: lấy
+  `interval × ease` ngay từ đầu sẽ đẩy một thẻ mới ra tận hai ngày rưỡi khi nó
+  còn chưa được nhớ lại lần nào.
+- Từ lần đúng thứ ba: `interval = round(interval × ease)`.
+- Trần một năm. Xa hơn thế thì lịch là chuyện hư cấu — từ đó hoặc đã nằm trong
+  vốn dùng hằng ngày, hoặc đã mất.
+
+**Tự chấm là có chủ ý.** Đây là thẻ nhớ lại, không phải câu thi: chỉ người học
+mới biết đáp án bật ra hay là chắp vá lại. Vì thế mặt sau của thẻ **được gửi kèm
+mặt trước** — ngược hẳn với router làm bài, nơi mọi `answer` đều bị loại bỏ trước
+khi serialise. Ở đây không có gì để gian lận, và gửi cả hai mặt nghĩa là cả buổi
+ôn không cần thêm một vòng gọi mạng nào cho mỗi thẻ.
+
+Lịch tính **ở máy chủ**, từ đồng hồ máy chủ; không nhận bất cứ mốc thời gian nào
+từ trình duyệt. Mỗi lượt gọi trả về tối đa 20 thẻ, và **20 thẻ mới mỗi ngày**
+(`LEARN_NEW_PER_DAY`). Mốc "hôm nay" mặc định theo giờ UTC+7 chứ không phải UTC
+(`LEARN_DAY_OFFSET_MIN`): tính theo UTC thì một buổi học lúc 6 giờ sáng sẽ được
+phát nhầm hạn mức của hôm qua.
 
 ### Lược đồ từ vựng
 
@@ -592,6 +634,16 @@ biến đổi / nghĩa tiếng Việt) và `GET /api/learn/vocab/:headword` (m�
 trả về **mọi từ loại** cùng lúc — người tra chưa biết mình cần từ loại nào).
 `scripts/test-vocab.mjs` kiểm cả hai nửa: API trên server đang chạy, và ngữ
 nghĩa của trình nhập trên một cơ sở dữ liệu tạm qua `PREP_DB`.
+
+Hàng đợi ôn tập dùng hai endpoint nữa, cả hai đều sau `requireUser`:
+`GET /api/learn/review` (một mẻ tối đa 20 thẻ, kèm tiến độ từng bộ và **nhãn cho
+từng nút** — màn hình không phải cài lại thuật toán để in ra "6 ngày") và
+`POST /api/learn/review` (`requireUser` + `csrfGuard`, thân `{deck, itemId, grade}`).
+Bảng `learn_progress` **không** có khoá ngoại sang ba bảng nội dung: chúng được
+nạp lại từ file, và một `ON DELETE CASCADE` sẽ biến việc sửa một lỗi chính tả
+trong danh sách từ thành việc xoá sạch sáu tháng lịch ôn của người học. Thẻ trỏ
+vào một dòng không còn tồn tại thì lặng lẽ bị bỏ qua lúc dựng hàng đợi — kiểu
+hỏng không làm mất gì.
 
 Cơ cấu và cách chấm điểm của 6 kỳ thi, cùng thiết kế engine chấm, nằm trong
 [`docs/SCORING.md`](docs/SCORING.md).
@@ -655,6 +707,7 @@ Chạy lại chỉ cập nhật chứ không nhân đôi. Các bảng lấy từ
 | `/prep/code-cua-toi/` | `public/prep/codes/code-cua-toi.html` | Cần đăng nhập |
 | `/prep/bai-thi/:id/` | `public/prep/test/index.html` | Cần đăng nhập (+ code để bắt đầu) |
 | `/prep/tai-khoan/` | `public/prep/account/index.html` | Cần đăng nhập |
+| `/prep/hoc/on-tap/` | `public/prep/learn/on-tap.html` | Cần đăng nhập |
 | `/prep/hoc/dong-tu-bat-quy-tac/` | `public/prep/learn/dong-tu-bat-quy-tac.html` | Cần đăng nhập |
 
 Mỗi route khai báo trong `server.js` qua `serveHtmlWithNonce(...)`, kèm guard exact-path:

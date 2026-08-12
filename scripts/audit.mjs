@@ -28,7 +28,7 @@ const URLS = GUEST_URLS.concat([
   '/prep/', '/prep/thu-vien/', '/prep/thu-vien/?family=vept', '/prep/mua-code/', '/prep/nhap-code/',
   '/prep/code-cua-toi/', '/prep/bai-thi/vpet-b1-01/', '/prep/bai-thi/pte-ac-01/', '/prep/tai-khoan/',
   '/prep/lam-bai/', '/prep/ket-qua/:done/',
-  '/prep/hoc/dong-tu-bat-quy-tac/', '/prep/hoc/tu-noi/', '/prep/hoc/thi/', '/prep/hoc/danh-tu/', '/prep/hoc/tinh-tu/', '/prep/hoc/khuyet-thieu/', '/prep/hoc/dieu-kien/', '/prep/hoc/bi-dong/', '/prep/hoc/menh-de/', '/prep/hoc/nhan-manh/', '/prep/hoc/sac-thai/'
+  '/prep/hoc/on-tap/', '/prep/hoc/dong-tu-bat-quy-tac/', '/prep/hoc/tu-noi/', '/prep/hoc/thi/', '/prep/hoc/danh-tu/', '/prep/hoc/tinh-tu/', '/prep/hoc/khuyet-thieu/', '/prep/hoc/dieu-kien/', '/prep/hoc/bi-dong/', '/prep/hoc/menh-de/', '/prep/hoc/nhan-manh/', '/prep/hoc/sac-thai/'
 ]);
 const WIDTHS = [360, 390, 768, 1024, 1440];
 
@@ -79,7 +79,7 @@ const run = async () => {
     .filter(Boolean);
   if (!doneAttempt) console.log('   (skipping the result screen: the demo account has submitted no sitting)');
 
-  /* 220 page loads — 2 colour modes × 22 paths × 5 widths — run one at a time was
+  /* 230 page loads — 2 colour modes × 23 paths × 5 widths — run one at a time was
      the slowest part of `npm run verify`. They are entirely independent: a context
      each, no shared state, so they queue up in parallel. Results are collected in
      input order and printed afterwards, because the COMPLETION order is arbitrary
@@ -182,7 +182,7 @@ const run = async () => {
   }, { describe: tagOf });
 
   /* A job that threw becomes one more line in the report, naming the page and
-     the width, instead of a stack trace standing in for all 220 of them. */
+     the width, instead of a stack trace standing in for all 230 of them. */
   for (const result of perJob) {
     if (isFailure(result)) issues.push(`[crashed] ${result.where}: ${result.message}`);
     else issues.push(...result);

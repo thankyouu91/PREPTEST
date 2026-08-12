@@ -1,0 +1,386 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Review · VPET Prep</title>
+  <meta name="description" content="Spaced repetition over the self-study material: irregular verbs, linking words and vocabulary, scheduled so each card comes back just before it would be forgotten.">
+  <meta name="theme-color" content="#1c3d8f">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="preload" href="/fonts/pjs-700-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/fonts/pjs-400-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/tailwind-built.css">
+  <style>body{font-family:'Plus Jakarta Sans',system-ui,sans-serif}</style>
+  <script>
+    (function(){try{
+      var t=localStorage.getItem('prep.theme');
+      if(t==='dark'||(!t&&matchMedia('(prefers-color-scheme: dark)').matches))document.documentElement.classList.add('dark');
+      var tn=localStorage.getItem('prep.tenant');
+      if(tn&&tn!=='default')document.documentElement.setAttribute('data-tenant',tn);
+    }catch(e){}})();
+  </script>
+</head>
+<body class="bg-surface text-ink">
+<div id="app" data-active="learn" class="min-h-[100dvh]">
+  <main id="main">
+    <div class="max-w-shell mx-auto px-4 sm:px-6 lg:px-10 pb-6">
+
+      <section class="mt-8 max-w-[70ch]">
+        <h2 class="text-2xl sm:text-[28px] font-extrabold tracking-tight">Review</h2>
+        <p class="text-muted text-[15px] leading-relaxed mt-2">
+          Each card comes back just before you would have forgotten it. Answer in your head,
+          reveal, then say honestly how it went — the schedule is only as good as that answer.
+          <b class="text-ink">Again</b> sends a card back to the start; the rest push it further away.
+        </p>
+      </section>
+
+      <nav class="flex gap-2 overflow-x-auto no-scrollbar mt-6 -mx-1 px-1" aria-label="Self-study topics">
+        <a href="/prep/hoc/on-tap/" class="chip shrink-0" aria-current="page">Review</a>
+        <a href="/prep/hoc/dong-tu-bat-quy-tac/" class="chip shrink-0">Irregular verbs</a>
+        <a href="/prep/hoc/tu-noi/" class="chip shrink-0">Linking words</a>
+        <a href="/prep/hoc/thi/" class="chip shrink-0">Tenses</a>
+        <a href="/prep/hoc/danh-tu/" class="chip shrink-0">Nouns and articles</a>
+        <a href="/prep/hoc/tinh-tu/" class="chip shrink-0">Adjectives and adverbs</a>
+        <a href="/prep/hoc/khuyet-thieu/" class="chip shrink-0">Modal verbs</a>
+        <a href="/prep/hoc/dieu-kien/" class="chip shrink-0">Conditionals</a>
+        <a href="/prep/hoc/bi-dong/" class="chip shrink-0">Passive and reported speech</a>
+        <a href="/prep/hoc/menh-de/" class="chip shrink-0">Clauses</a>
+        <a href="/prep/hoc/nhan-manh/" class="chip shrink-0">Inversion and emphasis</a>
+        <a href="/prep/hoc/sac-thai/" class="chip shrink-0">Register and hedging</a>
+      </nav>
+
+      <!-- Deck picker + where the session stands -->
+      <div class="sticky top-16 z-20 mt-6 border-y border-line bg-[color:var(--color-surface)]/90 backdrop-blur-md">
+        <div class="py-3.5 grid gap-3">
+          <div id="deck-chips" class="flex gap-2 overflow-x-auto no-scrollbar -mx-1 px-1 pb-0.5"></div>
+          <div class="flex flex-wrap items-center gap-3">
+            <div id="tts-controls"></div>
+            <span id="session-count" class="text-[13px] font-semibold text-muted ms-auto"></span>
+          </div>
+        </div>
+      </div>
+
+      <div id="tts-warn" hidden class="mt-5">
+        <div class="banner banner-warn show" role="status">
+          <svg viewBox="0 0 24 24" class="w-5 h-5 shrink-0 mt-0.5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>
+          <span>This device has no English voice installed, so nothing can be read aloud. The cards are still perfectly readable.</span>
+        </div>
+      </div>
+
+      <div id="skeleton" class="mt-6" aria-hidden="true">
+        <div class="card p-8 max-w-[52rem] mx-auto">
+          <div class="skeleton h-4 w-24 mb-6"></div>
+          <div class="skeleton h-10 w-2/5 mb-4"></div>
+          <div class="skeleton h-4 w-3/5 mb-8"></div>
+          <div class="skeleton h-11 w-40"></div>
+        </div>
+      </div>
+
+      <!-- The card -->
+      <section id="card" hidden class="mt-6 max-w-[52rem] mx-auto">
+        <article class="card p-6 sm:p-8">
+          <div class="flex flex-wrap items-center gap-2">
+            <span id="c-deck" class="badge badge-muted"></span>
+            <span id="c-level" class="badge badge-muted"></span>
+            <span id="c-new" class="badge badge-hl" hidden>New</span>
+            <span id="c-lapses" class="badge badge-danger" hidden></span>
+          </div>
+
+          <button type="button" id="c-prompt"
+                  class="tts-word block text-3xl sm:text-4xl font-extrabold tracking-tight mt-5 text-start"
+                  aria-label="Pronounce this card"></button>
+          <p id="c-ipa" class="text-muted text-[15px] font-medium mt-1.5" hidden></p>
+          <p id="c-ask" class="text-muted text-[15px] leading-relaxed mt-3"></p>
+
+          <div class="mt-6">
+            <button type="button" id="reveal" class="btn btn-primary btn-lg">Show answer</button>
+            <p class="text-[13px] text-muted font-medium mt-3">
+              Press <b class="text-ink">Space</b> to reveal, then <b class="text-ink">1</b>–<b class="text-ink">4</b> to grade.
+            </p>
+          </div>
+
+          <!-- The back of the card -->
+          <div id="back" hidden>
+            <div class="border-t border-line mt-6 pt-6">
+              <p id="c-answer" class="text-2xl font-extrabold tracking-tight"></p>
+              <p id="c-gloss" class="text-[15px] font-semibold mt-2"></p>
+              <div id="c-example" class="rounded-xl bg-brand-soft px-4 py-3.5 mt-4" hidden>
+                <p id="c-ex-en" class="text-[15px] leading-relaxed"></p>
+                <p id="c-ex-vi" class="text-[13px] text-muted italic mt-1"></p>
+              </div>
+              <p id="c-note" class="flex gap-2 text-[13.5px] font-medium mt-4 text-hl-ink" hidden>
+                <svg viewBox="0 0 24 24" class="w-4 h-4 shrink-0 mt-0.5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>
+                <span id="c-note-text"></span>
+              </p>
+            </div>
+
+            <div class="border-t border-line mt-6 pt-6">
+              <p class="text-[13px] font-bold text-muted mb-3">How did that go?</p>
+              <div id="grades" class="grid grid-cols-2 sm:grid-cols-4 gap-2.5"></div>
+            </div>
+          </div>
+        </article>
+      </section>
+
+      <!-- Nothing due, or the batch is finished -->
+      <div id="done" hidden class="card p-10 mt-6 text-center max-w-[52rem] mx-auto">
+        <span class="w-14 h-14 rounded-full bg-brand-soft text-brand-strong inline-flex items-center justify-center mx-auto">
+          <svg viewBox="0 0 24 24" class="w-7 h-7" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+        </span>
+        <h3 id="done-title" class="font-extrabold text-lg tracking-tight mt-4">Nothing is due right now</h3>
+        <p id="done-text" class="text-muted text-[15px] mt-1.5"></p>
+        <div class="flex flex-wrap gap-2.5 justify-center mt-6">
+          <button type="button" id="again-btn" class="btn btn-ghost btn-md">Check again</button>
+          <a href="/prep/hoc/dong-tu-bat-quy-tac/" class="btn btn-soft btn-md">Browse the material</a>
+        </div>
+      </div>
+
+      <!-- Where the learner stands in each deck -->
+      <section id="deck-summary" hidden class="mt-8">
+        <h3 class="text-[13px] font-bold text-muted">Progress</h3>
+        <div id="deck-cards" class="grid sm:grid-cols-3 gap-4 mt-3"></div>
+      </section>
+    </div>
+  </main>
+</div>
+
+<script src="/prep/_mock.js"></script>
+<script src="/prep/_chrome.js"></script>
+<script src="/prep/learn/_navscroll.js"></script>
+<script src="/prep/learn/_tts.js"></script>
+<script>
+  PREP.boot({ auth: true }).then(() => {
+    PrepChrome.mount({ title: 'Review' });
+
+    /* The four buttons, in the order the server sends them: worst to best.
+       Colour carries the same order — a red "again" and a green "easy" — so the
+       hand learns the row before the eye reads it. */
+    const GRADE_LOOK = {
+      again: { label: 'Again', cls: 'btn-danger', key: '1' },
+      hard:  { label: 'Hard',  cls: 'btn-ghost',  key: '2' },
+      good:  { label: 'Good',  cls: 'btn-primary', key: '3' },
+      easy:  { label: 'Easy',  cls: 'btn-accent', key: '4' }
+    };
+
+    const el = id => PREP.qs('#' + id);
+    let queue = [];        // cards still to answer this batch
+    let current = null;
+    let revealed = false;
+    let deck = '';         // '' means every deck
+    let decks = [];
+    let answered = 0;
+    let busy = false;
+
+    /* ---------- Painting ---------- */
+
+    function show(id, on) { el(id).toggleAttribute('hidden', !on); }
+
+    function renderDeckChips() {
+      el('deck-chips').innerHTML =
+        '<button type="button" class="chip shrink-0" data-deck="" aria-pressed="' + (!deck) + '">' +
+          'Everything</button>' +
+        decks.map(d =>
+          '<button type="button" class="chip shrink-0" data-deck="' + PREP.esc(d.id) + '" aria-pressed="' +
+          (deck === d.id) + '">' + PREP.esc(d.label) +
+          (d.due ? ' · ' + d.due : '') + '</button>').join('');
+    }
+
+    function renderSummary() {
+      el('deck-cards').innerHTML = decks.map(d =>
+        '<article class="card p-5">' +
+          '<p class="font-extrabold tracking-tight">' + PREP.esc(d.label) + '</p>' +
+          '<p class="text-[13px] text-muted font-medium mt-1.5">' +
+            d.seen + ' of ' + d.total + ' started · ' + d.review + ' in review</p>' +
+          '<p class="text-[13px] font-semibold mt-1">' +
+            (d.due ? d.due + ' due now' : 'nothing due') + '</p>' +
+        '</article>').join('');
+      show('deck-summary', decks.length > 0);
+    }
+
+    function renderCount() {
+      const left = queue.length + (current ? 1 : 0);
+      el('session-count').textContent = answered
+        ? answered + ' answered · ' + left + ' left'
+        : (left ? left + ' to review' : '');
+    }
+
+    function renderGrades() {
+      el('grades').innerHTML = (current.gradeOrder || []).map(g => {
+        const look = GRADE_LOOK[g] || { label: g, cls: 'btn-ghost', key: '' };
+        return '<button type="button" class="btn ' + look.cls + ' btn-md flex-col gap-0.5 py-2" ' +
+          'data-grade="' + PREP.esc(g) + '">' +
+          '<span>' + look.label + '</span>' +
+          '<span class="text-[11px] font-semibold opacity-80">' +
+            PREP.esc(current.preview[g] || '') + '</span>' +
+        '</button>';
+      }).join('');
+    }
+
+    function paint() {
+      revealed = false;
+      show('back', false);
+      show('card', !!current);
+      show('done', !current);
+      renderCount();
+      if (!current) return;
+
+      el('c-deck').textContent = current.deckLabel;
+      el('c-level').textContent = current.level || '—';
+      show('c-new', !!current.isNew);
+      show('c-lapses', current.lapses > 0);
+      if (current.lapses > 0) el('c-lapses').textContent = 'missed ' + current.lapses + '×';
+
+      el('c-prompt').textContent = current.prompt;
+      el('c-prompt').setAttribute('data-say', current.prompt);
+      el('c-prompt').setAttribute('aria-label', 'Pronounce ' + current.prompt);
+      el('c-ipa').textContent = current.ipa || '';
+      show('c-ipa', !!current.ipa);
+      el('c-ask').textContent = current.ask || '';
+
+      el('c-answer').textContent = current.answer || '';
+      el('c-gloss').textContent = current.gloss || '';
+      const hasEx = !!(current.exEn || current.exVi);
+      show('c-example', hasEx);
+      if (hasEx) {
+        el('c-ex-en').innerHTML = PrepTTS.wordify(current.exEn || '');
+        el('c-ex-vi').textContent = current.exVi || '';
+      }
+      show('c-note', !!current.note);
+      if (current.note) el('c-note-text').textContent = current.note;
+      renderGrades();
+      el('reveal').focus();
+    }
+
+    function finish(message) {
+      current = null;
+      show('card', false);
+      show('done', true);
+      el('done-title').textContent = answered ? 'Session finished' : 'Nothing is due right now';
+      el('done-text').textContent = message;
+      renderCount();
+    }
+
+    /* ---------- The session ---------- */
+
+    function next() {
+      current = queue.shift() || null;
+      if (current) { paint(); return; }
+      finish(answered
+        ? answered + ' card' + (answered === 1 ? '' : 's') + ' answered. Come back when the next one falls due.'
+        : 'Every card you have started is scheduled for later. New material is introduced a few cards at a time, so the queue stays honest.');
+      load(true);            // refresh the deck counts, quietly
+    }
+
+    function reveal() {
+      if (!current || revealed) return;
+      revealed = true;
+      show('back', true);
+      const first = PREP.qs('#grades button');
+      if (first) first.focus();
+    }
+
+    /* Move the progress panel with the session instead of only when the batch
+       ends. Asking the server after every card would be twenty extra requests
+       for numbers already known here; leaving it alone showed "0 of 193
+       started" to somebody who had just answered two. */
+    function tallyLocally(card, result) {
+      const d = decks.find(x => x.id === card.deck);
+      if (!d) return;
+      if (card.isNew) d.seen++;
+      else if (d.due > 0) d.due--;
+      if (result.state === 'review' && card.state !== 'review') d.review++;
+      renderDeckChips();
+      renderSummary();
+    }
+
+    function grade(g) {
+      if (!current || !revealed || busy) return;
+      busy = true;
+      const card = current;
+      PrepApi.post('/api/learn/review', { deck: card.deck, itemId: card.itemId, grade: g })
+        .then(res => {
+          busy = false;
+          if (!res.ok) {
+            el('done-text').textContent = PrepApi.err(res, 'That answer could not be saved.');
+            show('done', true);
+            return;
+          }
+          answered++;
+          tallyLocally(card, res.data);
+          /* A card graded "again" is not finished with — it comes back at the
+             end of this batch rather than in ten minutes' time, because a
+             session the learner is still sitting in is the cheapest place to
+             meet it again. The server has already scheduled it properly. */
+          if (g === 'again') queue.push(Object.assign({}, card, { isNew: false, state: 'learning' }));
+          next();
+        });
+    }
+
+    /* ---------- Loading ---------- */
+
+    function load(quiet) {
+      if (!quiet) { show('skeleton', true); show('card', false); show('done', false); }
+      return PrepApi.get('/api/learn/review' + (deck ? '?deck=' + encodeURIComponent(deck) : ''))
+        .then(res => {
+          show('skeleton', false);
+          if (!res.ok) {
+            decks = [];
+            finish(PrepApi.err(res, 'The review queue could not be loaded.'));
+            return;
+          }
+          decks = res.data.decks || [];
+          renderDeckChips();
+          renderSummary();
+          if (quiet) { renderCount(); return; }
+          answered = 0;
+          queue = (res.data.cards || []).map(c =>
+            Object.assign({ gradeOrder: res.data.grades || [] }, c));
+          next();
+        });
+    }
+
+    /* ---------- Wiring ---------- */
+
+    el('reveal').addEventListener('click', reveal);
+    el('again-btn').addEventListener('click', () => load(false));
+    el('grades').addEventListener('click', e => {
+      const b = e.target.closest('[data-grade]');
+      if (b) grade(b.getAttribute('data-grade'));
+    });
+    el('deck-chips').addEventListener('click', e => {
+      const b = e.target.closest('[data-deck]');
+      if (!b) return;
+      deck = b.getAttribute('data-deck');
+      renderDeckChips();
+      load(false);
+    });
+
+    /* Keyboard: the whole point of a review session is speed, and reaching for
+       the mouse forty times is what makes people stop doing it. Ignored while a
+       field has focus, so the chrome's search box still behaves. */
+    document.addEventListener('keydown', e => {
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      const t = e.target;
+      if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
+      if (!current) return;
+      if (!revealed && (e.key === ' ' || e.key === 'Enter')) { e.preventDefault(); reveal(); return; }
+      if (!revealed) return;
+      const order = current.gradeOrder || [];
+      const n = parseInt(e.key, 10);
+      if (n >= 1 && n <= order.length) { e.preventDefault(); grade(order[n - 1]); }
+    });
+
+    PrepTTS.onUnavailable = () => el('tts-warn').removeAttribute('hidden');
+    PrepTTS.bindClicks(document);
+    PrepTTS.init().then(() => {
+      PrepTTS.mountControls(el('tts-controls'));
+      PrepTTS.bindSelection(el('main'));
+      if (!PrepTTS.available()) el('tts-warn').removeAttribute('hidden');
+    });
+
+    load(false);
+  });
+</script>
+</body>
+</html>

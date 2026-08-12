@@ -227,6 +227,7 @@ function studyPage(file) {
 }
 
 /* Khu tự học */
+app.get('/prep/hoc/on-tap/', studyPage('prep/learn/on-tap.html'));
 app.get('/prep/hoc/dong-tu-bat-quy-tac/', studyPage('prep/learn/dong-tu-bat-quy-tac.html'));
 app.get('/prep/hoc/tu-noi/', studyPage('prep/learn/tu-noi.html'));
 app.get('/prep/hoc/thi/', studyPage('prep/learn/thi.html'));

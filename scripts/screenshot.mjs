@@ -59,6 +59,7 @@ const PAGES = [
   { slug: 'tai-khoan',       url: '/prep/tai-khoan/',            auth: true },
   { slug: 'lam-bai',         url: '/prep/lam-bai/',              auth: true, full: true },
   { slug: 'ket-qua',         url: '/prep/ket-qua/:done/',        auth: true, full: true },
+  { slug: 'hoc-on-tap',      url: '/prep/hoc/on-tap/',            auth: true },
   { slug: 'hoc-dong-tu',     url: '/prep/hoc/dong-tu-bat-quy-tac/', auth: true },
   { slug: 'hoc-tu-noi',      url: '/prep/hoc/tu-noi/',            auth: true },
   { slug: 'hoc-thi',         url: '/prep/hoc/thi/',               auth: true },
@@ -126,7 +127,7 @@ const run = async () => {
     .filter(Boolean);
   if (!doneAttempt) console.log('   (skipping the result screenshot: no sitting has been submitted)');
 
-  /* Each page is shot at two sizes, and all 86 are independent — own context, own
+  /* Each page is shot at two sizes, and all 88 are independent — own context, own
      file. Running them one at a time was the main reason `npm run verify` took over
      fifteen minutes. They queue across PW_JOBS workers, then ✓ is printed in
      declaration order: completion order is arbitrary, and a log that reorders itself
