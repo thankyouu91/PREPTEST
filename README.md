@@ -114,16 +114,20 @@ nếu chưa có tài khoản nào và cũng không có `ADMIN_PASSWORD`.
 
 ### Ngân hàng đề VPET
 
-`server/data/vpet-items.js` giữ **40 câu** cho năm phần không cần audio:
-A (20 điền từ) · B (6 dựng lại đoạn) · C (6 đọc hiểu) · D (4 email) · I (4 nói
-theo tình huống) — **hai lượt thi** cho mọi phần thi được mà không cần bản ghi.
-Ngân hàng là pool: trình sinh đề bốc đúng số câu blueprint yêu cầu, nên thi lại
-là bốc ra bộ khác.
+`server/data/vpet-items.js` giữ **62 câu** cho năm phần không cần audio:
+A (30 điền từ) · B (8 dựng lại đoạn) · C (8 đọc hiểu) · D (8 email) · I (8 nói
+theo tình huống). Ngân hàng là pool: trình sinh đề bốc đúng số câu blueprint
+yêu cầu, nên thi lại là bốc ra bộ khác.
 
-Một giới hạn đã biết: trình sinh đề ưu tiên câu đúng bậc rồi mới lấy bậc khác,
-nên thi lại ở bậc B1 sẽ gặp lại toàn bộ câu B1 của phần đó. Muốn hai lượt khác
-hẳn nhau ở một bậc thì cần hai lượt câu **ở đúng bậc ấy** — việc cân bậc, không
-phải việc thêm số lượng.
+Độ sâu đếm **theo bậc**, không theo phần, vì bậc mới là thứ trình sinh đề phản
+ứng: nó xếp câu đúng bậc lên trước rồi mới lấy đủ số lượng. Một phần có ít câu ở
+bậc của đề hơn số blueprint yêu cầu sẽ lặp lại toàn bộ số câu ấy ở lượt sau — và
+một phần có *đúng bằng* số blueprint thì lặp lại chắc chắn cả phần, trường hợp tệ
+hơn trong hai cái. Luật của ngân hàng: ở mỗi bậc, một phần hoặc **nông** (ít hơn
+số blueprint, phần bù lấy từ bậc khác nên vẫn đổi giữa hai lượt) hoặc **sâu** (ít
+nhất gấp đôi, đủ hai đề khác nhau) — không được rơi vào khoảng giữa. Hiện mọi
+phần đều sâu ở B2, riêng D và I sâu cả ở B1; A, B và C còn nông ở B1, còn A2 và
+C1 nông ở mọi phần.
 
 Seed chạy lại được: upsert theo `questions.ext_key`, không xoá rồi nạp lại —
 `section_items` trỏ khoá ngoại vào `questions`, xoá ngân hàng là xoá luôn mọi đề
@@ -132,7 +136,10 @@ Seed chạy lại được: upsert theo `questions.ext_key`, không xoá rồi n
 Năm phần còn lại (E, F, G, H, J — 35 câu) **chưa có**, và đó là chủ ý: với các
 phần này bản ghi chính là đề bài, kịch bản không kèm MP3 thì thí sinh không làm
 được. Chúng đi cùng phần giọng nói. `scripts/test-items.mjs` đọc thẳng blueprint
-để kiểm, nên bài test không thể "đúng" khi blueprint đã đổi.
+để kiểm, nên bài test không thể "đúng" khi blueprint đã đổi; nó cũng giữ luật
+nông/sâu ở trên. `scripts/test-admin.mjs` kiểm cùng điều đó qua API thay vì qua
+tệp dữ liệu: đề B2 phải bốc toàn câu B2, và hai lượt bốc phần A không được trùng
+khít.
 
 ### Format đề chuẩn
 

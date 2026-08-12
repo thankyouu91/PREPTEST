@@ -1,10 +1,21 @@
 /**
  * VPET item bank — the parts that need no audio: A, B, C, D and I.
  *
- * Twenty items, one paper's worth of every part that can be sat without an MP3.
- * Parts E, F, G, H and J are missing on purpose: each is an audio part, and a
- * script with no recording behind it is not an item a candidate can sit. They
- * arrive with the voice work.
+ * Sixty-two items: A 30, B 8, C 8, D 8, I 8. Parts E, F, G, H and J are missing
+ * on purpose: each is an audio part, and a script with no recording behind it is
+ * not an item a candidate can sit. They arrive with the voice work.
+ *
+ * Depth is counted per level, not per part, because that is what the generator
+ * reacts to. It orders the pool exact-level-first and then takes what it needs,
+ * so a part holding fewer items at the paper's level than the blueprint asks for
+ * repeats every one of them on a retake — and a part holding exactly the
+ * blueprint count repeats all of them with certainty, which is the worse case of
+ * the two. Every part therefore holds either fewer items at a level than the
+ * blueprint count (a shallow level, which only tops a paper up, and the top-up
+ * varies) or at least twice it (a level two different papers can be drawn from).
+ * Never the number in between. Today every part is deep at B2, and parts D and I
+ * are deep at B1 as well; A, B and C are still shallow at B1, and A2 and C1 are
+ * shallow everywhere. scripts/test-items.mjs holds that rule.
  *
  * Each row must satisfy the blueprint in server/data/exam-formats.js — the part
  * letter fixes the skill and the item type, and the admin API refuses a mismatch:
@@ -79,7 +90,34 @@ const PART_A = [
   ['vpet-a-19', 'B2', 'Not only ___ he arrive late, he also forgot the tickets.', 'did',
     'Not only + auxiliary + subject. Fronting "not only" forces the inversion, and the main verb goes back to its base form.'],
   ['vpet-a-20', 'B2', 'The new safety rules come ___ force next month.', 'into',
-    'come into force = start to apply. "in force" is the state; "into force" is the change.']
+    'come into force = start to apply. "in force" is the state; "into force" is the change.'],
+
+  /* Third set, all B2, and deliberately wider than the two above. Those two turn
+     almost entirely on dependent prepositions and particles; ten of those in one
+     paper measure a single thing ten times. These reach for the other structures
+     a B2 candidate is expected to control — fixed clause frames, inversion after
+     a fronted adverbial, the inverted conditional, and collocations where the
+     verb rather than the preposition is the missing piece. */
+  ['vpet-a-21', 'B2', 'The proposal was rejected on the grounds ___ it would cost too much.', 'that',
+    'on the grounds that + clause. "on the grounds of" is the other half of the pair and needs a noun ("on the grounds of cost").'],
+  ['vpet-a-22', 'B2', 'It is high time we ___ this problem seriously.', 'took',
+    'it is high time + past tense. The past form marks the action as overdue, not as finished; "take" and "to take" are both the error this item looks for.'],
+  ['vpet-a-23', 'B2', 'The results were, ___ and large, better than anyone expected.', 'by',
+    'by and large = on the whole. A fixed phrase, so no other preposition fits.'],
+  ['vpet-a-24', 'B2', 'No amount of persuasion could talk him ___ of resigning.', 'out',
+    'talk someone out of + -ing = persuade them not to. "talk into" is the same frame pointing the other way, and "of" already fixes which one is wanted.'],
+  ['vpet-a-25', 'B2', 'The two reports are at ___ with each other over the cost.', 'odds',
+    'at odds with = in conflict with. The missing word is the noun, not the preposition, which is what makes this harder than it looks.'],
+  ['vpet-a-26', 'B2', 'The bill came ___ rather more than we had budgeted for.', 'to',
+    'come to = add up to. "come out at" and "come in at" say the same thing but need two words.'],
+  ['vpet-a-27', 'B2', 'She was taken ___ by how quickly the room emptied.', 'aback',
+    'taken aback = surprised, usually unpleasantly. "aback" survives in this phrase and almost nowhere else.'],
+  ['vpet-a-28', 'B2', 'Only after the meeting ___ we realise what had been decided.', 'did',
+    'Only + adverbial at the front forces the inversion, so the auxiliary comes before the subject and "realise" stays in its base form.'],
+  ['vpet-a-29', 'B2', '___ I known about the strike, I would have travelled a day earlier.', 'had',
+    'The inverted third conditional: "Had I known" replaces "If I had known". Dropping "if" is what forces the auxiliary to the front.'],
+  ['vpet-a-30', 'B2', 'The report makes no ___ of the complaints received last year.', 'mention',
+    'make no mention of. The preposition is already there, which rules out "reference" (reference to) and "note" (note of, but "make note of" is not the idiom).']
 ];
 
 /* ---------------- Part B · Passage Reconstruction (writing, essay) ----------------
@@ -128,7 +166,21 @@ const PART_B = [
     'For thirty years the paper mill was the largest employer in the valley and the main ' +
     'source of pollution in its river. It closed in 2018. The water is now clean enough ' +
     'for fish to return, and the town has lost a fifth of its working population.',
-    'The passage sets a gain against a loss without resolving it. Keeping only one side changes what it says.']
+    'The passage sets a gain against a loss without resolving it. Keeping only one side changes what it says.'],
+
+  /* Third set, both B2, so part B holds two whole sittings at that level. */
+  ['vpet-b-07', 'B2',
+    'Read this passage, then write it again in your own words after it disappears.\n\n' +
+    'A supermarket chain began printing the date of first sale on its fruit instead of a ' +
+    'use-by date. Waste in its own shops fell by a fifth. Customers threw away slightly ' +
+    'more at home, and the chain has not published a figure for the two together.',
+    'What the passage withholds is part of what it says. A reconstruction that reports the fall in shop waste as an overall saving has claimed the figure the chain declined to give.'],
+  ['vpet-b-08', 'B2',
+    'Read this passage, then write it again in your own words after it disappears.\n\n' +
+    'A hospital moved its blood tests from the wards to a small unit by the main entrance. ' +
+    'The wait for the test itself barely changed. What did change was the number of patients ' +
+    'who never arrived at all, which halved; staff put that down to nobody having to find a ward.',
+    'The finding is about attendance rather than speed, and the explanation is attributed to the staff rather than measured. Both distinctions have to survive.']
 ];
 
 /* ---------------- Part C · Reading Comprehension (reading, mcq) ----------------
@@ -192,7 +244,28 @@ const PART_C = [
     ['Its effect faded after a short time', 'It saved fuel steadily over six months',
       'It made no difference at any point', 'It worked only for experienced drivers'],
     'Its effect faded after a short time',
-    'The last sentence is the finding: the saving is real but front-loaded. "Steadily over six months" is the reading the last sentence exists to rule out.']
+    'The last sentence is the finding: the saving is real but front-loaded. "Steadily over six months" is the reading the last sentence exists to rule out.'],
+
+  /* Third set, both B2, so part C holds two whole sittings at that level. */
+  ['vpet-c-07', 'B2',
+    'A publisher offered its authors a choice: a larger payment up front, or a smaller one ' +
+    'with a bigger share of later sales. Established authors mostly took the payment. Debut ' +
+    'authors, who had the least money, more often took the share — not out of confidence, ' +
+    'they said, but because the sum offered to them was too small to make much difference.' +
+    '\n\nWhy did debut authors more often choose the share of sales?',
+    ['The sum offered to them up front was very small', 'They were confident their books would sell well',
+      'They had more money behind them than established authors', 'The publisher would not offer them a payment up front'],
+    'The sum offered to them up front was very small',
+    'The clause after the dash gives the reason and rules out confidence in the same breath. The last option turns a small offer into no offer, which the passage does not say.'],
+  ['vpet-c-08', 'B2',
+    'The council fitted sensors that dim the street lights when nobody is nearby, and ' +
+    'electricity use fell by a third. Residents of two streets asked for the old lighting ' +
+    'back, saying the dimming left them uneasy. The council restored full lighting on those ' +
+    'streets and kept the sensors everywhere else.\n\nHow did the council answer the complaints?',
+    ['It restored full lighting on those two streets only', 'It took the sensors out across the whole town',
+      'It made no change and kept the sensors everywhere', 'It dimmed the lights further to save more'],
+    'It restored full lighting on those two streets only',
+    'The last sentence draws the line precisely: full lighting on the two streets, sensors elsewhere. Each distractor takes that partial reversal to a total one, to none at all, or to the opposite.']
 ];
 
 /* ---------------- Part D · E-Mail Writing (writing, essay) ----------------
@@ -226,7 +299,36 @@ const PART_D = [
     'telephone and nothing has happened. It is now the coldest week of the year.\n\n' +
     'Write an email of about 150 words to the landlord. Set out what has happened, say why ' +
     'it now matters urgently, and state what you expect and by when. Stay formal and civil.',
-    'The difficulty is escalating without losing the register. A letter that becomes angry, or one that stays so mild it reads as a first report, both miss.']
+    'The difficulty is escalating without losing the register. A letter that becomes angry, or one that stays so mild it reads as a first report, both miss.'],
+
+  /* Third and fourth sets, two at each level, so part D holds two whole sittings
+     at B1 and two at B2 rather than two sittings' worth spread across both. */
+  ['vpet-d-05', 'B1',
+    'You signed up for a six-week evening course. After two weeks the class was moved from ' +
+    'Tuesday to Thursday, which is the one evening you cannot attend.\n\n' +
+    'Write an email of about 120 words to the course office. Say which course you are on, ' +
+    'explain why the new evening does not work, and ask what your options are.',
+    'Task, tone and accuracy. Naming the course and the change, and asking a question the office can actually answer, are what separate this from a complaint.'],
+  ['vpet-d-06', 'B1',
+    'A friend from another city is coming to stay for a weekend next month. They have asked ' +
+    'what there is to do and whether they need to bring anything.\n\n' +
+    'Write an email of about 120 words. Suggest two things to do, answer the question about ' +
+    'what to bring, and agree a time to meet.',
+    'Three things have to be there: the suggestions, the answer about what to bring, and a time. A warm email that leaves the arrangements open has not done the task.'],
+  ['vpet-d-07', 'B2',
+    'You booked a training course for four colleagues. The provider has moved it to a date ' +
+    'when none of them can attend, and the booking terms say the fee is non-refundable.\n\n' +
+    'Write an email of about 150 words to the provider. Set out what was booked and what ' +
+    'changed, explain why the new date is impossible, and say what you are asking for. Use a ' +
+    'formal register.',
+    'The mark turns on building a case rather than voicing a grievance: facts, consequence, and a specific request. Quoting the non-refundable term without asking for anything leaves the reader nothing to act on.'],
+  ['vpet-d-08', 'B2',
+    'You manage a small team. One of your staff has asked to drop to four days a week from ' +
+    'next month. You are willing, but the fifth day needs covering and your own manager has ' +
+    'to approve it.\n\n' +
+    'Write an email of about 150 words to your manager. Explain the request, say how the work ' +
+    'would be covered, and ask for a decision by a named date. Stay formal.',
+    'Three things are marked together: the request, a workable plan for the uncovered day, and a deadline. A message that only passes the request upwards has made the decision harder, not easier.']
 ];
 
 /* ---------------- Part I · Speaking Situations (speaking) ----------------
@@ -258,7 +360,36 @@ const PART_I = [
     'reason is personal and you would rather not explain it.\n\n' +
     'Speak for up to one minute. Decline the invitation, keep the reason private without ' +
     'sounding evasive, and leave the relationship in good order.',
-    'The hard part is declining without either over-explaining or sounding cold. Vague-but-warm is the target; a flat refusal and an invented excuse both miss it.']
+    'The hard part is declining without either over-explaining or sounding cold. Vague-but-warm is the target; a flat refusal and an invented excuse both miss it.'],
+
+  /* Third and fourth sets, two at each level, matching part D: two whole sittings
+     at B1 and two at B2 rather than four items spread across the two levels. */
+  ['vpet-i-05', 'B1',
+    'You ordered a coffee and a sandwich. The coffee is cold and the sandwich is not the one ' +
+    'you asked for. You are speaking to the person who served you, in a small cafe that is ' +
+    'not busy.\n\n' +
+    'Speak for up to one minute. Explain both problems, say what you would like instead, and ' +
+    'stay friendly.',
+    'Scored on whether both problems and a clear request are there, and on whether the tone matches a small cafe rather than a formal complaint.'],
+  ['vpet-i-06', 'B1',
+    'A classmate has asked to borrow your notes for a lesson they missed. Your notes are ' +
+    'incomplete for that lesson because you left early.\n\n' +
+    'Speak for up to one minute. Agree to lend them, warn about the gap, and suggest where ' +
+    'they could get the rest.',
+    'The three moves are agreeing, flagging the gap, and pointing somewhere else. Handing over the notes without the warning is the failure this item is watching for.'],
+  ['vpet-i-07', 'B2',
+    'A friend has asked you to look over a job application before they send it. It reads ' +
+    'badly in places and claims experience you know they do not have. You are at their flat, ' +
+    'and they are clearly pleased with it.\n\n' +
+    'Speak for up to one minute. Give your honest view, be specific about what needs changing, ' +
+    'and keep the friendship intact.',
+    'The difficulty is being useful without being cruel, and not letting the invented experience pass unmentioned. Praise with no substance and blunt criticism lose marks for opposite reasons.'],
+  ['vpet-i-08', 'B2',
+    'You are chairing a short team meeting. One person has spoken for most of it and two ' +
+    'others have said nothing at all. Time is nearly up.\n\n' +
+    'Speak for up to one minute. Interrupt politely, sum up what has been said so far, and ' +
+    'bring the quieter members in.',
+    'Scored on the three moves — interrupt, summarise, invite — and on whether the interruption stays courteous. Cutting the speaker off without acknowledging the point they were making misses.']
 ];
 
 /** Every item, flattened into the shape the seed inserts. */

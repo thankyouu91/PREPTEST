@@ -400,6 +400,29 @@ const run = async () => {
     r.status === 201 && genB && genB.items.length === 3 && genB.items.every(i => i.part === 'B'),
     JSON.stringify({ status: r.status, parts: genB && genB.items.map(i => i.part) }));
 
+  /* Độ sâu theo bậc, kiểm bằng chính trình sinh đề chứ không suy từ số câu.
+     Trình sinh đề xếp câu đúng bậc lên trước, nên một phần chỉ có vừa đủ số câu
+     ở bậc của đề sẽ trả về đúng ngần ấy câu ở mọi lượt — đề "mới" mà giống hệt
+     đề cũ. Phần A giữ 20 câu B2 cho một phần cần 10, nên hai lượt bốc không được
+     phép trùng khít; trùng khít 10/10 với 20 câu là xác suất 1/184.756, tức là
+     nếu xảy ra thì lỗi nằm ở ngân hàng chứ không ở may rủi. */
+  const drawA = async () => {
+    const g = await call('POST', '/api/admin/tests/generate', {
+      familyId: 'vpet', level: 'B2',
+      blueprint: [{ name: 'Part A - Sentence Completion', part: 'A', skill: 'writing', type: 'Điền từ', items: 10, minutes: 10, types: ['gap'] }]
+    });
+    return ((g.data.sections || [])[0] || {}).items || [];
+  };
+  const draw1 = await drawA();
+  const draw2 = await drawA();
+  const sameLevel = draw1.every(i => i.level === 'B2') && draw2.every(i => i.level === 'B2');
+  const overlap = draw1.filter(i => draw2.some(j => j.questionId === i.questionId)).length;
+  check('Đề B2 bốc toàn câu B2, không phải độn từ bậc khác',
+    draw1.length === 10 && draw2.length === 10 && sameLevel,
+    JSON.stringify({ n1: draw1.length, n2: draw2.length, levels: [...new Set(draw1.concat(draw2).map(i => i.level))] }));
+  check('Hai lượt bốc phần A ở cùng bậc B2 không trùng khít',
+    overlap < 10, 'trùng ' + overlap + '/10');
+
   /* Báo thiếu vẫn phải theo phần chứ không theo kỹ năng. Phần E là chỗ kiểm
      đúng nhất: nó cần audio nên ngân hàng chưa có câu nào, trong khi phần A
      cùng dạng điền từ thì đầy. */

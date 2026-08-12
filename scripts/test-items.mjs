@@ -6,6 +6,10 @@
  * Trọng tâm là những lỗi mà đọc bằng mắt sẽ bỏ sót: phần nào lệch kỹ năng hoặc
  * dạng câu so với bảng phần thi, câu điền từ có đáp án nhiều từ, câu trắc
  * nghiệm có đáp án không nằm trong các phương án, hoặc hai phương án trùng nhau.
+ *
+ * Và độ sâu theo bậc, thứ đếm bằng mắt thì ra đúng mà vẫn sai: một phần có đủ
+ * gấp đôi số câu blueprint yêu cầu vẫn lặp nguyên si ở lượt thi lại nếu số câu
+ * ấy dồn vào một bậc khác bậc của đề. Xem khối "Ngân hàng khớp blueprint".
  */
 import { readFileSync } from 'node:fs';
 
@@ -35,32 +39,46 @@ try {
   ok(covered.join('') === AUDIO_FREE.join(''),
     'Chỉ có các phần không cần audio, đủ cả năm phần', covered.join(''));
 
-  /* Ngân hàng là một POOL chứ không phải một đề cố định: trình sinh đề bốc đúng
-     số câu blueprint yêu cầu từ những gì phần đó đang có. Nên phép kiểm không
-     phải "đúng bằng" mà là "đủ, và chia hết" — pool bằng đúng k lần số câu mỗi
-     đề thì phần đó cho được k lượt thi khác nhau. */
-  const sittings = {};
+  /* Ngân hàng là một POOL chứ không phải một đề cố định, và độ sâu phải đếm
+     THEO BẬC chứ không theo phần. Trình sinh đề xếp câu đúng bậc lên trước rồi
+     mới lấy đủ số lượng, nên một phần có ít câu ở bậc của đề hơn số blueprint
+     yêu cầu sẽ lặp lại toàn bộ số câu ấy ở lượt sau — và một phần có ĐÚNG BẰNG
+     số blueprint thì lặp lại chắc chắn cả phần, tệ hơn trong hai trường hợp.
+     Luật vì thế là: ở mỗi bậc, một phần hoặc NÔNG (ít hơn số blueprint, phần bù
+     lấy từ bậc khác nên vẫn đổi giữa hai lượt) hoặc SÂU (ít nhất gấp đôi, đủ
+     cho hai đề khác nhau). Khoảng giữa là chỗ duy nhất không được rơi vào. */
+  const SITTINGS = 2;
+  const between = [];
+  const deepAt = {};
   for (const letter of AUDIO_FREE) {
     const mine = items.filter(i => i.part === letter);
     const want = partOf[letter];
-    sittings[letter] = mine.length / want.items;
     ok(mine.length >= want.items,
       'Phần ' + letter + ' đủ ít nhất ' + want.items + ' câu cho một lượt thi', String(mine.length));
-    ok(Number.isInteger(sittings[letter]),
-      'Phần ' + letter + ' có số câu chia hết cho ' + want.items,
-      mine.length + '/' + want.items);
     ok(mine.every(i => i.skill === want.skill),
       'Phần ' + letter + ' đúng kỹ năng ' + want.skill);
     ok(mine.every(i => want.types.includes(i.type)),
       'Phần ' + letter + ' đúng dạng câu ' + want.types.join('/'));
-  }
 
-  /* Mọi phần phải cho cùng một số lượt thi. Nếu phần A đủ hai đề mà phần B chỉ
-     đủ một thì lần thi lại khác ở A và lặp nguyên ở B — tệ hơn là chỉ có một đề,
-     vì nhìn thì tưởng đề mới. */
-  const counts = [...new Set(Object.values(sittings))];
-  ok(counts.length === 1, 'Các phần cho cùng số lượt thi khác nhau', JSON.stringify(sittings));
-  ok(counts[0] >= 1, 'Đủ ít nhất một lượt thi trọn vẹn', String(counts[0]));
+    deepAt[letter] = new Set();
+    for (const level of new Set(mine.map(i => i.level))) {
+      const have = mine.filter(i => i.level === level).length;
+      if (have >= SITTINGS * want.items) deepAt[letter].add(level);
+      else if (have >= want.items) {
+        between.push(letter + ' bậc ' + level + ': ' + have + ' câu, blueprint cần ' + want.items);
+      }
+    }
+  }
+  ok(between.length === 0,
+    'Không bậc nào của phần nào rơi vào khoảng giữa nông và sâu', between.join(' · '));
+
+  /* Sâu ở mỗi phần một bậc khác nhau thì vẫn không sinh lại được cả đề: phần A
+     đủ hai lượt ở B2 mà phần C chỉ đủ ở B1 nghĩa là đề B2 nào cũng lặp nguyên
+     phần C. Phải có ít nhất một bậc mà MỌI phần đều sâu. */
+  const common = [...deepAt[AUDIO_FREE[0]]].filter(l => AUDIO_FREE.every(x => deepAt[x].has(l)));
+  ok(common.length >= 1,
+    'Có ít nhất một bậc mà mọi phần đều đủ ' + SITTINGS + ' lượt thi',
+    JSON.stringify(Object.fromEntries(AUDIO_FREE.map(x => [x, [...deepAt[x]]]))));
 
   head('Chất lượng từng câu');
 
@@ -92,10 +110,14 @@ try {
      sẽ để trạng thái chờ chấm chứ không so chuỗi. */
   const rubric = items.filter(i => i.type === 'essay' || i.type === 'speaking');
   ok(rubric.every(i => i.answer === ''), 'Câu chấm rubric không mang đáp án dựng sẵn');
-  const rubricWant = (partOf.B.items + partOf.D.items + partOf.I.items) * counts[0];
-  ok(rubric.length === rubricWant,
-    'Số câu chấm rubric khớp blueprint (B + D + I, nhân số lượt thi)',
-    rubric.length + ' ≠ ' + rubricWant);
+  /* Chiều ngược lại: câu chấm rubric chỉ được nằm ở những phần mà blueprint khai
+     là tự luận hoặc nói. Một câu essay lọt vào phần C sẽ để marking.js treo chờ
+     chấm tay một phần lẽ ra chấm tự động xong ngay khi nộp. */
+  const rubricParts = AUDIO_FREE.filter(l =>
+    partOf[l].types.some(t => t === 'essay' || t === 'speaking'));
+  ok(rubric.every(i => rubricParts.includes(i.part)),
+    'Câu chấm rubric chỉ nằm ở phần blueprint khai là tự luận hoặc nói',
+    rubric.filter(i => !rubricParts.includes(i.part)).map(i => i.key).join(', '));
 
   head('Đã vào cơ sở dữ liệu');
 
