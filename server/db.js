@@ -165,6 +165,102 @@ CREATE TABLE IF NOT EXISTS grammar_examples (
 
 CREATE INDEX IF NOT EXISTS idx_ge_point ON grammar_examples(point_id, kind, sort);
 
+-- Self-study vocabulary, the five tables docs/LEARNING.md §6 sets out: the
+-- headword, its meanings, example sentences under each meaning, its inflected
+-- forms, and the chunks it lives in.
+--
+-- These are keyed on natural keys and upserted, not cleared and reloaded like
+-- the other authored tables, for the reason seedVpetItems() gives about the
+-- question bank. learn_progress will hold a sense id and a review date per
+-- learner, so a row id has to survive a re-import: reloading the word list must
+-- not reset somebody's spaced repetition. Clearing the table cannot promise
+-- that; upserting on (headword, pos) can.
+CREATE TABLE IF NOT EXISTS vocab_entries (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  headword TEXT NOT NULL,
+  pos TEXT NOT NULL,                            -- noun | verb | adj | adv | prep | conj | det | pron | phrase
+  level TEXT NOT NULL,                          -- A1…C2
+  level_source TEXT NOT NULL,                   -- ngsl-rank | nawl | tsl | bsl | corpus | manual
+  ipa_uk TEXT,
+  ipa_us TEXT,
+  freq_rank INTEGER,                            -- rank in the source list; NULL when the level came from a corpus count
+  source TEXT NOT NULL,                         -- which open list the entry came from
+  licence TEXT NOT NULL,                        -- and under what licence, per docs/LEARNING.md §1.3
+  sort INTEGER NOT NULL DEFAULT 0,
+  UNIQUE(headword, pos)                         -- "book" the noun and "book" the verb are two entries
+);
+
+CREATE INDEX IF NOT EXISTS idx_vocab_level ON vocab_entries(level);
+CREATE INDEX IF NOT EXISTS idx_vocab_rank  ON vocab_entries(freq_rank);
+CREATE INDEX IF NOT EXISTS idx_vocab_head  ON vocab_entries(headword);
+
+-- One meaning. A sense carries its own level because the headword's level is the
+-- level of its commonest meaning: "book" the object is A1, "book" as in reserve
+-- a table is A2, and docs/LEARNING.md §1.2 counts them as two items.
+CREATE TABLE IF NOT EXISTS vocab_senses (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  entry_id INTEGER NOT NULL REFERENCES vocab_entries(id) ON DELETE CASCADE,
+  en TEXT NOT NULL,                             -- the English definition
+  vi TEXT NOT NULL,                             -- the Vietnamese gloss
+  level TEXT NOT NULL,
+  note TEXT,                                    -- register, usage traps, what it is not
+  sort INTEGER NOT NULL DEFAULT 0,
+  UNIQUE(entry_id, en)
+);
+
+CREATE INDEX IF NOT EXISTS idx_vsense_entry ON vocab_senses(entry_id, sort);
+CREATE INDEX IF NOT EXISTS idx_vsense_level ON vocab_senses(level);
+
+-- Bilingual example sentences, hung off the meaning rather than the headword so
+-- a sentence illustrates the sense it was chosen for. Source and licence are per
+-- row because these arrive from Tatoeba one sentence at a time.
+CREATE TABLE IF NOT EXISTS vocab_examples (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  sense_id INTEGER NOT NULL REFERENCES vocab_senses(id) ON DELETE CASCADE,
+  en TEXT NOT NULL,
+  vi TEXT NOT NULL,
+  source TEXT NOT NULL,
+  licence TEXT NOT NULL,
+  sort INTEGER NOT NULL DEFAULT 0,
+  UNIQUE(sense_id, en)
+);
+
+CREATE INDEX IF NOT EXISTS idx_vex_sense ON vocab_examples(sense_id, sort);
+
+-- Inflected and derived forms. Indexed on the form itself because a learner who
+-- types "children" has to land on "child".
+CREATE TABLE IF NOT EXISTS vocab_forms (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  entry_id INTEGER NOT NULL REFERENCES vocab_entries(id) ON DELETE CASCADE,
+  form TEXT NOT NULL,
+  kind TEXT NOT NULL,                           -- plural | past | pastp | ving | third | comparative | superlative | derived
+  note TEXT,                                    -- irregular spellings, British and American splits
+  sort INTEGER NOT NULL DEFAULT 0,
+  UNIQUE(entry_id, form, kind)
+);
+
+CREATE INDEX IF NOT EXISTS idx_vform_entry ON vocab_forms(entry_id, sort);
+CREATE INDEX IF NOT EXISTS idx_vform_form  ON vocab_forms(form);
+
+-- Collocations, docs/LEARNING.md §3.1. Hung off the entry rather than the sense:
+-- a chunk often spans meanings, and forcing a choice would drop the ones that do.
+CREATE TABLE IF NOT EXISTS collocations (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  entry_id INTEGER NOT NULL REFERENCES vocab_entries(id) ON DELETE CASCADE,
+  chunk TEXT NOT NULL,
+  kind TEXT NOT NULL,                           -- verb-noun | adj-noun | noun-noun | noun-prep | verb-prep | adj-prep | adv-adj | phrase
+  level TEXT NOT NULL,
+  ex_en TEXT NOT NULL,
+  ex_vi TEXT NOT NULL,
+  note TEXT,
+  sort INTEGER NOT NULL DEFAULT 0,
+  UNIQUE(entry_id, chunk)
+);
+
+CREATE INDEX IF NOT EXISTS idx_colloc_entry ON collocations(entry_id, sort);
+CREATE INDEX IF NOT EXISTS idx_colloc_level ON collocations(level);
+CREATE INDEX IF NOT EXISTS idx_colloc_kind  ON collocations(kind);
+
 -- Fingerprints of the authored content tables (irregular verbs, linking words, …).
 -- Reloaded when a fingerprint changes, so correcting content or removing an entry
 -- also reaches a running database — not only adding rows.
@@ -814,6 +910,7 @@ function seed() {
   seedIrregularVerbs();
   seedLinkingWords();
   seedGrammar();
+  seedVocab();
 }
 
 /* Load an authored content table if and only if its source file has changed.
@@ -874,6 +971,99 @@ function seedVpetItems() {
     }
   });
   if (n) console.warn(`[seed] ${n} VPET bank item(s) added.`);
+}
+
+/* The self-study vocabulary, docs/LEARNING.md §6.
+
+   Upserted on natural keys rather than cleared and reloaded, for a reason the
+   other content tables do not have: learn_progress will hold a sense id and a
+   review date per learner, so re-importing the word list must not renumber the
+   rows underneath somebody's spaced repetition.
+
+   Three rules the plain upsert in seedVpetItems() does not need:
+
+   1. A level whose `level_source` is `manual` is left alone. §1.4 says a hand
+      adjustment in the admin area beats the three automatic rules; an import
+      that quietly reverted it would make that sentence untrue. Everything else
+      about the entry is still refreshed — only the level is pinned.
+   2. Children that the source no longer lists are deleted, but only within the
+      entries being imported. A sense that is still there keeps its id, so
+      progress against it survives; a sense that has gone takes its examples
+      with it through ON DELETE CASCADE.
+   3. Entries the import does not mention are not touched at all, so a word an
+      administrator adds by hand is not swept away by the next run. */
+function seedVocab() {
+  const rows = require('./data/vocab').rows();
+
+  const insEntry = db.prepare(`INSERT INTO vocab_entries
+      (headword,pos,level,level_source,ipa_uk,ipa_us,freq_rank,source,licence,sort)
+    VALUES (?,?,?,?,?,?,?,?,?,?)
+    ON CONFLICT(headword,pos) DO UPDATE SET
+      level = CASE WHEN vocab_entries.level_source = 'manual'
+                   THEN vocab_entries.level ELSE excluded.level END,
+      level_source = CASE WHEN vocab_entries.level_source = 'manual'
+                   THEN vocab_entries.level_source ELSE excluded.level_source END,
+      ipa_uk=excluded.ipa_uk, ipa_us=excluded.ipa_us, freq_rank=excluded.freq_rank,
+      source=excluded.source, licence=excluded.licence, sort=excluded.sort`);
+
+  const insSense = db.prepare(`INSERT INTO vocab_senses (entry_id,en,vi,level,note,sort)
+    VALUES (?,?,?,?,?,?)
+    ON CONFLICT(entry_id,en) DO UPDATE SET
+      vi=excluded.vi, level=excluded.level, note=excluded.note, sort=excluded.sort`);
+
+  const insExample = db.prepare(`INSERT INTO vocab_examples (sense_id,en,vi,source,licence,sort)
+    VALUES (?,?,?,?,?,?)
+    ON CONFLICT(sense_id,en) DO UPDATE SET
+      vi=excluded.vi, source=excluded.source, licence=excluded.licence, sort=excluded.sort`);
+
+  const insForm = db.prepare(`INSERT INTO vocab_forms (entry_id,form,kind,note,sort)
+    VALUES (?,?,?,?,?)
+    ON CONFLICT(entry_id,form,kind) DO UPDATE SET note=excluded.note, sort=excluded.sort`);
+
+  const insColloc = db.prepare(`INSERT INTO collocations
+      (entry_id,chunk,kind,level,ex_en,ex_vi,note,sort)
+    VALUES (?,?,?,?,?,?,?,?)
+    ON CONFLICT(entry_id,chunk) DO UPDATE SET
+      kind=excluded.kind, level=excluded.level, ex_en=excluded.ex_en,
+      ex_vi=excluded.ex_vi, note=excluded.note, sort=excluded.sort`);
+
+  /* Delete the children of this entry that the source has stopped listing.
+     Bound parameters only, so the placeholder list is built from the count. */
+  const pruneUnlisted = (table, column, entryId, keep) => {
+    const holes = keep.map(() => '?').join(',');
+    db.prepare(`DELETE FROM ${table} WHERE entry_id = ?` +
+      (keep.length ? ` AND ${column} NOT IN (${holes})` : '')).run(entryId, ...keep);
+  };
+
+  let added = 0;
+  tx(() => {
+    for (const e of rows) {
+      const before = q.val('SELECT id FROM vocab_entries WHERE headword=? AND pos=?', e.headword, e.pos);
+      insEntry.run(e.headword, e.pos, e.level, e.levelSource, e.ipaUk, e.ipaUs,
+        e.freqRank, e.source, e.licence, e.sort);
+      const entryId = q.val('SELECT id FROM vocab_entries WHERE headword=? AND pos=?', e.headword, e.pos);
+      if (!before) added++;
+
+      for (const s of e.senses) {
+        insSense.run(entryId, s.en, s.vi, s.level, s.note, s.sort);
+        const senseId = q.val('SELECT id FROM vocab_senses WHERE entry_id=? AND en=?', entryId, s.en);
+        for (const x of s.examples) insExample.run(senseId, x.en, x.vi, x.source, x.licence, x.sort);
+        const keepEx = s.examples.map(x => x.en);
+        const holes = keepEx.map(() => '?').join(',');
+        db.prepare('DELETE FROM vocab_examples WHERE sense_id = ?' +
+          (keepEx.length ? ` AND en NOT IN (${holes})` : '')).run(senseId, ...keepEx);
+      }
+      pruneUnlisted('vocab_senses', 'en', entryId, e.senses.map(s => s.en));
+
+      for (const f of e.forms) insForm.run(entryId, f.form, f.kind, f.note, f.sort);
+      pruneUnlisted('vocab_forms', 'form', entryId, e.forms.map(f => f.form));
+
+      for (const c of e.collocations)
+        insColloc.run(entryId, c.chunk, c.kind, c.level, c.exEn, c.exVi, c.note, c.sort);
+      pruneUnlisted('collocations', 'chunk', entryId, e.collocations.map(c => c.chunk));
+    }
+  });
+  if (added) console.warn(`[seed] ${added} vocabulary entr${added === 1 ? 'y' : 'ies'} added.`);
 }
 
 /* The V1–V2–V3 irregular verb table */
@@ -967,4 +1157,4 @@ function seedGrammar() {
 
 seed();
 
-module.exports = { db, q, tx, nowISO, jparse, makeCode, audit, DB_FILE };
+module.exports = { db, q, tx, nowISO, jparse, makeCode, audit, DB_FILE, seedVocab };

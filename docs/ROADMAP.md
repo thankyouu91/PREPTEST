@@ -30,7 +30,7 @@ writes what goes through it. Detail and the reasoning behind the Google items
 are further down under "Việc kiến trúc", which is now a reference section
 rather than a separate no-go queue.
 
-- [ ] **Vocabulary schema + importer** — `vocab_entries` / `vocab_senses` / `vocab_examples` / `vocab_forms` / `collocations` per `docs/LEARNING.md` §6, plus a re-runnable importer in the shape `seedVpetItems()` already uses. First because it is the one item blocking the other session outright: four content items (NGSL, NAWL/TSL, Tatoeba, Wiktextract) cannot start until these tables exist
+- [x] **Vocabulary schema + importer** — the five tables of `docs/LEARNING.md` §6 in `server/db.js`, `seedVocab()`, `server/data/vocab.js`, and `GET /api/learn/vocab` + `/api/learn/vocab/:headword`. Done first because it was the one item blocking the other session outright. Three decisions worth the words: the natural key is **(headword, pos)**, since §1.2's own worked example is `book` the A1 noun beside `book` the A2 verb; a **sense carries its own level**, because "run" is A1 and "run a business" is B1, and a sense that inherited its headword's level would make the §1.2 count wrong; and the importer **upserts rather than clears and reloads** — `learn_progress` will hold a sense id per learner, so re-importing the word list must not renumber the rows under somebody's spaced repetition. On top of the plain upsert: a level whose `level_source` is `manual` is never overwritten (§1.4 says a hand adjustment beats the automatic rules, and an import that reverted it would make that untrue), children the source has dropped are deleted while children that remain keep their ids, and entries the import does not mention are left alone so an admin's own word is not swept away. `server/data/vocab.js` holds twelve starter entries, not a word list: they exist so every table and relationship carries real data, and `freq_rank` is null on all of them because a rank is NGSL's data and inventing one would be worse than leaving it empty. `scripts/test-vocab.mjs` (30 checks) tests the API against the running server and the importer's semantics against a throwaway database via `PREP_DB`, so re-run behaviour is proved rather than assumed
 - [ ] **Security sweep across the whole API** — security headers, a rate limit on every write endpoint rather than the handful that have one today, and a per-endpoint check that requireAdmin / requireUser / csrfGuard are all actually attached. A table in the sweep of endpoint → guards → limit, so the next audit is a diff rather than a re-reading
 - [ ] **CI: `npm run verify` on every push** — a GitHub Actions workflow on the working branch. The suite already runs headless and returns a non-zero exit code; what is missing is anything running it when a human forgets. Cache `node_modules` and the Playwright browser, or the run costs more than it saves
 - [ ] **Translate `scripts/`** — the last Vietnamese island in the repo, and the only thing left before "English everywhere" is true. Eight test scripts plus `verify.sh`. Whole-line replacement keyed on line number, as slice 4b did; the check names are printed output, not identifiers, so nothing else moves
@@ -237,9 +237,9 @@ below uses the server-side route instead — which is also the more private one.
 hãy dùng đúng một lệnh sau, nó tự cài dependency, tự bật/tắt server và chạy hết mọi bước:
 
 ```bash
-npm run verify          # cài deps → build → chạy server → 8 bộ test → audit → chụp ảnh
+npm run verify          # cài deps → build → chạy server → 9 bộ test → audit → chụp ảnh
                         # (test-taikhoan, test-admin, test-auth, test-catalog,
-                        #  test-user-api, test-exam, test-items, test-learn)
+                        #  test-user-api, test-exam, test-items, test-vocab, test-learn)
 SKIP_SHOTS=1 npm run verify   # bản nhanh, bỏ bước chụp ảnh
 ```
 

@@ -390,6 +390,43 @@ Kế hoạch chi tiết cho từ vựng, ngữ pháp, collocations và linking w
 [`docs/LEARNING.md`](docs/LEARNING.md) — kèm **định mức từ vựng theo bậc A1–C2** và
 danh sách nguồn dữ liệu mở có giấy phép rõ ràng.
 
+### Lược đồ từ vựng
+
+Năm bảng theo đúng `docs/LEARNING.md` mục 6: `vocab_entries` (từ gốc, khoá tự
+nhiên là **(headword, pos)** — `book` danh từ A1 và `book` động từ A2 là hai
+mục), `vocab_senses` (nghĩa, **mang bậc riêng** vì một nghĩa có thể cao hơn bậc
+của từ gốc), `vocab_examples` (câu song ngữ, treo dưới *nghĩa* chứ không phải
+dưới từ), `vocab_forms` (dạng biến đổi, có index riêng để gõ `children` vẫn ra
+`child`) và `collocations`.
+
+Trình nhập `seedVocab()` **upsert theo khoá tự nhiên**, không xoá-rồi-nạp như
+các bảng nội dung khác. Lý do: `learn_progress` sắp trỏ vào id của nghĩa, nên
+nhập lại danh sách từ không được phép đánh số lại hàng bên dưới lịch ôn của
+người học. Ba luật kèm theo:
+
+- Bậc có `level_source = 'manual'` **không bị ghi đè** — mục 1.4 nói sửa tay
+  luôn thắng ba luật tự động, một lần nhập lại lặng lẽ trả về cũ sẽ khiến câu đó
+  thành sai. Mọi thứ khác của mục đó vẫn được làm mới.
+- Nhánh dưới mà nguồn đã bỏ thì bị xoá, nhưng chỉ trong những mục đang được
+  nhập. Nghĩa còn trong nguồn giữ nguyên id; nghĩa mất đi kéo theo câu ví dụ của
+  nó qua `ON DELETE CASCADE`.
+- Mục nguồn **không** nhắc tới thì không bị đụng, nên từ do quản trị viên tự
+  thêm không bị quét đi.
+
+`server/data/vocab.js` hiện giữ **12 mục khởi tạo** — không phải danh sách từ.
+Chúng được chọn để mọi bảng và mọi quan hệ đều có dữ liệu thật: hai mục chung
+mặt chữ khác từ loại, nghĩa cao hơn bậc từ gốc, số nhiều bất quy tắc, đủ bốn
+dạng động từ, so sánh bất quy tắc, dạng phái sinh, danh từ không đếm được, và
+collocation đủ các kiểu. Cột `freq_rank` để trống ở mọi dòng: hạng tần suất là
+dữ liệu của NGSL, bịa ra một con số còn tệ hơn để trống. Việc nhập NGSL / NAWL /
+TSL / Tatoeba nằm ở hàng đợi nội dung.
+
+Đọc qua `GET /api/learn/vocab` (lọc theo bậc, từ loại, tìm theo mặt chữ / dạng
+biến đổi / nghĩa tiếng Việt) và `GET /api/learn/vocab/:headword` (một mặt chữ,
+trả về **mọi từ loại** cùng lúc — người tra chưa biết mình cần từ loại nào).
+`scripts/test-vocab.mjs` kiểm cả hai nửa: API trên server đang chạy, và ngữ
+nghĩa của trình nhập trên một cơ sở dữ liệu tạm qua `PREP_DB`.
+
 Cơ cấu và cách chấm điểm của 6 kỳ thi, cùng thiết kế engine chấm, nằm trong
 [`docs/SCORING.md`](docs/SCORING.md).
 

@@ -61,6 +61,9 @@ node scripts/test-exam.mjs || fail=1
 step "Kiểm thử ngân hàng đề VPET (khớp blueprint, chất lượng từng câu)"
 node scripts/test-items.mjs || fail=1
 
+step "Kiểm thử từ vựng (lược đồ, trình nhập, tra theo dạng biến đổi)"
+node scripts/test-vocab.mjs || fail=1
+
 step "Kiểm thử khu tự học (động từ bất quy tắc, từ nối)"
 node scripts/test-learn.mjs || fail=1
 

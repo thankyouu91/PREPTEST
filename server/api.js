@@ -1487,4 +1487,85 @@ router.get('/learn/grammar/:slug', (req, res) => {
   });
 });
 
+/* Vocabulary — the list, without senses and examples, so the payload stays small.
+   The search reaches into vocab_forms as well as the headword, because a learner
+   who meets "children" in a text looks up "children", not "child". */
+router.get('/learn/vocab', (req, res) => {
+  const level = LEVELS.includes(str(req.query.level, 2).toUpperCase())
+    ? str(req.query.level, 2).toUpperCase() : '';
+  const pos = str(req.query.pos, 20).toLowerCase();
+  const kw = str(req.query.q, 60).toLowerCase();
+  const limit = clamp(int(req.query.limit, 50), 1, 200);
+  const offset = clamp(int(req.query.offset, 0), 0, 100000);
+
+  const where = [];
+  const args = [];
+  if (level) { where.push('e.level = ?'); args.push(level); }
+  if (pos) { where.push('e.pos = ?'); args.push(pos); }
+  if (kw) {
+    where.push(`(lower(e.headword) LIKE ?
+      OR EXISTS (SELECT 1 FROM vocab_forms f WHERE f.entry_id = e.id AND lower(f.form) LIKE ?)
+      OR EXISTS (SELECT 1 FROM vocab_senses s WHERE s.entry_id = e.id AND lower(s.vi) LIKE ?))`);
+    const like = '%' + kw + '%';
+    args.push(like, like, like);
+  }
+  const w = where.length ? ' WHERE ' + where.join(' AND ') : '';
+
+  const entries = q.all(
+    `SELECT e.* FROM vocab_entries e ${w} ORDER BY e.sort, e.headword, e.pos LIMIT ? OFFSET ?`,
+    ...args, limit, offset).map(e => ({
+      headword: e.headword, pos: e.pos, level: e.level, levelSource: e.level_source,
+      ipaUk: e.ipa_uk, ipaUs: e.ipa_us, freqRank: e.freq_rank,
+      senses: q.val('SELECT COUNT(*) c FROM vocab_senses WHERE entry_id=?', e.id),
+      forms: q.val('SELECT COUNT(*) c FROM vocab_forms WHERE entry_id=?', e.id),
+      collocations: q.val('SELECT COUNT(*) c FROM collocations WHERE entry_id=?', e.id)
+    }));
+
+  res.set('Cache-Control', 'public, max-age=300').json({
+    total: q.val('SELECT COUNT(*) c FROM vocab_entries'),
+    matched: q.val(`SELECT COUNT(*) c FROM vocab_entries e ${w}`, ...args),
+    count: entries.length,
+    levels: q.all('SELECT level, COUNT(*) c FROM vocab_entries GROUP BY level ORDER BY level')
+      .map(r => ({ id: r.level, count: r.c })),
+    parts: q.all('SELECT pos, COUNT(*) c FROM vocab_entries GROUP BY pos ORDER BY pos')
+      .map(r => ({ id: r.pos, count: r.c })),
+    entries
+  });
+});
+
+/* One headword with everything under it. Every part of speech is returned
+   together — "book" the noun and "book" the verb are separate entries, but a
+   learner looking the word up wants both, and which one they meant is exactly
+   what they do not know yet. */
+router.get('/learn/vocab/:headword', (req, res) => {
+  const head = str(req.params.headword, 60).toLowerCase();
+  const found = q.all(
+    'SELECT * FROM vocab_entries WHERE lower(headword) = ? ORDER BY sort, pos', head);
+  if (!found.length) return res.status(404).json({ error: 'No such word' });
+
+  res.set('Cache-Control', 'public, max-age=300').json({
+    headword: found[0].headword,
+    entries: found.map(e => ({
+      pos: e.pos, level: e.level, levelSource: e.level_source,
+      ipaUk: e.ipa_uk, ipaUs: e.ipa_us, freqRank: e.freq_rank,
+      /* Source and licence travel with the entry: docs/LEARNING.md §1.3 asks for
+         attribution, and these lists are shared under CC BY-SA. */
+      source: e.source, licence: e.licence,
+      senses: q.all('SELECT * FROM vocab_senses WHERE entry_id=? ORDER BY sort, id', e.id)
+        .map(s => ({
+          en: s.en, vi: s.vi, level: s.level, note: s.note,
+          examples: q.all('SELECT * FROM vocab_examples WHERE sense_id=? ORDER BY sort, id', s.id)
+            .map(x => ({ en: x.en, vi: x.vi, source: x.source, licence: x.licence }))
+        })),
+      forms: q.all('SELECT * FROM vocab_forms WHERE entry_id=? ORDER BY sort, id', e.id)
+        .map(f => ({ form: f.form, kind: f.kind, note: f.note })),
+      collocations: q.all('SELECT * FROM collocations WHERE entry_id=? ORDER BY sort, id', e.id)
+        .map(c => ({
+          chunk: c.chunk, kind: c.kind, level: c.level,
+          exEn: c.ex_en, exVi: c.ex_vi, note: c.note
+        }))
+    }))
+  });
+});
+
 module.exports = router;
