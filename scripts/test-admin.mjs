@@ -614,8 +614,22 @@ const run = async () => {
       vpet ? vpet.totalItems + ' câu / ' + vpet.sections.length + ' phần' : 'không thấy format');
     const audioParts = vpet ? vpet.sections.filter(s => s.needsAudio) : [];
     check('Năm phần cần audio được đánh dấu', audioParts.length === 5, audioParts.length + ' phần');
-    check('Báo thiếu audio khi ngân hàng chưa đủ tệp',
-      !!vpet && vpet.audioShortBy > 0 && vpet.ready === false, vpet ? String(vpet.audioShortBy) : '-');
+    /* `audioShortBy` phải khớp với chính các số mà API vừa trả về cho từng
+       phần, chứ không phải luôn dương. Bản kiểm cũ đòi nó > 0 — đúng khi các
+       part audio chưa dựng, nhưng đó là điều kiện tình cờ và nó tắt ngay hôm
+       kho được dựng đủ. Điều đang kiểm là con số CỘNG ĐÚNG, không phải là
+       "kho luôn thiếu". */
+    const thieuThat = audioParts.reduce((n, sec) => n + ((sec.audio && sec.audio.short) || 0), 0);
+    check('Số câu thiếu audio bằng tổng thiếu của từng phần',
+      !!vpet && vpet.audioShortBy === thieuThat,
+      vpet ? `tổng báo ${vpet.audioShortBy}, cộng từng phần ${thieuThat}` : '-');
+    check('Cờ sẵn sàng khớp với việc còn thiếu hay không',
+      !!vpet && vpet.ready === (thieuThat === 0),
+      vpet ? `ready=${vpet.ready}, thiếu ${thieuThat}` : '-');
+    check('Mỗi phần cần audio đều báo have/need/short',
+      audioParts.every(sec => sec.audio && Number.isFinite(sec.audio.have) &&
+        Number.isFinite(sec.audio.need) && Number.isFinite(sec.audio.short)),
+      JSON.stringify(audioParts.map(sec => sec.audio)));
   }
 
   r = await call('DELETE', '/api/admin/questions/' + audioQid + '/audio');
