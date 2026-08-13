@@ -1,0 +1,163 @@
+# Claude → GitHub → AWS.
+#
+# A commit lands on the working branch, GitHub runs the whole gate, and only a
+# green gate is allowed to reach the server. Nothing here can deploy anywhere
+# until the repository is given the two variables at the bottom of this file,
+# so merging it changes nothing on its own.
+#
+# Two deliberate choices worth knowing before you turn it on:
+#
+#  · **Auto-deploy is OFF by default.** The push trigger is gated on a
+#    repository variable, because the autonomous session commits to this branch
+#    roughly every hour and "every hourly commit goes straight to production"
+#    should be a decision somebody made on purpose. Until then, deploys are
+#    started by hand from the Actions tab, on a commit you picked.
+#
+#  · **No AWS keys in GitHub.** The deploy job assumes an IAM role over OIDC,
+#    so the credential is minted for one run and expires with it. And it
+#    reaches the instance through Systems Manager rather than SSH: no key
+#    material anywhere, no port 22 open, and AWS records who ran what.
+
+name: Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      reason:
+        description: Why this deploy is being run by hand
+        required: false
+        default: manual
+  push:
+    branches: [claude/prep-test-platform-design-fpiuqn]
+
+concurrency:
+  # One deploy at a time, and a newer commit cancels an older queued one — but
+  # never cancels a deploy already talking to the instance.
+  group: deploy
+  cancel-in-progress: false
+
+jobs:
+  check:
+    name: The gate
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        # scripts/test-pg-schema.mjs loads the translated schema into a REAL
+        # PostgreSQL and compares what the two engines built. Without this it
+        # skips loudly, which is honest but is not the check.
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: prep_schema_check
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready --health-interval 5s
+          --health-timeout 5s --health-retries 10
+    env:
+      PG_URL: postgres://postgres:postgres@127.0.0.1:5432/prep_schema_check
+      # The gate resets the administrator password when this is unset, which on
+      # a shared runner would mean a different one every run. Fixed here: the
+      # database is thrown away with the runner.
+      ADMIN_PASSWORD: ci-only-${{ github.run_id }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      # This container has Chromium pre-installed and pins
+      # PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD; a GitHub runner does not, so the
+      # browser half of the suite needs one fetched here.
+      - run: npx playwright install --with-deps chromium
+      - run: npm run verify
+
+  deploy:
+    name: To the instance
+    needs: check
+    runs-on: ubuntu-latest
+    # Never on a pull request, never from a fork, and never at all until the
+    # role and the instance are configured. `vars.DEPLOY_ON_PUSH` is the switch
+    # that turns an hourly commit into an hourly deploy.
+    if: >-
+      vars.AWS_ROLE_ARN != '' && vars.EC2_INSTANCE_ID != '' &&
+      (github.event_name == 'workflow_dispatch' || vars.DEPLOY_ON_PUSH == 'true')
+    permissions:
+      id-token: write        # to mint the OIDC token the role trusts
+      contents: read
+    environment: production  # so a required reviewer can be attached in Settings
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Assume the deploy role
+        # AWS's own action. Pin it to a commit SHA rather than a tag if you
+        # want the supply chain nailed down; a tag can be moved.
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+          role-session-name: gh-deploy-${{ github.run_id }}
+
+      - name: Run the deploy on the instance
+        # The command itself is deploy/ec2-deploy.sh, in this repository, so
+        # what runs on the server is reviewable in a diff like everything else.
+        run: |
+          set -euo pipefail
+          COMMAND_ID=$(aws ssm send-command \
+            --instance-ids "${{ vars.EC2_INSTANCE_ID }}" \
+            --document-name AWS-RunShellScript \
+            --comment "deploy ${GITHUB_SHA::7} by ${GITHUB_ACTOR}" \
+            --parameters commands='["bash /opt/vpet-prep/deploy/ec2-deploy.sh"]' \
+            --query 'Command.CommandId' --output text)
+          echo "SSM command: $COMMAND_ID"
+
+          # send-command returns immediately; the deploy has not happened yet.
+          # Wait for it, then print what the instance actually said — a deploy
+          # whose output nobody sees is a deploy nobody can debug.
+          set +e
+          aws ssm wait command-executed \
+            --command-id "$COMMAND_ID" --instance-id "${{ vars.EC2_INSTANCE_ID }}"
+          WAITED=$?
+          set -e
+
+          aws ssm get-command-invocation \
+            --command-id "$COMMAND_ID" --instance-id "${{ vars.EC2_INSTANCE_ID }}" \
+            --query 'StandardOutputContent' --output text
+          STATUS=$(aws ssm get-command-invocation \
+            --command-id "$COMMAND_ID" --instance-id "${{ vars.EC2_INSTANCE_ID }}" \
+            --query 'Status' --output text)
+
+          if [ "$STATUS" != "Success" ]; then
+            echo "::error::deploy finished as $STATUS"
+            aws ssm get-command-invocation \
+              --command-id "$COMMAND_ID" --instance-id "${{ vars.EC2_INSTANCE_ID }}" \
+              --query 'StandardErrorContent' --output text
+            exit 1
+          fi
+          exit $WAITED
+
+# ---------------------------------------------------------------------------
+# What has to exist before this does anything
+#
+# Repository → Settings → Secrets and variables → Actions → Variables:
+#
+#   AWS_ROLE_ARN      arn:aws:iam::<account>:role/<role for GitHub OIDC>
+#   AWS_REGION        ap-southeast-1
+#   EC2_INSTANCE_ID   i-0123456789abcdef0
+#   DEPLOY_ON_PUSH    true, once you want every commit on this branch deployed
+#
+# These are VARIABLES, not secrets: none of them is one. An account id and an
+# instance id are identifiers, and putting them in the secret store only means
+# nobody can read the workflow log to see which instance was deployed to.
+#
+# On the AWS side, three things:
+#
+#   1. An OIDC provider for token.actions.githubusercontent.com.
+#   2. A role that trusts it, with the subject restricted to THIS repository and
+#      THIS branch — a trust policy of `repo:owner/*:*` lets any repository in
+#      the account assume it.
+#   3. That role allowed ssm:SendCommand on this one instance and on the
+#      AWS-RunShellScript document, plus ssm:GetCommandInvocation. Nothing else.
+#      The instance itself needs the SSM agent running and a role with
+#      AmazonSSMManagedInstanceCore.
+# ---------------------------------------------------------------------------

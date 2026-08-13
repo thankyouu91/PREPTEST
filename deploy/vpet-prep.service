@@ -1,0 +1,60 @@
+# systemd unit for the EC2 deployment.
+#
+#   sudo cp deploy/vpet-prep.service /etc/systemd/system/
+#   sudo systemctl daemon-reload && sudo systemctl enable --now vpet-prep
+#
+# Why a unit rather than `node server.js &` in a shell: the process has to come
+# back after a reboot and after a crash, its output has to go somewhere a
+# person can find it, and a deploy needs one command that means "restart".
+# server/lifecycle.js already does its half of the contract — a crash exits
+# non-zero so this restarts it, and SIGTERM drains connections and exits 0 so
+# this does not kill a request mid-flight.
+
+[Unit]
+Description=VPET Prep
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=vpet
+Group=vpet
+WorkingDirectory=/opt/vpet-prep
+ExecStart=/usr/bin/node server.js
+Restart=always
+RestartSec=2
+
+# Secrets do NOT belong in this file: a unit is world-readable and ends up in
+# `systemctl cat`. Either point AWS_SECRETS_ID at a secret and let
+# server/secrets.js fetch the rest (the better arrangement — see the README),
+# or keep them in this file, owned by root and chmod 600.
+EnvironmentFile=-/etc/vpet-prep.env
+
+Environment=NODE_ENV=production
+Environment=PORT=3000
+# The number of proxies in front of this process, NOT `true`. Wrong, and req.ip
+# is the load balancer for every visitor, so one person's five wrong passwords
+# lock out everyone at once. No proxy at all means 0.
+Environment=TRUST_PROXY=1
+
+# The database and the uploads live outside the checkout, so a deploy that
+# resets the working tree cannot take them with it.
+Environment=PREP_DB=/var/lib/vpet-prep/prep.sqlite
+Environment=AUDIO_DIR=/var/lib/vpet-prep/audio
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=vpet-prep
+
+# It serves HTTP and reads one directory. Nothing here needs more than that.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/vpet-prep
+ProtectKernelTunables=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+
+[Install]
+WantedBy=multi-user.target

@@ -8,6 +8,13 @@
  *
  * Usage (from the project root, with the server STOPPED):
  *
+ *   node scripts/accounts.js doctor
+ *       "Why can nobody sign in?" — compares the database THIS command would
+ *       change against the one the running server actually has open, which is
+ *       the mistake that looks like a wrong password, and then checks the two
+ *       settings that break a sign-in after the password is already correct.
+ *       Start here.
+ *
  *   node scripts/accounts.js list
  *       List the administrator accounts and the demo student's state.
  *       Prints no password: the database stores only hashes, which cannot be undone.
@@ -46,6 +53,7 @@
  */
 'use strict';
 
+const fs = require('fs');
 const A = require('../server/auth');
 const { q, nowISO, DB_FILE } = require('../server/db');
 const totp = require('../server/totp');
@@ -274,7 +282,139 @@ async function totpDisable() {
   console.log('which is why it needs the database, not a browser.');
 }
 
+/**
+ * Why can nobody sign in?
+ *
+ * Written after an afternoon spent on exactly one cause: the password was
+ * reset against a DIFFERENT database from the one the running server had
+ * open. Nothing reports that. `list` prints the path it is using, but a path
+ * on its own looks right — you have to compare it with the one the live
+ * process holds, and to do that you have to know to look in /proc.
+ *
+ * So this command does the comparison, and then checks the two settings that
+ * break a sign-in *after* the password is correct, both of which fail
+ * silently:
+ *
+ *   · Secure cookies over plain HTTP. In production the session cookie sets
+ *     Secure, so a browser on http:// never sends it back — the symptom is
+ *     signing in successfully and landing back on the sign-in page.
+ *   · TRUST_PROXY behind a load balancer. Wrong, and req.ip is the balancer
+ *     for everybody, so five wrong passwords from one person lock out all of
+ *     them at once.
+ */
+async function doctor() {
+  const running = liveServers();
+
+  console.log('This command is using:  ' + DB_FILE);
+  if (running.length > 1) {
+    console.log('\n! ' + running.length + ' servers are running on this machine. Two processes on one');
+    console.log('  database is survivable; two on two databases means half the sign-ins go to the');
+    console.log('  wrong one, and which half depends on the load balancer.');
+  }
+  if (!running.length) {
+    console.log('No `node server.js` process is running on this machine.');
+    console.log('If the platform is answering anyway it is being served from somewhere else —');
+    console.log('another host, or a container. Run this INSIDE that container.\n');
+  } else {
+    for (const p of running) {
+      console.log('\nRunning server, pid ' + p.pid + ':');
+      console.log('  working directory   ' + (p.cwd || 'unreadable — try sudo'));
+      console.log('  PREP_DB             ' + (p.env.PREP_DB || '(unset, so <cwd>/data/prep.sqlite)'));
+      console.log('  NODE_ENV            ' + (p.env.NODE_ENV || '(unset)'));
+      console.log('  TRUST_PROXY         ' + (p.env.TRUST_PROXY || '(unset, so 0)'));
+      if (p.dbFiles.length) {
+        console.log('  database files open ' + p.dbFiles.join(', '));
+        const match = p.dbFiles.some(f => f === DB_FILE);
+        console.log(match
+          ? '  ✓ same database this command is about to change'
+          : '  ✗ DIFFERENT database. Resetting a password here would change the wrong file.\n' +
+            '     Re-run from ' + (p.cwd || 'that process\'s directory') +
+            ', or with PREP_DB=' + p.dbFiles[0]);
+      } else {
+        console.log('  database files open (unreadable — try sudo, or run inside the container)');
+      }
+
+      if ((p.env.NODE_ENV || '') === 'production') {
+        console.log('  ! Cookies carry Secure in production, so a browser on http:// will not send');
+        console.log('    them back. The symptom is a successful sign-in that bounces straight back');
+        console.log('    to the sign-in page. Serve over HTTPS, or set FORCE_SECURE_COOKIE=0 knowingly.');
+      }
+      if (!p.env.TRUST_PROXY && (p.env.NODE_ENV || '') === 'production') {
+        console.log('  ! TRUST_PROXY is unset. Behind a load balancer that makes req.ip the balancer');
+        console.log('    for every visitor, so one person\'s five wrong passwords lock out everyone.');
+      }
+    }
+    console.log('');
+  }
+
+  const admins = await q.all('SELECT id, username, active, totp_enabled_at FROM admins ORDER BY id');
+  if (!admins.length) {
+    console.log('This database has NO administrator. The first boot creates one and prints its');
+    console.log('generated password ONCE to the log — look for "Seed administrator account created"');
+    console.log('in the boot output. Set ADMIN_PASSWORD before the first run to choose it instead.');
+  }
+  for (const a of admins) {
+    const bits = [a.active ? 'active' : 'DISABLED'];
+    if (a.totp_enabled_at) bits.push('two-factor ON — a password alone will not get in');
+    console.log('Administrator: ' + a.username + '  [' + bits.join(', ') + ']');
+  }
+
+  const locks = await q.all(
+    'SELECT bucket, fails, locked_until FROM throttle_locks WHERE locked_until IS NOT NULL AND locked_until > ?',
+    nowISO());
+  console.log(locks.length
+    ? '\n' + locks.length + ' active lockout(s): ' + locks.map(l => l.bucket).join(', ') +
+      '\n  Clear them with:  node scripts/accounts.js unlock'
+    : '\nNo active lockouts.');
+}
+
+/** Every `node server.js` on this machine, with what /proc will tell us. */
+function liveServers() {
+  const out = [];
+  let pids;
+  try { pids = fs.readdirSync('/proc').filter(n => /^\d+$/.test(n)); }
+  catch (e) { return out; }                       // not Linux; nothing to read
+
+  for (const pid of pids) {
+    let argv = [];
+    try { argv = fs.readFileSync('/proc/' + pid + '/cmdline', 'utf8').split('\0').filter(Boolean); }
+    catch (e) { continue; }
+    /* argv[0] has to BE node. Matching the whole command line instead catches
+       the shell that launched it — its -c argument contains "server.js" too —
+       and reports a wrapper as a second server. */
+    if (!argv.length || !/^node(js)?$/.test(argv[0].split('/').pop())) continue;
+    if (!argv.slice(1).some(a => /(^|\/)server\.js$/.test(a))) continue;
+
+    const env = {};
+    try {
+      for (const pair of fs.readFileSync('/proc/' + pid + '/environ', 'utf8').split('\0')) {
+        const i = pair.indexOf('=');
+        if (i > 0) env[pair.slice(0, i)] = pair.slice(i + 1);
+      }
+    } catch (e) { /* another user's process; needs sudo */ }
+
+    let cwd = '';
+    try { cwd = fs.readlinkSync('/proc/' + pid + '/cwd'); } catch (e) { /* same */ }
+
+    /* The open file descriptors are the part that cannot be argued with: this
+       is the file the process is really writing to, whatever the configuration
+       appears to say. */
+    const dbFiles = [];
+    try {
+      for (const fd of fs.readdirSync('/proc/' + pid + '/fd')) {
+        let target = '';
+        try { target = fs.readlinkSync('/proc/' + pid + '/fd/' + fd); } catch (e) { continue; }
+        if (/\.sqlite$/.test(target) && !dbFiles.includes(target)) dbFiles.push(target);
+      }
+    } catch (e) { /* same */ }
+
+    out.push({ pid, cwd, env, dbFiles });
+  }
+  return out;
+}
+
 const COMMANDS = {
+  'doctor': doctor,
   'list': listAccounts,
   'reset-admin': resetAdmin,
   'reset-student': resetStudent,

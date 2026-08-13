@@ -82,6 +82,7 @@ Lệnh khác:
 | `node scripts/test-admin.mjs` | kiểm thử API quản trị: phiên, CSRF, phân quyền, CRUD, sinh đề, cấp code |
 | `node scripts/test-catalog.mjs` | kiểm thử trang học viên đọc `/api/catalog` + nhánh dự phòng khi API hỏng, và bảng giá ở trang giới thiệu đọc từ `plans.js` (đổi giá ở máy chủ thì trang phải đổi theo) |
 | `node scripts/test-user-api.mjs` | kiểm thử API tài khoản học viên: đăng ký, đăng nhập, xác thực email, đặt lại mật khẩu, CSRF, chống dò |
+| `node scripts/accounts.js doctor` | **Vào không được? Chạy cái này trước.** So sánh CSDL mà lệnh này sắp sửa với **CSDL mà tiến trình server đang thật sự mở** (đọc `/proc/<pid>/fd`) — đây là nhầm lẫn trông giống hệt sai mật khẩu: đổi mật khẩu trên một file, server đọc file khác. Rồi kiểm hai thứ làm hỏng đăng nhập *sau khi* mật khẩu đã đúng và đều hỏng im lặng: `NODE_ENV=production` trên `http://` khiến cookie `Secure` không bao giờ được gửi lại (đăng nhập xong bật về màn đăng nhập), và `TRUST_PROXY` sai sau load balancer khiến `req.ip` là balancer với mọi người. Cũng báo 2FA đang bật, tài khoản bị vô hiệu hoá, và các khoá 15 phút còn hiệu lực |
 | `node scripts/accounts.js list` | **Vào không được?** Liệt kê tài khoản quản trị và trạng thái học viên demo. Đặt lại bằng `reset-admin` / `reset-student`. `unlock` gỡ **cả hai** thứ tên "khoá": tài khoản bị quản trị vô hiệu hoá, và khoá 15 phút do sai mật khẩu 5 lần — khoá này nằm trong CSDL nên khởi động lại server không xoá nó. Trên Windows nhấn đúp `cai-dat\accounts.bat` |
 | `node scripts/test-accounts.js` | kiểm thử đường cứu hộ tài khoản (tự phục hồi tài khoản demo, đặt lại mật khẩu quản trị) |
 | `node scripts/test-mail.mjs` | kiểm thử thư đi: soạn thư (mã hoá tiêu đề, chống chèn header), toàn bộ hội thoại SMTP với một server giả chạy tại chỗ, và **token không lọt vào log** |
@@ -669,6 +670,75 @@ tức là *sau* mọi `require` ở đầu `server.js`, nên hằng số bắt l
 chứng là màn đăng nhập báo Google chưa cấu hình trên một deployment đã cấu hình
 đủ, và thư xác thực gửi đi không tới. Đọc lúc gọi (`clientId()`, `settings()`,
 `supabase()`) thì không dính.
+
+## Deploy: Claude → GitHub → AWS
+
+Một commit lên nhánh làm việc → GitHub chạy **toàn bộ** gate → chỉ khi xanh mới
+được chạm tới máy chủ. Ba tệp:
+
+| Tệp | Việc |
+|---|---|
+| `.github/workflows/deploy.yml` | **khi nào** deploy: chạy gate, rồi gọi Systems Manager |
+| `deploy/ec2-deploy.sh` | **làm thế nào**: fetch, cài, build, restart, kiểm `/healthz`, hỏng thì **tự lùi lại commit cũ** |
+| `deploy/vpet-prep.service` | unit systemd: tự dậy sau reboot và sau crash, log vào journal |
+
+**Chưa cấu hình thì nó không làm gì cả.** Job deploy có điều kiện trên hai
+biến, nên gộp tệp này vào nhánh không deploy đi đâu hết.
+
+**Không có khoá AWS trong GitHub.** Job deploy nhận vai IAM qua **OIDC** — khoá
+sinh ra cho đúng một lần chạy rồi hết hạn — và chạm tới máy chủ qua **Systems
+Manager** chứ không phải SSH: không có khoá nào để giữ, không phải mở cổng 22,
+và AWS ghi lại ai chạy lệnh gì.
+
+**Tự động deploy mặc định TẮT.** Phiên tự động commit lên nhánh này khoảng mỗi
+giờ, nên "mỗi commit hàng giờ đi thẳng lên production" phải là quyết định có
+người bấm. Bật bằng biến `DEPLOY_ON_PUSH=true`. Trước khi bật thì vẫn deploy
+được bằng tay từ tab Actions, trên đúng commit bạn chọn.
+
+Cần khai trong **Settings → Secrets and variables → Actions → Variables** (là
+*variables*, không phải secrets — không cái nào là bí mật cả):
+
+```
+AWS_ROLE_ARN      arn:aws:iam::<account>:role/<vai cho GitHub OIDC>
+AWS_REGION        ap-southeast-1
+EC2_INSTANCE_ID   i-0123456789abcdef0
+DEPLOY_ON_PUSH    true, khi muốn mỗi commit tự lên
+```
+
+Phía AWS cần ba thứ: một OIDC provider cho `token.actions.githubusercontent.com`;
+một role tin provider đó **giới hạn đúng repo này và đúng nhánh này** (trust
+policy kiểu `repo:owner/*:*` nghĩa là mọi repo trong account đều nhận được vai
+ấy); và role đó chỉ được `ssm:SendCommand` lên **một** instance với document
+`AWS-RunShellScript`, cộng `ssm:GetCommandInvocation`. Bản thân instance cần SSM
+agent và `AmazonSSMManagedInstanceCore`.
+
+### Ba cái bẫy trên EC2, cả ba đều im lặng
+
+Chạy `node scripts/accounts.js doctor` **trên chính instance đó** — nó kiểm cả ba.
+
+1. **Đổi mật khẩu nhầm CSDL.** `PREP_DB` không đặt thì CSDL là
+   `<thư-mục-làm-việc>/data/prep.sqlite`, nên hai bản checkout là hai CSDL khác
+   nhau và không có gì báo cho bạn. Triệu chứng giống hệt sai mật khẩu: 401 với
+   đúng mật khẩu bạn vừa đặt. `doctor` đọc `/proc/<pid>/fd` để nói ra file mà
+   tiến trình **đang thật sự mở**.
+2. **`NODE_ENV=production` trên `http://`.** Cookie phiên bật cờ `Secure`, trình
+   duyệt không gửi lại, nên đăng nhập xong bật ngay về màn đăng nhập. Dựng HTTPS,
+   hoặc `FORCE_SECURE_COOKIE=0` một cách có ý thức.
+3. **`TRUST_PROXY` sai sau load balancer.** `req.ip` thành địa chỉ của balancer
+   với mọi người, nên năm lần gõ sai của một người khoá tất cả những người khác.
+
+### Lần đầu chưa có admin thì mật khẩu ở đâu
+
+Boot đầu tiên trên một CSDL trống mà **không** có `ADMIN_PASSWORD` sẽ tự sinh
+một mật khẩu và in ra log **đúng một lần**:
+
+```bash
+sudo journalctl -u vpet-prep | grep -A3 "Seed administrator"
+```
+
+Mất rồi thì `sudo -u vpet node scripts/accounts.js reset-admin` (bỏ trống để nó
+tự sinh và in ra một lần). Cách đúng là đặt `ADMIN_PASSWORD` **trước** lần chạy
+đầu — hoặc tốt hơn, đặt `AWS_SECRETS_ID` và để Secrets Manager giữ nó.
 
 ## Google Classroom (đọc lớp học và roster)
 
