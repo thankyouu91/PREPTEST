@@ -34,13 +34,14 @@
 'use strict';
 
 const express = require('express');
+const { asyncRoutes } = require('./async-route');
 const { q, tx, nowISO, makeCode } = require('./db');
 const A = require('./auth');
 const payments = require('./payments');
 const analytics = require('./analytics');
 const PLANS = require('./data/plans');
 
-const router = express.Router();
+const router = asyncRoutes(express.Router());
 
 const str = (v, max) => (typeof v === 'string' ? v.trim().slice(0, max || 200) : '');
 const bad = (res, msg) => res.status(400).json({ error: msg });
@@ -85,22 +86,22 @@ router.post('/api/checkout', express.json({ limit: '16kb' }), A.requireUser, A.c
     });
   }
 
-  const wait = A.rateLimit('checkout:u' + req.user.id, CHECKOUT_PER_HOUR, 3600 * 1000);
+  const wait = await A.rateLimit('checkout:u' + req.user.id, CHECKOUT_PER_HOUR, 3600 * 1000);
   if (wait) {
     return res.status(429).json({ error: 'Too many payment attempts. Try again in ' + Math.ceil(wait / 60) + ' minutes.' });
   }
 
   const at = nowISO();
-  q.run(
+  await q.run(
     `INSERT INTO orders (user_id, package_id, name, amount, status, provider, created_at)
      VALUES (?,?,?,?,'pending',?,?)`,
     req.user.id, plan.id, plan.name, plan.price, driver.id, at);
-  const orderId = q.val('SELECT id FROM orders ORDER BY id DESC LIMIT 1');
+  const orderId = await q.val('SELECT id FROM orders ORDER BY id DESC LIMIT 1');
   /* The reference is minted after the row exists so it can carry the order id,
      and stored before the buyer leaves, so a notification arriving while they
      are still on the gateway's page finds something to match. */
   const ref = payments.newRef(orderId);
-  q.run('UPDATE orders SET ref=? WHERE id=?', ref, orderId);
+  await q.run('UPDATE orders SET ref=? WHERE id=?', ref, orderId);
 
   let payUrl;
   try {
@@ -112,7 +113,7 @@ router.post('/api/checkout', express.json({ limit: '16kb' }), A.requireUser, A.c
     });
     payUrl = started.payUrl;
   } catch (e) {
-    q.run("UPDATE orders SET status='failed' WHERE id=?", orderId);
+    await q.run("UPDATE orders SET status='failed' WHERE id=?", orderId);
     /* The gateway's own words, which are safe: a refusal names a bad amount or
        an unknown partner code, never the secret, which is only an HMAC key. */
     return res.status(502).json({ error: 'The payment gateway refused the request. ' + (e.message || '') });
@@ -152,8 +153,8 @@ function gatewaySigned(req, res, next) {
  * Apply a verified notification to the order it names.
  * Returns the code to answer with, in VNPay's vocabulary; MoMo ignores it.
  */
-function applyNotification(read, driverId) {
-  const order = q.get('SELECT * FROM orders WHERE ref=?', read.ref);
+async function applyNotification(read, driverId) {
+  const order = await q.get('SELECT * FROM orders WHERE ref=?', read.ref);
   if (!order) return { code: '01', message: 'Order not found' };
   if (order.provider && order.provider !== driverId) return { code: '01', message: 'Order not found' };
   /* To the dong. A gateway reporting a payment of ten thousand against a
@@ -164,7 +165,7 @@ function applyNotification(read, driverId) {
   if (order.status === 'paid') return { code: '02', message: 'Order already confirmed' };
 
   if (!read.settled) {
-    q.run("UPDATE orders SET status='failed', gateway_ref=? WHERE id=?", read.gatewayRef || null, order.id);
+    await q.run("UPDATE orders SET status='failed', gateway_ref=? WHERE id=?", read.gatewayRef || null, order.id);
     return { code: '00', message: 'Confirm Success' };
   }
 
@@ -172,19 +173,19 @@ function applyNotification(read, driverId) {
   if (!plan) return { code: '99', message: 'Order has no plan' };
 
   const at = nowISO();
-  tx(() => {
+  await tx(async () => {
     let code = makeCode();
-    while (q.val('SELECT 1 FROM codes WHERE code=?', code)) code = makeCode();
+    while (await q.val('SELECT 1 FROM codes WHERE code=?', code)) code = makeCode();
     /* Issued unused and unassigned: buying is not activating. The buyer
        redeems it like any other code, which is what starts their term — and
        which means a code bought as a gift still works. */
-    q.run(
+    await q.run(
       `INSERT INTO codes (code, batch_id, unlock_type, unlock_ref, plan_id, status,
                           expires_at, user_id, redeemed_at, note, created_at)
        VALUES (?, NULL, 'family', 'vpet', ?, 'unused', NULL, NULL, NULL, ?, ?)`,
       code, plan.id, `Bought online, order ${order.id}`, at);
-    const codeId = q.val('SELECT id FROM codes WHERE code=?', code);
-    q.run("UPDATE orders SET status='paid', paid_at=?, gateway_ref=?, code_id=? WHERE id=?",
+    const codeId = await q.val('SELECT id FROM codes WHERE code=?', code);
+    await q.run("UPDATE orders SET status='paid', paid_at=?, gateway_ref=?, code_id=? WHERE id=?",
       at, read.gatewayRef || null, codeId, order.id);
   });
   return { code: '00', message: 'Confirm Success' };
@@ -199,13 +200,13 @@ function logNotification(driverId, read, outcome) {
 }
 
 /** VNPay sends its IPN as a GET, so this route mutates on a safe method. */
-router.get('/payments/:provider/ipn', (req, res, next) => {
-  const wait = A.rateLimit('ipn:' + (req.ip || 'unknown'), IPN_PER_MIN, 60 * 1000);
+router.get('/payments/:provider/ipn', async (req, res, next) => {
+  const wait = await A.rateLimit('ipn:' + (req.ip || 'unknown'), IPN_PER_MIN, 60 * 1000);
   if (wait) return res.status(429).json({ RspCode: '99', Message: 'Slow down' });
   next();
-}, gatewaySigned, (req, res) => {
+}, gatewaySigned, async (req, res) => {
   const { driver, read } = req.gateway;
-  const outcome = applyNotification(read, driver.id);
+  const outcome = await applyNotification(read, driver.id);
   logNotification(driver.id, read, outcome);
   const reply = driver.ipnReply(outcome.code, outcome.message);
   if (reply.body === null) return res.status(reply.status).end();
@@ -213,9 +214,9 @@ router.get('/payments/:provider/ipn', (req, res, next) => {
 });
 
 /** MoMo posts JSON. */
-router.post('/payments/:provider/ipn', express.json({ limit: '64kb' }), gatewaySigned, (req, res) => {
+router.post('/payments/:provider/ipn', express.json({ limit: '64kb' }), gatewaySigned, async (req, res) => {
   const { driver, read } = req.gateway;
-  const outcome = applyNotification(read, driver.id);
+  const outcome = await applyNotification(read, driver.id);
   logNotification(driver.id, read, outcome);
   const reply = driver.ipnReply(outcome.code, outcome.message);
   if (reply.body === null) return res.status(reply.status).end();
@@ -230,11 +231,11 @@ router.post('/payments/:provider/ipn', express.json({ limit: '64kb' }), gatewayS
  * buyer where that has got to. If the IPN has not landed yet the honest answer
  * is "we are confirming this", which is also true.
  */
-router.get('/payments/:provider/return', (req, res) => {
+router.get('/payments/:provider/return', async (req, res) => {
   const driver = payments.driver(req.params.provider);
   if (!driver) return res.redirect(302, '/prep/mua-code/');
   const read = driver.read(req.query || {});
-  const order = read.ref ? q.get('SELECT * FROM orders WHERE ref=?', read.ref) : null;
+  const order = read.ref ? await q.get('SELECT * FROM orders WHERE ref=?', read.ref) : null;
   /* The signature still decides whether we believe the reference at all — an
      unsigned return is somebody typing in the address bar. */
   const status = !read.valid ? 'unknown' : (order ? order.status : 'unknown');

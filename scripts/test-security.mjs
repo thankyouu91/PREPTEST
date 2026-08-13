@@ -103,8 +103,8 @@ try {
   /* Reads are never counted: reloading a list several times is ordinary, and
      putting it in the same bucket as writes would lock the wrong person out. */
   let called = 0;
-  security.writeLimit(fakeReq('GET'), fakeRes(), () => called++);
-  security.writeLimit(fakeReq('HEAD'), fakeRes(), () => called++);
+  await security.writeLimit(fakeReq('GET'), fakeRes(), () => called++);
+  await security.writeLimit(fakeReq('HEAD'), fakeRes(), () => called++);
   ok(called === 2, 'GET and HEAD pass straight through, spending no write allowance', String(called));
 
   /* Two sessions need separate buckets, or one busy user locks out another — and
@@ -125,7 +125,7 @@ try {
   let last = null, passed = 0;
   for (let i = 0; i < security.WRITE_PER_MIN + 2; i++) {
     const res = fakeRes();
-    security.writeLimit(fakeReq('POST', cookie, '198.51.100.9'), res, () => passed++);
+    await security.writeLimit(fakeReq('POST', cookie, '198.51.100.9'), res, () => passed++);
     last = res;
   }
   ok(passed === security.WRITE_PER_MIN,
@@ -143,19 +143,19 @@ try {
      the database. These checks are what stops either from creeping back. */
   const A2 = require_('../server/auth.js');
   const KEY = '198.51.100.44|probe-account';
-  A2.clearFailures(KEY);
+  await A2.clearFailures(KEY);
 
-  for (let i = 0; i < 4; i++) A2.noteFailure(KEY);
-  ok(A2.isLocked(KEY) === 0, 'Four wrong passwords do not lock the account', String(A2.isLocked(KEY)));
-  A2.noteFailure(KEY);
-  const lockedFor = A2.isLocked(KEY);
+  for (let i = 0; i < 4; i++) await A2.noteFailure(KEY);
+  ok(await A2.isLocked(KEY) === 0, 'Four wrong passwords do not lock the account', String(await A2.isLocked(KEY)));
+  await A2.noteFailure(KEY);
+  const lockedFor = await A2.isLocked(KEY);
   ok(lockedFor > 0 && lockedFor <= 900, 'The fifth does, for about fifteen minutes', String(lockedFor));
 
   /* The point of the whole change: another process, same database, same lock.
      Checked by actually running one, because "it is in a table now" is a claim
      about storage and this is a claim about behaviour. */
   const seen = execFileSync(process.execPath, ['-e',
-    "console.log(require('./server/auth.js').isLocked(process.argv[1]))", KEY], {
+    "require('./server/auth.js').isLocked(process.argv[1]).then(v => console.log(v))", KEY], {
     cwd: new URL('..', import.meta.url).pathname,
     env: { ...process.env, PREP_DB: process.env.PREP_DB },
     encoding: 'utf8',
@@ -165,22 +165,22 @@ try {
   }).trim().split('\n').pop();
   ok(Number(seen) > 0, 'A separate process sees the same lockout', 'child reported ' + seen);
 
-  ok(A2.isLocked('198.51.100.44|somebody-else') === 0,
+  ok(await A2.isLocked('198.51.100.44|somebody-else') === 0,
     'And it is that account that is locked, not everyone from that address');
 
-  const cleared = A2.clearAllLocks();
-  ok(cleared >= 1 && A2.isLocked(KEY) === 0,
+  const cleared = await A2.clearAllLocks();
+  ok(cleared >= 1 && await A2.isLocked(KEY) === 0,
     'clearAllLocks is the way out, now that a restart is not', String(cleared));
 
   /* The sliding window, same story. rateLimitPeek must spend nothing, or the
      act of asking "may I?" would itself use up the allowance. */
   const RL = 'probe-window|' + Date.now();
-  ok(A2.rateLimitPeek(RL, 3, 60e3) === 0, 'An untouched key has its full allowance');
-  ok(A2.rateLimitPeek(RL, 3, 60e3) === 0, 'And asking twice does not spend any of it');
-  A2.rateLimit(RL, 3, 60e3);
-  A2.rateLimit(RL, 3, 60e3);
-  ok(A2.rateLimit(RL, 3, 60e3) === 0, 'Three go through');
-  const wait = A2.rateLimit(RL, 3, 60e3);
+  ok(await A2.rateLimitPeek(RL, 3, 60e3) === 0, 'An untouched key has its full allowance');
+  ok(await A2.rateLimitPeek(RL, 3, 60e3) === 0, 'And asking twice does not spend any of it');
+  await A2.rateLimit(RL, 3, 60e3);
+  await A2.rateLimit(RL, 3, 60e3);
+  ok(await A2.rateLimit(RL, 3, 60e3) === 0, 'Three go through');
+  const wait = await A2.rateLimit(RL, 3, 60e3);
   ok(wait > 0, 'The fourth is refused', String(wait));
   /* 0 means "go ahead" to every caller, so a window with under a second left
      must still answer 1 rather than rounding down into an open door. */
@@ -194,9 +194,9 @@ try {
     DB_.q.run('INSERT INTO throttle_hits (bucket, at) VALUES (?,?)',
       OLD, new Date(dbNow - 90e3).toISOString());
   }
-  ok(A2.rateLimitPeek(OLD, 3, 60e3) === 0,
+  ok(await A2.rateLimitPeek(OLD, 3, 60e3) === 0,
     'Hits older than the window no longer count against it');
-  ok(A2.rateLimitPeek(OLD, 3, 120e3) > 0,
+  ok(await A2.rateLimitPeek(OLD, 3, 120e3) > 0,
     'But the same hits still count for a caller asking about a longer window');
 
   head('How far a proxy is trusted');

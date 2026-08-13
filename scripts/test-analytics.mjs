@@ -107,7 +107,7 @@ try {
     const c = await collector();
     await withEnv({ GA4_MEASUREMENT_ID: undefined, GA4_API_SECRET: undefined, GA4_ENDPOINT: c.url }, async () => {
       ok(analytics.enabled() === false, 'With neither key, analytics is off');
-      ok(analytics.track(reqOf(), 'login') === null, 'track() does nothing and returns nothing');
+      ok(await analytics.track(reqOf(), 'login') === null, 'track() does nothing and returns nothing');
       const res = resOf();
       analytics.pageView(reqOf(), res);
       res.emit('finish');
@@ -124,47 +124,47 @@ try {
   /* ============ 2. Who a visitor is ============ */
   head('Identity without a tracking cookie');
 
-  await withEnv(KEYS, () => {
+  await withEnv(KEYS, async () => {
     const signedIn = reqOf({ user: { id: 42, email: 'hocvien@vidu.vn', name: 'Nguyen Van A' } });
-    const a = analytics.identify(signedIn, T0);
-    const b = analytics.identify(
+    const a = await analytics.identify(signedIn, T0);
+    const b = await analytics.identify(
       reqOf({ user: { id: 42 }, ip: '198.51.100.9', headers: { 'user-agent': 'another browser' } }), T0);
     ok(a.userId === '42', 'A signed-in learner is identified by their user id', a.userId);
     ok(a.clientId === b.clientId,
       'and the client id follows the person, not the machine — same on another device');
 
     const tomorrow = new Date(T0.getTime() + 26 * 3600 * 1000);
-    ok(analytics.identify(reqOf({ user: { id: 42 } }), tomorrow).clientId === a.clientId,
+    ok((await analytics.identify(reqOf({ user: { id: 42 } }), tomorrow)).clientId === a.clientId,
       'and it does not change overnight');
     ok(!a.clientId.includes('42'), 'The id is hashed, not the user id in the clear', a.clientId);
     ok(/^[0-9a-f]{32}$/.test(a.clientId), 'and is a plain hex string GA4 will accept', a.clientId);
 
-    const guest = analytics.identify(reqOf(), T0);
+    const guest = await analytics.identify(reqOf(), T0);
     ok(guest.userId === null, 'A guest has no user id');
     ok(guest.clientId !== a.clientId, 'and a different client id');
-    ok(analytics.identify(reqOf(), T0).clientId === guest.clientId,
+    ok((await analytics.identify(reqOf(), T0)).clientId === guest.clientId,
       'Two page views from the same guest, the same day, are the same visitor');
-    ok(analytics.identify(reqOf({ ip: '198.51.100.9' }), T0).clientId !== guest.clientId,
+    ok((await analytics.identify(reqOf({ ip: '198.51.100.9' }), T0)).clientId !== guest.clientId,
       'A different address is a different visitor');
-    ok(analytics.identify(reqOf({ headers: { 'user-agent': 'other' } }), T0).clientId !== guest.clientId,
+    ok((await analytics.identify(reqOf({ headers: { 'user-agent': 'other' } }), T0)).clientId !== guest.clientId,
       'so is a different browser');
     /* The whole point of the daily bucket: a guest is not trackable across days. */
-    ok(analytics.identify(reqOf(), new Date(T0.getTime() + 26 * 3600 * 1000)).clientId !== guest.clientId,
+    ok((await analytics.identify(reqOf(), new Date(T0.getTime() + 26 * 3600 * 1000))).clientId !== guest.clientId,
       'and tomorrow the same guest is somebody new, which is the trade for not setting a cookie');
   });
 
-  await withEnv(Object.assign({}, KEYS, { ANALYTICS_SALT: 'a-different-salt' }), () => {
-    const withSalt = analytics.identify(reqOf({ user: { id: 42 } }), T0).clientId;
+  await withEnv(Object.assign({}, KEYS, { ANALYTICS_SALT: 'a-different-salt' }), async () => {
+    const withSalt = (await analytics.identify(reqOf({ user: { id: 42 } }), T0)).clientId;
     /* ANALYTICS_SALT has to be cleared explicitly here: withEnv only restores
        the keys it was given, so leaving it out would compare the salt with
        itself and pass for the wrong reason. */
-    return withEnv(Object.assign({}, KEYS, { ANALYTICS_SALT: undefined }), () => {
-      ok(analytics.identify(reqOf({ user: { id: 42 } }), T0).clientId !== withSalt,
+    return withEnv(Object.assign({}, KEYS, { ANALYTICS_SALT: undefined }), async () => {
+      ok((await analytics.identify(reqOf({ user: { id: 42 } }), T0)).clientId !== withSalt,
         'Changing the salt changes every identity, so the hash is really keyed');
     });
   });
 
-  await withEnv(KEYS, () => {
+  await withEnv(KEYS, async () => {
     /* req.user is only set behind requireUser; a page view is served by a
        handler that never looks a session up. Without the fallback every
        signed-in page view would be filed as a guest. */
@@ -173,15 +173,15 @@ try {
     A.currentUser = () => { lookups++; return { id: 7, username: 'student' }; };
     try {
       const req = reqOf();
-      const first = analytics.identify(req, T0);
-      const second = analytics.identify(req, T0);
+      const first = await analytics.identify(req, T0);
+      const second = await analytics.identify(req, T0);
       ok(first.userId === '7', 'A request with only a cookie is still recognised as the learner', first.userId);
       ok(lookups === 1, 'and the session is looked up once per request, not once per event',
         String(lookups));
       ok(second.clientId === first.clientId, 'with the same identity the second time');
 
       A.currentUser = () => { throw new Error('database is gone'); };
-      const broken = analytics.identify(reqOf(), T0);
+      const broken = await analytics.identify(reqOf(), T0);
       ok(broken.userId === null,
         'A lookup that throws degrades to a guest rather than failing the request');
     } finally {
@@ -225,8 +225,8 @@ try {
       'No more parameters than GA4 accepts', String(Object.keys(analytics.cleanParams(many)).length));
   }
 
-  await withEnv(KEYS, () => {
-    const body = analytics.buildPayload(reqOf({ user: { id: 42 } }), 'exam_start', { test_id: 'vpet-b1-01' }, T0);
+  await withEnv(KEYS, async () => {
+    const body = await analytics.buildPayload(reqOf({ user: { id: 42 } }), 'exam_start', { test_id: 'vpet-b1-01' }, T0);
     ok(body.events.length === 1 && body.events[0].name === 'exam_start', 'The payload carries the one event');
     ok(body.events[0].params.test_id === 'vpet-b1-01', 'with its parameters');
     ok(!!body.events[0].params.session_id,
@@ -236,7 +236,7 @@ try {
     ok(body.timestamp_micros === T0.getTime() * 1000, 'The timestamp is in microseconds, as the protocol wants',
       String(body.timestamp_micros));
     ok(body.user_id === '42', 'A signed-in payload carries the user id');
-    ok(analytics.buildPayload(reqOf(), 'page_view', {}, T0).user_id === undefined,
+    ok((await analytics.buildPayload(reqOf(), 'page_view', {}, T0)).user_id === undefined,
       'and a guest payload has no user_id field at all');
 
     const s1 = analytics.sessionId('client-a', T0);
@@ -250,13 +250,13 @@ try {
   /* ============ 4. Nothing personal leaves the building ============ */
   head('What is deliberately not in the payload');
 
-  await withEnv(KEYS, () => {
+  await withEnv(KEYS, async () => {
     const req = reqOf({
       user: { id: 42, email: 'hocvien@vidu.vn', name: 'Nguyen Van A', username: 'hocvien' },
       ip: '203.0.113.7',
       headers: { 'user-agent': 'Mozilla/5.0 (probe)', referer: 'https://vidu.vn/from' }
     });
-    const text = JSON.stringify(analytics.buildPayload(req, 'page_view', {
+    const text = JSON.stringify(await analytics.buildPayload(req, 'page_view', {
       page_path: '/prep/tai-khoan/'
     }, T0));
     for (const secret of ['hocvien@vidu.vn', 'Nguyen Van A', 'hocvien', '203.0.113.7', 'Mozilla']) {

@@ -29,12 +29,12 @@ const PLANS = require('./data/plans');
  * Returns null when nothing is active, which the interface reads as "locked,
  * offer the plans".
  */
-function entitlementOf(userId) {
+async function entitlementOf(userId) {
   const now = nowISO();
-  const live = q.all(
+  const live = (await q.all(
     `SELECT * FROM codes
       WHERE user_id=? AND status='redeemed' AND plan_id IS NOT NULL
-        AND (access_expires_at IS NULL OR access_expires_at > ?)`, userId, now)
+        AND (access_expires_at IS NULL OR access_expires_at > ?)`, userId, now))
     .map(c => ({ row: c, plan: PLANS.byId(c.plan_id) }))
     .filter(x => x.plan);
 

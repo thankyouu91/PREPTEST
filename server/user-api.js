@@ -18,6 +18,7 @@
  */
 'use strict';
 const express = require('express');
+const { asyncRoutes } = require('./async-route');
 const { q, nowISO, jparse, audit } = require('./db');
 const A = require('./auth');
 const analytics = require('./analytics');
@@ -26,7 +27,7 @@ const mail = require('./mail');
 const PLANS = require('./data/plans');
 const { entitlementOf } = require('./entitlements');
 
-const router = express.Router();
+const router = asyncRoutes(express.Router());
 router.use(express.json({ limit: '256kb' }));
 
 /* ============================ Helpers ============================ */
@@ -51,14 +52,14 @@ const REDEEM_PER_10MIN = Math.max(1, parseInt(process.env.REDEEM_PER_10MIN, 10) 
 const { EMAIL_RE, passwordProblem } = A;
 
 /** Log a student's action (no administrator is involved) */
-function logUser(req, action, username, meta) {
-  audit({ ip: req.ip, admin: { id: null, username: 'student' } }, action, 'users/' + username, meta || {});
+async function logUser(req, action, username, meta) {
+  await audit({ ip: req.ip, admin: { id: null, username: 'student' } }, action, 'users/' + username, meta || {});
 }
 
 /** Narrow the followed-exams list down to ids that actually exist */
-function cleanInterests(v) {
+async function cleanInterests(v) {
   if (!Array.isArray(v)) return [];
-  const valid = new Set(q.all('SELECT id FROM families').map(f => f.id));
+  const valid = new Set((await q.all('SELECT id FROM families')).map(f => f.id));
   return [...new Set(v.filter(x => typeof x === 'string' && valid.has(x)))].slice(0, 10);
 }
 
@@ -108,8 +109,8 @@ function deliverLink(kind, user, token, req) {
 }
 
 /** The profile sent to the client — never carries pass_hash */
-function profileOf(userId) {
-  const u = q.get('SELECT * FROM users WHERE id=?', userId);
+async function profileOf(userId) {
+  const u = await q.get('SELECT * FROM users WHERE id=?', userId);
   if (!u) return null;
   return {
     username: u.username, email: u.email, name: u.name,
@@ -119,8 +120,8 @@ function profileOf(userId) {
 }
 
 /** What a student may open, derived from the codes they have activated */
-function accessOf(userId) {
-  const rows = q.all(
+async function accessOf(userId) {
+  const rows = await q.all(
     "SELECT * FROM codes WHERE user_id=? AND status='redeemed' ORDER BY redeemed_at DESC", userId);
   const testIds = new Set(), familyIds = new Set();
   const now = nowISO();
@@ -150,13 +151,13 @@ function accessOf(userId) {
   return { unlockedTestIds: [...testIds], unlockedFamilyIds: [...familyIds], myCodes: codes };
 }
 
-function ordersOf(userId) {
-  return q.all('SELECT * FROM orders WHERE user_id=? ORDER BY created_at DESC LIMIT 50', userId)
+async function ordersOf(userId) {
+  return (await q.all('SELECT * FROM orders WHERE user_id=? ORDER BY created_at DESC LIMIT 50', userId))
     .map(o => ({ id: 'DH' + o.id, packageId: o.package_id, name: o.name, amount: o.amount, at: o.created_at, status: o.status }));
 }
 
 /* ============================ Registration ============================ */
-router.post('/auth/register', A.csrfGuard, (req, res) => {
+router.post('/auth/register', A.csrfGuard, async (req, res) => {
   // Only spend an allowance when an account is actually CREATED: bad input or a duplicate email costs nothing
   const rlKey = 'register|' + (req.ip || '?');
   /* Five accounts per hour per address. This default applies everywhere, test
@@ -166,7 +167,7 @@ router.post('/auth/register', A.csrfGuard, (req, res) => {
      and the screenshot pass both register from the single address 127.0.0.1, so
      scripts/verify.sh raises it to stop one step blocking the next. Production sets
      no variable ⇒ it stays 5. */
-  const wait = A.rateLimitPeek(rlKey, REGISTER_PER_HOUR, 3600e3);
+  const wait = await A.rateLimitPeek(rlKey, REGISTER_PER_HOUR, 3600e3);
   if (wait) return res.status(429).json({ error: 'You have created several accounts in a row. Try again in ' + Math.ceil(wait / 60) + ' minutes.' });
 
   const b = req.body || {};
@@ -179,45 +180,45 @@ router.post('/auth/register', A.csrfGuard, (req, res) => {
   const pwErr = passwordProblem(password);
   if (pwErr) return bad(res, pwErr);
 
-  if (q.get('SELECT id FROM users WHERE email=? OR username=?', email, email)) {
+  if (await q.get('SELECT id FROM users WHERE email=? OR username=?', email, email)) {
     return res.status(409).json({ error: 'That email is already registered. Try signing in, or use another address.' });
   }
 
-  q.run(`INSERT INTO users (username,email,name,pass_hash,verified,status,interests_json,created_at)
+  await q.run(`INSERT INTO users (username,email,name,pass_hash,verified,status,interests_json,created_at)
          VALUES (?,?,?,?,0,'active',?,?)`,
-    email, email, name, A.hashPassword(password), JSON.stringify(cleanInterests(b.interests)), nowISO());
+    email, email, name, A.hashPassword(password), JSON.stringify(await cleanInterests(b.interests)), nowISO());
 
-  A.rateLimitNote(rlKey);
-  const user = q.get('SELECT * FROM users WHERE email=?', email);
-  const devLink = deliverLink('verify', user, A.issueToken(user.id, 'verify'), req);
-  A.createUserSession(user.id, req, res);
-  q.run('UPDATE users SET last_login_at=? WHERE id=?', nowISO(), user.id);
-  logUser(req, 'user.register', email);
+  await A.rateLimitNote(rlKey);
+  const user = await q.get('SELECT * FROM users WHERE email=?', email);
+  const devLink = deliverLink('verify', user, await A.issueToken(user.id, 'verify'), req);
+  await A.createUserSession(user.id, req, res);
+  await q.run('UPDATE users SET last_login_at=? WHERE id=?', nowISO(), user.id);
+  await logUser(req, 'user.register', email);
   analytics.track(req, 'sign_up', { method: 'password' });
 
-  res.status(201).json({ ok: true, user: profileOf(user.id), verifyLink: devLink });
+  res.status(201).json({ ok: true, user: await profileOf(user.id), verifyLink: devLink });
 });
 
 /* =========================== Sign-in =========================== */
-router.post('/auth/login', A.csrfGuard, (req, res) => {
+router.post('/auth/login', A.csrfGuard, async (req, res) => {
   const b = req.body || {};
   const identifier = str(b.username, 160).toLowerCase();
   const password = typeof b.password === 'string' ? b.password : '';
   if (!identifier || !password) return bad(res, 'Enter your username and password.');
 
   const key = A.throttleKey(req, 'user:' + identifier);
-  const lockedFor = A.isLocked(key);
+  const lockedFor = await A.isLocked(key);
   if (lockedFor) {
     return res.status(429).json({ error: 'Too many failed attempts. Try again in ' + Math.ceil(lockedFor / 60) + ' minutes.' });
   }
 
-  const user = q.get('SELECT * FROM users WHERE lower(username)=? OR lower(email)=?', identifier, identifier);
+  const user = await q.get('SELECT * FROM users WHERE lower(username)=? OR lower(email)=?', identifier, identifier);
 
   /* An account created through Google has no password. Saying so is not a
      disclosure worth worrying about — the person is already holding that email
      address — and the alternative is a login that fails with no way forward. */
   if (user && !user.pass_hash) {
-    logUser(req, 'user.login.google_only', user.username);
+    await logUser(req, 'user.login.google_only', user.username);
     return res.status(409).json({
       error: 'This account signs in with Google. Use "Continue with Google", or set a password of your own through "Forgot password".',
       useGoogle: true
@@ -228,49 +229,49 @@ router.post('/auth/login', A.csrfGuard, (req, res) => {
   const ok = user ? A.verifyPassword(password, user.pass_hash)
                   : A.verifyPassword(password, A.hashPassword('does-not-exist'));
   if (!user || !ok) {
-    A.noteFailure(key);
-    logUser(req, 'user.login.failed', identifier);
+    await A.noteFailure(key);
+    await logUser(req, 'user.login.failed', identifier);
     return res.status(401).json({ error: 'That username or password is not right. Please check and try again.' });
   }
   if (user.status !== 'active') {
-    logUser(req, 'user.login.locked', user.username);
+    await logUser(req, 'user.login.locked', user.username);
     return res.status(403).json({ error: 'This account is locked. Contact your centre to reopen it.' });
   }
 
-  A.clearFailures(key);
-  A.createUserSession(user.id, req, res);
-  q.run('UPDATE users SET last_login_at=? WHERE id=?', nowISO(), user.id);
-  logUser(req, 'user.login', user.username);
+  await A.clearFailures(key);
+  await A.createUserSession(user.id, req, res);
+  await q.run('UPDATE users SET last_login_at=? WHERE id=?', nowISO(), user.id);
+  await logUser(req, 'user.login', user.username);
   analytics.track(req, 'login', { method: 'password' });
-  res.json({ ok: true, user: profileOf(user.id) });
+  res.json({ ok: true, user: await profileOf(user.id) });
 });
 
 /* ======================= Activating a code =======================
    Moved wholly to the server. The rule "one code, one account" cannot be enforced
    in the browser: a code in localStorage is editable by anyone, and two machines
    cannot see each other. */
-router.post('/redeem', A.requireUser, A.csrfGuard, (req, res) => {
+router.post('/redeem', A.requireUser, A.csrfGuard, async (req, res) => {
   const raw = str(req.body && req.body.code, 40).toUpperCase().trim();
   if (!raw) return bad(res, 'Enter your activation code.');
 
   /* Codes are short strings, so guessing is a real risk. Rate-limit per IP +
      account, counting hits as well as misses so nobody can sweep the range. */
-  const wait = A.rateLimit('redeem:' + A.throttleKey(req, 'u' + req.user.id), REDEEM_PER_10MIN, 10 * 60 * 1000);
+  const wait = await A.rateLimit('redeem:' + A.throttleKey(req, 'u' + req.user.id), REDEEM_PER_10MIN, 10 * 60 * 1000);
   if (wait) {
     return res.status(429).json({ error: 'Too many attempts. Wait ' + Math.ceil(wait / 60) + ' minutes and try again.' });
   }
 
-  const code = q.get('SELECT * FROM codes WHERE code=?', raw);
+  const code = await q.get('SELECT * FROM codes WHERE code=?', raw);
   /* The same answer for "no such code" and "somebody else's code": answering
   differently tells whoever is probing which codes are real. */
   if (!code || code.status === 'revoked') {
-    logUser(req, 'user.redeem.unknown', req.user.username, { code: raw });
+    await logUser(req, 'user.redeem.unknown', req.user.username, { code: raw });
     return res.status(404).json({ error: 'No such code, or it has been withdrawn. Check it character by character.' });
   }
   if (code.status === 'redeemed') {
     /* Somebody else's code stops here: one code, one account. */
     if (code.user_id !== req.user.id) {
-      logUser(req, 'user.redeem.taken', req.user.username, { code: raw });
+      await logUser(req, 'user.redeem.taken', req.user.username, { code: raw });
       return res.status(409).json({
         error: 'This code has already been activated on another account. Each code works for one account only.'
       });
@@ -280,12 +281,12 @@ router.post('/redeem', A.requireUser, A.csrfGuard, (req, res) => {
        stands and do NOT extend it: adding months each time would make re-entering
        it forever a permanent subscription. */
     const own = PLANS.byId(code.plan_id);
-    logUser(req, 'user.redeem.again', req.user.username, { code: raw });
+    await logUser(req, 'user.redeem.again', req.user.username, { code: raw });
     return res.json({
       ok: true,
       already: true,
       plan: own ? { id: own.id, name: own.name, months: own.months } : null,
-      entitlement: entitlementOf(req.user.id)
+      entitlement: await entitlementOf(req.user.id)
     });
   }
   if (code.expires_at && code.expires_at <= nowISO()) {
@@ -294,7 +295,7 @@ router.post('/redeem', A.requireUser, A.csrfGuard, (req, res) => {
 
   const plan = PLANS.byId(code.plan_id);
   if (!plan) {
-    logUser(req, 'user.redeem.noplan', req.user.username, { code: raw });
+    await logUser(req, 'user.redeem.noplan', req.user.username, { code: raw });
     return res.status(409).json({ error: 'This code has no plan attached. Ask your centre to issue a replacement.' });
   }
 
@@ -304,7 +305,7 @@ router.post('/redeem', A.requireUser, A.csrfGuard, (req, res) => {
   const until = new Date(start);
   until.setMonth(until.getMonth() + plan.months);
 
-  const r = q.run(
+  const r = await q.run(
     `UPDATE codes SET status='redeemed', user_id=?, redeemed_at=?, access_expires_at=?
       WHERE id=? AND status='unused'`,
     req.user.id, start.toISOString(), until.toISOString(), code.id);
@@ -314,75 +315,75 @@ router.post('/redeem', A.requireUser, A.csrfGuard, (req, res) => {
     return res.status(409).json({ error: 'That code was just activated on another account.' });
   }
 
-  logUser(req, 'user.redeem', req.user.username, { code: raw, plan: plan.id });
+  await logUser(req, 'user.redeem', req.user.username, { code: raw, plan: plan.id });
   /* The plan id, never the code: a code is a bearer credential. */
   analytics.track(req, 'unlock_code', { plan_id: plan.id, months: plan.months });
   res.json({
     ok: true,
     plan: { id: plan.id, name: plan.name, months: plan.months },
-    entitlement: entitlementOf(req.user.id)
+    entitlement: await entitlementOf(req.user.id)
   });
 });
 
-router.post('/auth/logout', A.csrfGuard, (req, res) => {
-  const user = A.currentUser(req);
-  if (user) logUser(req, 'user.logout', user.username);
-  A.destroyUserSession(req, res);
+router.post('/auth/logout', A.csrfGuard, async (req, res) => {
+  const user = await A.currentUser(req);
+  if (user) await logUser(req, 'user.logout', user.username);
+  await A.destroyUserSession(req, res);
   res.json({ ok: true });
 });
 
 /* ======================= Email verification ======================= */
-router.post('/auth/verify/send', A.requireUser, A.csrfGuard, (req, res) => {
+router.post('/auth/verify/send', A.requireUser, A.csrfGuard, async (req, res) => {
   if (req.user.verified) return res.json({ ok: true, alreadyVerified: true });
-  const wait = A.rateLimit('verify-send|' + req.user.id, 3, 3600e3);
+  const wait = await A.rateLimit('verify-send|' + req.user.id, 3, 3600e3);
   if (wait) return res.status(429).json({ error: 'That has been sent a few times already. Try again in ' + Math.ceil(wait / 60) + ' minutes.' });
 
-  const link = deliverLink('verify', req.user, A.issueToken(req.user.id, 'verify'), req);
-  logUser(req, 'user.verify.send', req.user.username);
+  const link = deliverLink('verify', req.user, await A.issueToken(req.user.id, 'verify'), req);
+  await logUser(req, 'user.verify.send', req.user.username);
   res.json({ ok: true, verifyLink: link });
 });
 
 /* No sign-in required: the link may be opened in a different browser. */
-router.post('/auth/verify', A.csrfGuard, (req, res) => {
-  const userId = A.consumeToken(str((req.body || {}).token, 400), 'verify');
+router.post('/auth/verify', A.csrfGuard, async (req, res) => {
+  const userId = await A.consumeToken(str((req.body || {}).token, 400), 'verify');
   if (!userId) return bad(res, 'That verification link is invalid or has expired. Please request a new one.');
-  q.run('UPDATE users SET verified=1 WHERE id=?', userId);
-  const u = q.get('SELECT username FROM users WHERE id=?', userId);
-  logUser(req, 'user.verify.done', u ? u.username : userId);
-  res.json({ ok: true, user: profileOf(userId) });
+  await q.run('UPDATE users SET verified=1 WHERE id=?', userId);
+  const u = await q.get('SELECT username FROM users WHERE id=?', userId);
+  await logUser(req, 'user.verify.done', u ? u.username : userId);
+  res.json({ ok: true, user: await profileOf(userId) });
 });
 
 /* ===================== Forgotten / reset password ===================== */
-router.post('/auth/forgot', A.csrfGuard, (req, res) => {
+router.post('/auth/forgot', A.csrfGuard, async (req, res) => {
   const email = str((req.body || {}).email, 160).toLowerCase();
   if (!EMAIL_RE.test(email)) return bad(res, 'That email address is not valid.');
 
-  const wait = A.rateLimit('forgot|' + (req.ip || '?'), FORGOT_PER_HOUR, 3600e3);
+  const wait = await A.rateLimit('forgot|' + (req.ip || '?'), FORGOT_PER_HOUR, 3600e3);
   if (wait) return res.status(429).json({ error: 'You have asked for that several times. Try again in ' + Math.ceil(wait / 60) + ' minutes.' });
 
-  const user = q.get('SELECT * FROM users WHERE lower(email)=?', email);
+  const user = await q.get('SELECT * FROM users WHERE lower(email)=?', email);
   let link;
   if (user && user.status === 'active') {
-    link = deliverLink('reset', user, A.issueToken(user.id, 'reset'), req);
-    logUser(req, 'user.reset.request', user.username);
+    link = deliverLink('reset', user, await A.issueToken(user.id, 'reset'), req);
+    await logUser(req, 'user.reset.request', user.username);
   }
   // Always the same answer: never reveal which emails exist
   res.json({ ok: true, resetLink: link });
 });
 
-router.post('/auth/reset', A.csrfGuard, (req, res) => {
+router.post('/auth/reset', A.csrfGuard, async (req, res) => {
   const b = req.body || {};
   const password = typeof b.password === 'string' ? b.password : '';
   const pwErr = passwordProblem(password);
   if (pwErr) return bad(res, pwErr);
 
-  const userId = A.consumeToken(str(b.token, 400), 'reset');
+  const userId = await A.consumeToken(str(b.token, 400), 'reset');
   if (!userId) return bad(res, 'That reset link is invalid or has expired. Please request a new one.');
 
-  q.run('UPDATE users SET pass_hash=? WHERE id=?', A.hashPassword(password), userId);
-  A.dropUserSessions(userId);                       // every old device must sign in again
-  const u = q.get('SELECT username FROM users WHERE id=?', userId);
-  logUser(req, 'user.reset.done', u ? u.username : userId);
+  await q.run('UPDATE users SET pass_hash=? WHERE id=?', A.hashPassword(password), userId);
+  await A.dropUserSessions(userId);                       // every old device must sign in again
+  const u = await q.get('SELECT username FROM users WHERE id=?', userId);
+  await logUser(req, 'user.reset.done', u ? u.username : userId);
   res.json({ ok: true });
 });
 
@@ -390,8 +391,8 @@ router.post('/auth/reset', A.csrfGuard, (req, res) => {
 /* Session probe: every page calls this on boot, public pages included.
    Signed out returns 200 with user: null — not an error, and it avoids the browser
    logging a 401 on every guest page. Routes that need authorisation still return 401. */
-router.get('/me', (req, res) => {
-  const user = A.currentUser(req);
+router.get('/me', async (req, res) => {
+  const user = await A.currentUser(req);
   /* providers rides along on the boot request the pages already make, so the
      login screen knows whether to show the Google button without a second
      round trip. Returned when signed out too — that is when it is needed. */
@@ -404,44 +405,44 @@ router.get('/me', (req, res) => {
     tagline: p.tagline, perks: p.perks, limits: p.limits
   }));
   if (!user) return res.set('Cache-Control', 'no-store').json({ user: null, providers, plans });
-  const access = accessOf(user.id);
+  const access = await accessOf(user.id);
   res.set('Cache-Control', 'no-store').json({
-    user: profileOf(user.id),
+    user: await profileOf(user.id),
     providers,
     plans,
-    entitlement: entitlementOf(user.id),
+    entitlement: await entitlementOf(user.id),
     unlockedTestIds: access.unlockedTestIds,
     unlockedFamilyIds: access.unlockedFamilyIds,
     myCodes: access.myCodes,
-    orders: ordersOf(user.id)
+    orders: await ordersOf(user.id)
   });
 });
 
-router.patch('/me', A.requireUser, A.csrfGuard, (req, res) => {
+router.patch('/me', A.requireUser, A.csrfGuard, async (req, res) => {
   const b = req.body || {};
   const name = str(b.name, 80);
   const email = str(b.email, 160).toLowerCase();
   if (!name) return bad(res, 'Please enter your full name.');
   if (!EMAIL_RE.test(email)) return bad(res, 'That email address is not valid.');
 
-  const taken = q.get('SELECT id FROM users WHERE lower(email)=? AND id<>?', email, req.user.id);
+  const taken = await q.get('SELECT id FROM users WHERE lower(email)=? AND id<>?', email, req.user.id);
   if (taken) return res.status(409).json({ error: 'That email already belongs to another account.' });
 
   // Changing the email means verifying the new address
   const changedEmail = email !== req.user.email.toLowerCase();
-  q.run('UPDATE users SET name=?, email=?, interests_json=?, verified=? WHERE id=?',
-    name, email, JSON.stringify(cleanInterests(b.interests)),
+  await q.run('UPDATE users SET name=?, email=?, interests_json=?, verified=? WHERE id=?',
+    name, email, JSON.stringify(await cleanInterests(b.interests)),
     changedEmail ? 0 : (req.user.verified ? 1 : 0), req.user.id);
 
   let link;
   if (changedEmail) {
-    link = deliverLink('verify', { email }, A.issueToken(req.user.id, 'verify'), req);
+    link = deliverLink('verify', { email }, await A.issueToken(req.user.id, 'verify'), req);
   }
-  logUser(req, 'user.profile.update', req.user.username, { changedEmail });
-  res.json({ ok: true, user: profileOf(req.user.id), verifyLink: link });
+  await logUser(req, 'user.profile.update', req.user.username, { changedEmail });
+  res.json({ ok: true, user: await profileOf(req.user.id), verifyLink: link });
 });
 
-router.post('/me/password', A.requireUser, A.csrfGuard, (req, res) => {
+router.post('/me/password', A.requireUser, A.csrfGuard, async (req, res) => {
   const b = req.body || {};
   const current = typeof b.current === 'string' ? b.current : '';
   const next = typeof b.next === 'string' ? b.next : '';
@@ -449,22 +450,22 @@ router.post('/me/password', A.requireUser, A.csrfGuard, (req, res) => {
   if (pwErr) return bad(res, pwErr);
 
   const key = A.throttleKey(req, 'pw:' + req.user.username);
-  const lockedFor = A.isLocked(key);
+  const lockedFor = await A.isLocked(key);
   if (lockedFor) {
     return res.status(429).json({ error: 'Too many failed attempts. Try again in ' + Math.ceil(lockedFor / 60) + ' minutes.' });
   }
 
-  const row = q.get('SELECT pass_hash FROM users WHERE id=?', req.user.id);
+  const row = await q.get('SELECT pass_hash FROM users WHERE id=?', req.user.id);
   if (!A.verifyPassword(current, row && row.pass_hash)) {
-    A.noteFailure(key);
+    await A.noteFailure(key);
     return res.status(401).json({ error: 'That is not your current password.' });
   }
 
-  A.clearFailures(key);
-  q.run('UPDATE users SET pass_hash=? WHERE id=?', A.hashPassword(next), req.user.id);
-  A.dropUserSessions(req.user.id);
-  A.createUserSession(req.user.id, req, res);       // keep the current device signed in
-  logUser(req, 'user.password.change', req.user.username);
+  await A.clearFailures(key);
+  await q.run('UPDATE users SET pass_hash=? WHERE id=?', A.hashPassword(next), req.user.id);
+  await A.dropUserSessions(req.user.id);
+  await A.createUserSession(req.user.id, req, res);       // keep the current device signed in
+  await logUser(req, 'user.password.change', req.user.username);
   res.json({ ok: true });
 });
 

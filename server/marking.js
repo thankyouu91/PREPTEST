@@ -132,14 +132,14 @@ function meanHalf(values) {
  * Safe to call more than once: the per-item trace and the per-skill rows are
  * overwritten, never appended to.
  */
-function markAttempt(attemptId) {
-  const att = q.get('SELECT * FROM attempts WHERE id=?', attemptId);
+async function markAttempt(attemptId) {
+  const att = await q.get('SELECT * FROM attempts WHERE id=?', attemptId);
   if (!att) return null;
 
   /* Every item in the paper, with its stored answer if there is one. LEFT JOIN, not
      JOIN: a blank item still belongs in the denominator, or leaving more blank would
      raise the mark. */
-  const rows = q.all(
+  const rows = await q.all(
     `SELECT si.question_id, ap.section_id, s.skill,
             qs.type, qs.answer,
             aa.id answer_id, aa.answer given, aa.audio_key
@@ -153,7 +153,7 @@ function markAttempt(attemptId) {
   const bySkill = new Map();
   const at = nowISO();
 
-  tx(() => {
+  await tx(async () => {
     for (const r of rows) {
       const bucket = bySkill.get(r.skill) ||
         { earned: 0, max: 0, pending: 0, marked: 0 };
@@ -173,7 +173,7 @@ function markAttempt(attemptId) {
          item has no row at all; it still counts in the denominator above, and there
          is no reason to create an empty row just to record "0". */
       if (r.answer_id) {
-        q.run('UPDATE attempt_answers SET earned=?, max_score=?, mark_note=?, marked_at=? WHERE id=?',
+        await q.run('UPDATE attempt_answers SET earned=?, max_score=?, mark_note=?, marked_at=? WHERE id=?',
           mark.earned, mark.max, mark.note, at, r.answer_id);
       }
     }
@@ -182,7 +182,7 @@ function markAttempt(attemptId) {
     for (const [skill, b] of bySkill) {
       const value = b.pending ? null : linearScale(b.earned, b.max);
       if (value != null) scaled.push(value);
-      q.run(
+      await q.run(
         `INSERT INTO attempt_scores (attempt_id,skill,raw_earned,raw_max,scaled,method,pending,at)
          VALUES (?,?,?,?,?,?,?,?)
          ON CONFLICT(attempt_id,skill) DO UPDATE SET
@@ -195,7 +195,7 @@ function markAttempt(attemptId) {
     two of them and calling it the total is a wrong number in the costume of a result. */
     const allSkills = [...bySkill.values()];
     const complete = allSkills.length > 0 && allSkills.every(b => !b.pending);
-    q.run(
+    await q.run(
       `INSERT INTO attempt_scores (attempt_id,skill,raw_earned,raw_max,scaled,method,pending,at)
        VALUES (?,'overall',0,0,?,?,?,?)
        ON CONFLICT(attempt_id,skill) DO UPDATE SET
@@ -203,7 +203,7 @@ function markAttempt(attemptId) {
       attemptId, complete ? meanHalf(scaled) : null, 'mean_round_half', complete ? 0 : 1, at);
   });
 
-  return resultOf(attemptId);
+  return await resultOf(attemptId);
 }
 
 /**
@@ -214,10 +214,10 @@ function markAttempt(attemptId) {
  * so it gets the score and the band; from Plus up the per-part breakdown and
  * the per-item trace come with it.
  */
-function resultOf(attemptId, detailed) {
-  const att = q.get('SELECT * FROM attempts WHERE id=?', attemptId);
+async function resultOf(attemptId, detailed) {
+  const att = await q.get('SELECT * FROM attempts WHERE id=?', attemptId);
   if (!att) return null;
-  const rows = q.all('SELECT * FROM attempt_scores WHERE attempt_id=?', attemptId);
+  const rows = await q.all('SELECT * FROM attempt_scores WHERE attempt_id=?', attemptId);
   const overall = rows.find(r => r.skill === 'overall');
   const skills = rows.filter(r => r.skill !== 'overall');
 
@@ -244,12 +244,14 @@ function resultOf(attemptId, detailed) {
     pending: !!r.pending,
     method: r.method
   }));
-  out.parts = q.all(
+  /* Promise.all rather than a bare map: the callback reads each part's items,
+     so mapping it alone would leave an array of promises on the response. */
+  out.parts = await Promise.all((await q.all(
     `SELECT ap.section_id, ap.part, s.name, s.skill
        FROM attempt_parts ap JOIN sections s ON s.id = ap.section_id
-      WHERE ap.attempt_id=? ORDER BY s.sort, s.id`, attemptId)
-    .map(p => {
-      const items = q.all(
+      WHERE ap.attempt_id=? ORDER BY s.sort, s.id`, attemptId))
+    .map(async p => {
+      const items = await q.all(
         `SELECT si.question_id, qs.type, qs.prompt,
                 aa.answer given, aa.earned, aa.max_score, aa.mark_note, aa.audio_key
            FROM section_items si
@@ -281,7 +283,7 @@ function resultOf(attemptId, detailed) {
         max: marked.reduce((a, i) => a + (i.max || 0), 0),
         items: marked
       };
-    });
+    }));
   return out;
 }
 

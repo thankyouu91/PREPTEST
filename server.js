@@ -30,8 +30,11 @@ const lifecycle = require('./server/lifecycle');
 const analytics = require('./server/analytics');
 const { q } = require('./server/db');
 const { entitlementOf } = require('./server/entitlements');
+const { asyncRoutes } = require('./server/async-route');
 
-const app = express();
+/* Every handler registered on this app is wrapped so a rejected promise
+   becomes next(err) instead of a request that hangs. See server/async-route.js. */
+const app = asyncRoutes(express());
 app.disable('x-powered-by');
 /* Never `true` here — see the note on resolveTrustProxy in server/security.js.
    req.ip is what the sign-in lockout and the write limit are keyed on, so
@@ -61,11 +64,11 @@ const PORT = process.env.PORT || 3000;
    endpoint is an unauthenticated endpoint, and every detail it volunteers is a
    detail somebody gets for free. The reason a check failed goes to the log,
    where the operator is, not to the caller. */
-app.get('/healthz', (req, res) => {
+app.get('/healthz', async (req, res) => {
   res.setHeader('Cache-Control', 'no-store');
   res.setHeader('X-Robots-Tag', 'noindex, nofollow');
   try {
-    if (q.val('SELECT 1 AS one') !== 1) throw new Error('the database answered, but not with 1');
+    if (await q.val('SELECT 1 AS one') !== 1) throw new Error('the database answered, but not with 1');
     res.json({ ok: true });
   } catch (e) {
     console.error('[healthz] database check failed: ' + (e && e.message));
@@ -135,8 +138,8 @@ app.use('/api', api);            // danh mục công khai + /api/admin/…
    không để lộ khung trang quản trị rồi mới kiểm ở client. */
 function adminPage(file) {
   const serve = serveHtmlWithNonce(file);
-  return (req, res) => {
-    if (!A.currentAdmin(req)) {
+  return async (req, res) => {
+    if (!await A.currentAdmin(req)) {
       if (!req.path.endsWith('/')) return res.redirect(301, req.path + '/');
       const next = encodeURIComponent(req.originalUrl);
       return res.redirect(302, '/admin/dang-nhap/?next=' + next);
@@ -159,8 +162,8 @@ app.get('/admin/quan-tri/', adminPage('admin/settings.html'));
    Đã đăng nhập rồi thì vào thẳng khu học viên, không bắt đăng nhập lại. */
 function guestPage(file) {
   const serve = serveHtmlWithNonce(file);
-  return (req, res) => {
-    if (A.currentUser(req)) {
+  return async (req, res) => {
+    if (await A.currentUser(req)) {
       if (!req.path.endsWith('/')) return res.redirect(301, req.path + '/');
       const next = new URLSearchParams(req.originalUrl.split('?')[1] || '').get('next');
       return res.redirect(302, next && next.startsWith('/prep/') ? next : '/prep/');
@@ -187,8 +190,8 @@ app.get('/prep/dat-lai-mat-khau/', serveHtmlWithNonce('prep/auth/dat-lai-mat-kha
    để lộ khung trang rồi mới kiểm ở client. */
 function studentPage(file) {
   const serve = serveHtmlWithNonce(file);
-  return (req, res) => {
-    if (!A.currentUser(req)) {
+  return async (req, res) => {
+    if (!await A.currentUser(req)) {
       if (!req.path.endsWith('/')) return res.redirect(301, req.path + '/');
       return res.redirect(302, '/prep/dang-nhap/?next=' + encodeURIComponent(req.originalUrl));
     }
@@ -217,13 +220,13 @@ app.get('/prep/tai-khoan/', studentPage('prep/account/index.html'));
    lý do để màn đó nói đúng chuyện vừa xảy ra. */
 function studyPage(file) {
   const serve = serveHtmlWithNonce(file);
-  return (req, res) => {
-    const user = A.currentUser(req);
+  return async (req, res) => {
+    const user = await A.currentUser(req);
     if (!user) {
       if (!req.path.endsWith('/')) return res.redirect(301, req.path + '/');
       return res.redirect(302, '/prep/dang-nhap/?next=' + encodeURIComponent(req.originalUrl));
     }
-    const ent = entitlementOf(user.id);
+    const ent = await entitlementOf(user.id);
     if (!ent || !ent.features.selfStudy) {
       if (!req.path.endsWith('/')) return res.redirect(301, req.path + '/');
       return res.redirect(302, '/prep/mua-code/?locked=self-study&from=' + encodeURIComponent(req.path));
@@ -275,18 +278,47 @@ app.use((req, res) =>
   res.status(404).type('text').send('404 - không tìm thấy. Về trang chủ: /prep/landing/')
 );
 
-/* Tài khoản quản trị khởi tạo + dọn phiên hết hạn định kỳ */
-A.ensureSeedAdmin();
-A.ensureDemoStudent();
-setInterval(A.purgeSessions, 30 * 60e3).unref();
+/* The end of the chain, and the reason server/async-route.js has somewhere to
+   send a rejected handler. Four arguments on purpose: that is how Express tells
+   an error handler from ordinary middleware.
 
-const server = app.listen(PORT, () => {
-  console.log(`VPET Prep chạy tại http://localhost:${PORT}`);
-  console.log(`  · Học viên:  http://localhost:${PORT}/prep/landing/`);
-  console.log(`  · Quản trị:  http://localhost:${PORT}/admin/`);
-  A.reportAdminAccounts();
+   The caller is told nothing beyond "it failed". The reason goes to the log,
+   where the operator is — an error message volunteered to an unauthenticated
+   request is a free description of the inside of the process. */
+app.use((err, req, res, next) => {
+  console.error(`[500] ${req.method} ${req.originalUrl}`, (err && err.stack) || err);
+  if (res.headersSent) return next(err);
+  const wantsJson = req.path.startsWith('/api/') ||
+    String(req.headers.accept || '').includes('application/json');
+  res.status(500);
+  if (wantsJson) res.json({ error: 'Something went wrong. Please try again.' });
+  else res.type('text').send('500 - something went wrong');
 });
 
-/* A crash exits non-zero so a supervisor restarts it; SIGTERM drains and exits 0.
-   See the note at the top of server/lifecycle.js. */
-lifecycle.install(server);
+/* Seed the admin account and the demo student BEFORE anything is listening.
+   Both are database work and both are asynchronous now, so a listen() that did
+   not wait for them would answer its first request against a half-seeded
+   database — and the first request in a test run is a sign-in. */
+(async () => {
+  await A.ensureSeedAdmin();
+  await A.ensureDemoStudent();
+  /* setInterval does not await, so the sweep has to carry its own catch or a
+     failed sweep becomes an unhandled rejection that takes the process down. */
+  setInterval(() => {
+    A.purgeSessions().catch(e => console.error('[purge] ' + (e && e.message)));
+  }, 30 * 60e3).unref();
+
+  const server = app.listen(PORT, async () => {
+    console.log(`VPET Prep chạy tại http://localhost:${PORT}`);
+    console.log(`  · Học viên:  http://localhost:${PORT}/prep/landing/`);
+    console.log(`  · Quản trị:  http://localhost:${PORT}/admin/`);
+    try { await A.reportAdminAccounts(); } catch (e) { console.error(e && e.message); }
+  });
+
+  /* A crash exits non-zero so a supervisor restarts it; SIGTERM drains and exits 0.
+     See the note at the top of server/lifecycle.js. */
+  lifecycle.install(server);
+})().catch(e => {
+  console.error('The server could not start: ' + ((e && e.message) || e));
+  process.exit(1);
+});

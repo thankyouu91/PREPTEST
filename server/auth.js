@@ -86,10 +86,10 @@ function setCookie(res, name, value, opts) {
 /* ------------------------------ Sessions ------------------------------ */
 const sha256 = s => crypto.createHash('sha256').update(s).digest('hex');
 
-function createSession(adminId, req, res) {
+async function createSession(adminId, req, res) {
   const token = crypto.randomBytes(32).toString('base64url');
   const expires = new Date(Date.now() + SESSION_HOURS * 3600e3).toISOString();
-  q.run('INSERT INTO sessions (token_hash, admin_id, created_at, expires_at, ip, ua) VALUES (?,?,?,?,?,?)',
+  await q.run('INSERT INTO sessions (token_hash, admin_id, created_at, expires_at, ip, ua) VALUES (?,?,?,?,?,?)',
     sha256(token), adminId, nowISO(), expires, req.ip || null, (req.headers['user-agent'] || '').slice(0, 200));
   setCookie(res, 'prep_admin', token, { maxAge: SESSION_HOURS * 3600 });
   setCookie(res, 'prep_csrf', crypto.randomBytes(24).toString('base64url'),
@@ -97,39 +97,39 @@ function createSession(adminId, req, res) {
   return token;
 }
 
-function destroySession(req, res) {
+async function destroySession(req, res) {
   const token = parseCookies(req).prep_admin;
-  if (token) q.run('DELETE FROM sessions WHERE token_hash=?', sha256(token));
+  if (token) await q.run('DELETE FROM sessions WHERE token_hash=?', sha256(token));
   setCookie(res, 'prep_admin', '', { maxAge: 0 });
   setCookie(res, 'prep_csrf', '', { httpOnly: false, maxAge: 0 });
 }
 
-function currentAdmin(req) {
+async function currentAdmin(req) {
   const token = parseCookies(req).prep_admin;
   if (!token) return null;
-  const row = q.get(
+  const row = await q.get(
     `SELECT a.id, a.username, a.name, a.role, s.expires_at
        FROM sessions s JOIN admins a ON a.id = s.admin_id
       WHERE s.token_hash = ? AND a.active = 1`, sha256(token));
   if (!row) return null;
   if (row.expires_at <= nowISO()) {                 // an expired session is cleared out on sight
-    q.run('DELETE FROM sessions WHERE token_hash=?', sha256(token));
+    await q.run('DELETE FROM sessions WHERE token_hash=?', sha256(token));
     return null;
   }
   return { id: row.id, username: row.username, name: row.name, role: row.role };
 }
 
 /** Sweep out expired sessions and spent throttle rows (called periodically) */
-function purgeSessions() {
-  q.run('DELETE FROM sessions WHERE expires_at <= ?', nowISO());
-  q.run('DELETE FROM user_sessions WHERE expires_at <= ?', nowISO());
-  q.run('DELETE FROM user_tokens WHERE expires_at <= ?', nowISO());
+async function purgeSessions() {
+  await q.run('DELETE FROM sessions WHERE expires_at <= ?', nowISO());
+  await q.run('DELETE FROM user_sessions WHERE expires_at <= ?', nowISO());
+  await q.run('DELETE FROM user_tokens WHERE expires_at <= ?', nowISO());
   /* Throttle rows are the only table here that grows with ordinary traffic
      rather than with people, so it is the one that needs sweeping rather than
      merely tidying. The longest window any caller asks for is an hour, so two
      hours is well clear of anything still being counted. */
-  q.run('DELETE FROM throttle_hits WHERE at <= ?', new Date(Date.now() - 2 * 3600e3).toISOString());
-  q.run('DELETE FROM throttle_locks WHERE locked_until IS NOT NULL AND locked_until <= ?', nowISO());
+  await q.run('DELETE FROM throttle_hits WHERE at <= ?', new Date(Date.now() - 2 * 3600e3).toISOString());
+  await q.run('DELETE FROM throttle_locks WHERE locked_until IS NOT NULL AND locked_until <= ?', nowISO());
 }
 
 /* --------------------------- Student sessions ---------------------------
@@ -138,11 +138,11 @@ function purgeSessions() {
    mechanism: a 32-byte token, only its hash stored, HttpOnly + SameSite=Strict. */
 const USER_SESSION_DAYS = 14;
 
-function createUserSession(userId, req, res) {
+async function createUserSession(userId, req, res) {
   const token = crypto.randomBytes(32).toString('base64url');
   const maxAge = USER_SESSION_DAYS * 86400;
   const expires = new Date(Date.now() + maxAge * 1000).toISOString();
-  q.run('INSERT INTO user_sessions (token_hash, user_id, created_at, expires_at, ip, ua) VALUES (?,?,?,?,?,?)',
+  await q.run('INSERT INTO user_sessions (token_hash, user_id, created_at, expires_at, ip, ua) VALUES (?,?,?,?,?,?)',
     sha256(token), userId, nowISO(), expires, req.ip || null, (req.headers['user-agent'] || '').slice(0, 200));
   setCookie(res, 'prep_user', token, { maxAge });
   setCookie(res, 'prep_csrf', crypto.randomBytes(24).toString('base64url'), { httpOnly: false, maxAge });
@@ -171,28 +171,28 @@ function ensureCsrfCookie(req, res) {
   return true;
 }
 
-function destroyUserSession(req, res) {
+async function destroyUserSession(req, res) {
   const token = parseCookies(req).prep_user;
-  if (token) q.run('DELETE FROM user_sessions WHERE token_hash=?', sha256(token));
+  if (token) await q.run('DELETE FROM user_sessions WHERE token_hash=?', sha256(token));
   setCookie(res, 'prep_user', '', { maxAge: 0 });
   setCookie(res, 'prep_csrf', '', { httpOnly: false, maxAge: 0 });
 }
 
 /** Sign out every device — used after a password change or reset */
-function dropUserSessions(userId) {
-  q.run('DELETE FROM user_sessions WHERE user_id=?', userId);
+async function dropUserSessions(userId) {
+  await q.run('DELETE FROM user_sessions WHERE user_id=?', userId);
 }
 
-function currentUser(req) {
+async function currentUser(req) {
   const token = parseCookies(req).prep_user;
   if (!token) return null;
-  const row = q.get(
+  const row = await q.get(
     `SELECT u.id, u.username, u.email, u.name, u.verified, u.status, u.interests_json, s.expires_at
        FROM user_sessions s JOIN users u ON u.id = s.user_id
       WHERE s.token_hash = ?`, sha256(token));
   if (!row) return null;
   if (row.expires_at <= nowISO()) {
-    q.run('DELETE FROM user_sessions WHERE token_hash=?', sha256(token));
+    await q.run('DELETE FROM user_sessions WHERE token_hash=?', sha256(token));
     return null;
   }
   if (row.status !== 'active') return null;        // a locked account voids the session
@@ -202,8 +202,8 @@ function currentUser(req) {
   };
 }
 
-function requireUser(req, res, next) {
-  const user = currentUser(req);
+async function requireUser(req, res, next) {
+  const user = await currentUser(req);
   if (!user) return res.status(401).json({ error: 'Not signed in, or the session has expired.' });
   req.user = user;
   next();
@@ -227,32 +227,32 @@ function throttleKey(req, username) {
 }
 
 /** Seconds still to wait, or 0 when not locked. Clears a lock that has run out. */
-function isLocked(key) {
-  const row = q.get('SELECT locked_until FROM throttle_locks WHERE bucket=?', key);
+async function isLocked(key) {
+  const row = await q.get('SELECT locked_until FROM throttle_locks WHERE bucket=?', key);
   if (!row || !row.locked_until) return 0;
   const left = Date.parse(row.locked_until) - Date.now();
   if (left > 0) return Math.ceil(left / 1000);
-  q.run('DELETE FROM throttle_locks WHERE bucket=?', key);
+  await q.run('DELETE FROM throttle_locks WHERE bucket=?', key);
   return 0;
 }
 
-function noteFailure(key) {
+async function noteFailure(key) {
   /* One statement so two processes cannot both read 4 and both write 5. */
-  q.run(`INSERT INTO throttle_locks (bucket, fails) VALUES (?, 1)
+  await q.run(`INSERT INTO throttle_locks (bucket, fails) VALUES (?, 1)
          ON CONFLICT(bucket) DO UPDATE SET fails = throttle_locks.fails + 1`, key);
-  const fails = q.val('SELECT fails FROM throttle_locks WHERE bucket=?', key);
+  const fails = await q.val('SELECT fails FROM throttle_locks WHERE bucket=?', key);
   if (fails >= MAX_ATTEMPTS) {
-    q.run('UPDATE throttle_locks SET fails=0, locked_until=? WHERE bucket=?',
+    await q.run('UPDATE throttle_locks SET fails=0, locked_until=? WHERE bucket=?',
       new Date(Date.now() + LOCK_MS).toISOString(), key);
   }
 }
 
-function clearFailures(key) { q.run('DELETE FROM throttle_locks WHERE bucket=?', key); }
+async function clearFailures(key) { await q.run('DELETE FROM throttle_locks WHERE bucket=?', key); }
 
 /** Every lockout, cleared. The escape hatch for an administrator locked out. */
-function clearAllLocks() {
-  const n = q.val('SELECT COUNT(*) c FROM throttle_locks');
-  q.run('DELETE FROM throttle_locks');
+async function clearAllLocks() {
+  const n = await q.val('SELECT COUNT(*) c FROM throttle_locks');
+  await q.run('DELETE FROM throttle_locks');
   return n;
 }
 
@@ -263,27 +263,27 @@ function clearAllLocks() {
    shared row is not. */
 
 /** Returns 0 while there is room, or the seconds to wait once the cap is hit. Spends one. */
-function rateLimit(key, max, windowMs) {
-  const wait = rateLimitPeek(key, max, windowMs);
-  if (!wait) rateLimitNote(key);
+async function rateLimit(key, max, windowMs) {
+  const wait = await rateLimitPeek(key, max, windowMs);
+  if (!wait) await rateLimitNote(key);
   return wait;
 }
 
 /** Like rateLimit but spends NOTHING — for when only a successful action should count. */
-function rateLimitPeek(key, max, windowMs) {
+async function rateLimitPeek(key, max, windowMs) {
   const now = Date.now();
   const cutoff = new Date(now - windowMs).toISOString();
-  const hits = q.val('SELECT COUNT(*) c FROM throttle_hits WHERE bucket=? AND at > ?', key, cutoff);
+  const hits = await q.val('SELECT COUNT(*) c FROM throttle_hits WHERE bucket=? AND at > ?', key, cutoff);
   if (hits < max) return 0;
-  const oldest = q.val('SELECT MIN(at) m FROM throttle_hits WHERE bucket=? AND at > ?', key, cutoff);
+  const oldest = await q.val('SELECT MIN(at) m FROM throttle_hits WHERE bucket=? AND at > ?', key, cutoff);
   /* Never 0 while the cap is reached: the caller reads 0 as "go ahead", so a
      window expiring within the current second must still answer "wait 1". */
   return Math.max(1, Math.ceil((windowMs - (now - Date.parse(oldest))) / 1000));
 }
 
 /** Spend one allowance against a key. */
-function rateLimitNote(key) {
-  q.run('INSERT INTO throttle_hits (bucket, at) VALUES (?,?)', key, nowISO());
+async function rateLimitNote(key) {
+  await q.run('INSERT INTO throttle_hits (bucket, at) VALUES (?,?)', key, nowISO());
 }
 
 /* ---------------------- Second factor, admin side ----------------------
@@ -302,31 +302,31 @@ const totpEnabled = admin => !!(admin && admin.totp_secret && admin.totp_enabled
  * the same code cannot be presented twice within its 30-second life; a
  * successful recovery code is spent outright.
  */
-function verifySecondFactor(admin, submitted) {
+async function verifySecondFactor(admin, submitted) {
   const code = String(submitted || '').replace(/[\s-]/g, '');
   if (!code) return null;
 
   const counter = totp.verify(admin.totp_secret, code, { lastCounter: admin.totp_last_counter });
   if (counter !== null) {
-    q.run('UPDATE admins SET totp_last_counter=? WHERE id=?', counter, admin.id);
+    await q.run('UPDATE admins SET totp_last_counter=? WHERE id=?', counter, admin.id);
     return 'totp';
   }
 
   /* Recovery codes are longer than six digits, so a TOTP attempt never
      accidentally consumes one and the two never collide. */
-  const row = q.get(
+  const row = await q.get(
     'SELECT code_hash FROM admin_recovery_codes WHERE admin_id=? AND code_hash=? AND used_at IS NULL',
     admin.id, sha256(code.toUpperCase()));
   if (row) {
-    q.run('UPDATE admin_recovery_codes SET used_at=? WHERE code_hash=?', nowISO(), row.code_hash);
+    await q.run('UPDATE admin_recovery_codes SET used_at=? WHERE code_hash=?', nowISO(), row.code_hash);
     return 'recovery';
   }
   return null;
 }
 
 /** Mint a fresh set of recovery codes, replacing any that are left. Returns them once. */
-function issueRecoveryCodes(adminId, howMany = 10) {
-  q.run('DELETE FROM admin_recovery_codes WHERE admin_id=?', adminId);
+async function issueRecoveryCodes(adminId, howMany = 10) {
+  await q.run('DELETE FROM admin_recovery_codes WHERE admin_id=?', adminId);
   const codes = [];
   for (let i = 0; i < howMany; i++) {
     /* Base32 alphabet, so nothing reads as both a letter and a digit when it is
@@ -334,41 +334,41 @@ function issueRecoveryCodes(adminId, howMany = 10) {
     const raw = totp.base32Encode(crypto.randomBytes(10)).slice(0, 16);
     const shown = raw.slice(0, 4) + '-' + raw.slice(4, 8) + '-' + raw.slice(8, 12) + '-' + raw.slice(12, 16);
     codes.push(shown);
-    q.run('INSERT INTO admin_recovery_codes (code_hash, admin_id, created_at) VALUES (?,?,?)',
+    await q.run('INSERT INTO admin_recovery_codes (code_hash, admin_id, created_at) VALUES (?,?,?)',
       sha256(raw), adminId, nowISO());
   }
   return codes;
 }
 
-const recoveryCodesLeft = adminId =>
-  q.val('SELECT COUNT(*) c FROM admin_recovery_codes WHERE admin_id=? AND used_at IS NULL', adminId);
+const recoveryCodesLeft = async adminId =>
+  await q.val('SELECT COUNT(*) c FROM admin_recovery_codes WHERE admin_id=? AND used_at IS NULL', adminId);
 
 /* ------------------ Single-use tokens sent by email ------------------ */
 const TOKEN_HOURS = { verify: 48, reset: 2 };
 
 /** Mint a token for a user; returns the raw string (this once), the database keeps its hash. */
-function issueToken(userId, kind) {
+async function issueToken(userId, kind) {
   const hours = TOKEN_HOURS[kind] || 2;
   const token = crypto.randomBytes(32).toString('base64url');
-  q.run('DELETE FROM user_tokens WHERE user_id=? AND kind=? AND used_at IS NULL', userId, kind);
-  q.run('INSERT INTO user_tokens (token_hash, user_id, kind, created_at, expires_at) VALUES (?,?,?,?,?)',
+  await q.run('DELETE FROM user_tokens WHERE user_id=? AND kind=? AND used_at IS NULL', userId, kind);
+  await q.run('INSERT INTO user_tokens (token_hash, user_id, kind, created_at, expires_at) VALUES (?,?,?,?,?)',
     sha256(token), userId, kind, nowISO(), new Date(Date.now() + hours * 3600e3).toISOString());
   return token;
 }
 
 /** Exchange a token for a user_id and mark it used. Returns null if wrong, expired or spent. */
-function consumeToken(token, kind) {
+async function consumeToken(token, kind) {
   if (!token) return null;
   const hash = sha256(String(token));
-  const row = q.get('SELECT * FROM user_tokens WHERE token_hash=? AND kind=?', hash, kind);
+  const row = await q.get('SELECT * FROM user_tokens WHERE token_hash=? AND kind=?', hash, kind);
   if (!row || row.used_at || row.expires_at <= nowISO()) return null;
-  q.run('UPDATE user_tokens SET used_at=? WHERE token_hash=?', nowISO(), hash);
+  await q.run('UPDATE user_tokens SET used_at=? WHERE token_hash=?', nowISO(), hash);
   return row.user_id;
 }
 
 /* ------------------------------ Middleware ------------------------------ */
-function requireAdmin(req, res, next) {
-  const admin = currentAdmin(req);
+async function requireAdmin(req, res, next) {
+  const admin = await currentAdmin(req);
   if (!admin) return res.status(401).json({ error: 'Not signed in, or the session has expired.' });
   req.admin = admin;
   next();
@@ -408,14 +408,14 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
  * administrator creating an account needs exactly the same thing, and Google
  * sign-in is a strange place for a general account helper to live.
  */
-function freeUsername(email) {
+async function freeUsername(email) {
   let base = String(email).split('@')[0].toLowerCase().replace(/[^a-z0-9._-]/g, '');
   if (base.length < 3) base = 'student' + base;
   base = base.slice(0, 24);
-  if (!q.val('SELECT 1 FROM users WHERE lower(username)=?', base)) return base;
+  if (!await q.val('SELECT 1 FROM users WHERE lower(username)=?', base)) return base;
   for (let i = 2; i < 1000; i++) {
     const candidate = `${base}${i}`;
-    if (!q.val('SELECT 1 FROM users WHERE lower(username)=?', candidate)) return candidate;
+    if (!await q.val('SELECT 1 FROM users WHERE lower(username)=?', candidate)) return candidate;
   }
   return `${base}${crypto.randomBytes(4).toString('hex')}`;
 }
@@ -443,8 +443,8 @@ function generatedPassword() {
   return 'Vpet-' + crypto.randomBytes(9).toString('base64url');
 }
 
-function ensureSeedAdmin() {
-  if (q.val('SELECT COUNT(*) c FROM admins')) return null;
+async function ensureSeedAdmin() {
+  if (await q.val('SELECT COUNT(*) c FROM admins')) return null;
 
   const envPw = process.env.ADMIN_PASSWORD;
   const isProd = process.env.NODE_ENV === 'production';
@@ -456,9 +456,9 @@ function ensureSeedAdmin() {
   const username = process.env.ADMIN_USERNAME || 'admin';
   const password = envPw || generatedPassword();
 
-  q.run('INSERT INTO admins (username,name,pass_hash,role,active,created_at) VALUES (?,?,?,?,1,?)',
+  await q.run('INSERT INTO admins (username,name,pass_hash,role,active,created_at) VALUES (?,?,?,?,1,?)',
     username, process.env.ADMIN_NAME || 'Administrator', hashPassword(password), 'owner', nowISO());
-  audit(null, 'admin.seed', 'admins/' + username, { source: envPw ? 'env' : 'default-dev' });
+  await audit(null, 'admin.seed', 'admins/' + username, { source: envPw ? 'env' : 'default-dev' });
 
   if (!envPw) {
     console.warn(
@@ -512,11 +512,11 @@ function demoStudentPassword() {
  * whatever password it has, and a fresh install has no way into it until
  * somebody sets one. That is the point — silence here is the secure default.
  */
-function ensureDemoStudent() {
+async function ensureDemoStudent() {
   if (process.env.NODE_ENV === 'production') return false;
   const wanted = demoStudentPassword();
   if (!wanted) return false;
-  const u = q.get('SELECT id, pass_hash, verified, status, name FROM users WHERE username=?',
+  const u = await q.get('SELECT id, pass_hash, verified, status, name FROM users WHERE username=?',
     DEMO_STUDENT_USER);
   if (!u) return false;
 
@@ -525,7 +525,7 @@ function ensureDemoStudent() {
   const nameOk = u.name === DEMO_STUDENT_NAME;
   if (passwordOk && stateOk && nameOk) return false;
 
-  q.run("UPDATE users SET pass_hash=?, verified=1, status='active', name=? WHERE id=?",
+  await q.run("UPDATE users SET pass_hash=?, verified=1, status='active', name=? WHERE id=?",
     hashPassword(wanted), DEMO_STUDENT_NAME, u.id);
   /* The password is NOT printed. Whoever set the environment variable already
      knows it, and a log line is a place a credential outlives its usefulness. */
@@ -539,9 +539,9 @@ function ensureDemoStudent() {
 
 /** Remind the operator which administrator accounts exist, so nobody is left guessing.
     Prints NAMES only, never passwords — the database holds hashes, so it could not anyway. */
-function reportAdminAccounts() {
+async function reportAdminAccounts() {
   if (process.env.NODE_ENV === 'production') return;
-  const admins = q.all('SELECT username FROM admins WHERE active=1 ORDER BY id');
+  const admins = await q.all('SELECT username FROM admins WHERE active=1 ORDER BY id');
   if (!admins.length) return;
   console.log('   · Admin:  ' + admins.map(a => a.username).join(', ') +
     '  (forgotten the password? run: node scripts/accounts.js reset-admin)');

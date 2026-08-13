@@ -27,9 +27,16 @@ const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'vpet-accounts-'));
 const DB = path.join(tmpDir, 'probe.sqlite');
 const ROOT = path.join(__dirname, '..');
 
-/** Run a snippet in a child process against its own database, returning stdout */
+/** Run a snippet in a child process against its own database, returning stdout
+ *
+ * The snippet is wrapped in an async IIFE because the data layer is
+ * promise-returning now and `node -e` runs CommonJS, where there is no
+ * top-level await. Wrapping it here rather than in each snippet also means a
+ * rejection exits non-zero instead of printing a warning and reporting
+ * success. */
 function runNode(code, extraEnv) {
-  return execFileSync(process.execPath, ['-e', code], {
+  const wrapped = `(async () => {${code}})().catch(e => { console.error(e); process.exit(1); })`;
+  return execFileSync(process.execPath, ['-e', wrapped], {
     cwd: ROOT, encoding: 'utf8',
     env: { ...process.env, PREP_DB: DB, NODE_ENV: 'test', ...(extraEnv || {}) },
     stdio: ['ignore', 'pipe', 'pipe']
@@ -49,8 +56,8 @@ try {
   console.log('Throwaway database: ' + DB + '\n');
 
   /* 1. Bootstrap a clean database */
-  runNode("require('./server/auth').ensureSeedAdmin();");
-  const adminCount = runNode("const{q}=require('./server/db');console.log(q.val('SELECT COUNT(*) c FROM admins'))").trim();
+  runNode("await require('./server/auth').ensureSeedAdmin();");
+  const adminCount = runNode("const{q}=require('./server/db');console.log(await q.val('SELECT COUNT(*) c FROM admins'))").trim();
   ok(adminCount === '1', 'A fresh database creates one administrator', 'saw ' + adminCount);
 
   /* The demo password is no longer a constant anywhere, so this test brings its
@@ -60,58 +67,58 @@ try {
   process.env.DEMO_STUDENT_PASSWORD = DEMO_PW;
 
   /* 2. ensureDemoStudent() applies DEMO_STUDENT_PASSWORD on first boot */
-  runNode("require('./server/auth').ensureDemoStudent();");
+  runNode("await require('./server/auth').ensureDemoStudent();");
   const rightFirstTime = runNode(
     "const A=require('./server/auth'),{q}=require('./server/db');" +
-    "const u=q.get(\"SELECT pass_hash FROM users WHERE username='student'\");" +
+    "const u=await q.get(\"SELECT pass_hash FROM users WHERE username='student'\");" +
     "console.log(A.verifyPassword(process.env.DEMO_STUDENT_PASSWORD, u.pass_hash))").trim();
   ok(rightFirstTime === 'true', 'The demo student signs in with the password the environment names');
 
   /* 3. Demo password changed → the next boot must pull it back */
   runNode("const A=require('./server/auth'),{q}=require('./server/db');" +
-    "q.run('UPDATE users SET pass_hash=? WHERE username=?', A.hashPassword('HasDrifted123'), 'student');");
+    "await q.run('UPDATE users SET pass_hash=? WHERE username=?', A.hashPassword('HasDrifted123'), 'student');");
   const hasDrifted = runNode(
     "const A=require('./server/auth'),{q}=require('./server/db');" +
-    "const u=q.get(\"SELECT pass_hash FROM users WHERE username='student'\");" +
+    "const u=await q.get(\"SELECT pass_hash FROM users WHERE username='student'\");" +
     "console.log(A.verifyPassword(process.env.DEMO_STUDENT_PASSWORD, u.pass_hash))").trim();
   ok(hasDrifted === 'false', 'Set up the case where the demo password has drifted');
 
-  const repaired = runNode("console.log(require('./server/auth').ensureDemoStudent())").trim();
+  const repaired = runNode("console.log(await require('./server/auth').ensureDemoStudent())").trim();
   ok(repaired.includes('true'), 'The next boot spots the drift and resets it');
 
   const backInLine = runNode(
     "const A=require('./server/auth'),{q}=require('./server/db');" +
-    "const u=q.get(\"SELECT pass_hash FROM users WHERE username='student'\");" +
+    "const u=await q.get(\"SELECT pass_hash FROM users WHERE username='student'\");" +
     "console.log(A.verifyPassword(process.env.DEMO_STUDENT_PASSWORD, u.pass_hash))").trim();
   ok(backInLine === 'true', 'The demo password is back to what the environment names');
 
   /* 4. Change nothing when it is already right — no needless write, no warning each run */
-  const secondRun = runNode("console.log(require('./server/auth').ensureDemoStudent())").trim();
+  const secondRun = runNode("console.log(await require('./server/auth').ensureDemoStudent())").trim();
   ok(secondRun.includes('false'), 'Already correct means leave it alone');
 
   /* 5. A locked or unverified demo account is pulled back too */
-  runNode("const{q}=require('./server/db');q.run(\"UPDATE users SET status='locked', verified=0 WHERE username='student'\");");
-  runNode("require('./server/auth').ensureDemoStudent();");
+  runNode("const{q}=require('./server/db');await q.run(\"UPDATE users SET status='locked', verified=0 WHERE username='student'\");");
+  runNode("await require('./server/auth').ensureDemoStudent();");
   const state = runNode(
     "const{q}=require('./server/db');" +
-    "const u=q.get(\"SELECT verified, status FROM users WHERE username='student'\");" +
+    "const u=await q.get(\"SELECT verified, status FROM users WHERE username='student'\");" +
     "console.log(u.verified + '/' + u.status)").trim();
   ok(state === '1/active', 'A locked demo account is reopened', state);
 
   /* 5b. The display name is pulled back as well. The name comes from a seed that runs
      once, so an existing database keeps the old value whatever the seed says — and that
      name appears in the greeting on every signed-in screen. */
-  runNode("const{q}=require('./server/db');q.run(\"UPDATE users SET name='Old Name' WHERE username='student'\");");
-  const nameRepaired = runNode("console.log(require('./server/auth').ensureDemoStudent())").trim();
+  runNode("const{q}=require('./server/db');await q.run(\"UPDATE users SET name='Old Name' WHERE username='student'\");");
+  const nameRepaired = runNode("console.log(await require('./server/auth').ensureDemoStudent())").trim();
   ok(nameRepaired.includes('true'), 'A drifted display name is spotted too');
   const displayName = runNode(
     "const{q}=require('./server/db');" +
-    "console.log(q.val(\"SELECT name FROM users WHERE username='student'\"))").trim();
+    "console.log(await q.val(\"SELECT name FROM users WHERE username='student'\"))").trim();
   ok(displayName === 'Demo Student', 'The display name is pulled back to the documented one', displayName);
 
   /* 6. In production, never touch the demo account */
   const inProduction = execFileSync(process.execPath,
-    ['-e', "console.log(require('./server/auth').ensureDemoStudent())"],
+    ['-e', "(async()=>console.log(await require('./server/auth').ensureDemoStudent()))()"],
     { cwd: ROOT, encoding: 'utf8', env: { ...process.env, PREP_DB: DB, NODE_ENV: 'production' } }).trim();
   ok(inProduction.includes('false'), 'Production does not reset the demo account');
 
@@ -122,7 +129,7 @@ try {
 
   /* 8. Administrator password lost → it can be reset */
   runNode("const A=require('./server/auth'),{q}=require('./server/db');" +
-    "q.run('UPDATE admins SET pass_hash=? WHERE username=?', A.hashPassword('NobodyKnows999'), 'admin');");
+    "await q.run('UPDATE admins SET pass_hash=? WHERE username=?', A.hashPassword('NobodyKnows999'), 'admin');");
   /* No argument: a password is generated and printed once. There is no default
      to compare against any more — the check is that the tool tells you what it
      chose, and that what it printed is what now works. */
@@ -131,7 +138,7 @@ try {
   ok(generated.length >= 10, 'reset-admin with no argument generates a password and prints it', generated);
   const adminOk = runNode(
     "const A=require('./server/auth'),{q}=require('./server/db');" +
-    "const a=q.get(\"SELECT pass_hash FROM admins WHERE username='admin'\");" +
+    "const a=await q.get(\"SELECT pass_hash FROM admins WHERE username='admin'\");" +
     "console.log(A.verifyPassword(process.env.CHECK_PW, a.pass_hash))", { CHECK_PW: generated }).trim();
   ok(adminOk === 'true', 'and the password it printed is the one that now works');
 
@@ -139,7 +146,7 @@ try {
   cli('reset-admin', 'AVeryLongPassword123');
   const chosenPassword = runNode(
     "const A=require('./server/auth'),{q}=require('./server/db');" +
-    "const a=q.get(\"SELECT pass_hash FROM admins WHERE username='admin'\");" +
+    "const a=await q.get(\"SELECT pass_hash FROM admins WHERE username='admin'\");" +
     "console.log(A.verifyPassword('AVeryLongPassword123', a.pass_hash))").trim();
   ok(chosenPassword === 'true', 'A chosen administrator password is accepted');
 
@@ -150,18 +157,18 @@ try {
   /* 10. Resetting an administrator password must revoke every old session */
   const sessionsBefore = runNode(
     "const{q}=require('./server/db');" +
-    "q.run('INSERT INTO sessions (token_hash,admin_id,created_at,expires_at) VALUES (?,?,?,?)'," +
-    "  'fake-token', q.val(\"SELECT id FROM admins WHERE username='admin'\"), '2026-01-01T00:00:00Z', '2099-01-01T00:00:00Z');" +
-    "console.log(q.val('SELECT COUNT(*) c FROM sessions'))").trim();
+    "await q.run('INSERT INTO sessions (token_hash,admin_id,created_at,expires_at) VALUES (?,?,?,?)'," +
+    "  'fake-token', await q.val(\"SELECT id FROM admins WHERE username='admin'\"), '2026-01-01T00:00:00Z', '2099-01-01T00:00:00Z');" +
+    "console.log(await q.val('SELECT COUNT(*) c FROM sessions'))").trim();
   ok(sessionsBefore === '1', 'Set up one existing session');
   cli('reset-admin');
-  const sessionsAfter = runNode("const{q}=require('./server/db');console.log(q.val('SELECT COUNT(*) c FROM sessions'))").trim();
+  const sessionsAfter = runNode("const{q}=require('./server/db');console.log(await q.val('SELECT COUNT(*) c FROM sessions'))").trim();
   ok(sessionsAfter === '0', 'Resetting the password revokes every old session');
 
   /* 11. Unlocking students */
-  runNode("const{q}=require('./server/db');q.run(\"UPDATE users SET status='locked' WHERE username='student'\");");
+  runNode("const{q}=require('./server/db');await q.run(\"UPDATE users SET status='locked' WHERE username='student'\");");
   cli('unlock');
-  const stillLocked = runNode("const{q}=require('./server/db');console.log(q.val(\"SELECT COUNT(*) c FROM users WHERE status='locked'\"))").trim();
+  const stillLocked = runNode("const{q}=require('./server/db');console.log(await q.val(\"SELECT COUNT(*) c FROM users WHERE status='locked'\"))").trim();
   ok(stillLocked === '0', 'The "unlock" command unlocks every locked account');
 
   /* 12. A bad command fails loudly rather than silently doing something */
@@ -175,28 +182,28 @@ try {
      gets pulled back to draft. */
   const parkedFamily = runNode(
     "const{q}=require('./server/db');" +
-    "console.log(q.val(\"SELECT f.id FROM families f WHERE f.status='coming_soon' " +
+    "console.log(await q.val(\"SELECT f.id FROM families f WHERE f.status='coming_soon' " +
     "AND EXISTS (SELECT 1 FROM tests t WHERE t.family_id=f.id) ORDER BY f.sort LIMIT 1\") || '')"
   ).trim();
   ok(!!parkedFamily, 'There is a parked family that still has tests in the database', parkedFamily);
 
   const pushedLive = runNode(
     "const{q}=require('./server/db');" +
-    "const id=q.val(\"SELECT id FROM tests WHERE family_id=? LIMIT 1\", '" + parkedFamily + "');" +
-    "if(id){q.run(\"UPDATE tests SET status='published' WHERE id=?\", id);console.log(id)}else{console.log('')}"
+    "const id=await q.val(\"SELECT id FROM tests WHERE family_id=? LIMIT 1\", '" + parkedFamily + "');" +
+    "if(id){await q.run(\"UPDATE tests SET status='published' WHERE id=?\", id);console.log(id)}else{console.log('')}"
   ).trim();
   ok(!!pushedLive, 'Set up a published test belonging to a parked family', pushedLive);
 
   const stillOnSale = runNode(
     "const{q}=require('./server/db');" +
-    "console.log(q.val(\"SELECT COUNT(*) c FROM tests t JOIN families f ON f.id=t.family_id " +
+    "console.log(await q.val(\"SELECT COUNT(*) c FROM tests t JOIN families f ON f.id=t.family_id " +
     "WHERE t.status='published' AND f.status='coming_soon'\"))"
   ).trim();
   ok(stillOnSale === '0', 'A restart pulls a parked family\'s tests back to draft', stillOnSale + ' still on sale');
 
   const openFamilyIntact = runNode(
     "const{q}=require('./server/db');" +
-    "console.log(q.val(\"SELECT COUNT(*) c FROM tests t JOIN families f ON f.id=t.family_id " +
+    "console.log(await q.val(\"SELECT COUNT(*) c FROM tests t JOIN families f ON f.id=t.family_id " +
     "WHERE t.status='published' AND f.status='ready'\"))"
   ).trim();
   ok(Number(openFamilyIntact) > 0, 'Tests of an open family are left alone', openFamilyIntact);
@@ -218,9 +225,11 @@ try {
   const firstBootDir = fs.mkdtempSync(path.join(os.tmpdir(), 'vpet-firstboot-'));
   try {
     const unattached = execFileSync(process.execPath, ['-e',
+      "(async () => {" +
       "const{q}=require('./server/db');" +
-      "console.log(q.val(\"SELECT COUNT(*) c FROM codes WHERE plan_id IS NULL AND code IN (" +
-      "'VPET-B1MK-24TR','IELT-AC12-96HD','TOEC-LR20-26CB','PREP-HHAN-2025','PREP-DUNG-ROI1')\"))"
+      "console.log(await q.val(\"SELECT COUNT(*) c FROM codes WHERE plan_id IS NULL AND code IN (" +
+      "'VPET-B1MK-24TR','IELT-AC12-96HD','TOEC-LR20-26CB','PREP-HHAN-2025','PREP-DUNG-ROI1')\"))" +
+      "})()"
     ], {
       cwd: ROOT, encoding: 'utf8',
       env: { ...process.env, PREP_DB: path.join(firstBootDir, 'first.sqlite'), NODE_ENV: 'test' },

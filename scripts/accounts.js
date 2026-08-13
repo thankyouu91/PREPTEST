@@ -63,8 +63,8 @@ const optValue = key => {
 
 console.log('Database: ' + DB_FILE + '\n');
 
-function listAccounts() {
-  const admins = q.all('SELECT username, name, role, active, created_at, last_login_at FROM admins ORDER BY id');
+async function listAccounts() {
+  const admins = await q.all('SELECT username, name, role, active, created_at, last_login_at FROM admins ORDER BY id');
   if (!admins.length) {
     console.log('No administrator account yet. Running the server once creates one.');
   } else {
@@ -76,7 +76,7 @@ function listAccounts() {
     ));
   }
 
-  const s = q.get("SELECT username, email, verified, status, pass_hash FROM users WHERE username='student'");
+  const s = await q.get("SELECT username, email, verified, status, pass_hash FROM users WHERE username='student'");
   console.log('\nDemo student account:');
   if (!s) {
     console.log('  · No "student" account in the database.');
@@ -87,13 +87,13 @@ function listAccounts() {
       ', ' + (s.pass_hash ? 'has a password' : 'NO password set'));
   }
 
-  const lockedCount = q.val("SELECT COUNT(*) c FROM users WHERE status='locked'");
+  const lockedCount = await q.val("SELECT COUNT(*) c FROM users WHERE status='locked'");
   console.log('\nStudents currently locked: ' + lockedCount);
   console.log('\nThe database stores only hashes, so no password can be read back.');
   console.log('Locked out? Run:  node scripts/accounts.js reset-admin');
 }
 
-function resetAdmin() {
+async function resetAdmin() {
   /* No default. This file used to carry one, which in a repository anybody can
      read is a published administrator login for every install whose operator
      never changed it. Given nothing, one is generated and printed once. */
@@ -104,7 +104,7 @@ function resetAdmin() {
   }
 
   const wantedUser = optValue('user');
-  const admins = q.all('SELECT id, username FROM admins ORDER BY id');
+  const admins = await q.all('SELECT id, username FROM admins ORDER BY id');
   if (!admins.length) {
     console.error('No administrator in the database. Start the server once to create one, then run this again.');
     process.exit(1);
@@ -120,9 +120,9 @@ function resetAdmin() {
     console.log('Add --user=<username> to pick another.\n');
   }
 
-  q.run('UPDATE admins SET pass_hash=?, active=1 WHERE id=?', A.hashPassword(newPassword), chosen.id);
-  A.dropSessions ? A.dropSessions(chosen.id) : q.run('DELETE FROM sessions WHERE admin_id=?', chosen.id);
-  q.run('INSERT INTO audit (admin_id,admin_name,action,target,meta_json,ip,at) VALUES (?,?,?,?,?,?,?)',
+  await q.run('UPDATE admins SET pass_hash=?, active=1 WHERE id=?', A.hashPassword(newPassword), chosen.id);
+  A.dropSessions ? A.dropSessions(chosen.id) : await q.run('DELETE FROM sessions WHERE admin_id=?', chosen.id);
+  await q.run('INSERT INTO audit (admin_id,admin_name,action,target,meta_json,ip,at) VALUES (?,?,?,?,?,?,?)',
     null, 'cli', 'admin.password.reset', 'admins/' + chosen.username, '{"source":"scripts/accounts.js"}', null, nowISO());
 
   console.log('Administrator password reset.');
@@ -139,7 +139,7 @@ function resetAdmin() {
  * any more: this file used to carry the password as a constant, which — in a
  * repository anybody can read — is a published login rather than a default.
  */
-function resetStudent() {
+async function resetStudent() {
   const newPassword = positional[0] || process.env.DEMO_STUDENT_PASSWORD || '';
   if (newPassword.length < 10) {
     console.error('Give the demo student a password of at least 10 characters:');
@@ -148,14 +148,14 @@ function resetStudent() {
     console.error('into this file would be a login published to everyone who can read it.');
     process.exit(1);
   }
-  const u = q.get('SELECT id FROM users WHERE username=?', A.DEMO_STUDENT_USER);
+  const u = await q.get('SELECT id FROM users WHERE username=?', A.DEMO_STUDENT_USER);
   if (!u) {
     console.error('No "' + A.DEMO_STUDENT_USER + '" account found. This database may never have been seeded.');
     process.exit(1);
   }
-  q.run("UPDATE users SET pass_hash=?, verified=1, status='active' WHERE id=?",
+  await q.run("UPDATE users SET pass_hash=?, verified=1, status='active' WHERE id=?",
     A.hashPassword(newPassword), u.id);
-  q.run('DELETE FROM user_sessions WHERE user_id=?', u.id);
+  await q.run('DELETE FROM user_sessions WHERE user_id=?', u.id);
   console.log('Demo student password set.');
   console.log('  Username : ' + A.DEMO_STUDENT_USER + '  (or student@vpetprep.vn)');
   console.log('  Password : ' + newPassword);
@@ -172,10 +172,10 @@ function resetStudent() {
    was "restart the server" — which was also the answer for whoever was doing
    the guessing. It is in the database now, which means it survives a restart,
    which means this command is the way out rather than a footnote. */
-function unlockAll() {
-  const disabled = q.val("SELECT COUNT(*) c FROM users WHERE status='locked'");
-  q.run("UPDATE users SET status='active' WHERE status='locked'");
-  const throttled = A.clearAllLocks();
+async function unlockAll() {
+  const disabled = await q.val("SELECT COUNT(*) c FROM users WHERE status='locked'");
+  await q.run("UPDATE users SET status='active' WHERE status='locked'");
+  const throttled = await A.clearAllLocks();
   console.log('Unlocked ' + disabled + ' student account(s) that an administrator had disabled.');
   console.log('Cleared ' + throttled + ' sign-in lockout(s) from too many wrong passwords.');
   console.log('\nBoth survive a restart, so this command is the way out of either.');
@@ -188,8 +188,8 @@ function unlockAll() {
    it happens with the server stopped, at a prompt, where the secret and the
    recovery codes can be written down before anything is switched on. */
 
-function adminByName(name) {
-  const admins = q.all('SELECT * FROM admins ORDER BY id');
+async function adminByName(name) {
+  const admins = await q.all('SELECT * FROM admins ORDER BY id');
   if (!admins.length) {
     console.error('No administrator in the database. Start the server once, then run this again.');
     process.exit(1);
@@ -206,9 +206,9 @@ function adminByName(name) {
   return chosen;
 }
 
-function totpStatus() {
-  for (const a of q.all('SELECT * FROM admins ORDER BY id')) {
-    const left = A.recoveryCodesLeft(a.id);
+async function totpStatus() {
+  for (const a of await q.all('SELECT * FROM admins ORDER BY id')) {
+    const left = await A.recoveryCodesLeft(a.id);
     console.log('  · ' + a.username.padEnd(16) +
       (A.totpEnabled(a)
         ? 'two-factor ON since ' + a.totp_enabled_at.slice(0, 16).replace('T', ' ') + '  ·  ' + left + ' recovery code(s) left'
@@ -216,8 +216,8 @@ function totpStatus() {
   }
 }
 
-function totpEnable() {
-  const admin = adminByName(optValue('user'));
+async function totpEnable() {
+  const admin = await adminByName(optValue('user'));
   if (A.totpEnabled(admin)) {
     console.error('Two-factor is already on for ' + admin.username + '. Turn it off first to re-enrol.');
     process.exit(1);
@@ -246,10 +246,10 @@ function totpEnable() {
     process.exit(1);
   }
 
-  const codes = A.issueRecoveryCodes(admin.id);
-  q.run('UPDATE admins SET totp_secret=?, totp_enabled_at=?, totp_last_counter=NULL WHERE id=?',
+  const codes = await A.issueRecoveryCodes(admin.id);
+  await q.run('UPDATE admins SET totp_secret=?, totp_enabled_at=?, totp_last_counter=NULL WHERE id=?',
     useSecret, nowISO(), admin.id);
-  q.run('DELETE FROM sessions WHERE admin_id=?', admin.id);
+  await q.run('DELETE FROM sessions WHERE admin_id=?', admin.id);
 
   console.log('Two-factor is ON for ' + admin.username + '.');
   console.log('Every existing session for this account has been signed out.\n');
@@ -259,15 +259,15 @@ function totpEnable() {
   console.log('\nWithout them, losing the phone means losing the admin area.');
 }
 
-function totpDisable() {
-  const admin = adminByName(optValue('user'));
+async function totpDisable() {
+  const admin = await adminByName(optValue('user'));
   if (!A.totpEnabled(admin)) {
     console.log('Two-factor is already off for ' + admin.username + '.');
     return;
   }
-  q.run('UPDATE admins SET totp_secret=NULL, totp_enabled_at=NULL, totp_last_counter=NULL WHERE id=?', admin.id);
-  q.run('DELETE FROM admin_recovery_codes WHERE admin_id=?', admin.id);
-  q.run('INSERT INTO audit (admin_id,admin_name,action,target,meta_json,ip,at) VALUES (?,?,?,?,?,?,?)',
+  await q.run('UPDATE admins SET totp_secret=NULL, totp_enabled_at=NULL, totp_last_counter=NULL WHERE id=?', admin.id);
+  await q.run('DELETE FROM admin_recovery_codes WHERE admin_id=?', admin.id);
+  await q.run('INSERT INTO audit (admin_id,admin_name,action,target,meta_json,ip,at) VALUES (?,?,?,?,?,?,?)',
     null, 'cli', 'admin.totp.disabled', 'admins/' + admin.username, '{"source":"scripts/accounts.js"}', null, nowISO());
   console.log('Two-factor is OFF for ' + admin.username + ', and its recovery codes are gone.');
   console.log('This is the way back in when the phone is lost and the recovery codes are spent —');
@@ -289,4 +289,10 @@ if (!COMMANDS[verb]) {
   console.error('Use one of: ' + Object.keys(COMMANDS).join(', '));
   process.exit(1);
 }
-COMMANDS[verb]();
+/* The commands talk to the database, which answers with promises now, so the
+   entry point has to wait for one — and turn a rejection into a non-zero exit
+   rather than an unhandled-rejection warning after "done". */
+COMMANDS[verb]().catch(e => {
+  console.error(String((e && e.message) || e));
+  process.exit(1);
+});

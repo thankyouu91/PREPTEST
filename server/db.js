@@ -648,18 +648,97 @@ addIndex('CREATE UNIQUE INDEX IF NOT EXISTS idx_orders_ref ON orders (ref)');
 const nowISO = () => new Date().toISOString();
 const jparse = (s, fb) => { try { return JSON.parse(s); } catch (e) { return fb; } };
 
-const q = {
+/* ============================ THE QUERY LAYER ============================
+   Two interfaces over one engine, and the difference is the whole point.
+
+   `qs` is synchronous and private to this file. The schema, the migrations and
+   the seed below run once at require() time, before anything is listening, and
+   CommonJS has no top-level await to offer them — so boot stays synchronous and
+   stays here.
+
+   `q` is asynchronous and is what every request goes through. SQLite answers
+   synchronously underneath, so today the promise is already settled by the time
+   it is handed back; the point is that the *call sites* no longer assume it.
+   Postgres cannot answer synchronously, and rewriting several hundred callers
+   in the same change that swaps the engine would mean a migration where a
+   failure could be either. This slice moves the interface with the engine held
+   still, so the test suite is a real answer at every step. */
+const qs = {
   all(sql, ...p) { return db.prepare(sql).all(...p); },
   get(sql, ...p) { return db.prepare(sql).get(...p); },
   run(sql, ...p) { return db.prepare(sql).run(...p); },
   val(sql, ...p) { const r = db.prepare(sql).get(...p); return r ? Object.values(r)[0] : null; }
 };
 
+/* An async interface over one shared connection has a hazard a synchronous one
+   cannot have: a transaction is now open across await points, so a statement
+   belonging to some other request can land between BEGIN and COMMIT and be
+   committed — or rolled back — with it. Two things keep that from happening.
+   AsyncLocalStorage marks the calls that genuinely belong to the open
+   transaction, and everything else waits for it to finish. Transactions
+   themselves queue, because SQLite has no nested BEGIN.
+
+   This is not scaffolding thrown away in the next slice: a pooled Postgres
+   client has exactly this shape, where in-transaction statements go to the
+   held client and the rest to the pool. Here "the pool" is one connection, so
+   the rest waits instead. */
+const { AsyncLocalStorage } = require('node:async_hooks');
+const txScope = new AsyncLocalStorage();
+let openTx = null;                 // { token, done } while a transaction runs
+let txQueue = Promise.resolve();   // transactions run one at a time
+
+/** Hold a statement that does not belong to the transaction currently open. */
+async function outsideTx() {
+  // A loop, not an if: the next queued transaction may start while we wait.
+  while (openTx && txScope.getStore() !== openTx.token) await openTx.done;
+}
+
+const q = {
+  async all(sql, ...p) { await outsideTx(); return qs.all(sql, ...p); },
+  async get(sql, ...p) { await outsideTx(); return qs.get(sql, ...p); },
+  async run(sql, ...p) { await outsideTx(); return qs.run(sql, ...p); },
+  async val(sql, ...p) { await outsideTx(); return qs.val(sql, ...p); }
+};
+
 /** Run several statements in one transaction (node:sqlite has no transaction API yet) */
-function tx(fn) {
+function txSync(fn) {
   db.exec('BEGIN');
   try { const out = fn(); db.exec('COMMIT'); return out; }
   catch (e) { db.exec('ROLLBACK'); throw e; }
+}
+
+/**
+ * Run `fn` inside one transaction. `fn` may be async; every `q` call it makes,
+ * however deep, is part of the transaction, and every `q` call made elsewhere
+ * waits until it has committed or rolled back.
+ */
+function tx(fn) {
+  /* Already inside one: join it rather than deadlocking on our own queue.
+     SQLite would refuse a nested BEGIN anyway, so joining is also the only
+     behaviour that could have worked. */
+  if (txScope.getStore()) return (async () => fn())();
+
+  const run = async () => {
+    const token = {};
+    let settle;
+    openTx = { token, done: new Promise(r => { settle = r; }) };
+    db.exec('BEGIN');
+    try {
+      const out = await txScope.run(token, fn);
+      db.exec('COMMIT');
+      return out;
+    } catch (e) {
+      db.exec('ROLLBACK');
+      throw e;
+    } finally {
+      openTx = null;
+      settle();
+    }
+  };
+
+  const started = txQueue.then(run);
+  txQueue = started.then(() => {}, () => {});   // the queue itself never rejects
+  return started;
 }
 
 /** Mint a code as XXXX-XXXX-XXXX, leaving out the confusable characters (I, O, 0, 1) */
@@ -670,9 +749,13 @@ function makeCode() {
   return chunk() + '-' + chunk() + '-' + chunk();
 }
 
-function audit(req, action, target, meta) {
+/* Async like everything else on the request path, and awaited by its callers
+   rather than left to run whenever: an audit entry started inside a
+   transaction and finished outside it records the wrong thing about a write
+   that was rolled back. */
+async function audit(req, action, target, meta) {
   const a = req && req.admin;
-  q.run(
+  await q.run(
     'INSERT INTO audit (admin_id, admin_name, action, target, meta_json, ip, at) VALUES (?,?,?,?,?,?,?)',
     a ? a.id : null, a ? a.username : 'system', action, target || null,
     JSON.stringify(meta || {}), (req && req.ip) || null, nowISO()
@@ -851,14 +934,14 @@ function seed() {
     'UPDATE families SET name=?, sub=?, format=?, skills_json=?, sort=?, status=? WHERE id=?');
   for (const [id, name, sub, format, skills, sort, status] of FAMILIES) {
     const skillsJson = JSON.stringify(skills);
-    if (q.val('SELECT 1 FROM families WHERE id=?', id)) {
+    if (qs.val('SELECT 1 FROM families WHERE id=?', id)) {
       updFam.run(name, sub, format, skillsJson, sort, status, id);
     } else {
       insFam.run(id, name, sub, format, skillsJson, sort, status);
     }
   }
 
-  if (!q.val('SELECT COUNT(*) c FROM packages')) {
+  if (!qs.val('SELECT COUNT(*) c FROM packages')) {
     const ins = db.prepare('INSERT INTO packages (id,name,price,family_id,description,perks_json,featured,active,sort) VALUES (?,?,?,?,?,?,?,1,?)');
     for (const [id, name, price, fam, desc, perks, feat, sort] of PACKAGES) {
       ins.run(id, name, price, fam, desc, JSON.stringify(perks), feat, sort);
@@ -869,7 +952,7 @@ function seed() {
      empty table, so an existing database needs the rule applied directly —
      otherwise tests published before a family was parked stay in the
      catalogue and students can still buy them. */
-  const pulled = q.run(`UPDATE tests SET status='draft', updated_at=?
+  const pulled = qs.run(`UPDATE tests SET status='draft', updated_at=?
                          WHERE status='published'
                            AND family_id IN (SELECT id FROM families WHERE status='coming_soon')`, at);
   if (pulled.changes) {
@@ -890,21 +973,21 @@ function seed() {
     /* Plus is the one most people should buy: long enough to matter, and the
        step that opens the study material. */
     const featured = p.id === 'plus-6m' ? 1 : 0;
-    if (q.val('SELECT 1 FROM packages WHERE id=?', p.id)) {
+    if (qs.val('SELECT 1 FROM packages WHERE id=?', p.id)) {
       updPkg.run(p.name, p.price, p.tagline, perks, featured, i, p.id);
     } else {
       insPkg.run(p.id, p.name, p.price, p.tagline, perks, featured, i);
     }
   });
-  const retired = q.run(
+  const retired = qs.run(
     `UPDATE packages SET active=0 WHERE active=1 AND id NOT IN (${PLANS.PLANS.map(() => '?').join(',')})`,
     ...PLANS.PLANS.map(p => p.id));
   if (retired.changes) console.warn(`[seed] ${retired.changes} old bundle(s) retired in favour of the time-limited plans.`);
 
-  if (!q.val('SELECT COUNT(*) c FROM questions')) seedQuestions();
+  if (!qs.val('SELECT COUNT(*) c FROM questions')) seedQuestions();
   seedVpetItems();
 
-  if (!q.val('SELECT COUNT(*) c FROM tests')) {
+  if (!qs.val('SELECT COUNT(*) c FROM tests')) {
     const insT = db.prepare(`INSERT INTO tests
       (id,family_id,title,level,duration_min,scoring,guide_json,status,build_mode,created_at,updated_at)
       VALUES (?,?,?,?,?,?,?,?,'manual',?,?)`);
@@ -914,9 +997,9 @@ function seed() {
       t.sections.forEach(([name, skill, type, minutes], i) => {
         insS.run(t.id, name, skill, type, minutes, i);
         // Attach bank questions to each part so the paper has content immediately
-        const secId = q.val('SELECT id FROM sections WHERE test_id=? ORDER BY id DESC LIMIT 1', t.id);
+        const secId = qs.val('SELECT id FROM sections WHERE test_id=? ORDER BY id DESC LIMIT 1', t.id);
         const want = skill === 'writing' ? 2 : skill === 'speaking' ? 3 : 20;
-        const pool = q.all(
+        const pool = qs.all(
           `SELECT id FROM questions WHERE family_id=? AND skill=? AND status='active' ORDER BY level=? DESC, id LIMIT ?`,
           t.family, skill, t.level, want);
         const insI = db.prepare('INSERT OR IGNORE INTO section_items (section_id,question_id,sort) VALUES (?,?,?)');
@@ -925,7 +1008,7 @@ function seed() {
     }
   }
 
-  if (!q.val('SELECT COUNT(*) c FROM users')) {
+  if (!qs.val('SELECT COUNT(*) c FROM users')) {
     // The demo student account (matching the seed account on the front end)
     const ins = db.prepare(`INSERT INTO users (username,email,name,verified,status,interests_json,created_at)
                             VALUES (?,?,?,?,?,?,?)`);
@@ -945,7 +1028,7 @@ function seed() {
     }
   }
 
-  if (!q.val('SELECT COUNT(*) c FROM codes')) {
+  if (!qs.val('SELECT COUNT(*) c FROM codes')) {
     const insB = db.prepare('INSERT INTO batches (name,unlock_type,unlock_ref,qty,expires_at,created_at) VALUES (?,?,?,?,?,?)');
     const insC = db.prepare(`INSERT INTO codes (code,batch_id,unlock_type,unlock_ref,status,expires_at,user_id,redeemed_at,note,created_at)
                              VALUES (?,?,?,?,?,?,?,?,?,?)`);
@@ -954,20 +1037,20 @@ function seed() {
 
     // A demo batch for a class
     insB.run('Lớp IELTS K62 - đợt 1', 'family', 'ielts', 8, daysFromNow(120), nowISO());
-    const b1 = q.val('SELECT id FROM batches ORDER BY id DESC LIMIT 1');
+    const b1 = qs.val('SELECT id FROM batches ORDER BY id DESC LIMIT 1');
     for (let i = 0; i < 8; i++) insC.run(makeCode(), b1, 'family', 'ielts', 'unused', daysFromNow(120), null, null, null, nowISO());
 
     // Fixed codes, matching the demo codes on the front end
-    const studentId = q.val("SELECT id FROM users WHERE username='student'");
+    const studentId = qs.val("SELECT id FROM users WHERE username='student'");
     insC.run('VPET-B1MK-24TR', null, 'test', 'vpet-b1-01', 'redeemed', daysFromNow(144), studentId, daysAgo(8), 'Issued to the demo account', daysAgo(10));
     insC.run('IELT-AC12-96HD', null, 'family', 'ielts', 'unused', daysFromNow(67), null, null, null, daysAgo(9));
     insC.run('TOEC-LR20-26CB', null, 'family', 'toeic', 'unused', daysFromNow(200), null, null, null, daysAgo(7));
     insC.run('PREP-HHAN-2025', null, 'family', 'pte', 'unused', '2025-12-31', null, null, 'An illustrative code, past its date', daysAgo(300));
     insC.run('PREP-DUNG-ROI1', null, 'test', 'ielts-ac-01', 'redeemed', daysFromNow(140),
-      q.val("SELECT id FROM users WHERE username='thuhang.nt'"), daysAgo(12), null, daysAgo(13));
+      qs.val("SELECT id FROM users WHERE username='thuhang.nt'"), daysAgo(12), null, daysAgo(13));
 
     // A few spent codes so the reports have something to show
-    const users = q.all("SELECT id FROM users WHERE username IN ('khanhqd','ngocanh.study','baolong.tb')");
+    const users = qs.all("SELECT id FROM users WHERE username IN ('khanhqd','ngocanh.study','baolong.tb')");
     const refs = [['family','toeic'], ['family','ielts'], ['test','pte-ac-01']];
     users.forEach((u, i) => {
       insC.run(makeCode(), null, refs[i][0], refs[i][1], 'redeemed', daysFromNow(180), u.id, daysAgo(i + 2), null, daysAgo(i + 3));
@@ -1002,15 +1085,15 @@ function seed() {
   };
   let reattached = 0;
   for (const [code, planId, months] of DEMO_CODE_PLANS) {
-    const row = q.get('SELECT id, plan_id FROM codes WHERE code=?', code);
+    const row = qs.get('SELECT id, plan_id FROM codes WHERE code=?', code);
     if (!row || row.plan_id) continue;
-    q.run('UPDATE codes SET plan_id=?, access_expires_at=? WHERE id=?',
+    qs.run('UPDATE codes SET plan_id=?, access_expires_at=? WHERE id=?',
       planId, months ? monthsFromNow(months) : null, row.id);
     reattached++;
   }
   if (reattached) console.warn(`[seed] ${reattached} demo code(s) had their plan reattached.`);
 
-  if (!q.val('SELECT COUNT(*) c FROM orders')) {
+  if (!qs.val('SELECT COUNT(*) c FROM orders')) {
     const ins = db.prepare('INSERT INTO orders (user_id,package_id,name,amount,status,created_at) VALUES (?,?,?,?,?,?)');
     const daysAgo = n => new Date(Date.now() - n * 86400000).toISOString();
     const rows = [
@@ -1022,11 +1105,11 @@ function seed() {
       ['student','pk-vpet','VPET bundle',129000,10]
     ];
     for (const [u, pk, name, amt, d] of rows) {
-      ins.run(q.val('SELECT id FROM users WHERE username=?', u), pk, name, amt, 'paid', daysAgo(d));
+      ins.run(qs.val('SELECT id FROM users WHERE username=?', u), pk, name, amt, 'paid', daysAgo(d));
     }
   }
 
-  if (!q.val("SELECT COUNT(*) c FROM settings")) {
+  if (!qs.val("SELECT COUNT(*) c FROM settings")) {
     const ins = db.prepare('INSERT INTO settings (key,value) VALUES (?,?)');
     ins.run('brand.name', 'VPET Prep');
     ins.run('brand.tenant', 'default');
@@ -1047,8 +1130,8 @@ function seed() {
 function seedContent(name, rows, tables, apply) {
   const hash = crypto.createHash('sha256')
     .update(JSON.stringify(rows)).digest('hex').slice(0, 32);
-  if (q.val('SELECT hash FROM seed_meta WHERE name=?', name) === hash) return;
-  tx(() => {
+  if (qs.val('SELECT hash FROM seed_meta WHERE name=?', name) === hash) return;
+  txSync(() => {
     // Delete in the order given: child tables first, parents after, so a foreign key
     // cannot block halfway through.
     tables.forEach(t => db.exec(`DELETE FROM ${t}`));
@@ -1087,9 +1170,9 @@ function seedVpetItems() {
       tags_json=excluded.tags_json, source=excluded.source, licence=excluded.licence`);
 
   let n = 0;
-  tx(() => {
+  txSync(() => {
     for (const r of rows) {
-      const before = q.val('SELECT 1 FROM questions WHERE ext_key=?', r.key);
+      const before = qs.val('SELECT 1 FROM questions WHERE ext_key=?', r.key);
       ins.run(r.key, 'vpet', r.skill, r.level, r.type, r.part, r.prompt,
         JSON.stringify(r.options), r.answer, r.explanation,
         JSON.stringify(r.tags), r.source, r.licence, at);
@@ -1162,17 +1245,17 @@ function seedVocab() {
   };
 
   let added = 0;
-  tx(() => {
+  txSync(() => {
     for (const e of rows) {
-      const before = q.val('SELECT id FROM vocab_entries WHERE headword=? AND pos=?', e.headword, e.pos);
+      const before = qs.val('SELECT id FROM vocab_entries WHERE headword=? AND pos=?', e.headword, e.pos);
       insEntry.run(e.headword, e.pos, e.level, e.levelSource, e.ipaUk, e.ipaUs,
         e.freqRank, e.source, e.licence, e.sort);
-      const entryId = q.val('SELECT id FROM vocab_entries WHERE headword=? AND pos=?', e.headword, e.pos);
+      const entryId = qs.val('SELECT id FROM vocab_entries WHERE headword=? AND pos=?', e.headword, e.pos);
       if (!before) added++;
 
       for (const s of e.senses) {
         insSense.run(entryId, s.en, s.vi, s.level, s.note, s.sort);
-        const senseId = q.val('SELECT id FROM vocab_senses WHERE entry_id=? AND en=?', entryId, s.en);
+        const senseId = qs.val('SELECT id FROM vocab_senses WHERE entry_id=? AND en=?', entryId, s.en);
         for (const x of s.examples) insExample.run(senseId, x.en, x.vi, x.source, x.licence, x.sort);
         const keepEx = s.examples.map(x => x.en);
         const holes = keepEx.map(() => '?').join(',');
@@ -1268,7 +1351,7 @@ function seedGrammar() {
         insP.run(p.slug, p.name_en, p.name_vi, p.grp, p.level, p.summary,
           p.formula_json, p.signals_json, p.use_when_json, p.use_not_json,
           p.confuse_json, p.errors_json, p.sort);
-        idOf.set(p.slug, q.val('SELECT id FROM grammar_points WHERE slug=?', p.slug));
+        idOf.set(p.slug, qs.val('SELECT id FROM grammar_points WHERE slug=?', p.slug));
       });
 
       const insE = db.prepare(`INSERT INTO grammar_examples

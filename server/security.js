@@ -106,9 +106,9 @@ function writeKey(req) {
   return 'write|' + (req.ip || '?') + '|' + who;
 }
 
-function writeLimit(req, res, next) {
+async function writeLimit(req, res, next) {
   if (SAFE.includes(req.method)) return next();
-  const wait = A.rateLimit(writeKey(req), WRITE_PER_MIN, WINDOW_MS);
+  const wait = await A.rateLimit(writeKey(req), WRITE_PER_MIN, WINDOW_MS);
   if (wait) {
     res.setHeader('Retry-After', String(wait));
     return res.status(429).json({

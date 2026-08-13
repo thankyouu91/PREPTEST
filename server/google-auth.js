@@ -32,10 +32,11 @@
 
 const crypto = require('node:crypto');
 const express = require('express');
+const { asyncRoutes } = require('./async-route');
 const { q, nowISO } = require('./db');
 const A = require('./auth');
 
-const router = express.Router();
+const router = asyncRoutes(express.Router());
 
 const CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '';
 const CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || '';
@@ -155,26 +156,26 @@ const freeUsername = A.freeUsername;
  *      account signs in with Google only until the owner sets a password
  *      through the normal reset flow.
  */
-function findOrCreateUser(claims) {
+async function findOrCreateUser(claims) {
   const email = String(claims.email || '').toLowerCase();
   const sub = String(claims.sub || '');
   const name = String(claims.name || email.split('@')[0] || 'Student').slice(0, 80);
 
-  const linked = q.get('SELECT * FROM users WHERE google_sub=?', sub);
+  const linked = await q.get('SELECT * FROM users WHERE google_sub=?', sub);
   if (linked) return { user: linked, created: false, linked: false };
 
-  const byEmail = q.get('SELECT * FROM users WHERE lower(email)=?', email);
+  const byEmail = await q.get('SELECT * FROM users WHERE lower(email)=?', email);
   if (byEmail) {
-    q.run('UPDATE users SET google_sub=?, verified=1 WHERE id=?', sub, byEmail.id);
-    return { user: q.get('SELECT * FROM users WHERE id=?', byEmail.id), created: false, linked: true };
+    await q.run('UPDATE users SET google_sub=?, verified=1 WHERE id=?', sub, byEmail.id);
+    return { user: await q.get('SELECT * FROM users WHERE id=?', byEmail.id), created: false, linked: true };
   }
 
-  const username = freeUsername(email);
-  const r = q.run(
+  const username = await freeUsername(email);
+  const r = await q.run(
     `INSERT INTO users (username, email, name, pass_hash, verified, status, interests_json, created_at, google_sub)
      VALUES (?,?,?,NULL,1,'active','[]',?,?)`,
     username, email, name, nowISO(), sub);
-  return { user: q.get('SELECT * FROM users WHERE id=?', Number(r.lastInsertRowid)), created: true, linked: false };
+  return { user: await q.get('SELECT * FROM users WHERE id=?', Number(r.lastInsertRowid)), created: true, linked: false };
 }
 
 /* ---------------------------------------------------------------- *
@@ -243,12 +244,12 @@ router.get('/auth/google/callback', async (req, res) => {
     if (claims.email_verified !== true && claims.email_verified !== 'true') return failed(res, 'unverified');
     if (!claims.email || !claims.sub) return failed(res, 'claims');
 
-    const { user, created, linked } = findOrCreateUser(claims);
+    const { user, created, linked } = await findOrCreateUser(claims);
     if (user.status !== 'active') return failed(res, 'locked');
 
-    A.createUserSession(user.id, req, res);
-    q.run('UPDATE users SET last_login_at=? WHERE id=?', nowISO(), user.id);
-    logSignIn(req, user, created ? 'user.login.google.created' : linked ? 'user.login.google.linked' : 'user.login.google');
+    await A.createUserSession(user.id, req, res);
+    await q.run('UPDATE users SET last_login_at=? WHERE id=?', nowISO(), user.id);
+    await logSignIn(req, user, created ? 'user.login.google.created' : linked ? 'user.login.google.linked' : 'user.login.google');
     handOff(res, safeNext(stash.next));
   } catch (e) {
     console.error('[google] callback failed', e);
@@ -265,9 +266,9 @@ function readIdToken(idToken) {
   try { return JSON.parse(Buffer.from(parts[1], 'base64url').toString('utf8')); } catch (e) { return null; }
 }
 
-function logSignIn(req, user, action) {
+async function logSignIn(req, user, action) {
   try {
-    q.run('INSERT INTO audit (admin_id, admin_name, action, target, meta_json, ip, at) VALUES (NULL,?,?,?,?,?,?)',
+    await q.run('INSERT INTO audit (admin_id, admin_name, action, target, meta_json, ip, at) VALUES (NULL,?,?,?,?,?,?)',
       user.username, action, 'users/' + user.id, '{}', req.ip || null, nowISO());
   } catch (e) { /* auditing must never break a login */ }
 }

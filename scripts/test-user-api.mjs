@@ -258,7 +258,8 @@ for (const [input, want, why] of REDIRECT_CASES) {
   if (safeNext(input) !== want) { redirOk = false; console.log('   → broken: ' + why + ' (' + JSON.stringify(input) + ')'); }
 }
 ok(redirOk, 'Redirects only to internal paths, blocking every kind of open redirect');
-ok(typeof freeUsername('Nguyen.Van-A@gmail.com') === 'string' && /^[a-z0-9._-]+$/.test(freeUsername('Nguyen.Van-A@gmail.com')),
+const derivedName = await freeUsername('Nguyen.Van-A@gmail.com');
+ok(typeof derivedName === 'string' && /^[a-z0-9._-]+$/.test(derivedName),
   'A username derived from an email contains only safe characters');
 
 console.log('\n' + pass + '/' + (pass + fail) + ' checks passed');

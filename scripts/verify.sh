@@ -57,6 +57,9 @@ fi
 step "The gate's own machinery (retry, worker pool, CSRF warm-up)"
 node scripts/test-harness.mjs || fail=1
 
+step "Async discipline (every query awaited, every router wrapped)"
+node scripts/test-async.mjs || fail=1
+
 step "Cloud Storage driver (RS256 assertion, token cache, GCS request shapes)"
 node scripts/test-gcs.mjs || fail=1
 
@@ -95,10 +98,12 @@ sleep 0.5
 # is the same shape — start each run from a known throttle state, in this test
 # database only. Nothing in the product clears these.
 node -e "
-  const { q } = require('./server/db');
-  const locks = q.val('SELECT COUNT(*) c FROM throttle_locks');
-  q.run('DELETE FROM throttle_locks'); q.run('DELETE FROM throttle_hits');
-  if (locks) console.log('   cleared ' + locks + ' carried-over sign-in lockout(s)');
+  (async () => {
+    const { q } = require('./server/db');
+    const locks = await q.val('SELECT COUNT(*) c FROM throttle_locks');
+    await q.run('DELETE FROM throttle_locks'); await q.run('DELETE FROM throttle_hits');
+    if (locks) console.log('   cleared ' + locks + ' carried-over sign-in lockout(s)');
+  })();
 " 2>/dev/null || true
 # Both the suite and the screenshot step register accounts from 127.0.0.1, so
 # production's 5-per-hour ceiling would have a later step blocked by an earlier

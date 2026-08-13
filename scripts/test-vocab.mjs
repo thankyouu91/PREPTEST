@@ -118,14 +118,15 @@ try {
   const snapshot = () => q.all(
     'SELECT id, headword, pos, level, level_source FROM vocab_entries ORDER BY id');
   const count = t => q.val('SELECT COUNT(*) c FROM ' + t);
+  const countAll = tables => Promise.all(tables.map(count));
 
-  const before = snapshot();
-  const beforeCounts = ['vocab_senses', 'vocab_examples', 'vocab_forms', 'collocations'].map(count);
+  const before = await snapshot();
+  const beforeCounts = await countAll(['vocab_senses', 'vocab_examples', 'vocab_forms', 'collocations']);
   ok(before.length === 12, 'A fresh database imports all 12 entries', String(before.length));
 
   seedVocab();
-  const after = snapshot();
-  const afterCounts = ['vocab_senses', 'vocab_examples', 'vocab_forms', 'collocations'].map(count);
+  const after = await snapshot();
+  const afterCounts = await countAll(['vocab_senses', 'vocab_examples', 'vocab_forms', 'collocations']);
   ok(JSON.stringify(before) === JSON.stringify(after),
     'A second run changes no id and duplicates no entry');
   ok(JSON.stringify(beforeCounts) === JSON.stringify(afterCounts),
@@ -134,21 +135,21 @@ try {
 
   /* Ids have to survive a re-import, because learn_progress is about to point at a
      sense id. Renumbering on import would point a learner's review schedule at another word. */
-  const senseIds = q.all('SELECT id, en FROM vocab_senses ORDER BY id');
+  const senseIds = await q.all('SELECT id, en FROM vocab_senses ORDER BY id');
   seedVocab();
-  ok(JSON.stringify(senseIds) === JSON.stringify(q.all('SELECT id, en FROM vocab_senses ORDER BY id')),
+  ok(JSON.stringify(senseIds) === JSON.stringify(await q.all('SELECT id, en FROM vocab_senses ORDER BY id')),
     'Sense ids survive a re-import — where learn_progress will point');
 
   /* §1.4: a level set by hand in the admin area always beats the three automatic
      rules. A re-import that quietly reverted it would make that sentence untrue. */
-  const target = q.get("SELECT id, level FROM vocab_entries WHERE headword='research'");
+  const target = await q.get("SELECT id, level FROM vocab_entries WHERE headword='research'");
   db.prepare("UPDATE vocab_entries SET level='C1', level_source='manual' WHERE id=?").run(target.id);
-  const other = q.get("SELECT id FROM vocab_entries WHERE headword='evidence'");
+  const other = await q.get("SELECT id FROM vocab_entries WHERE headword='evidence'");
   db.prepare("UPDATE vocab_entries SET level='A1' WHERE id=?").run(other.id);
 
   seedVocab();
-  const pinned = q.get('SELECT level, level_source FROM vocab_entries WHERE id=?', target.id);
-  const reset = q.get('SELECT level FROM vocab_entries WHERE id=?', other.id);
+  const pinned = await q.get('SELECT level, level_source FROM vocab_entries WHERE id=?', target.id);
+  const reset = await q.get('SELECT level FROM vocab_entries WHERE id=?', other.id);
   ok(pinned.level === 'C1' && pinned.level_source === 'manual',
     'A hand-set level is not overwritten by a later import', JSON.stringify(pinned));
   ok(reset.level === 'B2',
@@ -156,17 +157,17 @@ try {
 
   /* An entry the source has dropped must disappear, or correcting content can only
      add and never remove — the very reason seedContent clears and reloads elsewhere. */
-  const entry = q.get("SELECT id FROM vocab_entries WHERE headword='child'");
+  const entry = await q.get("SELECT id FROM vocab_entries WHERE headword='child'");
   db.prepare("INSERT INTO vocab_senses (entry_id,en,vi,level,sort) VALUES (?,?,?,?,?)")
     .run(entry.id, 'A stray sense that no longer exists in the source.', 'nghĩa thừa', 'A1', 99);
   db.prepare("INSERT INTO vocab_forms (entry_id,form,kind,sort) VALUES (?,?,?,?)")
     .run(entry.id, 'childs', 'plural', 99);
-  const strays = q.val("SELECT COUNT(*) c FROM vocab_senses WHERE entry_id=?", entry.id);
+  const strays = await q.val("SELECT COUNT(*) c FROM vocab_senses WHERE entry_id=?", entry.id);
 
   seedVocab();
-  ok(q.val('SELECT COUNT(*) c FROM vocab_senses WHERE entry_id=?', entry.id) === strays - 1,
+  ok(await q.val('SELECT COUNT(*) c FROM vocab_senses WHERE entry_id=?', entry.id) === strays - 1,
     'A sense no longer in the source is deleted on re-import');
-  ok(!q.val("SELECT COUNT(*) c FROM vocab_forms WHERE entry_id=? AND form='childs'", entry.id),
+  ok(!await q.val("SELECT COUNT(*) c FROM vocab_forms WHERE entry_id=? AND form='childs'", entry.id),
     'An inflected form no longer in the source is deleted on re-import');
 
   /* The other way round: a word an administrator added by hand is not in the source,
@@ -175,15 +176,15 @@ try {
       (headword,pos,level,level_source,source,licence,sort)
       VALUES ('kerfuffle','noun','C2','manual','Admin','Project content',900)`).run();
   seedVocab();
-  ok(q.val("SELECT COUNT(*) c FROM vocab_entries WHERE headword='kerfuffle'") === 1,
+  ok(await q.val("SELECT COUNT(*) c FROM vocab_entries WHERE headword='kerfuffle'") === 1,
     'A word added by hand is not deleted by a later import');
 
   /* Deleting a sense must take its examples with it — otherwise orphaned examples
      stay behind and the examples table grows with every content fix. */
-  const sense = q.get("SELECT id FROM vocab_senses WHERE en LIKE 'To manage or be in charge%'");
-  const exBefore = q.val('SELECT COUNT(*) c FROM vocab_examples WHERE sense_id=?', sense.id);
+  const sense = await q.get("SELECT id FROM vocab_senses WHERE en LIKE 'To manage or be in charge%'");
+  const exBefore = await q.val('SELECT COUNT(*) c FROM vocab_examples WHERE sense_id=?', sense.id);
   db.prepare('DELETE FROM vocab_senses WHERE id=?').run(sense.id);
-  ok(exBefore >= 2 && q.val('SELECT COUNT(*) c FROM vocab_examples WHERE sense_id=?', sense.id) === 0,
+  ok(exBefore >= 2 && await q.val('SELECT COUNT(*) c FROM vocab_examples WHERE sense_id=?', sense.id) === 0,
     'Deleting a sense takes its examples with it (ON DELETE CASCADE)');
 } catch (e) {
   fail++;

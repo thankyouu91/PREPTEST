@@ -21,6 +21,7 @@
 'use strict';
 
 const express = require('express');
+const { asyncRoutes } = require('./async-route');
 const { q, tx, nowISO } = require('./db');
 const A = require('./auth');
 const analytics = require('./analytics');
@@ -29,7 +30,7 @@ const { entitlementOf } = require('./entitlements');
 const PLANS = require('./data/plans');
 const marking = require('./marking');
 
-const router = express.Router();
+const router = asyncRoutes(express.Router());
 
 const str = (v, max) => (typeof v === 'string' ? v.trim().slice(0, max || 400) : '');
 const int = (v, dflt) => (Number.isFinite(+v) ? Math.trunc(+v) : dflt);
@@ -51,15 +52,15 @@ const answerAudioBody = express.raw({ type: ['audio/*', 'application/octet-strea
 
 /** The attempt, only if it belongs to the caller. Anything else is a 404: an
     attempt id that exists must not be distinguishable from one that does not. */
-function ownAttempt(req) {
+async function ownAttempt(req) {
   const id = int(req.params.id, 0);
   if (!id) return null;
-  return q.get('SELECT * FROM attempts WHERE id=? AND user_id=?', id, req.user.id) || null;
+  return await q.get('SELECT * FROM attempts WHERE id=? AND user_id=?', id, req.user.id) || null;
 }
 
 /** Minutes allowed for a section, from the test as built. */
-function partWindow(sectionId) {
-  const s = q.get('SELECT minutes FROM sections WHERE id=?', sectionId);
+async function partWindow(sectionId) {
+  const s = await q.get('SELECT minutes FROM sections WHERE id=?', sectionId);
   return Math.max(0, (s && s.minutes) || 0);
 }
 
@@ -82,14 +83,14 @@ function partOpen(row) {
  * Items carry the prompt and the options but never the answer: the options of
  * a multiple-choice item are on screen anyway, the answer is what marks it.
  */
-function attemptState(att) {
-  const test = q.get('SELECT * FROM tests WHERE id=?', att.test_id);
-  const parts = q.all(
+async function attemptState(att) {
+  const test = await q.get('SELECT * FROM tests WHERE id=?', att.test_id);
+  const parts = await q.all(
     `SELECT ap.*, s.name, s.skill, s.type, s.minutes, s.sort
        FROM attempt_parts ap JOIN sections s ON s.id = ap.section_id
       WHERE ap.attempt_id=? ORDER BY s.sort, s.id`, att.id);
 
-  const answers = q.all('SELECT * FROM attempt_answers WHERE attempt_id=?', att.id);
+  const answers = await q.all('SELECT * FROM attempt_answers WHERE attempt_id=?', att.id);
   const byQuestion = new Map(answers.map(a => [a.question_id, a]));
 
   return {
@@ -100,8 +101,10 @@ function attemptState(att) {
     status: att.status,
     startedAt: att.started_at,
     submittedAt: att.submitted_at,
-    parts: parts.map(p => {
-      const items = q.all(
+    /* Promise.all rather than a bare map: the callback reads each part's
+       items, so mapping it alone would put promises on the response. */
+    parts: await Promise.all(parts.map(async p => {
+      const items = await q.all(
         `SELECT si.sort, qs.id, qs.prompt, qs.type, qs.options_json, qs.audio_key
            FROM section_items si JOIN questions qs ON qs.id = si.question_id
           WHERE si.section_id=? ORDER BY si.sort, si.id`, p.section_id);
@@ -133,7 +136,7 @@ function attemptState(att) {
           };
         })
       };
-    })
+    }))
   };
 }
 
@@ -149,10 +152,10 @@ function attemptState(att) {
  * "ten sittings". Resuming never charges twice — the running attempt is
  * returned as it stands.
  */
-router.post('/attempts', A.requireUser, A.csrfGuard, (req, res) => {
+router.post('/attempts', A.requireUser, A.csrfGuard, async (req, res) => {
   const testId = str(req.body && req.body.testId, 60);
 
-  const running = q.get(
+  const running = await q.get(
     "SELECT * FROM attempts WHERE user_id=? AND status='in_progress' ORDER BY id DESC LIMIT 1",
     req.user.id);
   if (running) {
@@ -164,17 +167,17 @@ router.post('/attempts', A.requireUser, A.csrfGuard, (req, res) => {
         attemptId: running.id, testId: running.test_id
       });
     }
-    return res.json({ resumed: true, attempt: attemptState(running) });
+    return res.json({ resumed: true, attempt: await attemptState(running) });
   }
 
-  const test = q.get("SELECT * FROM tests WHERE id=? AND status='published'", testId);
+  const test = await q.get("SELECT * FROM tests WHERE id=? AND status='published'", testId);
   if (!test) return res.status(404).json({ error: 'No such published test.' });
-  const fam = q.get('SELECT status FROM families WHERE id=?', test.family_id);
+  const fam = await q.get('SELECT status FROM families WHERE id=?', test.family_id);
   if (fam && fam.status === 'coming_soon') {
     return bad(res, 'This exam is not open yet.');
   }
 
-  const ent = entitlementOf(req.user.id);
+  const ent = await entitlementOf(req.user.id);
   if (!ent) {
     return res.status(403).json({ error: 'You have no plan in force. Enter a code to start practising.', need: 'plan' });
   }
@@ -185,9 +188,9 @@ router.post('/attempts', A.requireUser, A.csrfGuard, (req, res) => {
     });
   }
 
-  const sections = q.all('SELECT * FROM sections WHERE test_id=? ORDER BY sort, id', test.id);
+  const sections = await q.all('SELECT * FROM sections WHERE test_id=? ORDER BY sort, id', test.id);
   if (!sections.length) return bad(res, 'This paper has no parts yet.');
-  const itemCount = q.val(
+  const itemCount = await q.val(
     `SELECT COUNT(*) c FROM section_items si JOIN sections s ON s.id=si.section_id WHERE s.test_id=?`, test.id);
   if (!itemCount) return bad(res, 'This paper has no questions yet.');
 
@@ -196,11 +199,11 @@ router.post('/attempts', A.requireUser, A.csrfGuard, (req, res) => {
   the one with room left rather than always the first — the total would still
   be right, but the per-code number would be meaningless, and that is exactly
   the number shown on the "My codes" screen. */
-  const liveCodes = q.all(
+  const liveCodes = (await q.all(
     `SELECT * FROM codes
       WHERE user_id=? AND status='redeemed' AND plan_id IS NOT NULL
         AND (access_expires_at IS NULL OR access_expires_at > ?)
-      ORDER BY id ASC`, req.user.id, nowISO())
+      ORDER BY id ASC`, req.user.id, nowISO()))
     .map(c => ({ row: c, plan: PLANS.byId(c.plan_id) }))
     .filter(x => x.plan);
   const capped = liveCodes.filter(x => x.plan.attempts !== PLANS.UNLIMITED);
@@ -211,41 +214,41 @@ router.post('/attempts', A.requireUser, A.csrfGuard, (req, res) => {
 
   const at = nowISO();
   let attemptId = 0;
-  tx(() => {
-    const r = q.run(
+  await tx(async () => {
+    const r = await q.run(
       `INSERT INTO attempts (user_id,test_id,code_id,status,started_at,updated_at)
        VALUES (?,?,?,'in_progress',?,?)`,
       req.user.id, test.id, chargeCode ? chargeCode.id : null, at, at);
     attemptId = Number(r.lastInsertRowid);
     for (const s of sections) {
-      q.run('INSERT INTO attempt_parts (attempt_id,section_id,part) VALUES (?,?,?)',
+      await q.run('INSERT INTO attempt_parts (attempt_id,section_id,part) VALUES (?,?,?)',
         attemptId, s.id, s.part || null);
     }
     /* Only decrement when the plan is capped. An uncapped plan still records how
        many sittings were used, for reporting, but has nothing to run out of. */
     if (ent.attemptsLimit !== null && chargeable) {
-      q.run('UPDATE codes SET attempts_used = attempts_used + 1 WHERE id=?', chargeable.row.id);
+      await q.run('UPDATE codes SET attempts_used = attempts_used + 1 WHERE id=?', chargeable.row.id);
     }
   });
 
-  const att = q.get('SELECT * FROM attempts WHERE id=?', attemptId);
+  const att = await q.get('SELECT * FROM attempts WHERE id=?', attemptId);
   analytics.track(req, 'exam_start', { test_id: test.id, family_id: test.family_id });
-  res.status(201).json({ resumed: false, attempt: attemptState(att) });
+  res.status(201).json({ resumed: false, attempt: await attemptState(att) });
 });
 
 /** The unfinished sitting, if there is one — used to resume after closing the browser. */
-router.get('/attempts/current', A.requireUser, (req, res) => {
-  const att = q.get(
+router.get('/attempts/current', A.requireUser, async (req, res) => {
+  const att = await q.get(
     "SELECT * FROM attempts WHERE user_id=? AND status='in_progress' ORDER BY id DESC LIMIT 1",
     req.user.id);
   if (!att) return res.json({ attempt: null });
-  res.set('Cache-Control', 'no-store').json({ attempt: attemptState(att) });
+  res.set('Cache-Control', 'no-store').json({ attempt: await attemptState(att) });
 });
 
-router.get('/attempts/:id', A.requireUser, (req, res) => {
-  const att = ownAttempt(req);
+router.get('/attempts/:id', A.requireUser, async (req, res) => {
+  const att = await ownAttempt(req);
   if (!att) return res.status(404).json({ error: 'No such sitting.' });
-  res.set('Cache-Control', 'no-store').json({ attempt: attemptState(att) });
+  res.set('Cache-Control', 'no-store').json({ attempt: await attemptState(att) });
 });
 
 /* ------------------------------------------------------------------ *
@@ -258,13 +261,13 @@ router.get('/attempts/:id', A.requireUser, (req, res) => {
  * The deadline is computed and stored here rather than sent by the client, and
  * entering a part that has already run is not a way to get a fresh clock.
  */
-router.post('/attempts/:id/parts/:sectionId/start', A.requireUser, A.csrfGuard, (req, res) => {
-  const att = ownAttempt(req);
+router.post('/attempts/:id/parts/:sectionId/start', A.requireUser, A.csrfGuard, async (req, res) => {
+  const att = await ownAttempt(req);
   if (!att) return res.status(404).json({ error: 'No such sitting.' });
   if (att.status !== 'in_progress') return bad(res, 'This sitting has been handed in.');
 
   const sectionId = int(req.params.sectionId, 0);
-  const row = q.get('SELECT * FROM attempt_parts WHERE attempt_id=? AND section_id=?', att.id, sectionId);
+  const row = await q.get('SELECT * FROM attempt_parts WHERE attempt_id=? AND section_id=?', att.id, sectionId);
   if (!row) return res.status(404).json({ error: 'No such part in this sitting.' });
   if (row.closed_at) return bad(res, 'This part has finished.');
   if (row.started_at) {
@@ -274,25 +277,25 @@ router.post('/attempts/:id/parts/:sectionId/start', A.requireUser, A.csrfGuard, 
   }
 
   const at = new Date();
-  const minutes = partWindow(sectionId);
+  const minutes = await partWindow(sectionId);
   const ends = minutes ? new Date(at.getTime() + minutes * 60000).toISOString() : null;
-  q.run('UPDATE attempt_parts SET started_at=?, ends_at=? WHERE id=?', at.toISOString(), ends, row.id);
-  q.run('UPDATE attempts SET updated_at=? WHERE id=?', at.toISOString(), att.id);
+  await q.run('UPDATE attempt_parts SET started_at=?, ends_at=? WHERE id=?', at.toISOString(), ends, row.id);
+  await q.run('UPDATE attempts SET updated_at=? WHERE id=?', at.toISOString(), att.id);
   res.json({ sectionId, startedAt: at.toISOString(), endsAt: ends, secondsLeft: minutes ? minutes * 60 : null });
 });
 
 /** Finish a part early — no going back, exactly as in the real room. */
-router.post('/attempts/:id/parts/:sectionId/close', A.requireUser, A.csrfGuard, (req, res) => {
-  const att = ownAttempt(req);
+router.post('/attempts/:id/parts/:sectionId/close', A.requireUser, A.csrfGuard, async (req, res) => {
+  const att = await ownAttempt(req);
   if (!att) return res.status(404).json({ error: 'No such sitting.' });
   if (att.status !== 'in_progress') return bad(res, 'This sitting has been handed in.');
   const sectionId = int(req.params.sectionId, 0);
-  const row = q.get('SELECT * FROM attempt_parts WHERE attempt_id=? AND section_id=?', att.id, sectionId);
+  const row = await q.get('SELECT * FROM attempt_parts WHERE attempt_id=? AND section_id=?', att.id, sectionId);
   if (!row) return res.status(404).json({ error: 'No such part in this sitting.' });
   if (row.closed_at) return res.json({ ok: true, closedAt: row.closed_at });
   const at = nowISO();
-  q.run('UPDATE attempt_parts SET closed_at=? WHERE id=?', at, row.id);
-  q.run('UPDATE attempts SET updated_at=? WHERE id=?', at, att.id);
+  await q.run('UPDATE attempt_parts SET closed_at=? WHERE id=?', at, row.id);
+  await q.run('UPDATE attempts SET updated_at=? WHERE id=?', at, att.id);
   res.json({ ok: true, closedAt: at });
 });
 
@@ -301,8 +304,8 @@ router.post('/attempts/:id/parts/:sectionId/close', A.requireUser, A.csrfGuard, 
  * ------------------------------------------------------------------ */
 
 /** Whether a question really belongs to this sitting, and which part it is in */
-function itemOf(attemptId, questionId) {
-  return q.get(
+async function itemOf(attemptId, questionId) {
+  return await q.get(
     `SELECT si.section_id, ap.* FROM section_items si
        JOIN attempt_parts ap ON ap.section_id = si.section_id AND ap.attempt_id=?
       WHERE si.question_id=?`, attemptId, questionId);
@@ -316,8 +319,8 @@ function itemOf(attemptId, questionId) {
  * closed is refused item by item, and the response says which ones were kept,
  * so the runner can show the candidate the truth instead of a silent loss.
  */
-router.patch('/attempts/:id/answers', A.requireUser, A.csrfGuard, (req, res) => {
-  const att = ownAttempt(req);
+router.patch('/attempts/:id/answers', A.requireUser, A.csrfGuard, async (req, res) => {
+  const att = await ownAttempt(req);
   if (!att) return res.status(404).json({ error: 'No such sitting.' });
   if (att.status !== 'in_progress') return bad(res, 'This sitting has been handed in and cannot be changed.');
 
@@ -327,21 +330,21 @@ router.patch('/attempts/:id/answers', A.requireUser, A.csrfGuard, (req, res) => 
   const saved = [];
   const rejected = [];
   const at = nowISO();
-  tx(() => {
+  await tx(async () => {
     for (const raw of list) {
       const questionId = int(raw && raw.questionId, 0);
       const answer = str(raw && raw.answer, 20000);
-      const item = itemOf(att.id, questionId);
+      const item = await itemOf(att.id, questionId);
       if (!item) { rejected.push({ questionId, reason: 'not-in-attempt' }); continue; }
       if (!partOpen(item)) { rejected.push({ questionId, reason: 'part-closed' }); continue; }
-      q.run(
+      await q.run(
         `INSERT INTO attempt_answers (attempt_id,question_id,section_id,answer,updated_at)
          VALUES (?,?,?,?,?)
          ON CONFLICT(attempt_id,question_id) DO UPDATE SET answer=excluded.answer, updated_at=excluded.updated_at`,
         att.id, questionId, item.section_id, answer, at);
       saved.push(questionId);
     }
-    q.run('UPDATE attempts SET updated_at=? WHERE id=?', at, att.id);
+    await q.run('UPDATE attempts SET updated_at=? WHERE id=?', at, att.id);
   });
 
   res.json({ saved, rejected, savedAt: at });
@@ -359,19 +362,19 @@ router.patch('/attempts/:id/answers', A.requireUser, A.csrfGuard, (req, res) => 
  * a dictation on loop.
  */
 router.get('/attempts/:id/items/:questionId/audio', A.requireUser, async (req, res) => {
-  const att = ownAttempt(req);
+  const att = await ownAttempt(req);
   if (!att) return res.status(404).json({ error: 'No such sitting.' });
   if (att.status !== 'in_progress') return res.status(403).json({ error: 'This sitting has been handed in.' });
 
   const questionId = int(req.params.questionId, 0);
-  const item = itemOf(att.id, questionId);
+  const item = await itemOf(att.id, questionId);
   if (!item) return res.status(404).json({ error: 'That question is not part of this sitting.' });
   if (!partOpen(item)) return res.status(403).json({ error: 'Time is up for this part.' });
 
-  const qs = q.get('SELECT audio_key FROM questions WHERE id=?', questionId);
+  const qs = await q.get('SELECT audio_key FROM questions WHERE id=?', questionId);
   if (!qs || !qs.audio_key) return res.status(404).json({ error: 'This item has no audio file.' });
 
-  const row = q.get('SELECT * FROM attempt_answers WHERE attempt_id=? AND question_id=?', att.id, questionId);
+  const row = await q.get('SELECT * FROM attempt_answers WHERE attempt_id=? AND question_id=?', att.id, questionId);
   const used = row ? row.replays_used : 0;
   if (used >= DEFAULT_REPLAYS) {
     return res.status(429).json({ error: 'You have used every replay for this item.', replaysLeft: 0 });
@@ -388,7 +391,7 @@ router.get('/attempts/:id/items/:questionId/audio', A.requireUser, async (req, r
   /* Only spend a replay once the file has definitely been read: charging for a
   disk failure costs the candidate a replay for the system's mistake. */
   const at = nowISO();
-  q.run(
+  await q.run(
     `INSERT INTO attempt_answers (attempt_id,question_id,section_id,replays_used,updated_at)
      VALUES (?,?,?,1,?)
      ON CONFLICT(attempt_id,question_id) DO UPDATE SET replays_used = replays_used + 1, updated_at=excluded.updated_at`,
@@ -406,12 +409,12 @@ router.get('/attempts/:id/items/:questionId/audio', A.requireUser, async (req, r
 /** A recorded answer (parts H, I, J). Raw bytes, no multipart. */
 router.post('/attempts/:id/items/:questionId/recording',
   A.requireUser, A.csrfGuard, answerAudioBody, async (req, res) => {
-    const att = ownAttempt(req);
+    const att = await ownAttempt(req);
     if (!att) return res.status(404).json({ error: 'No such sitting.' });
     if (att.status !== 'in_progress') return bad(res, 'This sitting has been handed in.');
 
     const questionId = int(req.params.questionId, 0);
-    const item = itemOf(att.id, questionId);
+    const item = await itemOf(att.id, questionId);
     if (!item) return res.status(404).json({ error: 'That question is not part of this sitting.' });
     if (!partOpen(item)) return res.status(403).json({ error: 'Time is up for this part.' });
 
@@ -428,9 +431,9 @@ router.post('/attempts/:id/items/:questionId/recording',
     }
 
     const at = nowISO();
-    const prev = q.get('SELECT audio_key FROM attempt_answers WHERE attempt_id=? AND question_id=?',
+    const prev = await q.get('SELECT audio_key FROM attempt_answers WHERE attempt_id=? AND question_id=?',
       att.id, questionId);
-    q.run(
+    await q.run(
       `INSERT INTO attempt_answers (attempt_id,question_id,section_id,audio_key,updated_at)
        VALUES (?,?,?,?,?)
        ON CONFLICT(attempt_id,question_id) DO UPDATE SET audio_key=excluded.audio_key, updated_at=excluded.updated_at`,
@@ -452,27 +455,27 @@ router.post('/attempts/:id/items/:questionId/recording',
  * and the answers sit waiting for the scoring pass — which means a fix to the
  * marker can be re-run over old sittings without asking anyone to sit again.
  */
-router.post('/attempts/:id/submit', A.requireUser, A.csrfGuard, (req, res) => {
-  const att = ownAttempt(req);
+router.post('/attempts/:id/submit', A.requireUser, A.csrfGuard, async (req, res) => {
+  const att = await ownAttempt(req);
   if (!att) return res.status(404).json({ error: 'No such sitting.' });
   if (att.status === 'submitted') {
     return res.json({ ok: true, alreadySubmitted: true, submittedAt: att.submitted_at });
   }
 
   const at = nowISO();
-  tx(() => {
-    q.run('UPDATE attempt_parts SET closed_at=? WHERE attempt_id=? AND closed_at IS NULL', at, att.id);
-    q.run("UPDATE attempts SET status='submitted', submitted_at=?, updated_at=? WHERE id=?", at, at, att.id);
+  await tx(async () => {
+    await q.run('UPDATE attempt_parts SET closed_at=? WHERE attempt_id=? AND closed_at IS NULL', at, att.id);
+    await q.run("UPDATE attempts SET status='submitted', submitted_at=?, updated_at=? WHERE id=?", at, at, att.id);
   });
   /* Mark what a machine can mark straight away (multiple choice, gap fill).
   Writing and Speaking are left pending — marking them zero is a lie wearing
   the costume of a result. Marking re-runs, so fixing the marker never means
   sitting the test again. */
-  marking.markAttempt(att.id);
+  await marking.markAttempt(att.id);
 
-  const answered = q.val(
+  const answered = await q.val(
     "SELECT COUNT(*) c FROM attempt_answers WHERE attempt_id=? AND (answer <> '' OR audio_key IS NOT NULL)", att.id);
-  const total = q.val(
+  const total = await q.val(
     `SELECT COUNT(*) c FROM section_items si
        JOIN attempt_parts ap ON ap.section_id = si.section_id
       WHERE ap.attempt_id=?`, att.id);
@@ -490,15 +493,15 @@ router.post('/attempts/:id/submit', A.requireUser, A.csrfGuard, (req, res) => {
  * it in the interface is undone by anyone who opens the page source, so that data
  * must not leave here at all.
  */
-router.get('/attempts/:id/result', A.requireUser, (req, res) => {
-  const att = ownAttempt(req);
+router.get('/attempts/:id/result', A.requireUser, async (req, res) => {
+  const att = await ownAttempt(req);
   if (!att) return res.status(404).json({ error: 'No such sitting.' });
   if (att.status !== 'submitted') {
     return res.status(409).json({ error: 'This sitting has not been handed in, so there is no result yet.' });
   }
-  const ent = entitlementOf(req.user.id);
+  const ent = await entitlementOf(req.user.id);
   const detailed = !!(ent && ent.features && ent.features.detailedReport);
-  const out = marking.resultOf(att.id, detailed);
+  const out = await marking.resultOf(att.id, detailed);
   if (!out) return res.status(404).json({ error: 'No such sitting.' });
   /* Say plainly why the report is short, rather than letting it look like a fault. */
   if (!detailed) out.upgradeHint = 'The part-by-part breakdown comes with Plus and above.';
@@ -506,8 +509,8 @@ router.get('/attempts/:id/result', A.requireUser, (req, res) => {
 });
 
 /** The history of past sittings — the progress screen reads this. */
-router.get('/attempts', A.requireUser, (req, res) => {
-  const rows = q.all(
+router.get('/attempts', A.requireUser, async (req, res) => {
+  const rows = await q.all(
     `SELECT a.*, t.title FROM attempts a LEFT JOIN tests t ON t.id = a.test_id
       WHERE a.user_id=? ORDER BY a.id DESC LIMIT 50`, req.user.id);
   res.set('Cache-Control', 'no-store').json({

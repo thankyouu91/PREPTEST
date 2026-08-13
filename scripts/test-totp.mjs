@@ -110,7 +110,10 @@ try {
 
   tmp = mkdtempSync(join(tmpdir(), 'prep-totp-'));
   const DB = join(tmp, 'probe.sqlite');
-  const runNode = code => execFileSync(process.execPath, ['-e', code], {
+  /* Wrapped in an async IIFE: the seed is promise-returning now, and a snippet
+     that starts it without waiting can exit before it has finished. */
+  const runNode = code => execFileSync(process.execPath,
+    ['-e', `(async () => {${code}})().catch(e => { console.error(e); process.exit(1); })`], {
     cwd: ROOT, encoding: 'utf8',
     env: { ...process.env, PREP_DB: DB, NODE_ENV: 'test' },
     stdio: ['ignore', 'pipe', 'ignore']
@@ -121,7 +124,7 @@ try {
     stdio: ['ignore', 'pipe', 'ignore']
   });
 
-  runNode("require('./server/auth').ensureSeedAdmin();");
+  runNode("await require('./server/auth').ensureSeedAdmin();");
   ok(/two-factor off/.test(cli('totp-status')), 'A fresh administrator has no second factor');
 
   /* Step one prints a secret and switches nothing on. Enabling in one step would

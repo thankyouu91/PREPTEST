@@ -92,6 +92,7 @@ Lệnh khác:
 | `node scripts/test-gcs.mjs` | kiểm thử driver Google Cloud Storage và lớp lấy token: **sinh cặp khoá RSA thật rồi verify chữ ký JWT**, cache token, và toàn bộ hình dạng request (method, path, query, `Metadata-Flavor`, tên object đã encode) đối chiếu với một Google giả chạy tại chỗ |
 | `node scripts/test-srs.mjs` | kiểm thử lặp lại ngắt quãng: **lịch SM-2 tính chính xác từng ngày** (hàm thuần, đồng hồ truyền vào nên không phải chờ), rồi hàng đợi ôn tập qua API — ai được hỏi, chấm điểm lưu đúng cái lịch đã tính, hai học viên không thấy tiến độ của nhau |
 | `node scripts/test-health.mjs` | kiểm thử vòng đời tiến trình (sập thì thoát khác 0, SIGTERM thì thoát êm bằng 0, có chặn thời gian) và endpoint `/healthz` |
+| `node scripts/test-async.mjs` | kiểm **tĩnh** kỷ luật bất đồng bộ, đọc thẳng mã nguồn, không cần server: mọi lời gọi hàm async đều có `await`, không có callback `async` nào đưa cho `map`/`forEach`, mọi router đều đi qua `asyncRoutes()`, và cuối chuỗi có error handler. Ba lỗi nó bắt đều **không ném exception**: `if (!currentUser(req))` trên một Promise luôn đúng nên guard hết chặn ai, `rows.map(async …)` trả về mảng Promise mà `JSON.stringify` in ra `{}`, `forEach(async …)` trả về trước khi đọc xong dòng đầu. Ngoại lệ (`analytics.track`) phải khai báo kèm lý do |
 | `node scripts/test-harness.mjs` | kiểm thử **chính bộ máy chạy test**: lớp thử lại có chặn trên (kiểm bằng một socket bị ngắt thật, không chỉ bằng chuỗi lỗi tự gõ), pool báo đúng job nào hỏng thay vì kéo sập cả lượt, và bước hâm nóng CSRF. Không cần server, không cần trình duyệt |
 | `node scripts/test-exam.mjs` | kiểm thử engine làm bài: mở/nối lại lượt thi, đồng hồ từng phần, số lần nghe lại đếm ở máy chủ, ghi âm câu trả lời, nộp bài, hạn mức lượt của gói Starter, và **đáp án không lọt ra trình duyệt** |
 | `node scripts/test-learn.mjs` | kiểm thử khu tự học: chất lượng dữ liệu động từ bất quy tắc, từ nối và hai nhóm ngữ pháp (nhóm khớp hình thái, ví dụ chứa đúng mục từ, đủ bốn lát cắt, chỗ trống khớp đáp án, đúng hạn mức bậc) + bộ lọc bốn trang |
@@ -526,11 +527,46 @@ là đồng bộ, Postgres thì không.
 | Bước | Việc | Trạng thái |
 |---|---|---|
 | 1 | Lược đồ: dịch DDL và **nạp thử vào Postgres thật** | ✅ xong |
-| 2 | Cho mọi chỗ gọi `q.*` thành `await`, **vẫn chạy SQLite bên dưới** | chưa |
-| 3 | Driver `pg` + `$1…$n` + `RETURNING id` + transaction có pool | chưa |
+| 2 | Cho mọi chỗ gọi `q.*` thành `await`, **vẫn chạy SQLite bên dưới** | ✅ xong |
+| 3 | Driver `pg` + `$1…$n` + `RETURNING id` + transaction có pool | chưa — **cần chủ dự án duyệt thêm dependency** |
 
 Bước 2 tách khỏi bước 3 là có chủ ý: đổi giao diện và đổi engine trong cùng một
 nhịp thì lúc hỏng không biết nửa nào gây ra.
+
+### Bước 2 đã làm gì
+
+`server/db.js` nay có **hai giao diện trên cùng một engine**, và chỗ khác nhau
+chính là điểm mấu chốt:
+
+- `qs` — đồng bộ, **riêng tư trong `db.js`**. Lược đồ, migration và seed chạy một
+  lần lúc `require()`, trước khi có gì đang lắng nghe, và CommonJS không có
+  top-level await để cho chúng dùng. Nên phần khởi động ở lại đồng bộ, ở lại
+  trong file đó.
+- `q` — bất đồng bộ, là đường mọi request đi qua. SQLite vẫn trả lời đồng bộ bên
+  dưới nên promise đã settle sẵn lúc trao tay; điều đổi là **chỗ gọi không còn
+  giả định như thế nữa**.
+
+Ba thứ phải thêm mới đúng, và cả ba đều là chuyện đúng/sai chứ không phải gọn/xấu:
+
+**Transaction không còn tự cô lập.** Giao diện bất đồng bộ trên một kết nối dùng
+chung nghĩa là một transaction đang mở **vắt qua các điểm `await`**, nên câu lệnh
+của request khác có thể rơi vào giữa BEGIN và COMMIT rồi bị commit — hoặc bị
+rollback — cùng với nó. `AsyncLocalStorage` đánh dấu những lời gọi thực sự thuộc
+transaction đang mở, mọi lời gọi khác **chờ** nó xong; bản thân các transaction
+xếp hàng, vì SQLite không có BEGIN lồng nhau. Đây không phải giàn giáo bỏ đi ở
+bước 3: một client Postgres có pool đúng hình dạng này — lệnh trong transaction
+đi vào client đang giữ, phần còn lại đi vào pool. Ở đây "pool" là một kết nối, nên
+phần còn lại chờ thay vì đi đường khác.
+
+**Express 4 không bắt được handler bị reject.** Nó gọi handler rồi đi tiếp: nếu
+handler `async` mà reject thì không ai gọi `next(err)`, error handler không chạy,
+không có response nào được ghi, và **request treo cho tới khi client bỏ cuộc** —
+không một dòng log, vì không ai bắt gì cả. `server/async-route.js` bọc mọi handler
+đăng ký qua router hoặc qua app, giữ nguyên `fn.name` (bảng trong `docs/SECURITY.md`
+nhận ra guard bằng tên) và giữ nguyên số tham số (4 tham số mới là error handler).
+
+**Kiểm tĩnh, vì ba lỗi hay gặp nhất đều không ném exception.** Xem
+`scripts/test-async.mjs` trong bảng lệnh ở trên.
 
 **Dịch chứ không chép.** DDL Postgres được sinh từ `SCHEMA_SQL` trong
 `server/db.js` ngay lúc chạy (`server/schema.js`). Lược đồ giữ ở hai nơi thì trong

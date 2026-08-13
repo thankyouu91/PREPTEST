@@ -267,74 +267,74 @@ try {
   const paymentApi = require_('../server/payment-api.js');
 
   /** An order sitting pending, as checkout would have left it. */
-  function pendingOrder(amount) {
+  async function pendingOrder(amount) {
     const ref = payments.newRef(Math.floor(Math.random() * 1e6));
-    q.run(
+    await q.run(
       `INSERT INTO orders (user_id, package_id, name, amount, status, provider, created_at)
        VALUES (NULL, 'starter-3m', 'Starter', ?, 'pending', 'vnpay', ?)`,
       amount, new Date().toISOString());
-    const id = q.val('SELECT id FROM orders ORDER BY id DESC LIMIT 1');
-    q.run('UPDATE orders SET ref=? WHERE id=?', ref, id);
+    const id = await q.val('SELECT id FROM orders ORDER BY id DESC LIMIT 1');
+    await q.run('UPDATE orders SET ref=? WHERE id=?', ref, id);
     return { id, ref };
   }
   const orderRow = id => q.get('SELECT * FROM orders WHERE id=?', id);
   const codesFor = id => q.val('SELECT COUNT(*) c FROM codes WHERE note=?', 'Bought online, order ' + id);
 
-  await withEnv(KEYS, () => {
+  await withEnv(KEYS, async () => {
     {
-      const order = pendingOrder(499000);
-      const first = paymentApi.applyNotification(
+      const order = await pendingOrder(499000);
+      const first = await paymentApi.applyNotification(
         { valid: true, ref: order.ref, amount: 499000, settled: true, gatewayRef: 'TX1' }, 'vnpay');
       ok(first.code === '00', 'A matching, settled notification confirms the order', JSON.stringify(first));
-      const row = orderRow(order.id);
+      const row = await orderRow(order.id);
       ok(row.status === 'paid' && !!row.paid_at, 'The order is paid and stamped', row.status);
       ok(row.gateway_ref === 'TX1', 'and remembers the gateway\'s own reference');
-      ok(codesFor(order.id) === 1, 'exactly one code is issued', String(codesFor(order.id)));
-      const code = q.get('SELECT * FROM codes WHERE id=?', row.code_id);
+      ok(await codesFor(order.id) === 1, 'exactly one code is issued', String(await codesFor(order.id)));
+      const code = await q.get('SELECT * FROM codes WHERE id=?', row.code_id);
       ok(code && code.plan_id === 'starter-3m', 'for the plan that was bought', code && code.plan_id);
       ok(code.status === 'unused' && code.user_id === null,
         'and it is issued unused: buying is not activating, so a code bought as a gift still works');
 
       /* A gateway retries until it is acknowledged. The second delivery is
          ordinary traffic and must be free. */
-      const again = paymentApi.applyNotification(
+      const again = await paymentApi.applyNotification(
         { valid: true, ref: order.ref, amount: 499000, settled: true, gatewayRef: 'TX1' }, 'vnpay');
       ok(again.code === '02', 'A repeat notification is answered "already confirmed"', again.code);
-      ok(codesFor(order.id) === 1, 'and does NOT mint a second code', String(codesFor(order.id)));
+      ok(await codesFor(order.id) === 1, 'and does NOT mint a second code', String(await codesFor(order.id)));
     }
 
     {
-      const order = pendingOrder(499000);
-      const out = paymentApi.applyNotification(
+      const order = await pendingOrder(499000);
+      const out = await paymentApi.applyNotification(
         { valid: true, ref: order.ref, amount: 10000, settled: true, gatewayRef: 'TX2' }, 'vnpay');
       ok(out.code === '04', 'A payment for the wrong amount is refused', JSON.stringify(out));
-      ok(orderRow(order.id).status === 'pending', 'the order stays pending');
-      ok(codesFor(order.id) === 0, 'and no code is issued', String(codesFor(order.id)));
+      ok((await orderRow(order.id)).status === 'pending', 'the order stays pending');
+      ok(await codesFor(order.id) === 0, 'and no code is issued', String(await codesFor(order.id)));
     }
 
     {
-      const out = paymentApi.applyNotification(
+      const out = await paymentApi.applyNotification(
         { valid: true, ref: 'VPET-not-ours', amount: 499000, settled: true }, 'vnpay');
       ok(out.code === '01', 'A reference we never issued is not an order', JSON.stringify(out));
     }
 
     {
-      const order = pendingOrder(499000);
-      const out = paymentApi.applyNotification(
+      const order = await pendingOrder(499000);
+      const out = await paymentApi.applyNotification(
         { valid: true, ref: order.ref, amount: 499000, settled: true }, 'momo');
       ok(out.code === '01',
         'A notification from the wrong provider does not settle an order placed with the other',
         JSON.stringify(out));
-      ok(codesFor(order.id) === 0, 'and issues nothing');
+      ok(await codesFor(order.id) === 0, 'and issues nothing');
     }
 
     {
-      const order = pendingOrder(499000);
-      const out = paymentApi.applyNotification(
+      const order = await pendingOrder(499000);
+      const out = await paymentApi.applyNotification(
         { valid: true, ref: order.ref, amount: 499000, settled: false, gatewayRef: 'TX3' }, 'vnpay');
       ok(out.code === '00', 'A failed payment is acknowledged — the gateway is telling us, not asking');
-      ok(orderRow(order.id).status === 'failed', 'the order is marked failed', orderRow(order.id).status);
-      ok(codesFor(order.id) === 0, 'and no code is issued', String(codesFor(order.id)));
+      ok((await orderRow(order.id)).status === 'failed', 'the order is marked failed', (await orderRow(order.id)).status);
+      ok(await codesFor(order.id) === 0, 'and no code is issued', String(await codesFor(order.id)));
     }
   });
 

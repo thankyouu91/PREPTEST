@@ -8,6 +8,7 @@
  */
 'use strict';
 const express = require('express');
+const { asyncRoutes } = require('./async-route');
 const { q, tx, nowISO, jparse, makeCode, audit } = require('./db');
 const A = require('./auth');
 const totp = require('./totp');
@@ -17,7 +18,7 @@ const PLANS = require('./data/plans');
 const { entitlementOf } = require('./entitlements');
 const LINKING = require('./data/linking-words');
 
-const router = express.Router();
+const router = asyncRoutes(express.Router());
 router.use(express.json({ limit: '1mb' }));
 
 /* ============================ Helpers ============================ */
@@ -34,46 +35,46 @@ const slug = s => str(s, 60).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, 
   .replace(/đ/g, 'd').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 const daysAgoISO = n => new Date(Date.now() - n * 86400000).toISOString();
 
-function familyExists(id) { return !!q.val('SELECT 1 FROM families WHERE id=?', id); }
+async function familyExists(id) { return !!await q.val('SELECT 1 FROM families WHERE id=?', id); }
 
 /** Describe in words what a code unlocks */
-function unlockLabel(type, ref) {
+async function unlockLabel(type, ref) {
   if (type === 'test') {
-    const t = q.get('SELECT title FROM tests WHERE id=?', ref);
+    const t = await q.get('SELECT title FROM tests WHERE id=?', ref);
     return t ? t.title : 'Test ' + ref;
   }
   if (type === 'family') {
-    const f = q.get('SELECT name FROM families WHERE id=?', ref);
+    const f = await q.get('SELECT name FROM families WHERE id=?', ref);
     return 'All of ' + (f ? f.name : ref);
   }
-  const names = String(ref).split(',').map(id => {
-    const f = q.get('SELECT name FROM families WHERE id=?', id);
+  const names = await Promise.all(String(ref).split(',').map(async id => {
+    const f = await q.get('SELECT name FROM families WHERE id=?', id);
     return f ? f.name : id;
-  });
+  }));
   return 'Combo ' + names.join(' + ');
 }
 
 /* ======================= Admin sign-in ======================= */
-router.post('/admin/login', A.csrfGuard, (req, res) => {
+router.post('/admin/login', A.csrfGuard, async (req, res) => {
   const username = str(req.body && req.body.username, 60);
   const password = typeof (req.body && req.body.password) === 'string' ? req.body.password : '';
   if (!username || !password) return bad(res, 'Enter a username and a password.');
 
   const key = A.throttleKey(req, username);
-  const lockedFor = A.isLocked(key);
+  const lockedFor = await A.isLocked(key);
   if (lockedFor) {
     return res.status(429).json({
       error: 'Too many failed attempts. Try again in ' + Math.ceil(lockedFor / 60) + ' minutes.'
     });
   }
 
-  const admin = q.get('SELECT * FROM admins WHERE username=? AND active=1', username);
+  const admin = await q.get('SELECT * FROM admins WHERE username=? AND active=1', username);
   // Still hash once when no account is found, so response time gives nothing away
   const ok = admin ? A.verifyPassword(password, admin.pass_hash)
                    : A.verifyPassword(password, A.hashPassword('does-not-exist'));
   if (!admin || !ok) {
-    A.noteFailure(key);
-    audit({ ip: req.ip }, 'admin.login.failed', 'admins/' + username, {});
+    await A.noteFailure(key);
+    await audit({ ip: req.ip }, 'admin.login.failed', 'admins/' + username, {});
     return res.status(401).json({ error: 'That username or password is not right.' });
   }
 
@@ -86,10 +87,10 @@ router.post('/admin/login', A.csrfGuard, (req, res) => {
      digits standing behind it do not, which is the wrong way round: those six
      digits are a million guesses, not a passphrase. */
   if (A.totpEnabled(admin)) {
-    const factor = A.verifySecondFactor(admin, req.body && req.body.code);
+    const factor = await A.verifySecondFactor(admin, req.body && req.body.code);
     if (!factor) {
-      A.noteFailure(key);
-      audit({ ip: req.ip }, 'admin.login.2fa_failed', 'admins/' + username, {});
+      await A.noteFailure(key);
+      await audit({ ip: req.ip }, 'admin.login.2fa_failed', 'admins/' + username, {});
       /* Say the password was right: whoever is holding it already knows, and a
          vague answer here just leaves an administrator staring at a screen that
          will not say which of the two fields it disliked. */
@@ -101,28 +102,28 @@ router.post('/admin/login', A.csrfGuard, (req, res) => {
       });
     }
     if (factor === 'recovery') {
-      const left = A.recoveryCodesLeft(admin.id);
-      audit({ admin, ip: req.ip }, 'admin.login.recovery_used', 'admins/' + admin.username, { left });
+      const left = await A.recoveryCodesLeft(admin.id);
+      await audit({ admin, ip: req.ip }, 'admin.login.recovery_used', 'admins/' + admin.username, { left });
       console.warn(`[2fa] ${admin.username} signed in with a recovery code; ${left} left`);
     }
   }
 
-  A.clearFailures(key);
-  A.createSession(admin.id, req, res);
-  q.run('UPDATE admins SET last_login_at=? WHERE id=?', nowISO(), admin.id);
-  audit({ admin, ip: req.ip }, 'admin.login', 'admins/' + admin.username, {});
+  await A.clearFailures(key);
+  await A.createSession(admin.id, req, res);
+  await q.run('UPDATE admins SET last_login_at=? WHERE id=?', nowISO(), admin.id);
+  await audit({ admin, ip: req.ip }, 'admin.login', 'admins/' + admin.username, {});
   res.json({ ok: true, admin: { username: admin.username, name: admin.name, role: admin.role } });
 });
 
-router.post('/admin/logout', A.csrfGuard, (req, res) => {
-  const admin = A.currentAdmin(req);
-  if (admin) audit({ admin, ip: req.ip }, 'admin.logout', 'admins/' + admin.username, {});
-  A.destroySession(req, res);
+router.post('/admin/logout', A.csrfGuard, async (req, res) => {
+  const admin = await A.currentAdmin(req);
+  if (admin) await audit({ admin, ip: req.ip }, 'admin.logout', 'admins/' + admin.username, {});
+  await A.destroySession(req, res);
   res.json({ ok: true });
 });
 
-router.get('/admin/me', (req, res) => {
-  const admin = A.currentAdmin(req);
+router.get('/admin/me', async (req, res) => {
+  const admin = await A.currentAdmin(req);
   if (!admin) return res.status(401).json({ error: 'Not signed in.' });
   res.json({ admin });
 });
@@ -139,7 +140,7 @@ router.use('/admin', A.requireAdmin, A.csrfGuard);
              where people are falling out.
    - todo:   what needs doing, ordered by urgency. This is what turns a reporting
              page into a page you run the place from.                            */
-router.get('/admin/reports', (req, res) => {
+router.get('/admin/reports', async (req, res) => {
   // The window: only 7, 30 and 90 are accepted, so nobody types ?days=100000 and strains the database
   const days = [7, 30, 90].includes(int(req.query.days, 30)) ? int(req.query.days, 30) : 30;
   const from = daysAgoISO(days);
@@ -149,17 +150,17 @@ router.get('/admin/reports', (req, res) => {
 
   /* One metric = this period's value + the previous one + the percentage change.
      delta is null when the previous period was 0, because "up infinitely" is not information. */
-  const kpiOf = (sql, ...args) => {
-    const value = q.val(sql, from, nowISO(), ...args) || 0;
-    const prev = q.val(sql, prevFrom, from, ...args) || 0;
+  const kpiOf = async (sql, ...args) => {
+    const value = await q.val(sql, from, nowISO(), ...args) || 0;
+    const prev = await q.val(sql, prevFrom, from, ...args) || 0;
     return { value, prev, delta: prev ? Math.round(((value - prev) / prev) * 100) : null };
   };
 
   const kpi = {
-    users: kpiOf('SELECT COUNT(*) c FROM users WHERE created_at >= ? AND created_at < ?'),
-    redeems: kpiOf('SELECT COUNT(*) c FROM codes WHERE redeemed_at >= ? AND redeemed_at < ?'),
-    revenue: kpiOf("SELECT COALESCE(SUM(amount),0) s FROM orders WHERE status='paid' AND created_at >= ? AND created_at < ?"),
-    orders: kpiOf("SELECT COUNT(*) c FROM orders WHERE status='paid' AND created_at >= ? AND created_at < ?")
+    users: await kpiOf('SELECT COUNT(*) c FROM users WHERE created_at >= ? AND created_at < ?'),
+    redeems: await kpiOf('SELECT COUNT(*) c FROM codes WHERE redeemed_at >= ? AND redeemed_at < ?'),
+    revenue: await kpiOf("SELECT COALESCE(SUM(amount),0) s FROM orders WHERE status='paid' AND created_at >= ? AND created_at < ?"),
+    orders: await kpiOf("SELECT COUNT(*) c FROM orders WHERE status='paid' AND created_at >= ? AND created_at < ?")
   };
 
   /* The student funnel — cumulative state, not bounded by the period. Percentages
@@ -169,12 +170,12 @@ router.get('/admin/reports', (req, res) => {
      funnel shape stops meaning anything. That is why the last step is "activated a
      code AND signed in recently" rather than everyone who signed in recently — people
      with no code can sign in too, so that figure does not sit under step three. */
-  const fTong = q.val('SELECT COUNT(*) c FROM users');
-  const fXacThuc = q.val('SELECT COUNT(*) c FROM users WHERE verified=1');
-  const fKichHoat = q.val(
+  const fTong = await q.val('SELECT COUNT(*) c FROM users');
+  const fXacThuc = await q.val('SELECT COUNT(*) c FROM users WHERE verified=1');
+  const fKichHoat = await q.val(
     "SELECT COUNT(DISTINCT c.user_id) c FROM codes c JOIN users u ON u.id = c.user_id" +
     " WHERE c.status='redeemed' AND u.verified=1");
-  const fHoatDong = q.val(
+  const fHoatDong = await q.val(
     "SELECT COUNT(DISTINCT c.user_id) c FROM codes c JOIN users u ON u.id = c.user_id" +
     " WHERE c.status='redeemed' AND u.verified=1 AND u.last_login_at >= ?", daysAgoISO(30));
   const funnel = [
@@ -187,31 +188,31 @@ router.get('/admin/reports', (req, res) => {
   const d7 = daysAgoISO(7), d30 = daysAgoISO(30);
 
   const users = {
-    total: q.val('SELECT COUNT(*) c FROM users'),
-    new7: q.val('SELECT COUNT(*) c FROM users WHERE created_at >= ?', d7),
-    new30: q.val('SELECT COUNT(*) c FROM users WHERE created_at >= ?', d30),
-    verified: q.val('SELECT COUNT(*) c FROM users WHERE verified=1'),
-    locked: q.val("SELECT COUNT(*) c FROM users WHERE status='locked'")
+    total: await q.val('SELECT COUNT(*) c FROM users'),
+    new7: await q.val('SELECT COUNT(*) c FROM users WHERE created_at >= ?', d7),
+    new30: await q.val('SELECT COUNT(*) c FROM users WHERE created_at >= ?', d30),
+    verified: await q.val('SELECT COUNT(*) c FROM users WHERE verified=1'),
+    locked: await q.val("SELECT COUNT(*) c FROM users WHERE status='locked'")
   };
   const codes = {
-    total: q.val('SELECT COUNT(*) c FROM codes'),
-    unused: q.val("SELECT COUNT(*) c FROM codes WHERE status='unused'"),
-    redeemed: q.val("SELECT COUNT(*) c FROM codes WHERE status='redeemed'"),
-    revoked: q.val("SELECT COUNT(*) c FROM codes WHERE status='revoked'"),
-    expired: q.val("SELECT COUNT(*) c FROM codes WHERE status='unused' AND expires_at IS NOT NULL AND expires_at < ?", nowISO().slice(0, 10)),
-    redeemed7: q.val("SELECT COUNT(*) c FROM codes WHERE redeemed_at >= ?", d7)
+    total: await q.val('SELECT COUNT(*) c FROM codes'),
+    unused: await q.val("SELECT COUNT(*) c FROM codes WHERE status='unused'"),
+    redeemed: await q.val("SELECT COUNT(*) c FROM codes WHERE status='redeemed'"),
+    revoked: await q.val("SELECT COUNT(*) c FROM codes WHERE status='revoked'"),
+    expired: await q.val("SELECT COUNT(*) c FROM codes WHERE status='unused' AND expires_at IS NOT NULL AND expires_at < ?", nowISO().slice(0, 10)),
+    redeemed7: await q.val("SELECT COUNT(*) c FROM codes WHERE redeemed_at >= ?", d7)
   };
   const content = {
-    tests: q.val('SELECT COUNT(*) c FROM tests'),
-    published: q.val("SELECT COUNT(*) c FROM tests WHERE status='published'"),
-    draft: q.val("SELECT COUNT(*) c FROM tests WHERE status='draft'"),
-    questions: q.val("SELECT COUNT(*) c FROM questions WHERE status='active'"),
-    families: q.val('SELECT COUNT(*) c FROM families')
+    tests: await q.val('SELECT COUNT(*) c FROM tests'),
+    published: await q.val("SELECT COUNT(*) c FROM tests WHERE status='published'"),
+    draft: await q.val("SELECT COUNT(*) c FROM tests WHERE status='draft'"),
+    questions: await q.val("SELECT COUNT(*) c FROM questions WHERE status='active'"),
+    families: await q.val('SELECT COUNT(*) c FROM families')
   };
   const revenue = {
-    total: q.val("SELECT COALESCE(SUM(amount),0) s FROM orders WHERE status='paid'"),
-    d30: q.val("SELECT COALESCE(SUM(amount),0) s FROM orders WHERE status='paid' AND created_at >= ?", d30),
-    orders30: q.val("SELECT COUNT(*) c FROM orders WHERE created_at >= ?", d30)
+    total: await q.val("SELECT COALESCE(SUM(amount),0) s FROM orders WHERE status='paid'"),
+    d30: await q.val("SELECT COALESCE(SUM(amount),0) s FROM orders WHERE status='paid' AND created_at >= ?", d30),
+    orders30: await q.val("SELECT COUNT(*) c FROM orders WHERE created_at >= ?", d30)
   };
 
   // A daily series across the chosen window: new users, codes activated, revenue
@@ -220,13 +221,13 @@ router.get('/admin/reports', (req, res) => {
     const day = new Date(Date.now() - i * 86400000).toISOString().slice(0, 10);
     series.push({
       day,
-      users: q.val('SELECT COUNT(*) c FROM users WHERE substr(created_at,1,10)=?', day),
-      redeems: q.val('SELECT COUNT(*) c FROM codes WHERE substr(redeemed_at,1,10)=?', day),
-      revenue: q.val("SELECT COALESCE(SUM(amount),0) s FROM orders WHERE status='paid' AND substr(created_at,1,10)=?", day)
+      users: await q.val('SELECT COUNT(*) c FROM users WHERE substr(created_at,1,10)=?', day),
+      redeems: await q.val('SELECT COUNT(*) c FROM codes WHERE substr(redeemed_at,1,10)=?', day),
+      revenue: await q.val("SELECT COALESCE(SUM(amount),0) s FROM orders WHERE status='paid' AND substr(created_at,1,10)=?", day)
     });
   }
 
-  const byFamily = q.all(`
+  const byFamily = await q.all(`
     SELECT f.id, f.name, f.status,
            (SELECT COUNT(*) FROM tests t WHERE t.family_id=f.id) tests,
            (SELECT COUNT(*) FROM tests t WHERE t.family_id=f.id AND t.status='published') published,
@@ -235,7 +236,7 @@ router.get('/admin/reports', (req, res) => {
            (SELECT COUNT(*) FROM users u WHERE u.interests_json LIKE '%"' || f.id || '"%') interested
       FROM families f ORDER BY f.sort`);
 
-  const bankGaps = q.all(`
+  const bankGaps = await q.all(`
     SELECT f.name family, s.skill, s.level, s.need, COALESCE(b.have,0) have
       FROM (SELECT DISTINCT t.family_id fid, se.skill skill, t.level level,
                    CASE se.skill WHEN 'writing' THEN 2 WHEN 'speaking' THEN 3 ELSE 20 END need
@@ -247,12 +248,12 @@ router.get('/admin/reports', (req, res) => {
      WHERE COALESCE(b.have,0) < s.need
      ORDER BY (s.need - COALESCE(b.have,0)) DESC LIMIT 8`);
 
-  const recent = q.all(
+  const recent = await q.all(
     'SELECT admin_name, action, target, at FROM audit ORDER BY id DESC LIMIT 8');
 
   /* Revenue by plan within the period. Grouped by package_id; an order with no plan
      attached (issued by hand) is grouped by its own name so it stays visible. */
-  const revenueByPackage = q.all(`
+  const revenueByPackage = await q.all(`
     SELECT COALESCE(p.name, o.name) name,
            COUNT(*) orders,
            COALESCE(SUM(o.amount),0) amount
@@ -279,7 +280,7 @@ router.get('/admin/reports', (req, res) => {
     });
   }
 
-  const hetHan = q.val(
+  const hetHan = await q.val(
     "SELECT COUNT(*) c FROM codes WHERE status='unused' AND expires_at IS NOT NULL AND expires_at >= ? AND expires_at <= ?",
     hnay, sau7ngay);
   if (hetHan) {
@@ -310,7 +311,7 @@ router.get('/admin/reports', (req, res) => {
     });
   }
 
-  const treoXacThuc = q.val(
+  const treoXacThuc = await q.val(
     'SELECT COUNT(*) c FROM users WHERE verified=0 AND created_at < ?', d7);
   if (treoXacThuc) {
     todo.push({
@@ -338,7 +339,7 @@ router.get('/admin/reports', (req, res) => {
 });
 
 /* ====================== THE QUESTION BANK ====================== */
-router.get('/admin/questions', (req, res) => {
+router.get('/admin/questions', async (req, res) => {
   const where = ["status != 'deleted'"];
   const args = [];
   const add = (cond, v) => { where.push(cond); args.push(v); };
@@ -357,8 +358,8 @@ router.get('/admin/questions', (req, res) => {
   const limit = clamp(int(req.query.limit, 30), 1, 200);
   const offset = clamp(int(req.query.offset, 0), 0, 1e6);
   const sql = 'FROM questions WHERE ' + where.join(' AND ');
-  const total = q.val('SELECT COUNT(*) c ' + sql, ...args);
-  const rows = q.all(
+  const total = await q.val('SELECT COUNT(*) c ' + sql, ...args);
+  const rows = await q.all(
     `SELECT id, family_id, skill, level, type, part, prompt, options_json, answer, explanation, tags_json, status, created_at,
             audio_key, audio_bytes, audio_at
        ${sql} ORDER BY id DESC LIMIT ? OFFSET ?`, ...args, limit, offset);
@@ -377,13 +378,13 @@ router.get('/admin/questions', (req, res) => {
   });
 });
 
-function readQuestion(body) {
+async function readQuestion(body) {
   const familyId = str(body.familyId, 20);
   const skill = str(body.skill, 20);
   const level = str(body.level, 5).toUpperCase();
   const type = str(body.type, 20);
   const prompt = str(body.prompt, 4000);
-  if (!familyExists(familyId)) return { err: 'That exam is not valid.' };
+  if (!await familyExists(familyId)) return { err: 'That exam is not valid.' };
   if (!SKILLS.includes(skill)) return { err: 'That skill is not valid.' };
   if (!LEVELS.includes(level)) return { err: 'That level is not valid.' };
   if (!QTYPES.includes(type)) return { err: 'That item type is not valid.' };
@@ -427,39 +428,39 @@ function readQuestion(body) {
   };
 }
 
-router.post('/admin/questions', (req, res) => {
-  const d = readQuestion(req.body || {});
+router.post('/admin/questions', async (req, res) => {
+  const d = await readQuestion(req.body || {});
   if (d.err) return bad(res, d.err);
-  const r = q.run(
+  const r = await q.run(
     `INSERT INTO questions (family_id,skill,level,type,part,prompt,options_json,answer,explanation,tags_json,status,created_at,created_by)
      VALUES (?,?,?,?,?,?,?,?,?,?,'active',?,?)`,
     d.familyId, d.skill, d.level, d.type, d.part, d.prompt, JSON.stringify(d.options), d.answer,
     d.explanation, JSON.stringify(d.tags), nowISO(), req.admin.id);
-  audit(req, 'question.create', 'questions/' + r.lastInsertRowid, { family: d.familyId, skill: d.skill, part: d.part });
+  await audit(req, 'question.create', 'questions/' + r.lastInsertRowid, { family: d.familyId, skill: d.skill, part: d.part });
   res.status(201).json({ id: Number(r.lastInsertRowid) });
 });
 
-router.put('/admin/questions/:id', (req, res) => {
+router.put('/admin/questions/:id', async (req, res) => {
   const id = int(req.params.id, 0);
-  if (!q.val('SELECT 1 FROM questions WHERE id=?', id)) return res.status(404).json({ error: 'No such question.' });
-  const d = readQuestion(req.body || {});
+  if (!await q.val('SELECT 1 FROM questions WHERE id=?', id)) return res.status(404).json({ error: 'No such question.' });
+  const d = await readQuestion(req.body || {});
   if (d.err) return bad(res, d.err);
-  q.run(`UPDATE questions SET family_id=?, skill=?, level=?, type=?, part=?, prompt=?, options_json=?, answer=?, explanation=?, tags_json=?
+  await q.run(`UPDATE questions SET family_id=?, skill=?, level=?, type=?, part=?, prompt=?, options_json=?, answer=?, explanation=?, tags_json=?
           WHERE id=?`,
     d.familyId, d.skill, d.level, d.type, d.part, d.prompt, JSON.stringify(d.options), d.answer,
     d.explanation, JSON.stringify(d.tags), id);
-  audit(req, 'question.update', 'questions/' + id, {});
+  await audit(req, 'question.update', 'questions/' + id, {});
   res.json({ ok: true });
 });
 
 /** Withdraw or reinstate a question (never a hard delete, so old tests keep their content) */
-router.post('/admin/questions/:id/status', (req, res) => {
+router.post('/admin/questions/:id/status', async (req, res) => {
   const id = int(req.params.id, 0);
   const status = str(req.body && req.body.status, 20);
   if (!['active', 'retired'].includes(status)) return bad(res, 'That status is not valid.');
-  const r = q.run('UPDATE questions SET status=? WHERE id=?', status, id);
+  const r = await q.run('UPDATE questions SET status=? WHERE id=?', status, id);
   if (!r.changes) return res.status(404).json({ error: 'No such question.' });
-  audit(req, 'question.status', 'questions/' + id, { status });
+  await audit(req, 'question.status', 'questions/' + id, { status });
   res.json({ ok: true });
 });
 
@@ -474,7 +475,7 @@ const audioBody = express.raw({ type: storage.ACCEPTED_MIME, limit: storage.MAX_
 
 router.post('/admin/questions/:id/audio', audioBody, async (req, res) => {
   const id = int(req.params.id, 0);
-  const row = q.get('SELECT id, audio_key FROM questions WHERE id=?', id);
+  const row = await q.get('SELECT id, audio_key FROM questions WHERE id=?', id);
   if (!row) return res.status(404).json({ error: 'No such question.' });
 
   const buf = Buffer.isBuffer(req.body) ? req.body : null;
@@ -486,10 +487,10 @@ router.post('/admin/questions/:id/audio', audioBody, async (req, res) => {
     /* Replacing an existing file: write the new key first, then drop the old
        one. If the delete fails the row still points at a file that exists. */
     const old = row.audio_key;
-    q.run('UPDATE questions SET audio_key=?, audio_bytes=?, audio_at=? WHERE id=?',
+    await q.run('UPDATE questions SET audio_key=?, audio_bytes=?, audio_at=? WHERE id=?',
       saved.key, saved.bytes, nowISO(), id);
     if (old && old !== saved.key) await storage.remove(old).catch(() => {});
-    audit(req, 'question.audio.upload', 'questions/' + id, { bytes: saved.bytes, driver: saved.driver });
+    await audit(req, 'question.audio.upload', 'questions/' + id, { bytes: saved.bytes, driver: saved.driver });
     res.status(201).json({ ok: true, bytes: saved.bytes, driver: saved.driver });
   } catch (e) {
     if (e.code === 'INVALID_AUDIO') return bad(res, e.message);
@@ -499,7 +500,7 @@ router.post('/admin/questions/:id/audio', audioBody, async (req, res) => {
 });
 
 router.get('/admin/questions/:id/audio', async (req, res) => {
-  const row = q.get('SELECT audio_key, audio_bytes FROM questions WHERE id=?', int(req.params.id, 0));
+  const row = await q.get('SELECT audio_key, audio_bytes FROM questions WHERE id=?', int(req.params.id, 0));
   if (!row || !row.audio_key) return res.status(404).json({ error: 'This question has no audio file.' });
   try {
     const file = await storage.get(row.audio_key);
@@ -516,30 +517,32 @@ router.get('/admin/questions/:id/audio', async (req, res) => {
 
 router.delete('/admin/questions/:id/audio', async (req, res) => {
   const id = int(req.params.id, 0);
-  const row = q.get('SELECT audio_key FROM questions WHERE id=?', id);
+  const row = await q.get('SELECT audio_key FROM questions WHERE id=?', id);
   if (!row) return res.status(404).json({ error: 'No such question.' });
   if (!row.audio_key) return res.json({ ok: true });
-  q.run('UPDATE questions SET audio_key=NULL, audio_bytes=NULL, audio_at=NULL WHERE id=?', id);
+  await q.run('UPDATE questions SET audio_key=NULL, audio_bytes=NULL, audio_at=NULL WHERE id=?', id);
   await storage.remove(row.audio_key).catch(() => {});
-  audit(req, 'question.audio.delete', 'questions/' + id, {});
+  await audit(req, 'question.audio.delete', 'questions/' + id, {});
   res.json({ ok: true });
 });
 
 /** Bulk import questions (pasted JSON, or CSV already split up on the client) */
-router.post('/admin/questions/bulk', (req, res) => {
+router.post('/admin/questions/bulk', async (req, res) => {
   const items = Array.isArray(req.body && req.body.items) ? req.body.items : null;
   if (!items || !items.length) return bad(res, 'There are no questions to import.');
   if (items.length > 500) return bad(res, 'At most 500 items per import.');
 
   const errors = [];
   const ok = [];
-  items.forEach((raw, i) => {
-    const d = readQuestion(raw || {});
+  /* A loop rather than forEach: the callback awaits, and forEach would return
+     before a single row had been read — leaving both arrays empty. */
+  for (const [i, raw] of items.entries()) {
+    const d = await readQuestion(raw || {});
     if (d.err) errors.push({ row: i + 1, error: d.err }); else ok.push(d);
-  });
+  }
   if (!ok.length) return res.status(400).json({ error: 'No row was valid.', errors });
 
-  tx(() => {
+  await tx(() => {
     const ins = require('./db').db.prepare(
       `INSERT INTO questions (family_id,skill,level,type,part,prompt,options_json,answer,explanation,tags_json,status,created_at,created_by)
        VALUES (?,?,?,?,?,?,?,?,?,?,'active',?,?)`);
@@ -549,14 +552,14 @@ router.post('/admin/questions/bulk', (req, res) => {
         d.answer, d.explanation, JSON.stringify(d.tags), at, req.admin.id);
     }
   });
-  audit(req, 'question.bulk', 'questions', { inserted: ok.length, failed: errors.length });
+  await audit(req, 'question.bulk', 'questions', { inserted: ok.length, failed: errors.length });
   res.status(201).json({ inserted: ok.length, failed: errors.length, errors: errors.slice(0, 20) });
 });
 
 /** A sample CSV file for bulk question import.
  *  Served from the server (rather than built as a blob on the client) so the CSP stays strict. */
-router.get('/admin/questions/template.csv', (req, res) => {
-  const fam = q.get('SELECT id FROM families ORDER BY sort LIMIT 1');
+router.get('/admin/questions/template.csv', async (req, res) => {
+  const fam = await q.get('SELECT id FROM families ORDER BY sort LIMIT 1');
   const famId = fam ? fam.id : 'ielts';
   /* The phan_thi column is blank for an exam with no part table; for VPET it is required,
      because an item with no letter belongs to no part's pool at all. */
@@ -573,14 +576,14 @@ router.get('/admin/questions/template.csv', (req, res) => {
 });
 
 /** Count the items available against a set of criteria — the generator uses it to report shortfalls */
-router.get('/admin/questions/availability', (req, res) => {
+router.get('/admin/questions/availability', async (req, res) => {
   const family = str(req.query.family, 20);
   const level = str(req.query.level, 5).toUpperCase();
-  if (!familyExists(family)) return bad(res, 'That exam is not valid.');
-  const rows = q.all(
+  if (!await familyExists(family)) return bad(res, 'That exam is not valid.');
+  const rows = await q.all(
     `SELECT skill, COUNT(*) exact FROM questions
       WHERE family_id=? AND level=? AND status='active' GROUP BY skill`, family, level);
-  const any = q.all(
+  const any = await q.all(
     `SELECT skill, COUNT(*) total FROM questions
       WHERE family_id=? AND status='active' GROUP BY skill`, family);
   const out = {};
@@ -593,20 +596,20 @@ router.get('/admin/questions/availability', (req, res) => {
   /* For an exam with a part table, a per-skill total says nothing: 20 Speaking items
      could all belong to part H while I and J are empty. Return each part separately,
      with the count the format needs, so the screen points at the actual gap. */
-  const parts = EXAM_FORMATS.partsOf(family).map(letter => {
+  const parts = await Promise.all(EXAM_FORMATS.partsOf(family).map(async letter => {
     const sec = EXAM_FORMATS.sectionOfPart(family, letter) || {};
-    const bank = bankCount(family, sec.skill, sec.types, level, letter);
+    const bank = await bankCount(family, sec.skill, sec.types, level, letter);
     return {
       part: letter, name: sec.name || letter, skill: sec.skill || '',
       need: sec.items || 0, needsAudio: !!sec.needsAudio,
       exact: bank.exact, total: bank.total,
       short: Math.max(0, (sec.items || 0) - bank.total)
     };
-  });
+  }));
   /* Items with no part yet: they belong to no pool, so they are counted separately
      rather than quietly vanishing from the report. */
   const untagged = EXAM_FORMATS.partsOf(family).length
-    ? q.val("SELECT COUNT(*) c FROM questions WHERE family_id=? AND status='active' AND part IS NULL", family)
+    ? await q.val("SELECT COUNT(*) c FROM questions WHERE family_id=? AND status='active' AND part IS NULL", family)
     : 0;
   res.json({ family, level, availability: out, parts, untagged });
 });
@@ -632,42 +635,42 @@ function poolWhere(familyId, skill, types, part) {
 }
 
 /** Count the items usable for one block: right exam, skill, item type and part */
-function bankCount(familyId, skill, types, level, part) {
+async function bankCount(familyId, skill, types, level, part) {
   const { sql, args } = poolWhere(familyId, skill, types, part);
   const base = 'SELECT COUNT(*) c FROM questions WHERE ' + sql;
   return {
-    total: q.val(base, ...args),
-    exact: level ? q.val(base + ' AND level=?', ...args, level) : 0
+    total: await q.val(base, ...args),
+    exact: level ? await q.val(base + ' AND level=?', ...args, level) : 0
   };
 }
 
 /** Same pool as bankCount, but only the items that already have an MP3.
     A VPET audio part cannot be generated from items that have no sound. */
-function audioReadyCount(familyId, skill, types, level, part) {
+async function audioReadyCount(familyId, skill, types, level, part) {
   const { sql, args } = poolWhere(familyId, skill, types, part);
   const base = 'SELECT COUNT(*) c FROM questions WHERE ' + sql + ' AND audio_key IS NOT NULL';
   return {
-    total: q.val(base, ...args),
-    exact: level ? q.val(base + ' AND level=?', ...args, level) : 0
+    total: await q.val(base, ...args),
+    exact: level ? await q.val(base + ' AND level=?', ...args, level) : 0
   };
 }
 
-router.get('/admin/exam-formats', (req, res) => {
+router.get('/admin/exam-formats', async (req, res) => {
   const familyId = str(req.query.familyId, 20);
   const level = LEVELS.includes(str(req.query.level, 5).toUpperCase())
     ? str(req.query.level, 5).toUpperCase() : '';
   const strict = req.query.strict === '1';
 
-  const list = EXAM_FORMATS.FORMATS
+  const list = await Promise.all(EXAM_FORMATS.FORMATS
     .filter(f => !familyId || f.familyId === familyId)
-    .map(f => {
-      const fam = q.get('SELECT name, status FROM families WHERE id=?', f.familyId);
-      const sections = f.sections.map(s => {
-        const bank = bankCount(f.familyId, s.skill, s.types, level, s.part);
+    .map(async f => {
+      const fam = await q.get('SELECT name, status FROM families WHERE id=?', f.familyId);
+      const sections = await Promise.all(f.sections.map(async s => {
+        const bank = await bankCount(f.familyId, s.skill, s.types, level, s.part);
         const have = strict ? bank.exact : bank.total;
         /* Audio parts are only buildable from items that carry an MP3, so they
            get their own shortfall alongside the plain bank count. */
-        const withAudio = s.needsAudio ? audioReadyCount(f.familyId, s.skill, s.types, level, s.part) : null;
+        const withAudio = s.needsAudio ? await audioReadyCount(f.familyId, s.skill, s.types, level, s.part) : null;
         const haveAudio = withAudio ? (strict ? withAudio.exact : withAudio.total) : 0;
         return {
           name: s.name, part: s.part || null,
@@ -678,7 +681,7 @@ router.get('/admin/exam-formats', (req, res) => {
             ? { have: haveAudio, need: s.items, short: Math.max(0, s.items - haveAudio) }
             : null
         };
-      });
+      }));
       const short = sections.reduce((a, s) => a + s.bank.short, 0);
       const audioShort = sections.reduce((a, s) => a + (s.audio ? s.audio.short : 0), 0);
       return {
@@ -694,17 +697,17 @@ router.get('/admin/exam-formats', (req, res) => {
         shortBy: short,                   // how many items short
         audioShortBy: audioShort          // how many items with an MP3 short
       };
-    });
+    }));
 
   res.set('Cache-Control', 'no-store').json({ level, strict, formats: list });
 });
 
 /* ============================ TESTS ============================ */
-function testDetail(id) {
-  const t = q.get('SELECT * FROM tests WHERE id=?', id);
+async function testDetail(id) {
+  const t = await q.get('SELECT * FROM tests WHERE id=?', id);
   if (!t) return null;
-  const sections = q.all('SELECT * FROM sections WHERE test_id=? ORDER BY sort, id', id).map(s => {
-    const items = q.all(
+  const sections = await Promise.all((await q.all('SELECT * FROM sections WHERE test_id=? ORDER BY sort, id', id)).map(async s => {
+    const items = await q.all(
       `SELECT si.id item_id, si.sort, qs.id, qs.prompt, qs.type, qs.level, qs.skill, qs.status, qs.part
          FROM section_items si JOIN questions qs ON qs.id = si.question_id
         WHERE si.section_id=? ORDER BY si.sort, si.id`, s.id);
@@ -716,7 +719,7 @@ function testDetail(id) {
         type: i.type, level: i.level, skill: i.skill, status: i.status, part: i.part || null
       }))
     };
-  });
+  }));
   return {
     id: t.id, familyId: t.family_id, title: t.title, level: t.level,
     durationMin: t.duration_min, scoring: t.scoring, guide: jparse(t.guide_json, []),
@@ -726,14 +729,14 @@ function testDetail(id) {
   };
 }
 
-router.get('/admin/tests', (req, res) => {
+router.get('/admin/tests', async (req, res) => {
   const where = [];
   const args = [];
   if (req.query.family) { where.push('t.family_id = ?'); args.push(str(req.query.family, 20)); }
   if (req.query.status) { where.push('t.status = ?'); args.push(str(req.query.status, 20)); }
   if (req.query.q) { where.push('t.title LIKE ?'); args.push('%' + str(req.query.q, 80) + '%'); }
   const w = where.length ? 'WHERE ' + where.join(' AND ') : '';
-  const rows = q.all(`
+  const rows = await q.all(`
     SELECT t.*, f.name family_name,
            (SELECT COUNT(*) FROM sections s WHERE s.test_id=t.id) sections,
            (SELECT COUNT(*) FROM section_items si JOIN sections s ON s.id=si.section_id WHERE s.test_id=t.id) items
@@ -748,65 +751,65 @@ router.get('/admin/tests', (req, res) => {
   });
 });
 
-router.get('/admin/tests/:id', (req, res) => {
-  const t = testDetail(str(req.params.id, 60));
+router.get('/admin/tests/:id', async (req, res) => {
+  const t = await testDetail(str(req.params.id, 60));
   if (!t) return res.status(404).json({ error: 'No such test.' });
   res.json(t);
 });
 
 /** Create an empty test (the by-hand route) */
-router.post('/admin/tests', (req, res) => {
+router.post('/admin/tests', async (req, res) => {
   const b = req.body || {};
   const familyId = str(b.familyId, 20);
   const title = str(b.title, 200);
   const level = str(b.level, 5).toUpperCase();
-  if (!familyExists(familyId)) return bad(res, 'That exam is not valid.');
+  if (!await familyExists(familyId)) return bad(res, 'That exam is not valid.');
   if (title.length < 3) return bad(res, 'That test name is too short.');
   if (!LEVELS.includes(level)) return bad(res, 'That level is not valid.');
 
   let id = slug(b.id || (familyId + '-' + level + '-' + title)).slice(0, 50) || (familyId + '-' + Date.now());
   let i = 1;
-  while (q.val('SELECT 1 FROM tests WHERE id=?', id)) id = id.replace(/-\d+$/, '') + '-' + (++i);
+  while (await q.val('SELECT 1 FROM tests WHERE id=?', id)) id = id.replace(/-\d+$/, '') + '-' + (++i);
 
   const at = nowISO();
-  q.run(`INSERT INTO tests (id,family_id,title,level,duration_min,scoring,guide_json,status,build_mode,created_at,updated_at,created_by)
+  await q.run(`INSERT INTO tests (id,family_id,title,level,duration_min,scoring,guide_json,status,build_mode,created_at,updated_at,created_by)
          VALUES (?,?,?,?,?,?,?,'draft',?,?,?,?)`,
     id, familyId, title, level, int(b.durationMin, 0), str(b.scoring, 300),
     JSON.stringify(Array.isArray(b.guide) ? b.guide.map(g => str(g, 300)).filter(Boolean) : []),
     str(b.buildMode, 10) === 'auto' ? 'auto' : 'manual', at, at, req.admin.id);
-  audit(req, 'test.create', 'tests/' + id, { title, familyId });
-  res.status(201).json(testDetail(id));
+  await audit(req, 'test.create', 'tests/' + id, { title, familyId });
+  res.status(201).json(await testDetail(id));
 });
 
-router.put('/admin/tests/:id', (req, res) => {
+router.put('/admin/tests/:id', async (req, res) => {
   const id = str(req.params.id, 60);
-  if (!q.val('SELECT 1 FROM tests WHERE id=?', id)) return res.status(404).json({ error: 'No such test.' });
+  if (!await q.val('SELECT 1 FROM tests WHERE id=?', id)) return res.status(404).json({ error: 'No such test.' });
   const b = req.body || {};
   const title = str(b.title, 200);
   const level = str(b.level, 5).toUpperCase();
   if (title.length < 3) return bad(res, 'That test name is too short.');
   if (!LEVELS.includes(level)) return bad(res, 'That level is not valid.');
-  q.run(`UPDATE tests SET title=?, level=?, duration_min=?, scoring=?, guide_json=?, updated_at=? WHERE id=?`,
+  await q.run(`UPDATE tests SET title=?, level=?, duration_min=?, scoring=?, guide_json=?, updated_at=? WHERE id=?`,
     title, level, int(b.durationMin, 0), str(b.scoring, 300),
     JSON.stringify(Array.isArray(b.guide) ? b.guide.map(g => str(g, 300)).filter(Boolean) : []),
     nowISO(), id);
-  audit(req, 'test.update', 'tests/' + id, {});
-  res.json(testDetail(id));
+  await audit(req, 'test.update', 'tests/' + id, {});
+  res.json(await testDetail(id));
 });
 
 /** Change status: publishing is allowed only once every part has questions */
-router.post('/admin/tests/:id/status', (req, res) => {
+router.post('/admin/tests/:id/status', async (req, res) => {
   const id = str(req.params.id, 60);
   const status = str(req.body && req.body.status, 20);
   if (!STATUSES.includes(status)) return bad(res, 'That status is not valid.');
-  const t = testDetail(id);
+  const t = await testDetail(id);
   if (!t) return res.status(404).json({ error: 'No such test.' });
 
   if (status === 'published') {
     /* The platform is only selling VPET right now. Letting a parked family's
        test go live would put it in the catalogue and on sale, which is the
        one thing parking it was meant to prevent. */
-    const fam = q.get('SELECT name, status FROM families WHERE id=?', t.familyId);
+    const fam = await q.get('SELECT name, status FROM families WHERE id=?', t.familyId);
     if (fam && fam.status === 'coming_soon') {
       return bad(res, fam.name + ' is not ready yet, so its tests cannot be published. '
         + 'Open this exam in server/db.js (FAMILIES) first.');
@@ -815,25 +818,25 @@ router.post('/admin/tests/:id/status', (req, res) => {
     const empty = t.sections.filter(s => !s.items.length).map(s => s.name);
     if (empty.length) return bad(res, 'These parts have no questions yet: ' + empty.join(', '));
   }
-  q.run('UPDATE tests SET status=?, updated_at=? WHERE id=?', status, nowISO(), id);
-  audit(req, 'test.status', 'tests/' + id, { status });
+  await q.run('UPDATE tests SET status=?, updated_at=? WHERE id=?', status, nowISO(), id);
+  await audit(req, 'test.status', 'tests/' + id, { status });
   res.json({ ok: true, status });
 });
 
-router.delete('/admin/tests/:id', (req, res) => {
+router.delete('/admin/tests/:id', async (req, res) => {
   const id = str(req.params.id, 60);
-  const used = q.val("SELECT COUNT(*) c FROM codes WHERE unlock_type='test' AND unlock_ref=?", id);
+  const used = await q.val("SELECT COUNT(*) c FROM codes WHERE unlock_type='test' AND unlock_ref=?", id);
   if (used) return bad(res, used + ' codes point at this test. Archive it rather than deleting it.');
-  const r = q.run('DELETE FROM tests WHERE id=?', id);
+  const r = await q.run('DELETE FROM tests WHERE id=?', id);
   if (!r.changes) return res.status(404).json({ error: 'No such test.' });
-  audit(req, 'test.delete', 'tests/' + id, {});
+  await audit(req, 'test.delete', 'tests/' + id, {});
   res.json({ ok: true });
 });
 
 /* ---- Sections ---- */
-router.post('/admin/tests/:id/sections', (req, res) => {
+router.post('/admin/tests/:id/sections', async (req, res) => {
   const id = str(req.params.id, 60);
-  if (!q.val('SELECT 1 FROM tests WHERE id=?', id)) return res.status(404).json({ error: 'No such test.' });
+  if (!await q.val('SELECT 1 FROM tests WHERE id=?', id)) return res.status(404).json({ error: 'No such test.' });
   const b = req.body || {};
   const name = str(b.name, 100);
   const skill = str(b.skill, 20);
@@ -841,76 +844,76 @@ router.post('/admin/tests/:id/sections', (req, res) => {
   if (!SKILLS.includes(skill)) return bad(res, 'That skill is not valid.');
   /* Attach the part letter if this exam has a part table — so a later reshuffle
      still knows which part to draw from. */
-  const fam = q.val('SELECT family_id FROM tests WHERE id=?', id);
+  const fam = await q.val('SELECT family_id FROM tests WHERE id=?', id);
   const allowed = EXAM_FORMATS.partsOf(fam);
   const part = str(b.part, 2).toUpperCase();
   if (part && !allowed.includes(part)) {
     return bad(res, 'That part is not valid. This exam has the parts: ' + (allowed.join(', ') || 'none') + '.');
   }
-  const sort = (q.val('SELECT COALESCE(MAX(sort),-1) s FROM sections WHERE test_id=?', id)) + 1;
-  const r = q.run('INSERT INTO sections (test_id,name,skill,type,minutes,sort,part) VALUES (?,?,?,?,?,?,?)',
+  const sort = (await q.val('SELECT COALESCE(MAX(sort),-1) s FROM sections WHERE test_id=?', id)) + 1;
+  const r = await q.run('INSERT INTO sections (test_id,name,skill,type,minutes,sort,part) VALUES (?,?,?,?,?,?,?)',
     id, name, skill, str(b.type, 100) || 'Multiple choice', clamp(int(b.minutes, 0), 0, 600), sort, part || null);
-  q.run('UPDATE tests SET updated_at=? WHERE id=?', nowISO(), id);
-  audit(req, 'section.create', 'tests/' + id, { section: name, part: part || null });
+  await q.run('UPDATE tests SET updated_at=? WHERE id=?', nowISO(), id);
+  await audit(req, 'section.create', 'tests/' + id, { section: name, part: part || null });
   res.status(201).json({ id: Number(r.lastInsertRowid) });
 });
 
-router.put('/admin/sections/:sid', (req, res) => {
+router.put('/admin/sections/:sid', async (req, res) => {
   const sid = int(req.params.sid, 0);
-  const s = q.get('SELECT * FROM sections WHERE id=?', sid);
+  const s = await q.get('SELECT * FROM sections WHERE id=?', sid);
   if (!s) return res.status(404).json({ error: 'No such part.' });
   const b = req.body || {};
-  q.run('UPDATE sections SET name=?, type=?, minutes=? WHERE id=?',
+  await q.run('UPDATE sections SET name=?, type=?, minutes=? WHERE id=?',
     str(b.name, 100) || s.name, str(b.type, 100) || s.type, clamp(int(b.minutes, s.minutes), 0, 600), sid);
-  q.run('UPDATE tests SET updated_at=? WHERE id=?', nowISO(), s.test_id);
-  audit(req, 'section.update', 'sections/' + sid, {});
+  await q.run('UPDATE tests SET updated_at=? WHERE id=?', nowISO(), s.test_id);
+  await audit(req, 'section.update', 'sections/' + sid, {});
   res.json({ ok: true });
 });
 
-router.delete('/admin/sections/:sid', (req, res) => {
+router.delete('/admin/sections/:sid', async (req, res) => {
   const sid = int(req.params.sid, 0);
-  const s = q.get('SELECT test_id FROM sections WHERE id=?', sid);
+  const s = await q.get('SELECT test_id FROM sections WHERE id=?', sid);
   if (!s) return res.status(404).json({ error: 'No such part.' });
-  q.run('DELETE FROM sections WHERE id=?', sid);
-  q.run('UPDATE tests SET updated_at=? WHERE id=?', nowISO(), s.test_id);
-  audit(req, 'section.delete', 'sections/' + sid, {});
+  await q.run('DELETE FROM sections WHERE id=?', sid);
+  await q.run('UPDATE tests SET updated_at=? WHERE id=?', nowISO(), s.test_id);
+  await audit(req, 'section.delete', 'sections/' + sid, {});
   res.json({ ok: true });
 });
 
 /** Attach questions to a part (by hand, chosen from the bank) */
-router.post('/admin/sections/:sid/items', (req, res) => {
+router.post('/admin/sections/:sid/items', async (req, res) => {
   const sid = int(req.params.sid, 0);
-  const s = q.get('SELECT * FROM sections WHERE id=?', sid);
+  const s = await q.get('SELECT * FROM sections WHERE id=?', sid);
   if (!s) return res.status(404).json({ error: 'No such part.' });
   const ids = Array.isArray(req.body && req.body.questionIds)
     ? req.body.questionIds.map(x => int(x, 0)).filter(Boolean) : [];
   if (!ids.length) return bad(res, 'No questions were chosen.');
 
-  const test = q.get('SELECT family_id FROM tests WHERE id=?', s.test_id);
+  const test = await q.get('SELECT family_id FROM tests WHERE id=?', s.test_id);
   let added = 0, skipped = 0;
-  tx(() => {
-    let sort = (q.val('SELECT COALESCE(MAX(sort),-1) s FROM section_items WHERE section_id=?', sid)) + 1;
+  await tx(async () => {
+    let sort = (await q.val('SELECT COALESCE(MAX(sort),-1) s FROM section_items WHERE section_id=?', sid)) + 1;
     for (const qid of ids) {
-      const row = q.get("SELECT family_id, skill FROM questions WHERE id=? AND status='active'", qid);
+      const row = await q.get("SELECT family_id, skill FROM questions WHERE id=? AND status='active'", qid);
       // Only items from the same exam and the same skill as the part
       if (!row || row.family_id !== test.family_id || row.skill !== s.skill) { skipped++; continue; }
-      const r = q.run('INSERT OR IGNORE INTO section_items (section_id,question_id,sort) VALUES (?,?,?)', sid, qid, sort++);
+      const r = await q.run('INSERT OR IGNORE INTO section_items (section_id,question_id,sort) VALUES (?,?,?)', sid, qid, sort++);
       if (r.changes) added++; else skipped++;
     }
-    q.run('UPDATE tests SET updated_at=? WHERE id=?', nowISO(), s.test_id);
+    await q.run('UPDATE tests SET updated_at=? WHERE id=?', nowISO(), s.test_id);
   });
-  audit(req, 'section.items.add', 'sections/' + sid, { added, skipped });
+  await audit(req, 'section.items.add', 'sections/' + sid, { added, skipped });
   res.json({ added, skipped });
 });
 
-router.delete('/admin/items/:itemId', (req, res) => {
+router.delete('/admin/items/:itemId', async (req, res) => {
   const itemId = int(req.params.itemId, 0);
-  const row = q.get(`SELECT si.id, s.test_id FROM section_items si
+  const row = await q.get(`SELECT si.id, s.test_id FROM section_items si
                        JOIN sections s ON s.id = si.section_id WHERE si.id=?`, itemId);
   if (!row) return res.status(404).json({ error: 'No such item in this part.' });
-  q.run('DELETE FROM section_items WHERE id=?', itemId);
-  q.run('UPDATE tests SET updated_at=? WHERE id=?', nowISO(), row.test_id);
-  audit(req, 'section.items.remove', 'items/' + itemId, {});
+  await q.run('DELETE FROM section_items WHERE id=?', itemId);
+  await q.run('UPDATE tests SET updated_at=? WHERE id=?', nowISO(), row.test_id);
+  await audit(req, 'section.items.remove', 'items/' + itemId, {});
   res.json({ ok: true });
 });
 
@@ -919,12 +922,12 @@ router.delete('/admin/items/:itemId', (req, res) => {
  *  - strictLevel=true: only items at that level; by default the level is preferred, then others.
  *  - Returns a clear error when the bank does not hold enough.
  */
-router.post('/admin/tests/generate', (req, res) => {
+router.post('/admin/tests/generate', async (req, res) => {
   const b = req.body || {};
   const familyId = str(b.familyId, 20);
   const level = str(b.level, 5).toUpperCase();
   const strict = !!b.strictLevel;
-  if (!familyExists(familyId)) return bad(res, 'That exam is not valid.');
+  if (!await familyExists(familyId)) return bad(res, 'That exam is not valid.');
   if (!LEVELS.includes(level)) return bad(res, 'That level is not valid.');
   const bp = Array.isArray(b.blueprint) ? b.blueprint : [];
   if (!bp.length) return bad(res, 'No parts were declared for the test.');
@@ -946,8 +949,8 @@ router.post('/admin/tests/generate', (req, res) => {
       ? str(sec.part, 2).toUpperCase() : '';
     const { sql: poolSql, args: poolArgs } = poolWhere(familyId, skill, sec.types, part);
     const pool = strict
-      ? q.all(`SELECT id FROM questions WHERE ${poolSql} AND level=?`, ...poolArgs, level)
-      : q.all(`SELECT id, (level=?) exact FROM questions WHERE ${poolSql} ORDER BY exact DESC`,
+      ? await q.all(`SELECT id FROM questions WHERE ${poolSql} AND level=?`, ...poolArgs, level)
+      : await q.all(`SELECT id, (level=?) exact FROM questions WHERE ${poolSql} ORDER BY exact DESC`,
               level, ...poolArgs);
 
     const avail = pool.filter(r => !usedIds.has(r.id));
@@ -974,40 +977,43 @@ router.post('/admin/tests/generate', (req, res) => {
     });
   }
 
-  const title = str(b.title, 200) || (q.get('SELECT name FROM families WHERE id=?', familyId).name +
+  const title = str(b.title, 200) || ((await q.get('SELECT name FROM families WHERE id=?', familyId)).name +
     ' generated ' + level + ' ' + new Date().toISOString().slice(0, 10));
   let id = slug(familyId + '-auto-' + level + '-' + Date.now().toString(36));
   const at = nowISO();
 
-  tx(() => {
-    q.run(`INSERT INTO tests (id,family_id,title,level,duration_min,scoring,guide_json,status,build_mode,created_at,updated_at,created_by)
+  await tx(async () => {
+    await q.run(`INSERT INTO tests (id,family_id,title,level,duration_min,scoring,guide_json,status,build_mode,created_at,updated_at,created_by)
            VALUES (?,?,?,?,?,?,?,'draft','auto',?,?,?)`,
       id, familyId, title, level,
       bp.reduce((a, s) => a + clamp(int(s.minutes, 0), 0, 600), 0),
       str(b.scoring, 300), JSON.stringify(Array.isArray(b.guide) ? b.guide.map(g => str(g, 300)) : []),
       at, at, req.admin.id);
 
-    picked.forEach((p, i) => {
-      q.run('INSERT INTO sections (test_id,name,skill,type,minutes,sort,part) VALUES (?,?,?,?,?,?,?)',
+    /* A loop rather than forEach: each part reads back the id of the row it
+       just inserted, so these writes have to stay in order. */
+    for (const [i, p] of picked.entries()) {
+      await q.run('INSERT INTO sections (test_id,name,skill,type,minutes,sort,part) VALUES (?,?,?,?,?,?,?)',
         id, str(p.sec.name, 100) || p.sec.skill, str(p.sec.skill, 20),
         str(p.sec.type, 100) || 'Multiple choice', clamp(int(p.sec.minutes, 0), 0, 600), i, p.part || null);
-      const sid = q.val('SELECT id FROM sections WHERE test_id=? ORDER BY id DESC LIMIT 1', id);
-      p.ids.forEach((qid, j) =>
-        q.run('INSERT OR IGNORE INTO section_items (section_id,question_id,sort) VALUES (?,?,?)', sid, qid, j));
-    });
+      const sid = await q.val('SELECT id FROM sections WHERE test_id=? ORDER BY id DESC LIMIT 1', id);
+      for (const [j, qid] of p.ids.entries()) {
+        await q.run('INSERT OR IGNORE INTO section_items (section_id,question_id,sort) VALUES (?,?,?)', sid, qid, j);
+      }
+    }
   });
 
-  audit(req, 'test.generate', 'tests/' + id, { familyId, level, sections: bp.length, items: usedIds.size });
-  res.status(201).json(testDetail(id));
+  await audit(req, 'test.generate', 'tests/' + id, { familyId, level, sections: bp.length, items: usedIds.size });
+  res.status(201).json(await testDetail(id));
 });
 
 /** Redraw every item in a part (keeping the count) */
-router.post('/admin/sections/:sid/reshuffle', (req, res) => {
+router.post('/admin/sections/:sid/reshuffle', async (req, res) => {
   const sid = int(req.params.sid, 0);
-  const s = q.get('SELECT * FROM sections WHERE id=?', sid);
+  const s = await q.get('SELECT * FROM sections WHERE id=?', sid);
   if (!s) return res.status(404).json({ error: 'No such part.' });
-  const t = q.get('SELECT family_id, level FROM tests WHERE id=?', s.test_id);
-  const want = q.val('SELECT COUNT(*) c FROM section_items WHERE section_id=?', sid);
+  const t = await q.get('SELECT family_id, level FROM tests WHERE id=?', s.test_id);
+  const want = await q.val('SELECT COUNT(*) c FROM section_items WHERE section_id=?', sid);
   if (!want) return bad(res, 'This part has no items to redraw.');
 
   /* A redraw has to draw from the same pool the generator used. This used to filter
@@ -1018,7 +1024,7 @@ router.post('/admin/sections/:sid/reshuffle', (req, res) => {
   const blueprint = s.part ? EXAM_FORMATS.sectionOfPart(t.family_id, s.part) : null;
   const { sql: poolSql, args: poolArgs } = poolWhere(
     t.family_id, s.skill, blueprint ? blueprint.types : null, s.part || '');
-  const pool = q.all(
+  const pool = await q.all(
     `SELECT id, (level=?) exact FROM questions WHERE ${poolSql} ORDER BY exact DESC`,
     t.level, ...poolArgs);
   if (pool.length < want) {
@@ -1028,17 +1034,19 @@ router.post('/admin/sections/:sid/reshuffle', (req, res) => {
 
   const shuffle = arr => arr.map(v => [Math.random(), v]).sort((a, c) => a[0] - c[0]).map(v => v[1]);
   const chosen = shuffle(pool.filter(r => r.exact)).concat(shuffle(pool.filter(r => !r.exact))).slice(0, want);
-  tx(() => {
-    q.run('DELETE FROM section_items WHERE section_id=?', sid);
-    chosen.forEach((r, i) => q.run('INSERT INTO section_items (section_id,question_id,sort) VALUES (?,?,?)', sid, r.id, i));
-    q.run('UPDATE tests SET updated_at=? WHERE id=?', nowISO(), s.test_id);
+  await tx(async () => {
+    await q.run('DELETE FROM section_items WHERE section_id=?', sid);
+    for (const [i, r] of chosen.entries()) {
+      await q.run('INSERT INTO section_items (section_id,question_id,sort) VALUES (?,?,?)', sid, r.id, i);
+    }
+    await q.run('UPDATE tests SET updated_at=? WHERE id=?', nowISO(), s.test_id);
   });
-  audit(req, 'section.reshuffle', 'sections/' + sid, { count: want });
+  await audit(req, 'section.reshuffle', 'sections/' + sid, { count: want });
   res.json({ ok: true, count: want });
 });
 
 /* ============================= USER ============================= */
-router.get('/admin/users', (req, res) => {
+router.get('/admin/users', async (req, res) => {
   const where = [];
   const args = [];
   if (req.query.status) { where.push('status = ?'); args.push(str(req.query.status, 20)); }
@@ -1052,8 +1060,8 @@ router.get('/admin/users', (req, res) => {
   const w = where.length ? 'WHERE ' + where.join(' AND ') : '';
   const limit = clamp(int(req.query.limit, 25), 1, 200);
   const offset = clamp(int(req.query.offset, 0), 0, 1e6);
-  const total = q.val('SELECT COUNT(*) c FROM users ' + w, ...args);
-  const rows = q.all(`
+  const total = await q.val('SELECT COUNT(*) c FROM users ' + w, ...args);
+  const rows = await q.all(`
     SELECT u.*,
            (SELECT COUNT(*) FROM codes c WHERE c.user_id=u.id AND c.status='redeemed') codes,
            (SELECT COALESCE(SUM(o.amount),0) FROM orders o WHERE o.user_id=u.id AND o.status='paid') spent
@@ -1068,23 +1076,23 @@ router.get('/admin/users', (req, res) => {
   });
 });
 
-router.get('/admin/users/:id', (req, res) => {
+router.get('/admin/users/:id', async (req, res) => {
   const id = int(req.params.id, 0);
-  const u = q.get('SELECT * FROM users WHERE id=?', id);
+  const u = await q.get('SELECT * FROM users WHERE id=?', id);
   if (!u) return res.status(404).json({ error: 'No such student.' });
-  const codes = q.all('SELECT * FROM codes WHERE user_id=? ORDER BY redeemed_at DESC', id);
-  const orders = q.all('SELECT * FROM orders WHERE user_id=? ORDER BY created_at DESC', id);
+  const codes = await q.all('SELECT * FROM codes WHERE user_id=? ORDER BY redeemed_at DESC', id);
+  const orders = await q.all('SELECT * FROM orders WHERE user_id=? ORDER BY created_at DESC', id);
   res.json({
     user: {
       id: u.id, username: u.username, email: u.email, name: u.name, verified: !!u.verified,
       status: u.status, interests: jparse(u.interests_json, []), note: u.note,
       createdAt: u.created_at, lastLoginAt: u.last_login_at
     },
-    codes: codes.map(c => ({
+    codes: await Promise.all(codes.map(async c => ({
       id: c.id, code: c.code, unlockType: c.unlock_type, unlockRef: c.unlock_ref,
-      label: unlockLabel(c.unlock_type, c.unlock_ref), status: c.status,
+      label: await unlockLabel(c.unlock_type, c.unlock_ref), status: c.status,
       redeemedAt: c.redeemed_at, expiresAt: c.expires_at
-    })),
+    }))),
     orders: orders.map(o => ({ id: o.id, name: o.name, amount: o.amount, status: o.status, createdAt: o.created_at }))
   });
 });
@@ -1098,9 +1106,9 @@ router.get('/admin/users/:id', (req, res) => {
  * ==================================================================== */
 
 /** A code nobody holds yet. Shared with the batch issuer below. */
-function unusedCode() {
+async function unusedCode() {
   let code = makeCode();
-  while (q.val('SELECT 1 FROM codes WHERE code=?', code)) code = makeCode();
+  while (await q.val('SELECT 1 FROM codes WHERE code=?', code)) code = makeCode();
   return code;
 }
 
@@ -1115,12 +1123,12 @@ function unusedCode() {
  * furthest date across live codes and adds the attempts up, so an early renewal
  * loses nothing except the overlap.
  */
-function grantPlan(userId, plan, adminId, note) {
+async function grantPlan(userId, plan, adminId, note) {
   const at = nowISO();
   const until = new Date(at);
   until.setMonth(until.getMonth() + plan.months);
-  const code = unusedCode();
-  q.run(
+  const code = await unusedCode();
+  await q.run(
     `INSERT INTO codes (code, batch_id, unlock_type, unlock_ref, plan_id, status,
                         expires_at, access_expires_at, user_id, redeemed_at, note, created_at, created_by)
      VALUES (?, NULL, 'family', 'vpet', ?, 'redeemed', NULL, ?, ?, ?, ?, ?, ?)`,
@@ -1135,7 +1143,7 @@ function grantPlan(userId, plan, adminId, note) {
  * confirmed it by other means, and leaving it unverified would lock the person
  * out of the thing that was just made for them.
  */
-router.post('/admin/users', (req, res) => {
+router.post('/admin/users', async (req, res) => {
   const b = req.body || {};
   const name = str(b.name, 120);
   const email = str(b.email, 160).toLowerCase();
@@ -1144,7 +1152,7 @@ router.post('/admin/users', (req, res) => {
 
   if (!name) return bad(res, 'Give the student a name.');
   if (!A.EMAIL_RE.test(email)) return bad(res, 'That email address is not valid.');
-  if (q.val('SELECT 1 FROM users WHERE email=?', email)) {
+  if (await q.val('SELECT 1 FROM users WHERE email=?', email)) {
     return res.status(409).json({ error: 'An account with that email already exists.' });
   }
   /* A term is optional, but a plan id that means nothing is a typo worth
@@ -1165,16 +1173,16 @@ router.post('/admin/users', (req, res) => {
   const at = nowISO();
   let userId = 0;
   let granted = null;
-  tx(() => {
-    q.run(
+  await tx(async () => {
+    await q.run(
       `INSERT INTO users (username, email, name, pass_hash, verified, status, interests_json, note, created_at)
        VALUES (?,?,?,?,1,'active','[]',?,?)`,
-      A.freeUsername(email), email, name, A.hashPassword(password), note || null, at);
-    userId = q.val('SELECT id FROM users WHERE email=?', email);
-    if (plan) granted = grantPlan(userId, plan, req.admin.id, 'Created with the account');
+      await A.freeUsername(email), email, name, A.hashPassword(password), note || null, at);
+    userId = await q.val('SELECT id FROM users WHERE email=?', email);
+    if (plan) granted = await grantPlan(userId, plan, req.admin.id, 'Created with the account');
   });
 
-  audit(req, 'user.create', 'users/' + userId, { email, plan: plan ? plan.id : null });
+  await audit(req, 'user.create', 'users/' + userId, { email, plan: plan ? plan.id : null });
   res.status(201).json({
     ok: true,
     user: { id: userId, name, email },
@@ -1186,24 +1194,24 @@ router.post('/admin/users', (req, res) => {
 });
 
 /** POST /admin/users/:id/grant — put a term on an existing account. */
-router.post('/admin/users/:id/grant', (req, res) => {
+router.post('/admin/users/:id/grant', async (req, res) => {
   const id = int(req.params.id, 0);
   const plan = PLANS.byId(str(req.body && req.body.planId, 40));
   if (!plan) {
     return bad(res, 'Choose a term: ' + PLANS.PLANS.map(p => p.id).join(', ') + '.');
   }
-  if (!q.val('SELECT 1 FROM users WHERE id=?', id)) {
+  if (!await q.val('SELECT 1 FROM users WHERE id=?', id)) {
     return res.status(404).json({ error: 'No such student.' });
   }
   const note = str(req.body && req.body.note, 200) || 'Granted by an administrator';
-  const granted = tx(() => grantPlan(id, plan, req.admin.id, note));
-  audit(req, 'user.grant', 'users/' + id, { plan: plan.id, months: plan.months });
+  const granted = await tx(async () => await grantPlan(id, plan, req.admin.id, note));
+  await audit(req, 'user.grant', 'users/' + id, { plan: plan.id, months: plan.months });
   res.status(201).json({
     ok: true,
     plan: { id: plan.id, name: plan.name, months: plan.months },
     code: granted.code,
     accessUntil: granted.accessUntil,
-    entitlement: entitlementOf(id)
+    entitlement: await entitlementOf(id)
   });
 });
 
@@ -1213,9 +1221,9 @@ router.post('/admin/users/:id/grant', (req, res) => {
  * Every session that account holds is dropped: whoever the password was reset
  * because of must not still be signed in somewhere.
  */
-router.post('/admin/users/:id/password', (req, res) => {
+router.post('/admin/users/:id/password', async (req, res) => {
   const id = int(req.params.id, 0);
-  if (!q.val('SELECT 1 FROM users WHERE id=?', id)) {
+  if (!await q.val('SELECT 1 FROM users WHERE id=?', id)) {
     return res.status(404).json({ error: 'No such student.' });
   }
   const chosen = typeof (req.body && req.body.password) === 'string' && req.body.password
@@ -1225,48 +1233,48 @@ router.post('/admin/users/:id/password', (req, res) => {
     if (problem) return bad(res, problem);
   }
   const password = chosen || A.generatedPassword();
-  q.run('UPDATE users SET pass_hash=? WHERE id=?', A.hashPassword(password), id);
-  A.dropUserSessions(id);
-  audit(req, 'user.password', 'users/' + id, { generated: !chosen });
+  await q.run('UPDATE users SET pass_hash=? WHERE id=?', A.hashPassword(password), id);
+  await A.dropUserSessions(id);
+  await audit(req, 'user.password', 'users/' + id, { generated: !chosen });
   res.json({ ok: true, password: chosen ? null : password });
 });
 
-router.post('/admin/users/:id/status', (req, res) => {
+router.post('/admin/users/:id/status', async (req, res) => {
   const id = int(req.params.id, 0);
   const status = str(req.body && req.body.status, 20);
   if (!['active', 'locked'].includes(status)) return bad(res, 'That status is not valid.');
-  const r = q.run('UPDATE users SET status=? WHERE id=?', status, id);
+  const r = await q.run('UPDATE users SET status=? WHERE id=?', status, id);
   if (!r.changes) return res.status(404).json({ error: 'No such student.' });
-  audit(req, 'user.status', 'users/' + id, { status });
+  await audit(req, 'user.status', 'users/' + id, { status });
   res.json({ ok: true });
 });
 
-router.post('/admin/users/:id/verify', (req, res) => {
+router.post('/admin/users/:id/verify', async (req, res) => {
   const id = int(req.params.id, 0);
-  const r = q.run('UPDATE users SET verified=1 WHERE id=?', id);
+  const r = await q.run('UPDATE users SET verified=1 WHERE id=?', id);
   if (!r.changes) return res.status(404).json({ error: 'No such student.' });
-  audit(req, 'user.verify', 'users/' + id, {});
+  await audit(req, 'user.verify', 'users/' + id, {});
   res.json({ ok: true });
 });
 
-router.put('/admin/users/:id', (req, res) => {
+router.put('/admin/users/:id', async (req, res) => {
   const id = int(req.params.id, 0);
-  const u = q.get('SELECT * FROM users WHERE id=?', id);
+  const u = await q.get('SELECT * FROM users WHERE id=?', id);
   if (!u) return res.status(404).json({ error: 'No such student.' });
   const b = req.body || {};
   const name = str(b.name, 120) || u.name;
   const note = str(b.note, 500);
   const interests = Array.isArray(b.interests)
     ? b.interests.map(x => str(x, 20)).filter(familyExists) : jparse(u.interests_json, []);
-  q.run('UPDATE users SET name=?, note=?, interests_json=? WHERE id=?', name, note, JSON.stringify(interests), id);
-  audit(req, 'user.update', 'users/' + id, {});
+  await q.run('UPDATE users SET name=?, note=?, interests_json=? WHERE id=?', name, note, JSON.stringify(interests), id);
+  await audit(req, 'user.update', 'users/' + id, {});
   res.json({ ok: true });
 });
 
 /* ============================= CODE ============================= */
-function validUnlock(type, ref) {
-  if (type === 'test') return !!q.val('SELECT 1 FROM tests WHERE id=?', ref);
-  if (type === 'family') return familyExists(ref);
+async function validUnlock(type, ref) {
+  if (type === 'test') return !!await q.val('SELECT 1 FROM tests WHERE id=?', ref);
+  if (type === 'family') return await familyExists(ref);
   if (type === 'bundle') {
     const ids = String(ref).split(',').map(s => s.trim()).filter(Boolean);
     return ids.length >= 2 && ids.every(familyExists);
@@ -1274,7 +1282,7 @@ function validUnlock(type, ref) {
   return false;
 }
 
-router.get('/admin/codes', (req, res) => {
+router.get('/admin/codes', async (req, res) => {
   const where = [];
   const args = [];
   if (req.query.status) { where.push('c.status = ?'); args.push(str(req.query.status, 20)); }
@@ -1284,14 +1292,14 @@ router.get('/admin/codes', (req, res) => {
   const w = where.length ? 'WHERE ' + where.join(' AND ') : '';
   const limit = clamp(int(req.query.limit, 30), 1, 500);
   const offset = clamp(int(req.query.offset, 0), 0, 1e6);
-  const total = q.val('SELECT COUNT(*) c FROM codes c ' + w, ...args);
-  const rows = q.all(`
+  const total = await q.val('SELECT COUNT(*) c FROM codes c ' + w, ...args);
+  const rows = await q.all(`
     SELECT c.*, u.name user_name, u.email user_email, b.name batch_name
       FROM codes c LEFT JOIN users u ON u.id=c.user_id LEFT JOIN batches b ON b.id=c.batch_id
       ${w} ORDER BY c.id DESC LIMIT ? OFFSET ?`, ...args, limit, offset);
   res.json({
     total, limit, offset,
-    items: rows.map(c => {
+    items: await Promise.all(rows.map(async c => {
       const plan = PLANS.byId(c.plan_id);
       return {
         id: c.id, code: c.code, unlockType: c.unlock_type, unlockRef: c.unlock_ref,
@@ -1299,7 +1307,7 @@ router.get('/admin/codes', (req, res) => {
         /* The label in the admin table is the plan name where there is one; an older
            code with no plan falls back to an exam label, and says so plainly. */
         label: plan ? plan.name + ' plan · ' + plan.months + ' months'
-                    : unlockLabel(c.unlock_type, c.unlock_ref) + ' (no plan attached)',
+                    : await unlockLabel(c.unlock_type, c.unlock_ref) + ' (no plan attached)',
         status: c.status,
         expiresAt: c.expires_at, accessExpiresAt: c.access_expires_at,
         redeemedAt: c.redeemed_at, note: c.note,
@@ -1307,26 +1315,26 @@ router.get('/admin/codes', (req, res) => {
         user: c.user_id ? { id: c.user_id, name: c.user_name, email: c.user_email } : null,
         createdAt: c.created_at
       };
-    })
-  });
-});
-
-router.get('/admin/batches', (req, res) => {
-  const rows = q.all(`
-    SELECT b.*, (SELECT COUNT(*) FROM codes c WHERE c.batch_id=b.id) total,
-           (SELECT COUNT(*) FROM codes c WHERE c.batch_id=b.id AND c.status='redeemed') used
-      FROM batches b ORDER BY b.id DESC LIMIT 50`);
-  res.json({
-    items: rows.map(b => ({
-      id: b.id, name: b.name, unlockType: b.unlock_type, unlockRef: b.unlock_ref,
-      label: unlockLabel(b.unlock_type, b.unlock_ref), qty: b.qty, total: b.total, used: b.used,
-      expiresAt: b.expires_at, createdAt: b.created_at
     }))
   });
 });
 
+router.get('/admin/batches', async (req, res) => {
+  const rows = await q.all(`
+    SELECT b.*, (SELECT COUNT(*) FROM codes c WHERE c.batch_id=b.id) total,
+           (SELECT COUNT(*) FROM codes c WHERE c.batch_id=b.id AND c.status='redeemed') used
+      FROM batches b ORDER BY b.id DESC LIMIT 50`);
+  res.json({
+    items: await Promise.all(rows.map(async b => ({
+      id: b.id, name: b.name, unlockType: b.unlock_type, unlockRef: b.unlock_ref,
+      label: await unlockLabel(b.unlock_type, b.unlock_ref), qty: b.qty, total: b.total, used: b.used,
+      expiresAt: b.expires_at, createdAt: b.created_at
+    })))
+  });
+});
+
 /** Issue codes: a batch of many, or one issued straight to a student */
-router.post('/admin/codes', (req, res) => {
+router.post('/admin/codes', async (req, res) => {
   const b = req.body || {};
   const type = str(b.unlockType, 20);
   const ref = str(b.unlockRef, 200);
@@ -1342,9 +1350,9 @@ router.post('/admin/codes', (req, res) => {
   if (!plan) {
     return bad(res, 'Choose a plan for the code: ' + PLANS.PLANS.map(p => p.id).join(', ') + '.');
   }
-  if (!validUnlock(type, ref)) return bad(res, 'That unlock is not valid.');
+  if (!await validUnlock(type, ref)) return bad(res, 'That unlock is not valid.');
   if (expiresAt && !/^\d{4}-\d{2}-\d{2}$/.test(expiresAt)) return bad(res, 'The expiry date must be YYYY-MM-DD.');
-  if (assignTo && !q.val('SELECT 1 FROM users WHERE id=?', assignTo)) return bad(res, 'No such student.');
+  if (assignTo && !await q.val('SELECT 1 FROM users WHERE id=?', assignTo)) return bad(res, 'No such student.');
   if (assignTo && qty !== 1) return bad(res, 'Issuing straight to a student means one code at a time.');
 
   const at = nowISO();
@@ -1360,17 +1368,17 @@ router.post('/admin/codes', (req, res) => {
   let batchId = null;
   const created = [];
 
-  tx(() => {
+  await tx(async () => {
     if (qty > 1) {
-      q.run('INSERT INTO batches (name,unlock_type,unlock_ref,qty,expires_at,created_at,created_by) VALUES (?,?,?,?,?,?,?)',
+      await q.run('INSERT INTO batches (name,unlock_type,unlock_ref,qty,expires_at,created_at,created_by) VALUES (?,?,?,?,?,?,?)',
         str(b.batchName, 120) || (plan.name + ' batch ' + at.slice(0, 10)),
         type, ref, qty, expiresAt, at, req.admin.id);
-      batchId = q.val('SELECT id FROM batches ORDER BY id DESC LIMIT 1');
+      batchId = await q.val('SELECT id FROM batches ORDER BY id DESC LIMIT 1');
     }
     for (let i = 0; i < qty; i++) {
       let code = makeCode();
-      while (q.val('SELECT 1 FROM codes WHERE code=?', code)) code = makeCode();
-      q.run(`INSERT INTO codes (code,batch_id,unlock_type,unlock_ref,plan_id,status,expires_at,access_expires_at,user_id,redeemed_at,note,created_at,created_by)
+      while (await q.val('SELECT 1 FROM codes WHERE code=?', code)) code = makeCode();
+      await q.run(`INSERT INTO codes (code,batch_id,unlock_type,unlock_ref,plan_id,status,expires_at,access_expires_at,user_id,redeemed_at,note,created_at,created_by)
              VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
         code, batchId, type, ref, plan.id, assignTo ? 'redeemed' : 'unused', expiresAt,
         accessUntil, assignTo, assignTo ? at : null, note || null, at, req.admin.id);
@@ -1378,28 +1386,28 @@ router.post('/admin/codes', (req, res) => {
     }
   });
 
-  audit(req, 'code.issue', batchId ? 'batches/' + batchId : 'codes', { qty, plan: plan.id, type, ref, assignTo });
+  await audit(req, 'code.issue', batchId ? 'batches/' + batchId : 'codes', { qty, plan: plan.id, type, ref, assignTo });
   res.status(201).json({ created, batchId, qty, plan: { id: plan.id, name: plan.name, months: plan.months } });
 });
 
-router.post('/admin/codes/:id/revoke', (req, res) => {
+router.post('/admin/codes/:id/revoke', async (req, res) => {
   const id = int(req.params.id, 0);
-  const c = q.get('SELECT * FROM codes WHERE id=?', id);
+  const c = await q.get('SELECT * FROM codes WHERE id=?', id);
   if (!c) return res.status(404).json({ error: 'No such code.' });
   if (c.status === 'revoked') return bad(res, 'That code was already revoked.');
-  q.run("UPDATE codes SET status='revoked' WHERE id=?", id);
-  audit(req, 'code.revoke', 'codes/' + id, { code: c.code, wasStatus: c.status });
+  await q.run("UPDATE codes SET status='revoked' WHERE id=?", id);
+  await audit(req, 'code.revoke', 'codes/' + id, { code: c.code, wasStatus: c.status });
   res.json({ ok: true });
 });
 
 /** Export the codes as CSV (by batch, or by status filter) */
-router.get('/admin/codes/export', (req, res) => {
+router.get('/admin/codes/export', async (req, res) => {
   const where = [];
   const args = [];
   if (req.query.batch) { where.push('c.batch_id = ?'); args.push(int(req.query.batch, 0)); }
   if (req.query.status) { where.push('c.status = ?'); args.push(str(req.query.status, 20)); }
   const w = where.length ? 'WHERE ' + where.join(' AND ') : '';
-  const rows = q.all(`SELECT c.code, c.plan_id, c.unlock_type, c.unlock_ref, c.status,
+  const rows = await q.all(`SELECT c.code, c.plan_id, c.unlock_type, c.unlock_ref, c.status,
                              c.expires_at, c.access_expires_at, c.redeemed_at,
                              u.email user_email
                         FROM codes c LEFT JOIN users u ON u.id=c.user_id ${w}
@@ -1416,66 +1424,66 @@ router.get('/admin/codes/export', (req, res) => {
         r.expires_at, r.access_expires_at, r.redeemed_at, r.user_email].map(esc).join(',');
     }))
     .join('\r\n');
-  audit(req, 'code.export', 'codes', { rows: rows.length });
+  await audit(req, 'code.export', 'codes', { rows: rows.length });
   res.setHeader('Content-Type', 'text/csv; charset=utf-8');
   res.setHeader('Content-Disposition', 'attachment; filename="codes.csv"');
   res.send('﻿' + csv);            // a BOM so Excel reads the accents correctly
 });
 
 /* ======================= SETTINGS · AUDIT LOG ======================= */
-router.get('/admin/settings', (req, res) => {
-  const rows = q.all('SELECT key, value FROM settings');
+router.get('/admin/settings', async (req, res) => {
+  const rows = await q.all('SELECT key, value FROM settings');
   const settings = {};
   rows.forEach(r => { settings[r.key] = r.value; });
   res.json({
     settings,
-    packages: q.all('SELECT * FROM packages ORDER BY sort').map(p => ({
+    packages: (await q.all('SELECT * FROM packages ORDER BY sort')).map(p => ({
       id: p.id, name: p.name, price: p.price, familyId: p.family_id,
       description: p.description, perks: jparse(p.perks_json, []),
       featured: !!p.featured, active: !!p.active
     })),
-    families: q.all('SELECT * FROM families ORDER BY sort').map(f => ({
+    families: (await q.all('SELECT * FROM families ORDER BY sort')).map(f => ({
       id: f.id, name: f.name, sub: f.sub, format: f.format, skills: jparse(f.skills_json, [])
     })),
-    admins: q.all('SELECT id, username, name, role, active, created_at, last_login_at FROM admins ORDER BY id')
+    admins: await q.all('SELECT id, username, name, role, active, created_at, last_login_at FROM admins ORDER BY id')
   });
 });
 
-router.put('/admin/settings', (req, res) => {
+router.put('/admin/settings', async (req, res) => {
   const b = (req.body && req.body.settings) || {};
   const allowed = ['brand.name', 'brand.tenant', 'platform.notice'];
   const ins = require('./db').db.prepare(
     'INSERT INTO settings (key,value) VALUES (?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value');
   for (const k of allowed) if (k in b) ins.run(k, str(b[k], 300));
-  audit(req, 'settings.update', 'settings', { keys: Object.keys(b) });
+  await audit(req, 'settings.update', 'settings', { keys: Object.keys(b) });
   res.json({ ok: true });
 });
 
-router.put('/admin/packages/:id', (req, res) => {
+router.put('/admin/packages/:id', async (req, res) => {
   const id = str(req.params.id, 40);
-  const p = q.get('SELECT * FROM packages WHERE id=?', id);
+  const p = await q.get('SELECT * FROM packages WHERE id=?', id);
   if (!p) return res.status(404).json({ error: 'No such plan.' });
   const b = req.body || {};
   const price = clamp(int(b.price, p.price), 0, 100000000);
-  q.run('UPDATE packages SET name=?, price=?, description=?, active=? WHERE id=?',
+  await q.run('UPDATE packages SET name=?, price=?, description=?, active=? WHERE id=?',
     str(b.name, 120) || p.name, price, str(b.description, 400) || p.description,
     b.active === false ? 0 : 1, id);
-  audit(req, 'package.update', 'packages/' + id, { price });
+  await audit(req, 'package.update', 'packages/' + id, { price });
   res.json({ ok: true });
 });
 
 /** Change your own admin password */
-router.post('/admin/password', (req, res) => {
+router.post('/admin/password', async (req, res) => {
   const b = req.body || {};
   const cur = typeof b.current === 'string' ? b.current : '';
   const next = typeof b.next === 'string' ? b.next : '';
-  const me = q.get('SELECT * FROM admins WHERE id=?', req.admin.id);
+  const me = await q.get('SELECT * FROM admins WHERE id=?', req.admin.id);
   if (!A.verifyPassword(cur, me.pass_hash)) return res.status(403).json({ error: 'That is not your current password.' });
   if (next.length < 10) return bad(res, 'A new password needs at least 10 characters.');
   if (!/[A-Za-z]/.test(next) || !/\d/.test(next)) return bad(res, 'A new password needs both letters and digits.');
-  q.run('UPDATE admins SET pass_hash=? WHERE id=?', A.hashPassword(next), req.admin.id);
-  q.run('DELETE FROM sessions WHERE admin_id=?', req.admin.id);   // force every device to sign in again
-  audit(req, 'admin.password', 'admins/' + req.admin.username, {});
+  await q.run('UPDATE admins SET pass_hash=? WHERE id=?', A.hashPassword(next), req.admin.id);
+  await q.run('DELETE FROM sessions WHERE admin_id=?', req.admin.id);   // force every device to sign in again
+  await audit(req, 'admin.password', 'admins/' + req.admin.username, {});
   res.json({ ok: true, reauth: true });
 });
 
@@ -1492,17 +1500,17 @@ router.post('/admin/password', (req, res) => {
    can enrol a secret of their own choosing anyway. A pending-state table would
    add a row to expire and clean up, and would buy nothing. */
 
-router.get('/admin/totp', (req, res) => {
-  const me = q.get('SELECT * FROM admins WHERE id=?', req.admin.id);
+router.get('/admin/totp', async (req, res) => {
+  const me = await q.get('SELECT * FROM admins WHERE id=?', req.admin.id);
   res.json({
     enabled: A.totpEnabled(me),
     enabledAt: me.totp_enabled_at || null,
-    recoveryLeft: A.totpEnabled(me) ? A.recoveryCodesLeft(me.id) : 0
+    recoveryLeft: A.totpEnabled(me) ? await A.recoveryCodesLeft(me.id) : 0
   });
 });
 
-router.post('/admin/totp/start', (req, res) => {
-  const me = q.get('SELECT * FROM admins WHERE id=?', req.admin.id);
+router.post('/admin/totp/start', async (req, res) => {
+  const me = await q.get('SELECT * FROM admins WHERE id=?', req.admin.id);
   if (A.totpEnabled(me)) return res.status(409).json({ error: 'Two-factor is already on for this account.' });
   /* Nothing is written. This step exists to hand over a secret and prove, at the
      next step, that an authenticator really holds it — enabling in one step would
@@ -1511,11 +1519,11 @@ router.post('/admin/totp/start', (req, res) => {
   res.json({ secret, uri: totp.otpauthUri(secret, me.username) });
 });
 
-router.post('/admin/totp/enable', (req, res) => {
+router.post('/admin/totp/enable', async (req, res) => {
   const b = req.body || {};
   const secret = typeof b.secret === 'string' ? b.secret.replace(/\s/g, '') : '';
   const code = typeof b.code === 'string' ? b.code.replace(/\s/g, '') : '';
-  const me = q.get('SELECT * FROM admins WHERE id=?', req.admin.id);
+  const me = await q.get('SELECT * FROM admins WHERE id=?', req.admin.id);
   if (A.totpEnabled(me)) return res.status(409).json({ error: 'Two-factor is already on for this account.' });
   if (!secret) return bad(res, 'Start again: no secret was carried over from the first step.');
 
@@ -1526,18 +1534,18 @@ router.post('/admin/totp/enable', (req, res) => {
     return res.status(403).json({ error: 'That code does not match. Check the clock on your phone, then try again.' });
   }
 
-  const codes = A.issueRecoveryCodes(me.id);
-  q.run('UPDATE admins SET totp_secret=?, totp_enabled_at=?, totp_last_counter=? WHERE id=?',
+  const codes = await A.issueRecoveryCodes(me.id);
+  await q.run('UPDATE admins SET totp_secret=?, totp_enabled_at=?, totp_last_counter=? WHERE id=?',
     secret, nowISO(), counter, me.id);
-  audit(req, 'admin.totp.enabled', 'admins/' + me.username, {});
+  await audit(req, 'admin.totp.enabled', 'admins/' + me.username, {});
   /* Shown once, here and nowhere else: only the hashes are kept, so no later
      request — and no support conversation — can produce them again. */
   res.json({ ok: true, recoveryCodes: codes });
 });
 
-router.post('/admin/totp/disable', (req, res) => {
+router.post('/admin/totp/disable', async (req, res) => {
   const b = req.body || {};
-  const me = q.get('SELECT * FROM admins WHERE id=?', req.admin.id);
+  const me = await q.get('SELECT * FROM admins WHERE id=?', req.admin.id);
   if (!A.totpEnabled(me)) return res.json({ ok: true, alreadyOff: true });
   /* The password again, deliberately. Turning a second factor ON is an upgrade
      and needs no ceremony; turning it OFF is a downgrade, and a downgrade that a
@@ -1545,15 +1553,15 @@ router.post('/admin/totp/disable', (req, res) => {
   if (!A.verifyPassword(typeof b.password === 'string' ? b.password : '', me.pass_hash)) {
     return res.status(403).json({ error: 'Enter your current password to turn two-factor off.' });
   }
-  q.run('UPDATE admins SET totp_secret=NULL, totp_enabled_at=NULL, totp_last_counter=NULL WHERE id=?', me.id);
-  q.run('DELETE FROM admin_recovery_codes WHERE admin_id=?', me.id);
-  audit(req, 'admin.totp.disabled', 'admins/' + me.username, {});
+  await q.run('UPDATE admins SET totp_secret=NULL, totp_enabled_at=NULL, totp_last_counter=NULL WHERE id=?', me.id);
+  await q.run('DELETE FROM admin_recovery_codes WHERE admin_id=?', me.id);
+  await audit(req, 'admin.totp.disabled', 'admins/' + me.username, {});
   res.json({ ok: true });
 });
 
-router.get('/admin/audit', (req, res) => {
+router.get('/admin/audit', async (req, res) => {
   const limit = clamp(int(req.query.limit, 60), 1, 300);
-  const rows = q.all('SELECT * FROM audit ORDER BY id DESC LIMIT ?', limit);
+  const rows = await q.all('SELECT * FROM audit ORDER BY id DESC LIMIT ?', limit);
   res.json({
     items: rows.map(r => ({
       id: r.id, admin: r.admin_name, action: r.action, target: r.target,
@@ -1565,7 +1573,7 @@ router.get('/admin/audit', (req, res) => {
 /* =================== THE PUBLIC CATALOGUE (read) ===================
    The shape matches the student-side mock, so the front end could move to the API
    without rewriting its markup. // TODO(frontend): replace _mock.js with this endpoint */
-router.get('/catalog', (req, res) => {
+router.get('/catalog', async (req, res) => {
   /* Owner's decision, 2026-08-13: while the platform is VPET-only, the other
      five are not merely unbuyable, they are not shown at all. A "coming soon"
      card that has said coming soon for months reads as a dead product, and
@@ -1577,10 +1585,10 @@ router.get('/catalog', (req, res) => {
      An administrator still sees everything: they are the person who has to
      manage the parked families, and hiding them from the only screen that can
      open them again would be its own trap. */
-  const hideParked = !A.currentAdmin(req);
+  const hideParked = !await A.currentAdmin(req);
   const visible = f => !(hideParked && (f.status || 'ready') === 'coming_soon');
 
-  const families = q.all('SELECT * FROM families ORDER BY sort').filter(visible).map(f => ({
+  const families = (await q.all('SELECT * FROM families ORDER BY sort')).filter(visible).map(f => ({
     id: f.id, name: f.name, sub: f.sub, format: f.format, skills: jparse(f.skills_json, []),
     /* 'ready' means the family has a working blueprint and can hold tests;
        'coming_soon' families are listed but cannot be bought or opened. */
@@ -1597,21 +1605,21 @@ router.get('/catalog', (req, res) => {
      exam in the library belonging to a family the filter chips cannot even
      name — and one the engine would refuse to open. */
   const shown = new Set(families.map(f => f.id));
-  const tests = q.all("SELECT * FROM tests WHERE status='published' ORDER BY family_id, id")
-    .filter(t => shown.has(t.family_id)).map(t => {
-    const sections = q.all('SELECT * FROM sections WHERE test_id=? ORDER BY sort, id', t.id).map(s => ({
+  const tests = await Promise.all((await q.all("SELECT * FROM tests WHERE status='published' ORDER BY family_id, id"))
+    .filter(t => shown.has(t.family_id)).map(async t => {
+    const sections = await Promise.all((await q.all('SELECT * FROM sections WHERE test_id=? ORDER BY sort, id', t.id)).map(async s => ({
       name: s.name, type: s.type, minutes: s.minutes,
-      items: q.val('SELECT COUNT(*) c FROM section_items WHERE section_id=?', s.id)
-    }));
+      items: await q.val('SELECT COUNT(*) c FROM section_items WHERE section_id=?', s.id)
+    })));
     return {
       id: t.id, familyId: t.family_id, title: t.title, level: t.level,
       durationMin: t.duration_min, scoring: t.scoring, guide: jparse(t.guide_json, []),
-      skills: [...new Set(q.all('SELECT skill FROM sections WHERE test_id=?', t.id).map(r => r.skill))],
+      skills: [...new Set((await q.all('SELECT skill FROM sections WHERE test_id=?', t.id)).map(r => r.skill))],
       sections,
       comingSoon: sections.some(s => !s.items)
     };
-  });
-  const packages = q.all('SELECT * FROM packages WHERE active=1 ORDER BY sort').map(p => ({
+  }));
+  const packages = (await q.all('SELECT * FROM packages WHERE active=1 ORDER BY sort')).map(p => ({
     id: p.id, name: p.name, price: p.price, familyId: p.family_id,
     desc: p.description, perks: jparse(p.perks_json, []), featured: !!p.featured
   }));
@@ -1629,7 +1637,7 @@ router.get('/catalog', (req, res) => {
 /* ==================== Self-study (public) ==================== */
 
 /** The irregular verb table. Searchable by V1, V2, V3 or the Vietnamese gloss. */
-router.get('/learn/irregular-verbs', (req, res) => {
+router.get('/learn/irregular-verbs', async (req, res) => {
   const level = LEVELS.includes(str(req.query.level, 2)) ? str(req.query.level, 2) : '';
   const grp = ['aaa', 'aba', 'abb', 'abc'].includes(str(req.query.group, 3)) ? str(req.query.group, 3) : '';
   const kw = str(req.query.q, 60).toLowerCase();
@@ -1646,7 +1654,7 @@ router.get('/learn/irregular-verbs', (req, res) => {
   const sql = 'SELECT * FROM irregular_verbs' +
     (where.length ? ' WHERE ' + where.join(' AND ') : '') + ' ORDER BY sort, v1';
 
-  const verbs = q.all(sql, ...args).map(v => ({
+  const verbs = (await q.all(sql, ...args)).map(v => ({
     v1: v.v1, v2: v.v2, v3: v.v3, ving: v.ving,
     ipaUk: v.ipa_uk, ipaUs: v.ipa_us, vi: v.vi,
     group: v.grp, level: v.level, note: v.note,
@@ -1654,14 +1662,14 @@ router.get('/learn/irregular-verbs', (req, res) => {
   }));
 
   res.set('Cache-Control', 'public, max-age=300').json({
-    total: q.val('SELECT COUNT(*) c FROM irregular_verbs'),
+    total: await q.val('SELECT COUNT(*) c FROM irregular_verbs'),
     count: verbs.length,
     verbs
   });
 });
 
 /** Linking words — filtered by function, register, level, or a search term */
-router.get('/learn/linking-words', (req, res) => {
+router.get('/learn/linking-words', async (req, res) => {
   const fns = new Set(LINKING.FUNCTIONS.map(f => f[0]));
   const regs = new Set(LINKING.REGISTERS.map(r => r[0]));
   const fn = fns.has(str(req.query.fn, 20)) ? str(req.query.fn, 20) : '';
@@ -1683,13 +1691,13 @@ router.get('/learn/linking-words', (req, res) => {
   const sql = 'SELECT * FROM linking_words' +
     (where.length ? ' WHERE ' + where.join(' AND ') : '') + ' ORDER BY sort, word';
 
-  const words = q.all(sql, ...args).map(w => ({
+  const words = (await q.all(sql, ...args)).map(w => ({
     word: w.word, fn: w.fn, register: w.register, pos: w.pos, punct: w.punct,
     vi: w.vi, level: w.level, exEn: w.ex_en, exVi: w.ex_vi, warn: w.warn
   }));
 
   res.set('Cache-Control', 'public, max-age=300').json({
-    total: q.val('SELECT COUNT(*) c FROM linking_words'),
+    total: await q.val('SELECT COUNT(*) c FROM linking_words'),
     count: words.length,
     functions: LINKING.FUNCTIONS.map(([id, label]) => ({ id, label })),
     registers: LINKING.REGISTERS.map(([id, label]) => ({ id, label })),
@@ -1698,7 +1706,7 @@ router.get('/learn/linking-words', (req, res) => {
 });
 
 /* Grammar points — a compact list, without the examples, to keep the payload small */
-router.get('/learn/grammar', (req, res) => {
+router.get('/learn/grammar', async (req, res) => {
   const grp = str(req.query.grp, 20);
   const level = LEVELS.includes(str(req.query.level, 2).toUpperCase())
     ? str(req.query.level, 2).toUpperCase() : '';
@@ -1710,31 +1718,31 @@ router.get('/learn/grammar', (req, res) => {
   const sql = 'SELECT * FROM grammar_points' +
     (where.length ? ' WHERE ' + where.join(' AND ') : '') + ' ORDER BY sort, id';
 
-  const points = q.all(sql, ...args).map(p => ({
+  const points = await Promise.all((await q.all(sql, ...args)).map(async p => ({
     slug: p.slug, nameEn: p.name_en, nameVi: p.name_vi,
     grp: p.grp, level: p.level, summary: p.summary,
     formula: jparse(p.formula_json), signals: jparse(p.signals_json),
     counts: {
-      example: q.val('SELECT COUNT(*) c FROM grammar_examples WHERE point_id=? AND kind=?', p.id, 'example'),
-      practice: q.val('SELECT COUNT(*) c FROM grammar_examples WHERE point_id=? AND kind=?', p.id, 'practice')
+      example: await q.val('SELECT COUNT(*) c FROM grammar_examples WHERE point_id=? AND kind=?', p.id, 'example'),
+      practice: await q.val('SELECT COUNT(*) c FROM grammar_examples WHERE point_id=? AND kind=?', p.id, 'practice')
     }
-  }));
+  })));
 
   res.set('Cache-Control', 'public, max-age=300').json({
-    total: q.val('SELECT COUNT(*) c FROM grammar_points'),
+    total: await q.val('SELECT COUNT(*) c FROM grammar_points'),
     count: points.length,
-    groups: q.all('SELECT grp, COUNT(*) c FROM grammar_points GROUP BY grp ORDER BY grp')
+    groups: (await q.all('SELECT grp, COUNT(*) c FROM grammar_points GROUP BY grp ORDER BY grp'))
       .map(g => ({ id: g.grp, count: g.c })),
     points
   });
 });
 
 /* One grammar point with all of its examples and practice items */
-router.get('/learn/grammar/:slug', (req, res) => {
-  const p = q.get('SELECT * FROM grammar_points WHERE slug = ?', str(req.params.slug, 60));
+router.get('/learn/grammar/:slug', async (req, res) => {
+  const p = await q.get('SELECT * FROM grammar_points WHERE slug = ?', str(req.params.slug, 60));
   if (!p) return res.status(404).json({ error: 'No such grammar point' });
 
-  const rows = q.all(
+  const rows = await q.all(
     'SELECT * FROM grammar_examples WHERE point_id = ? ORDER BY kind, sort, id', p.id);
 
   res.set('Cache-Control', 'public, max-age=300').json({
@@ -1755,7 +1763,7 @@ router.get('/learn/grammar/:slug', (req, res) => {
 /* Vocabulary — the list, without senses and examples, so the payload stays small.
    The search reaches into vocab_forms as well as the headword, because a learner
    who meets "children" in a text looks up "children", not "child". */
-router.get('/learn/vocab', (req, res) => {
+router.get('/learn/vocab', async (req, res) => {
   const level = LEVELS.includes(str(req.query.level, 2).toUpperCase())
     ? str(req.query.level, 2).toUpperCase() : '';
   const pos = str(req.query.pos, 20).toLowerCase();
@@ -1776,23 +1784,23 @@ router.get('/learn/vocab', (req, res) => {
   }
   const w = where.length ? ' WHERE ' + where.join(' AND ') : '';
 
-  const entries = q.all(
+  const entries = await Promise.all((await q.all(
     `SELECT e.* FROM vocab_entries e ${w} ORDER BY e.sort, e.headword, e.pos LIMIT ? OFFSET ?`,
-    ...args, limit, offset).map(e => ({
+    ...args, limit, offset)).map(async e => ({
       headword: e.headword, pos: e.pos, level: e.level, levelSource: e.level_source,
       ipaUk: e.ipa_uk, ipaUs: e.ipa_us, freqRank: e.freq_rank,
-      senses: q.val('SELECT COUNT(*) c FROM vocab_senses WHERE entry_id=?', e.id),
-      forms: q.val('SELECT COUNT(*) c FROM vocab_forms WHERE entry_id=?', e.id),
-      collocations: q.val('SELECT COUNT(*) c FROM collocations WHERE entry_id=?', e.id)
-    }));
+      senses: await q.val('SELECT COUNT(*) c FROM vocab_senses WHERE entry_id=?', e.id),
+      forms: await q.val('SELECT COUNT(*) c FROM vocab_forms WHERE entry_id=?', e.id),
+      collocations: await q.val('SELECT COUNT(*) c FROM collocations WHERE entry_id=?', e.id)
+    })));
 
   res.set('Cache-Control', 'public, max-age=300').json({
-    total: q.val('SELECT COUNT(*) c FROM vocab_entries'),
-    matched: q.val(`SELECT COUNT(*) c FROM vocab_entries e ${w}`, ...args),
+    total: await q.val('SELECT COUNT(*) c FROM vocab_entries'),
+    matched: await q.val(`SELECT COUNT(*) c FROM vocab_entries e ${w}`, ...args),
     count: entries.length,
-    levels: q.all('SELECT level, COUNT(*) c FROM vocab_entries GROUP BY level ORDER BY level')
+    levels: (await q.all('SELECT level, COUNT(*) c FROM vocab_entries GROUP BY level ORDER BY level'))
       .map(r => ({ id: r.level, count: r.c })),
-    parts: q.all('SELECT pos, COUNT(*) c FROM vocab_entries GROUP BY pos ORDER BY pos')
+    parts: (await q.all('SELECT pos, COUNT(*) c FROM vocab_entries GROUP BY pos ORDER BY pos'))
       .map(r => ({ id: r.pos, count: r.c })),
     entries
   });
@@ -1802,34 +1810,34 @@ router.get('/learn/vocab', (req, res) => {
    together — "book" the noun and "book" the verb are separate entries, but a
    learner looking the word up wants both, and which one they meant is exactly
    what they do not know yet. */
-router.get('/learn/vocab/:headword', (req, res) => {
+router.get('/learn/vocab/:headword', async (req, res) => {
   const head = str(req.params.headword, 60).toLowerCase();
-  const found = q.all(
+  const found = await q.all(
     'SELECT * FROM vocab_entries WHERE lower(headword) = ? ORDER BY sort, pos', head);
   if (!found.length) return res.status(404).json({ error: 'No such word' });
 
   res.set('Cache-Control', 'public, max-age=300').json({
     headword: found[0].headword,
-    entries: found.map(e => ({
+    entries: await Promise.all(found.map(async e => ({
       pos: e.pos, level: e.level, levelSource: e.level_source,
       ipaUk: e.ipa_uk, ipaUs: e.ipa_us, freqRank: e.freq_rank,
       /* Source and licence travel with the entry: docs/LEARNING.md §1.3 asks for
          attribution, and these lists are shared under CC BY-SA. */
       source: e.source, licence: e.licence,
-      senses: q.all('SELECT * FROM vocab_senses WHERE entry_id=? ORDER BY sort, id', e.id)
-        .map(s => ({
+      senses: await Promise.all((await q.all('SELECT * FROM vocab_senses WHERE entry_id=? ORDER BY sort, id', e.id))
+        .map(async s => ({
           en: s.en, vi: s.vi, level: s.level, note: s.note,
-          examples: q.all('SELECT * FROM vocab_examples WHERE sense_id=? ORDER BY sort, id', s.id)
+          examples: (await q.all('SELECT * FROM vocab_examples WHERE sense_id=? ORDER BY sort, id', s.id))
             .map(x => ({ en: x.en, vi: x.vi, source: x.source, licence: x.licence }))
-        })),
-      forms: q.all('SELECT * FROM vocab_forms WHERE entry_id=? ORDER BY sort, id', e.id)
+        }))),
+      forms: (await q.all('SELECT * FROM vocab_forms WHERE entry_id=? ORDER BY sort, id', e.id))
         .map(f => ({ form: f.form, kind: f.kind, note: f.note })),
-      collocations: q.all('SELECT * FROM collocations WHERE entry_id=? ORDER BY sort, id', e.id)
+      collocations: (await q.all('SELECT * FROM collocations WHERE entry_id=? ORDER BY sort, id', e.id))
         .map(c => ({
           chunk: c.chunk, kind: c.kind, level: c.level,
           exEn: c.ex_en, exVi: c.ex_vi, note: c.note
         }))
-    }))
+    })))
   });
 });
 
@@ -1939,21 +1947,21 @@ function dayStartISO(now) {
 const holesFor = ids => ids.map(() => '?').join(',');
 
 /** Rows of a deck by id, in one query rather than one per card. */
-function deckRows(deckId, ids) {
+async function deckRows(deckId, ids) {
   const d = DECKS[deckId];
   if (!d || !ids.length) return new Map();
-  return new Map(q.all(d.rowsSql(holesFor(ids)), ...ids).map(r => [r.id, r]));
+  return new Map((await q.all(d.rowsSql(holesFor(ids)), ...ids)).map(r => [r.id, r]));
 }
 
 /** Every reviewable id in a deck, in teaching order. */
-function deckIds(deckId) {
-  return q.all(DECKS[deckId].idsSql).map(r => r.id);
+async function deckIds(deckId) {
+  return (await q.all(DECKS[deckId].idsSql)).map(r => r.id);
 }
 
 /** The learner's rows for a deck, keyed by item id. */
-function progressOf(userId, deckId) {
-  return new Map(q.all(
-    'SELECT * FROM learn_progress WHERE user_id=? AND item_type=?', userId, deckId)
+async function progressOf(userId, deckId) {
+  return new Map((await q.all(
+    'SELECT * FROM learn_progress WHERE user_id=? AND item_type=?', userId, deckId))
     .map(r => [r.item_id, r]));
 }
 
@@ -1969,7 +1977,7 @@ const asState = row => ({
  * first and in due order, oldest first, so a backlog is worked off rather than
  * shuffled around; unseen cards fill the rest of the batch up to the daily cap.
  */
-router.get('/learn/review', A.requireUser, (req, res) => {
+router.get('/learn/review', A.requireUser, async (req, res) => {
   const want = str(req.query.deck, 30);
   const decks = DECK_IDS.includes(want) ? [want] : DECK_IDS;
   const now = new Date();
@@ -1978,7 +1986,7 @@ router.get('/learn/review', A.requireUser, (req, res) => {
   /* The daily cap counts rows CREATED today rather than reviews done today: a
      card seen for the first time is the expensive one, and re-reviewing it in
      the same session must not eat the allowance twice. */
-  const introducedToday = q.val(
+  const introducedToday = await q.val(
     'SELECT COUNT(*) c FROM learn_progress WHERE user_id=? AND created_at >= ?',
     req.user.id, dayStartISO(now)) || 0;
   let newAllowance = Math.max(0, NEW_PER_DAY - introducedToday);
@@ -1988,8 +1996,8 @@ router.get('/learn/review', A.requireUser, (req, res) => {
   const unseen = [];
 
   for (const id of decks) {
-    const ids = deckIds(id);
-    const known = progressOf(req.user.id, id);
+    const ids = await deckIds(id);
+    const known = await progressOf(req.user.id, id);
     let dueCount = 0;
     for (const itemId of ids) {
       const row = known.get(itemId);
@@ -2023,7 +2031,7 @@ router.get('/learn/review', A.requireUser, (req, res) => {
     byDeck.get(p.deck).push(p.itemId);
   });
   const rows = new Map();
-  for (const [deckId, ids] of byDeck) rows.set(deckId, deckRows(deckId, ids));
+  for (const [deckId, ids] of byDeck) rows.set(deckId, await deckRows(deckId, ids));
 
   const cards = picked.map(p => {
     const row = rows.get(p.deck).get(p.itemId);
@@ -2059,7 +2067,7 @@ router.get('/learn/review', A.requireUser, (req, res) => {
  * Body: { deck, itemId, grade }. The schedule is computed from the server's
  * clock and the stored state; nothing about timing is taken from the caller.
  */
-router.post('/learn/review', A.requireUser, A.csrfGuard, (req, res) => {
+router.post('/learn/review', A.requireUser, A.csrfGuard, async (req, res) => {
   const b = req.body || {};
   const deck = str(b.deck, 30);
   const itemId = int(b.itemId, 0);
@@ -2070,16 +2078,16 @@ router.post('/learn/review', A.requireUser, A.csrfGuard, (req, res) => {
   if (itemId <= 0) return bad(res, 'Missing item');
   /* The item has to exist in the deck it claims to belong to. Without this a
      caller could file progress against any integer and grow the table. */
-  if (!deckRows(deck, [itemId]).has(itemId)) return res.status(404).json({ error: 'No such card' });
+  if (!(await deckRows(deck, [itemId])).has(itemId)) return res.status(404).json({ error: 'No such card' });
 
   const now = new Date();
   const at = now.toISOString();
-  const prev = q.get(
+  const prev = await q.get(
     'SELECT * FROM learn_progress WHERE user_id=? AND item_type=? AND item_id=?',
     req.user.id, deck, itemId);
   const next = srs.schedule(prev ? asState(prev) : null, grade, now);
 
-  q.run(
+  await q.run(
     `INSERT INTO learn_progress
        (user_id, item_type, item_id, ease, interval_days, reps, lapses, state,
         last_grade, due_at, reviewed_at, created_at)
