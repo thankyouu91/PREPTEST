@@ -1055,15 +1055,23 @@ function seedTable(name, table, rows, insertSql, values) {
 function seedVpetItems() {
   const rows = require('./data/vpet-items').rows();
   const at = nowISO();
+  /* key_points_json is carried through the upsert, not only the insert. It is
+     what the AI marker checks the response against on parts B, D and I, and
+     those three carry 40%, 35% and 30% of their part's marks between them —
+     an item that reaches the bank without its key points is an item whose
+     largest criterion has nothing to compare to. Leaving it off the UPDATE arm
+     would be the subtler version of the same bug: the points would arrive on a
+     fresh database and never on an existing one. */
   const ins = db.prepare(`INSERT INTO questions
       (ext_key, family_id, skill, level, type, part, prompt, options_json, answer,
-       explanation, tags_json, source, licence, status, created_at)
-    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?, 'active', ?)
+       explanation, tags_json, key_points_json, source, licence, status, created_at)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?, 'active', ?)
     ON CONFLICT(ext_key) DO UPDATE SET
       skill=excluded.skill, level=excluded.level, type=excluded.type,
       part=excluded.part, prompt=excluded.prompt, options_json=excluded.options_json,
       answer=excluded.answer, explanation=excluded.explanation,
-      tags_json=excluded.tags_json, source=excluded.source, licence=excluded.licence`);
+      tags_json=excluded.tags_json, key_points_json=excluded.key_points_json,
+      source=excluded.source, licence=excluded.licence`);
 
   let n = 0;
   tx(() => {
@@ -1071,7 +1079,7 @@ function seedVpetItems() {
       const before = q.val('SELECT 1 FROM questions WHERE ext_key=?', r.key);
       ins.run(r.key, 'vpet', r.skill, r.level, r.type, r.part, r.prompt,
         JSON.stringify(r.options), r.answer, r.explanation,
-        JSON.stringify(r.tags), r.source, r.licence, at);
+        JSON.stringify(r.tags), JSON.stringify(r.keyPoints), r.source, r.licence, at);
       if (!before) n++;
     }
   });

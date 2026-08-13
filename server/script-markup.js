@@ -116,6 +116,22 @@ const DEFAULTS = {
    needs it. */
 const CHARS_PER_SECOND = 17;
 
+/* The rate the MP3s in the bank are actually built at.
+   ---------------------------------------------------------------------------
+   Not the same number as DEFAULTS.speed above, and the difference is not a
+   mistake in either. 1.2 is ElevenLabs' hard ceiling — `clampSpeed()` will not
+   send more, and a test pins the preview to it. Kokoro has no such ceiling, so
+   `scripts/dung-audio-kokoro.mjs` renders at the 1.25 the owner asked for, and
+   the 17 above was itself derived by dividing out that 1.25.
+
+   It lives here so the auditor and the renderer read one figure. They were
+   reading two, four per cent apart: `soat-de-vpet.mjs` estimated at 1.2 while
+   the files were built at 1.25. That only shows on scripts nobody has rendered
+   yet — the auditor prefers a measured duration wherever one exists — which is
+   exactly the moment an author is deciding whether a new part G passage fits
+   its clock, and the moment a wrong figure costs the most. */
+const BUILD_SPEED = 1.25;
+
 const SHORT_MARKS = new Set([',', ';', ':', '"', '”']);   // incl. curly close quote
 const LONG_MARKS = new Set(['.', '!', '?', '…']);         // incl. ellipsis
 
@@ -328,4 +344,4 @@ function splitTurns(raw) {
   return turns;
 }
 
-module.exports = { parseScript, splitTurns, DEFAULTS, CHARS_PER_SECOND };
+module.exports = { parseScript, splitTurns, DEFAULTS, CHARS_PER_SECOND, BUILD_SPEED };

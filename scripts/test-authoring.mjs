@@ -468,6 +468,74 @@ console.log('\n\x1b[1m== Rubric · ôn tập cá nhân hoá ==\x1b[0m');
     'Lời khuyên kèm trang tự học để bấm sang');
 }
 
+/* ---- Ý chính có tới được tay máy chấm không ----
+   Ba chặng, và đứt chặng nào cũng ra cùng một triệu chứng: bài vẫn được chấm,
+   tiêu chí nặng nhất của part vẫn ra một con số, chỉ là con số ấy không đối
+   chiếu với gì cả. Không chặng nào tự báo lỗi, nên phải kiểm cả ba. */
+{
+  const G = require('../server/marking-guide.js');
+  const R = require('../server/data/rubrics.js');
+  const rows = require('../server/data/vpet-items.js').rows();
+
+  /* Chặng 1 — tệp nội dung có ý chính, đủ số mà thang điểm cần. */
+  const b = rows.filter(i => i.part === 'B');
+  const dI = rows.filter(i => ['D', 'I'].includes(i.part));
+  ok(b.every(i => i.keyPoints.length === 6),
+    'Mỗi bài part B có đúng 6 ý chính — số nhỏ nhất mà cả 7 bậc content đều với tới',
+    b.map(i => i.keyPoints.length).join(','));
+  ok(dI.every(i => i.keyPoints.length >= 4),
+    'Mỗi bài part D và I liệt kê đủ thành phần đề bài yêu cầu, kể cả văn phong',
+    dI.map(i => i.keyPoints.length).join(','));
+
+  /* Sáu ý là mốc tính được chứ không phải chọn cho tròn: với 5 ý, bao phủ 1 ý
+     đã là 20% nên bậc 1 ("dưới 20%") không ai với tới. Kiểm lại phép tính ấy ở
+     đây, để nếu ai sửa thang điểm content thì con số 6 sẽ đỏ chứ không lặng lẽ
+     sai. */
+  const bacTheoPhanTram = p => (p === 0 ? 0 : p < 20 ? 1 : p <= 35 ? 2 : p <= 55 ? 3 : p <= 75 ? 4 : p <= 90 ? 5 : 6);
+  const phuKin = n => new Set(Array.from({ length: n + 1 }, (_, k) => bacTheoPhanTram(k / n * 100))).size === 7;
+  ok(phuKin(6) && !phuKin(5), '6 là số ý nhỏ nhất phủ kín cả bảy bậc content');
+
+  /* Chặng 2 — CSDL có giữ lại không. seedVpetItems() từng bỏ rơi cột này, và
+     mất ở đây thì tệp nội dung vẫn đúng, chỉ kho là rỗng. */
+  {
+    const { q } = require('../server/db.js');
+    const thieu = q.all(
+      `SELECT ext_key, key_points_json FROM questions
+        WHERE family_id='vpet' AND part IN ('B','D','I') AND ext_key IS NOT NULL`)
+      .filter(r => JSON.parse(r.key_points_json || '[]').length < 4);
+    ok(thieu.length === 0, 'Ý chính theo câu vào tới kho, không rụng ở bước nạp',
+      thieu.map(r => r.ext_key).join(', '));
+  }
+
+  /* Chặng 3 — máy chấm có được xem không. Một trường không ai đọc thì cũng như
+     không có, mà lại trông như đã xong. */
+  const bai = b[0];
+  const nhacB = G.userPrompt('B', bai, 'the library fixes things');
+  ok(bai.keyPoints.every(k => nhacB.includes(k)),
+    'Lời nhắc part B mang theo đủ ý chính của chính câu ấy');
+  ok(!nhacB.includes('90') && !/GSE|band \d/i.test(nhacB),
+    'Lời nhắc không lộ thang điểm — máy chấm trả bậc, nền tảng mới quy ra điểm');
+
+  const nhacD = G.userPrompt('D', rows.find(i => i.part === 'D'), 'Dear Sir');
+  ok(/elements this task requires/.test(nhacD) && /key points of the source/.test(nhacB),
+    'Hai part gọi tên danh sách theo đúng tiêu chí của mình: content so nội dung, task đếm thành phần');
+
+  /* Part H không có ý chính và không cần: bản đối chiếu của nó là câu đã đọc. */
+  const h = require('../server/data/vpet-scripts.js').allItems().find(i => i.part === 'H');
+  const nhacH = G.userPrompt('H', h, 'nghe được gì đó');
+  ok(nhacH.includes(h.script) && !/key points|elements this task/.test(nhacH),
+    'Part H được xem câu gốc thay cho ý chính');
+
+  /* Thang content viết bằng phần trăm, nên bắt máy chấm trả luôn số ý nó đếm
+     được: bậc 5 kèm "2/6" là mâu thuẫn máy dò ra được, còn bậc 5 trơ trọi thì
+     không. Part chấm bằng `task` không tính phần trăm nên không hỏi. */
+  ok(G.responseSchema('B').required.includes('keyPointsCovered')
+    && !G.responseSchema('D').required.includes('keyPointsCovered'),
+    'Part chấm content phải trả về số ý đã bao phủ; part chấm task thì không');
+  ok(Object.keys(R.PART_RUBRICS).every(p => G.responseSchema(p).additionalProperties === false),
+    'Lược đồ trả lời vẫn khoá, không cho máy chấm thêm trường điểm số');
+}
+
 if (cookie && csrf) {
   const post = (p, body) => fetch(BASE + '/api' + p, {
     method: 'POST',

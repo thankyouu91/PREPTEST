@@ -29,7 +29,7 @@ const { q, jparse } = require('../server/db.js');
 const FORMATS = require('../server/data/exam-formats.js');
 const RUBRICS = require('../server/data/rubrics.js');
 const SCRIPTS = require('../server/data/vpet-scripts.js');
-const { parseScript } = require('../server/script-markup.js');
+const { parseScript, BUILD_SPEED } = require('../server/script-markup.js');
 
 const args = process.argv.slice(2);
 const GON = args.includes('--gon');
@@ -78,9 +78,12 @@ function audioSeconds(part, need) {
       WHERE qq.part = ? AND r.status='ok' AND r.ms > 0
       GROUP BY r.question_id`, part).map(r => r.ms / 1000);
 
+  /* Ước tính ở đúng tốc độ Kokoro dựng thật, không phải tốc độ mặc định của
+     ElevenLabs — hai con số lệch nhau 4%, và chênh ấy chỉ hiện ra ở kịch bản
+     chưa ai dựng, tức đúng lúc tác giả đang cân xem đoạn mới có vừa đồng hồ. */
   const list = (thuc.length >= need ? thuc : SCRIPTS.allItems()
     .filter(i => i.part === part && i.script)
-    .map(i => parseScript(i.script).stats.estimatedMs / 1000))
+    .map(i => parseScript(i.script, { speed: BUILD_SPEED }).stats.estimatedMs / 1000))
     .sort((a, b) => b - a)
     .slice(0, need);
 
@@ -157,10 +160,30 @@ for (const bp of Object.values(BLUEPRINT)) {
   const active = mine.filter(i => i.status === 'active');
   const issues = [];
 
-  /* ---- Bể ---- */
+  /* ---- Bể ----
+     Đếm THEO BẬC chứ không cộng gộp, vì bộ sinh đề chọn theo bậc: nó xếp câu
+     đúng bậc của đề lên trước rồi mới cắt đủ số lượng. Cộng gộp là chỗ lỗi này
+     từng trốn được — part E có 16 câu, gấp đôi số blueprint đòi, nên cột này
+     xanh; nhưng 16 ấy là 8 ở B1 và 8 ở B2, mà một đề B1 chỉ rút từ 8 câu B1 và
+     rút hết cả 8. Hai lượt thi B1 nhận đúng một bộ câu, chỉ khác thứ tự.
+
+     Đúng bằng số blueprint là trường hợp xấu nhất, xấu hơn cả thiếu: thiếu thì
+     phần bù lấy từ bậc khác nên hai lượt còn khác nhau. */
   let be = OK;
   if (mine.length < bp.items) { be = BAD; hong++; issues.push(`thiếu ${bp.items - mine.length} câu để dựng nổi một đề`); }
-  else if (mine.length < bp.items * 2) { be = WARN; canh++; issues.push(`chỉ ${mine.length}/${bp.items} — lượt thi lại sẽ lặp lại nguyên si`); }
+  else {
+    const theoBac = {};
+    mine.forEach(i => { theoBac[i.level] = (theoBac[i.level] || 0) + 1; });
+    /* Bậc "đúng bằng" hoặc "trên số blueprint nhưng chưa gấp đôi": lượt thi lại
+       ở bậc ấy sẽ trùng toàn bộ hoặc gần toàn bộ. */
+    const ket = Object.entries(theoBac)
+      .filter(([, n]) => n >= bp.items && n < bp.items * 2)
+      .map(([bac, n]) => `${bac} ${n}/${bp.items}`);
+    if (ket.length) {
+      be = WARN; canh++;
+      issues.push(`bể đủ tổng cộng nhưng kẹt ở bậc ${ket.join(', ')} — lượt thi lại ở bậc đó rút đúng cùng bộ câu`);
+    }
+  }
 
   /* ---- Loại câu ---- */
   const laLoai = [...new Set(mine.map(i => i.type))].filter(t => !bp.types.includes(t));

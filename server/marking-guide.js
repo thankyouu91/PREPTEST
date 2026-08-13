@@ -215,6 +215,85 @@ function systemPrompt(part) {
 }
 
 /**
+ * What the marker is shown about *this* item and *this* response.
+ *
+ * `systemPrompt()` is the rubric and is identical for every candidate sitting
+ * the part. This is the half that varies, and it exists because two of the
+ * criteria cannot be applied without it:
+ *
+ *   · `content` (parts B and J) states its bands as percentages of key points
+ *     covered — 20%, 35%, 55%, 75%, 90%. A percentage needs a denominator, and
+ *     the denominator is the item's key points. Without them the model has to
+ *     invent its own idea of what the source contained, which is exactly the
+ *     unauditable judgement this file exists to prevent.
+ *   · `task` (parts D and I) reaches band 4 when "all required elements present
+ *     and identifiable". Somebody has to say which elements those are. If the
+ *     model derives the list from the prompt on every run, two markings of the
+ *     same script can disagree about how many elements there were, and band 4
+ *     silently means different things for two candidates who wrote the same
+ *     email. The list is pinned to the item so the band is reproducible.
+ *
+ * Part H needs neither: its reference is the sentence that was played, and
+ * `accuracy` is measured against that directly.
+ *
+ * The answer key is never included. On the parts marked here there isn't one —
+ * but stating it is the rule keeps a later part from acquiring one by accident.
+ */
+function userPrompt(part, item, response) {
+  const rubric = rubrics.PART_RUBRICS[part];
+  if (!rubric) throw new Error('No rubric for part ' + part);
+  const criteria = Object.keys(rubric.criteria);
+  const keyPoints = (item && item.keyPoints) || [];
+
+  const lines = [];
+  lines.push('## What the candidate was asked');
+  lines.push(String((item && item.prompt) || '').trim());
+  lines.push('');
+
+  /* Which reference to show is decided by which criterion is in play, not by a
+     list of part letters, so a new part gets the right reference by declaring
+     its criteria rather than by being added here. */
+  if (criteria.includes('accuracy')) {
+    lines.push('## The sentence that was played');
+    lines.push(String((item && item.script) || (item && item.answer) || '').trim());
+    lines.push('');
+    lines.push('Mark `accuracy` by comparing what you heard against that sentence,');
+    lines.push('word by word. Do not reward a fluent paraphrase: this part asks for');
+    lines.push('repetition, and a better sentence than the one played is still wrong.');
+    lines.push('');
+  }
+
+  if (criteria.includes('content')) {
+    lines.push(`## The ${keyPoints.length} key points of the source`);
+    keyPoints.forEach((k, i) => lines.push(`  ${i + 1}. ${k}`));
+    lines.push('');
+    lines.push('Count a point as covered when the candidate conveys it in their own');
+    lines.push('words. Matching the source wording is not required and is not worth');
+    lines.push('extra — the task is to reconstruct the meaning, not to memorise.');
+    lines.push('Return the count in `keyPointsCovered`, and make sure the `content`');
+    lines.push('band you choose is the one that count falls into.');
+    lines.push('');
+  }
+
+  if (criteria.includes('task')) {
+    lines.push(`## The ${keyPoints.length} elements this task requires`);
+    keyPoints.forEach((k, i) => lines.push(`  ${i + 1}. ${k}`));
+    lines.push('');
+    lines.push('These are the elements `task` is marked against. Judge each one on');
+    lines.push('whether it is present and identifiable, not on how elegantly it is');
+    lines.push('put — the other criteria mark the language. A missing element costs');
+    lines.push('marks that correct English cannot recover.');
+    lines.push('');
+  }
+
+  lines.push('## The response');
+  const text = String(response == null ? '' : response).trim();
+  lines.push(text || '(nothing was submitted)');
+
+  return lines.join('\n');
+}
+
+/**
  * The JSON schema the marker must answer in.
  *
  * Strict, with `additionalProperties: false` on every object, so a model that
@@ -241,7 +320,7 @@ function responseSchema(part) {
     };
   }
 
-  return {
+  const schema = {
     type: 'object',
     additionalProperties: false,
     properties: {
@@ -259,6 +338,21 @@ function responseSchema(part) {
     },
     required: ['criteria', 'refusal', 'transcript']
   };
+
+  /* The `content` criterion declares its measurable quantities as
+     keyPointsCovered and keyPointsTotal, and its bands are stated as
+     percentages of them. Asking for the count back is what lets the platform
+     check the band against its own definition — a model that reports 2 of 6
+     covered and then awards band 5 has contradicted itself in a way that can
+     be caught automatically, which no amount of prose in the prompt achieves.
+     It is also what lets a report say "4 of 6" instead of "some". */
+  if (Object.keys(rubric.criteria).includes('content')) {
+    schema.properties.keyPointsCovered = { type: 'integer', minimum: 0,
+      description: 'How many of the listed key points the response conveys.' };
+    schema.required.push('keyPointsCovered');
+  }
+
+  return schema;
 }
 
 /** Every part the AI marker is allowed to touch. */
@@ -266,5 +360,5 @@ const MARKED_PARTS = Object.keys(rubrics.PART_RUBRICS);
 
 module.exports = {
   SCALE_MIN, SCALE_MAX, REFUSALS, NEVER, MARKED_PARTS,
-  bandToGse, partResult, skillResult, systemPrompt, responseSchema
+  bandToGse, partResult, skillResult, systemPrompt, userPrompt, responseSchema
 };

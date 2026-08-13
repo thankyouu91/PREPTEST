@@ -61,6 +61,12 @@ node scripts/test-exam.mjs || fail=1
 step "Kiểm thử ngân hàng đề VPET (khớp blueprint, chất lượng từng câu)"
 node scripts/test-items.mjs || fail=1
 
+# Kiểm từng câu một, theo docs/BLUEPRINT.md. Chạy tách khỏi test-items.mjs vì
+# nó không cần server: đây là cổng chặn khi nhân rộng bộ đề, và cổng chặn phải
+# chạy được ở chỗ người viết đề ngồi chứ không chỉ trong bộ kiểm thử đầy đủ.
+step "Kiểm nội dung từng câu theo blueprint"
+node scripts/kiem-noi-dung.mjs || fail=1
+
 step "Kiểm thử từ vựng (lược đồ, trình nhập, tra theo dạng biến đổi)"
 node scripts/test-vocab.mjs || fail=1
 
