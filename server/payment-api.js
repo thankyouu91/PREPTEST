@@ -62,7 +62,15 @@ router.get('/api/checkout/providers', (req, res) => {
     .json({ enabled: payments.enabled(), providers: payments.available() });
 });
 
-router.post('/api/checkout', A.requireUser, A.csrfGuard, async (req, res) => {
+/* express.json() per route rather than router-wide: the VNPay IPN is a GET and
+   the MoMo IPN brings its own parser below, so a blanket one would be parsing
+   for routes that never carry a body. It has to be here, though — without it
+   `req.body` is undefined, every plan id reads as empty, and checkout answers
+   "choose one of the plans on offer" to a request that named one. Which is
+   exactly what it did until the buy screen was built and asked it properly:
+   the API test only ever exercised the signed-out path, and a 401 is decided
+   before a body is read. */
+router.post('/api/checkout', express.json({ limit: '16kb' }), A.requireUser, A.csrfGuard, async (req, res) => {
   const b = req.body || {};
   const plan = PLANS.byId(str(b.planId, 40));
   if (!plan) return bad(res, 'Choose one of the plans on offer.');

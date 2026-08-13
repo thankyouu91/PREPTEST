@@ -560,6 +560,27 @@ Code cấp ra ở trạng thái **chưa kích hoạt** và chưa gán cho ai: mu
 kích hoạt, nên code mua tặng vẫn dùng được. Người mua kích hoạt bằng luồng nhập
 code sẵn có, và kỳ hạn tính từ lúc kích hoạt.
 
+### Màn mua và màn nhận kết quả
+
+`/prep/mua-code/` hỏi `GET /api/checkout/providers` **một lần**, rồi hiện mỗi cổng
+đã cấu hình một nút. Bấm nút là gọi `POST /api/checkout` và chuyển trình duyệt
+sang trang thanh toán. Chưa có khoá thì cả khối ẩn đi và hộp thoại đọc y hệt lúc
+chưa có thanh toán online — mua qua trung tâm **không phải** là phương án chữa
+cháy, nó vẫn là đường mua bình thường, nên khi có cổng thì phần đó được **viết
+lại** chứ không bị bỏ đi.
+
+`/prep/code-cua-toi/` đọc `?order=&status=` do URL trả về để lại.
+**`pending` là trường hợp bình thường, không phải lỗi**: trình duyệt người mua
+gần như luôn về đích trước khi IPN của cổng kịp tới, nên câu đúng là "đã nhận,
+đang xác nhận". Sau khi hiện xong thì tham số bị gỡ khỏi thanh địa chỉ — tải lại
+trang không nên báo lại một lần thanh toán, và mã tham chiếu không nên nằm trong
+bookmark.
+
+Màn học viên bên khu quản trị hiện **trạng thái đơn**. Trước đây không cần: đơn
+hàng là bản ghi của việc đã xong rồi. Giờ đơn tồn tại **trước** khi tiền chuyển,
+nên `pending` mà hiển thị như `paid` thì một đơn chưa trả trông y như một đơn đã
+bán.
+
 ### Hai ngoại lệ mới trong bản đồ bảo mật
 
 Cổng thanh toán không giữ được cookie, nên IPN **không thể** có auth guard lẫn

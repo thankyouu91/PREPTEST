@@ -151,13 +151,27 @@
           '</li>').join('')
       : '<li class="py-4 text-[14px] text-muted">No codes activated.</li>';
 
+    /* An order used to be a record of something that had already happened, so
+       its status never needed showing. With a gateway in front of it an order
+       exists before the money moves, and "paid" now has to be told apart from
+       "waiting" and "did not go through" — otherwise a pending row reads as a
+       sale and the revenue tile is the only place the difference shows up. */
+    const ORDER_STATE = {
+      paid: ['badge-ok', 'Paid'],
+      pending: ['badge-hl', 'Awaiting payment'],
+      failed: ['badge-danger', 'Failed'],
+      refunded: ['badge-muted', 'Refunded']
+    };
     const orderRows = d.orders.length
-      ? d.orders.map(o =>
-          '<li class="flex items-center gap-3 py-2.5 border-b border-line last:border-0 text-[13.5px]">' +
+      ? d.orders.map(o => {
+          const st = ORDER_STATE[o.status] || ['badge-muted', o.status || 'unknown'];
+          return '<li class="flex items-center gap-3 py-2.5 border-b border-line last:border-0 text-[13.5px]">' +
             '<span class="min-w-0 flex-1 truncate"><b>' + AD.esc(o.name) + '</b></span>' +
+            '<span class="badge ' + st[0] + ' shrink-0">' + st[1] + '</span>' +
             '<span class="font-bold shrink-0">' + AD.vnd(o.amount) + '</span>' +
             '<span class="text-muted shrink-0 w-24 text-right">' + AD.date(o.createdAt) + '</span>' +
-          '</li>').join('')
+          '</li>';
+        }).join('')
       : '<li class="py-4 text-[14px] text-muted">No orders.</li>';
 
     const mm = AD.modal(

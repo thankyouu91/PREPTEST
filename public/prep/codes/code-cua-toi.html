@@ -37,6 +37,14 @@
         </div>
       </section>
 
+      <!-- Where a payment lands. The gateway sends the buyer to
+           /payments/:provider/return, which reads the order out of the database
+           and redirects here with ?order=&status=. -->
+      <div id="pay-banner" class="banner mt-6" role="status">
+        <svg viewBox="0 0 24 24" class="w-5 h-5 shrink-0 mt-0.5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>
+        <span id="pay-banner-text"></span>
+      </div>
+
       <!-- Table-shaped loading skeleton -->
       <div id="codes-loading" class="card mt-7 p-5 grid gap-4">
         <div class="skeleton h-6 w-full"></div>
@@ -96,6 +104,34 @@
 <script>
   PREP.boot({ auth: true }).then(() => {
     PrepChrome.mount({ title: 'My codes' });
+
+    /* ----- Coming back from a payment -----
+       The server has already decided the wording: it looked the order up and
+       put its real status in the query. What it says is never taken from the
+       gateway's own redirect parameters, which anyone holding the browser can
+       type — only the IPN settles an order (see server/payment-api.js).
+
+       "pending" is the ordinary case, not an error. The buyer's browser
+       usually gets back before the gateway's server-to-server call lands, so
+       the honest thing to say is that the payment is being confirmed. */
+    (function payReturn() {
+      const params = new URLSearchParams(location.search);
+      const status = params.get('status');
+      if (!status) return;
+      const banner = PREP.qs('#pay-banner');
+      const said = {
+        paid: ['banner-success', 'Payment received. Your new code is in the list below — enter it to start your term.'],
+        pending: ['banner-warn', 'Payment received and being confirmed. This usually takes a few seconds; reload the page and your code will appear below.'],
+        failed: ['banner-error', 'That payment did not go through, so nothing was charged and no code was issued. You can try again from the plans page.'],
+        unknown: ['banner-warn', 'We could not match that payment to an order. If money left your account, send us the reference and we will sort it out.']
+      }[status] || ['banner-warn', 'We could not read the result of that payment.'];
+      banner.classList.add(said[0], 'show');
+      PREP.qs('#pay-banner-text').textContent = said[1];
+      /* Take the parameters back out of the address bar: a reload should not
+         re-announce a payment, and the reference does not belong in a
+         bookmark or in whatever the next screenshot captures. */
+      history.replaceState(null, '', location.pathname);
+    })();
 
     /* Activated codes: the stored ones come from GET /api/me, anything activated in
        the browser sits in a local overlay on top. */

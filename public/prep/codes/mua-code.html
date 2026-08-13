@@ -96,11 +96,25 @@
 
     <ul id="bm-perks" class="grid gap-2 mt-4 text-[13.5px] font-medium text-muted"></ul>
 
-    <div class="border-t border-line mt-5 pt-5">
-      <p class="text-[14.5px] font-bold">How to get a code</p>
+    <!-- Paying online. Hidden until the server says a gateway is configured. -->
+    <div id="bm-pay" hidden class="border-t border-line mt-5 pt-5">
+      <p class="text-[14.5px] font-bold">Pay online</p>
       <p class="text-muted text-[14px] leading-relaxed mt-1.5">
-        Checkout is not wired in yet, so codes come from a centre. Contact your centre to buy this plan —
-        each code works for one account only, and the term starts the moment it is activated.
+        You will be taken to the payment provider and brought straight back. Your code is issued
+        the moment the payment settles, and it works for one account only.
+      </p>
+      <div id="bm-providers" class="grid gap-2.5 mt-4"></div>
+      <div id="bm-error" class="banner banner-error mt-3.5" role="alert">
+        <svg viewBox="0 0 24 24" class="w-5 h-5 shrink-0 mt-0.5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>
+        <span id="bm-error-text"></span>
+      </div>
+    </div>
+
+    <div class="border-t border-line mt-5 pt-5">
+      <p class="text-[14.5px] font-bold">Buy through a centre</p>
+      <p id="bm-centre" class="text-muted text-[14px] leading-relaxed mt-1.5">
+        Contact your centre to buy this plan — each code works for one account only, and the term
+        starts the moment it is activated.
       </p>
     </div>
 
@@ -195,7 +209,64 @@
 
     function closeModal() { modal.classList.remove('show'); }
 
+    /* ----- Paying online -----
+       Which gateways exist is the server's answer, asked once. With none
+       configured the whole block stays hidden and the modal reads exactly as
+       it did before online payment was built — the "ask your centre" route is
+       not a fallback bolted on, it is still the normal way to buy. */
+    let providers = [];
+    let paying = false;
+
+    const payError = msg => {
+      PREP.qs('#bm-error-text').textContent = msg;
+      PREP.qs('#bm-error').classList.add('show');
+    };
+
+    function renderProviders(plan) {
+      PREP.qs('#bm-error').classList.remove('show');
+      PREP.qs('#bm-pay').toggleAttribute('hidden', providers.length === 0);
+      /* The centre wording changes rather than disappearing: with a gateway
+         live it is one route of two, not the only one. */
+      PREP.qs('#bm-centre').textContent = providers.length
+        ? 'Already have a code from your centre, or paying by transfer? A centre code works exactly the same way.'
+        : 'Contact your centre to buy this plan — each code works for one account only, and the term starts the moment it is activated.';
+      if (!providers.length) return;
+      PREP.qs('#bm-providers').innerHTML = providers.map((p, i) =>
+        '<button type="button" data-provider="' + PREP.esc(p.id) + '" class="btn ' +
+        (i === 0 ? 'btn-accent' : 'btn-ghost') + ' btn-md w-full">Pay with ' +
+        PREP.esc(p.label) + ' · ' + PREP.vnd(plan.price) + '</button>').join('');
+    }
+
+    /* One press, one order. Without the guard a double tap is two pending
+       orders and two trips to the gateway for one purchase. */
+    PREP.qs('#bm-providers').addEventListener('click', e => {
+      const b = e.target.closest('[data-provider]');
+      if (!b || paying || !current) return;
+      paying = true;
+      PREP.qsa('#bm-providers button').forEach(x => { x.disabled = true; });
+      b.textContent = 'Taking you to the payment page…';
+      PREP.qs('#bm-error').classList.remove('show');
+
+      PrepApi.post('/api/checkout', { planId: current.id, provider: b.getAttribute('data-provider') })
+        .then(res => {
+          if (res.ok && res.data && res.data.payUrl) {
+            /* Leaving the site on purpose: the gateway brings the buyer back to
+               /payments/:provider/return, which lands them on their codes. */
+            window.location.href = res.data.payUrl;
+            return;
+          }
+          paying = false;
+          PREP.qsa('#bm-providers button').forEach(x => { x.disabled = false; });
+          renderProviders(current);
+          payError(PrepApi.err(res, 'That payment could not be started. Try again in a moment.'));
+        });
+    });
+
+    let current = null;
+
     function openModal(p) {
+      current = p;
+      renderProviders(p);
       PREP.qs('#bm-name').textContent = p.name + ' plan';
       PREP.qs('#bm-desc').textContent = p.months + ' months · ' +
         (p.attempts ? p.attempts + ' sittings' : 'unlimited practice');
@@ -211,6 +282,13 @@
       const b = e.target.closest('[data-buy]');
       if (!b) return;
       openModal(plans.find(p => p.id === b.getAttribute('data-buy')));
+    });
+
+    /* Asked once, not per modal open. A failure here is not worth a message:
+       it simply means no gateway is offered, which is the shipped default. */
+    PrepApi.get('/api/checkout/providers').then(res => {
+      providers = (res.ok && res.data && res.data.providers) || [];
+      if (current) renderProviders(current);
     });
   });
 </script>
