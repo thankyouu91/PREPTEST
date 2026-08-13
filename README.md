@@ -86,6 +86,7 @@ Lệnh khác:
 | `node scripts/test-accounts.js` | kiểm thử đường cứu hộ tài khoản (tự phục hồi tài khoản demo, đặt lại mật khẩu quản trị) |
 | `node scripts/test-mail.mjs` | kiểm thử thư đi: soạn thư (mã hoá tiêu đề, chống chèn header), toàn bộ hội thoại SMTP với một server giả chạy tại chỗ, và **token không lọt vào log** |
 | `node scripts/test-totp.mjs` | kiểm thử lớp xác thực thứ hai: **sáu vector chuẩn RFC 6238**, cửa sổ lệch giờ, mã đã dùng không dùng lại được, mã cứu hộ, và toàn bộ luồng đăng nhập thật |
+| `node scripts/test-gcs.mjs` | kiểm thử driver Google Cloud Storage và lớp lấy token: **sinh cặp khoá RSA thật rồi verify chữ ký JWT**, cache token, và toàn bộ hình dạng request (method, path, query, `Metadata-Flavor`, tên object đã encode) đối chiếu với một Google giả chạy tại chỗ |
 | `node scripts/test-srs.mjs` | kiểm thử lặp lại ngắt quãng: **lịch SM-2 tính chính xác từng ngày** (hàm thuần, đồng hồ truyền vào nên không phải chờ), rồi hàng đợi ôn tập qua API — ai được hỏi, chấm điểm lưu đúng cái lịch đã tính, hai học viên không thấy tiến độ của nhau |
 | `node scripts/test-health.mjs` | kiểm thử vòng đời tiến trình (sập thì thoát khác 0, SIGTERM thì thoát êm bằng 0, có chặn thời gian) và endpoint `/healthz` |
 | `node scripts/test-harness.mjs` | kiểm thử **chính bộ máy chạy test**: lớp thử lại có chặn trên (kiểm bằng một socket bị ngắt thật, không chỉ bằng chuỗi lỗi tự gõ), pool báo đúng job nào hỏng thay vì kéo sập cả lượt, và bước hâm nóng CSRF. Không cần server, không cần trình duyệt |
@@ -216,14 +217,74 @@ Nơi lưu do biến môi trường quyết định, không phải sửa mã:
 
 | Biến | Mặc định | Việc |
 |---|---|---|
-| `AUDIO_STORAGE` | `disk` | `disk` lưu vào `data/uploads/audio`; `supabase` đẩy lên Supabase Storage |
+| `AUDIO_STORAGE` | `disk` | `disk` lưu vào `data/uploads/audio`; `supabase` đẩy lên Supabase Storage; `gcs` đẩy lên Google Cloud Storage |
 | `AUDIO_DIR` | `data/uploads/audio` | thư mục cho driver đĩa |
 | `SUPABASE_URL`, `SUPABASE_SERVICE_KEY` | — | bắt buộc khi dùng driver Supabase |
 | `SUPABASE_AUDIO_BUCKET` | `exam-audio` | tên bucket |
+| `GCS_BUCKET` | — | bắt buộc khi dùng driver GCS |
+| `STORAGE_EMULATOR_HOST` | — | trỏ sang emulator/máy giả; đúng tên biến mà thư viện của Google đọc |
 
 Đĩa hợp cho lúc phát triển (không cần khoá, chạy ngay) nhưng container dựng lại
-là mất; production dùng Supabase. Thêm driver thứ ba (ví dụ Google Cloud Storage)
-chỉ cần viết thêm một object trong `server/storage.js`, chỗ gọi không phải sửa.
+là mất. Chỗ gọi không bao giờ phải sửa: thêm driver là thêm một object trong
+`server/storage.js`.
+
+#### Driver Google Cloud Storage
+
+Dùng thẳng JSON API qua `fetch`, **không thêm dependency nào** — thư viện chính
+chủ là hơn hai trăm gói phụ thuộc để gọi ba lần HTTP. Khoá lấy từ
+`server/google-token.js` (xem [Lấy access token của Google](#lấy-access-token-của-google)),
+nên trên Cloud Run **không cần khoá nào cả**.
+
+Một chi tiết dễ sai và đã được kiểm bằng máy chủ giả: tên object nằm ở **query
+string** khi tải lên nhưng nằm trong **đường dẫn** khi đọc và xoá, và ở đường dẫn
+thì phải percent-encode **cả tên** — khoá của dự án có dấu `/`, để nguyên là trỏ
+sang một object khác. Driver Supabase ngay bên trên **không** encode, và như thế
+mới đúng, vì API đó nhận đường dẫn thật.
+
+**Thiếu khoá thì xử lý khác nhau tuỳ nơi chạy.** Roadmap yêu cầu "chưa có khoá
+thì lùi về đĩa", nhưng lùi *âm thầm* ở production là **mất dữ liệu** chứ không
+phải chạy giảm chất lượng: bài ghi âm của thí sinh sẽ nằm trên ổ đĩa container và
+biến mất ở lần deploy sau, không ai biết cho tới lúc cần tới nó. Nên:
+
+- `NODE_ENV=production` mà thiếu `GCS_BUCKET` hoặc thiếu khoá → **không khởi động
+  được**, và báo rõ thiếu cái gì. Chết lúc khởi động rẻ hơn nhiều so với một lượt
+  tải lên biến mất.
+- Ngoài production → cảnh báo **một lần**, rõ ràng, rồi dùng đĩa; nhờ vậy vẫn chạy
+  được đúng cấu hình ấy trên máy cá nhân không có khoá nào.
+
+### Lấy access token của Google
+
+`server/google-token.js`. Cloud Storage là chỗ gọi đầu tiên; Gemini, Cloud SQL và
+Secret Manager rồi cũng cần đúng thứ đó, nên nó là file riêng chứ không phải một
+góc kín của `server/storage.js`. Hai nguồn khoá, xét theo thứ tự, đều đúng cách
+mà công cụ của chính Google làm:
+
+1. **Khoá service account.** `GOOGLE_SERVICE_ACCOUNT_JSON` chứa nguyên JSON (hoặc
+   base64, vì nhét một khối PEM vào biến môi trường là cuộc chiến ở phần lớn giao
+   diện deploy), hoặc `GOOGLE_APPLICATION_CREDENTIALS` trỏ tới file. Khoá ký một
+   JWT RS256 rồi đổi lấy access token (RFC 7523) — `node:crypto` ký được, không
+   cần thư viện.
+2. **Metadata server.** Trên Cloud Run và GCE **không có khoá nào cả**: nền tảng
+   phát token cho service account gắn sẵn qua một địa chỉ chỉ gọi được từ bên
+   trong instance. Đây mới là cách deploy tốt hơn — khoá không tồn tại thì không
+   lộ được — và là cách mục Cloud Run trong roadmap sẽ dùng. Nhận biết bằng
+   `K_SERVICE` (Cloud Run tự đặt) chứ không thăm dò metadata server mỗi lần khởi
+   động, vì như thế là trả giá một lần timeout ở mọi nơi khác.
+
+Không có nguồn nào thì coi như **chưa cấu hình**, và chỗ gọi tự quyết định làm gì.
+File này không bịa ra khoá, cũng không chạy nửa vời khi thiếu khoá.
+
+Hai điều tuyệt đối không làm: **không log** token, assertion hay private key (lỗi
+ném ra chỉ mang HTTP status và phần đầu response), và **không mint token mỗi
+request** — token sống một giờ, được cache tới trước hạn 60 giây, và bốn lượt tải
+lên song song dùng chung **một** lần làm mới chứ không khởi động bốn.
+
+`scripts/test-gcs.mjs` (70 kiểm tra) tự sinh một cặp khoá RSA thật rồi **verify
+chữ ký** bằng nửa công khai — "ký JWT RS256 đúng" được chứng minh bằng mật mã chứ
+không phải bằng cách đọc code rồi gật đầu. Phần HTTP kiểm bằng một Google giả
+chạy tại chỗ, nơi khẳng định đúng những thứ chạy-được-ở-máy-mình-hỏng-ở-production:
+method, path, query, header `Metadata-Flavor` mà metadata server bắt buộc phải có,
+và tên object đã percent-encode.
 
 ### Vòng đời tiến trình và `/healthz`
 

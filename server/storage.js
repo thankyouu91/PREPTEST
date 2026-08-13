@@ -1,5 +1,5 @@
 /**
- * Audio storage with two interchangeable drivers.
+ * Audio storage with three interchangeable drivers.
  *
  * Why an adapter instead of writing straight to disk: the container this
  * platform runs in is disposable, so anything written to local disk is gone on
@@ -9,10 +9,17 @@
  *
  *   AUDIO_STORAGE=disk       (default) files under data/uploads/audio
  *   AUDIO_STORAGE=supabase   Supabase Storage bucket, survives redeploys
+ *   AUDIO_STORAGE=gcs        Google Cloud Storage, for the Cloud Run deployment
  *
  * The Supabase driver needs SUPABASE_URL and SUPABASE_SERVICE_KEY. It uses the
  * service key, so it must only ever run on the server — never ship that key to
  * a browser.
+ *
+ * The GCS driver needs GCS_BUCKET and a Google credential, which on Cloud Run
+ * is the attached service account and needs no key at all — see
+ * server/google-token.js. It talks to the JSON API over `fetch`, so it adds no
+ * dependency: the official client library is 200-odd transitive packages to do
+ * three HTTP calls.
  *
  * Security notes, because this is the one place the platform accepts a file
  * from outside:
@@ -26,6 +33,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
+const googleToken = require('./google-token');
 
 /* 10 MB is generous for a single test item: a 3 minute clip at 128 kbps is
    about 2.8 MB. Anything bigger is a mistake or an attack. */
@@ -45,11 +53,27 @@ const EXTENSION = 'mp3';
    Sniffed on content like everything else, never on the declared type. */
 const RECORDING_MIME = ['audio/webm', 'audio/ogg', 'audio/mp4', 'audio/mpeg', 'audio/mp3'];
 
-const DRIVER = (process.env.AUDIO_STORAGE || 'disk').toLowerCase();
 const DISK_ROOT = process.env.AUDIO_DIR || path.join(process.cwd(), 'data', 'uploads', 'audio');
 const SUPABASE_URL = (process.env.SUPABASE_URL || '').replace(/\/+$/, '');
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY || '';
 const SUPABASE_BUCKET = process.env.SUPABASE_AUDIO_BUCKET || 'exam-audio';
+
+/* Read at call time rather than at import. The other settings above are read
+   once because nothing changes them after boot; the driver choice is read per
+   call so that a process can be told which driver to use after this module has
+   already been loaded — which is exactly what the tests need in order to prove
+   the selection rules, and costs nothing in production. */
+const driverName_ = () => (process.env.AUDIO_STORAGE || 'disk').toLowerCase();
+
+/* STORAGE_EMULATOR_HOST is the name Google's own client libraries read, so a
+   fake server or the local emulator drops in without a project-specific knob. */
+const gcs = () => ({
+  bucket: process.env.GCS_BUCKET || '',
+  api: (process.env.STORAGE_EMULATOR_HOST || 'https://storage.googleapis.com').replace(/\/+$/, ''),
+  /* read_write covers get, put and delete of objects, and nothing else — not
+     bucket administration, not IAM. */
+  scope: 'https://www.googleapis.com/auth/devstorage.read_write'
+});
 
 /**
  * Is this really an MP3?
@@ -159,12 +183,93 @@ const supabaseDriver = {
   }
 };
 
+/* ------------------------------- gcs ------------------------------- *
+ *
+ * Three calls against the JSON API. The object name goes in the QUERY STRING on
+ * upload and in the PATH on read and delete, and in the path it must be
+ * percent-encoded whole — our keys contain a slash, and an unescaped one there
+ * addresses a different object. The Supabase driver above does not encode,
+ * correctly, because that API takes a real path.
+ */
+
+async function gcsHeaders(extra) {
+  const token = await googleToken.accessToken(gcs().scope);
+  return Object.assign({ Authorization: `Bearer ${token}` }, extra || {});
+}
+
+/** The body of a failed response, short enough to log and never the request. */
+async function gcsReason(res) {
+  const text = await res.text().catch(() => '');
+  return `${res.status} ${text.slice(0, 200)}`;
+}
+
+const gcsDriver = {
+  name: 'gcs',
+  async put(buf, key) {
+    const { api, bucket } = gcs();
+    const url = `${api}/upload/storage/v1/b/${encodeURIComponent(bucket)}/o`
+      + `?uploadType=media&name=${encodeURIComponent(key)}`;
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: await gcsHeaders({ 'Content-Type': 'audio/mpeg' }),
+      body: buf
+    });
+    if (!res.ok) throw new Error(`GCS upload failed: ${await gcsReason(res)}`);
+  },
+  async get(key) {
+    const { api, bucket } = gcs();
+    const url = `${api}/storage/v1/b/${encodeURIComponent(bucket)}/o/${encodeURIComponent(key)}?alt=media`;
+    const res = await fetch(url, { headers: await gcsHeaders() });
+    if (!res.ok) throw new Error(`GCS download failed: ${await gcsReason(res)}`);
+    return { body: Buffer.from(await res.arrayBuffer()) };
+  },
+  async remove(key) {
+    const { api, bucket } = gcs();
+    const url = `${api}/storage/v1/b/${encodeURIComponent(bucket)}/o/${encodeURIComponent(key)}`;
+    const res = await fetch(url, { method: 'DELETE', headers: await gcsHeaders() });
+    /* Same as Supabase: the caller wanted it gone and it is gone. */
+    if (!res.ok && res.status !== 404) throw new Error(`GCS delete failed: ${await gcsReason(res)}`);
+  }
+};
+
+/**
+ * Which driver is in force, and what happens when a driver is asked for
+ * without the credential it needs.
+ *
+ * Supabase throws. GCS does something more careful, because the roadmap asks
+ * for it to "fall back to disk until the credential exists" and a silent
+ * fallback in production is data loss rather than a graceful degradation:
+ * writes would land on a container disk that evaporates on the next deploy,
+ * and nobody would find out until a candidate's recording was missing.
+ *
+ * So it depends on where it is running. In production, an unconfigured GCS
+ * refuses to start — a boot that fails is cheaper than an upload that
+ * disappears. Anywhere else it warns, loudly and once, and uses disk, so the
+ * same configuration can be run on a laptop with no key at all.
+ */
+let warnedAboutGcs = false;
 function pickDriver() {
-  if (DRIVER === 'supabase') {
+  const want = driverName_();
+  if (want === 'supabase') {
     if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
       throw new Error('AUDIO_STORAGE=supabase needs SUPABASE_URL and SUPABASE_SERVICE_KEY');
     }
     return supabaseDriver;
+  }
+  if (want === 'gcs') {
+    const missing = [];
+    if (!gcs().bucket) missing.push('GCS_BUCKET');
+    if (!googleToken.configured()) missing.push('a Google credential (GOOGLE_SERVICE_ACCOUNT_JSON, GOOGLE_APPLICATION_CREDENTIALS, or the metadata server on Cloud Run)');
+    if (!missing.length) return gcsDriver;
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error(`AUDIO_STORAGE=gcs needs ${missing.join(' and ')}`);
+    }
+    if (!warnedAboutGcs) {
+      warnedAboutGcs = true;
+      console.warn(`[storage] AUDIO_STORAGE=gcs but ${missing.join(' and ')} is missing — using local disk. `
+        + 'Uploads will not survive a redeploy. In production this would refuse to start.');
+    }
+    return diskDriver;
   }
   return diskDriver;
 }
@@ -224,5 +329,7 @@ module.exports = {
   MAX_BYTES, ACCEPTED_MIME, RECORDING_MIME, EXTENSION,
   put, putRecording, get, remove,
   validate, looksLikeMp3, safeKey, newKey,
+  /* Also the way a caller asks "would this work?", since it throws for a driver
+     that is named but not configured. */
   driverName: () => pickDriver().name
 };
