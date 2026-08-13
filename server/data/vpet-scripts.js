@@ -54,8 +54,8 @@ const LEVEL_1 = [
      words: long enough to need real listening, short enough to hold. */
 
   { ref: 'E1', part: 'E', type: 'gap',
-    script: 'The train to Da Nang leaves at half past seven every morning.',
-    answer: 'The train to Da Nang leaves at half past seven every morning',
+    script: 'The train to Brighton leaves at half past seven every morning.',
+    answer: 'The train to Brighton leaves at half past seven every morning',
     explanation: 'Time expression: "half past seven", not "seven thirty" or "half seven".' },
 
   { ref: 'E2', part: 'E', type: 'gap',
@@ -172,7 +172,7 @@ const LEVEL_1 = [
 
   { ref: 'G2', part: 'G', type: 'mcq',
     script:
-      'This is an announcement for passengers travelling to Hue. ' +
+      'This is an announcement for passengers travelling to Oxford. ' +
       'The nine forty service has been delayed by approximately fifty minutes because of heavy rain further north. ' +
       'It will now depart from platform four, not platform two as printed on your ticket. _ ' +
       'Passengers who prefer not to wait may use their ticket on the coach service leaving from outside the main entrance at ten fifteen. ' +
@@ -226,7 +226,7 @@ const LEVEL_1 = [
 
   { ref: 'G6', part: 'G', type: 'mcq',
     script:
-      'The market on Tran Phu street has been open every Sunday for over thirty years. ' +
+      'The market on Union street has been open every Sunday for over thirty years. ' +
       'It used to sell mostly fruit and vegetables from the villages nearby. ' +
       'These days you will still find those, but there are also stalls selling second-hand books, old records and handmade jewellery. _ ' +
       'The traders say the busiest hours are early, between six and eight, when people come before the heat. ' +
@@ -272,14 +272,14 @@ const LEVEL_1 = [
 
   { ref: 'J1', part: 'J', type: 'speaking',
     script:
-      'Last winter, Mai bought a second-hand bicycle so that she could get to work without taking the bus. ' +
+      'Last winter, Sarah bought a second-hand bicycle so that she could get to work without taking the bus. ' +
       'It was cheap, and the man who sold it warned her that the brakes were not very good. _ ' +
       'On her third morning, going down the hill near the market, she found she could not stop. ' +
       'She steered onto the grass and fell off. Nothing was broken, but her knee hurt for a week. _ ' +
       'That afternoon she took the bicycle to a repair shop. The mechanic replaced both brakes for less than the price of a month of bus tickets. ' +
-      'Mai still rides it every day, and she says the lesson was simple: when somebody warns you about something, deal with it before it becomes a problem.',
+      'Sarah still rides it every day, and she says the lesson was simple: when somebody warns you about something, deal with it before it becomes a problem.',
     keyPoints: [
-      'Mai bought a second-hand bicycle to avoid taking the bus',
+      'Sarah bought a second-hand bicycle to avoid taking the bus',
       'The seller warned her the brakes were not good',
       'She could not stop going down a hill and fell onto the grass',
       'She was not badly hurt, but her knee hurt for a week',
@@ -289,26 +289,26 @@ const LEVEL_1 = [
 
   { ref: 'J2', part: 'J', type: 'speaking',
     script:
-      'Tuan had worked at the same coffee shop for two years when the owner decided to sell it. ' +
+      'Daniel had worked at the same coffee shop for two years when the owner decided to sell it. ' +
       'The new owner wanted to change everything, starting with the menu. _ ' +
       'Most of the regular customers came for one drink, an iced coffee made the old way, and it was the first thing to be removed. ' +
       'Within a month, the shop was half empty in the mornings. ' +
-      'Tuan said nothing at first, because he was new to speaking up. _ ' +
+      'Daniel said nothing at first, because he was new to speaking up. _ ' +
       'Then one Tuesday he showed the owner two years of his own notes on what people ordered. ' +
       'The old drink came back the following week, and by the end of the month the morning queue had returned. ' +
       'The owner later told him it was the most useful thing anyone in the shop had ever done.',
     keyPoints: [
-      'Tuan had worked at the coffee shop for two years',
+      'Daniel had worked at the coffee shop for two years',
       'A new owner bought it and changed the menu',
       'The popular old-style iced coffee was removed',
       'The shop lost its morning customers within a month',
-      'Tuan showed the owner his notes on what people ordered',
+      'Daniel showed the owner his notes on what people ordered',
       'The drink returned and so did the customers'
     ] },
 
   { ref: 'J3', part: 'J', type: 'speaking',
     script:
-      'When Lan was seventeen, she failed her driving test twice. ' +
+      'When Helen was seventeen, she failed her driving test twice. ' +
       'The first time she was too nervous to start the engine properly. ' +
       'The second time she stopped at a green light. _ ' +
       'Her father, who had passed first time, offered to teach her himself, but she said no. ' +
@@ -317,7 +317,7 @@ const LEVEL_1 = [
       'She passed on the third attempt without a single mistake. ' +
       'Years later she said that failing twice had made her a better driver than passing first time would have, because she had learned the road rather than the test.',
     keyPoints: [
-      'Lan failed her driving test twice at the age of seventeen',
+      'Helen failed her driving test twice at the age of seventeen',
       'She was too nervous the first time and stopped at a green light the second',
       'Her father offered to teach her but she refused',
       'She saved for six months to pay for ten more lessons',
@@ -480,7 +480,7 @@ const LEVEL_2 = [
       'I want to be clear at the start that this review is not about individual performance. ' +
       'It is about whether the way we organise the work still makes sense after three years of growth. _ ' +
       'We will be speaking to everyone in the department over the next fortnight, and nothing will be decided until all of those conversations have taken place. ' +
-      'I know reviews of this kind can be unsettling, so if you would rather raise something privately, my door is open, and so is Ms Ha’s.',
+      'I know reviews of this kind can be unsettling, so if you would rather raise something privately, my door is open, and so is Ms Hall’s.',
     prompt: 'What does the speaker emphasise about the review?',
     options: [
       'It is examining processes rather than people.',
