@@ -4,9 +4,10 @@
  *
  * Run: node scripts/test-admin.mjs   (needs the server up)
  */
+import { ADMIN_PASSWORD } from './_demo.mjs';
 const BASE = process.env.BASE_URL || 'http://localhost:3000';
 const USER = process.env.ADMIN_USERNAME || 'admin';
-const PASS = process.env.ADMIN_PASSWORD || 'Admin@123456';
+const PASS = ADMIN_PASSWORD;
 
 const results = [];
 const check = (name, ok, extra) => results.push({ name, ok: !!ok, extra });

@@ -34,6 +34,26 @@ fi
 step "Build CSS"
 npm run build || fail=1
 
+# The demo student's password is no longer written anywhere in the repository
+# (it used to be one fixed string in a dozen files and on the sign-in page).
+# The suite still has to sign in as that account, so it makes up a new one for
+# this run, puts it on the account, and hands it to every script through the
+# environment. Nothing to leak, and no fixed value for the next reader to reuse.
+export DEMO_STUDENT_PASSWORD="Verify-$(node -e "console.log(require('crypto').randomBytes(9).toString('base64url'))")"
+node scripts/accounts.js reset-student "$DEMO_STUDENT_PASSWORD" >/dev/null 2>&1 \
+  || note "could not reset the demo student — the account may not exist in this database"
+
+# The administrator is the same story, with one difference: an ADMIN_PASSWORD you
+# have already set is KEPT. Running the test suite must not quietly change the
+# password you use to sign in. Only when there is none does it make one up, reset
+# the account and say so — otherwise the admin steps could not sign in at all.
+if [ -z "${ADMIN_PASSWORD:-}" ]; then
+  export ADMIN_PASSWORD="Verify-$(node -e "console.log(require('crypto').randomBytes(9).toString('base64url'))")"
+  node scripts/accounts.js reset-admin "$ADMIN_PASSWORD" >/dev/null 2>&1 \
+    && note "administrator password reset for this run: $ADMIN_PASSWORD" \
+    && note "(export ADMIN_PASSWORD before running to keep your own)"
+fi
+
 step "The gate's own machinery (retry, worker pool, CSRF warm-up)"
 node scripts/test-harness.mjs || fail=1
 

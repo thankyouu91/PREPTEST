@@ -13,11 +13,14 @@
  *       Prints no password: the database stores only hashes, which cannot be undone.
  *
  *   node scripts/accounts.js reset-admin [new-password]
- *       Reset an administrator password. Leave it out to reuse the default from the
- *       README. Add --user=<name> when there is more than one administrator.
+ *       Reset an administrator password. Leave it out and one is generated and
+ *       printed once — there is no built-in default, because a default written
+ *       into this file is a login published to everyone who can read the repo.
+ *       Add --user=<name> when there is more than one administrator.
  *
- *   node scripts/accounts.js reset-student
- *       Put the demo student's password back to the value the README states.
+ *   node scripts/accounts.js reset-student <new-password>
+ *       Set the demo student's password. No default: a password written into
+ *       this file would be a login published to everyone who can read the repo.
  *
  *   node scripts/accounts.js totp-status
  *       Show which administrators have a second factor, and how many recovery
@@ -47,8 +50,8 @@ const A = require('../server/auth');
 const { q, nowISO, DB_FILE } = require('../server/db');
 const totp = require('../server/totp');
 
-const DEFAULT_ADMIN_PASSWORD = 'Admin@123456';
-const DEMO_STUDENT_PASSWORD = 'Goodmorning01';
+
+
 
 const args = process.argv.slice(2);
 const verb = args[0] || 'list';
@@ -91,7 +94,10 @@ function listAccounts() {
 }
 
 function resetAdmin() {
-  const newPassword = positional[0] || DEFAULT_ADMIN_PASSWORD;
+  /* No default. This file used to carry one, which in a repository anybody can
+     read is a published administrator login for every install whose operator
+     never changed it. Given nothing, one is generated and printed once. */
+  const newPassword = positional[0] || process.env.ADMIN_PASSWORD || A.generatedPassword();
   if (newPassword.length < 10) {
     console.error('The password must be at least 10 characters.');
     process.exit(1);
@@ -126,18 +132,34 @@ function resetAdmin() {
   console.log('Restart the server, sign in at /admin/ and change the password under Administration.');
 }
 
+/**
+ * Set the demo student's password.
+ *
+ * Takes it as an argument, or from DEMO_STUDENT_PASSWORD. There is no default
+ * any more: this file used to carry the password as a constant, which — in a
+ * repository anybody can read — is a published login rather than a default.
+ */
 function resetStudent() {
-  const u = q.get("SELECT id FROM users WHERE username='student'");
+  const newPassword = positional[0] || process.env.DEMO_STUDENT_PASSWORD || '';
+  if (newPassword.length < 10) {
+    console.error('Give the demo student a password of at least 10 characters:');
+    console.error('  node scripts/accounts.js reset-student <new-password>');
+    console.error('…or set DEMO_STUDENT_PASSWORD. There is no built-in default: one written');
+    console.error('into this file would be a login published to everyone who can read it.');
+    process.exit(1);
+  }
+  const u = q.get('SELECT id FROM users WHERE username=?', A.DEMO_STUDENT_USER);
   if (!u) {
-    console.error('No "student" account found. This database may never have been seeded.');
+    console.error('No "' + A.DEMO_STUDENT_USER + '" account found. This database may never have been seeded.');
     process.exit(1);
   }
   q.run("UPDATE users SET pass_hash=?, verified=1, status='active' WHERE id=?",
-    A.hashPassword(DEMO_STUDENT_PASSWORD), u.id);
+    A.hashPassword(newPassword), u.id);
   q.run('DELETE FROM user_sessions WHERE user_id=?', u.id);
-  console.log('Demo student password put back to the value in the README.');
-  console.log('  Username : student  (or student@vpetprep.vn)');
-  console.log('  Password : ' + DEMO_STUDENT_PASSWORD);
+  console.log('Demo student password set.');
+  console.log('  Username : ' + A.DEMO_STUDENT_USER + '  (or student@vpetprep.vn)');
+  console.log('  Password : ' + newPassword);
+  console.log('\nEvery previous session for this account has been revoked.');
 }
 
 /* Two different things called "locked", and both have to go, or somebody clears

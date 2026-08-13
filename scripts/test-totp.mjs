@@ -17,6 +17,7 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { ADMIN_PASSWORD } from './_demo.mjs';
 
 const require_ = createRequire(import.meta.url);
 const totp = require_('../server/totp.js');
@@ -175,11 +176,11 @@ try {
       return { status: r.status, data: await r.json().catch(() => ({})) };
     };
 
-    let r = await login({ username: 'admin', password: 'Admin@123456' });
+    let r = await login({ username: 'admin', password: ADMIN_PASSWORD });
     ok(r.status === 401 && r.data.needCode === true,
       'The right password alone is no longer enough', 'status ' + r.status + ' ' + JSON.stringify(r.data));
 
-    r = await login({ username: 'admin', password: 'Admin@123456', code: '000000' });
+    r = await login({ username: 'admin', password: ADMIN_PASSWORD, code: '000000' });
     ok(r.status === 401, 'Nor is the right password with a wrong code', 'status ' + r.status);
 
     r = await login({ username: 'admin', password: 'wrong-password', code: totp.totp(enrolSecret) });
@@ -187,22 +188,22 @@ try {
       'A right code with a wrong password fails at the password, as it should');
 
     const code = totp.totp(enrolSecret);
-    r = await login({ username: 'admin', password: 'Admin@123456', code });
+    r = await login({ username: 'admin', password: ADMIN_PASSWORD, code });
     ok(r.status === 200 && r.data.ok, 'Password plus code signs in', 'status ' + r.status);
 
     /* The same code again, seconds later, is the shoulder-surfing case. */
-    r = await login({ username: 'admin', password: 'Admin@123456', code });
+    r = await login({ username: 'admin', password: ADMIN_PASSWORD, code });
     ok(r.status === 401, 'The same code cannot be used twice', 'status ' + r.status);
 
-    r = await login({ username: 'admin', password: 'Admin@123456', code: recovery[0] });
+    r = await login({ username: 'admin', password: ADMIN_PASSWORD, code: recovery[0] });
     ok(r.status === 200 && r.data.ok, 'A recovery code signs in', 'status ' + r.status);
-    r = await login({ username: 'admin', password: 'Admin@123456', code: recovery[0] });
+    r = await login({ username: 'admin', password: ADMIN_PASSWORD, code: recovery[0] });
     ok(r.status === 401, 'And is spent — the same one never works twice', 'status ' + r.status);
     ok(/9 recovery code\(s\) left/.test(cli('totp-status')), 'Leaving nine');
 
     cli('totp-disable');
     ok(/two-factor off/.test(cli('totp-status')), 'Disabling turns it off');
-    r = await login({ username: 'admin', password: 'Admin@123456' });
+    r = await login({ username: 'admin', password: ADMIN_PASSWORD });
     ok(r.status === 200 && r.data.ok, 'After which the password alone works again');
 
     head('Enrolling from the browser, through the API');
@@ -217,7 +218,7 @@ try {
     const signIn = await fetch(B + '/api/admin/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf, cookie: 'prep_csrf=' + csrf },
-      body: JSON.stringify({ username: 'admin', password: 'Admin@123456' })
+      body: JSON.stringify({ username: 'admin', password: ADMIN_PASSWORD })
     });
     for (const c of signIn.headers.getSetCookie() || []) jar.push(c.split(';')[0]);
     const cookie = ['prep_csrf=' + csrf, ...jar.filter(c => !c.startsWith('prep_csrf'))].join('; ');
@@ -274,12 +275,12 @@ try {
     ok((await call('/admin/totp')).data.enabled === true, 'It is still on after both attempts');
 
     /* The enrolment really took: the sign-in demands it. */
-    r = await login({ username: 'admin', password: 'Admin@123456' });
+    r = await login({ username: 'admin', password: ADMIN_PASSWORD });
     ok(r.status === 401 && r.data.needCode === true, 'The sign-in now asks for a code');
-    r = await login({ username: 'admin', password: 'Admin@123456', code: webRecovery[0] });
+    r = await login({ username: 'admin', password: ADMIN_PASSWORD, code: webRecovery[0] });
     ok(r.status === 200, 'A recovery code from the browser flow works too');
 
-    a = await call('/admin/totp/disable', { password: 'Admin@123456' });
+    a = await call('/admin/totp/disable', { password: ADMIN_PASSWORD });
     ok(a.status === 200 && a.data.ok, 'With the right password it turns off');
     ok((await call('/admin/totp')).data.enabled === false, 'And reads as off');
 
@@ -312,7 +313,7 @@ try {
 
       await p.goto(B + '/admin/dang-nhap/', { waitUntil: 'networkidle' });
       await p.fill('#username', 'admin');
-      await p.fill('#password', 'Admin@123456');
+      await p.fill('#password', ADMIN_PASSWORD);
       await p.click('#submit');
       await p.waitForURL(u => !u.pathname.includes('dang-nhap'), { timeout: 10000 });
 
@@ -353,7 +354,7 @@ try {
     }
     /* Left enabled on this throwaway database on purpose — the next line proves the
        sign-in respects what the panel just did, end to end. */
-    r = await login({ username: 'admin', password: 'Admin@123456' });
+    r = await login({ username: 'admin', password: ADMIN_PASSWORD });
     ok(r.status === 401 && r.data.needCode === true,
       'And the sign-in screen now demands a code, enrolled entirely from the browser');
   } finally {

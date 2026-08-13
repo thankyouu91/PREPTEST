@@ -7,6 +7,7 @@
  * check runs on a throwaway account registered inside the test itself.
  */
 import { launchChromium } from './_browser.mjs';
+import { DEMO_PASSWORD } from './_demo.mjs';
 
 const BASE = process.env.BASE_URL || 'http://localhost:3000';
 const results = [];
@@ -82,7 +83,7 @@ check('An error banner appears', await page.locator('#form-banner.show').isVisib
    broke its own precondition. The `student` account escapes this because each run
    signs in correctly once, and a correct sign-in clears the counter. */
 const msgWrongPass = (await page.locator('#form-banner-text').textContent()).trim();
-await login('nobody' + stamp, 'Goodmorning01');
+await login('nobody' + stamp, DEMO_PASSWORD);
 const msgWrongUser = (await page.locator('#form-banner-text').textContent()).trim();
 check('The error message does not reveal whether the account exists', msgWrongUser === msgWrongPass, msgWrongUser);
 
@@ -94,7 +95,7 @@ check('The destination is kept in the next parameter', page.url().includes('next
 check('A blocked page never answers 200', guarded.status() === 200 && page.url().includes('dang-nhap'), String(guarded.status()));
 
 /* ---------- 3. Signing in properly ---------- */
-await login('student', 'Goodmorning01');
+await login('student', DEMO_PASSWORD);
 check('Signing in reaches the dashboard', page.url().endsWith('/prep/'), page.url());
 /* Wait for the dashboard to finish drawing BEFORE reading anything on it. The
    tests grid stays hidden until it has cards, and with no tests #mytests-empty
@@ -114,7 +115,7 @@ check('Signed in, the sign-in screen is not shown again', page.url().endsWith('/
 
 /* ---------- 4. Signing in by email ---------- */
 await logout();
-await login('student@vpetprep.vn', 'Goodmorning01');
+await login('student@vpetprep.vn', DEMO_PASSWORD);
 check('Signing in by email works', page.url().endsWith('/prep/'), page.url());
 
 /* ---------- 5. Redeeming a live code, then signing in again ---------- */
@@ -137,7 +138,7 @@ check('No error is shown on a successful redemption',
   !(await page.locator('#code-err').evaluate(el => el.classList.contains('show'))));
 
 await logout();
-await login('student', 'Goodmorning01');
+await login('student', DEMO_PASSWORD);
 await settle('#mytests-grid', '#mytests-empty');
 const afterRelogin = await page.locator('#mytests-grid article').count();
 /* This code unlocks the whole IELTS family, and IELTS is parked so it has no
@@ -200,7 +201,7 @@ check('The Self-study nav item is dimmed and does not lead straight in',
 /* The demo account holds a Plus plan and must NOT be locked — dimming things for
    someone who has paid is a fault that stays silent and is very hard to spot. */
 await logout();
-await login('student', 'Goodmorning01');
+await login('student', DEMO_PASSWORD);
 await page.goto(BASE + '/prep/hoc/tu-noi/', { waitUntil: 'networkidle' });
 check('With a Plus plan self-study opens directly', page.url().includes('/prep/hoc/tu-noi/'), page.url());
 await settle('.nav-item');
@@ -278,12 +279,23 @@ check('Signing in with the freshly reset password', page.url().endsWith('/prep/'
 await page.goto(BASE + '/prep/dat-lai-mat-khau/', { waitUntil: 'networkidle' });
 check('A reset link with no token reports itself invalid', await page.locator('#step-invalid').isVisible());
 
-/* ---------- 10. The demo-account prefill button ---------- */
+/* ---------- 10. The sign-in page gives nothing away ----------
+   There used to be a card here printing the demo username and password with a
+   button to fill them in. It was removed on 2026-08-13: a working login on a
+   public sign-in page is a working login for everybody who loads it. The check
+   is now that it is GONE and stays gone — a convenience like that comes back
+   very easily. */
 await logout();
 await page.goto(BASE + '/prep/dang-nhap/', { waitUntil: 'networkidle' });
-await page.click('#fill-demo');
-check('The prefill button works',
-  (await page.inputValue('#email')) === 'student' && (await page.inputValue('#password')) === 'Goodmorning01');
+check('The sign-in page no longer offers to fill in a demo account',
+  await page.locator('#fill-demo').count() === 0);
+const shown = await page.content();
+check('and the password appears nowhere in what it serves',
+  !shown.includes(DEMO_PASSWORD),
+  'the demo password is still somewhere in the sign-in page');
+
+await page.fill('#email', 'student');
+await page.fill('#password', DEMO_PASSWORD);
 const demoCall = posted('/api/auth/login');
 await page.click('#submit');
 await demoCall;

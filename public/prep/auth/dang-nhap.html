@@ -93,16 +93,6 @@
         No account yet? <a href="/prep/dang-ky/" class="font-bold text-brand-strong hover:underline">Create a free account</a>
       </p>
 
-      <!-- Demo account: exists only in this interface build -->
-      <div class="card bg-brand-soft border-0 p-4 mt-7">
-        <p class="text-[12.5px] font-bold uppercase tracking-wide text-muted">Demo account</p>
-        <p class="flex flex-wrap items-center gap-x-5 gap-y-1 mt-2 text-[14px]">
-          <span>Username <b class="font-extrabold">student</b></span>
-          <span>Password <b class="font-extrabold">Goodmorning01</b></span>
-        </p>
-        <button type="button" id="fill-demo" class="btn btn-soft btn-sm mt-3">Fill in the demo account</button>
-      </div>
-      <p class="text-[12px] text-muted/75 mt-4">The demo account exists only in the trial build, never in production.</p>
     </div>
   </div>
 
@@ -175,15 +165,6 @@
     }
   }
 
-  /* Fill in the demo account */
-  PREP.qs('#fill-demo').addEventListener('click', () => {
-    PREP.qs('#email').value = 'student';
-    pass.value = 'Goodmorning01';
-    PREP.qs('#form-banner').classList.remove('show');
-    PREP.qsa('.input').forEach(el => el.classList.remove('input-invalid'));
-    PREP.qsa('.field-error').forEach(el => el.classList.remove('show'));
-    PREP.qs('#submit').focus();
-  });
 
   /* Submit — POST /api/auth/login; the session lives in the prep_user cookie */
   const f = PREP.qs('#f'), btn = PREP.qs('#submit');

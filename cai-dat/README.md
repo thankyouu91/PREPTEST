@@ -83,8 +83,10 @@ Vài trường hợp khác:
 
 - **Nhập sai 5 lần liên tiếp** thì bị khoá 15 phút. Bộ đếm nằm trong bộ nhớ, chỉ
   cần tắt rồi bật lại server là hết.
-- **Tài khoản học viên demo** nay tự phục hồi: mỗi lần khởi động, nếu nó lệch khỏi
-  `student` / `Goodmorning01` thì server đặt lại và in một dòng báo.
+- **Tài khoản học viên demo**: mật khẩu **không** nằm trong mã nguồn. Đặt một lần
+  bằng `node scripts/accounts.js reset-student '<mật khẩu>'`. Nếu có biến
+  `DEMO_STUDENT_PASSWORD` thì mỗi lần khởi động server sẽ kéo tài khoản về đúng
+  mật khẩu đó; không có biến thì server không đụng tới nó.
 - **Đặt `NODE_ENV=production`** trong `cau-hinh.bat` sẽ tắt hẳn tài khoản demo và
   bắt buộc phải có `ADMIN_PASSWORD`. Chạy thử ở máy thì đừng bật.
 

@@ -393,7 +393,19 @@ function csrfGuard(req, res, next) {
 }
 
 /* --------------------- The seed administrator account --------------------- */
-const DEV_DEFAULT_PASSWORD = 'Admin@123456';
+
+/**
+ * The first-run password when ADMIN_PASSWORD is not set.
+ *
+ * Generated, never a constant. A default password written into a file that
+ * ships in a public repository is not a default, it is a published credential:
+ * anybody who can read the source can sign in to any install whose operator
+ * never got round to changing it. This makes one nobody has seen before and
+ * prints it once, which is the only moment it exists in readable form.
+ */
+function generatedPassword() {
+  return 'Vpet-' + crypto.randomBytes(9).toString('base64url');
+}
 
 function ensureSeedAdmin() {
   if (q.val('SELECT COUNT(*) c FROM admins')) return null;
@@ -406,7 +418,7 @@ function ensureSeedAdmin() {
     );
   }
   const username = process.env.ADMIN_USERNAME || 'admin';
-  const password = envPw || DEV_DEFAULT_PASSWORD;
+  const password = envPw || generatedPassword();
 
   q.run('INSERT INTO admins (username,name,pass_hash,role,active,created_at) VALUES (?,?,?,?,1,?)',
     username, process.env.ADMIN_NAME || 'Administrator', hashPassword(password), 'owner', nowISO());
@@ -414,9 +426,10 @@ function ensureSeedAdmin() {
 
   if (!envPw) {
     console.warn(
-      '\n⚠  Seed administrator account: ' + username + ' / ' + password +
-      '\n   This default password is for local runs ONLY. Set ADMIN_PASSWORD (and change the' +
-      '\n   password under Administration) before this goes anywhere real.\n'
+      '\n⚠  Seed administrator account created: ' + username + ' / ' + password +
+      '\n   Generated for this install and printed ONCE — it is stored only as a hash,' +
+      '\n   so nothing can read it back. Write it down, or set ADMIN_PASSWORD instead.' +
+      '\n   Lost it? node scripts/accounts.js reset-admin\n'
     );
   }
   return { username, password: envPw ? null : password };
@@ -438,25 +451,52 @@ function ensureSeedAdmin() {
    seeded once, it shows in the chrome greeting on every signed-in screen, and
    an existing data/prep.sqlite would otherwise keep the old value forever no
    matter what the seed says. */
-const DEMO_STUDENT_PASSWORD = 'Goodmorning01';
 const DEMO_STUDENT_NAME = 'Demo Student';
+const DEMO_STUDENT_USER = 'student';
 
+/**
+ * The demo student's password, from the environment, or nothing.
+ *
+ * It used to be a constant in this file, which meant the repository published a
+ * working login for every install — and the sign-in page printed it on screen
+ * with a button to fill it in. A demo account is a convenience for whoever runs
+ * the platform; it is not something to hand to everyone who can read the
+ * source. Set DEMO_STUDENT_PASSWORD to have one, or use
+ * `node scripts/accounts.js reset-student <password>` to set it once by hand.
+ */
+function demoStudentPassword() {
+  const pw = process.env.DEMO_STUDENT_PASSWORD || '';
+  return pw.length >= 10 ? pw : '';
+}
+
+/**
+ * Keep the demo student usable, if one is configured.
+ *
+ * With no DEMO_STUDENT_PASSWORD this does nothing at all: the account keeps
+ * whatever password it has, and a fresh install has no way into it until
+ * somebody sets one. That is the point — silence here is the secure default.
+ */
 function ensureDemoStudent() {
   if (process.env.NODE_ENV === 'production') return false;
-  const u = q.get("SELECT id, pass_hash, verified, status, name FROM users WHERE username='student'");
+  const wanted = demoStudentPassword();
+  if (!wanted) return false;
+  const u = q.get('SELECT id, pass_hash, verified, status, name FROM users WHERE username=?',
+    DEMO_STUDENT_USER);
   if (!u) return false;
 
-  const passwordOk = u.pass_hash && verifyPassword(DEMO_STUDENT_PASSWORD, u.pass_hash);
+  const passwordOk = u.pass_hash && verifyPassword(wanted, u.pass_hash);
   const stateOk = u.verified === 1 && u.status === 'active';
   const nameOk = u.name === DEMO_STUDENT_NAME;
   if (passwordOk && stateOk && nameOk) return false;
 
   q.run("UPDATE users SET pass_hash=?, verified=1, status='active', name=? WHERE id=?",
-    hashPassword(DEMO_STUDENT_PASSWORD), DEMO_STUDENT_NAME, u.id);
+    hashPassword(wanted), DEMO_STUDENT_NAME, u.id);
+  /* The password is NOT printed. Whoever set the environment variable already
+     knows it, and a log line is a place a credential outlives its usefulness. */
   console.warn(
-    '\n⚠  The demo student account had drifted from the documentation and was reset:' +
-    '\n   student / ' + DEMO_STUDENT_PASSWORD +
-    '\n   (outside production only; set NODE_ENV=production to disable the demo account entirely)\n'
+    '\n⚠  The demo student account was reset to DEMO_STUDENT_PASSWORD (username: ' +
+    DEMO_STUDENT_USER + ').' +
+    '\n   Outside production only; without that variable the account is left alone.\n'
   );
   return true;
 }
@@ -483,5 +523,5 @@ module.exports = {
   issueToken, consumeToken,
   requireAdmin, requireOwner, csrfGuard,
   ensureSeedAdmin, ensureDemoStudent, reportAdminAccounts,
-  DEV_DEFAULT_PASSWORD, DEMO_STUDENT_PASSWORD
+  demoStudentPassword, DEMO_STUDENT_USER, DEMO_STUDENT_NAME, generatedPassword
 };

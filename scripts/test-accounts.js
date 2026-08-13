@@ -28,10 +28,10 @@ const DB = path.join(tmpDir, 'probe.sqlite');
 const ROOT = path.join(__dirname, '..');
 
 /** Run a snippet in a child process against its own database, returning stdout */
-function runNode(code) {
+function runNode(code, extraEnv) {
   return execFileSync(process.execPath, ['-e', code], {
     cwd: ROOT, encoding: 'utf8',
-    env: { ...process.env, PREP_DB: DB, NODE_ENV: 'test' },
+    env: { ...process.env, PREP_DB: DB, NODE_ENV: 'test', ...(extraEnv || {}) },
     stdio: ['ignore', 'pipe', 'pipe']
   });
 }
@@ -53,13 +53,19 @@ try {
   const adminCount = runNode("const{q}=require('./server/db');console.log(q.val('SELECT COUNT(*) c FROM admins'))").trim();
   ok(adminCount === '1', 'A fresh database creates one administrator', 'saw ' + adminCount);
 
-  /* 2. The demo account matches the documentation on first boot */
+  /* The demo password is no longer a constant anywhere, so this test brings its
+     own and hands it to the children through the environment — which is also
+     the arrangement being tested. */
+  const DEMO_PW = 'Kiemthu-' + require('crypto').randomBytes(6).toString('hex');
+  process.env.DEMO_STUDENT_PASSWORD = DEMO_PW;
+
+  /* 2. ensureDemoStudent() applies DEMO_STUDENT_PASSWORD on first boot */
   runNode("require('./server/auth').ensureDemoStudent();");
   const rightFirstTime = runNode(
     "const A=require('./server/auth'),{q}=require('./server/db');" +
     "const u=q.get(\"SELECT pass_hash FROM users WHERE username='student'\");" +
-    "console.log(A.verifyPassword('Goodmorning01', u.pass_hash))").trim();
-  ok(rightFirstTime === 'true', 'The demo student signs in with the password the README states');
+    "console.log(A.verifyPassword(process.env.DEMO_STUDENT_PASSWORD, u.pass_hash))").trim();
+  ok(rightFirstTime === 'true', 'The demo student signs in with the password the environment names');
 
   /* 3. Demo password changed → the next boot must pull it back */
   runNode("const A=require('./server/auth'),{q}=require('./server/db');" +
@@ -67,7 +73,7 @@ try {
   const hasDrifted = runNode(
     "const A=require('./server/auth'),{q}=require('./server/db');" +
     "const u=q.get(\"SELECT pass_hash FROM users WHERE username='student'\");" +
-    "console.log(A.verifyPassword('Goodmorning01', u.pass_hash))").trim();
+    "console.log(A.verifyPassword(process.env.DEMO_STUDENT_PASSWORD, u.pass_hash))").trim();
   ok(hasDrifted === 'false', 'Set up the case where the demo password has drifted');
 
   const repaired = runNode("console.log(require('./server/auth').ensureDemoStudent())").trim();
@@ -76,8 +82,8 @@ try {
   const backInLine = runNode(
     "const A=require('./server/auth'),{q}=require('./server/db');" +
     "const u=q.get(\"SELECT pass_hash FROM users WHERE username='student'\");" +
-    "console.log(A.verifyPassword('Goodmorning01', u.pass_hash))").trim();
-  ok(backInLine === 'true', 'The demo password is back to what the documentation says');
+    "console.log(A.verifyPassword(process.env.DEMO_STUDENT_PASSWORD, u.pass_hash))").trim();
+  ok(backInLine === 'true', 'The demo password is back to what the environment names');
 
   /* 4. Change nothing when it is already right — no needless write, no warning each run */
   const secondRun = runNode("console.log(require('./server/auth').ensureDemoStudent())").trim();
@@ -112,17 +118,22 @@ try {
   /* 7. The command line tool: listing breaks nothing and lists correctly */
   const listOutput = cli('list');
   ok(/Admin accounts \(1\)/.test(listOutput), 'The "list" command lists administrators');
-  ok(!/Goodmorning01|Admin@123456/.test(listOutput), 'The "list" command does NOT print a password');
+  ok(!listOutput.includes(DEMO_PW), 'The "list" command does NOT print a password');
 
   /* 8. Administrator password lost → it can be reset */
   runNode("const A=require('./server/auth'),{q}=require('./server/db');" +
     "q.run('UPDATE admins SET pass_hash=? WHERE username=?', A.hashPassword('NobodyKnows999'), 'admin');");
-  cli('reset-admin');
+  /* No argument: a password is generated and printed once. There is no default
+     to compare against any more — the check is that the tool tells you what it
+     chose, and that what it printed is what now works. */
+  const generatedOut = cli('reset-admin');
+  const generated = (generatedOut.match(/Password\s*:\s*(\S+)/) || [])[1] || '';
+  ok(generated.length >= 10, 'reset-admin with no argument generates a password and prints it', generated);
   const adminOk = runNode(
     "const A=require('./server/auth'),{q}=require('./server/db');" +
     "const a=q.get(\"SELECT pass_hash FROM admins WHERE username='admin'\");" +
-    "console.log(A.verifyPassword('Admin@123456', a.pass_hash))").trim();
-  ok(adminOk === 'true', 'An administrator password can be reset to the default');
+    "console.log(A.verifyPassword(process.env.CHECK_PW, a.pass_hash))", { CHECK_PW: generated }).trim();
+  ok(adminOk === 'true', 'and the password it printed is the one that now works');
 
   /* 9. A chosen password works, and one that is too short is refused */
   cli('reset-admin', 'AVeryLongPassword123');

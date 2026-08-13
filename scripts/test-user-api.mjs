@@ -4,6 +4,8 @@
  * Run with the server up: node scripts/test-user-api.mjs
  * No browser — plain fetch, keeping cookies per "session" of its own.
  */
+import { DEMO_PASSWORD } from './_demo.mjs';
+
 const BASE = process.env.BASE || 'http://127.0.0.1:3000';
 
 let pass = 0, fail = 0;
@@ -187,14 +189,14 @@ ok(r.status === 200, 'Sign-in works with the password just set');
 
 console.log('\n\x1b[1m== Demo account and sign-out ==\x1b[0m');
 const demo = client();
-r = await demo.post('/api/auth/login', { username: 'student', password: 'Goodmorning01' });
+r = await demo.post('/api/auth/login', { username: 'student', password: DEMO_PASSWORD });
 ok(r.status === 200, 'The demo student signs in by username');
 r = await demo.get('/api/me');
 ok(r.status === 200 && r.data.unlockedTestIds.includes('vpet-b1-01'), 'Unlocked rights follow from a redeemed code');
 ok(r.data.myCodes.some(x => x.code === 'VPET-B1MK-24TR'), 'Lists the codes the student has redeemed');
 
 const demo2 = client();
-r = await demo2.post('/api/auth/login', { username: 'student@vpetprep.vn', password: 'Goodmorning01' });
+r = await demo2.post('/api/auth/login', { username: 'student@vpetprep.vn', password: DEMO_PASSWORD });
 ok(r.status === 200, 'Sign-in works by email');
 
 r = await demo.post('/api/auth/logout');

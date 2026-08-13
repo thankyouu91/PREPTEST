@@ -9,6 +9,7 @@
  * Run with the server up: node scripts/test-learn.mjs
  */
 import { launchChromium } from './_browser.mjs';
+import { DEMO_PASSWORD } from './_demo.mjs';
 
 const BASE = process.env.BASE || 'http://127.0.0.1:3000';
 
@@ -21,7 +22,7 @@ async function login(ctx) {
   const page = await ctx.newPage();
   await page.goto(BASE + '/prep/dang-nhap/', { waitUntil: 'networkidle' });
   await page.fill('#email', 'student');
-  await page.fill('#password', 'Goodmorning01');
+  await page.fill('#password', DEMO_PASSWORD);
   await page.click('#submit');
   await page.waitForURL(u => !u.pathname.includes('dang-nhap'), { timeout: 10000 });
   return page;

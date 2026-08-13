@@ -5,10 +5,11 @@
 import { postWithCsrf } from './_csrf.mjs';
 import { pool, isFailure, JOBS } from './_pool.mjs';
 import { launchChromium } from './_browser.mjs';
+import { DEMO_PASSWORD } from './_demo.mjs';
 
 const BASE = process.env.BASE_URL || 'http://localhost:3000';
 /* A real cookie session as the demo account + a local overlay for client-side codes */
-const DEMO = { id: 'student', pw: 'Goodmorning01' };
+const DEMO = { id: 'student', pw: DEMO_PASSWORD };
 const LOCAL_OVERLAY = {
   student: {
     seenTestIds: [], generatedCodes: {},

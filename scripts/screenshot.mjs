@@ -10,6 +10,7 @@ import path from 'node:path';
 import { postWithCsrf } from './_csrf.mjs';
 import { pool, isFailure, JOBS } from './_pool.mjs';
 import { launchChromium } from './_browser.mjs';
+import { DEMO_PASSWORD } from './_demo.mjs';
 
 const BASE = process.env.BASE_URL || 'http://localhost:3000';
 const OUT = path.resolve('docs/screenshots');
@@ -20,7 +21,7 @@ const only = (process.argv.find(a => a.startsWith('--only=')) || '').split('=')[
 /* The demo account (a real cookie session) + a local overlay so the images show rich state.
    The overlay is the client-side redeemed-code state — exactly what a real user would
    have, with no need to plant fake rows in the database. */
-const DEMO = { id: 'student', pw: 'Goodmorning01' };
+const DEMO = { id: 'student', pw: DEMO_PASSWORD };
 
 const LOCAL_OVERLAY = {
   student: {
@@ -46,7 +47,7 @@ const PAGES = [
   { slug: 'dat-lai-mat-khau', url: '/prep/dat-lai-mat-khau/?token=vi-du', auth: false },
   { slug: 'xac-thuc-email', url: '/prep/xac-thuc-email/?email=ngocanh.study%40gmail.com', auth: false },
   // Sign in for real as the demo student, then shoot the dashboard
-  { slug: 'dashboard-student', url: '/prep/', login: { id: 'student', pw: 'Goodmorning01' }, full: true },
+  { slug: 'dashboard-student', url: '/prep/', login: { id: 'student', pw: DEMO_PASSWORD }, full: true },
   { slug: 'dashboard',       url: '/prep/',                      auth: true, full: true },
   { slug: 'dashboard-empty', url: '/prep/',                      auth: 'fresh' },
   { slug: 'thu-vien',        url: '/prep/thu-vien/',             auth: true, full: true },

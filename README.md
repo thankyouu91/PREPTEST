@@ -103,7 +103,7 @@ Lệnh khác:
 Truy cập `/admin/`. Dữ liệu nằm trong SQLite nhúng (`node:sqlite`, không cần dependency native),
 file `data/prep.sqlite` tự tạo và seed ở lần chạy đầu — thư mục `data/` không đưa vào git.
 
-Tài khoản quản trị khởi tạo: `admin` / `Admin@123456` (in ra console kèm cảnh báo).
+Tài khoản quản trị khởi tạo: `admin`, **mật khẩu sinh ngẫu nhiên và in ra console đúng một lần** ở lần chạy đầu. Không còn mật khẩu mặc định viết sẵn trong mã nguồn — một giá trị mặc định nằm trong repo công khai là một lượt đăng nhập quản trị phát cho mọi người đọc được nó. Đặt `ADMIN_PASSWORD` để tự chọn, hoặc `node scripts/accounts.js reset-admin` để sinh lại.
 Đặt `ADMIN_PASSWORD` để dùng mật khẩu khác; ở `NODE_ENV=production` server **từ chối khởi động**
 nếu chưa có tài khoản nào và cũng không có `ADMIN_PASSWORD`.
 
@@ -748,16 +748,29 @@ theo trí nhớ — không khớp chữ nào.
 
 ## Tài khoản demo
 
-| Tên đăng nhập | Mật khẩu | Ghi chú |
-|---|---|---|
-| `student` | `Goodmorning01` | Đăng nhập được bằng `student` hoặc `student@vpetprep.vn`. Có sẵn 1 bài VPET B1 đã mở khoá. |
+Có một tài khoản học viên mẫu, tên đăng nhập `student` (hoặc
+`student@vpetprep.vn`), đã mở sẵn 1 bài VPET B1. **Mật khẩu của nó không nằm
+trong repo này** — đặt lấy một lần:
 
-Trang đăng nhập có nút **Điền sẵn tài khoản demo**.
+```bash
+node scripts/accounts.js reset-student '<mật khẩu bạn chọn>'
+```
 
-> ⚠️ **Mật khẩu demo chỉ được đặt khi `NODE_ENV` khác `production`** (xem
-> `ensureDemoStudentPassword` trong `server/auth.js`). Ở production bản seed để trống
-> `pass_hash` nên không ai đăng nhập được vào tài khoản mẫu. Đừng dùng lại mật khẩu này
-> ở bất kỳ hệ thống nào khác.
+**Vì sao bỏ đi.** Trước đây mật khẩu demo là một chuỗi cố định nằm trong hơn mười
+tệp, được liệt kê ở đây, và **in thẳng lên trang đăng nhập kèm nút điền sẵn**.
+Trong một repo ai cũng đọc được thì đó không phải tài khoản demo — đó là một lượt
+đăng nhập phát cho mọi người đọc mã nguồn. Thẻ demo trên trang đăng nhập đã bị gỡ,
+và `scripts/test-auth.mjs` kiểm tra rằng nó **không quay lại**.
+
+`npm run verify` tự sinh một mật khẩu mới cho mỗi lượt chạy, đặt vào tài khoản rồi
+truyền cho các script qua biến `DEMO_STUDENT_PASSWORD`. Muốn chạy tay một script:
+
+```bash
+DEMO_STUDENT_PASSWORD='<mật khẩu>' node scripts/audit.mjs
+```
+
+> ⚠️ Ở `NODE_ENV=production` tài khoản demo **không** được đụng tới, và không có
+> `DEMO_STUDENT_PASSWORD` thì server cũng không đặt lại gì cả.
 
 Tài khoản tự đăng ký nằm trong bảng `users` phía server, mật khẩu băm scrypt. Quyền mở khoá suy ra
 từ các code đã kích hoạt trong CSDL, nên đổi máy vẫn còn. Đổi mật khẩu ở tab Bảo mật đăng xuất mọi

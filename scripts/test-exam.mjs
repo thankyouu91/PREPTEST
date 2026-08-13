@@ -8,6 +8,7 @@
  * clock, the replay count, the sitting quota, and answers never going out.
  */
 import { launchChromium } from './_browser.mjs';
+import { DEMO_PASSWORD, ADMIN_PASSWORD } from './_demo.mjs';
 
 const BASE = process.env.BASE || 'http://127.0.0.1:3000';
 
@@ -84,7 +85,7 @@ try {
   /* ---------- Build a real paper to sit ---------- */
   head('Preparing the test paper');
   await admin.req('GET', '/api/me');
-  let r = await admin.req('POST', '/api/admin/login', { username: 'admin', password: process.env.ADMIN_PASSWORD || 'Admin@123456' });
+  let r = await admin.req('POST', '/api/admin/login', { username: 'admin', password: ADMIN_PASSWORD });
   ok(r.status === 200, 'Administrator sign-in', 'status ' + r.status);
 
   /* Two Listening items with audio + one Writing item: enough for the clock, replays and recording */
@@ -132,7 +133,7 @@ try {
   /* ---------- Starting a sitting ---------- */
   head('Starting a sitting');
   await student.req('GET', '/api/me');
-  r = await student.req('POST', '/api/auth/login', { username: 'student', password: 'Goodmorning01' });
+  r = await student.req('POST', '/api/auth/login', { username: 'student', password: DEMO_PASSWORD });
   ok(r.status === 200, 'Student sign-in', 'status ' + r.status);
 
   /* The database is not rebuilt between runs: an abandoned sitting from last time
@@ -395,7 +396,7 @@ try {
     const page = await ctx.newPage();
     await page.goto(BASE + '/prep/dang-nhap/', { waitUntil: 'networkidle' });
     await page.fill('#email', 'student');
-    await page.fill('#password', 'Goodmorning01');
+    await page.fill('#password', DEMO_PASSWORD);
     await page.click('#submit');
     await page.waitForTimeout(1200);
 

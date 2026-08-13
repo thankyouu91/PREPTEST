@@ -1,6 +1,7 @@
 /** Screenshots of the admin screens (a real sign-in) + console/CSP errors. */
 import fs from 'node:fs';
 import { launchChromium } from './_browser.mjs';
+import { ADMIN_PASSWORD } from './_demo.mjs';
 const BASE = process.env.BASE_URL || 'http://localhost:3000';
 const OUT = 'docs/screenshots';
 fs.mkdirSync(OUT, { recursive: true });
@@ -27,7 +28,7 @@ for (const [slug, url, needAuth] of PAGES) {
     if (needAuth) {
       await p.goto(BASE + '/admin/dang-nhap/', { waitUntil: 'networkidle' });
       await p.fill('#username', process.env.ADMIN_USERNAME || 'admin');
-      await p.fill('#password', process.env.ADMIN_PASSWORD || 'Admin@123456');
+      await p.fill('#password', ADMIN_PASSWORD);
       await p.click('#submit');
       // Wait until the sign-in page is really gone, so goto does not race the redirect
       await p.waitForURL(u => !u.pathname.includes('dang-nhap'), { timeout: 10000 });
