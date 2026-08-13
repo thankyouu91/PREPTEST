@@ -66,6 +66,9 @@ node scripts/test-gcs.mjs || fail=1
 step "S3 driver (SigV4 against AWS's worked example, task-role credentials)"
 node scripts/test-s3.mjs || fail=1
 
+step "Secrets Manager (fetch, merge, and nothing captured at import time)"
+node scripts/test-secrets.mjs || fail=1
+
 step "Server-side analytics (identity, payload rules, nothing personal)"
 node scripts/test-analytics.mjs || fail=1
 

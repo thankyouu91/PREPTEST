@@ -38,8 +38,13 @@ const A = require('./auth');
 
 const router = asyncRoutes(express.Router());
 
-const CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '';
-const CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || '';
+/* Read at call time, not captured at import: server/secrets.js merges Secrets
+   Manager values into the environment during boot, which happens after this
+   module has been required. Constants here would hold the empty strings they
+   had before the secret arrived, and Google Sign-In would report itself off on
+   a deployment that is fully configured. */
+const clientId = () => process.env.GOOGLE_CLIENT_ID || '';
+const clientSecret = () => process.env.GOOGLE_CLIENT_SECRET || '';
 const AUTH_ENDPOINT = 'https://accounts.google.com/o/oauth2/v2/auth';
 const TOKEN_ENDPOINT = 'https://oauth2.googleapis.com/token';
 const ISSUERS = ['accounts.google.com', 'https://accounts.google.com'];
@@ -50,7 +55,7 @@ const LOGIN_PAGE = '/prep/dang-nhap/';
 /** Configured and therefore offerable. Checked at request time, not import
     time, so a restart with new environment variables is all it takes. */
 function enabled() {
-  return !!(CLIENT_ID && CLIENT_SECRET);
+  return !!(clientId() && clientSecret());
 }
 
 function redirectUri(req) {
@@ -192,7 +197,7 @@ router.get('/auth/google', (req, res) => {
   stashState(res, { s: state, n: nonce, next: safeNext(req.query.next) });
 
   const params = new URLSearchParams({
-    client_id: CLIENT_ID,
+    client_id: clientId(),
     redirect_uri: redirectUri(req),
     response_type: 'code',
     scope: 'openid email profile',
@@ -221,8 +226,8 @@ router.get('/auth/google/callback', async (req, res) => {
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: new URLSearchParams({
         code,
-        client_id: CLIENT_ID,
-        client_secret: CLIENT_SECRET,
+        client_id: clientId(),
+        client_secret: clientSecret(),
         redirect_uri: redirectUri(req),
         grant_type: 'authorization_code'
       })
@@ -237,7 +242,7 @@ router.get('/auth/google/callback', async (req, res) => {
 
     const now = Math.floor(Date.now() / 1000);
     if (!ISSUERS.includes(claims.iss)) return failed(res, 'issuer');
-    if (claims.aud !== CLIENT_ID) return failed(res, 'audience');
+    if (claims.aud !== clientId()) return failed(res, 'audience');
     if (!(Number(claims.exp) > now - 60)) return failed(res, 'expired');
     if (!sameSecret(claims.nonce, stash.n)) return failed(res, 'nonce');
     /* An unverified address proves nothing about who owns it. */

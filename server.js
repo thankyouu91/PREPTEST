@@ -31,6 +31,7 @@ const analytics = require('./server/analytics');
 const { q } = require('./server/db');
 const { entitlementOf } = require('./server/entitlements');
 const { asyncRoutes } = require('./server/async-route');
+const secrets = require('./server/secrets');
 
 /* Every handler registered on this app is wrapped so a rejected promise
    becomes next(err) instead of a request that hangs. See server/async-route.js. */
@@ -300,6 +301,14 @@ app.use((err, req, res, next) => {
    not wait for them would answer its first request against a half-seeded
    database — and the first request in a test run is a sign-in. */
 (async () => {
+  /* First, before anything reads a key. With no AWS_SECRETS_ID this does
+     nothing at all; with one it merges the secret into process.env, so every
+     reader downstream keeps working unchanged. See server/secrets.js — and note
+     the rule it depends on: a secret must be read at call time, never captured
+     into a module constant at import, because modules are required above this
+     line. scripts/test-secrets.mjs enforces that by reading the source. */
+  await secrets.load();
+
   await A.ensureSeedAdmin();
   await A.ensureDemoStudent();
   /* setInterval does not await, so the sweep has to carry its own catch or a

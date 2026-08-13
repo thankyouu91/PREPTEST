@@ -89,6 +89,7 @@ Lệnh khác:
 | `node scripts/test-analytics.mjs` | kiểm thử analytics phía máy chủ: định danh không dùng cookie theo dõi, các giới hạn GA4 âm thầm bắt (tên sự kiện, số/độ dài tham số, `session_id`), trần số request đang bay, và **quét khẳng định payload không chứa** email, tên, địa chỉ IP hay user-agent |
 | `node scripts/test-pg-schema.mjs` | nạp lược đồ đã dịch sang **PostgreSQL thật** rồi so hai bên: 34 bảng, từng cột, từng NOT NULL, hai kiểu phải đổi, và các dạng câu lệnh mã nguồn đang dùng (`ON CONFLICT DO UPDATE`, khoá ngoại, index `DESC`). Không có `PG_URL` thì **bỏ qua và nói rõ**, không lặng lẽ xanh. `scripts/pg-dev.sh` dựng sẵn một cụm tạm |
 | `node scripts/test-payments.mjs` | kiểm thử cổng thanh toán: **chữ ký đối chiếu với chuỗi thô chép tay từ tài liệu** của VNPay và MoMo, rồi luật quyết định lúc nào cấp code — sai số tiền, sai nhà cung cấp, mã tham chiếu lạ, và **báo lại lần hai chỉ cấp một code** |
+| `node scripts/test-secrets.mjs` | kiểm thử nạp bí mật từ AWS Secrets Manager: một Secrets Manager giả **tự xác minh chữ ký SigV4 từ đúng byte nhận được** (kể cả `x-amz-target`, vì header chọn hành động thì phải được ký), giá trị nào vào được `process.env`, giá trị nào bị từ chối (bí mật **không được** ghi đè chính endpoint/credential/`NODE_ENV` đã dùng để lấy nó), và **không dòng log nào chứa giá trị**. Nửa sau đọc thẳng mã nguồn: **không module nào được bắt biến bí mật vào hằng số lúc import** — vì `load()` chạy sau mọi `require`, hằng số như thế giữ chuỗi rỗng lúc trước khi bí mật về, và không có gì ném lỗi cả |
 | `node scripts/test-s3.mjs` | kiểm thử driver Amazon S3 và lớp ký SigV4: **canonical request dựng lại đúng từng byte theo ví dụ AWS công bố** và băm ra đúng giá trị AWS in kèm, quy tắc percent-encode (`!'()*` phải mã hoá, `encodeURIComponent` thì không), lấy khoá tạm từ task role ECS và từ **IMDSv2** (bắt buộc PUT lấy token, không có đường lùi IMDSv1), rồi cả ba request chạy qua một S3 giả **tự tính lại chữ ký từ đúng những byte nhận được** — sửa một byte body sau khi ký thì bị từ chối |
 | `node scripts/test-gcs.mjs` | kiểm thử driver Google Cloud Storage và lớp lấy token: **sinh cặp khoá RSA thật rồi verify chữ ký JWT**, cache token, và toàn bộ hình dạng request (method, path, query, `Metadata-Flavor`, tên object đã encode) đối chiếu với một Google giả chạy tại chỗ |
 | `node scripts/test-srs.mjs` | kiểm thử lặp lại ngắt quãng: **lịch SM-2 tính chính xác từng ngày** (hàm thuần, đồng hồ truyền vào nên không phải chờ), rồi hàng đợi ôn tập qua API — ai được hỏi, chấm điểm lưu đúng cái lịch đã tính, hai học viên không thấy tiến độ của nhau |
@@ -253,6 +254,8 @@ Nơi lưu do biến môi trường quyết định, không phải sửa mã:
 | `S3_BUCKET`, `AWS_REGION` | — | bắt buộc khi `AUDIO_STORAGE=s3`. **Không có region mặc định**: `us-east-1` là mặc định ở mọi nơi khác trong AWS và sai với gần như mọi bucket, đổi lại là một redirect mà chữ ký không sống sót, báo về dưới dạng 403 |
 | `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` | — | chỉ dùng khi chạy ngoài AWS. Trên ECS/App Runner thì **task role** cấp khoá tạm, không phải lưu khoá ở đâu cả; trên EC2 thì instance role qua IMDSv2 |
 | `S3_ENDPOINT` | — | trỏ sang MinIO hoặc một S3 giả (chuyển sang path-style). Bỏ trống thì dùng virtual-hosted `https://<bucket>.s3.<region>.amazonaws.com` |
+| `AWS_SECRETS_ID` | — | tên hoặc ARN của một secret JSON trong AWS Secrets Manager. Có biến này thì lúc khởi động, `server/secrets.js` lấy secret đó và **trộn vào `process.env`** trước khi bất cứ thứ gì đọc khoá. Không có thì không làm gì cả |
+| `SECRETS_ENDPOINT` | — | trỏ Secrets Manager sang một endpoint khác (dùng cho test). Bỏ trống thì `https://secretsmanager.<region>.amazonaws.com` |
 | `AUDIO_DIR` | `data/uploads/audio` | thư mục cho driver đĩa |
 | `SUPABASE_URL`, `SUPABASE_SERVICE_KEY` | — | bắt buộc khi dùng driver Supabase |
 | `SUPABASE_AUDIO_BUCKET` | `exam-audio` | tên bucket |
@@ -634,6 +637,35 @@ Riêng tệp âm thanh thì `AUDIO_STORAGE=s3` đã tách hẳn ra khỏi `/app/
 rồi (2026-08-13). Trên ECS/App Runner nên gắn **task role** thay vì đặt khoá:
 khoá tạm do nền tảng cấp, tự xoay vòng, và một khoá không tồn tại thì không rò
 được. Chỉ còn CSDL là chưa tách.
+
+### Bí mật: đừng để trong task definition
+
+Biến môi trường trên ECS được ghi thẳng vào **task definition** — ai có quyền
+xem console đều đọc được, `describe-task-definition` in ra, và **mọi revision cũ
+đều giữ lại vĩnh viễn**. Nên mật khẩu CSDL nằm ở một chỗ không ai coi là kho bí
+mật, và đổi nó nghĩa là sửa rồi deploy lại.
+
+Đặt `AWS_SECRETS_ID` trỏ tới một secret JSON dạng `{"ADMIN_PASSWORD": "…",
+"VNPAY_HASH_SECRET": "…"}`; lúc khởi động `server/secrets.js` lấy về rồi trộn
+vào `process.env` **trước khi có gì đọc khoá**. Task chỉ cần quyền đọc đúng
+secret đó. Không có gì nhạy cảm trong task definition, xoay vòng khoá là sửa một
+chỗ, và AWS ghi log ai đã đọc.
+
+**Secret thắng biến môi trường**, và tên nào bị ghi đè thì in ra log (chỉ tên,
+không bao giờ giá trị). Chiều ngược lại trông quen hơn nhưng sai ở đây: một
+`ADMIN_PASSWORD` cũ còn sót trong task definition sẽ **âm thầm che** khoá vừa
+xoay vòng — xoay xong tưởng là xong, thực tế không đổi gì. Riêng những biến
+quyết định **chỗ lấy** secret (`AWS_REGION`, credential, `AWS_SECRETS_ID`,
+`SECRETS_ENDPOINT`, `NODE_ENV`) thì secret không được phép đặt: một secret sửa
+được địa chỉ đã lấy chính nó là một secret trỏ lần khởi động sau đi nơi khác.
+
+Một luật đi kèm, và `scripts/test-secrets.mjs` đọc mã nguồn để giữ nó: **không
+module nào được đọc khoá vào hằng số lúc import**. `load()` chạy trong hàm boot,
+tức là *sau* mọi `require` ở đầu `server.js`, nên hằng số bắt lúc import giữ
+đúng chuỗi rỗng của lúc trước khi secret về — và không có gì ném lỗi. Triệu
+chứng là màn đăng nhập báo Google chưa cấu hình trên một deployment đã cấu hình
+đủ, và thư xác thực gửi đi không tới. Đọc lúc gọi (`clientId()`, `settings()`,
+`supabase()`) thì không dính.
 
 ## Thanh toán (VNPay / MoMo, sandbox)
 

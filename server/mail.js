@@ -39,17 +39,26 @@ const tls = require('node:tls');
 const crypto = require('node:crypto');
 const os = require('node:os');
 
-const DRIVER = (process.env.MAIL_DRIVER || 'console').toLowerCase();
-const SMTP_HOST = process.env.SMTP_HOST || '';
-const SMTP_PORT = parseInt(process.env.SMTP_PORT, 10) || 587;
-const SMTP_USER = process.env.SMTP_USER || '';
-const SMTP_PASS = process.env.SMTP_PASS || '';
-/* Implicit TLS from the first byte — port 465. Port 587 starts in the clear and
-   upgrades with STARTTLS, which is the common case and the default here. */
-const SMTP_SECURE = process.env.SMTP_SECURE === '1' || SMTP_PORT === 465;
-const SMTP_ALLOW_PLAINTEXT_AUTH = process.env.SMTP_ALLOW_PLAINTEXT_AUTH === '1';
-const MAIL_FROM = process.env.MAIL_FROM || '';
-const SMTP_TIMEOUT_MS = parseInt(process.env.SMTP_TIMEOUT_MS, 10) || 20000;
+/* Read at call time, never captured into constants at import: server/secrets.js
+   merges Secrets Manager values into the environment during boot, which happens
+   after this module has been required. SMTP_PASS captured at import would be
+   the empty string it was before the secret arrived, and the symptom is mail
+   that authenticates as nobody and quietly does not arrive. */
+function settings() {
+  const port = parseInt(process.env.SMTP_PORT, 10) || 587;
+  return {
+    driver: (process.env.MAIL_DRIVER || 'console').toLowerCase(),
+    host: process.env.SMTP_HOST || '',
+    port,
+    user: process.env.SMTP_USER || '',
+    pass: process.env.SMTP_PASS || '',
+    /* Implicit TLS on 465, STARTTLS everywhere else — see the note above. */
+    secure: process.env.SMTP_SECURE === '1' || port === 465,
+    allowPlaintextAuth: process.env.SMTP_ALLOW_PLAINTEXT_AUTH === '1',
+    from: process.env.MAIL_FROM || '',
+    timeoutMs: parseInt(process.env.SMTP_TIMEOUT_MS, 10) || 20000
+  };
+}
 
 /* Absolute links, because a relative path in an email is not clickable. Falls
    back to the request's own origin, which is trustworthy now that TRUST_PROXY
@@ -176,7 +185,7 @@ function conversation(socket) {
 function connect(opts) {
   return new Promise((resolve, reject) => {
     const socket = (opts.tls ? tls : net).connect(opts, () => resolve(socket));
-    socket.setTimeout(SMTP_TIMEOUT_MS, () => socket.destroy(new Error('SMTP timed out')));
+    socket.setTimeout(settings().timeoutMs, () => socket.destroy(new Error('SMTP timed out')));
     socket.once('error', reject);
   });
 }
@@ -184,7 +193,7 @@ function connect(opts) {
 function upgrade(socket, host) {
   return new Promise((resolve, reject) => {
     const secure = tls.connect({ socket, servername: host }, () => resolve(secure));
-    secure.setTimeout(SMTP_TIMEOUT_MS, () => secure.destroy(new Error('SMTP timed out')));
+    secure.setTimeout(settings().timeoutMs, () => secure.destroy(new Error('SMTP timed out')));
     secure.once('error', reject);
   });
 }
@@ -260,12 +269,13 @@ function logIssued(verb, subject, to) {
 }
 
 function smtpConfig() {
-  if (!SMTP_HOST) throw new Error('MAIL_DRIVER=smtp needs SMTP_HOST');
-  if (!MAIL_FROM) throw new Error('MAIL_DRIVER=smtp needs MAIL_FROM');
+  const s = settings();
+  if (!s.host) throw new Error('MAIL_DRIVER=smtp needs SMTP_HOST');
+  if (!s.from) throw new Error('MAIL_DRIVER=smtp needs MAIL_FROM');
   return {
-    host: SMTP_HOST, port: SMTP_PORT, secure: SMTP_SECURE,
-    user: SMTP_USER, pass: SMTP_PASS,
-    allowPlaintextAuth: SMTP_ALLOW_PLAINTEXT_AUTH
+    host: s.host, port: s.port, secure: s.secure,
+    user: s.user, pass: s.pass,
+    allowPlaintextAuth: s.allowPlaintextAuth
   };
 }
 
@@ -278,11 +288,12 @@ function smtpConfig() {
  * person. The account exists either way, and the link can be asked for again.
  */
 async function send({ to, subject, text }) {
-  if (DRIVER !== 'smtp') { logIssued('would send', subject, to); return { sent: false, driver: 'console' }; }
+  const { driver, from } = settings();
+  if (driver !== 'smtp') { logIssued('would send', subject, to); return { sent: false, driver: 'console' }; }
   try {
     const cfg = smtpConfig();
-    const message = compose({ from: MAIL_FROM, to, subject, text });
-    await smtpSend(message, { from: MAIL_FROM, to }, cfg);
+    const message = compose({ from, to, subject, text });
+    await smtpSend(message, { from, to }, cfg);
     logIssued('sent', subject, to);
     return { sent: true, driver: 'smtp' };
   } catch (e) {
@@ -292,10 +303,12 @@ async function send({ to, subject, text }) {
 }
 
 /** Is a real transport configured? Decides whether a dev link may be returned. */
-const enabled = () => DRIVER === 'smtp';
+const enabled = () => settings().driver === 'smtp';
 
 module.exports = {
   send, enabled, baseUrl,
   compose, smtpSend, encodeHeader, assertHeaderSafe, replyIsComplete,
-  DRIVER
+  /* `settings` replaces the old `DRIVER` export, which was a value read once at
+     import and so could not answer the question after boot. Nothing consumed it. */
+  settings
 };

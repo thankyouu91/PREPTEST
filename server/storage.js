@@ -60,9 +60,16 @@ const EXTENSION = 'mp3';
 const RECORDING_MIME = ['audio/webm', 'audio/ogg', 'audio/mp4', 'audio/mpeg', 'audio/mp3'];
 
 const DISK_ROOT = process.env.AUDIO_DIR || path.join(process.cwd(), 'data', 'uploads', 'audio');
-const SUPABASE_URL = (process.env.SUPABASE_URL || '').replace(/\/+$/, '');
-const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY || '';
-const SUPABASE_BUCKET = process.env.SUPABASE_AUDIO_BUCKET || 'exam-audio';
+/* Read at call time like gcs() and s3() below, and for a second reason as well
+   as the test one: server/secrets.js merges Secrets Manager values into the
+   environment during boot, which happens after this module has been required.
+   A service key captured into a constant at import would be the empty string
+   it was before the secret arrived. */
+const supabase = () => ({
+  url: (process.env.SUPABASE_URL || '').replace(/\/+$/, ''),
+  serviceKey: process.env.SUPABASE_SERVICE_KEY || '',
+  bucket: process.env.SUPABASE_AUDIO_BUCKET || 'exam-audio'
+});
 
 /* Read at call time rather than at import. The other settings above are read
    once because nothing changes them after boot; the driver choice is read per
@@ -165,16 +172,18 @@ const diskDriver = {
 /* ---------------------------- supabase ---------------------------- */
 
 function supabaseHeaders(extra) {
+  const { serviceKey } = supabase();
   return Object.assign({
-    apikey: SUPABASE_SERVICE_KEY,
-    Authorization: `Bearer ${SUPABASE_SERVICE_KEY}`
+    apikey: serviceKey,
+    Authorization: `Bearer ${serviceKey}`
   }, extra || {});
 }
 
 const supabaseDriver = {
   name: 'supabase',
   async put(buf, key) {
-    const res = await fetch(`${SUPABASE_URL}/storage/v1/object/${SUPABASE_BUCKET}/${key}`, {
+    const { url, bucket } = supabase();
+    const res = await fetch(`${url}/storage/v1/object/${bucket}/${key}`, {
       method: 'POST',
       headers: supabaseHeaders({ 'Content-Type': 'audio/mpeg', 'x-upsert': 'true' }),
       body: buf
@@ -182,14 +191,16 @@ const supabaseDriver = {
     if (!res.ok) throw new Error(`Supabase upload failed: ${res.status} ${await res.text()}`);
   },
   async get(key) {
-    const res = await fetch(`${SUPABASE_URL}/storage/v1/object/${SUPABASE_BUCKET}/${key}`, {
+    const { url, bucket } = supabase();
+    const res = await fetch(`${url}/storage/v1/object/${bucket}/${key}`, {
       headers: supabaseHeaders()
     });
     if (!res.ok) throw new Error(`Supabase download failed: ${res.status}`);
     return { body: Buffer.from(await res.arrayBuffer()) };
   },
   async remove(key) {
-    const res = await fetch(`${SUPABASE_URL}/storage/v1/object/${SUPABASE_BUCKET}/${key}`, {
+    const { url, bucket } = supabase();
+    const res = await fetch(`${url}/storage/v1/object/${bucket}/${key}`, {
       method: 'DELETE',
       headers: supabaseHeaders()
     });
@@ -339,7 +350,7 @@ function orDisk(driver, missing) {
 function pickDriver() {
   const want = driverName_();
   if (want === 'supabase') {
-    if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
+    if (!supabase().url || !supabase().serviceKey) {
       throw new Error('AUDIO_STORAGE=supabase needs SUPABASE_URL and SUPABASE_SERVICE_KEY');
     }
     return supabaseDriver;

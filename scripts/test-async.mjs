@@ -34,7 +34,7 @@ const FILES = [
   'server.js',
   'server/api.js', 'server/user-api.js', 'server/exam-api.js', 'server/payment-api.js',
   'server/google-auth.js', 'server/auth.js', 'server/entitlements.js', 'server/marking.js',
-  'server/security.js', 'server/analytics.js'
+  'server/security.js', 'server/analytics.js', 'server/secrets.js'
 ];
 
 /* The scripts reach into the same modules, and four of them broke on exactly
