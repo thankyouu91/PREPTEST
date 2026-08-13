@@ -1,0 +1,33 @@
+{
+  "_comment_1": "Trust policy for the IAM role that .github/workflows/deploy.yml assumes.",
+  "_comment_2": "Replace <ACCOUNT_ID>. Everything else is already correct for this repository.",
+
+  "_comment_3": "The sub claim is minted by GitHub, not by the workflow file, and it ALWAYS begins with repo:<owner>/<name>. That prefix is what locks the role to this repository and nothing in a workflow can forge it. What varies is the rest of the claim, and getting that part wrong is the whole difficulty:",
+  "_comment_4": "  push / workflow_dispatch on a branch -> repo:owner/name:ref:refs/heads/<branch>",
+  "_comment_5": "  a job that declares `environment:`  -> repo:owner/name:environment:<name>",
+  "_comment_6": "  a pull_request event                -> repo:owner/name:pull_request",
+
+  "_comment_7": "The deploy job declares `environment: production`, so the environment form is the one that arrives. A policy pinned to the ref form cannot match it, and the failure reads 'Not authorized to perform sts:AssumeRoleWithWebIdentity' with no hint as to which claim disagreed.",
+
+  "_comment_8": "IMPORTANT: this pins the environment, not the branch. Any branch in this repository can declare `environment: production`. The branch restriction therefore lives in GitHub, where it is actually enforced: repo Settings -> Environments -> production -> Deployment branches and tags -> Selected branches -> claude/prep-test-platform-design-fpiuqn. Without that setting this role is assumable from any branch here.",
+
+  "_comment_9": "Repositories created after 2026-07-15, or opted in to immutable subject claims, carry numeric ids: repo:owner@123456/name@456789:environment:production. If the assume fails with the value below, read the real sub out of the failed run rather than guessing at it.",
+
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "GitHubActionsDeployFromThisRepoAndEnvironment",
+      "Effect": "Allow",
+      "Principal": {
+        "Federated": "arn:aws:iam::<ACCOUNT_ID>:oidc-provider/token.actions.githubusercontent.com"
+      },
+      "Action": "sts:AssumeRoleWithWebIdentity",
+      "Condition": {
+        "StringEquals": {
+          "token.actions.githubusercontent.com:aud": "sts.amazonaws.com",
+          "token.actions.githubusercontent.com:sub": "repo:thankyouu91/PREPTEST:environment:production"
+        }
+      }
+    }
+  ]
+}

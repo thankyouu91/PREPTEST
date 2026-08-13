@@ -705,12 +705,53 @@ EC2_INSTANCE_ID   i-0123456789abcdef0
 DEPLOY_ON_PUSH    true, khi muốn mỗi commit tự lên
 ```
 
-Phía AWS cần ba thứ: một OIDC provider cho `token.actions.githubusercontent.com`;
-một role tin provider đó **giới hạn đúng repo này và đúng nhánh này** (trust
-policy kiểu `repo:owner/*:*` nghĩa là mọi repo trong account đều nhận được vai
-ấy); và role đó chỉ được `ssm:SendCommand` lên **một** instance với document
-`AWS-RunShellScript`, cộng `ssm:GetCommandInvocation`. Bản thân instance cần SSM
-agent và `AmazonSSMManagedInstanceCore`.
+Phía AWS cần bốn thứ, hai cái đầu đã có sẵn tệp dán thẳng vào:
+
+1. Một OIDC provider cho `token.actions.githubusercontent.com`.
+2. Một role tin provider đó — `deploy/github-oidc-trust-policy.json`.
+3. Quyền cho role đó — `deploy/github-oidc-permissions.json`: `ssm:SendCommand`
+   lên **một** instance với **một** document, hết.
+4. Bản thân instance cần SSM agent và `AmazonSSMManagedInstanceCore`.
+
+### `sub` claim: chỗ trust policy hay sai, và sai thì im lặng
+
+`sub` do **GitHub** phát, không phải workflow tự khai, và nó **luôn** bắt đầu
+bằng `repo:<owner>/<name>`. Đó là lý do khoá theo repo là thật: không workflow
+nào giả được tiền tố ấy. Phần **sau** tiền tố mới là chỗ dễ sai:
+
+| Ngữ cảnh | `sub` |
+|---|---|
+| push / dispatch trên một nhánh | `repo:owner/name:ref:refs/heads/<branch>` |
+| job có khai `environment:` | `repo:owner/name:environment:<name>` |
+| sự kiện `pull_request` | `repo:owner/name:pull_request` |
+
+Job deploy ở đây khai `environment: production`, nên **dạng environment mới là
+dạng thật sự đến** — trust policy ghim theo `ref:refs/heads/...` sẽ không bao
+giờ khớp, và lỗi trả về chỉ nói `Not authorized to perform
+sts:AssumeRoleWithWebIdentity`, không nói claim nào lệch.
+
+Hệ quả quan trọng: **trust policy ghim environment, không ghim được nhánh** —
+nhánh nào trong repo này cũng khai được `environment: production`. Nên khoá
+nhánh nằm ở GitHub, nơi nó thật sự được thi hành: **Settings → Environments →
+production → Deployment branches and tags → Selected branches →
+`claude/prep-test-platform-design-fpiuqn`**. Thiếu bước này thì mọi nhánh trong
+repo đều nhận được vai.
+
+Repo tạo sau 15/07/2026 (hoặc đã bật immutable subject claims) còn kèm id số:
+`repo:owner@123456/name@456789:environment:production`. Nên **đừng đoán chuỗi
+`sub`** — chạy thử rồi đọc giá trị thật từ log.
+
+Xem trust policy đang thật sự là gì, thay vì cái mình tưởng:
+
+```bash
+aws iam get-role --role-name <tên-role> \
+  --query 'Role.AssumeRolePolicyDocument.Statement[].Condition' --output json
+```
+
+Đọc kỹ hai điều: chuỗi có còn nguyên tiền tố `repo:thankyouu91/PREPTEST:` không
+(mất tiền tố này, hoặc đổi thành `repo:thankyouu91/*`, là repo **không** còn bị
+khoá), và điều kiện là `StringEquals` hay `StringLike` — `StringLike` với `*` ở
+cuối mở ra mọi nhánh, mọi environment và cả `pull_request` trong repo đó.
 
 ### Ba cái bẫy trên EC2, cả ba đều im lặng
 

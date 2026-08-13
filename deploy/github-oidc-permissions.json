@@ -1,0 +1,28 @@
+{
+  "_comment_1": "The only permissions the deploy role needs. Replace <REGION>, <ACCOUNT_ID> and <INSTANCE_ID>.",
+  "_comment_2": "SendCommand needs BOTH resources: the instance it runs on and the document it runs. Naming only the instance leaves the document unrestricted, which means any SSM document — including ones that read files off the box — and naming only the document leaves the fleet open.",
+  "_comment_3": "GetCommandInvocation cannot be scoped to a resource; it is read-only and returns the output of a command this role already had to be allowed to send.",
+  "_comment_4": "Do not replace this with AmazonSSMFullAccess. That grants Session Manager, which is an interactive root shell on every instance in the account, to anything that can trigger a workflow in this repository.",
+
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "RunTheDeployScriptOnOneInstance",
+      "Effect": "Allow",
+      "Action": "ssm:SendCommand",
+      "Resource": [
+        "arn:aws:ec2:<REGION>:<ACCOUNT_ID>:instance/<INSTANCE_ID>",
+        "arn:aws:ssm:<REGION>::document/AWS-RunShellScript"
+      ]
+    },
+    {
+      "Sid": "ReadBackWhatItSaid",
+      "Effect": "Allow",
+      "Action": [
+        "ssm:GetCommandInvocation",
+        "ssm:ListCommandInvocations"
+      ],
+      "Resource": "*"
+    }
+  ]
+}

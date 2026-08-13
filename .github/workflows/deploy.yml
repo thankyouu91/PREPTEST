@@ -85,7 +85,17 @@ jobs:
     permissions:
       id-token: write        # to mint the OIDC token the role trusts
       contents: read
-    environment: production  # so a required reviewer can be attached in Settings
+    # Load-bearing in two ways, not decoration.
+    #
+    # It is where the branch restriction lives: Settings -> Environments ->
+    # production -> Deployment branches and tags. AWS cannot enforce that,
+    # because declaring an environment REPLACES the ref in the OIDC subject
+    # claim (see deploy/github-oidc-trust-policy.json), so the trust policy
+    # pins the environment and GitHub pins which branches may use it.
+    #
+    # It is also where a required reviewer goes, if this should ever pause for
+    # a human before touching the server.
+    environment: production
     steps:
       - uses: actions/checkout@v4
 
@@ -97,6 +107,18 @@ jobs:
           role-to-assume: ${{ vars.AWS_ROLE_ARN }}
           aws-region: ${{ vars.AWS_REGION }}
           role-session-name: gh-deploy-${{ github.run_id }}
+
+      - name: Say which identity was used
+        # Not the token — the value GitHub puts in its `sub` claim, composed
+        # from the same context. When an assume-role fails with "Not authorized
+        # to perform sts:AssumeRoleWithWebIdentity", this line and the trust
+        # policy are the two strings to compare, and having one of them printed
+        # turns a guessing game into a diff.
+        if: always()
+        run: |
+          echo "subject claim should be: repo:${{ github.repository }}:environment:production"
+          echo "(a repository created after 2026-07-15, or opted in to immutable"
+          echo " subject claims, carries numeric ids: repo:owner@1234/name@5678:environment:production)"
 
       - name: Run the deploy on the instance
         # The command itself is deploy/ec2-deploy.sh, in this repository, so
@@ -153,11 +175,17 @@ jobs:
 # On the AWS side, three things:
 #
 #   1. An OIDC provider for token.actions.githubusercontent.com.
-#   2. A role that trusts it, with the subject restricted to THIS repository and
-#      THIS branch — a trust policy of `repo:owner/*:*` lets any repository in
-#      the account assume it.
-#   3. That role allowed ssm:SendCommand on this one instance and on the
-#      AWS-RunShellScript document, plus ssm:GetCommandInvocation. Nothing else.
-#      The instance itself needs the SSM agent running and a role with
+#   2. A role that trusts it — deploy/github-oidc-trust-policy.json, ready to
+#      paste. It pins the repository AND the environment. It cannot pin the
+#      branch, because an `environment:` job's subject claim has no ref in it;
+#      the branch restriction goes on the environment in GitHub instead.
+#   3. That role's permissions — deploy/github-oidc-permissions.json. SendCommand
+#      on one instance and one document, and nothing else.
+#   4. The instance needs the SSM agent running and an instance profile with
 #      AmazonSSMManagedInstanceCore.
+#
+# Check what is really configured, rather than what was intended:
+#
+#   aws iam get-role --role-name <name> \
+#     --query 'Role.AssumeRolePolicyDocument.Statement[].Condition' --output json
 # ---------------------------------------------------------------------------
