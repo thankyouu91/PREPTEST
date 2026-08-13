@@ -63,6 +63,9 @@ node scripts/test-async.mjs || fail=1
 step "Cloud Storage driver (RS256 assertion, token cache, GCS request shapes)"
 node scripts/test-gcs.mjs || fail=1
 
+step "S3 driver (SigV4 against AWS's worked example, task-role credentials)"
+node scripts/test-s3.mjs || fail=1
+
 step "Server-side analytics (identity, payload rules, nothing personal)"
 node scripts/test-analytics.mjs || fail=1
 

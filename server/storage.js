@@ -1,5 +1,5 @@
 /**
- * Audio storage with three interchangeable drivers.
+ * Audio storage with four interchangeable drivers.
  *
  * Why an adapter instead of writing straight to disk: the container this
  * platform runs in is disposable, so anything written to local disk is gone on
@@ -10,6 +10,7 @@
  *   AUDIO_STORAGE=disk       (default) files under data/uploads/audio
  *   AUDIO_STORAGE=supabase   Supabase Storage bucket, survives redeploys
  *   AUDIO_STORAGE=gcs        Google Cloud Storage, for the Cloud Run deployment
+ *   AUDIO_STORAGE=s3         Amazon S3, for the AWS deployment
  *
  * The Supabase driver needs SUPABASE_URL and SUPABASE_SERVICE_KEY. It uses the
  * service key, so it must only ever run on the server — never ship that key to
@@ -20,6 +21,10 @@
  * server/google-token.js. It talks to the JSON API over `fetch`, so it adds no
  * dependency: the official client library is 200-odd transitive packages to do
  * three HTTP calls.
+ *
+ * The S3 driver needs S3_BUCKET, AWS_REGION and an AWS credential, which on ECS
+ * or App Runner is the task role and needs no stored key either — see
+ * server/aws-sigv4.js. Same reasoning about the SDK, same three HTTP calls.
  *
  * Security notes, because this is the one place the platform accepts a file
  * from outside:
@@ -34,6 +39,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
 const googleToken = require('./google-token');
+const aws = require('./aws-sigv4');
 
 /* 10 MB is generous for a single test item: a 3 minute clip at 128 kbps is
    about 2.8 MB. Anything bigger is a mistake or an attack. */
@@ -67,6 +73,16 @@ const driverName_ = () => (process.env.AUDIO_STORAGE || 'disk').toLowerCase();
 
 /* STORAGE_EMULATOR_HOST is the name Google's own client libraries read, so a
    fake server or the local emulator drops in without a project-specific knob. */
+/* S3_ENDPOINT is the override a fake server or MinIO drops into. When it is
+   set the request is path-style (endpoint/bucket/key), because a fake cannot
+   own *.s3.amazonaws.com; without it the request is virtual-hosted, which is
+   the only style AWS still guarantees for new buckets. */
+const s3 = () => ({
+  bucket: process.env.S3_BUCKET || '',
+  region: aws.region(),
+  endpoint: (process.env.S3_ENDPOINT || '').replace(/\/+$/, '')
+});
+
 const gcs = () => ({
   bucket: process.env.GCS_BUCKET || '',
   api: (process.env.STORAGE_EMULATOR_HOST || 'https://storage.googleapis.com').replace(/\/+$/, ''),
@@ -232,22 +248,94 @@ const gcsDriver = {
   }
 };
 
+/* -------------------------------- s3 -------------------------------- *
+ *
+ * Three requests, each one signed. The key contains a slash and that slash is
+ * a real path separator in S3 — an object called `ab/cdef.mp3` lives at
+ * `/ab/cdef.mp3`, not at `/ab%2Fcdef.mp3` — so the segments are encoded
+ * individually and joined, which is exactly what the signer's canonicalPath
+ * does to the same string. The two have to agree or every request is a 403:
+ * this is the opposite of the GCS driver above, where the object name is one
+ * opaque value and must be encoded whole.
+ */
+
+/** The URL for one object, virtual-hosted unless an endpoint is configured. */
+function s3Url(key) {
+  const { bucket, region, endpoint } = s3();
+  const path = String(key).split('/').map(encodeURIComponent).join('/');
+  return endpoint
+    ? `${endpoint}/${encodeURIComponent(bucket)}/${path}`
+    : `https://${bucket}.s3.${region}.amazonaws.com/${path}`;
+}
+
+/** The body of a failed response, short enough to log and never the request. */
+async function s3Reason(res) {
+  const text = await res.text().catch(() => '');
+  return `${res.status} ${text.slice(0, 200)}`;
+}
+
+async function s3Fetch(method, key, body, headers) {
+  const url = s3Url(key);
+  const signed = await aws.sign({ method, url, headers: headers || {}, body, service: 's3' });
+  return fetch(url, { method, headers: signed.headers, body });
+}
+
+const s3Driver = {
+  name: 's3',
+  async put(buf, key) {
+    const res = await s3Fetch('PUT', key, buf, { 'content-type': 'audio/mpeg' });
+    if (!res.ok) throw new Error(`S3 upload failed: ${await s3Reason(res)}`);
+  },
+  async get(key) {
+    const res = await s3Fetch('GET', key);
+    if (!res.ok) throw new Error(`S3 download failed: ${await s3Reason(res)}`);
+    return { body: Buffer.from(await res.arrayBuffer()) };
+  },
+  async remove(key) {
+    const res = await s3Fetch('DELETE', key);
+    /* S3 answers 204 whether or not the object was there, which is the
+       behaviour the caller wants; 404 is tolerated for a fake or a gateway
+       that reports it differently. */
+    if (!res.ok && res.status !== 404) throw new Error(`S3 delete failed: ${await s3Reason(res)}`);
+  }
+};
+
 /**
  * Which driver is in force, and what happens when a driver is asked for
  * without the credential it needs.
  *
- * Supabase throws. GCS does something more careful, because the roadmap asks
- * for it to "fall back to disk until the credential exists" and a silent
- * fallback in production is data loss rather than a graceful degradation:
- * writes would land on a container disk that evaporates on the next deploy,
- * and nobody would find out until a candidate's recording was missing.
+ * Supabase throws. GCS and S3 do something more careful, because the roadmap
+ * asks for a fallback to disk until the credential exists and a silent fallback
+ * in production is data loss rather than a graceful degradation: writes would
+ * land on a container disk that evaporates on the next deploy, and nobody would
+ * find out until a candidate's recording was missing.
  *
- * So it depends on where it is running. In production, an unconfigured GCS
- * refuses to start — a boot that fails is cheaper than an upload that
- * disappears. Anywhere else it warns, loudly and once, and uses disk, so the
- * same configuration can be run on a laptop with no key at all.
+ * So it depends on where it is running. In production, a cloud driver that is
+ * named but not configured refuses to start — a boot that fails is cheaper than
+ * an upload that disappears. Anywhere else it warns, loudly and once, and uses
+ * disk, so the same configuration can be run on a laptop with no key at all.
  */
-let warnedAboutGcs = false;
+const warned = new Set();
+
+/** The shared "named but not configured" rule, so the two cloud drivers cannot
+    drift into disagreeing about what a missing credential means. */
+function orDisk(driver, missing) {
+  if (!missing.length) return driver;
+  /* "a and b and c" reads like a bug in the message rather than a list. */
+  const list = missing.length > 1
+    ? missing.slice(0, -1).join(', ') + ' and ' + missing[missing.length - 1]
+    : missing[0];
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error(`AUDIO_STORAGE=${driver.name} needs ${list}`);
+  }
+  if (!warned.has(driver.name)) {
+    warned.add(driver.name);
+    console.warn(`[storage] AUDIO_STORAGE=${driver.name} but ${list} `
+      + `${missing.length > 1 ? 'are' : 'is'} missing — using local disk. `
+      + 'Uploads will not survive a redeploy. In production this would refuse to start.');
+  }
+  return diskDriver;
+}
 function pickDriver() {
   const want = driverName_();
   if (want === 'supabase') {
@@ -260,16 +348,18 @@ function pickDriver() {
     const missing = [];
     if (!gcs().bucket) missing.push('GCS_BUCKET');
     if (!googleToken.configured()) missing.push('a Google credential (GOOGLE_SERVICE_ACCOUNT_JSON, GOOGLE_APPLICATION_CREDENTIALS, or the metadata server on Cloud Run)');
-    if (!missing.length) return gcsDriver;
-    if (process.env.NODE_ENV === 'production') {
-      throw new Error(`AUDIO_STORAGE=gcs needs ${missing.join(' and ')}`);
-    }
-    if (!warnedAboutGcs) {
-      warnedAboutGcs = true;
-      console.warn(`[storage] AUDIO_STORAGE=gcs but ${missing.join(' and ')} is missing — using local disk. `
-        + 'Uploads will not survive a redeploy. In production this would refuse to start.');
-    }
-    return diskDriver;
+    return orDisk(gcsDriver, missing);
+  }
+  if (want === 's3') {
+    const missing = [];
+    if (!s3().bucket) missing.push('S3_BUCKET');
+    /* Region is listed separately rather than defaulted. us-east-1 is the
+       default everywhere else in the AWS world and it is the wrong one for
+       almost every bucket; the failure it buys is a redirect a signature does
+       not survive, reported as a 403. */
+    if (!s3().region) missing.push('AWS_REGION');
+    if (!aws.configured()) missing.push('an AWS credential (AWS_ACCESS_KEY_ID + AWS_SECRET_ACCESS_KEY, the ECS task role, or the EC2 instance role)');
+    return orDisk(s3Driver, missing);
   }
   return diskDriver;
 }
