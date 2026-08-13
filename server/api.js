@@ -16,6 +16,7 @@ const EXAM_FORMATS = require('./data/exam-formats');
 const storage = require('./storage');
 const PLANS = require('./data/plans');
 const { entitlementOf } = require('./entitlements');
+const classroom = require('./classroom');
 const LINKING = require('./data/linking-words');
 
 const router = asyncRoutes(express.Router());
@@ -1428,6 +1429,49 @@ router.get('/admin/codes/export', async (req, res) => {
   res.setHeader('Content-Type', 'text/csv; charset=utf-8');
   res.setHeader('Content-Disposition', 'attachment; filename="codes.csv"');
   res.send('﻿' + csv);            // a BOM so Excel reads the accents correctly
+});
+
+/* ==================== GOOGLE CLASSROOM ====================
+ *
+ * All four sit under the router-wide requireAdmin + csrfGuard registered at the
+ * top of this file. The consent round trip itself is not here — it is two GET
+ * browser navigations in server/google-auth.js, because a redirect to Google
+ * cannot carry a CSRF header and is guarded by the state cookie instead.
+ *
+ * The grant belongs to the administrator who made it, and every route below
+ * reads req.admin.id rather than taking an id from the request. One
+ * administrator must not be able to spend another's Google permission.
+ */
+
+router.get('/admin/classroom', async (req, res) => {
+  res.set('Cache-Control', 'no-store').json(await classroom.status(req.admin.id));
+});
+
+router.get('/admin/classroom/courses', async (req, res) => {
+  try {
+    res.set('Cache-Control', 'no-store').json(await classroom.courses(req.admin.id));
+  } catch (e) {
+    /* A Google failure is not a fault in this server, and the administrator can
+       act on it — reconnect, or grant the missing scope — so the reason is
+       passed on rather than swallowed into a 500. */
+    res.status(502).json({ error: (e && e.message) || 'Google Classroom could not be reached' });
+  }
+});
+
+router.get('/admin/classroom/courses/:courseId/roster', async (req, res) => {
+  const courseId = str(req.params.courseId, 60);
+  if (!courseId) return bad(res, 'Which course?');
+  try {
+    res.set('Cache-Control', 'no-store').json(await classroom.roster(req.admin.id, courseId));
+  } catch (e) {
+    res.status(502).json({ error: (e && e.message) || 'Google Classroom could not be reached' });
+  }
+});
+
+router.post('/admin/classroom/unlink', async (req, res) => {
+  const had = await classroom.unlink(req.admin.id);
+  if (had) await audit(req, 'classroom.unlinked', 'admins/' + req.admin.id, {});
+  res.json({ ok: true, wasLinked: had });
 });
 
 /* ======================= SETTINGS · AUDIT LOG ======================= */

@@ -89,6 +89,7 @@ Lệnh khác:
 | `node scripts/test-analytics.mjs` | kiểm thử analytics phía máy chủ: định danh không dùng cookie theo dõi, các giới hạn GA4 âm thầm bắt (tên sự kiện, số/độ dài tham số, `session_id`), trần số request đang bay, và **quét khẳng định payload không chứa** email, tên, địa chỉ IP hay user-agent |
 | `node scripts/test-pg-schema.mjs` | nạp lược đồ đã dịch sang **PostgreSQL thật** rồi so hai bên: 34 bảng, từng cột, từng NOT NULL, hai kiểu phải đổi, và các dạng câu lệnh mã nguồn đang dùng (`ON CONFLICT DO UPDATE`, khoá ngoại, index `DESC`). Không có `PG_URL` thì **bỏ qua và nói rõ**, không lặng lẽ xanh. `scripts/pg-dev.sh` dựng sẵn một cụm tạm |
 | `node scripts/test-payments.mjs` | kiểm thử cổng thanh toán: **chữ ký đối chiếu với chuỗi thô chép tay từ tài liệu** của VNPay và MoMo, rồi luật quyết định lúc nào cấp code — sai số tiền, sai nhà cung cấp, mã tham chiếu lạ, và **báo lại lần hai chỉ cấp một code** |
+| `node scripts/test-classroom.mjs` | kiểm thử Google Classroom: refresh token **niêm phong bằng AES-256-GCM** — sửa một byte ở iv, ở ciphertext hay ở tag đều mở không ra, và khoá sai độ dài bị từ chối chứ không kéo giãn; **không có khoá thì tính năng TẮT**, không phải "bật và lưu token trần"; hai quản trị viên không tiêu được quyền của nhau; rồi một Google giả trả về hai trang lớp học và một roster để kiểm việc đi hết trang, ghép email với tài khoản sẵn có (không phân biệt hoa thường), và **không lấy ảnh đại diện** |
 | `node scripts/test-secrets.mjs` | kiểm thử nạp bí mật từ AWS Secrets Manager: một Secrets Manager giả **tự xác minh chữ ký SigV4 từ đúng byte nhận được** (kể cả `x-amz-target`, vì header chọn hành động thì phải được ký), giá trị nào vào được `process.env`, giá trị nào bị từ chối (bí mật **không được** ghi đè chính endpoint/credential/`NODE_ENV` đã dùng để lấy nó), và **không dòng log nào chứa giá trị**. Nửa sau đọc thẳng mã nguồn: **không module nào được bắt biến bí mật vào hằng số lúc import** — vì `load()` chạy sau mọi `require`, hằng số như thế giữ chuỗi rỗng lúc trước khi bí mật về, và không có gì ném lỗi cả |
 | `node scripts/test-s3.mjs` | kiểm thử driver Amazon S3 và lớp ký SigV4: **canonical request dựng lại đúng từng byte theo ví dụ AWS công bố** và băm ra đúng giá trị AWS in kèm, quy tắc percent-encode (`!'()*` phải mã hoá, `encodeURIComponent` thì không), lấy khoá tạm từ task role ECS và từ **IMDSv2** (bắt buộc PUT lấy token, không có đường lùi IMDSv1), rồi cả ba request chạy qua một S3 giả **tự tính lại chữ ký từ đúng những byte nhận được** — sửa một byte body sau khi ký thì bị từ chối |
 | `node scripts/test-gcs.mjs` | kiểm thử driver Google Cloud Storage và lớp lấy token: **sinh cặp khoá RSA thật rồi verify chữ ký JWT**, cache token, và toàn bộ hình dạng request (method, path, query, `Metadata-Flavor`, tên object đã encode) đối chiếu với một Google giả chạy tại chỗ |
@@ -255,6 +256,8 @@ Nơi lưu do biến môi trường quyết định, không phải sửa mã:
 | `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` | — | chỉ dùng khi chạy ngoài AWS. Trên ECS/App Runner thì **task role** cấp khoá tạm, không phải lưu khoá ở đâu cả; trên EC2 thì instance role qua IMDSv2 |
 | `S3_ENDPOINT` | — | trỏ sang MinIO hoặc một S3 giả (chuyển sang path-style). Bỏ trống thì dùng virtual-hosted `https://<bucket>.s3.<region>.amazonaws.com` |
 | `AWS_SECRETS_ID` | — | tên hoặc ARN của một secret JSON trong AWS Secrets Manager. Có biến này thì lúc khởi động, `server/secrets.js` lấy secret đó và **trộn vào `process.env`** trước khi bất cứ thứ gì đọc khoá. Không có thì không làm gì cả |
+| `TOKEN_ENCRYPTION_KEY` | — | 32 byte base64. Cần cho Google Classroom: refresh token của giáo viên được niêm phong AES-256-GCM trước khi vào CSDL. **Không có khoá thì Classroom tắt** — không bao giờ lưu token trần. Sinh khoá: `node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"` |
+| `GOOGLE_CLASSROOM_REDIRECT_URI` | — | mặc định `<origin>/auth/google/classroom/callback`. Phải khai trong Google console, tách khỏi URI của Sign-In |
 | `SECRETS_ENDPOINT` | — | trỏ Secrets Manager sang một endpoint khác (dùng cho test). Bỏ trống thì `https://secretsmanager.<region>.amazonaws.com` |
 | `AUDIO_DIR` | `data/uploads/audio` | thư mục cho driver đĩa |
 | `SUPABASE_URL`, `SUPABASE_SERVICE_KEY` | — | bắt buộc khi dùng driver Supabase |
@@ -666,6 +669,48 @@ tức là *sau* mọi `require` ở đầu `server.js`, nên hằng số bắt l
 chứng là màn đăng nhập báo Google chưa cấu hình trên một deployment đã cấu hình
 đủ, và thư xác thực gửi đi không tới. Đọc lúc gọi (`clientId()`, `settings()`,
 `supabase()`) thì không dính.
+
+## Google Classroom (đọc lớp học và roster)
+
+Mọi tích hợp Google khác ở đây nói chuyện với tư cách **máy chủ** — Cloud
+Storage và Gemini dùng service account, tức là một danh tính máy có quyền
+riêng. Classroom không làm thế được: một lớp học thuộc về **giáo viên**, và
+không có cỗ máy nào là thành viên của lớp đó. Nên đây là tích hợp duy nhất mà
+quản trị viên phải cấp cho nền tảng quyền hành động thay mình, và mọi thứ trong
+`server/classroom.js` là hệ quả của điều đó.
+
+| Đường đi | Việc |
+|---|---|
+| `GET /auth/google/classroom` | requireAdmin → màn hình đồng ý của Google |
+| `GET /auth/google/classroom/callback` | đổi code lấy **refresh token**, niêm phong rồi lưu |
+| `GET /api/admin/classroom` | trạng thái: bật chưa, nối chưa, nối bằng email nào |
+| `GET /api/admin/classroom/courses` | các lớp đang hoạt động của giáo viên đó |
+| `GET /api/admin/classroom/courses/:id/roster` | học viên trong lớp, kèm tài khoản tương ứng ở đây |
+| `POST /api/admin/classroom/unlink` | thu hồi ở Google rồi xoá bản ghi |
+
+Thêm một thẻ trong `/admin/quan-tri/`: nối tài khoản, chọn lớp, xem roster.
+Chưa có khoá thì thẻ nói thẳng là thiếu biến nào, không giả vờ đã nối.
+
+**Refresh token được mã hoá khi lưu.** Nó không giống TOTP secret mà CSDL này
+đã giữ: TOTP secret vô dụng nếu không có mật khẩu, còn refresh token **tự nó**
+là một đường vào tài khoản Google của người ta cho tới khi bị thu hồi — mà bản
+ghi ấy nằm trong mọi bản sao lưu và mọi lần export. Nên nó được niêm phong
+AES-256-GCM dưới `TOKEN_ENCRYPTION_KEY`, và **không có khoá thì tính năng tắt**
+chứ không lưu token trần. Đây là chỗ duy nhất cố ý không xuống thang êm ái:
+xuống thang ở đây nghĩa là bản triển khai nào không làm gì cả lại là bản kém an
+toàn nhất.
+
+**Chỉ xin quyền đọc.** `classroom.courses.readonly`, `classroom.rosters.readonly`
+và `classroom.profile.emails`. Đăng bài tập và đẩy điểm cần
+`classroom.coursework.students`, và quyền đó sẽ xin khi có tính năng dùng tới —
+Google có sẵn cơ chế xin thêm quyền về sau, còn một quyền xin trước khi dùng là
+một quyền giáo viên cấp không.
+
+**Hai tham số trên URL đồng ý không được thiếu.** `access_type=offline` là thứ
+khiến Google trả refresh token, còn `prompt=consent` là thứ khiến Google trả nó
+**lần nữa** khi nối lại — Google chỉ phát refresh token ở lần đồng ý đầu tiên,
+nên thiếu tham số thứ hai thì lần nối lại tạo ra một grant không tự gia hạn
+được: chạy được cho tới lúc không.
 
 ## Thanh toán (VNPay / MoMo, sandbox)
 

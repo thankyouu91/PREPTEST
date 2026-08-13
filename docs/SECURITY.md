@@ -261,6 +261,10 @@ guard đăng nhập, 8 route còn lại là danh sách ở mục 3.
 |---|---|---|---|
 | GET | `/api/admin/audit` | `requireAdmin` + `csrfGuard` | n/a (read) |
 | GET | `/api/admin/batches` | `requireAdmin` + `csrfGuard` | n/a (read) |
+| GET | `/api/admin/classroom` | `requireAdmin` + `csrfGuard` | n/a (read) |
+| GET | `/api/admin/classroom/courses` | `requireAdmin` + `csrfGuard` | n/a (read) |
+| GET | `/api/admin/classroom/courses/:courseId/roster` | `requireAdmin` + `csrfGuard` | n/a (read) |
+| POST | `/api/admin/classroom/unlink` | `requireAdmin` + `csrfGuard` | yes |
 | GET | `/api/admin/codes` | `requireAdmin` + `csrfGuard` | n/a (read) |
 | POST | `/api/admin/codes` | `requireAdmin` + `csrfGuard` | yes |
 | POST | `/api/admin/codes/:id/revoke` | `requireAdmin` + `csrfGuard` | yes |
@@ -344,6 +348,8 @@ guard đăng nhập, 8 route còn lại là danh sách ở mục 3.
 | POST | `/api/redeem` | `requireUser` + `csrfGuard` | yes |
 | GET | `/auth/google` | — | n/a (read) |
 | GET | `/auth/google/callback` | — | n/a (read) |
+| GET | `/auth/google/classroom` | `requireAdmin` | n/a (read) |
+| GET | `/auth/google/classroom/callback` | `requireAdmin` | n/a (read) |
 | GET | `/payments/:provider/ipn` | `gatewaySigned` | n/a (read) |
 | POST | `/payments/:provider/ipn` | `gatewaySigned` | yes |
 | GET | `/payments/:provider/return` | — | n/a (read) |

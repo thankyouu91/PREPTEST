@@ -91,6 +91,125 @@
       '</div>' +
     '</div>';
 
+  /* ---------------- Google Classroom ----------------
+     Read-only for now: connect a teacher's account, list their courses, pull a
+     roster and show which students already have an account here. Publishing
+     coursework and pushing scores need a scope this does not ask for yet. */
+  AD.qs('#p-general').insertAdjacentHTML('beforeend',
+    '<div class="card p-6 sm:p-7 mt-6 grid gap-4 content-start" id="cr-card">' +
+      '<div class="grid gap-1">' +
+        '<h2 class="text-lg font-extrabold tracking-tight">Google Classroom</h2>' +
+        '<p class="text-[13.5px] text-muted">Connect a teacher account to read its courses and rosters. ' +
+          'Nothing is written to Classroom.</p>' +
+      '</div>' +
+      '<div id="cr-body"><div class="skeleton h-16 w-full rounded-2xl"></div></div>' +
+    '</div>');
+
+  const CR_MESSAGES = {
+    linked: ['success', 'Google Classroom connected.'],
+    disabled: ['warn', 'Classroom is not configured on this server.'],
+    refused: ['warn', 'Google was not given permission, so nothing was connected.'],
+    state: ['error', 'That sign-in did not match the one this browser started. Try again.'],
+    'wrong-admin': ['error', 'That consent belonged to a different administrator.'],
+    'no-refresh-token': ['error', 'Google returned no lasting permission. Remove the app under your Google account and connect again.'],
+    exchange: ['error', 'Google refused the exchange.'],
+    'no-code': ['error', 'Google sent nothing back to exchange.'],
+    failed: ['error', 'The connection could not be completed.']
+  };
+
+  async function renderClassroom() {
+    const body = AD.qs('#cr-body');
+    let st;
+    try { st = await AD.get('/admin/classroom'); }
+    catch (e) { body.innerHTML = '<p class="text-[13.5px] text-danger">' + AD.esc(e.message) + '</p>'; return; }
+
+    if (!st.enabled) {
+      body.innerHTML =
+        '<p class="text-[13.5px] text-muted">Not available on this server. Missing: ' +
+        '<span class="font-mono">' + AD.esc((st.missing || []).join(', ')) + '</span>.</p>';
+      return;
+    }
+    if (!st.linked) {
+      body.innerHTML =
+        '<div class="grid gap-3 justify-items-start">' +
+          '<p class="text-[13.5px] text-muted">No account is connected. You will be asked to allow reading ' +
+            'your course list and rosters.</p>' +
+          '<a class="btn btn-primary btn-md" href="/auth/google/classroom">Connect a Google account</a>' +
+        '</div>';
+      return;
+    }
+
+    body.innerHTML =
+      '<div class="grid gap-4">' +
+        '<div class="flex flex-wrap items-center gap-3">' +
+          '<span class="badge badge-ok">Connected</span>' +
+          '<span class="text-[13.5px] font-semibold">' + AD.esc(st.email || 'a Google account') + '</span>' +
+          '<button type="button" class="btn btn-ghost btn-sm" id="cr-unlink">Disconnect</button>' +
+        '</div>' +
+        '<div class="grid sm:grid-cols-[1fr_auto] gap-3 items-end">' +
+          '<div><label class="label" for="cr-course">Course</label>' +
+            '<select class="input" id="cr-course"><option value="">Loading…</option></select></div>' +
+          '<button type="button" class="btn btn-soft btn-md" id="cr-load">Show roster</button>' +
+        '</div>' +
+        '<div id="cr-roster"></div>' +
+      '</div>';
+
+    AD.qs('#cr-unlink').addEventListener('click', async () => {
+      if (!confirm('Disconnect this Google account? Its permission is revoked at Google too.')) return;
+      try { await AD.post('/admin/classroom/unlink', {}); AD.toast('Disconnected'); renderClassroom(); }
+      catch (e) { AD.toast(e.message, 'error'); }
+    });
+
+    const select = AD.qs('#cr-course');
+    try {
+      const list = await AD.get('/admin/classroom/courses');
+      select.innerHTML = list.courses.length
+        ? list.courses.map(c => '<option value="' + AD.esc(c.id) + '">' + AD.esc(c.name) +
+            (c.section ? ' · ' + AD.esc(c.section) : '') + '</option>').join('')
+        : '<option value="">No active courses</option>';
+    } catch (e) {
+      select.innerHTML = '<option value="">' + AD.esc(e.message) + '</option>';
+    }
+
+    AD.qs('#cr-load').addEventListener('click', async () => {
+      const id = select.value;
+      const out = AD.qs('#cr-roster');
+      if (!id) { out.innerHTML = ''; return; }
+      out.innerHTML = '<div class="skeleton h-24 w-full rounded-2xl"></div>';
+      try {
+        const r = await AD.get('/admin/classroom/courses/' + encodeURIComponent(id) + '/roster');
+        out.innerHTML = r.students.length
+          ? '<div class="card overflow-hidden"><div class="overflow-x-auto">' +
+              '<table class="w-full text-[14px]"><thead><tr>' +
+                '<th class="th">Student</th><th class="th">Email</th><th class="th">Account here</th>' +
+              '</tr></thead><tbody>' +
+              r.students.map(stu =>
+                '<tr class="border-t border-line">' +
+                  '<td class="td font-semibold">' + AD.esc(stu.name || '—') + '</td>' +
+                  '<td class="td text-muted">' + AD.esc(stu.email || 'not shared') + '</td>' +
+                  '<td class="td">' + (stu.localUserId
+                    ? '<span class="badge badge-ok">' + AD.esc(stu.localName || 'linked') + '</span>'
+                    : '<span class="text-muted">no account yet</span>') + '</td>' +
+                '</tr>').join('') +
+              '</tbody></table></div></div>' +
+              (r.more ? '<p class="help mt-2">Only the first page is shown.</p>' : '')
+          : '<p class="text-[13.5px] text-muted">This course has no students.</p>';
+      } catch (e) {
+        out.innerHTML = '<p class="text-[13.5px] text-danger">' + AD.esc(e.message) + '</p>';
+      }
+    });
+  }
+
+  const crParam = new URLSearchParams(location.search).get('classroom');
+  if (crParam) {
+    const said = CR_MESSAGES[crParam] || ['warn', 'Classroom: ' + crParam];
+    AD.toast(said[1], said[0] === 'success' ? undefined : 'error');
+    /* Taken back out of the address bar, so a reload does not re-announce it
+       and the reference does not end up in a bookmark. */
+    history.replaceState(null, '', location.pathname);
+  }
+  renderClassroom();
+
   AD.qs('#g-save').addEventListener('click', async () => {
     AD.qs('#g-ok').classList.remove('show');
     try {

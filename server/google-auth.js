@@ -33,8 +33,9 @@
 const crypto = require('node:crypto');
 const express = require('express');
 const { asyncRoutes } = require('./async-route');
-const { q, nowISO } = require('./db');
+const { q, nowISO, audit } = require('./db');
 const A = require('./auth');
+const classroom = require('./classroom');
 
 const router = asyncRoutes(express.Router());
 
@@ -277,5 +278,86 @@ async function logSignIn(req, user, action) {
       user.username, action, 'users/' + user.id, '{}', req.ip || null, nowISO());
   } catch (e) { /* auditing must never break a login */ }
 }
+
+/* ---------------------------------------------------------------- *
+ * Google Classroom: a second consent, for an administrator
+ *
+ * Separate from sign-in on purpose. Sign-in asks a STUDENT for their identity
+ * and nothing else; this asks a TEACHER for standing permission to read their
+ * courses, which is a different question, a different audience and a different
+ * set of scopes. Folding it into /auth/google would mean every student meeting
+ * a consent screen listing Classroom permissions they will never use.
+ *
+ * Both routes are GET browser navigations, so csrfGuard does not apply — the
+ * state cookie is what stands in for it, exactly as on the sign-in callback.
+ * ---------------------------------------------------------------- */
+
+const CLASSROOM_PAGE = '/admin/quan-tri/';
+
+router.get('/auth/google/classroom', A.requireAdmin, (req, res) => {
+  const gaps = classroom.missing();
+  if (gaps.length) return res.redirect(302, `${CLASSROOM_PAGE}?classroom=disabled`);
+
+  const state = crypto.randomBytes(24).toString('base64url');
+  /* The administrator id is bound into the state, not read from the session on
+     the way back. The callback arrives as a cross-site navigation, and tying
+     the grant to whoever happens to be signed in at that moment is how one
+     administrator's Google account gets attached to another's row. */
+  stashState(res, { s: state, admin: req.admin.id, classroom: true });
+  res.redirect(302, classroom.consentUrl({ redirectUri: classroom.redirectUri(req), state }));
+});
+
+router.get('/auth/google/classroom/callback', A.requireAdmin, async (req, res) => {
+  const done = reason => res.redirect(302, `${CLASSROOM_PAGE}?classroom=${encodeURIComponent(reason)}`);
+  const stash = readState(req);
+  clearState(res);
+
+  if (!stash || !stash.classroom || !sameSecret(stash.s, req.query.state)) return done('state');
+  if (stash.admin !== req.admin.id) return done('wrong-admin');
+  if (req.query.error) return done('refused');
+  const code = typeof req.query.code === 'string' ? req.query.code : '';
+  if (!code) return done('no-code');
+
+  try {
+    const tokenRes = await fetch(process.env.GOOGLE_TOKEN_ENDPOINT || TOKEN_ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        code,
+        client_id: clientId(),
+        client_secret: clientSecret(),
+        redirect_uri: classroom.redirectUri(req),
+        grant_type: 'authorization_code'
+      }).toString()
+    });
+    if (!tokenRes.ok) {
+      /* Status only. The body of a failed token exchange echoes the code and
+         the client secret back at you. */
+      console.error('[classroom] token exchange failed', tokenRes.status);
+      return done('exchange');
+    }
+    const body = await tokenRes.json().catch(() => null);
+    if (!body || !body.refresh_token) {
+      /* Google returns a refresh token only when it decides to. Without
+         prompt=consent a re-link comes back with none, and a grant that cannot
+         renew itself is worse than no grant: it works until it does not. */
+      console.error('[classroom] no refresh token in the response');
+      return done('no-refresh-token');
+    }
+
+    const claims = readIdToken(body.id_token) || {};
+    await classroom.saveGrant(req.admin.id, {
+      refreshToken: body.refresh_token,
+      email: typeof claims.email === 'string' ? claims.email : null,
+      scope: typeof body.scope === 'string' ? body.scope : null
+    });
+    await audit(req, 'classroom.linked', 'admins/' + req.admin.id,
+      { email: claims.email || null, scopes: body.scope || null });
+    return done('linked');
+  } catch (e) {
+    console.error('[classroom] callback failed', e && e.message);
+    return done('failed');
+  }
+});
 
 module.exports = { router, enabled, safeNext, freeUsername };

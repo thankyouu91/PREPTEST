@@ -69,6 +69,9 @@ node scripts/test-s3.mjs || fail=1
 step "Secrets Manager (fetch, merge, and nothing captured at import time)"
 node scripts/test-secrets.mjs || fail=1
 
+step "Google Classroom (sealed grant, token renewal, courses and rosters)"
+node scripts/test-classroom.mjs || fail=1
+
 step "Server-side analytics (identity, payload rules, nothing personal)"
 node scripts/test-analytics.mjs || fail=1
 

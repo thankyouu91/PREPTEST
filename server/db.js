@@ -520,6 +520,22 @@ CREATE TABLE IF NOT EXISTS settings (
   value TEXT NOT NULL
 );
 
+/* One administrator's standing permission to act on their Google account —
+   today only Classroom. The refresh token is stored ENCRYPTED (AES-256-GCM,
+   see server/classroom.js): unlike a TOTP secret, which is useless without the
+   password, a Google refresh token is on its own a way into somebody's account
+   until they revoke it, and this row travels with every database export.
+   One grant per administrator; re-consenting replaces it. */
+CREATE TABLE IF NOT EXISTS google_grants (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  admin_id   INTEGER NOT NULL UNIQUE REFERENCES admins(id) ON DELETE CASCADE,
+  email      TEXT,
+  scopes     TEXT NOT NULL,
+  token_enc  TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+
 CREATE INDEX IF NOT EXISTS idx_q_filter  ON questions (family_id, skill, level, status);
 CREATE INDEX IF NOT EXISTS idx_codes_st  ON codes (status, expires_at);
 CREATE INDEX IF NOT EXISTS idx_sec_test  ON sections (test_id, sort);
