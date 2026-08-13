@@ -191,6 +191,17 @@ function systemPrompt(part) {
     const c = rubrics.CRITERIA[name];
     lines.push(`## ${c.label} (${name}) — ${weight}% of this part`);
     lines.push(c.what);
+    /* Still described, though the model does not score it: knowing that the
+       transcript is measured against the sentence word by word is what makes a
+       marker transcribe faithfully instead of tidying. Saying so here keeps
+       this prompt from contradicting the per-item one, which tells it not to
+       return a band. */
+    if (c.computed) {
+      lines.push('');
+      lines.push('DO NOT return a band for this criterion. It is counted from your');
+      lines.push('transcript by the platform. It is described here so you know what');
+      lines.push('your transcript is used for, and how exact it has to be.');
+    }
     lines.push('');
     for (const b of [...c.bands].sort((x, y) => y.band - x.band)) {
       lines.push(`  ${b.band}. ${b.descriptor}`);
@@ -212,6 +223,103 @@ function systemPrompt(part) {
   lines.push('harsh, because nobody appeals a mark in their favour.');
 
   return lines.join('\n');
+}
+
+/**
+ * Word-level comparison of what was played against what was said back.
+ *
+ * ---------------------------------------------------------------------------
+ * WHY THIS IS CODE AND NOT A PROMPT
+ *
+ * `accuracy` is 50% of part H, and `rubrics.js` marks it `computed: true` with
+ * the reason spelled out: a model asked to estimate word overlap will estimate
+ * it, and estimating a quantity that can be counted is the most avoidable error
+ * in the marking chain. That was the intent; nothing implemented it, so until
+ * now the model was being asked for exactly the guess the rubric forbids.
+ *
+ * Edit distance over words, scored on **coverage of the sentence that was
+ * played**: what fraction of its words came back, counting the two faults the
+ * rubric names — `wordsDropped` and `wordsSubstituted`.
+ *
+ * Words the candidate added are counted and reported but do not reduce the
+ * score, and that is the rubric's decision rather than a convenience. Its
+ * `measurable` list names deletions and substitutions and stops there, and its
+ * band 6 is "repeated exactly", a claim about the played sentence coming back
+ * whole. Full word error rate — the ASR convention, where an insertion costs
+ * the same as a dropped word — would take a candidate who repeats the sentence
+ * perfectly and then adds "I think" and score them band 3 on an eight-word
+ * item. Exam recordings are full of that: false starts, a repeated word, a
+ * filler the transcriber kept. Charging for them marks the candidate's nerves.
+ *
+ * `inserted` is still returned, because a candidate who said a great deal more
+ * than the sentence is a different case from one who hesitated — that is a
+ * judgement, so it is reported rather than folded into the arithmetic.
+ *
+ * Free insertions are only safe because part H's clock is short. Measured
+ * against the real bank: a fifteen-word non-answer ("sorry, I did not catch
+ * that…") scores band 1-2 against the closest sentence in the bank, which is
+ * what the descriptors say it should. It takes about forty words of rambling
+ * before stray matches reach band 3, and part H allows roughly 6.7 seconds to
+ * respond — some seventeen words. **If that window ever grows, re-check this**:
+ * the guard here is the clock, not the arithmetic.
+ *
+ * Comparison is on normalised words: case folded, punctuation stripped. A
+ * candidate saying the right word is not penalised for the transcriber's comma,
+ * and docs/ACADEMIC.md §8 is explicit that a candidate must never lose marks
+ * for the equipment between them and the marker.
+ *
+ * @returns {{match:number, dropped:number, substituted:number, inserted:number,
+ *            target:number, band:number}}
+ */
+function wordAccuracy(target, heard) {
+  const split = s => String(s == null ? '' : s)
+    .toLowerCase()
+    .replace(/[^a-z0-9\s']/g, ' ')
+    .split(/\s+/)
+    .filter(Boolean);
+
+  const a = split(target), b = split(heard);
+  if (!a.length) return { match: 0, dropped: 0, substituted: 0, inserted: b.length, target: 0, band: 0 };
+
+  /* Alignment carries which operation produced each cell, so the counts and the
+     score come out of the same pass. Deriving them separately would let a
+     reported match of 80% sit next to counts that do not add up to it, and that
+     mismatch is exactly what a candidate appeals.
+
+     Insertions cost 0, which is what makes the score coverage of the target
+     rather than word error rate. It does not degenerate: a free insertion adds
+     a word to what was heard without accounting for any word of the sentence,
+     so every target word still has to be matched, substituted or dropped. */
+  let prev = Array.from({ length: b.length + 1 }, () => ({ cost: 0, del: 0, sub: 0, ins: 0 }));
+  for (let j = 1; j <= b.length; j++) prev[j] = { cost: 0, del: 0, sub: 0, ins: j };
+
+  for (let i = 1; i <= a.length; i++) {
+    const row = [{ cost: i, del: i, sub: 0, ins: 0 }];
+    for (let j = 1; j <= b.length; j++) {
+      if (a[i - 1] === b[j - 1]) { row[j] = { ...prev[j - 1] }; continue; }
+      const sub = { ...prev[j - 1], cost: prev[j - 1].cost + 1 };
+      const del = { ...prev[j], cost: prev[j].cost + 1 };
+      const ins = { ...row[j - 1] };
+      if (sub.cost <= del.cost && sub.cost <= ins.cost) { sub.sub++; row[j] = sub; }
+      else if (del.cost <= ins.cost) { del.del++; row[j] = del; }
+      else { ins.ins++; row[j] = ins; }
+    }
+    prev = row;
+  }
+
+  const end = prev[b.length];
+  /* Denominator is the sentence that was played. `cost` here counts only the
+     words of it that did not come back, so this reads directly as "how much of
+     the sentence was repeated". */
+  const match = Math.max(0, 1 - end.cost / a.length);
+  return {
+    match: Math.round(match * 1000) / 1000,
+    dropped: end.del,
+    substituted: end.sub,
+    inserted: end.ins,
+    target: a.length,
+    band: rubrics.bandForMeasure('accuracy', match)
+  };
 }
 
 /**
@@ -257,9 +365,17 @@ function userPrompt(part, item, response) {
     lines.push('## The sentence that was played');
     lines.push(String((item && item.script) || (item && item.answer) || '').trim());
     lines.push('');
-    lines.push('Mark `accuracy` by comparing what you heard against that sentence,');
-    lines.push('word by word. Do not reward a fluent paraphrase: this part asks for');
-    lines.push('repetition, and a better sentence than the one played is still wrong.');
+    /* The one criterion the model is not asked for. It is counted from the
+       transcript by wordAccuracy(), which is why the transcript is described
+       here as the graded artefact rather than as a convenience. */
+    lines.push('Do not return a band for `accuracy`. It is counted from your');
+    lines.push('transcript against that sentence, not judged.');
+    lines.push('');
+    lines.push('That makes `transcript` the most important field you return here.');
+    lines.push('Write exactly the words you heard, in order, including repetitions,');
+    lines.push('false starts and wrong words. Do not tidy it, do not correct it');
+    lines.push('towards the sentence above, and do not fill in a word you did not');
+    lines.push('hear — every one of those changes the candidate\'s score.');
     lines.push('');
   }
 
@@ -307,6 +423,12 @@ function responseSchema(part) {
 
   const props = {};
   for (const name of Object.keys(rubric.criteria)) {
+    /* A criterion the rubric marks `computed` is left out of the schema
+       entirely, rather than asked for and then overridden. Asking would put a
+       guess in the response that disagrees with the counted value, and the
+       first person to read both would have no way of knowing which one the
+       score came from. The platform supplies it — see wordAccuracy(). */
+    if (rubrics.CRITERIA[name] && rubrics.CRITERIA[name].computed) continue;
     props[name] = {
       type: 'object',
       additionalProperties: false,
@@ -360,5 +482,6 @@ const MARKED_PARTS = Object.keys(rubrics.PART_RUBRICS);
 
 module.exports = {
   SCALE_MIN, SCALE_MAX, REFUSALS, NEVER, MARKED_PARTS,
-  bandToGse, partResult, skillResult, systemPrompt, userPrompt, responseSchema
+  bandToGse, partResult, skillResult, systemPrompt, userPrompt, responseSchema,
+  wordAccuracy
 };

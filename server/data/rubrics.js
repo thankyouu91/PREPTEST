@@ -51,6 +51,22 @@
  * rather than by how bad something looks.
  *
  * ---------------------------------------------------------------------------
+ * BAND 0 IS A PERFORMANCE, NOT AN ABSENCE
+ *
+ * Band 0 means the candidate produced something and it was not ratable. It does
+ * not mean they produced nothing. Silence, an empty answer and an unusable
+ * recording are refusals, handled by `REFUSALS` in server/marking-guide.js and
+ * reported as "not attempted".
+ *
+ * The distinction was blurred until 2026-08-13: three band-0 rows named silence
+ * or "nothing produced" as their evidence while the refusal rule said the same
+ * observation must never become band 0. A marker reading both had two rules
+ * pointing opposite ways, and the two are not interchangeable — band 0 goes
+ * into an average and drags the skill score down, "not attempted" is excluded
+ * and flagged. Keep band 0 descriptors about what was said, never about the
+ * absence of it.
+ *
+ * ---------------------------------------------------------------------------
  * `measurable` LINKS A CRITERION TO THE NUMBERS
  *
  * Some criteria can be cross-checked against the deterministic metrics layer
@@ -100,14 +116,25 @@ const CRITERIA = {
        most avoidable error in the whole marking chain. */
     measurable: ['wordErrorRate', 'wordsDropped', 'wordsSubstituted'],
     computed: true,
+    /* `range` is the band's share of word match, as [low, high) — low included,
+       high excluded, so exactly one band claims any value. It was ambiguous
+       until 2026-08-13: every boundary was written into both of the bands it
+       separates ("75–90%" next to "90–97%"), and on this criterion those are
+       not hypothetical values. Nine words right out of ten is 90% — the
+       commonest good-but-not-perfect result there is — and bands 4 and 5 both
+       claimed it, on a criterion carrying half of part H.
+
+       The prose now reads in whole per cent so it says the same thing as the
+       numbers. Keep the two in step; `bandForMeasure()` reads `range` and the
+       marker reads the text. */
     bands: [
-      { band: 0, descriptor: 'Nothing recognisable from the sentence, or no speech.', evidence: 'Word match below 15%.' },
-      { band: 1, descriptor: 'A few isolated words survive; the sentence is not recoverable.', evidence: 'Word match 15–35%.' },
-      { band: 2, descriptor: 'The main content words are there, the grammar around them is not.', evidence: 'Word match 35–55%; function words dropped.' },
-      { band: 3, descriptor: 'Most of the sentence is repeated; endings and small words go missing.', evidence: 'Word match 55–75%; plural and past-tense endings dropped.' },
-      { band: 4, descriptor: 'The sentence is repeated accurately apart from one or two words.', evidence: 'Word match 75–90%.' },
-      { band: 5, descriptor: 'Repeated accurately, with at most a trivial slip.', evidence: 'Word match 90–97%.' },
-      { band: 6, descriptor: 'Repeated exactly, including unstressed endings.', evidence: 'Word match above 97%.' }
+      { band: 0, range: [0, 0.15], descriptor: 'Nothing recognisable from the sentence.', evidence: 'Word match under 15%.' },
+      { band: 1, range: [0.15, 0.35], descriptor: 'A few isolated words survive; the sentence is not recoverable.', evidence: 'Word match 15–34%.' },
+      { band: 2, range: [0.35, 0.55], descriptor: 'The main content words are there, the grammar around them is not.', evidence: 'Word match 35–54%; function words dropped.' },
+      { band: 3, range: [0.55, 0.75], descriptor: 'Most of the sentence is repeated; endings and small words go missing.', evidence: 'Word match 55–74%; plural and past-tense endings dropped.' },
+      { band: 4, range: [0.75, 0.90], descriptor: 'The sentence is repeated accurately apart from one or two words.', evidence: 'Word match 75–89%.' },
+      { band: 5, range: [0.90, 0.97], descriptor: 'Repeated accurately, with at most a trivial slip.', evidence: 'Word match 90–96%.' },
+      { band: 6, range: [0.97, 1.01], descriptor: 'Repeated exactly, including unstressed endings.', evidence: 'Word match 97% or above.' }
     ],
     remediation: {
       struggling: {
@@ -193,7 +220,7 @@ const CRITERIA = {
        measured silence ratio of 70% is a flag, not a score. */
     measurable: ['articulationRate', 'silenceRatio', 'pauseCount', 'meanLengthOfRun', 'fillerCount'],
     bands: [
-      { band: 0, descriptor: 'No sustained speech.', evidence: 'Isolated words, or silence.' },
+      { band: 0, descriptor: 'No sustained speech.', evidence: 'Isolated words with nothing connecting them.' },
       { band: 1, descriptor: 'Very short utterances with long pauses between them.', evidence: 'Under 5 words between pauses; silence over half the time.' },
       { band: 2, descriptor: 'Speech in short bursts; pauses fall inside phrases.', evidence: 'Pauses mid-phrase; heavy reliance on fillers.' },
       { band: 3, descriptor: 'Keeps going on familiar topics; noticeable hesitation when searching for words.', evidence: 'Pauses at clause boundaries; occasional restarts.' },
@@ -324,7 +351,11 @@ const CRITERIA = {
   /* ---------------------------------------------------------------- */
   coherence: {
     label: 'Coherence',
-    skills: ['speaking', 'writing'],
+    /* Speaking only. `organisation` is the written counterpart and part D uses
+       that; declaring writing here as well would let a writing part take either
+       one, and two parts marking the same thing under two names cannot be
+       compared. */
+    skills: ['speaking'],
     what: 'Whether the parts connect, and whether a listener or reader can follow without backtracking.',
     measurable: [],
     bands: [
@@ -371,7 +402,7 @@ const CRITERIA = {
     what: 'Whether everything asked for was done, at the level of formality the situation calls for.',
     measurable: ['durationMs', 'wordCount'],
     bands: [
-      { band: 0, descriptor: 'Does not address the task.', evidence: 'Off topic, or nothing produced.' },
+      { band: 0, descriptor: 'Does not address the task.', evidence: 'Answers a different question from the one asked.' },
       { band: 1, descriptor: 'Touches the topic; the task itself is not attempted.', evidence: 'Talks about the subject rather than doing what was asked.' },
       { band: 2, descriptor: 'Attempts part of the task; register not controlled.', evidence: 'One of several required elements present.' },
       { band: 3, descriptor: 'Covers most of the task; register broadly appropriate but inconsistent.', evidence: 'Slips between formal and casual within one answer.' },
@@ -415,14 +446,18 @@ const CRITERIA = {
     what: 'How much of the source material was retained and conveyed. Checked against the item’s key points.',
     /* Countable, which is why the report can say "3 of 6" rather than "some". */
     measurable: ['keyPointsCovered', 'keyPointsTotal'],
+    /* Half-open [low, high) as on `accuracy`, and for the same reason. Items
+       carry six key points precisely so each covered count falls in its own
+       band (docs/BLUEPRINT.md §4); the ranges are what make that true rather
+       than nearly true. */
     bands: [
-      { band: 0, descriptor: 'Nothing from the source.', evidence: 'No key point covered.' },
-      { band: 1, descriptor: 'One detail, without the shape of the whole.', evidence: 'Under 20% of key points.' },
-      { band: 2, descriptor: 'A few details; the main line is missing.', evidence: '20–35% of key points.' },
-      { band: 3, descriptor: 'The main events retained; supporting detail lost.', evidence: '35–55% of key points, main ones present.' },
-      { band: 4, descriptor: 'Most of the content, including some detail.', evidence: '55–75% of key points.' },
-      { band: 5, descriptor: 'Nearly all the content, accurately ordered.', evidence: '75–90% of key points, no distortion.' },
-      { band: 6, descriptor: 'Complete and faithful, including what the source implied.', evidence: 'Above 90%, with relationships between facts preserved.' }
+      { band: 0, range: [0, 0.0001], descriptor: 'Nothing from the source.', evidence: 'No key point covered.' },
+      { band: 1, range: [0.0001, 0.20], descriptor: 'One detail, without the shape of the whole.', evidence: 'Under 20% of key points.' },
+      { band: 2, range: [0.20, 0.35], descriptor: 'A few details; the main line is missing.', evidence: '20–34% of key points.' },
+      { band: 3, range: [0.35, 0.55], descriptor: 'The main events retained; supporting detail lost.', evidence: '35–54% of key points, main ones present.' },
+      { band: 4, range: [0.55, 0.75], descriptor: 'Most of the content, including some detail.', evidence: '55–74% of key points.' },
+      { band: 5, range: [0.75, 0.90], descriptor: 'Nearly all the content, accurately ordered.', evidence: '75–89% of key points, no distortion.' },
+      { band: 6, range: [0.90, 1.01], descriptor: 'Complete and faithful, including what the source implied.', evidence: '90% or above, with relationships between facts preserved.' }
     ],
     remediation: {
       struggling: {
@@ -594,6 +629,30 @@ function tierFor(band) {
   return 'refining';
 }
 
+/**
+ * The band a measured proportion falls in, for the criteria that carry ranges.
+ *
+ * Exists so that a quantity which can be counted is never estimated. The header
+ * of `accuracy` puts it plainly: a model asked how closely two sentences match
+ * will guess, and guessing at something countable is the most avoidable error
+ * in the marking chain. This is the other half of that sentence — the counting.
+ *
+ * @param {string} criterion  `accuracy` or `content`
+ * @param {number} value      0–1
+ * @returns {number|null}     the band, or null if the criterion has no ranges
+ */
+function bandForMeasure(criterion, value) {
+  const c = CRITERIA[criterion];
+  if (!c || !c.bands.every(b => Array.isArray(b.range))) return null;
+  const v = Number(value);
+  if (!Number.isFinite(v)) return null;
+  const hit = c.bands.find(b => v >= b.range[0] && v < b.range[1]);
+  /* Ranges cover 0 to just past 1, so only a value outside that can miss. Clamp
+     rather than return null: a caller passing 1.2 has a bug, but a marked paper
+     with a hole in it is worse than one marked at the top band. */
+  return hit ? hit.band : (v < 0 ? 0 : 6);
+}
+
 /** The band row for one criterion, with its CEFR label and GSE anchor. */
 function bandInfo(criterion, band) {
   const c = CRITERIA[criterion];
@@ -668,5 +727,5 @@ module.exports = {
   CRITERIA, PART_RUBRICS, STUDY,
   BAND_GSE, BAND_CEFR,
   SPEAKING_PART_WEIGHTS, WRITING_PART_WEIGHTS,
-  tierFor, bandInfo, adviceFor, rankByOpportunity, partScore
+  tierFor, bandInfo, bandForMeasure, adviceFor, rankByOpportunity, partScore
 };

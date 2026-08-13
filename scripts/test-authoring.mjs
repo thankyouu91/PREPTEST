@@ -536,6 +536,118 @@ console.log('\n\x1b[1m== Rubric · ôn tập cá nhân hoá ==\x1b[0m');
     'Lược đồ trả lời vẫn khoá, không cho máy chấm thêm trường điểm số');
 }
 
+/* ---- Ranh giới bậc: mỗi giá trị chỉ thuộc đúng một bậc ----
+   Trước 13/08/2026 mọi mốc đều được viết vào cả hai bậc nó ngăn ("75–90%" nằm
+   cạnh "90–97%"). Ở part H đó không phải chuyện lý thuyết: đúng 9/10 từ là 90%,
+   kết quả tốt-mà-chưa-hoàn-hảo thường gặp nhất, và bậc 4 lẫn bậc 5 cùng nhận. */
+{
+  const R = require('../server/data/rubrics.js');
+  const G = require('../server/marking-guide.js');
+
+  const coRange = Object.entries(R.CRITERIA).filter(([, c]) => c.bands.every(b => Array.isArray(b.range)));
+  ok(coRange.length === 2 && coRange.every(([n]) => ['accuracy', 'content'].includes(n)),
+    'Đúng hai tiêu chí đo được mang khoảng số: accuracy và content',
+    coRange.map(([n]) => n).join(','));
+
+  for (const [ten, c] of coRange) {
+    const lien = c.bands.every((b, i) => i === 0 || b.range[0] === c.bands[i - 1].range[1]);
+    ok(lien, `Khoảng bậc của ${ten} nối liền nhau, không hở và không chồng`);
+  }
+
+  /* Mọi giá trị rơi vào đúng một bậc — quét dày để không bỏ sót mốc nào. */
+  let dupe = 0;
+  for (let v = 0; v <= 1.0001; v += 0.0005) {
+    const n = R.CRITERIA.accuracy.bands.filter(b => v >= b.range[0] && v < b.range[1]).length;
+    if (n !== 1) dupe++;
+  }
+  ok(dupe === 0, 'Không giá trị nào thuộc hai bậc, cũng không giá trị nào rơi ra ngoài', dupe + ' giá trị hỏng');
+
+  /* Chính ba trường hợp từng nhập nhằng, ở độ dài câu part H có thật. */
+  ok(R.bandForMeasure('accuracy', 0.90) === 5 && R.bandForMeasure('accuracy', 0.75) === 4,
+    'Mốc 90% và 75% giờ thuộc dứt khoát về một bậc');
+
+  /* Sáu ý chính ánh xạ một-một sang bảy bậc content (docs/BLUEPRINT.md §4). */
+  const banh = Array.from({ length: 7 }, (_, k) => R.bandForMeasure('content', k / 6));
+  ok(banh.join(',') === '0,1,2,3,4,5,6', 'Bao phủ 0..6 ý chính ra đúng bậc 0..6', banh.join(','));
+
+  ok(R.bandForMeasure('fluency', 0.5) === null, 'Tiêu chí do người chấm thì không có khoảng số để máy tự quy bậc');
+}
+
+/* ---- accuracy được ĐẾM chứ không được đoán ----
+   rubrics.js khai `computed: true` kèm lý do: bắt máy ước lượng một đại lượng
+   đếm được là lỗi dễ tránh nhất trong cả dây chuyền chấm. Khai từ lâu, nhưng
+   tới giờ mới có thứ thực sự đếm. */
+{
+  const G = require('../server/marking-guide.js');
+  const R = require('../server/data/rubrics.js');
+  const cau = 'The shop opens at nine in the morning.';
+
+  const y = G.wordAccuracy(cau, cau);
+  ok(y.match === 1 && y.band === 6, 'Nhắc lại đúng nguyên câu cho bậc 6');
+
+  ok(G.wordAccuracy(cau, 'the shop opens at nine in the morning').match === 1,
+    'Hoa thường và dấu câu không ảnh hưởng — thí sinh không mất điểm vì người gỡ băng');
+
+  /* Điểm là ĐỘ PHỦ câu đã phát, không phải word error rate. Danh sách
+     `measurable` của tiêu chí chỉ nêu từ rơi và từ sai, không nêu từ thừa. */
+  const thua = G.wordAccuracy(cau, 'The shop opens at nine in the morning I think yes');
+  ok(thua.match === 1 && thua.band === 6 && thua.inserted === 3,
+    'Nhắc đúng rồi lỡ nói thêm vẫn là nhắc đúng; từ thừa được đếm nhưng không trừ điểm',
+    JSON.stringify(thua));
+
+  const roi = G.wordAccuracy(cau, 'The shop opens at nine in morning');
+  ok(roi.dropped === 1 && roi.substituted === 0 && roi.band === 4, 'Rơi một từ: đếm đúng loại lỗi');
+  const sai = G.wordAccuracy(cau, 'The shop opens at five in the morning');
+  ok(sai.substituted === 1 && sai.dropped === 0, 'Sai một từ: phân biệt được với rơi một từ');
+
+  ok(G.wordAccuracy(cau, '').match === 0 && G.wordAccuracy(cau, '').band === 0,
+    'Không nói gì thì độ phủ bằng 0');
+
+  /* Con số và lời giải thích phải khớp — thí sinh khiếu nại chính chỗ này. */
+  const mau = ['', 'shop', 'The shop opens', cau, 'The shop opens at five in morning now'];
+  ok(mau.every(t => {
+    const r = G.wordAccuracy(cau, t);
+    return Math.abs((r.dropped + r.substituted) / r.target - (1 - r.match)) < 1e-9;
+  }), 'Số từ rơi và từ sai luôn giải thích đúng điểm đã cho');
+
+  /* Máy chấm không được hỏi tới bậc nó không được phép đoán. */
+  const schemaH = G.responseSchema('H');
+  ok(!('accuracy' in schemaH.properties.criteria.properties),
+    'Lược đồ part H không hỏi máy chấm bậc accuracy');
+  ok('pronunciation' in schemaH.properties.criteria.properties
+    && 'fluency' in schemaH.properties.criteria.properties,
+    'Các tiêu chí còn lại của part H vẫn do máy chấm trả về');
+  ok('task' in G.responseSchema('I').properties.criteria.properties,
+    'Part không có tiêu chí computed thì không bị đụng tới');
+
+  /* Hai lời nhắc không được nói ngược nhau về cùng một tiêu chí. */
+  const sys = G.systemPrompt('H');
+  ok(/DO NOT return a band/.test(sys), 'Lời nhắc chung cũng nói rõ accuracy không do máy chấm cho bậc');
+  ok(Object.keys(R.PART_RUBRICS).filter(p => p !== 'H')
+    .every(p => !/DO NOT return a band/.test(G.systemPrompt(p))),
+    'Chỉ part có tiêu chí computed mới mang câu đó');
+
+  /* Ghép lại: bậc đếm được cắm vào partResult và ra điểm part bình thường. */
+  const wa = G.wordAccuracy(cau, 'The shop opens at nine in morning');
+  const kq = G.partResult('H', { accuracy: wa.band, pronunciation: 4, fluency: 5 });
+  ok(kq && kq.bandScore > 0 && kq.gse > 0 && kq.cefr, 'Bậc đếm được ghép vào điểm part chạy trọn đường',
+    JSON.stringify(kq));
+}
+
+/* ---- Bậc 0 là một bài làm dở, không phải một bài trống ---- */
+{
+  const R = require('../server/data/rubrics.js');
+  const G = require('../server/marking-guide.js');
+  const im = /silen|no speech|nothing produced|left empty/i;
+  const hong = Object.entries(R.CRITERIA)
+    .filter(([, c]) => { const b0 = c.bands.find(x => x.band === 0); return im.test(b0.descriptor + ' ' + b0.evidence); })
+    .map(([n]) => n);
+  ok(hong.length === 0,
+    'Không tiêu chí nào lấy sự im lặng làm bậc 0 — im lặng là "không làm bài", do REFUSALS xử lý',
+    hong.join(', '));
+  ok(G.REFUSALS.some(r => r.code === 'no-response'), 'Vẫn còn đường báo "không làm bài" cho trường hợp trống');
+}
+
 if (cookie && csrf) {
   const post = (p, body) => fetch(BASE + '/api' + p, {
     method: 'POST',

@@ -55,9 +55,44 @@ ignoring is how an invented number reaches a report.
     // … one entry per criterion the part is marked on
   },
   "refusal": null,
-  "transcript": "…"          // spoken parts: what was heard, verbatim
+  "transcript": "…",         // spoken parts: what was heard, verbatim
+  "keyPointsCovered": 3      // content parts only — see §1.2
 }
 ```
+
+### 1.1 One criterion the marker is never asked for
+
+**`accuracy` on part H is counted, not judged.** It is 50% of that part, and it
+asks how much of a played sentence came back — a quantity with an exact answer.
+`markingGuide.wordAccuracy()` aligns the transcript against the script word by
+word and `rubrics.bandForMeasure()` turns the result into a band.
+
+The criterion is therefore **absent from part H's schema entirely**, rather than
+asked for and then overridden. Asking would put a guessed band in the response
+that disagrees with the counted one, and nobody reading both could tell which
+produced the mark.
+
+It is still described in the prompt, marked `DO NOT return a band`, because a
+marker who knows the transcript is measured word by word transcribes faithfully
+instead of tidying. On part H the transcript *is* the graded artefact.
+
+Words the candidate **added** are counted and shown to the marker but do not
+reduce the score. The criterion's own `measurable` list names dropped and
+substituted words and stops there, and its band 6 is "repeated exactly" — a
+claim about the sentence coming back whole. Full word error rate, where an
+insertion costs as much as a dropped word, would score a candidate who repeats
+an eight-word sentence perfectly and then says "I think" at band 3. Exam
+recordings are full of false starts and repeated words; charging for them marks
+the candidate's nerves rather than their English.
+
+### 1.2 Countable things come back as counts
+
+Parts marked on `content` also return `keyPointsCovered`. The band descriptors
+are percentages of the item's key points, so the count is what lets the
+platform check the band against the rubric's own definition: band 5 reported
+next to "2 of 6" is a contradiction a program can catch, which no amount of
+prose in the prompt achieves. It is also what lets a report say "4 of 6"
+instead of "some".
 
 **Evidence is required, not optional.** A band without a quotation cannot be
 checked, and a marker that cannot be checked is a marker that cannot be
@@ -74,10 +109,19 @@ corrected.
 | Scale | — | 26 | 33 | 47 | 63 | 80 | 87 |
 | CEFR | — | A1 | A2 | B1 | B2 | C1 | C2 |
 
-**Band 0 has no scale position, deliberately.** It means nothing markable was
-produced. That is a different statement from "performed at the bottom of the
-scale", and collapsing the two would tell a learner who did not attempt a part
-that their English is at 10.
+**Band 0 has no scale position, deliberately.** It is a performance that could
+not be rated — not the absence of one. Collapsing it into the bottom of the
+scale would tell a learner their English is at 10 when what happened is that
+nothing gradable came back.
+
+**Band 0 is not the same as not attempting.** Silence, an empty answer and an
+unusable recording are *refusals* (§5), reported as "not attempted" and left
+out of the average. Band 0 goes into the average and pulls the skill score
+down. The two were blurred until 2026-08-13: three criteria named silence or
+"nothing produced" as their band-0 evidence while the refusal table said the
+same observation must never become band 0, so a marker reading both had two
+rules pointing opposite ways. Band 0 descriptors now describe what was said,
+never the absence of it, and a test enforces that.
 
 ### 2.2 Interpolation, not rounding
 
@@ -126,6 +170,31 @@ continuum with no gaps and needs no fallback above the bottom of the scale.
 The general lesson is worth more than the fix: **a failed lookup must never
 resolve upward.** If a scale cannot place a score, the answer is "cannot
 place", never "top band".
+
+### 3.1 The same class of bug, one level down
+
+The two criteria stated as percentages — `accuracy` and `content` — wrote every
+boundary into **both** of the bands it separates: "Word match 75–90%" sat next
+to "90–97%", and "20–35% of key points" next to "35–55%". Every boundary, in
+both criteria.
+
+On `accuracy` those are not hypothetical values. Part H sentences run 7 to 13
+words, and **nine words right out of ten is 90%** — the commonest
+good-but-not-perfect result there is. Bands 4 and 5 both claimed it, on a
+criterion carrying half the part. Three such values occur at real part H
+lengths.
+
+The fix is the same shape as the one above: the bands carry `range: [low, high)`
+— low included, high excluded — so exactly one band claims any value, and
+`bandForMeasure()` reads those numbers rather than the prose. The prose was
+rewritten in whole per cent ("75–89%", "90–96%") so the two say the same thing.
+A test sweeps the whole 0–1 interval and fails if any value lands in two bands
+or in none.
+
+**Where a range must not go:** only on criteria that are actually measured.
+`bandForMeasure()` returns `null` for a judged criterion like fluency, because
+inventing a numeric threshold for something nobody counts would be a worse
+error than the ambiguity it replaced.
 
 ---
 
@@ -201,6 +270,26 @@ Stated here rather than left implied, and consistent with
 4. **Marker consistency is untested.** Whether the same response marked twice
    gets the same band has not been measured. Once there is data, it is cheap to
    check and belongs beside the reliability figures in `ACADEMIC.md` §9.
+5. **The cross-check layer is mostly declared, not built.** `rubrics.js` names
+   17 quantities across its criteria's `measurable` lists and describes them as
+   what "lets the engine flag a fluency band of 5 sitting next to a measured
+   silence ratio of 70%". Five of the seventeen exist. **Twelve do not**, so no
+   such flag can fire today:
+
+   | State | Metrics |
+   |---|---|
+   | Computed (§1.1) | `wordErrorRate`, `wordsDropped`, `wordsSubstituted` |
+   | Available already | `keyPointsCovered` (returned by the marker), `keyPointsTotal` (the item's own list) |
+   | **Not built — text only, cheap** | `wordCount`, `paragraphCount`, `typeTokenRatio`, `spellingErrors`, `durationMs` |
+   | **Not built — needs the vocabulary list** | `cefrBandCoverage` |
+   | **Not built — needs audio analysis** | `silenceRatio`, `pauseCount`, `meanLengthOfRun`, `articulationRate`, `fillerCount`, `snrDb` |
+
+   The five text-only metrics are an afternoon and would give `fluency`,
+   `vocabulary` and `organisation` something to be checked against for the
+   first time. The six audio metrics are real work — signal processing over
+   every candidate recording — and that is a decision to take before starting,
+   not after. Until then, `measurable` is a statement of intent, and this table
+   is what keeps it from reading as a statement of fact.
 
 ---
 
@@ -209,7 +298,11 @@ Stated here rather than left implied, and consistent with
 | Piece | Where |
 |---|---|
 | Prompt, schema, refusals, conversion | `server/marking-guide.js` |
+| Per-item half of the prompt — key points, the played sentence | `markingGuide.userPrompt()` |
+| Word-level counting for `accuracy` | `markingGuide.wordAccuracy()` |
 | The rubric everything is generated from | `server/data/rubrics.js` |
+| Measured value → band, from the bands' own ranges | `rubrics.bandForMeasure()` |
 | Band table and scale lookup | `server/data/descriptors.js` |
-| Tests, including the boundary bug above | `scripts/test-authoring.mjs` |
+| Tests, including both boundary bugs above | `scripts/test-authoring.mjs` |
 | Consistency gate | `npm run hoc-thuat` |
+| What an item must carry to be markable | [`BLUEPRINT.md`](BLUEPRINT.md) |
