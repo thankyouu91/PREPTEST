@@ -87,6 +87,7 @@ Lệnh khác:
 | `node scripts/test-mail.mjs` | kiểm thử thư đi: soạn thư (mã hoá tiêu đề, chống chèn header), toàn bộ hội thoại SMTP với một server giả chạy tại chỗ, và **token không lọt vào log** |
 | `node scripts/test-totp.mjs` | kiểm thử lớp xác thực thứ hai: **sáu vector chuẩn RFC 6238**, cửa sổ lệch giờ, mã đã dùng không dùng lại được, mã cứu hộ, và toàn bộ luồng đăng nhập thật |
 | `node scripts/test-analytics.mjs` | kiểm thử analytics phía máy chủ: định danh không dùng cookie theo dõi, các giới hạn GA4 âm thầm bắt (tên sự kiện, số/độ dài tham số, `session_id`), trần số request đang bay, và **quét khẳng định payload không chứa** email, tên, địa chỉ IP hay user-agent |
+| `node scripts/test-pg-schema.mjs` | nạp lược đồ đã dịch sang **PostgreSQL thật** rồi so hai bên: 34 bảng, từng cột, từng NOT NULL, hai kiểu phải đổi, và các dạng câu lệnh mã nguồn đang dùng (`ON CONFLICT DO UPDATE`, khoá ngoại, index `DESC`). Không có `PG_URL` thì **bỏ qua và nói rõ**, không lặng lẽ xanh. `scripts/pg-dev.sh` dựng sẵn một cụm tạm |
 | `node scripts/test-payments.mjs` | kiểm thử cổng thanh toán: **chữ ký đối chiếu với chuỗi thô chép tay từ tài liệu** của VNPay và MoMo, rồi luật quyết định lúc nào cấp code — sai số tiền, sai nhà cung cấp, mã tham chiếu lạ, và **báo lại lần hai chỉ cấp một code** |
 | `node scripts/test-gcs.mjs` | kiểm thử driver Google Cloud Storage và lớp lấy token: **sinh cặp khoá RSA thật rồi verify chữ ký JWT**, cache token, và toàn bộ hình dạng request (method, path, query, `Metadata-Flavor`, tên object đã encode) đối chiếu với một Google giả chạy tại chỗ |
 | `node scripts/test-srs.mjs` | kiểm thử lặp lại ngắt quãng: **lịch SM-2 tính chính xác từng ngày** (hàm thuần, đồng hồ truyền vào nên không phải chờ), rồi hàng đợi ôn tập qua API — ai được hỏi, chấm điểm lưu đúng cái lịch đã tính, hai học viên không thấy tiến độ của nhau |
@@ -484,6 +485,45 @@ ngoài trang offline.
 
 Đổi nhận diện thương hiệu thì chạy lại `npm run icons` — nguồn duy nhất vẫn là
 `favicon.svg`, mọi kích thước sinh lại theo.
+
+## Chuyển từ SQLite sang PostgreSQL
+
+SQLite nhúng thì tốt trên một máy và **chết trong container**: `/app/data` mất
+theo task, nghĩa là mất luôn tài khoản. Nên nền tảng phải nói chuyện được với một
+Postgres có quản lý — RDS, vì đích deploy nay là AWS.
+
+Việc này chia **ba bước**, vì một lượt làm không xong mà làm dở thì tệ hơn không
+làm. Phần khó không phải là đổi engine mà là **đổi giao diện**: `q.all/get/run/val`
+là đồng bộ, Postgres thì không.
+
+| Bước | Việc | Trạng thái |
+|---|---|---|
+| 1 | Lược đồ: dịch DDL và **nạp thử vào Postgres thật** | ✅ xong |
+| 2 | Cho mọi chỗ gọi `q.*` thành `await`, **vẫn chạy SQLite bên dưới** | chưa |
+| 3 | Driver `pg` + `$1…$n` + `RETURNING id` + transaction có pool | chưa |
+
+Bước 2 tách khỏi bước 3 là có chủ ý: đổi giao diện và đổi engine trong cùng một
+nhịp thì lúc hỏng không biết nửa nào gây ra.
+
+**Dịch chứ không chép.** DDL Postgres được sinh từ `SCHEMA_SQL` trong
+`server/db.js` ngay lúc chạy (`server/schema.js`). Lược đồ giữ ở hai nơi thì trong
+vòng một tháng là lệch nhau, và chỗ phát hiện ra sẽ là một câu INSERT trên
+production. Mọi migration `addColumnIfMissing` cũng **tự ghi tên mình** vào một
+danh sách khi chạy — bản chép tay đầu tiên đã thiếu sáu cột.
+
+**Hai kiểu không mang nguyên sang được**, và cả hai đều hỏng âm thầm:
+
+- `INTEGER PRIMARY KEY AUTOINCREMENT` → identity column, **`BY DEFAULT` chứ không
+  `ALWAYS`**, vì bản seed có chèn id tường minh.
+- `REAL` → `DOUBLE PRECISION`. `REAL` của SQLite là 64-bit, của Postgres là 32-bit;
+  để nguyên tên là **lặng lẽ làm tròn mọi điểm số** lưu trong đó. Bản dịch đầu tiên
+  đã dính đúng lỗi này ở hai cột và chỉ lộ ra khi hỏi một máy chủ thật xem nó vừa
+  tạo cột kiểu gì.
+
+**Cố ý giữ nguyên:** ngày tháng vẫn là `TEXT` ISO-8601, boolean vẫn là `INTEGER`
+0/1. Cả hai trông như lỗi và cả hai đang gánh việc — `expires_at <= ?` so với một
+chuỗi là phép so khác hẳn khi cột là `timestamptz`, mà có vài trăm câu truy vấn
+đang dựa vào phép so hiện tại.
 
 ## Chạy bằng container (AWS)
 

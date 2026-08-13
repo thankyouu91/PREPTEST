@@ -22,8 +22,12 @@ const db = new DatabaseSync(DB_FILE);
 db.exec('PRAGMA journal_mode = WAL');
 db.exec('PRAGMA foreign_keys = ON');
 
-/* ============================== SCHEMA ============================== */
-db.exec(`
+/* ============================== SCHEMA ==============================
+   Held in a named constant rather than passed straight to db.exec(), because
+   there is now a second reader: server/schema.js translates this same text into
+   PostgreSQL for the move off SQLite. One definition, two dialects — a schema
+   copied into a second file is a schema that is wrong within a month. */
+const SCHEMA_SQL = `
 CREATE TABLE IF NOT EXISTS admins (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   username TEXT NOT NULL UNIQUE,
@@ -523,7 +527,8 @@ CREATE INDEX IF NOT EXISTS idx_audit_at  ON audit (at DESC);
 CREATE INDEX IF NOT EXISTS idx_att_user  ON attempts (user_id, status);
 CREATE INDEX IF NOT EXISTS idx_att_ans   ON attempt_answers (attempt_id);
 CREATE INDEX IF NOT EXISTS idx_att_score ON attempt_scores (attempt_id);
-`);
+`;
+db.exec(SCHEMA_SQL);
 
 /* ============================ MIGRATIONS ============================
    CREATE TABLE IF NOT EXISTS never adds a column to a table that already
@@ -531,9 +536,23 @@ CREATE INDEX IF NOT EXISTS idx_att_score ON attempt_scores (attempt_id);
    old shape and every query touching that column would throw. Each entry
    below is checked against the live table and applied only when missing, so
    the same code boots a fresh database and an old one. */
+/* Every migration records itself as it runs. server/schema.js needs this list to
+   build the same tables on Postgres, and a hand-kept copy of it was wrong within
+   five minutes of being written — it missed six columns. Collected here by the
+   calls themselves, it cannot be missing one. */
+const ADDED_COLUMNS = [];
+const ADDED_INDEXES = [];
+
 function addColumnIfMissing(table, column, definition) {
+  ADDED_COLUMNS.push([table, column, definition]);
   const have = db.prepare(`PRAGMA table_info(${table})`).all().some(c => c.name === column);
   if (!have) db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
+}
+
+/** An index created beside a late column, recorded for the same reason. */
+function addIndex(sql) {
+  ADDED_INDEXES.push(sql);
+  db.exec(sql);
 }
 
 /* Only one exam family is buildable right now; the rest are parked as
@@ -549,7 +568,7 @@ addColumnIfMissing('families', 'status', "TEXT NOT NULL DEFAULT 'ready'");
    unique index — which also permits many NULLs, exactly what is wanted for
    accounts that never link a Google identity. */
 addColumnIfMissing('users', 'google_sub', 'TEXT');
-db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_users_google_sub ON users (google_sub)');
+addIndex('CREATE UNIQUE INDEX IF NOT EXISTS idx_users_google_sub ON users (google_sub)');
 
 /* A code now carries a subscription plan rather than a list of tests: what a
    buyer picks is how long they practise and how much of the platform they get.
@@ -581,7 +600,7 @@ addColumnIfMissing('questions', 'audio_at', 'TEXT');
    item landing in "retell the story". The letter is what keeps each part
    drawing from its own pool. */
 addColumnIfMissing('questions', 'part', 'TEXT');
-db.exec('CREATE INDEX IF NOT EXISTS idx_q_part ON questions (family_id, part, status)');
+addIndex('CREATE INDEX IF NOT EXISTS idx_q_part ON questions (family_id, part, status)');
 
 /* A stable key for authored items, so the item bank can be re-seeded in place.
    The other content tables are reloaded by clearing them, which cannot work
@@ -595,7 +614,7 @@ db.exec('CREATE INDEX IF NOT EXISTS idx_q_part ON questions (family_id, part, st
 addColumnIfMissing('questions', 'ext_key', 'TEXT');
 addColumnIfMissing('questions', 'source', 'TEXT');
 addColumnIfMissing('questions', 'licence', 'TEXT');
-db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_q_ext_key ON questions (ext_key)');
+addIndex('CREATE UNIQUE INDEX IF NOT EXISTS idx_q_ext_key ON questions (ext_key)');
 
 /* A section on a built test remembers which lettered part it is, so re-drawing
    its items later pulls from the same pool the generator used. Reading the
@@ -623,7 +642,7 @@ addColumnIfMissing('orders', 'provider', 'TEXT');
 addColumnIfMissing('orders', 'ref', 'TEXT');
 addColumnIfMissing('orders', 'gateway_ref', 'TEXT');
 addColumnIfMissing('orders', 'paid_at', 'TEXT');
-db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_orders_ref ON orders (ref)');
+addIndex('CREATE UNIQUE INDEX IF NOT EXISTS idx_orders_ref ON orders (ref)');
 
 /* ============================== HELPERS ============================== */
 const nowISO = () => new Date().toISOString();
@@ -1264,4 +1283,5 @@ function seedGrammar() {
 
 seed();
 
-module.exports = { db, q, tx, nowISO, jparse, makeCode, audit, DB_FILE, seedVocab };
+module.exports = { db, q, tx, nowISO, jparse, makeCode, audit, DB_FILE, seedVocab,
+  SCHEMA_SQL, ADDED_COLUMNS, ADDED_INDEXES };

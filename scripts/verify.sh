@@ -63,6 +63,16 @@ node scripts/test-gcs.mjs || fail=1
 step "Server-side analytics (identity, payload rules, nothing personal)"
 node scripts/test-analytics.mjs || fail=1
 
+step "PostgreSQL schema (step one of the move off SQLite)"
+# Best effort: start a throwaway cluster when this machine has the binaries.
+# The check needs a REAL server — a translation that merely looks right is what
+# it exists to catch — but a laptop without PostgreSQL must still be able to run
+# the suite, so a failure here is a loud skip inside the test, not a red gate.
+if [ -z "${PG_URL:-}" ]; then
+  eval "$(bash scripts/pg-dev.sh 2>/dev/null)" || true
+fi
+node scripts/test-pg-schema.mjs || fail=1
+
 step "Account rescue"
 node scripts/test-accounts.js || fail=1
 
