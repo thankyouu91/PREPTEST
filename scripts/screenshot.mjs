@@ -55,7 +55,11 @@ const PAGES = [
   { slug: 'nhap-code',       url: '/prep/nhap-code/',            auth: true },
   { slug: 'code-cua-toi',    url: '/prep/code-cua-toi/',         auth: true },
   { slug: 'bai-thi',         url: '/prep/bai-thi/vpet-b1-01/',   auth: true, full: true },
-  { slug: 'bai-thi-khoa',    url: '/prep/bai-thi/pte-ac-01/',    auth: true },
+  /* The locked state used to be shot on a PTE paper, which a student can no
+     longer see at all now the platform is VPET-only. A fresh account on the
+     real VPET paper is the same screen and a truer one: locked because the
+     person has no plan, not because the exam does not exist. */
+  { slug: 'bai-thi-khoa',    url: '/prep/bai-thi/vpet-b1-01/',   auth: 'fresh' },
   { slug: 'tai-khoan',       url: '/prep/tai-khoan/',            auth: true },
   { slug: 'lam-bai',         url: '/prep/lam-bai/',              auth: true, full: true },
   { slug: 'ket-qua',         url: '/prep/ket-qua/:done/',        auth: true, full: true },

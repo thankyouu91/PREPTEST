@@ -35,7 +35,16 @@ try {
   /* --- 1. Whatever the API returns is what the page shows --- */
   const api = await (await fetch(BASE + '/api/catalog')).json();
   const published = api.tests.length;
-  ok(Array.isArray(api.families) && api.families.length === 6, 'The API returns all 6 exam families');
+  /* Owner's decision, 2026-08-13: while the platform is VPET-only, a student is
+     shown VPET and nothing else. The five parked families are not "coming
+     soon" cards any more, they are absent. */
+  ok(Array.isArray(api.families) && api.families.length === 1 && api.families[0].id === 'vpet',
+    'A student sees only VPET', JSON.stringify((api.families || []).map(f => f.id)));
+  ok(api.families.every(f => f.status !== 'coming_soon'),
+    'and nothing in the list is a family that cannot be opened');
+  ok(api.tests.every(t => t.familyId === 'vpet'),
+    'No paper belonging to a hidden family comes through either',
+    JSON.stringify([...new Set(api.tests.map(t => t.familyId))]));
   ok(published > 0, 'The API has at least one published test (' + published + ')');
 
   const ctx = await browser.newContext();

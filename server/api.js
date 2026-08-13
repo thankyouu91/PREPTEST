@@ -1423,7 +1423,21 @@ router.get('/admin/audit', (req, res) => {
    The shape matches the student-side mock, so the front end could move to the API
    without rewriting its markup. // TODO(frontend): replace _mock.js with this endpoint */
 router.get('/catalog', (req, res) => {
-  const families = q.all('SELECT * FROM families ORDER BY sort').map(f => ({
+  /* Owner's decision, 2026-08-13: while the platform is VPET-only, the other
+     five are not merely unbuyable, they are not shown at all. A "coming soon"
+     card that has said coming soon for months reads as a dead product, and
+     five of them next to one real exam make the real one look like a trial.
+     Nothing else changes — the exam engine and the publish guard already
+     refuse a parked family, so this is the display half of a rule that was
+     already enforced. Undo by setting a family back to 'ready' in the FAMILIES
+     table in server/db.js.
+     An administrator still sees everything: they are the person who has to
+     manage the parked families, and hiding them from the only screen that can
+     open them again would be its own trap. */
+  const hideParked = !A.currentAdmin(req);
+  const visible = f => !(hideParked && (f.status || 'ready') === 'coming_soon');
+
+  const families = q.all('SELECT * FROM families ORDER BY sort').filter(visible).map(f => ({
     id: f.id, name: f.name, sub: f.sub, format: f.format, skills: jparse(f.skills_json, []),
     /* 'ready' means the family has a working blueprint and can hold tests;
        'coming_soon' families are listed but cannot be bought or opened. */
@@ -1436,7 +1450,12 @@ router.get('/catalog', (req, res) => {
       return { part: letter, name: sec.name || letter, skill: sec.skill || '', types: sec.types || [] };
     })
   }));
-  const tests = q.all("SELECT * FROM tests WHERE status='published' ORDER BY family_id, id").map(t => {
+  /* A test whose family is hidden goes with it. Leaving it in would put an
+     exam in the library belonging to a family the filter chips cannot even
+     name — and one the engine would refuse to open. */
+  const shown = new Set(families.map(f => f.id));
+  const tests = q.all("SELECT * FROM tests WHERE status='published' ORDER BY family_id, id")
+    .filter(t => shown.has(t.family_id)).map(t => {
     const sections = q.all('SELECT * FROM sections WHERE test_id=? ORDER BY sort, id', t.id).map(s => ({
       name: s.name, type: s.type, minutes: s.minutes,
       items: q.val('SELECT COUNT(*) c FROM section_items WHERE section_id=?', s.id)

@@ -227,7 +227,15 @@
         return true;
       });
 
-      const famEmpty = state.family && PREP.testsOf(state.family).length === 0;
+      /* The family has to be one we actually know about. `?family=` comes off
+         the address bar, so it can name anything at all — and since the parked
+         exams stopped being sent to students, `?family=ielts` is an ordinary
+         way to arrive here. Without this guard PREP.family() returns undefined
+         and the branch below throws on `f.id`, taking the whole page with it.
+         An unrecognised family falls through to the plain "nothing matches"
+         state, which is the truth: the filter was asked for and matched nothing. */
+      const famRow = state.family ? PREP.family(state.family) : null;
+      const famEmpty = !!famRow && PREP.testsOf(state.family).length === 0;
       PREP.qs('#lib-empty-family').toggleAttribute('hidden', !famEmpty);
       PREP.qs('#lib-empty-filter').toggleAttribute('hidden', famEmpty || list.length > 0);
       grid.classList.toggle('hidden', famEmpty || list.length === 0);
@@ -244,7 +252,7 @@
       }
 
       if (famEmpty) {
-        const f = PREP.family(state.family);
+        const f = famRow;
         PREP.qs('#empty-chip').setAttribute('data-family', f.id);
         PREP.qs('#empty-chip').textContent = f.name;
         PREP.qs('#empty-title').textContent = 'No mock tests for ' + f.name + ' yet';

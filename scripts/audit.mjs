@@ -26,7 +26,7 @@ const GUEST_URLS = ['/prep/landing/', '/prep/dang-ky/', '/prep/dang-nhap/', '/pr
 
 const URLS = GUEST_URLS.concat([
   '/prep/', '/prep/thu-vien/', '/prep/thu-vien/?family=vept', '/prep/mua-code/', '/prep/nhap-code/',
-  '/prep/code-cua-toi/', '/prep/bai-thi/vpet-b1-01/', '/prep/bai-thi/pte-ac-01/', '/prep/tai-khoan/',
+  '/prep/code-cua-toi/', '/prep/bai-thi/vpet-b1-01/', '/prep/bai-thi/khong-co-that/', '/prep/tai-khoan/',
   '/prep/lam-bai/', '/prep/ket-qua/:done/',
   '/prep/hoc/on-tap/', '/prep/hoc/dong-tu-bat-quy-tac/', '/prep/hoc/tu-noi/', '/prep/hoc/thi/', '/prep/hoc/danh-tu/', '/prep/hoc/tinh-tu/', '/prep/hoc/khuyet-thieu/', '/prep/hoc/dieu-kien/', '/prep/hoc/bi-dong/', '/prep/hoc/menh-de/', '/prep/hoc/nhan-manh/', '/prep/hoc/sac-thai/'
 ]);

@@ -658,15 +658,29 @@ const run = async () => {
     }
   }
 
+  /* Deliberately a bare fetch, with no session: this is the STUDENT's view of
+     the catalogue, and since 2026-08-13 that is VPET and nothing else. */
   r = await fetch(BASE + '/api/catalog').then(x => x.json());
   {
     const readyIds = new Set(r.families.filter(f => f.status !== 'coming_soon').map(f => f.id));
     check('The student catalogue holds only tests of open families',
       r.tests.every(t => readyIds.has(t.familyId)),
       r.tests.filter(t => !readyIds.has(t.familyId)).map(t => t.id).join(', '));
-    check('The catalogue still lists all 6 families, with their status',
-      r.families.length === 6 && r.families.every(f => f.status),
+    check('A signed-out visitor is shown only the open families',
+      r.families.length === 1 && r.families[0].id === 'vpet',
       r.families.map(f => f.id + ':' + f.status).join(', '));
+  }
+  {
+    /* …but an administrator still gets all six. They are the person who has to
+       manage a parked family, and a screen that cannot see one cannot reopen
+       it. Same endpoint, different answer, decided by the session. */
+    const asAdmin = await call('GET', '/api/catalog');
+    check('An administrator still sees all 6 families, with their status',
+      asAdmin.data.families.length === 6 && asAdmin.data.families.every(f => f.status),
+      asAdmin.data.families.map(f => f.id + ':' + f.status).join(', '));
+    check('and the parked ones are exactly the five that are not VPET',
+      asAdmin.data.families.filter(f => f.status === 'coming_soon').length === 5,
+      asAdmin.data.families.filter(f => f.status === 'coming_soon').map(f => f.id).join(', '));
   }
 
   /* 17. Signing out kills the session */

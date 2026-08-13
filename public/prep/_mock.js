@@ -14,17 +14,18 @@
 
    ============================================================ */
 
-/* ---------------- The six exam families (fallback) ---------------- */
+/* ---------------- Exam families (fallback) ---------------- */
 // Each family's badge colour lives in CSS (--exam-*), fixed, not per tenant.
-// status: 'ready' = blueprint is live and tests can be published;
-//         'coming_soon' = listed only, nothing to buy or open yet.
+//
+// One entry, not six. The platform is VPET-only while VPET is being finished
+// (owner, 2026-08-13), and GET /api/catalog no longer sends the five parked
+// families to a student. This list is what a student sees when that call
+// FAILS, so it has to agree with it: a fallback that shows five exams the live
+// catalogue hides would make a network blip look like a product announcement.
+// The five still exist in server/db.js (FAMILIES) and an administrator still
+// sees them; put one back here when it is opened again.
 const PREP_FAMILIES = [
-  { id: 'vpet',  name: 'VPET',  sub: 'Vietnam Proficiency English Test',          format: 'Parts A-J, 55 items, AI scored speaking', status: 'ready' },
-  { id: 'vept',  name: 'VEPT',  sub: 'Vietnam English Proficiency Test',          format: '4 skills, CEFR aligned', status: 'coming_soon' },
-  { id: 'ote',   name: 'OTE',   sub: 'Oxford Test of English',                    format: 'Adaptive, 4 modules, CEFR A2-B2', status: 'coming_soon' },
-  { id: 'toeic', name: 'TOEIC', sub: 'Test of English for International Communication', format: 'L&R / S&W, 990 point scale', status: 'coming_soon' },
-  { id: 'ielts', name: 'IELTS', sub: 'International English Language Testing System',   format: '4 skills, band 0-9', status: 'coming_soon' },
-  { id: 'pte',   name: 'PTE',   sub: 'Pearson Test of English',                   format: 'Computer based, AI scored, 10-90 scale', status: 'coming_soon' }
+  { id: 'vpet',  name: 'VPET',  sub: 'Vietnam Proficiency English Test',          format: 'Parts A-J, 55 items, AI scored speaking', status: 'ready' }
 ];
 
 /* ---------------- Mock tests (NO paper content yet) ----------------
@@ -183,7 +184,10 @@ const PREP_TENANTS = [
    ============================================================ */
 const PREP = {
   families: PREP_FAMILIES,
-  tests: PREP_TESTS,
+  /* Filtered rather than deleted: the parked families' papers are still useful
+     fixtures for the code screens below, but a student must not meet one in
+     the library just because the catalogue call failed. */
+  tests: PREP_TESTS.filter(t => PREP_FAMILIES.some(f => f.id === t.familyId)),
   packages: PREP_PACKAGES,
   tenants: PREP_TENANTS,
 
