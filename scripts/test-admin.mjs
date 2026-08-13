@@ -5,6 +5,7 @@
  * Run: node scripts/test-admin.mjs   (needs the server up)
  */
 import { ADMIN_PASSWORD } from './_demo.mjs';
+import { launchChromium } from './_browser.mjs';
 const BASE = process.env.BASE_URL || 'http://localhost:3000';
 const USER = process.env.ADMIN_USERNAME || 'admin';
 const PASS = ADMIN_PASSWORD;
@@ -519,6 +520,161 @@ const run = async () => {
   check('Unlocks a student account', r.status === 200);
   r = await call('POST', '/api/admin/users/' + uid + '/status', { status: 'xoa-het' });
   check('Refuses an invalid student status', r.status === 400, 'status ' + r.status);
+
+  /* 12b. Making an account from this side, and looking after it.
+     A centre needs the opposite of self-registration: somebody pays at a desk,
+     or a class of thirty arrives at once. */
+  const newEmail = 'hocvien.tao.' + String(process.hrtime.bigint()).slice(-9) + '@thu-nghiem.vn';
+  r = await call('POST', '/api/admin/users', {
+    name: 'Nguyen Van Tao', email: newEmail, planId: 'plus-6m', note: 'made by the test'
+  });
+  check('An administrator can create a student account', r.status === 201, 'status ' + r.status);
+  const madeId = r.data.user && r.data.user.id;
+  const madePw = r.data.password;
+  check('and is shown the generated password exactly once',
+    typeof madePw === 'string' && madePw.length >= 10, JSON.stringify(madePw));
+  check('The term asked for is granted with the account',
+    r.data.grant && r.data.grant.plan === 'plus-6m' && r.data.grant.months === 6,
+    JSON.stringify(r.data.grant));
+
+  /* The account has to be usable, which is the only thing that matters. Created
+     verified on purpose: an unverified account made by an administrator would
+     lock the person out of the thing just made for them. */
+  const madeIn = await fetch(BASE + '/api/auth/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Cookie: cookieHeader(), 'X-CSRF-Token': decodeURIComponent(jar.get('prep_csrf')) },
+    body: JSON.stringify({ username: newEmail, password: madePw })
+  });
+  check('The student can sign in with that password straight away', madeIn.status === 200,
+    'status ' + madeIn.status);
+
+  const madeDetail = (await call('GET', '/api/admin/users/' + madeId)).data;
+  check('The new account shows as verified and active',
+    madeDetail.user.verified === true && madeDetail.user.status === 'active',
+    JSON.stringify({ v: madeDetail.user.verified, s: madeDetail.user.status }));
+  check('and holds the code the term was granted through', madeDetail.codes.length === 1,
+    'codes ' + madeDetail.codes.length);
+
+  r = await call('POST', '/api/admin/users', { name: 'Trung lap', email: newEmail });
+  check('The same email twice is refused', r.status === 409, 'status ' + r.status);
+  r = await call('POST', '/api/admin/users', { name: 'Sai', email: 'khong-phai-email' });
+  check('A malformed email is refused', r.status === 400);
+  r = await call('POST', '/api/admin/users', { name: 'Yeu', email: 'y.' + newEmail, password: 'short' });
+  check('A password that a student could not use is refused here too', r.status === 400,
+    'the rule lives in server/auth.js so both paths cannot drift');
+  r = await call('POST', '/api/admin/users', { name: 'Goi la', email: 'g.' + newEmail, planId: 'khong-co' });
+  check('A plan that does not exist is refused rather than silently skipped', r.status === 400);
+
+  /* Granting a second term: entitlementOf() takes the furthest expiry and adds
+     the attempts up, so this must extend reach rather than replace it. */
+  const beforeGrant = (await call('GET', '/api/admin/users/' + madeId)).data;
+  r = await call('POST', '/api/admin/users/' + madeId + '/grant', { planId: 'starter-3m' });
+  check('A term can be granted on its own', r.status === 201, 'status ' + r.status);
+  check('and comes back with the date access now runs to',
+    typeof r.data.accessUntil === 'string' && new Date(r.data.accessUntil) > new Date(),
+    r.data.accessUntil);
+  const afterGrant = (await call('GET', '/api/admin/users/' + madeId)).data;
+  check('The account holds one more code than before',
+    afterGrant.codes.length === beforeGrant.codes.length + 1,
+    beforeGrant.codes.length + ' → ' + afterGrant.codes.length);
+  check('The stronger plan still decides what is unlocked, not the newer one',
+    r.data.entitlement && r.data.entitlement.planId === 'plus-6m',
+    r.data.entitlement && r.data.entitlement.planId);
+
+  r = await call('POST', '/api/admin/users/999999/grant', { planId: 'starter-3m' });
+  check('Granting to a student who does not exist is a 404', r.status === 404, 'status ' + r.status);
+  r = await call('POST', '/api/admin/users/' + madeId + '/grant', { planId: 'nothing' });
+  check('and an unknown term is refused', r.status === 400);
+
+  /* Resetting a password must also end every session that account holds —
+     the reason for resetting is usually that somebody should not still be in. */
+  const beforeReset = await fetch(BASE + '/api/auth/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Cookie: cookieHeader(), 'X-CSRF-Token': decodeURIComponent(jar.get('prep_csrf')) },
+    body: JSON.stringify({ username: newEmail, password: madePw })
+  });
+  check('The old password works before the reset', beforeReset.status === 200);
+  r = await call('POST', '/api/admin/users/' + madeId + '/password');
+  check('The password can be reset from the admin side', r.status === 200);
+  const freshPw = r.data.password;
+  check('and a new one is generated and shown once',
+    typeof freshPw === 'string' && freshPw.length >= 10 && freshPw !== madePw);
+  const oldTry = await fetch(BASE + '/api/auth/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Cookie: cookieHeader(), 'X-CSRF-Token': decodeURIComponent(jar.get('prep_csrf')) },
+    body: JSON.stringify({ username: newEmail, password: madePw })
+  });
+  check('The old password stops working', oldTry.status === 401, 'status ' + oldTry.status);
+  const newTry = await fetch(BASE + '/api/auth/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Cookie: cookieHeader(), 'X-CSRF-Token': decodeURIComponent(jar.get('prep_csrf')) },
+    body: JSON.stringify({ username: newEmail, password: freshPw })
+  });
+  check('and the new one works', newTry.status === 200, 'status ' + newTry.status);
+
+  r = await call('POST', '/api/admin/users/' + madeId + '/password', { password: 'AChosenOne123' });
+  check('A password can also be chosen rather than generated', r.status === 200);
+  check('and then nothing is echoed back, because the caller already knows it',
+    r.data.password === null, JSON.stringify(r.data.password));
+
+  /* 12c. The same three things, in a real browser.
+     Every control added above lives behind a modal, and a modal is exactly what
+     a screenshot pass never opens — the second-factor card sat unrendered by
+     the gate for a whole turn for that reason. So the buttons are clicked. */
+  {
+    const browser = await launchChromium({ args: ['--no-sandbox'] });
+    try {
+      const ctx = await browser.newContext({ viewport: { width: 1440, height: 950 } });
+      const page = await ctx.newPage();
+      const uiErrors = [];
+      page.on('pageerror', e => uiErrors.push(String(e.message)));
+
+      await page.goto(BASE + '/admin/dang-nhap/', { waitUntil: 'networkidle' });
+      await page.fill('#username', USER);
+      await page.fill('#password', PASS);
+      await page.click('#submit');
+      await page.waitForURL('**/admin/**', { timeout: 15000 });
+      await page.goto(BASE + '/admin/hoc-vien/', { waitUntil: 'networkidle' });
+      await page.waitForTimeout(1000);
+
+      check('The students screen offers to create one', await page.locator('#new-student').count() === 1);
+      await page.click('#new-student');
+      await page.waitForTimeout(300);
+      const terms = await page.locator('#ns-plan option').allInnerTexts();
+      /* Built from the price list rather than typed in, so a fourth plan would
+         appear here by itself and a renamed one cannot go stale. */
+      check('and the term list is the three plans, read from the server',
+        terms.length === 4 && terms.join(' ').includes('3 months') &&
+        terms.join(' ').includes('6 months') && terms.join(' ').includes('12 months'),
+        terms.join(' | '));
+
+      const uiEmail = 'giao.dien.' + String(process.hrtime.bigint()).slice(-9) + '@thu-nghiem.vn';
+      await page.fill('#ns-name', 'Tran Thi Giao Dien');
+      await page.fill('#ns-email', uiEmail);
+      await page.selectOption('#ns-plan', 'pro-12m');
+      await page.click('#ns-save');
+      await page.waitForTimeout(1400);
+
+      check('Creating one from the screen shows the password exactly once',
+        await page.locator('#once-pw').count() === 1);
+      const uiPw = (await page.locator('#once-pw').innerText()).trim();
+      check('and it is a password, not an empty box', uiPw.length >= 10, uiPw.slice(0, 4) + '…');
+      await page.click('#once-done');
+      await page.waitForTimeout(500);
+
+      await page.fill('#q', uiEmail);
+      await page.waitForTimeout(900);
+      await page.click('[data-open]');
+      await page.waitForTimeout(900);
+      const grants = await page.locator('#u-grants button').allInnerTexts();
+      check('An existing account can be given a term from its own panel',
+        grants.length === 3, grants.join(' | '));
+      check('and its password reset from there', await page.locator('#u-pass').count() === 1);
+      check('No page error anywhere in that flow', uiErrors.length === 0, uiErrors.join(' | '));
+    } finally {
+      await browser.close();
+    }
+  }
 
   /* 13. Settings + packages on sale */
   r = await call('PUT', '/api/admin/settings', { settings: { 'platform.notice': 'Automated test' } });

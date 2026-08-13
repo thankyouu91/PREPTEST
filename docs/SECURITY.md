@@ -302,8 +302,11 @@ guard đăng nhập, 8 route còn lại là danh sách ở mục 3.
 | POST | `/api/admin/totp/enable` | `requireAdmin` + `csrfGuard` | yes |
 | POST | `/api/admin/totp/start` | `requireAdmin` + `csrfGuard` | yes |
 | GET | `/api/admin/users` | `requireAdmin` + `csrfGuard` | n/a (read) |
+| POST | `/api/admin/users` | `requireAdmin` + `csrfGuard` | yes |
 | GET | `/api/admin/users/:id` | `requireAdmin` + `csrfGuard` | n/a (read) |
 | PUT | `/api/admin/users/:id` | `requireAdmin` + `csrfGuard` | yes |
+| POST | `/api/admin/users/:id/grant` | `requireAdmin` + `csrfGuard` | yes |
+| POST | `/api/admin/users/:id/password` | `requireAdmin` + `csrfGuard` | yes |
 | POST | `/api/admin/users/:id/status` | `requireAdmin` + `csrfGuard` | yes |
 | POST | `/api/admin/users/:id/verify` | `requireAdmin` + `csrfGuard` | yes |
 | GET | `/api/attempts` | `requireUser` | n/a (read) |

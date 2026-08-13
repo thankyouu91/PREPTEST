@@ -33,6 +33,7 @@
           <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted pointer-events-none" id="search-icon"></span>
           <input id="q" type="search" class="input ps-10 py-2.5" placeholder="Search by name or email…">
         </label>
+        <button type="button" id="new-student" class="btn btn-primary btn-md">New student</button>
       </div>
 
       <p class="text-[13.5px] font-semibold text-muted mb-3" id="count">Loading…</p>
@@ -51,8 +52,98 @@
   AD.qs('#search-icon').innerHTML = AD.icon('search', 'w-[18px] h-[18px]');
 
   let families = [];
-  try { families = (await AD.get('/catalog')).families; } catch (e) {}
+  let plans = [];
+  try {
+    const cat = await AD.get('/catalog');
+    families = cat.families || [];
+    /* The three plans ARE the three terms — 3, 6 and 12 months. Read from the
+       server rather than typed in here, so a change to the price list moves
+       this screen with it instead of leaving it quietly wrong. */
+    plans = cat.plans || [];
+  } catch (e) {}
   const famName = id => (families.find(f => f.id === id) || {}).name || id;
+
+  /**
+   * Show a generated password once.
+   *
+   * The column holds a scrypt hash, so this is the only moment it is readable
+   * anywhere — after this modal closes nobody, including the administrator who
+   * created it, can get it back. Said plainly, and with a copy button, because
+   * the alternative is somebody squinting at a toast that has already gone.
+   */
+  function showOnce(title, password) {
+    if (!password) return;
+    const m = AD.modal(
+      '<h3 class="text-lg font-extrabold tracking-tight">' + AD.esc(title) + '</h3>' +
+      '<p class="text-muted text-[14px] leading-relaxed mt-2">Write this down now. It is stored ' +
+        'only as a hash, so this is the one and only time it can be read.</p>' +
+      '<div class="card bg-brand-soft border-0 p-4 mt-4 flex items-center gap-3">' +
+        '<code class="font-mono text-[16px] font-extrabold tracking-tight break-all flex-1" id="once-pw">' +
+          AD.esc(password) + '</code>' +
+        '<button type="button" class="btn btn-ghost btn-sm shrink-0" id="once-copy">Copy</button>' +
+      '</div>' +
+      '<div class="flex justify-end mt-5"><button type="button" class="btn btn-primary btn-md" id="once-done">Done</button></div>');
+    m.el.querySelector('#once-copy').addEventListener('click', () => {
+      navigator.clipboard.writeText(password).then(
+        () => AD.toast('Copied'), () => AD.toast('Could not copy — select it by hand', 'error'));
+    });
+    m.el.querySelector('#once-done').addEventListener('click', () => m.close());
+  }
+
+  /* ----- Creating an account from this side of the platform -----
+     Students normally sign themselves up. A centre needs the other way round:
+     somebody pays at a desk, or a class arrives at once. */
+  AD.qs('#new-student').addEventListener('click', () => {
+    const m = AD.modal(
+      '<h3 class="text-lg font-extrabold tracking-tight">New student</h3>' +
+      '<p class="text-muted text-[14px] leading-relaxed mt-1.5">The account is created already ' +
+        'verified — you have confirmed the address yourself — and can be given a term at the ' +
+        'same time.</p>' +
+      '<div class="grid gap-4 mt-5">' +
+        '<div><label class="label" for="ns-name">Full name</label>' +
+          '<input class="input" id="ns-name" autocomplete="off"></div>' +
+        '<div><label class="label" for="ns-email">Email</label>' +
+          '<input class="input" id="ns-email" type="email" autocomplete="off"></div>' +
+        '<div><label class="label" for="ns-pass">Password</label>' +
+          '<input class="input" id="ns-pass" autocomplete="new-password" ' +
+            'placeholder="Leave empty and one is generated for you"></div>' +
+        '<div><label class="label" for="ns-plan">Term</label>' +
+          '<select class="input" id="ns-plan">' +
+            '<option value="">No term yet</option>' +
+            plans.map(pl => '<option value="' + AD.esc(pl.id) + '">' + pl.months +
+              ' months · ' + AD.esc(pl.name) + '</option>').join('') +
+          '</select></div>' +
+        '<div><label class="label" for="ns-note">Internal note</label>' +
+          '<input class="input" id="ns-note" placeholder="Visible to administrators only"></div>' +
+      '</div>' +
+      '<div class="flex flex-wrap gap-2.5 justify-end mt-6">' +
+        '<button type="button" class="btn btn-ghost btn-md" id="ns-cancel">Cancel</button>' +
+        '<button type="button" class="btn btn-primary btn-md" id="ns-save">Create the account</button>' +
+      '</div>');
+    m.el.querySelector('#ns-cancel').addEventListener('click', () => m.close());
+    m.el.querySelector('#ns-save').addEventListener('click', async () => {
+      const btn = m.el.querySelector('#ns-save');
+      btn.disabled = true;
+      try {
+        const r = await AD.post('/admin/users', {
+          name: m.el.querySelector('#ns-name').value.trim(),
+          email: m.el.querySelector('#ns-email').value.trim(),
+          password: m.el.querySelector('#ns-pass').value,
+          planId: m.el.querySelector('#ns-plan').value,
+          note: m.el.querySelector('#ns-note').value.trim()
+        });
+        m.close();
+        AD.toast(r.grant
+          ? 'Account created with ' + r.grant.months + ' months'
+          : 'Account created');
+        showOnce('Password for ' + r.user.name, r.password);
+        load();
+      } catch (e) {
+        btn.disabled = false;
+        AD.toast(e.message, 'error');
+      }
+    });
+  });
 
   const state = { filter: '', q: '', offset: 0, limit: 25 };
 
@@ -204,8 +295,18 @@
           (u.verified ? '' : '<button type="button" id="u-verify" class="btn btn-ghost btn-md">Mark as verified</button>') +
           '<button type="button" id="u-lock" class="btn btn-ghost btn-md ' + (u.status === 'locked' ? '' : 'text-danger') + '">' +
             (u.status === 'locked' ? 'Unlock the account' : 'Lock the account') + '</button>' +
+          '<button type="button" id="u-pass" class="btn btn-ghost btn-md">Reset the password</button>' +
           '<button type="button" id="u-code" class="btn btn-soft btn-md ms-auto">' + AD.icon('ticket', 'w-4 h-4') + 'Issue a code</button>' +
         '</div>' +
+        /* A term, straight from the account rather than by way of the code
+           screen. The three plans ARE the three terms — 3, 6 and 12 months —
+           so the buttons are built from the price list rather than hard-coded,
+           and a fourth plan appears here by itself. */
+        '<div><p class="label mb-2">Give this account a term</p>' +
+          '<div class="flex flex-wrap gap-2.5" id="u-grants">' +
+            plans.map(pl => '<button type="button" class="btn btn-soft btn-md" data-grant="' +
+              AD.esc(pl.id) + '">' + pl.months + ' months · ' + AD.esc(pl.name) + '</button>').join('') +
+          '</div></div>' +
       '</div>', { wide: true });
 
     mm.el.querySelector('#u-save').addEventListener('click', async () => {
@@ -229,6 +330,33 @@
     mm.el.querySelector('#u-code').addEventListener('click', () => {
       mm.close();
       location.href = '/admin/code/?user=' + id;
+    });
+
+    mm.el.querySelector('#u-pass').addEventListener('click', async () => {
+      if (!await AD.confirm('Reset this password?',
+        'A new password is generated and shown to you once. ' + u.name +
+        ' is signed out everywhere immediately.', 'Reset the password')) return;
+      try {
+        const r = await AD.post('/admin/users/' + id + '/password');
+        mm.close();
+        showOnce('New password for ' + u.name, r.password);
+        load();
+      } catch (e) { AD.toast(e.message, 'error'); }
+    });
+
+    mm.el.querySelector('#u-grants').addEventListener('click', async e => {
+      const b = e.target.closest('[data-grant]');
+      if (!b) return;
+      const pl = plans.find(x => x.id === b.getAttribute('data-grant'));
+      if (!await AD.confirm('Give ' + pl.months + ' months?',
+        u.name + ' gets the ' + pl.name + ' plan, starting today. A code is issued and '
+        + 'activated on the account in one step — nothing to send them.', 'Give the term')) return;
+      try {
+        const r = await AD.post('/admin/users/' + id + '/grant', { planId: pl.id });
+        mm.close();
+        AD.toast(pl.months + ' months added, to ' + AD.date(r.accessUntil));
+        load();
+      } catch (e2) { AD.toast(e2.message, 'error'); }
     });
   }
 

@@ -121,6 +121,33 @@ nếu chưa có tài khoản nào và cũng không có `ADMIN_PASSWORD`.
 | Code | `/admin/code/` | Lô code, cấp theo lô hoặc cho một học viên, thu hồi, xuất CSV |
 | Quản trị | `/admin/quan-tri/` | Thương hiệu, giá gói, đổi mật khẩu, nhật ký thao tác |
 
+### Quản lý học viên từ khu quản trị
+
+Học viên bình thường tự đăng ký. Trung tâm cần chiều ngược lại: có người trả
+tiền tại quầy, hoặc một lớp ba mươi em vào cùng lúc. Màn **Học viên** làm được
+cả ba việc:
+
+| Việc | Endpoint | Ghi chú |
+|---|---|---|
+| **Tạo tài khoản** | `POST /api/admin/users` | Tạo ra là **đã xác thực sẵn** — người quản trị đã tự xác nhận địa chỉ; để chưa xác thực thì chính người đó bị khoá ngoài cái tài khoản vừa lập cho họ. Có thể cấp luôn kỳ hạn khi tạo |
+| **Cấp kỳ hạn 3 / 6 / 12 tháng** | `POST /api/admin/users/:id/grant` | Sinh code rồi **kích hoạt ngay** trên tài khoản, không phải gửi mã cho ai |
+| **Đặt lại mật khẩu** | `POST /api/admin/users/:id/password` | **Huỷ mọi phiên** của tài khoản đó — lý do phải đặt lại thường là để ai đó không còn đăng nhập được nữa |
+
+Cộng với những thứ đã có: khoá/mở tài khoản, đánh dấu đã xác thực, ghi chú nội bộ.
+
+**Ba kỳ hạn chính là ba gói** — `starter-3m`, `plus-6m`, `pro-12m`. Nút trên màn
+hình dựng từ bảng giá máy chủ trả về chứ không gõ tay, nên đổi bảng giá là màn
+này đi theo, và thêm gói thứ tư thì nút tự xuất hiện.
+
+**Mật khẩu sinh ra chỉ hiện đúng một lần**, trong hộp thoại kèm nút copy. Cột
+trong CSDL là hash scrypt, nên sau khi đóng hộp thoại thì không ai đọc lại được
+— kể cả người vừa tạo. Không ghi log, không gửi mail.
+
+**Kỳ hạn tính từ hôm nay**, giống hệt khi học viên tự nhập code. Cấp thêm một kỳ
+hạn khi kỳ cũ còn hạn thì không mất gì: `entitlementOf()` lấy **ngày xa nhất**
+trong các code còn sống và **cộng dồn** số lượt thi, gói mạnh hơn quyết định mở
+khoá những gì.
+
 ### Ngân hàng đề VPET
 
 `server/data/vpet-items.js` giữ **62 câu** cho năm phần không cần audio:

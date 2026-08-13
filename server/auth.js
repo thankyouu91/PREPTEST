@@ -392,6 +392,42 @@ function csrfGuard(req, res, next) {
   next();
 }
 
+/* ------------------------ What an account may look like ------------------------
+   Here rather than in server/user-api.js because there are now two ways an
+   account comes into being: a student registering, and an administrator making
+   one for them. Two copies of "is this a valid password" is two rules that
+   drift, and the one that drifts is always the one nobody is looking at. */
+
+/** Deliberately loose: the real test of an address is whether mail arrives. */
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+
+/**
+ * A username nobody holds yet, derived from an email address.
+ *
+ * Moved here from server/google-auth.js when a second caller appeared: an
+ * administrator creating an account needs exactly the same thing, and Google
+ * sign-in is a strange place for a general account helper to live.
+ */
+function freeUsername(email) {
+  let base = String(email).split('@')[0].toLowerCase().replace(/[^a-z0-9._-]/g, '');
+  if (base.length < 3) base = 'student' + base;
+  base = base.slice(0, 24);
+  if (!q.val('SELECT 1 FROM users WHERE lower(username)=?', base)) return base;
+  for (let i = 2; i < 1000; i++) {
+    const candidate = `${base}${i}`;
+    if (!q.val('SELECT 1 FROM users WHERE lower(username)=?', candidate)) return candidate;
+  }
+  return `${base}${crypto.randomBytes(4).toString('hex')}`;
+}
+
+/** Password rule: at least 8 characters, with both letters and digits. */
+function passwordProblem(pw) {
+  if (typeof pw !== 'string' || pw.length < 8) return 'Password needs at least 8 characters.';
+  if (pw.length > 200) return 'That password is too long.';
+  if (!/[A-Za-z]/.test(pw) || !/\d/.test(pw)) return 'Password needs both letters and numbers.';
+  return null;
+}
+
 /* --------------------- The seed administrator account --------------------- */
 
 /**
@@ -523,5 +559,6 @@ module.exports = {
   issueToken, consumeToken,
   requireAdmin, requireOwner, csrfGuard,
   ensureSeedAdmin, ensureDemoStudent, reportAdminAccounts,
-  demoStudentPassword, DEMO_STUDENT_USER, DEMO_STUDENT_NAME, generatedPassword
+  demoStudentPassword, DEMO_STUDENT_USER, DEMO_STUDENT_NAME, generatedPassword,
+  EMAIL_RE, passwordProblem, freeUsername
 };

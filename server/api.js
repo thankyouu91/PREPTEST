@@ -14,6 +14,7 @@ const totp = require('./totp');
 const EXAM_FORMATS = require('./data/exam-formats');
 const storage = require('./storage');
 const PLANS = require('./data/plans');
+const { entitlementOf } = require('./entitlements');
 const LINKING = require('./data/linking-words');
 
 const router = express.Router();
@@ -1086,6 +1087,148 @@ router.get('/admin/users/:id', (req, res) => {
     })),
     orders: orders.map(o => ({ id: o.id, name: o.name, amount: o.amount, status: o.status, createdAt: o.created_at }))
   });
+});
+
+/* ==================================================================== *
+ * Making and looking after a student account, from the admin side
+ *
+ * Students normally sign themselves up. A centre needs the other way round:
+ * somebody pays at a desk, or a class of thirty arrives at once, and an
+ * administrator makes the account and puts a term on it there and then.
+ * ==================================================================== */
+
+/** A code nobody holds yet. Shared with the batch issuer below. */
+function unusedCode() {
+  let code = makeCode();
+  while (q.val('SELECT 1 FROM codes WHERE code=?', code)) code = makeCode();
+  return code;
+}
+
+/**
+ * Put a term on an account: mint a code and activate it in one go.
+ *
+ * The term runs from NOW, not from the end of any term already held — the same
+ * rule as a student redeeming a code themselves (`POST /api/redeem`). It would
+ * be kinder to renewals to extend from the current expiry, but making the admin
+ * path behave differently from the student path is how two answers to "when
+ * does this run out" get into one system. `entitlementOf()` already takes the
+ * furthest date across live codes and adds the attempts up, so an early renewal
+ * loses nothing except the overlap.
+ */
+function grantPlan(userId, plan, adminId, note) {
+  const at = nowISO();
+  const until = new Date(at);
+  until.setMonth(until.getMonth() + plan.months);
+  const code = unusedCode();
+  q.run(
+    `INSERT INTO codes (code, batch_id, unlock_type, unlock_ref, plan_id, status,
+                        expires_at, access_expires_at, user_id, redeemed_at, note, created_at, created_by)
+     VALUES (?, NULL, 'family', 'vpet', ?, 'redeemed', NULL, ?, ?, ?, ?, ?, ?)`,
+    code, plan.id, until.toISOString(), userId, at, note || null, at, adminId || null);
+  return { code, accessUntil: until.toISOString() };
+}
+
+/**
+ * POST /admin/users — create a student account.
+ *
+ * Verified on creation: an administrator typing the address in has already
+ * confirmed it by other means, and leaving it unverified would lock the person
+ * out of the thing that was just made for them.
+ */
+router.post('/admin/users', (req, res) => {
+  const b = req.body || {};
+  const name = str(b.name, 120);
+  const email = str(b.email, 160).toLowerCase();
+  const note = str(b.note, 500);
+  const planId = str(b.planId, 40);
+
+  if (!name) return bad(res, 'Give the student a name.');
+  if (!A.EMAIL_RE.test(email)) return bad(res, 'That email address is not valid.');
+  if (q.val('SELECT 1 FROM users WHERE email=?', email)) {
+    return res.status(409).json({ error: 'An account with that email already exists.' });
+  }
+  /* A term is optional, but a plan id that means nothing is a typo worth
+     refusing rather than an account quietly created with no access. */
+  const plan = planId ? PLANS.byId(planId) : null;
+  if (planId && !plan) return bad(res, 'That plan does not exist.');
+
+  /* Given a password, it has to pass the same rule a student's would. Given
+     none, one is generated and returned ONCE — which is the only moment it
+     exists in readable form, since the column holds a scrypt hash. */
+  const chosen = typeof b.password === 'string' && b.password ? b.password : '';
+  if (chosen) {
+    const problem = A.passwordProblem(chosen);
+    if (problem) return bad(res, problem);
+  }
+  const password = chosen || A.generatedPassword();
+
+  const at = nowISO();
+  let userId = 0;
+  let granted = null;
+  tx(() => {
+    q.run(
+      `INSERT INTO users (username, email, name, pass_hash, verified, status, interests_json, note, created_at)
+       VALUES (?,?,?,?,1,'active','[]',?,?)`,
+      A.freeUsername(email), email, name, A.hashPassword(password), note || null, at);
+    userId = q.val('SELECT id FROM users WHERE email=?', email);
+    if (plan) granted = grantPlan(userId, plan, req.admin.id, 'Created with the account');
+  });
+
+  audit(req, 'user.create', 'users/' + userId, { email, plan: plan ? plan.id : null });
+  res.status(201).json({
+    ok: true,
+    user: { id: userId, name, email },
+    /* Shown once, in the response to the administrator who asked for it. Never
+       logged, and there is no way to read it back afterwards. */
+    password: chosen ? null : password,
+    grant: granted && { plan: plan.id, months: plan.months, accessUntil: granted.accessUntil }
+  });
+});
+
+/** POST /admin/users/:id/grant — put a term on an existing account. */
+router.post('/admin/users/:id/grant', (req, res) => {
+  const id = int(req.params.id, 0);
+  const plan = PLANS.byId(str(req.body && req.body.planId, 40));
+  if (!plan) {
+    return bad(res, 'Choose a term: ' + PLANS.PLANS.map(p => p.id).join(', ') + '.');
+  }
+  if (!q.val('SELECT 1 FROM users WHERE id=?', id)) {
+    return res.status(404).json({ error: 'No such student.' });
+  }
+  const note = str(req.body && req.body.note, 200) || 'Granted by an administrator';
+  const granted = tx(() => grantPlan(id, plan, req.admin.id, note));
+  audit(req, 'user.grant', 'users/' + id, { plan: plan.id, months: plan.months });
+  res.status(201).json({
+    ok: true,
+    plan: { id: plan.id, name: plan.name, months: plan.months },
+    code: granted.code,
+    accessUntil: granted.accessUntil,
+    entitlement: entitlementOf(id)
+  });
+});
+
+/**
+ * POST /admin/users/:id/password — set a student's password.
+ *
+ * Every session that account holds is dropped: whoever the password was reset
+ * because of must not still be signed in somewhere.
+ */
+router.post('/admin/users/:id/password', (req, res) => {
+  const id = int(req.params.id, 0);
+  if (!q.val('SELECT 1 FROM users WHERE id=?', id)) {
+    return res.status(404).json({ error: 'No such student.' });
+  }
+  const chosen = typeof (req.body && req.body.password) === 'string' && req.body.password
+    ? req.body.password : '';
+  if (chosen) {
+    const problem = A.passwordProblem(chosen);
+    if (problem) return bad(res, problem);
+  }
+  const password = chosen || A.generatedPassword();
+  q.run('UPDATE users SET pass_hash=? WHERE id=?', A.hashPassword(password), id);
+  A.dropUserSessions(id);
+  audit(req, 'user.password', 'users/' + id, { generated: !chosen });
+  res.json({ ok: true, password: chosen ? null : password });
 });
 
 router.post('/admin/users/:id/status', (req, res) => {

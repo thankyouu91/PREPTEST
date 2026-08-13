@@ -138,17 +138,8 @@ function failed(res, reason) {
  * Google accounts have no username, but the rest of the platform is built
  * around one, so derive it from the local part and add a counter when taken.
  */
-function freeUsername(email) {
-  let base = String(email).split('@')[0].toLowerCase().replace(/[^a-z0-9._-]/g, '');
-  if (base.length < 3) base = 'student' + base;
-  base = base.slice(0, 24);
-  if (!q.val('SELECT 1 FROM users WHERE lower(username)=?', base)) return base;
-  for (let i = 2; i < 1000; i++) {
-    const candidate = `${base}${i}`;
-    if (!q.val('SELECT 1 FROM users WHERE lower(username)=?', candidate)) return candidate;
-  }
-  return `${base}${crypto.randomBytes(4).toString('hex')}`;
-}
+/* In server/auth.js since an administrator creating an account needs it too. */
+const freeUsername = A.freeUsername;
 
 /**
  * Find the account this Google identity belongs to, creating one if needed.

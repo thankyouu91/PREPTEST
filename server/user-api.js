@@ -46,19 +46,13 @@ const FORGOT_PER_HOUR = Math.max(1, parseInt(process.env.FORGOT_PER_HOUR, 10) ||
    student, so a dozen runs in ten minutes exhausts it. Default unchanged. */
 const REDEEM_PER_10MIN = Math.max(1, parseInt(process.env.REDEEM_PER_10MIN, 10) || 12);
 
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+/* Both live in server/auth.js: an administrator can now create an account too,
+   and one rule in two files is two rules within a month. */
+const { EMAIL_RE, passwordProblem } = A;
 
 /** Log a student's action (no administrator is involved) */
 function logUser(req, action, username, meta) {
   audit({ ip: req.ip, admin: { id: null, username: 'student' } }, action, 'users/' + username, meta || {});
-}
-
-/** Password rule: at least 8 characters, with both letters and digits. */
-function passwordProblem(pw) {
-  if (typeof pw !== 'string' || pw.length < 8) return 'Password needs at least 8 characters.';
-  if (pw.length > 200) return 'That password is too long.';
-  if (!/[A-Za-z]/.test(pw) || !/\d/.test(pw)) return 'Password needs both letters and numbers.';
-  return null;
 }
 
 /** Narrow the followed-exams list down to ids that actually exist */
