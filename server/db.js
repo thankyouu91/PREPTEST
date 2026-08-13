@@ -449,7 +449,7 @@ CREATE TABLE IF NOT EXISTS orders (
   name TEXT NOT NULL,
   amount INTEGER NOT NULL DEFAULT 0,
   code_id INTEGER REFERENCES codes(id) ON DELETE SET NULL,
-  status TEXT NOT NULL DEFAULT 'paid',          -- paid | pending | refunded
+  status TEXT NOT NULL DEFAULT 'paid',          -- paid | pending | failed | refunded
   created_at TEXT NOT NULL
 );
 
@@ -610,6 +610,20 @@ addColumnIfMissing('attempt_answers', 'earned', 'REAL');
 addColumnIfMissing('attempt_answers', 'max_score', 'REAL');
 addColumnIfMissing('attempt_answers', 'mark_note', 'TEXT');
 addColumnIfMissing('attempt_answers', 'marked_at', 'TEXT');
+
+/* An order used to be a record of something that had already happened — the
+   admin issued a code, the row said 'paid'. With a gateway in front of it an
+   order is created BEFORE the money moves, so it needs the reference the
+   gateway knows it by, which provider that is, and when it settled.
+   `ref` is unique because it is what an incoming notification is matched on,
+   and two orders answering to one reference is how a payment settles the wrong
+   one. SQLite allows many NULLs in a unique index, so the rows that predate
+   this stay as they are. */
+addColumnIfMissing('orders', 'provider', 'TEXT');
+addColumnIfMissing('orders', 'ref', 'TEXT');
+addColumnIfMissing('orders', 'gateway_ref', 'TEXT');
+addColumnIfMissing('orders', 'paid_at', 'TEXT');
+db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_orders_ref ON orders (ref)');
 
 /* ============================== HELPERS ============================== */
 const nowISO = () => new Date().toISOString();

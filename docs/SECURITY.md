@@ -325,6 +325,8 @@ guard đăng nhập, 8 route còn lại là danh sách ở mục 3.
 | POST | `/api/auth/verify` | `csrfGuard` | yes |
 | POST | `/api/auth/verify/send` | `requireUser` + `csrfGuard` | yes |
 | GET | `/api/catalog` | — | n/a (read) |
+| POST | `/api/checkout` | `requireUser` + `csrfGuard` | yes |
+| GET | `/api/checkout/providers` | — | n/a (read) |
 | GET | `/api/learn/grammar` | — | n/a (read) |
 | GET | `/api/learn/grammar/:slug` | — | n/a (read) |
 | GET | `/api/learn/irregular-verbs` | — | n/a (read) |
@@ -339,3 +341,6 @@ guard đăng nhập, 8 route còn lại là danh sách ở mục 3.
 | POST | `/api/redeem` | `requireUser` + `csrfGuard` | yes |
 | GET | `/auth/google` | — | n/a (read) |
 | GET | `/auth/google/callback` | — | n/a (read) |
+| GET | `/payments/:provider/ipn` | `gatewaySigned` | n/a (read) |
+| POST | `/payments/:provider/ipn` | `gatewaySigned` | yes |
+| GET | `/payments/:provider/return` | — | n/a (read) |

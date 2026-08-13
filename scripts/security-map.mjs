@@ -17,6 +17,7 @@ const SAFE = ['get', 'head', 'options'];
 export function loadRouters(require_) {
   return [
     { mount: '', file: 'server/google-auth.js', router: require_('../server/google-auth.js').router },
+    { mount: '', file: 'server/payment-api.js', router: require_('../server/payment-api.js') },
     { mount: '/api', file: 'server/user-api.js', router: require_('../server/user-api.js') },
     { mount: '/api', file: 'server/exam-api.js', router: require_('../server/exam-api.js') },
     { mount: '/api', file: 'server/api.js', router: require_('../server/api.js') }
@@ -32,7 +33,7 @@ function prefixOf(layer) {
   return m ? m[1].replace(/\\\//g, '/') : null;
 }
 
-const GUARDS = new Set(['requireAdmin', 'requireUser', 'requireOwner', 'csrfGuard']);
+const GUARDS = new Set(['requireAdmin', 'requireUser', 'requireOwner', 'csrfGuard', 'gatewaySigned']);
 
 /** Every route of every router, with the guards that really run before it. */
 export function routeTable(require_ = createRequire(import.meta.url)) {
@@ -80,6 +81,32 @@ export function routeTable(require_ = createRequire(import.meta.url)) {
   rows.sort((a, b) => a.path.localeCompare(b.path) || a.method.localeCompare(b.method));
   return rows;
 }
+
+/* Routes authenticated by a shared-secret HMAC rather than by a session.
+ *
+ * A payment gateway cannot hold a cookie, so neither an auth guard nor
+ * csrfGuard is possible on an IPN. `gatewaySigned` stands in for both: it
+ * recomputes the HMAC over the fields with the secret the gateway and this
+ * server share, and refuses anything that does not match. A browser cannot
+ * forge one, which is more than a CSRF token proves.
+ *
+ * Declared here rather than exempted quietly, and checked in both directions —
+ * a route that loses `gatewaySigned` fails, and an entry left behind after a
+ * route is deleted fails too. */
+export const SIGNED_WEBHOOKS = {
+  'GET /payments/:provider/ipn': 'gatewaySigned; HMAC-SHA512 over the sorted query with the VNPay hash secret, then the order is matched on its reference and its amount',
+  'POST /payments/:provider/ipn': 'gatewaySigned; HMAC-SHA256 over the documented field order with the MoMo secret key, then the order is matched on its reference and its amount'
+};
+
+/* GET routes that really do change state.
+ *
+ * The sweep treats GET, HEAD and OPTIONS as safe, which is what lets it say
+ * "every mutating route is guarded" — so a GET that writes is invisible to it
+ * and outside the global write limit, which only covers unsafe methods. There
+ * is exactly one, it is not a choice, and it carries a rate limit of its own. */
+export const MUTATING_GETS = {
+  'GET /payments/:provider/ipn': 'VNPay specifies its IPN as a GET; guarded by gatewaySigned and rate limited by IPN_PER_MIN inside the handler, since the global write limit does not see it'
+};
 
 /* Eight write endpoints that cannot have an auth guard: they exist for people who
    are NOT signed in. Each must name what stands in for one, or this list is just

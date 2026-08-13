@@ -87,6 +87,7 @@ Lệnh khác:
 | `node scripts/test-mail.mjs` | kiểm thử thư đi: soạn thư (mã hoá tiêu đề, chống chèn header), toàn bộ hội thoại SMTP với một server giả chạy tại chỗ, và **token không lọt vào log** |
 | `node scripts/test-totp.mjs` | kiểm thử lớp xác thực thứ hai: **sáu vector chuẩn RFC 6238**, cửa sổ lệch giờ, mã đã dùng không dùng lại được, mã cứu hộ, và toàn bộ luồng đăng nhập thật |
 | `node scripts/test-analytics.mjs` | kiểm thử analytics phía máy chủ: định danh không dùng cookie theo dõi, các giới hạn GA4 âm thầm bắt (tên sự kiện, số/độ dài tham số, `session_id`), trần số request đang bay, và **quét khẳng định payload không chứa** email, tên, địa chỉ IP hay user-agent |
+| `node scripts/test-payments.mjs` | kiểm thử cổng thanh toán: **chữ ký đối chiếu với chuỗi thô chép tay từ tài liệu** của VNPay và MoMo, rồi luật quyết định lúc nào cấp code — sai số tiền, sai nhà cung cấp, mã tham chiếu lạ, và **báo lại lần hai chỉ cấp một code** |
 | `node scripts/test-gcs.mjs` | kiểm thử driver Google Cloud Storage và lớp lấy token: **sinh cặp khoá RSA thật rồi verify chữ ký JWT**, cache token, và toàn bộ hình dạng request (method, path, query, `Metadata-Flavor`, tên object đã encode) đối chiếu với một Google giả chạy tại chỗ |
 | `node scripts/test-srs.mjs` | kiểm thử lặp lại ngắt quãng: **lịch SM-2 tính chính xác từng ngày** (hàm thuần, đồng hồ truyền vào nên không phải chờ), rồi hàng đợi ôn tập qua API — ai được hỏi, chấm điểm lưu đúng cái lịch đã tính, hai học viên không thấy tiến độ của nhau |
 | `node scripts/test-health.mjs` | kiểm thử vòng đời tiến trình (sập thì thoát khác 0, SIGTERM thì thoát êm bằng 0, có chặn thời gian) và endpoint `/healthz` |
@@ -483,6 +484,52 @@ ngoài trang offline.
 
 Đổi nhận diện thương hiệu thì chạy lại `npm run icons` — nguồn duy nhất vẫn là
 `favicon.svg`, mọi kích thước sinh lại theo.
+
+## Thanh toán (VNPay / MoMo, sandbox)
+
+`server/payments.js` ký và xác minh chữ ký cho hai cổng; `server/payment-api.js`
+là vòng đời đơn hàng quanh nó. **Tắt hẳn khi chưa có khoá** — màn mua code vẫn
+hiển thị đúng câu đang hiển thị hôm nay: liên hệ trung tâm để lấy code.
+
+| Biến | Việc |
+|---|---|
+| `VNPAY_TMN_CODE`, `VNPAY_HASH_SECRET` | thiếu một trong hai là VNPay tắt |
+| `MOMO_PARTNER_CODE`, `MOMO_ACCESS_KEY`, `MOMO_SECRET_KEY` | thiếu một trong ba là MoMo tắt |
+| `PUBLIC_BASE_URL` | tên miền công khai, để dựng URL trả về và URL nhận thông báo |
+| `VNPAY_PAY_URL`, `MOMO_CREATE_URL` | đổi sang endpoint thật khi chủ dự án quyết định chạy live |
+| `CHECKOUT_PER_HOUR` (20), `IPN_PER_MIN` (120) | trần chống lạm dụng |
+
+### Chỉ IPN mới chốt đơn
+
+Mỗi cổng báo kết quả về **hai nơi**: một **URL trả về** (trình duyệt người mua
+được chuyển hướng về) và một **IPN** (máy chủ của cổng gọi thẳng máy chủ mình).
+
+URL trả về là lời khai của bất kỳ ai đang cầm trình duyệt — tham số nằm ngay trên
+thanh địa chỉ và gõ tay được. Nó chỉ quyết định **người mua nhìn thấy gì**, không
+quyết định gì khác. **Chỉ IPN mới chốt đơn**, và chỉ sau khi HMAC khớp. Coi
+redirect là bằng chứng đã thanh toán là cách kinh điển để cho không sản phẩm.
+
+Mọi thứ đến từ bên ngoài đều kiểm trên nội dung: HMAC tính lại tại chỗ và so
+sánh theo thời gian hằng định; đơn phải tồn tại và đúng cổng đã đặt; **số tiền
+khớp tới từng đồng**; và chốt hai lần chỉ cấp **một** code — cổng thanh toán gửi
+lại IPN cho tới khi được xác nhận, nên bản trùng là lưu lượng bình thường chứ
+không phải tấn công.
+
+Code cấp ra ở trạng thái **chưa kích hoạt** và chưa gán cho ai: mua không phải là
+kích hoạt, nên code mua tặng vẫn dùng được. Người mua kích hoạt bằng luồng nhập
+code sẵn có, và kỳ hạn tính từ lúc kích hoạt.
+
+### Hai ngoại lệ mới trong bản đồ bảo mật
+
+Cổng thanh toán không giữ được cookie, nên IPN **không thể** có auth guard lẫn
+`csrfGuard`. Thay vào đó là `gatewaySigned` — một middleware **có tên** để
+`scripts/security-map.mjs` đọc được ra từ stack của Express và in vào bảng trong
+`docs/SECURITY.md`, thay vì route trông như đang trần trụi.
+
+Và VNPay quy định IPN của họ là **GET**, thứ mà bản rà soát vốn coi là an toàn
+nên sẽ bỏ qua — cũng nằm ngoài write limit toàn cục vì cái đó chỉ phủ các method
+không an toàn. Nên có thêm danh sách `MUTATING_GETS`, kiểm tra hai chiều, và
+handler tự mang rate limit riêng.
 
 ## Đăng nhập bằng Google
 

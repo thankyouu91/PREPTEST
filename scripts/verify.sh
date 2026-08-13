@@ -113,6 +113,9 @@ node scripts/test-exam.mjs || fail=1
 step "VPET item bank (blueprint match, per-item quality)"
 node scripts/test-items.mjs || fail=1
 
+step "Payments (gateway signatures, settlement rules, one code per order)"
+node scripts/test-payments.mjs || fail=1
+
 step "Security (headers, write limit, per-endpoint guards)"
 node scripts/test-security.mjs || fail=1
 

@@ -252,30 +252,61 @@ try {
 
   /* The point of the whole sweep: every mutating route has an auth guard and
      csrfGuard, except the ones declared. "Except" checked in both directions. */
+  const key = r => r.method + ' ' + r.path;
+  const signedWebhook = new Set(Object.keys(map.SIGNED_WEBHOOKS));
   const declared = new Set(Object.keys(map.PUBLIC_WRITES));
   const naked = mutating.filter(r =>
-    !r.guards.includes('requireAdmin') && !r.guards.includes('requireUser'));
-  const undeclared = naked.filter(r => !declared.has(r.method + ' ' + r.path));
+    !r.guards.includes('requireAdmin') && !r.guards.includes('requireUser')
+    && !signedWebhook.has(key(r)));
+  const undeclared = naked.filter(r => !declared.has(key(r)));
   ok(undeclared.length === 0,
     'No mutating route lacks an auth guard without being declared in PUBLIC_WRITES',
     undeclared.map(r => r.method + ' ' + r.path).join(', '));
 
-  const stale = [...declared].filter(k =>
-    !naked.some(r => (r.method + ' ' + r.path) === k));
+  const stale = [...declared].filter(k => !naked.some(r => key(r) === k));
   ok(stale.length === 0,
     'PUBLIC_WRITES carries no stale row — a guarded endpoint must leave the list',
     stale.join(', '));
   ok(Object.values(map.PUBLIC_WRITES).every(v => v && v.length > 15),
     'Every exception names what stands in for a guard');
 
+  /* A payment gateway cannot hold a cookie, so an IPN can have neither an auth
+     guard nor csrfGuard. What it has instead is an HMAC it must match, and that
+     substitution is declared rather than quietly allowed. */
+  const signedRows = rows.filter(r => r.guards.includes('gatewaySigned'));
+  ok(signedRows.length > 0 && signedRows.every(r => signedWebhook.has(key(r))),
+    'Every route carrying gatewaySigned is declared in SIGNED_WEBHOOKS',
+    signedRows.filter(r => !signedWebhook.has(key(r))).map(key).join(', '));
+  ok([...signedWebhook].every(k => signedRows.some(r => key(r) === k)),
+    'and every declared webhook really still carries it — the entry cannot outlive the guard',
+    [...signedWebhook].filter(k => !signedRows.some(r => key(r) === k)).join(', '));
+  ok(Object.values(map.SIGNED_WEBHOOKS).every(v => v && v.length > 25),
+    'Each names the signature that stands in for the guard');
+
+  /* The sweep calls GET safe, which is what lets it claim every mutating route
+     is guarded — so a GET that writes is invisible to it AND outside the global
+     write limit. One exists, because VNPay specifies its IPN that way. It is
+     listed, and the list is checked in both directions. */
+  const mutatingGets = new Set(Object.keys(map.MUTATING_GETS));
+  ok([...mutatingGets].every(k => rows.some(r => key(r) === k)),
+    'Every declared state-changing GET is a route that exists',
+    [...mutatingGets].filter(k => !rows.some(r => key(r) === k)).join(', '));
+  ok([...mutatingGets].every(k => {
+    const row = rows.find(r => key(r) === k);
+    return row && row.guards.length > 0;
+  }), 'and each one is guarded, since the global write limit does not cover it');
+  ok(Object.values(map.MUTATING_GETS).every(v => /rate limit/i.test(v)),
+    'and each says how it is rate limited instead');
+
   /* No longer split by whether there is an auth guard: since 2026-08-12 the
      prep_csrf cookie is minted the moment an HTML page is served, so a signed-out
      visitor holds a token too and EVERY mutating route must carry csrfGuard. Before
      that, six public endpoints stood outside it — the one hole the previous sweep
      found and did not close. */
-  ok(mutating.every(r => r.guards.includes('csrfGuard')),
-    'Every mutating route has csrfGuard, including those that need no sign-in',
-    mutating.filter(r => !r.guards.includes('csrfGuard')).map(r => r.method + ' ' + r.path).join(', '));
+  ok(mutating.every(r => r.guards.includes('csrfGuard') || signedWebhook.has(key(r))),
+    'Every mutating route has csrfGuard, or a declared HMAC in its place',
+    mutating.filter(r => !r.guards.includes('csrfGuard') && !signedWebhook.has(key(r)))
+      .map(key).join(', '));
 
   ok(mutating.every(r => r.writeLimited),
     'Every mutating route sits under the global write limit');

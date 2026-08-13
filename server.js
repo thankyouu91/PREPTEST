@@ -23,6 +23,7 @@ const api = require('./server/api');
 const userApi = require('./server/user-api');
 const examApi = require('./server/exam-api');
 const googleAuth = require('./server/google-auth');
+const paymentApi = require('./server/payment-api');
 const A = require('./server/auth');
 const security = require('./server/security');
 const lifecycle = require('./server/lifecycle');
@@ -124,6 +125,7 @@ function serveHtmlWithNonce(relFile) {
 
 /* ---------------- API (đăng ký trước static) ---------------- */
 app.use(googleAuth.router);      // đăng nhập Google: /auth/google, /auth/google/callback
+app.use(paymentApi);             // thanh toán: /api/checkout, /payments/:provider/…
 app.use('/api', userApi);        // tài khoản học viên: /api/auth/…, /api/me
 app.use('/api', examApi);        // engine làm bài: /api/attempts/…
 app.use('/api', api);            // danh mục công khai + /api/admin/…
