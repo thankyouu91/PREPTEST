@@ -485,6 +485,47 @@ ngoài trang offline.
 Đổi nhận diện thương hiệu thì chạy lại `npm run icons` — nguồn duy nhất vẫn là
 `favicon.svg`, mọi kích thước sinh lại theo.
 
+## Chạy bằng container (AWS)
+
+`Dockerfile` + `.dockerignore` ở gốc repo. Hai tầng: Tailwind biên dịch ở tầng
+build rồi bị vứt đi, tầng chạy chỉ còn `express` (`node_modules` 4.5 MB, không
+Tailwind, không Playwright, không bộ test). Chạy bằng user `node` (uid 1000),
+`HEALTHCHECK` gọi `/healthz` thật — có round-trip xuống CSDL. Ảnh ~336 MB.
+
+```bash
+docker build -t vpet-prep .
+docker run -p 3000:3000 -e ADMIN_PASSWORD='…' -e TRUST_PROXY=1 vpet-prep
+```
+
+Không có gì gắn riêng với AWS: App Runner, ECS/Fargate, Elastic Beanstalk hay
+Docker trần trên EC2 đều chạy được. Nền tảng chọn hoàn toàn bằng biến môi trường.
+
+### Bốn thứ phải biết trước khi deploy
+
+**1. `ADMIN_PASSWORD` không có thì container KHÔNG khởi động được.** Đây là cố ý
+và đã kiểm chứng bằng cách chạy thật: ở `NODE_ENV=production`, `ensureSeedAdmin()`
+từ chối tạo tài khoản quản trị với mật khẩu mặc định. Log ghi rõ
+*"No administrator account exists. In production, ADMIN_PASSWORD must be set
+before the first run."* Đặt qua Secrets Manager / SSM Parameter Store, đừng đặt
+thẳng trong task definition.
+
+**2. `TRUST_PROXY=1` khi đứng sau ALB/CloudFront.** Để mặc định 0 thì `req.ip` là
+địa chỉ của ALB với **mọi** người dùng — nghĩa là khoá đăng nhập sai 5 lần và
+write limit gộp chung toàn bộ khách thành một, một người gõ sai mật khẩu là cả
+hệ thống bị khoá. Đặt đúng bằng **số tầng proxy** đứng trước, không đặt `true`
+(lý do ở `resolveTrustProxy` trong `server/security.js`).
+
+**3. Cookie tự bật `Secure` ở production**, nên trình duyệt sẽ **không gửi** nó
+qua HTTP. TLS phải kết thúc ở ALB/CloudFront và người dùng phải vào bằng HTTPS,
+nếu không sẽ thấy triệu chứng "đăng nhập xong lại về trang đăng nhập".
+
+**4. `/app/data` là tạm bợ.** CSDL SQLite và tệp âm thanh nằm ở đó, và nó biến
+mất khi task bị thay — tức là mất toàn bộ tài khoản và bài làm. Ba lối ra, xếp
+theo độ đúng đắn: chuyển sang RDS Postgres (đã có mục trong roadmap, và là việc
+lớn), hoặc gắn EFS vào `/app/data`, hoặc chấp nhận mất dữ liệu ở môi trường thử.
+Riêng tệp âm thanh thì `AUDIO_STORAGE` tách được ra khỏi CSDL — **nhưng hiện
+chưa có driver S3**, mới chỉ có `disk`, `supabase` và `gcs`.
+
 ## Thanh toán (VNPay / MoMo, sandbox)
 
 `server/payments.js` ký và xác minh chữ ký cho hai cổng; `server/payment-api.js`
@@ -1038,7 +1079,13 @@ Toàn bộ chuyển động tắt dưới `prefers-reduced-motion`.
 ## Ảnh nghiệm thu
 
 `docs/screenshots/` — mỗi màn 1 ảnh desktop (1440px) + 1 ảnh mobile (390px), kèm biến thể
-dark mode và tenant `evergreen`.
+dark mode và tenant `evergreen`. Sinh bằng `npm run screenshot` và
+`npm run screenshot:admin`.
+
+**Không commit nữa (2026-08-13).** 86 ảnh này được chụp lại mỗi lượt chạy cổng
+kiểm thử, và lịch sử của chúng đã chiếm **575 MB — 95% khối lượng repo** cho
+những tệp tái tạo được bằng một lệnh. Nay nằm trong `.gitignore`; xem chúng bằng
+cách chạy lệnh ở trên, ảnh sẽ hiện ra trong thư mục đó như cũ.
 
 ## Ngoài phạm vi giai đoạn này
 
