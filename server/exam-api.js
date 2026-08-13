@@ -23,6 +23,7 @@
 const express = require('express');
 const { q, tx, nowISO } = require('./db');
 const A = require('./auth');
+const analytics = require('./analytics');
 const storage = require('./storage');
 const { entitlementOf } = require('./entitlements');
 const PLANS = require('./data/plans');
@@ -228,6 +229,7 @@ router.post('/attempts', A.requireUser, A.csrfGuard, (req, res) => {
   });
 
   const att = q.get('SELECT * FROM attempts WHERE id=?', attemptId);
+  analytics.track(req, 'exam_start', { test_id: test.id, family_id: test.family_id });
   res.status(201).json({ resumed: false, attempt: attemptState(att) });
 });
 
@@ -475,6 +477,7 @@ router.post('/attempts/:id/submit', A.requireUser, A.csrfGuard, (req, res) => {
        JOIN attempt_parts ap ON ap.section_id = si.section_id
       WHERE ap.attempt_id=?`, att.id);
 
+  analytics.track(req, 'exam_submit', { test_id: att.test_id, answered, total });
   res.json({ ok: true, submittedAt: at, answered, total });
 });
 

@@ -20,6 +20,7 @@
 const express = require('express');
 const { q, nowISO, jparse, audit } = require('./db');
 const A = require('./auth');
+const analytics = require('./analytics');
 const googleAuth = require('./google-auth');
 const mail = require('./mail');
 const PLANS = require('./data/plans');
@@ -198,6 +199,7 @@ router.post('/auth/register', A.csrfGuard, (req, res) => {
   A.createUserSession(user.id, req, res);
   q.run('UPDATE users SET last_login_at=? WHERE id=?', nowISO(), user.id);
   logUser(req, 'user.register', email);
+  analytics.track(req, 'sign_up', { method: 'password' });
 
   res.status(201).json({ ok: true, user: profileOf(user.id), verifyLink: devLink });
 });
@@ -245,6 +247,7 @@ router.post('/auth/login', A.csrfGuard, (req, res) => {
   A.createUserSession(user.id, req, res);
   q.run('UPDATE users SET last_login_at=? WHERE id=?', nowISO(), user.id);
   logUser(req, 'user.login', user.username);
+  analytics.track(req, 'login', { method: 'password' });
   res.json({ ok: true, user: profileOf(user.id) });
 });
 
@@ -318,6 +321,8 @@ router.post('/redeem', A.requireUser, A.csrfGuard, (req, res) => {
   }
 
   logUser(req, 'user.redeem', req.user.username, { code: raw, plan: plan.id });
+  /* The plan id, never the code: a code is a bearer credential. */
+  analytics.track(req, 'unlock_code', { plan_id: plan.id, months: plan.months });
   res.json({
     ok: true,
     plan: { id: plan.id, name: plan.name, months: plan.months },

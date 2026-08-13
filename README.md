@@ -86,6 +86,7 @@ Lệnh khác:
 | `node scripts/test-accounts.js` | kiểm thử đường cứu hộ tài khoản (tự phục hồi tài khoản demo, đặt lại mật khẩu quản trị) |
 | `node scripts/test-mail.mjs` | kiểm thử thư đi: soạn thư (mã hoá tiêu đề, chống chèn header), toàn bộ hội thoại SMTP với một server giả chạy tại chỗ, và **token không lọt vào log** |
 | `node scripts/test-totp.mjs` | kiểm thử lớp xác thực thứ hai: **sáu vector chuẩn RFC 6238**, cửa sổ lệch giờ, mã đã dùng không dùng lại được, mã cứu hộ, và toàn bộ luồng đăng nhập thật |
+| `node scripts/test-analytics.mjs` | kiểm thử analytics phía máy chủ: định danh không dùng cookie theo dõi, các giới hạn GA4 âm thầm bắt (tên sự kiện, số/độ dài tham số, `session_id`), trần số request đang bay, và **quét khẳng định payload không chứa** email, tên, địa chỉ IP hay user-agent |
 | `node scripts/test-gcs.mjs` | kiểm thử driver Google Cloud Storage và lớp lấy token: **sinh cặp khoá RSA thật rồi verify chữ ký JWT**, cache token, và toàn bộ hình dạng request (method, path, query, `Metadata-Flavor`, tên object đã encode) đối chiếu với một Google giả chạy tại chỗ |
 | `node scripts/test-srs.mjs` | kiểm thử lặp lại ngắt quãng: **lịch SM-2 tính chính xác từng ngày** (hàm thuần, đồng hồ truyền vào nên không phải chờ), rồi hàng đợi ôn tập qua API — ai được hỏi, chấm điểm lưu đúng cái lịch đã tính, hai học viên không thấy tiến độ của nhau |
 | `node scripts/test-health.mjs` | kiểm thử vòng đời tiến trình (sập thì thoát khác 0, SIGTERM thì thoát êm bằng 0, có chặn thời gian) và endpoint `/healthz` |
@@ -527,6 +528,67 @@ Trình duyệt không chạy dòng mã nào của Google và không bao giờ th
   không ai chiếm được tài khoản người khác.
 - Tài khoản tạo qua Google không có mật khẩu; đăng nhập bằng mật khẩu vào tài
   khoản đó sẽ được chỉ sang nút Google hoặc luồng đặt lại mật khẩu.
+
+## Analytics gửi từ máy chủ (GA4 Measurement Protocol)
+
+Thẻ gtag.js **không chạy được ở đây và sẽ không bao giờ chạy**: `script-src 'self'
+'nonce-…'` không có ngoại lệ nào, và mở một ngoại lệ để chiều một thẻ của bên thứ
+ba là xoá đi dòng giá trị nhất trong toàn bộ CSP. Google có sẵn đường đi phía máy
+chủ cho đúng việc này — Measurement Protocol — nên sự kiện được `fetch` thẳng từ
+`server/analytics.js`, không thêm dependency, không thêm script nào vào trang.
+
+**Tắt khi thiếu `GA4_MEASUREMENT_ID` hoặc `GA4_API_SECRET`.** Lúc đó `track()` là
+hàm rỗng, không có request nào rời khỏi tiến trình — cũng là điều mọi bài test
+khác nhìn thấy.
+
+| Biến | Mặc định | Việc |
+|---|---|---|
+| `GA4_MEASUREMENT_ID`, `GA4_API_SECRET` | — | thiếu một trong hai là tắt hẳn |
+| `ANALYTICS_SALT` | chính `GA4_API_SECRET` | khoá HMAC để băm định danh |
+| `GA4_ENDPOINT` | endpoint của Google | đổi sang collector tự dựng, hoặc máy giả khi test |
+
+### Nhận ra một người mà không đặt cookie theo dõi
+
+Thẻ gtag bình thường ghi cookie `_ga` rồi gọi đó là `client_id`. Không có thẻ, nên
+danh tính phải lấy từ chỗ khác — và một cookie bền vững gắn theo từng người chỉ để
+**đếm người** là thứ nền tảng này sẽ nợ học viên một banner xin phép. Nên làm hẹp
+hơn:
+
+- **Đã đăng nhập** — `client_id` là HMAC của user id, `user_id` là id số. Bền qua
+  nhiều thiết bị và nhiều lần deploy, không cần cookie nào, và đó mới là danh tính
+  mà báo cáo của một nền tảng học thật sự cần.
+- **Khách** — `client_id` là HMAC của địa chỉ IP, user-agent **và ngày**. Ổn định
+  trong một ngày để một lượt ghé thăm còn dính vào nhau, và hết ngày là mất, nên
+  không phải định danh lâu dài của bất kỳ ai.
+
+**Cái giá thì nói thẳng chứ không giấu:** khách quay lại hôm sau bị đếm là người
+mới, nên số người dùng duy nhất của lưu lượng chưa đăng nhập sẽ cao hơn thực tế.
+Phiên, đường dẫn trang và phễu chuyển đổi vẫn đúng, mà đó mới là thứ những con số
+này dùng để làm gì.
+
+Hai tính chất hay ho đi kèm việc gửi từ máy chủ: Google thấy địa chỉ IP của **máy
+chủ** chứ không phải của học viên, và `non_personalized_ads` được bật trên mọi
+payload. Không có gì trong payload mang tên, email, địa chỉ IP hay chuỗi
+user-agent — chỉ có bản băm, không đảo ngược được nếu không có salt. Có hẳn một
+mục trong `scripts/test-analytics.mjs` quét khẳng định điều đó.
+
+### Không bao giờ được làm hỏng một request
+
+Analytics là việc kém quan trọng nhất tiến trình này làm. Sự kiện chỉ gửi **sau
+khi response đã đi**, không handler nào `await` nó, có timeout ngắn, và mọi lỗi bị
+nuốt vào một bộ đếm. Payload mà GA4 sẽ từ chối thì bỏ ngay tại chỗ chứ không ném
+ra. Quá 16 request đang bay thì bỏ bớt, nên một đợt tăng tải không biến thành số
+socket không giới hạn.
+
+Sự kiện đang gửi: `page_view` (chỉ trang `/prep/*`; **màn quản trị cố ý không
+đếm** — lưu lượng nhân viên nằm chung một property làm sai mọi phễu, mà sau đó
+không tách ra được nữa), `sign_up`, `login`, `unlock_code` (gửi id gói, **không
+bao giờ gửi mã code** — mã là một thứ bearer credential), `exam_start`,
+`exam_submit`.
+
+`session_id` và `engagement_time_msec` được đặt trên mọi sự kiện. Thiếu hai thứ
+đó thì sự kiện vẫn tới nơi nhưng gần như không hiện trong báo cáo tiêu chuẩn nào —
+đó là khác biệt giữa "POST trả về 204" và "số liệu có thật".
 
 ## Tự động hoá
 

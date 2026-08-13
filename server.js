@@ -26,6 +26,7 @@ const googleAuth = require('./server/google-auth');
 const A = require('./server/auth');
 const security = require('./server/security');
 const lifecycle = require('./server/lifecycle');
+const analytics = require('./server/analytics');
 const { q } = require('./server/db');
 const { entitlementOf } = require('./server/entitlements');
 
@@ -113,6 +114,9 @@ function serveHtmlWithNonce(relFile) {
          by then; see server/security.js. */
       res.setHeader('Content-Security-Policy', cspFor(nonce));
       res.setHeader('Cache-Control', 'no-store');
+      /* Counted once the response has really been delivered, and only for
+         learner pages — see server/analytics.js. A no-op without the keys. */
+      analytics.pageView(req, res);
       res.type('html').send(out);
     });
   };

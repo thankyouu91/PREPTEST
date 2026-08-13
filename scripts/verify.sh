@@ -40,6 +40,9 @@ node scripts/test-harness.mjs || fail=1
 step "Cloud Storage driver (RS256 assertion, token cache, GCS request shapes)"
 node scripts/test-gcs.mjs || fail=1
 
+step "Server-side analytics (identity, payload rules, nothing personal)"
+node scripts/test-analytics.mjs || fail=1
+
 step "Account rescue"
 node scripts/test-accounts.js || fail=1
 
