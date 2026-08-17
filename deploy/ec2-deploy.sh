@@ -23,28 +23,31 @@ HEALTH_URL="${HEALTH_URL:-http://127.0.0.1:3000/healthz}"
 
 say() { printf '\n\033[1m== %s ==\033[0m\n' "$1"; }
 
+# -H on every sudo: without it HOME stays root's, ssh looks in /root/.ssh for a
+# key that is in the app user's home, and a private repository fails to fetch
+# with "Permission denied (publickey)" on a machine where the key is fine.
 say "Fetching $BRANCH"
 cd "$APP_DIR"
-sudo -u "$APP_USER" git fetch --prune origin "$BRANCH"
+sudo -u "$APP_USER" -H git fetch --prune origin "$BRANCH"
 PREVIOUS="$(git rev-parse HEAD)"
 echo "current: $PREVIOUS"
 
 # Hard reset rather than merge: this checkout is a deployment artefact, not
 # somebody's working copy, and a merge conflict at 3am on a box nobody is
 # looking at is not a state worth being able to reach.
-sudo -u "$APP_USER" git reset --hard "origin/$BRANCH"
+sudo -u "$APP_USER" -H git reset --hard "origin/$BRANCH"
 echo "now:     $(git rev-parse HEAD)"
 
 say "Installing"
 # --omit=dev: the runtime needs express and nothing else. Tailwind and
 # playwright-core are build and test tools and have no business on a server.
-sudo -u "$APP_USER" npm ci --omit=dev --no-audit --no-fund
+sudo -u "$APP_USER" -H npm ci --omit=dev --no-audit --no-fund
 
 say "Building CSS"
 # The built stylesheet is committed, so this is a belt-and-braces rebuild for
 # the case where it was not. It needs the dev dependency, so it is allowed to
 # fail without failing the deploy.
-sudo -u "$APP_USER" npx --no-install tailwindcss -i ./src/tailwind.css -o ./public/tailwind-built.css --minify \
+sudo -u "$APP_USER" -H npx --no-install tailwindcss -i ./src/tailwind.css -o ./public/tailwind-built.css --minify \
   || echo "(tailwind not installed here; using the committed stylesheet)"
 
 say "Restarting $SERVICE"
@@ -67,8 +70,8 @@ done
 # commit that was running, restart, and fail loudly — an automated rollback is
 # only worth having if the failure is still reported.
 say "UNHEALTHY — rolling back to $PREVIOUS"
-sudo -u "$APP_USER" git reset --hard "$PREVIOUS"
-sudo -u "$APP_USER" npm ci --omit=dev --no-audit --no-fund || true
+sudo -u "$APP_USER" -H git reset --hard "$PREVIOUS"
+sudo -u "$APP_USER" -H npm ci --omit=dev --no-audit --no-fund || true
 systemctl restart "$SERVICE"
 journalctl -u "$SERVICE" -n 40 --no-pager || true
 exit 1

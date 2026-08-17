@@ -776,6 +776,19 @@ Nó tạo user, clone repo vào `/opt/vpet-prep`, đặt CSDL và tệp âm than
 tree), cài unit systemd, sinh `ADMIN_PASSWORD` và in ra **một lần**, rồi khởi
 động. Chạy lại lần hai vô hại: bước nào cũng kiểm trước khi làm.
 
+**Repo private thì script tự lo phần khoá.** Nó sinh một cặp khoá ed25519
+**ngay trên instance** (nửa private không bao giờ rời ổ đĩa đó — không vào chat,
+không vào repo, không vào password manager), thử đọc repo qua HTTPS trước (repo
+public thì không cần khoá gì cả), rồi qua SSH. Nếu chưa đọc được, nó **in ra nửa
+public** kèm đúng đường link để dán vào và dừng lại; chạy lại lần nữa là đi tiếp.
+
+Dán vào **Settings → Deploy keys → Add deploy key**, và **để trống ô "Allow
+write access"**: một deploy key có quyền ghi nghĩa là máy chủ có thể sửa lại
+chính cái repo mà nó deploy từ đó.
+
+Deploy key khác PAT ở chỗ nó chỉ đọc được **một repo này**, không gắn với tài
+khoản người nào, và thu hồi là xoá một dòng.
+
 Nó cũng **dừng lại nếu cổng 3000 đang có người khác giữ** — đó là dấu hiệu đang
 có một bản cài bằng tay ở chỗ khác, và cài chồng lên nghĩa là hai CSDL song
 song: mật khẩu bạn vừa đặt nằm ở một cái, còn người đăng nhập lại vào cái kia.

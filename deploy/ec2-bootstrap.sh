@@ -20,7 +20,8 @@
 # It is safe to run twice: every step checks before it acts.
 set -euo pipefail
 
-REPO="${REPO:-https://github.com/thankyouu91/PREPTEST.git}"
+REPO_HTTPS="${REPO_HTTPS:-https://github.com/thankyouu91/PREPTEST.git}"
+REPO_SSH="${REPO_SSH:-git@github.com:thankyouu91/PREPTEST.git}"
 BRANCH="${BRANCH:-claude/prep-test-platform-design-fpiuqn}"
 APP_DIR="${APP_DIR:-/opt/vpet-prep}"
 DATA_DIR="${DATA_DIR:-/var/lib/vpet-prep}"
@@ -64,15 +65,94 @@ id "$APP_USER" >/dev/null 2>&1 || useradd --system --home-dir "$APP_DIR" --shell
 # resets the working tree on every deploy and would otherwise take them with it.
 install -d -o "$APP_USER" -g "$APP_USER" -m 0750 "$DATA_DIR" "$DATA_DIR/audio"
 
+say "Can this instance read the repository?"
+# Checked before anything uses them. Without openssh-clients, `ssh-keyscan >
+# known_hosts` leaves an EMPTY file, the guard below then thinks the work is
+# done, and the clone fails much later with "Host key verification failed" —
+# which sends you looking at GitHub rather than at a missing package.
+if ! command -v ssh-keygen >/dev/null || ! command -v ssh-keyscan >/dev/null; then
+  echo "openssh-clients is not installed; installing it."
+  (dnf install -y openssh-clients || yum install -y openssh-clients || apt-get install -y openssh-client) \
+    || { echo "Could not install openssh-clients. Install it and run this again."; exit 1; }
+fi
+install -d -o "$APP_USER" -g "$APP_USER" "$APP_DIR"
+SSH_DIR="$APP_DIR/.ssh"
+KEY="$SSH_DIR/id_ed25519"
+install -d -o "$APP_USER" -g "$APP_USER" -m 0700 "$SSH_DIR"
+
+# Generated HERE, on the machine that will use it. The private half never
+# leaves this disk — not into a chat window, not into the repository, not into
+# a password manager. What goes to GitHub is the .pub half, which is not a
+# secret and cannot be used to read anything on its own.
+if [ ! -f "$KEY" ]; then
+  sudo -u "$APP_USER" -H ssh-keygen -t ed25519 -N '' -q \
+    -C "vpet-prep deploy key on $(hostname)" -f "$KEY"
+fi
+
+if [ ! -s "$SSH_DIR/known_hosts" ]; then
+  ssh-keyscan -t ed25519 github.com > "$SSH_DIR/known_hosts" 2>/dev/null || true
+  [ -s "$SSH_DIR/known_hosts" ] || {
+    echo "Could not reach github.com to read its host key. Check egress from this"
+    echo "instance (port 22 outbound, or a NAT gateway) and run this again."
+    rm -f "$SSH_DIR/known_hosts"; exit 1; }
+  chown "$APP_USER:$APP_USER" "$SSH_DIR/known_hosts"
+  chmod 600 "$SSH_DIR/known_hosts"
+  # Printed rather than trusted quietly: the first fetch of a host key is the
+  # one moment a man in the middle would matter, and GitHub publishes its
+  # fingerprints so the comparison takes ten seconds.
+  echo "github.com host key — compare against the published list before continuing:"
+  echo "  https://docs.github.com/authentication/keeping-your-account-and-data-secure/githubs-ssh-key-fingerprints"
+  ssh-keygen -lf "$SSH_DIR/known_hosts"
+fi
+
+cat > "$SSH_DIR/config" <<EOF
+Host github.com
+  IdentityFile $KEY
+  IdentitiesOnly yes
+  StrictHostKeyChecking yes
+  UserKnownHostsFile $SSH_DIR/known_hosts
+EOF
+chown "$APP_USER:$APP_USER" "$SSH_DIR/config"
+chmod 600 "$SSH_DIR/config"
+
+# HTTPS first, because a public repository needs no key at all and reaching for
+# one would be a credential nobody had to create. SSH second, which is what a
+# private repository needs.
+REPO=""
+if sudo -u "$APP_USER" -H git ls-remote "$REPO_HTTPS" >/dev/null 2>&1; then
+  REPO="$REPO_HTTPS"; echo "readable over HTTPS — the repository is public"
+elif sudo -u "$APP_USER" -H git ls-remote "$REPO_SSH" >/dev/null 2>&1; then
+  REPO="$REPO_SSH"; echo "readable over SSH — the deploy key is already in place"
+else
+  say "The repository is private and this key is not on it yet"
+  echo "Add this PUBLIC key as a read-only deploy key:"
+  echo
+  echo "  https://github.com/thankyouu91/PREPTEST/settings/keys/new"
+  echo
+  cat "$KEY.pub"
+  echo
+  echo "Leave 'Allow write access' UNTICKED. A deploy key that can write is a"
+  echo "server that can rewrite the repository it deploys from."
+  echo
+  echo "Then run this script again — it will carry on from here."
+  exit 1
+fi
+
 say "Checkout"
 if [ -d "$APP_DIR/.git" ]; then
-  sudo -u "$APP_USER" git -C "$APP_DIR" fetch origin "$BRANCH"
-  sudo -u "$APP_USER" git -C "$APP_DIR" reset --hard "origin/$BRANCH"
+  sudo -u "$APP_USER" -H git -C "$APP_DIR" remote set-url origin "$REPO"
+  sudo -u "$APP_USER" -H git -C "$APP_DIR" fetch origin "$BRANCH"
+  sudo -u "$APP_USER" -H git -C "$APP_DIR" reset --hard "origin/$BRANCH"
 else
-  install -d -o "$APP_USER" -g "$APP_USER" "$APP_DIR"
-  sudo -u "$APP_USER" git clone --branch "$BRANCH" "$REPO" "$APP_DIR"
+  # Clone into a directory that already exists (the key lives there), so clone
+  # the working tree in rather than asking git to create the directory.
+  sudo -u "$APP_USER" -H git -C "$APP_DIR" init -q
+  sudo -u "$APP_USER" -H git -C "$APP_DIR" remote add origin "$REPO" 2>/dev/null || \
+    sudo -u "$APP_USER" -H git -C "$APP_DIR" remote set-url origin "$REPO"
+  sudo -u "$APP_USER" -H git -C "$APP_DIR" fetch --depth 1 origin "$BRANCH"
+  sudo -u "$APP_USER" -H git -C "$APP_DIR" checkout -B "$BRANCH" FETCH_HEAD
 fi
-sudo -u "$APP_USER" npm --prefix "$APP_DIR" ci --omit=dev --no-audit --no-fund
+sudo -u "$APP_USER" -H npm --prefix "$APP_DIR" ci --omit=dev --no-audit --no-fund
 
 say "Secrets"
 if [ ! -f "$ENV_FILE" ]; then
