@@ -54,6 +54,45 @@
 'use strict';
 
 const fs = require('fs');
+
+/* ---------------------------------------------------------------------------
+ * Which database, decided BEFORE server/db.js is loaded.
+ *
+ * This block has to run first, and that is the whole point of it. Requiring
+ * server/db.js opens a database and SEEDS it — so running this tool from the
+ * wrong directory used to create a brand new database there, reset a password
+ * inside it, and report success. The live site kept the old password, nothing
+ * said anything was wrong, and the symptom was a 401 with the password you had
+ * just set. `doctor` reported the mismatch, but only after db.js had already
+ * been loaded, so `doctor` itself left a stray database behind.
+ *
+ * The rule now:
+ *   · PREP_DB set explicitly  -> honoured, never second-guessed.
+ *   · one server running on a different database -> use THAT one, and say so.
+ *   · several, disagreeing    -> refuse, and list them.
+ * ------------------------------------------------------------------------- */
+if (!process.env.PREP_DB) {
+  const live = liveServers();
+  const open = [...new Set(live.flatMap(p => p.dbFiles))];
+  if (open.length === 1) {
+    const path_ = require('path');
+    const wouldUse = path_.join(process.cwd(), 'data', 'prep.sqlite');
+    if (open[0] !== wouldUse) {
+      console.log('Using the database the running server has open:');
+      console.log('  ' + open[0]);
+      console.log('  (this command would otherwise have used ' + wouldUse + ',');
+      console.log('   created it, and changed a password nobody is signing in against)\n');
+      process.env.PREP_DB = open[0];
+    }
+  } else if (open.length > 1) {
+    console.error('More than one server is running here, on different databases:');
+    open.forEach(f => console.error('  ' + f));
+    console.error('\nPick one deliberately:  PREP_DB=<file> node scripts/accounts.js ' +
+      (process.argv[2] || 'doctor'));
+    process.exit(1);
+  }
+}
+
 const A = require('../server/auth');
 const { q, nowISO, DB_FILE } = require('../server/db');
 const totp = require('../server/totp');
