@@ -637,8 +637,24 @@ const run = async () => {
       await page.goto(BASE + '/admin/hoc-vien/', { waitUntil: 'networkidle' });
       await page.waitForTimeout(1000);
 
+      /* Say where we actually are before clicking anything on it.
+         `#new-student` is static markup in users.html, so a click that waits
+         thirty seconds for it is not a slow render — it is a different page,
+         and the likeliest different page is the sign-in screen, because the
+         session did not survive. That failure used to surface as a bare
+         TimeoutError naming a locator, which says nothing about why. */
+      const landedOn = new URL(page.url()).pathname;
+      if (landedOn !== '/admin/hoc-vien/') {
+        const banner = await page.locator('#error, .banner-error, [role=alert]').first()
+          .innerText().catch(() => '');
+        throw new Error(
+          `expected /admin/hoc-vien/ but the browser is on ${landedOn}` +
+          (landedOn.includes('dang-nhap') ? ' — the admin session was not accepted' : '') +
+          (banner ? `; the page says: ${banner.trim().slice(0, 120)}` : ''));
+      }
+
       check('The students screen offers to create one', await page.locator('#new-student').count() === 1);
-      await page.click('#new-student');
+      await page.click('#new-student', { timeout: 5000 });
       await page.waitForTimeout(300);
       const terms = await page.locator('#ns-plan option').allInnerTexts();
       /* Built from the price list rather than typed in, so a fourth plan would

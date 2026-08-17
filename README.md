@@ -753,6 +753,33 @@ aws iam get-role --role-name <tên-role> \
 khoá), và điều kiện là `StringEquals` hay `StringLike` — `StringLike` với `*` ở
 cuối mở ra mọi nhánh, mọi environment và cả `pull_request` trong repo đó.
 
+### Lần đầu: phải `bootstrap` trước, `deploy` sau
+
+`deploy/ec2-deploy.sh` **cập nhật** một bản cài đã có — fetch, cài, restart. Nó
+không tạo ra bản cài. Lần deploy đầu tiên qua pipeline hỏng đúng ở chỗ đó:
+
+```
+bash: /opt/vpet-prep/deploy/ec2-deploy.sh: No such file or directory
+failed to run commands: exit status 127
+```
+
+OIDC và SSM đều chạy đúng — lệnh đã tới được instance và đã chạy. Chỉ là ở
+đường dẫn ấy không có gì cả, vì chưa ai đặt vào. `deploy/ec2-bootstrap.sh` là
+bước còn thiếu, chạy **một lần** bằng tay trên instance:
+
+```bash
+sudo bash ec2-bootstrap.sh      # hoặc dán vào SSM → Run Command
+```
+
+Nó tạo user, clone repo vào `/opt/vpet-prep`, đặt CSDL và tệp âm thanh ở
+`/var/lib/vpet-prep` (**ngoài** checkout, vì mỗi lần deploy sẽ reset working
+tree), cài unit systemd, sinh `ADMIN_PASSWORD` và in ra **một lần**, rồi khởi
+động. Chạy lại lần hai vô hại: bước nào cũng kiểm trước khi làm.
+
+Nó cũng **dừng lại nếu cổng 3000 đang có người khác giữ** — đó là dấu hiệu đang
+có một bản cài bằng tay ở chỗ khác, và cài chồng lên nghĩa là hai CSDL song
+song: mật khẩu bạn vừa đặt nằm ở một cái, còn người đăng nhập lại vào cái kia.
+
 ### Ba cái bẫy trên EC2, cả ba đều im lặng
 
 Chạy `node scripts/accounts.js doctor` **trên chính instance đó** — nó kiểm cả ba.
