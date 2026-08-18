@@ -241,6 +241,59 @@ try {
   ok(A_.cookieIsSecure({ NODE_ENV: 'production', FORCE_SECURE_COOKIE: '0' }) === false,
     'FORCE_SECURE_COOKIE=0 is the deliberate way out, and has to be deliberate');
 
+  head('Misconfigurations that would otherwise stay silent');
+
+  /* Both of these were found on a real deployment and neither said anything.
+     Neither is visible from the environment alone — you have to see a request
+     to know a proxy is in front, and to know what scheme the visitor used. */
+  {
+    const sec = require_('../server/security.js');
+    const say = fn => {
+      const lines = [];
+      const real = console.warn;
+      console.warn = (...a) => lines.push(a.join(' '));
+      try { fn(); } finally { console.warn = real; }
+      return lines.join('\n');
+    };
+    const withEnv_ = (vars, fn) => {
+      const before = new Map(Object.keys(vars).map(k => [k, process.env[k]]));
+      for (const [k, v] of Object.entries(vars)) {
+        if (v === undefined) delete process.env[k]; else process.env[k] = v;
+      }
+      try { return fn(); }
+      finally { for (const [k, v] of before) { if (v === undefined) delete process.env[k]; else process.env[k] = v; } }
+    };
+
+    sec.resetWarnings();
+    const proxied = say(() => sec.checkDeployment({ headers: { 'x-forwarded-for': '203.0.113.7' }, secure: false }));
+    ok(/TRUST_PROXY/.test(proxied),
+      'A proxy in front with TRUST_PROXY=0 is reported — otherwise req.ip is the proxy for everyone',
+      proxied.slice(0, 90));
+    ok(/lock out everyone/.test(proxied), 'and it names the consequence, not just the setting');
+
+    const again = say(() => sec.checkDeployment({ headers: { 'x-forwarded-for': '203.0.113.7' }, secure: false }));
+    ok(again === '', 'said once, not once per request', again.slice(0, 60));
+
+    sec.resetWarnings();
+    const insecure = withEnv_({ NODE_ENV: 'production' }, () =>
+      say(() => sec.checkDeployment({ headers: { 'x-forwarded-proto': 'http' }, secure: false })));
+    ok(/Secure/.test(insecure),
+      'Secure cookies arriving over plain HTTP are reported', insecure.slice(0, 90));
+    ok(/back on the sign-in page/.test(insecure),
+      'and it describes the symptom, which is what somebody will actually be looking at');
+
+    sec.resetWarnings();
+    const fine = withEnv_({ NODE_ENV: undefined, FORCE_SECURE_COOKIE: undefined }, () =>
+      say(() => sec.checkDeployment({ headers: {}, secure: false })));
+    ok(fine === '', 'A local run with no proxy says nothing at all', fine.slice(0, 60));
+
+    sec.resetWarnings();
+    const tls = withEnv_({ NODE_ENV: 'production' }, () =>
+      say(() => sec.checkDeployment({ headers: { 'x-forwarded-proto': 'https' }, secure: true })));
+    ok(!/Secure cookies/.test(tls), 'and neither does a production run that really is on HTTPS');
+    sec.resetWarnings();
+  }
+
   head('Per-endpoint guard table');
 
   const map = await import('./security-map.mjs');

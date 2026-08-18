@@ -82,6 +82,7 @@ Lệnh khác:
 | `node scripts/test-admin.mjs` | kiểm thử API quản trị: phiên, CSRF, phân quyền, CRUD, sinh đề, cấp code |
 | `node scripts/test-catalog.mjs` | kiểm thử trang học viên đọc `/api/catalog` + nhánh dự phòng khi API hỏng, và bảng giá ở trang giới thiệu đọc từ `plans.js` (đổi giá ở máy chủ thì trang phải đổi theo) |
 | `node scripts/test-user-api.mjs` | kiểm thử API tài khoản học viên: đăng ký, đăng nhập, xác thực email, đặt lại mật khẩu, CSRF, chống dò |
+| `sudo bash deploy/rescue-admin.sh [mật-khẩu]` | **Không ai đăng nhập admin được?** Chạy trên chính máy chủ. Hỏi tiến trình đang chạy xem nó mở file `.sqlite` nào (`/proc/<pid>/fd` — thứ không cãi được), dùng đúng bản `node` mà server đang chạy chứ không phải bản trên PATH, gỡ khoá 15 phút, đặt lại mật khẩu, rồi in `doctor`. Dán nguyên khối vào **Systems Manager → Run Command** cũng chạy: không SSH, không key, không terminal |
 | `node scripts/accounts.js <bất kỳ lệnh nào>` | **Tự tìm đúng CSDL.** Nếu `PREP_DB` không đặt và có một server đang chạy trên một file `.sqlite` khác, mọi lệnh sẽ dùng **file đó** và nói rõ ra. Trước đây chạy nhầm thư mục sẽ **tạo một CSDL mới ở đó**, đổi mật khẩu trong cái mới, rồi báo thành công — site thật giữ nguyên mật khẩu cũ và không có gì báo sai. Việc chọn CSDL nay xảy ra **trước khi** `server/db.js` được nạp, vì chính hành động nạp nó là hành động tạo file |
 | `node scripts/accounts.js doctor` | **Vào không được? Chạy cái này trước.** So sánh CSDL mà lệnh này sắp sửa với **CSDL mà tiến trình server đang thật sự mở** (đọc `/proc/<pid>/fd`) — đây là nhầm lẫn trông giống hệt sai mật khẩu: đổi mật khẩu trên một file, server đọc file khác. Rồi kiểm hai thứ làm hỏng đăng nhập *sau khi* mật khẩu đã đúng và đều hỏng im lặng: `NODE_ENV=production` trên `http://` khiến cookie `Secure` không bao giờ được gửi lại (đăng nhập xong bật về màn đăng nhập), và `TRUST_PROXY` sai sau load balancer khiến `req.ip` là balancer với mọi người. Cũng báo 2FA đang bật, tài khoản bị vô hiệu hoá, và các khoá 15 phút còn hiệu lực |
 | `node scripts/accounts.js list` | **Vào không được?** Liệt kê tài khoản quản trị và trạng thái học viên demo. Đặt lại bằng `reset-admin` / `reset-student`. `unlock` gỡ **cả hai** thứ tên "khoá": tài khoản bị quản trị vô hiệu hoá, và khoá 15 phút do sai mật khẩu 5 lần — khoá này nằm trong CSDL nên khởi động lại server không xoá nó. Trên Windows nhấn đúp `cai-dat\accounts.bat` |
@@ -808,6 +809,12 @@ Chạy `node scripts/accounts.js doctor` **trên chính instance đó** — nó 
    hoặc `FORCE_SECURE_COOKIE=0` một cách có ý thức.
 3. **`TRUST_PROXY` sai sau load balancer.** `req.ip` thành địa chỉ của balancer
    với mọi người, nên năm lần gõ sai của một người khoá tất cả những người khác.
+
+Từ 2026-08-17, số 2 và số 3 **không còn im lặng**: server tự phát hiện và cảnh báo
+**một lần** vào log ngay ở request đầu tiên cho thấy vấn đề — thấy `X-Forwarded-*`
+mà `TRUST_PROXY=0`, hoặc phát cookie `Secure` mà request tới bằng HTTP. Kiểm ở
+tầng request chứ không phải lúc khởi động, vì nhìn biến môi trường không thể biết
+có proxy đứng trước hay người dùng vào bằng scheme nào.
 
 ### Lần đầu chưa có admin thì mật khẩu ở đâu
 

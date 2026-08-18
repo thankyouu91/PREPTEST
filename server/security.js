@@ -53,8 +53,61 @@ function resolveTrustProxy(env) {
 }
 const TRUST_PROXY = resolveTrustProxy(process.env);
 
+/* -------------------- Two misconfigurations that stay silent --------------------
+ *
+ * Both of these were found on a real deployment, and neither announced itself.
+ * They are checked here rather than at boot because neither is visible from the
+ * environment alone — you have to see a request to know a proxy is in front, and
+ * to know what scheme the visitor really used.
+ *
+ * Warned once each, on the first request that shows the problem. Once, because a
+ * line per request is a line nobody reads; on a request, because that is the
+ * first moment the truth is knowable.
+ */
+const warnedAbout = new Set();
+function warnOnce(topic, ...lines) {
+  if (warnedAbout.has(topic)) return;
+  warnedAbout.add(topic);
+  lines.forEach(l => console.warn('[config] ' + l));
+}
+
+/** For the tests: forget what has been said, so each case can be observed. */
+function resetWarnings() { warnedAbout.clear(); }
+
+function checkDeployment(req) {
+  /* 1. A proxy in front, and TRUST_PROXY says there is none.
+     req.ip is then the proxy's address for EVERY visitor, so the sign-in
+     lockout and the write limit are keyed on one value shared by all of them:
+     five wrong passwords from one person lock out everybody at once. The
+     failure is a support ticket that says "nobody can sign in", fifteen
+     minutes after one person mistyped. */
+  if (TRUST_PROXY === 0 && (req.headers['x-forwarded-for'] || req.headers['x-forwarded-proto'])) {
+    warnOnce('trust-proxy',
+      'a reverse proxy is forwarding to this process (X-Forwarded-* is present) but TRUST_PROXY is 0.',
+      'req.ip is therefore the proxy for every visitor, and the sign-in lockout and write',
+      'limit are keyed on it — one person\'s five wrong passwords lock out everyone.',
+      'Set TRUST_PROXY to the NUMBER of proxies in front (one load balancer or nginx: 1).');
+  }
+
+  /* 2. Secure cookies over plain HTTP.
+     In production the session cookie carries Secure, so a browser on http://
+     accepts it and never sends it back. The symptom is a sign-in that succeeds
+     and lands straight back on the sign-in page, with nothing in any log. */
+  const proto = String(req.headers['x-forwarded-proto'] || '').split(',')[0].trim() ||
+    (req.secure ? 'https' : 'http');
+  if (proto === 'http' && A.cookieIsSecure(process.env)) {
+    warnOnce('secure-cookie',
+      'cookies are being issued with Secure, but this request arrived over plain HTTP.',
+      'The browser will accept the session cookie and never send it back: signing in',
+      'appears to work and lands straight back on the sign-in page.',
+      'Terminate TLS in front of this and forward X-Forwarded-Proto: https — or, knowing',
+      'what it costs, set FORCE_SECURE_COOKIE=0 until there is a certificate.');
+  }
+}
+
 /** The headers every response carries, whatever it is serving. */
 function baseHeaders(req, res, next) {
+  checkDeployment(req);
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
   res.setHeader('Permissions-Policy', PERMISSIONS_POLICY);
@@ -120,6 +173,7 @@ async function writeLimit(req, res, next) {
 
 module.exports = {
   baseHeaders, writeLimit, writeKey,
+  checkDeployment, resetWarnings,
   resolveTrustProxy, TRUST_PROXY,
   PERMISSIONS_POLICY, API_CSP, HSTS, WRITE_PER_MIN, WINDOW_MS
 };
