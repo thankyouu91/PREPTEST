@@ -58,6 +58,12 @@ const AD = {
   },
 
   /* ---------- Format ---------- */
+  /* Dịch một câu ghép từ nhiều mảnh. Từ điển trong /i18n.js chỉ khớp được cả
+     câu, nên những chuỗi mà JS tự lắp (báo cáo, số liệu) gọi hàm này để lấy đúng
+     bản theo ngôn ngữ đang xem. Không có i18n thì trả nguyên tiếng Anh. */
+  isVi() { return !!(window.PREP_I18N && window.PREP_I18N.lang === 'vi'); },
+  t(en, vi) { return this.isVi() ? vi : en; },
+
   vnd(n) { return (n || 0).toLocaleString('vi-VN') + 'đ'; },
   num(n) { return (n || 0).toLocaleString('vi-VN'); },
   /* A term, said grammatically: one plan is a single month now, so "1 months" has
@@ -194,7 +200,14 @@ const AD = {
         '<nav class="grid gap-1.5">' + nav + '</nav>' +
         '<button type="button" data-view-student class="nav-item mt-6 w-full text-start">' + this.icon('eye', 'w-5 h-5 shrink-0') + '<span>View as a student</span></button>' +
         '<div class="mt-auto pt-6 grid gap-4">' +
-          '<button type="button" data-dark class="btn btn-ghost btn-sm" aria-label="Toggle dark mode"><span data-dark-icon></span><span data-dark-label>Dark mode</span></button>' +
+          '<div class="flex items-center gap-2">' +
+            '<button type="button" data-dark class="btn btn-ghost btn-sm flex-1" aria-label="Toggle dark mode"><span data-dark-icon></span><span data-dark-label>Dark mode</span></button>' +
+            /* Chuyển ngôn ngữ giao diện quản trị: mặc định tiếng Việt */
+            '<span class="lang-switch" role="group" aria-label="Language">' +
+              '<button type="button" data-lang="vi" class="lang-opt">VI</button>' +
+              '<button type="button" data-lang="en" class="lang-opt">EN</button>' +
+            '</span>' +
+          '</div>' +
           /* The profile lives inside the name: hover (or click) the identity row and a
              panel rises with the editable name, a password change and sign-out. */
           '<div class="relative" data-profile-wrap>' +

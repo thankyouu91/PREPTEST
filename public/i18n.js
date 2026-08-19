@@ -174,7 +174,187 @@
     'Terms (being written)': 'Điều khoản (đang soạn)',
     'Privacy (being written)': 'Bảo mật (đang soạn)',
     '© 2026 VPET Prep. For practice only, not an official examination.':
-      '© 2026 VPET Prep. Chỉ để luyện tập, không phải kỳ thi chính thức.'
+      '© 2026 VPET Prep. Chỉ để luyện tập, không phải kỳ thi chính thức.',
+
+    /* =====================================================================
+       KHU QUẢN TRỊ (admin)
+       Chỉ dịch phần giao diện: menu, tiêu đề, nút, cột bảng, bộ lọc, hộp
+       thoại. KHÔNG dịch dữ liệu (tên học viên, email, mã code, tên đề thi,
+       nhật ký) — đó là nội dung, không phải chữ của giao diện.
+       ===================================================================== */
+    /* ---- Khung admin ---- */
+    'Admin area': 'Khu quản trị',
+    'Admin navigation': 'Điều hướng quản trị',
+    'Navigation': 'Điều hướng',
+    'Reports': 'Báo cáo',
+    'Test System': 'Hệ thống đề thi',
+    'Account Management': 'Quản lý tài khoản',
+    'Codes': 'Mã kích hoạt',
+    'Administration': 'Quản trị',
+    'View as a student': 'Xem với vai học viên',
+    'Dark mode': 'Chế độ tối',
+    'Light mode': 'Chế độ sáng',
+    'Toggle dark mode': 'Bật/tắt chế độ tối',
+    'Your profile': 'Hồ sơ của bạn',
+    'Display name': 'Tên hiển thị',
+    'Save': 'Lưu',
+    'Change password': 'Đổi mật khẩu',
+    'Sign out': 'Đăng xuất',
+    'Owner': 'Chủ sở hữu',
+    'Editor': 'Biên tập',
+    'Viewing as a student': 'Đang xem với vai học viên',
+    'Back to admin': 'Về trang quản trị',
+    'Current password': 'Mật khẩu hiện tại',
+    'New password': 'Mật khẩu mới',
+    'At least 10 characters, with both letters and digits.': 'Tối thiểu 10 ký tự, có cả chữ và số.',
+    'Update password': 'Cập nhật mật khẩu',
+    'Cancel': 'Hủy',
+    'Close': 'Đóng',
+    'Confirm': 'Xác nhận',
+    'Try again': 'Thử lại',
+    'The data could not be loaded': 'Không tải được dữ liệu',
+
+    /* ---- Báo cáo ---- */
+    'Overview': 'Tổng quan',
+    'What needs doing, growth, the student funnel and the content':
+      'Việc cần làm, tăng trưởng, phễu học viên và nội dung',
+    'Period': 'Kỳ',
+    '7 days': '7 ngày',
+    '30 days': '30 ngày',
+    '90 days': '90 ngày',
+    'Choose the reporting period': 'Chọn kỳ báo cáo',
+    'Choose a metric': 'Chọn chỉ số',
+    'Daily activity chart': 'Biểu đồ hoạt động theo ngày',
+    'New students': 'Học viên mới',
+    'Codes activated': 'Mã đã kích hoạt',
+    'Content': 'Nội dung',
+    'What needs doing': 'Việc cần làm',
+    'Worth doing': 'Nên làm',
+    'Tidy-up': 'Dọn dẹp',
+    'Top up': 'Bổ sung',
+    'View students': 'Xem học viên',
+    'Student funnel': 'Phễu học viên',
+    'Percentages are of everyone who registered': 'Tỷ lệ tính trên tổng số đã đăng ký',
+    'Registered': 'Đã đăng ký',
+    'Email verified': 'Đã xác thực email',
+    'Code activated': 'Đã kích hoạt mã',
+    'Still studying within 30 days': 'Còn học trong 30 ngày',
+    'Revenue by plan': 'Doanh thu theo gói',
+    'Edit prices': 'Sửa giá',
+    'Supply and demand by exam': 'Cung và cầu theo kỳ thi',
+    'Exam': 'Kỳ thi',
+    'Published': 'Đã xuất bản',
+    'Questions': 'Câu hỏi',
+    'Codes used': 'Mã đã dùng',
+    'Following': 'Đang theo dõi',
+    'Recent actions': 'Hoạt động gần đây',
+    'Audit log': 'Nhật ký',
+
+    /* ---- Đề thi / ngân hàng ---- */
+    'Tests': 'Đề thi',
+    'Create one by hand, or generate it from the question bank':
+      'Tạo thủ công, hoặc sinh tự động từ ngân hàng câu hỏi',
+    'Generate a test': 'Sinh đề',
+    'New test': 'Đề mới',
+    'Formats': 'Định dạng',
+    'Question Bank': 'Ngân hàng câu hỏi',
+    'Test System sections': 'Các mục Hệ thống đề thi',
+    'All': 'Tất cả',
+    'Draft': 'Nháp',
+    'Archived': 'Lưu trữ',
+    'Search tests': 'Tìm đề thi',
+    'Search by test name…': 'Tìm theo tên đề…',
+    'Test': 'Đề thi',
+    'Structure': 'Cấu trúc',
+    'Updated': 'Cập nhật',
+    'Status': 'Trạng thái',
+    'Actions': 'Thao tác',
+    'Open': 'Mở',
+    'Level': 'Trình độ',
+    'Details': 'Chi tiết',
+    'Generate': 'Sinh đề',
+    'Standard paper formats': 'Định dạng đề chuẩn',
+    'Notes on the exam': 'Ghi chú về kỳ thi',
+    'Whole paper': 'Cả đề',
+
+    /* ---- Quản lý tài khoản ---- */
+    'Create accounts one at a time or in bulk, and manage each one':
+      'Tạo tài khoản lẻ hoặc hàng loạt, và quản lý từng tài khoản',
+    'Verified': 'Đã xác thực',
+    'Not verified': 'Chưa xác thực',
+    'Locked': 'Đã khóa',
+    'Search students': 'Tìm học viên',
+    'Search by name or email…': 'Tìm theo tên hoặc email…',
+    'Bulk create': 'Tạo hàng loạt',
+    'New student': 'Học viên mới',
+    'Student': 'Học viên',
+    'Spent': 'Đã chi',
+    'Phone number': 'Số điện thoại',
+    'Internal note': 'Ghi chú nội bộ',
+    'Save changes': 'Lưu thay đổi',
+    'Mark as verified': 'Đánh dấu đã xác thực',
+    'Lock the account': 'Khóa tài khoản',
+    'Unlock the account': 'Mở khóa tài khoản',
+    'Reset the password': 'Đặt lại mật khẩu',
+    'Issue a code': 'Cấp mã',
+    'Give this account a term': 'Cấp thời hạn cho tài khoản này',
+    'Activated codes': 'Mã đã kích hoạt',
+    'Orders': 'Đơn hàng',
+    'No orders.': 'Chưa có đơn hàng.',
+
+    /* ---- Mã kích hoạt ---- */
+    'Issue a batch for a class, or bind one code to a single account':
+      'Cấp một lô cho lớp, hoặc gắn một mã cho một tài khoản',
+    'Export CSV': 'Xuất CSV',
+    'Issue codes': 'Cấp mã',
+    'Code batches': 'Lô mã',
+    'Codes issued together for one class or one intake':
+      'Các mã cấp cùng lúc cho một lớp hoặc một đợt',
+    'Used': 'Đã dùng',
+    'View codes': 'Xem mã',
+    'Unused': 'Chưa dùng',
+    'Activated': 'Đã kích hoạt',
+    'Revoked': 'Đã thu hồi',
+    'Reserved': 'Đã giữ chỗ',
+    'Expired': 'Hết hạn',
+    'Search codes': 'Tìm mã',
+    'Search by code…': 'Tìm theo mã…',
+    'Unlocks': 'Mở khóa',
+    'Expires': 'Hết hạn',
+    'Copy the code': 'Sao chép mã',
+    'Revoke the code': 'Thu hồi mã',
+    'Download this batch as CSV': 'Tải lô này dạng CSV',
+    'Issue unlock codes': 'Cấp mã mở khóa',
+    'Plan': 'Gói',
+    'What it unlocks': 'Mã mở khóa gì',
+    'A whole exam': 'Cả một kỳ thi',
+    'One specific test': 'Một đề cụ thể',
+    'Several exams (combo)': 'Nhiều kỳ thi (combo)',
+    'Issue to': 'Cấp cho',
+    'A batch — many codes': 'Một lô — nhiều mã',
+    'One account — bound to a student': 'Một tài khoản — gắn cho một học viên',
+    'How many codes': 'Số lượng mã',
+    'Find the account': 'Tìm tài khoản',
+    'When': 'Khi nào',
+    'Activation deadline': 'Hạn kích hoạt',
+    'Change': 'Đổi',
+
+    /* ---- Quản trị / cấu hình ---- */
+    'Platform configuration, the plans on sale, and the audit log':
+      'Cấu hình nền tảng, các gói đang bán, và nhật ký',
+    'Plans': 'Các gói',
+    'Admin account': 'Tài khoản quản trị',
+    'Branding': 'Thương hiệu',
+    'Shown at the top of the sidebar and on the landing page.':
+      'Hiển thị ở đầu thanh bên và trên trang chủ.',
+    'Tenant palette': 'Bảng màu thương hiệu',
+    'Platform-wide notice': 'Thông báo toàn nền tảng',
+    'A short line for students, a maintenance window for instance.':
+      'Một dòng ngắn cho học viên, ví dụ lịch bảo trì.',
+    'Configuration saved.': 'Đã lưu cấu hình.',
+    'Save configuration': 'Lưu cấu hình',
+    'Exams': 'Các kỳ thi',
+    'The fixed catalogue of the platform.': 'Danh mục cố định của nền tảng.'
   };
 
   function tr(s) {
@@ -234,12 +414,35 @@
     }).observe(document.body, { childList: true, subtree: true });
   }
 
-  function wireToggle() {
-    var btns = document.querySelectorAll('[data-lang]');
+  /* Delegated, so a switch that is injected later — the admin chrome builds its
+     sidebar from JS after this file has run — still works, in both languages.
+     markToggles() only paints which side is current; the click is handled once
+     on the document. */
+  function markToggles(root) {
+    var btns = (root || document).querySelectorAll('[data-lang]');
     Array.prototype.forEach.call(btns, function (b) {
       b.setAttribute('aria-pressed', b.getAttribute('data-lang') === lang ? 'true' : 'false');
-      b.addEventListener('click', function () { setLang(b.getAttribute('data-lang')); });
     });
+  }
+
+  function wireToggle() {
+    markToggles();
+    document.addEventListener('click', function (e) {
+      var b = e.target && e.target.closest && e.target.closest('[data-lang]');
+      if (b) setLang(b.getAttribute('data-lang'));
+    });
+    /* Keep the marking right for switches added after load, whatever the language. */
+    if (window.MutationObserver) {
+      new MutationObserver(function (muts) {
+        for (var i = 0; i < muts.length; i++) {
+          var added = muts[i].addedNodes;
+          for (var j = 0; j < added.length; j++) {
+            var n = added[j];
+            if (n.nodeType === 1 && (n.matches && n.matches('[data-lang]') || n.querySelector && n.querySelector('[data-lang]'))) markToggles(n.parentNode || document);
+          }
+        }
+      }).observe(document.documentElement, { childList: true, subtree: true });
+    }
   }
 
   function setLang(l) {

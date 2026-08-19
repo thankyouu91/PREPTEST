@@ -16,6 +16,8 @@
       if(t==='dark'||(!t&&matchMedia('(prefers-color-scheme: dark)').matches))document.documentElement.classList.add('dark');
     }catch(e){}})();
   </script>
+  <!-- Song ngữ: đặt ngôn ngữ (mặc định tiếng Việt) trước khi vẽ trang -->
+  <script src="/i18n.js"></script>
 </head>
 <body class="bg-surface text-ink">
 <div id="app" data-active="reports" class="min-h-[100dvh]">
@@ -50,15 +52,19 @@
 <script src="/admin/_admin.js"></script>
 <script>
 (async () => {
-  await AD.mount({ title: 'Overview', subtitle: 'What needs doing, growth, the student funnel and the content' });
+  await AD.mount({ title: AD.t('Overview', 'Tổng quan'),
+    subtitle: AD.t('What needs doing, growth, the student funnel and the content',
+                   'Việc cần làm, tăng trưởng, phễu học viên và nội dung') });
 
-  const KY = { 7: '7 days', 30: '30 days', 90: '90 days' };
+  const KY = AD.isVi() ? { 7: '7 ngày', 30: '30 ngày', 90: '90 ngày' }
+                       : { 7: '7 days', 30: '30 days', 90: '90 days' };
   let days = 30;
 
   /* ---------- A metric tile, with a comparison against the previous period ---------- */
   function delta(k) {
     if (k.delta === null) {
-      return '<span class="text-[12.5px] text-muted font-semibold">no figure for the previous period</span>';
+      return '<span class="text-[12.5px] text-muted font-semibold">' +
+        AD.t('no figure for the previous period', 'chưa có số liệu kỳ trước') + '</span>';
     }
     const len = k.delta === 0 ? 'khong' : (k.delta > 0 ? 'tang' : 'giam');
     const mui = k.delta > 0 ? '▲' : (k.delta < 0 ? '▼' : '■');
@@ -102,12 +108,13 @@
     return '<svg viewBox="0 0 ' + w + ' ' + h + '" class="w-full" role="img" aria-label="Daily activity chart">' +
       '<line x1="' + pad + '" y1="' + (h - pad) + '" x2="' + (w - pad) + '" y2="' + (h - pad) +
       '" stroke="var(--color-border)" stroke-width="1.5"/>' + bars + labels +
-      '<text x="' + pad + '" y="16" font-size="11" font-weight="700" fill="var(--color-muted)">Peak: ' + max + '</text>' +
+      '<text x="' + pad + '" y="16" font-size="11" font-weight="700" fill="var(--color-muted)">' + AD.t('Peak: ', 'Cao nhất: ') + max + '</text>' +
       '</svg>';
   }
 
   /* ---------- What needs doing ---------- */
-  const SEV_NHAN = { cao: 'Urgent', vua: 'Worth doing', thap: 'Tidy-up' };
+  const SEV_NHAN = AD.isVi() ? { cao: 'Gấp', vua: 'Nên làm', thap: 'Dọn dẹp' }
+                             : { cao: 'Urgent', vua: 'Worth doing', thap: 'Tidy-up' };
   const SEV_BADGE = { cao: 'badge-danger', vua: 'badge-hl', thap: 'badge-muted' };
 
   function todoList(todo) {
@@ -115,7 +122,7 @@
       return '<div class="flex items-start gap-3">' +
         '<span class="w-9 h-9 rounded-full bg-accent-soft text-accent-strong shrink-0 inline-flex items-center justify-center">' +
           AD.icon('check', 'w-[18px] h-[18px]') + '</span>' +
-        '<p class="text-[14.5px] text-muted leading-relaxed">Nothing is waiting. The content is complete, the codes are in date, and no student is stuck.</p>' +
+        '<p class="text-[14.5px] text-muted leading-relaxed">' + AD.t('Nothing is waiting. The content is complete, the codes are in date, and no student is stuck.', 'Không có việc nào đang chờ. Nội dung đã đủ, mã còn hạn, và không học viên nào bị kẹt.') + '</p>' +
       '</div>';
     }
     return '<ul class="grid gap-3">' + todo.map(t =>
@@ -146,7 +153,7 @@
           '<div class="h-full rounded-full bg-brand funnel-bar" data-w="' + rong + '"></div>' +
         '</div>' +
         (roi > 0
-          ? '<p class="text-[12px] text-muted font-medium mt-1">' + AD.num(roi) + ' lost at this step</p>'
+          ? '<p class="text-[12px] text-muted font-medium mt-1">' + AD.num(roi) + AD.t(' lost at this step', ' rơi ở bước này') + '</p>'
           : '') +
       '</li>';
     }).join('') + '</ul>';
@@ -182,7 +189,7 @@
         '<td class="px-4 py-3.5 text-right font-bold">' + AD.num(f.unlocks) + '</td>' +
         '<td class="px-5 py-3.5 text-right font-bold">' + AD.num(f.interested) +
           (f.interested > 0 && f.published === 0
-            ? ' <span class="badge badge-danger">no papers yet</span>'
+            ? ' <span class="badge badge-danger">' + AD.t('no papers yet', 'chưa có đề') + '</span>'
             : '') + '</td>' +
       '</tr>').join('');
 
@@ -212,14 +219,14 @@
 
     AD.qs('#content').innerHTML =
       '<div class="grid sm:grid-cols-2 xl:grid-cols-4 gap-5">' +
-        stat('New students', AD.num(d.kpi.users.value), d.kpi.users,
-          AD.num(d.users.total) + ' in total · ' + d.users.verified + ' verified', 'users') +
-        stat('Codes activated', AD.num(d.kpi.redeems.value), d.kpi.redeems,
-          d.codes.unused + ' unused', 'ticket', 'accent') +
-        stat('Doanh thu', AD.vnd(d.kpi.revenue.value), d.kpi.revenue,
-          d.kpi.orders.value + ' orders this period', 'wallet', 'accent') +
-        stat('Content', AD.num(d.content.published), null,
-          'published · ' + d.content.draft + ' draft · ' + AD.num(d.content.questions) + ' questions', 'fileText') +
+        stat(AD.t('New students','Học viên mới'), AD.num(d.kpi.users.value), d.kpi.users,
+          AD.num(d.users.total) + AD.t(' in total · ', ' tổng · ') + d.users.verified + AD.t(' verified', ' đã xác thực'), 'users') +
+        stat(AD.t('Codes activated','Mã đã kích hoạt'), AD.num(d.kpi.redeems.value), d.kpi.redeems,
+          d.codes.unused + AD.t(' unused', ' chưa dùng'), 'ticket', 'accent') +
+        stat(AD.t('Revenue','Doanh thu'), AD.vnd(d.kpi.revenue.value), d.kpi.revenue,
+          d.kpi.orders.value + AD.t(' orders this period', ' đơn trong kỳ'), 'wallet', 'accent') +
+        stat(AD.t('Content','Nội dung'), AD.num(d.content.published), null,
+          AD.t('published · ', 'đã xuất bản · ') + d.content.draft + AD.t(' draft · ', ' nháp · ') + AD.num(d.content.questions) + AD.t(' questions', ' câu hỏi'), 'fileText') +
       '</div>' +
 
       /* The two columns stack independently. With all six cards in one grid they
@@ -260,9 +267,9 @@
 
           '<section class="card p-6" aria-labelledby="h-chart">' +
             '<div class="flex flex-wrap items-baseline gap-3">' +
-              '<h2 id="h-chart" class="text-lg font-extrabold tracking-tight">Activity over ' + nhan + '</h2>' +
+              '<h2 id="h-chart" class="text-lg font-extrabold tracking-tight">' + AD.t('Activity over ', 'Hoạt động trong ') + nhan + '</h2>' +
               '<div class="ms-auto flex gap-1.5" role="group" aria-label="Choose a metric">' +
-                '<button type="button" class="chip" data-metric="users" aria-pressed="true">Students (' + tongUsers + ')</button>' +
+                '<button type="button" class="chip" data-metric="users" aria-pressed="true">' + AD.t('Students', 'Học viên') + ' (' + tongUsers + ')</button>' +
                 '<button type="button" class="chip" data-metric="redeems" aria-pressed="false">Code (' + tongRedeems + ')</button>' +
                 '<button type="button" class="chip" data-metric="revenue" aria-pressed="false">Doanh thu</button>' +
               '</div>' +
