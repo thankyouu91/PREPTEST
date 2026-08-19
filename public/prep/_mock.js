@@ -179,6 +179,8 @@ const PREP = {
   },
 
   vnd(n) { return n.toLocaleString('vi-VN') + 'đ'; },
+  /** A term, said grammatically — one of the plans is a single month now. */
+  months(n) { return n + (Number(n) === 1 ? ' month' : ' months'); },
 
   /** Skill labels. The same four values the server uses, in one place so one edit changes them everywhere. */
   SKILL_LABEL: { listening: 'Listening', reading: 'Reading', writing: 'Writing', speaking: 'Speaking' },
@@ -522,7 +524,7 @@ const PrepState = {
   name is the right answer; `unlocks` is only for codes issued before the model
   changed, and for data with no plan attached. */
   codeLabel(c) {
-    if (c && c.plan) return c.plan.name + ' plan · ' + c.plan.months + ' months';
+    if (c && c.plan) return c.plan.name + ' plan · ' + PREP.months(c.plan.months);
     return this.unlockLabel((c && c.unlocks) || {});
   },
 

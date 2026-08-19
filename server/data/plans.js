@@ -6,9 +6,15 @@
  * only, so what a buyer picks is how long they practise and how much of the
  * platform they get.
  *
- *   starter-3m    499,000 VND    3 months    10 attempts, exam only
- *   plus-6m       799,000 VND    6 months    unlimited attempts, everything
- *   pro-12m     1,399,000 VND   12 months    unlimited attempts, everything
+ *   starter-3m    499,000 VND    1 month     10 attempts, exam only
+ *   plus-6m       799,000 VND    3 months    unlimited attempts, everything
+ *   pro-12m     1,299,000 VND    6 months    unlimited attempts, everything
+ *
+ * Each plan also carries a `listPrice` — the price before the launch discount —
+ * shown struck through next to what is actually charged. The plan `id`s keep the
+ * month suffix they were born with (…-3m, …-6m, …-12m); those strings are opaque
+ * keys referenced by seeds, issued codes and tests, so they are NOT renamed when
+ * the term changes. Read the term from `months`, never from the id.
  *
  * Two things separate starter from the rest, and both are enforced server
  * side rather than merely hidden in the interface:
@@ -35,12 +41,13 @@ const PLANS = [
     id: 'starter-3m',
     name: 'Starter',
     price: 499000,
-    months: 3,
+    listPrice: 1500000,
+    months: 1,
     attempts: 10,
     features: { selfStudy: false, detailedReport: false },
     tagline: 'Ten full sittings to see where you stand.',
     perks: [
-      '10 full VPET sittings over 3 months',
+      '10 full VPET sittings in one month',
       'Score and CEFR band after every sitting',
       'Every part of the test, exactly as the real thing'
     ],
@@ -56,12 +63,13 @@ const PLANS = [
     id: 'plus-6m',
     name: 'Plus',
     price: 799000,
-    months: 6,
+    listPrice: 2200000,
+    months: 3,
     attempts: UNLIMITED,
     features: { selfStudy: true, detailedReport: true },
     tagline: 'Practise without counting, and study between sittings.',
     perks: [
-      'Unlimited VPET sittings for 6 months',
+      'Unlimited VPET sittings for 3 months',
       'Full self-study area: vocabulary, grammar, linking words, pronunciation',
       'Detailed report: every part scored, with written feedback',
       'New practice sets as they are published'
@@ -71,13 +79,14 @@ const PLANS = [
   {
     id: 'pro-12m',
     name: 'Pro',
-    price: 1399000,
-    months: 12,
+    price: 1299000,
+    listPrice: 3500000,
+    months: 6,
     attempts: UNLIMITED,
     features: { selfStudy: true, detailedReport: true },
-    tagline: 'A full year, for a target date that is further out.',
+    tagline: 'Six months, for a target date that is further out.',
     perks: [
-      'Unlimited VPET sittings for 12 months',
+      'Unlimited VPET sittings for 6 months',
       'Full self-study area: vocabulary, grammar, linking words, pronunciation',
       'Detailed report: every part scored, with written feedback',
       'New practice sets as they are published',

@@ -219,7 +219,7 @@
           '<select class="input" id="i-plan">' +
             (PLAN_LIST.length
               ? PLAN_LIST.map(p => '<option value="' + AD.esc(p.id) + '">' +
-                  AD.esc(p.name + ' · ' + p.months + ' months · ' + p.price.toLocaleString('vi-VN') + 'đ') +
+                  AD.esc(p.name + ' · ' + AD.months(p.months) + ' · ' + p.price.toLocaleString('vi-VN') + 'đ') +
                   '</option>').join('')
               : '<option value="">The price list could not be loaded — reload the page</option>') +
           '</select>' +

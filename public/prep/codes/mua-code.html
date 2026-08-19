@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Price list · VPET Prep</title>
-  <meta name="description" content="Three time-limited VPET practice plans: 3 months, 6 months and 12 months.">
+  <meta name="description" content="Three time-limited VPET practice plans: 1 month, 3 months and 6 months.">
   <meta name="theme-color" content="#1c3d8f">
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <link rel="manifest" href="/manifest.webmanifest">
@@ -180,7 +180,7 @@
         '<p class="text-muted text-[14px] leading-relaxed mt-1.5">' + PREP.esc(p.tagline || '') + '</p>' +
         '<p class="mt-4 flex items-baseline gap-1.5">' +
           '<b class="text-[26px] font-extrabold tracking-tight">' + PREP.vnd(p.price) + '</b>' +
-          '<span class="text-[14px] font-semibold text-muted">/ ' + p.months + ' months</span>' +
+          '<span class="text-[14px] font-semibold text-muted">/ ' + PREP.months(p.months) + '</span>' +
         '</p>' +
         '<ul class="grid gap-2 mt-4 text-[13.5px] font-medium text-muted">' +
           (p.perks || []).map(x =>
@@ -268,7 +268,7 @@
       current = p;
       renderProviders(p);
       PREP.qs('#bm-name').textContent = p.name + ' plan';
-      PREP.qs('#bm-desc').textContent = p.months + ' months · ' +
+      PREP.qs('#bm-desc').textContent = PREP.months(p.months) + ' · ' +
         (p.attempts ? p.attempts + ' sittings' : 'unlimited practice');
       PREP.qs('#bm-price').textContent = PREP.vnd(p.price);
       PREP.qs('#bm-perks').innerHTML = (p.perks || []).map(x =>

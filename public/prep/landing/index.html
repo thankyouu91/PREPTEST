@@ -278,13 +278,16 @@
         </p>
       </div>
 
-      <div class="grid md:grid-cols-3 gap-5 md:gap-6 mt-12 md:items-start" role="group" aria-label="Pricing">
+      <!-- items-stretch (the grid default) keeps all three boxes the same height, so
+           the row reads as an even set rather than three columns of different lengths. -->
+      <div class="grid md:grid-cols-3 gap-5 md:gap-6 mt-12" role="group" aria-label="Pricing">
         <button type="button" class="plan" data-plan="starter-3m" aria-pressed="false"
-                data-tint="color-mix(in srgb, var(--color-primary) 18%, transparent)" data-edge="color-mix(in srgb, var(--color-primary) 55%, transparent)" data-reveal>
-          
+                data-tint="color-mix(in srgb, var(--color-primary) 28%, transparent)" data-edge="color-mix(in srgb, var(--color-primary) 60%, transparent)" data-reveal>
+
           <h3 class="font-extrabold text-lg tracking-tight">Starter</h3>
           <p class="text-muted text-sm leading-relaxed mt-1 max-w-[34ch]">Ten full sittings, enough to see where you stand.</p>
-          <p class="mt-5"><b class="text-3xl font-extrabold tracking-tight" data-plan-price>499.000đ</b><span class="text-muted text-sm font-semibold"> / <span data-plan-months>3</span> months</span></p>
+          <p class="mt-5 leading-none"><span class="line-through text-muted/70 text-[15px] font-semibold" data-plan-list>1.500.000đ</span></p>
+          <p class="mt-1"><b class="text-3xl font-extrabold tracking-tight" data-plan-price>499.000đ</b><span class="text-muted text-sm font-semibold"> / <span data-plan-months>1</span> <span data-plan-unit>month</span></span></p>
           <ul class="grid gap-2.5 mt-6 text-[14.5px] font-medium text-muted">
             <li class="flex gap-2.5"><span class="text-accent-strong mt-0.5"><svg viewBox="0 0 24 24" class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></span><span>10 full VPET sittings</span></li>
             <li class="flex gap-2.5"><span class="text-accent-strong mt-0.5"><svg viewBox="0 0 24 24" class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></span><span>Score and CEFR band after every sitting</span></li>
@@ -295,11 +298,12 @@
           </ul>
         </button>
         <button type="button" class="plan" data-plan="plus-6m" aria-pressed="true"
-                data-tint="color-mix(in srgb, var(--color-accent) 22%, transparent)" data-edge="color-mix(in srgb, var(--color-accent) 60%, transparent)" data-reveal>
+                data-tint="color-mix(in srgb, var(--color-accent) 32%, transparent)" data-edge="color-mix(in srgb, var(--color-accent) 65%, transparent)" data-reveal>
           <span class="badge badge-hl absolute top-5 end-5">Most popular</span>
           <h3 class="font-extrabold text-lg tracking-tight">Plus</h3>
           <p class="text-muted text-sm leading-relaxed mt-1 max-w-[34ch]">Practise without counting, and have something to study between sittings.</p>
-          <p class="mt-5"><b class="text-3xl font-extrabold tracking-tight" data-plan-price>799.000đ</b><span class="text-muted text-sm font-semibold"> / <span data-plan-months>6</span> months</span></p>
+          <p class="mt-5 leading-none"><span class="line-through text-muted/70 text-[15px] font-semibold" data-plan-list>2.200.000đ</span></p>
+          <p class="mt-1"><b class="text-3xl font-extrabold tracking-tight" data-plan-price>799.000đ</b><span class="text-muted text-sm font-semibold"> / <span data-plan-months>3</span> <span data-plan-unit>months</span></span></p>
           <ul class="grid gap-2.5 mt-6 text-[14.5px] font-medium text-muted">
             <li class="flex gap-2.5"><span class="text-accent-strong mt-0.5"><svg viewBox="0 0 24 24" class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></span><span>Unlimited VPET sittings</span></li>
             <li class="flex gap-2.5"><span class="text-accent-strong mt-0.5"><svg viewBox="0 0 24 24" class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></span><span>The whole self-study area: vocabulary, grammar, linking words, pronunciation</span></li>
@@ -309,11 +313,12 @@
           </ul>
         </button>
         <button type="button" class="plan" data-plan="pro-12m" aria-pressed="false"
-                data-tint="color-mix(in srgb, var(--color-primary) 10%, var(--color-accent) 14%)" data-edge="color-mix(in srgb, var(--color-primary) 30%, var(--color-accent) 30%)" data-reveal>
-          
+                data-tint="color-mix(in srgb, var(--color-primary) 16%, var(--color-accent) 22%)" data-edge="color-mix(in srgb, var(--color-primary) 34%, var(--color-accent) 34%)" data-reveal>
+
           <h3 class="font-extrabold text-lg tracking-tight">Pro</h3>
-          <p class="text-muted text-sm leading-relaxed mt-1 max-w-[34ch]">A full year, for a test date that is further off.</p>
-          <p class="mt-5"><b class="text-3xl font-extrabold tracking-tight" data-plan-price>1.399.000đ</b><span class="text-muted text-sm font-semibold"> / <span data-plan-months>12</span> months</span></p>
+          <p class="text-muted text-sm leading-relaxed mt-1 max-w-[34ch]">Six months, for a test date that is further off.</p>
+          <p class="mt-5 leading-none"><span class="line-through text-muted/70 text-[15px] font-semibold" data-plan-list>3.500.000đ</span></p>
+          <p class="mt-1"><b class="text-3xl font-extrabold tracking-tight" data-plan-price>1.299.000đ</b><span class="text-muted text-sm font-semibold"> / <span data-plan-months>6</span> <span data-plan-unit>months</span></span></p>
           <ul class="grid gap-2.5 mt-6 text-[14.5px] font-medium text-muted">
             <li class="flex gap-2.5"><span class="text-accent-strong mt-0.5"><svg viewBox="0 0 24 24" class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></span><span>Unlimited VPET sittings</span></li>
             <li class="flex gap-2.5"><span class="text-accent-strong mt-0.5"><svg viewBox="0 0 24 24" class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></span><span>The whole self-study area</span></li>
@@ -330,7 +335,7 @@
       <div class="flex flex-wrap items-center gap-4 mt-8">
         <a id="plan-cta" href="/prep/dang-ky/?plan=plus-6m" class="btn btn-primary btn-lg">
 Sign up for <span id="plan-cta-name">Plus</span></a>
-        <p class="text-[13.5px] text-muted font-medium" id="plan-cta-note">799.000đ for 6 months of practice</p>
+        <p class="text-[13.5px] text-muted font-medium" id="plan-cta-note">799.000đ for 3 months of practice</p>
       </div>
 
       <p class="text-[13px] text-muted/80 font-medium mt-6">
@@ -512,7 +517,8 @@ Sign up for <span id="plan-cta-name">Plus</span></a>
       const price = PREP.qs('[data-plan-price]', btn);
       const months = PREP.qs('[data-plan-months]', btn);
       if (!price || !months) return '';
-      return price.textContent.trim() + ' for ' + months.textContent.trim() + ' months of practice';
+      const m = months.textContent.trim();
+      return price.textContent.trim() + ' for ' + m + (m === '1' ? ' month' : ' months') + ' of practice';
     }
 
     function choose(btn) {
@@ -556,8 +562,17 @@ Sign up for <span id="plan-cta-name">Plus</span></a>
         }
         const price = PREP.qs('[data-plan-price]', card);
         const months = PREP.qs('[data-plan-months]', card);
+        const unit = PREP.qs('[data-plan-unit]', card);
+        const listEl = PREP.qs('[data-plan-list]', card);
         if (price) price.textContent = PREP.vnd(p.price);
         if (months) months.textContent = String(p.months);
+        if (unit) unit.textContent = p.months === 1 ? 'month' : 'months';
+        /* The list price is the pre-discount figure, struck through. It shows only
+           when the server sends one that is genuinely higher than what is charged. */
+        if (listEl) {
+          if (p.listPrice && p.listPrice > p.price) { listEl.textContent = PREP.vnd(p.listPrice); listEl.parentElement.removeAttribute('hidden'); }
+          else if (listEl.parentElement) listEl.parentElement.setAttribute('hidden', '');
+        }
       });
       /* If the selected card has just been removed, fall back to the first one still
          showing: the call to action must not point at nothing. */

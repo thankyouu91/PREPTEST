@@ -152,7 +152,7 @@
         const ent = res.entitlement || {};
         PREP.qs('#ok-code').textContent = code;
         PREP.qs('#ok-label').textContent = res.plan
-          ? res.plan.name + ' plan · ' + res.plan.months + ' months'
+          ? res.plan.name + ' plan · ' + PREP.months(res.plan.months)
           : 'Activated';
         /* Re-entering your own code is not an error, but it is not a fresh unlock
            either — say what actually happened rather than congratulating them. */

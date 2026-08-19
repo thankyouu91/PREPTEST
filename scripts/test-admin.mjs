@@ -560,7 +560,7 @@ const run = async () => {
   check('and is shown the generated password exactly once',
     typeof madePw === 'string' && madePw.length >= 10, JSON.stringify(madePw));
   check('The term asked for is granted with the account',
-    r.data.grant && r.data.grant.plan === 'plus-6m' && r.data.grant.months === 6,
+    r.data.grant && r.data.grant.plan === 'plus-6m' && r.data.grant.months === 3,
     JSON.stringify(r.data.grant));
 
   /* The account has to be usable, which is the only thing that matters. Created
@@ -728,8 +728,8 @@ const run = async () => {
       /* Built from the price list rather than typed in, so a fourth plan would
          appear here by itself and a renamed one cannot go stale. */
       check('and the term list is the three plans, read from the server',
-        terms.length === 4 && terms.join(' ').includes('3 months') &&
-        terms.join(' ').includes('6 months') && terms.join(' ').includes('12 months'),
+        terms.length === 4 && terms.join(' ').includes('1 month') &&
+        terms.join(' ').includes('3 months') && terms.join(' ').includes('6 months'),
         terms.join(' | '));
 
       const uiEmail = 'giao.dien.' + String(process.hrtime.bigint()).slice(-9) + '@thu-nghiem.vn';

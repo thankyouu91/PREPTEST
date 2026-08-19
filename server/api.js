@@ -1763,7 +1763,7 @@ router.get('/catalog', async (req, res) => {
      screens and the admin's code-issuing screen. Sending it with the catalogue means
      one call covers both, and nowhere has to keep its own copy of a price. */
   const plans = PLANS.PLANS.map(p => ({
-    id: p.id, name: p.name, price: p.price, months: p.months,
+    id: p.id, name: p.name, price: p.price, listPrice: p.listPrice || null, months: p.months,
     attempts: p.attempts || null, features: p.features,
     tagline: p.tagline, perks: p.perks, limits: p.limits
   }));

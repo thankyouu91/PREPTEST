@@ -60,6 +60,9 @@ const AD = {
   /* ---------- Format ---------- */
   vnd(n) { return (n || 0).toLocaleString('vi-VN') + 'đ'; },
   num(n) { return (n || 0).toLocaleString('vi-VN'); },
+  /* A term, said grammatically: one plan is a single month now, so "1 months" has
+     to become "1 month" wherever a duration is shown. */
+  months(n) { return n + (Number(n) === 1 ? ' month' : ' months'); },
   date(iso) {
     if (!iso) return '—';
     const d = new Date(iso);

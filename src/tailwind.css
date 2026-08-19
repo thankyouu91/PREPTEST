@@ -169,7 +169,7 @@
     background: radial-gradient(120% 80% at 50% 0%, var(--plan-tint) 0%, transparent 70%);
     transition: opacity .35s ease;
   }
-  .plan:hover, .plan:focus-visible { @apply -translate-y-1.5 shadow-soft-lg; border-color: var(--plan-edge); }
+  .plan:hover, .plan:focus-visible { @apply -translate-y-2 shadow-soft-lg; border-color: var(--plan-edge); }
   .plan:hover::before, .plan:focus-visible::before { @apply opacity-100; }
   .plan:active { @apply translate-y-0; }
 
