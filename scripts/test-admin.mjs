@@ -262,8 +262,8 @@ const run = async () => {
 
   /* 9. Auto-generating a paper */
   r = await call('POST', '/api/admin/tests/generate', {
-    familyId: 'toeic', level: 'B1',
-    title: 'TOEIC auto-generated (test)',
+    familyId: 'vpet', level: 'B1',
+    title: 'VPET auto-generated (test)',
     blueprint: [
       { name: 'Listening', skill: 'listening', type: 'Multiple choice', items: 10, minutes: 20 },
       { name: 'Reading', skill: 'reading', type: 'Multiple choice', items: 10, minutes: 25 }
@@ -279,7 +279,7 @@ const run = async () => {
   check('No item is drawn twice into the same paper', dup.size === autoTest.totalItems);
 
   r = await call('POST', '/api/admin/tests/generate', {
-    familyId: 'toeic', level: 'B1',
+    familyId: 'vpet', level: 'B1',
     blueprint: [{ name: 'Listening', skill: 'listening', type: 'Multiple choice', items: 9999, minutes: 20 }]
   });
   check('Reports a shortage when the bank does not hold enough',
@@ -812,20 +812,22 @@ const run = async () => {
       list.map(f => f.familyId + ':' + f.familyStatus).join(', '));
   }
 
-  r = await call('GET', '/api/admin/tests?status=draft&limit=50');
+  /* No parked-family test is seeded any more — the platform is VPET-only — so
+     make one for a coming_soon family and prove the publish guard still refuses it. */
   {
-    const rows = (r.data && (r.data.items || r.data)) || [];
-    const parkedTest = rows.find(t => ['ielts', 'toeic', 'pte', 'ote', 'vept'].includes(t.familyId));
-    check('A test of a parked family sits in draft', !!parkedTest,
-      rows.map(t => t.id + ':' + t.status).slice(0, 6).join(', '));
+    r = await call('POST', '/api/admin/tests',
+      { familyId: 'toeic', title: 'Parked-family draft', level: 'B1', durationMin: 60 });
+    const parkedTestId = r.data && r.data.id;
+    check('A draft test can be created for a parked family', !!parkedTestId && r.data.status !== 'published',
+      'status ' + r.status + ' ' + JSON.stringify(r.data));
 
-    if (parkedTest) {
-      r = await call('POST', '/api/admin/tests/' + parkedTest.id + '/status', { status: 'published' });
+    if (parkedTestId) {
+      r = await call('POST', '/api/admin/tests/' + parkedTestId + '/status', { status: 'published' });
       check('A test of a parked family cannot be published',
         r.status === 400 && /is not ready yet/.test(String(r.data && r.data.error)),
         'status ' + r.status + ' ' + JSON.stringify(r.data));
 
-      const after = await call('GET', '/api/admin/tests/' + parkedTest.id);
+      const after = await call('GET', '/api/admin/tests/' + parkedTestId);
       check('It stays in draft after being refused',
         after.data && after.data.status === 'draft', after.data && after.data.status);
     }

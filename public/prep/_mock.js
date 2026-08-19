@@ -48,88 +48,9 @@ const PREP_TESTS = [
       'Each part has its own clock; when it runs out the system moves on.',
       'Writing and Speaking are marked automatically and come back with comments.'
     ]
-  },
-  {
-    id: 'ielts-ac-01', familyId: 'ielts', title: 'IELTS Academic Mock 01', level: 'B2',
-    durationMin: 164, comingSoon: true,
-    skills: ['listening', 'reading', 'writing', 'speaking'],
-    sections: [
-      { name: 'Listening', type: 'Multiple choice + gap fill', items: 40, minutes: 30 },
-      { name: 'Reading',   type: 'Academic reading',          items: 40, minutes: 60 },
-      { name: 'Writing',   type: 'Task 1 + Task 2',       items: 2,  minutes: 60 },
-      { name: 'Speaking',  type: '3 parts, recorded',         items: 3,  minutes: 14 }
-    ],
-    scoring: 'Band 0-9, rounded to 0.5',
-    guide: [
-      'The Listening audio plays once only, so read the questions first.',
-      'Writing Task 2 carries two thirds of the Writing mark.',
-      'Speaking mirrors the three-part interview, answered against the clock.'
-    ]
-  },
-  {
-    id: 'ielts-ac-02', familyId: 'ielts', title: 'IELTS Academic Mock 02', level: 'C1',
-    durationMin: 164, comingSoon: true,
-    skills: ['listening', 'reading', 'writing', 'speaking'],
-    sections: [
-      { name: 'Listening', type: 'Multiple choice + gap fill', items: 40, minutes: 30 },
-      { name: 'Reading',   type: 'Academic reading',          items: 40, minutes: 60 },
-      { name: 'Writing',   type: 'Task 1 + Task 2',       items: 2,  minutes: 60 },
-      { name: 'Speaking',  type: '3 parts, recorded',         items: 3,  minutes: 14 }
-    ],
-    scoring: 'Band 0-9, rounded to 0.5',
-    guide: [
-      'A harder paper: denser academic vocabulary than Mock 01.',
-      'Allow 20 minutes per Reading passage.',
-      'Speaking part 3 probes your opinions, so practise structured answers.'
-    ]
-  },
-  {
-    id: 'toeic-lr-01', familyId: 'toeic', title: 'TOEIC Listening & Reading 01', level: 'B1',
-    durationMin: 120, comingSoon: true,
-    skills: ['listening', 'reading'],
-    sections: [
-      { name: 'Listening', type: 'Parts 1-4, multiple choice', items: 100, minutes: 45 },
-      { name: 'Reading',   type: 'Parts 5-7, multiple choice', items: 100, minutes: 75 }
-    ],
-    scoring: 'Scale 10-990 (5-495 per section)',
-    guide: [
-      'There is no penalty for a wrong answer, so never leave one blank.',
-      'Part 7 takes the longest, so move quickly through Parts 5-6.',
-      'One clock covers the whole Reading section; pace yourself.'
-    ]
-  },
-  {
-    id: 'toeic-lr-02', familyId: 'toeic', title: 'TOEIC Listening & Reading 02', level: 'B2',
-    durationMin: 120, comingSoon: true,
-    skills: ['listening', 'reading'],
-    sections: [
-      { name: 'Listening', type: 'Parts 1-4, multiple choice', items: 100, minutes: 45 },
-      { name: 'Reading',   type: 'Parts 5-7, multiple choice', items: 100, minutes: 75 }
-    ],
-    scoring: 'Scale 10-990 (5-495 per section)',
-    guide: [
-      'Pitched at the difficulty of the real exam from 2024 onwards.',
-      'Practise the double and triple passage sets in Part 7.',
-      'Listen on headphones to match exam-room conditions.'
-    ]
-  },
-  {
-    id: 'pte-ac-01', familyId: 'pte', title: 'PTE Academic Mock 01', level: 'B2',
-    durationMin: 127, comingSoon: true,
-    skills: ['speaking', 'writing', 'reading', 'listening'],
-    sections: [
-      { name: 'Speaking & Writing', type: '7 task types, recorded + typed', items: 28, minutes: 62 },
-      { name: 'Reading',            type: '5 task types',                  items: 15, minutes: 30 },
-      { name: 'Listening',          type: '8 task types',                  items: 17, minutes: 35 }
-    ],
-    scoring: 'Scale 10-90, marked entirely by machine',
-    guide: [
-      'Speak up, clearly and evenly: the marker rewards fluency.',
-      'Read Aloud and Repeat Sentence carry a lot of weight.',
-      'You cannot go back to a submitted item, so think before pressing Next.'
-    ]
   }
-  // VEPT and OTE: no tests yet — the library shows its "being written" empty state.
+  // Only VPET has papers. The five parked families show the library's
+  // "being written" empty state; their demo tests were removed (owner, 2026-08-19).
 ];
 
 /* ---------------- Code bundles (the buy screen) ----------------
@@ -147,16 +68,6 @@ const PREP_PACKAGES = [
     perks: ['Every VPET test', 'New papers at no extra cost', 'Valid for 12 months']
   },
   {
-    id: 'pk-toeic', name: 'TOEIC bundle', price: 179000, familyId: 'toeic',
-    desc: 'The full TOEIC Listening & Reading set, new papers included.',
-    perks: ['Every TOEIC test', 'New papers at no extra cost', 'Valid for 12 months']
-  },
-  {
-    id: 'pk-ielts', name: 'IELTS bundle', price: 199000, familyId: 'ielts',
-    desc: 'The full IELTS Academic set, new papers included as they land.',
-    perks: ['Every IELTS test', 'New papers at no extra cost', 'Valid for 12 months']
-  },
-  {
     id: 'pk-combo', name: 'Two-exam combo', price: 329000, familyId: null, featured: true,
     desc: 'Pick any two exams and unlock every test in both.',
     perks: ['Any two exams', 'Saves 49.000đ against two separate bundles', 'Valid for 12 months']
@@ -165,11 +76,10 @@ const PREP_PACKAGES = [
 
 /* ---------------- Demo codes for trying the redeem flow ---------------- */
 const PREP_DEMO_CODES = {
-  'VPET-B1MK-24TR': { unlocks: { testId: 'vpet-b1-01' },  expiresAt: '2026-12-31', status: 'valid' },
-  'IELT-AC12-96HD': { unlocks: { familyId: 'ielts' },     expiresAt: '2026-10-15', status: 'valid' },
-  'TOEC-LR20-26CB': { unlocks: { familyId: 'toeic' },     expiresAt: '2027-02-28', status: 'valid' },
-  'PREP-HHAN-2025': { unlocks: { familyId: 'pte' },       expiresAt: '2025-12-31', status: 'valid' },   // past its date → the "expired" error
-  'PREP-DUNG-ROI1': { unlocks: { testId: 'ielts-ac-01' }, expiresAt: '2026-12-31', status: 'used' }     // → the "already used" error
+  'VPET-B1MK-24TR': { unlocks: { testId: 'vpet-b1-01' }, expiresAt: '2026-12-31', status: 'valid' },
+  'VPET-FULL-2026': { unlocks: { familyId: 'vpet' },     expiresAt: '2027-02-28', status: 'valid' },
+  'VPET-EXPD-2025': { unlocks: { testId: 'vpet-b1-01' }, expiresAt: '2025-12-31', status: 'valid' },  // past its date → the "expired" error
+  'VPET-USED-0001': { unlocks: { testId: 'vpet-b1-01' }, expiresAt: '2026-12-31', status: 'used' }    // → the "already used" error
 };
 
 /* ---------------- Tenant (white-label demo) ---------------- */

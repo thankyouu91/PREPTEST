@@ -176,30 +176,25 @@ try {
   try { cli('delete-everything'); } catch (e) { refusedUnknown = true; }
   ok(refusedUnknown, 'An unknown command is refused');
 
-  /* 13. An exam family that is not ready must have nothing on sale.
-     This is a rule applied at boot, so test it the way it really happens: push a
-     test of a parked family to 'published' with SQL, restart, and see whether it
-     gets pulled back to draft. */
-  const parkedFamily = runNode(
-    "const{q}=require('./server/db');" +
-    "console.log(await q.val(\"SELECT f.id FROM families f WHERE f.status='coming_soon' " +
-    "AND EXISTS (SELECT 1 FROM tests t WHERE t.family_id=f.id) ORDER BY f.sort LIMIT 1\") || '')"
-  ).trim();
-  ok(!!parkedFamily, 'There is a parked family that still has tests in the database', parkedFamily);
-
+  /* 13. An exam family that is not ready must have nothing on sale. The platform is
+     VPET-only now (owner, 2026-08-19), so a parked family's tests are REMOVED on boot,
+     not merely pulled back to draft. Test it the way it really happens: insert a
+     published test for a parked family with SQL, restart, and confirm it is gone. */
+  const parkedFamily = 'toeic';
   const pushedLive = runNode(
-    "const{q}=require('./server/db');" +
-    "const id=await q.val(\"SELECT id FROM tests WHERE family_id=? LIMIT 1\", '" + parkedFamily + "');" +
-    "if(id){await q.run(\"UPDATE tests SET status='published' WHERE id=?\", id);console.log(id)}else{console.log('')}"
+    "const{q,nowISO}=require('./server/db');" +
+    "await q.run(\"INSERT INTO tests (id,family_id,title,level,duration_min,scoring,guide_json,status,build_mode,created_at,updated_at) " +
+    "VALUES ('parked-probe','" + parkedFamily + "','Parked probe','B1',60,'','[]','published','manual',?,?)\", nowISO(), nowISO());" +
+    "console.log(await q.val(\"SELECT id FROM tests WHERE id='parked-probe'\") || '')"
   ).trim();
-  ok(!!pushedLive, 'Set up a published test belonging to a parked family', pushedLive);
+  ok(pushedLive === 'parked-probe', 'Set up a published test belonging to a parked family', pushedLive);
 
   const stillOnSale = runNode(
     "const{q}=require('./server/db');" +
     "console.log(await q.val(\"SELECT COUNT(*) c FROM tests t JOIN families f ON f.id=t.family_id " +
     "WHERE t.status='published' AND f.status='coming_soon'\"))"
   ).trim();
-  ok(stillOnSale === '0', 'A restart pulls a parked family\'s tests back to draft', stillOnSale + ' still on sale');
+  ok(stillOnSale === '0', 'A restart removes a parked family\'s tests', stillOnSale + ' still on sale');
 
   const openFamilyIntact = runNode(
     "const{q}=require('./server/db');" +

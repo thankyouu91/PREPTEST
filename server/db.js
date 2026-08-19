@@ -797,40 +797,7 @@ const SEED_TESTS = [
            'Each part has its own clock; when it runs out the system moves on.',
            'Writing and Speaking are marked automatically and come back with comments.'],
     sections:[['Listening','listening','Multiple choice',25],['Reading','reading','Multiple choice',35],
-              ['Writing','writing','Essay',40],['Speaking','speaking','Recorded',12]] },
-  { id:'ielts-ac-01', family:'ielts', title:'IELTS Academic Mock 01', level:'B2', dur:164, status:'draft',
-    scoring:'Band 0-9, rounded to 0.5',
-    guide:['The Listening audio plays once only, so read the questions first.',
-           'Writing Task 2 carries two thirds of the Writing mark.',
-           'Speaking mirrors the three-part interview, answered against the clock.'],
-    sections:[['Listening','listening','Multiple choice + gap fill',30],['Reading','reading','Academic reading',60],
-              ['Writing','writing','Task 1 + Task 2',60],['Speaking','speaking','3 parts, recorded',14]] },
-  { id:'ielts-ac-02', family:'ielts', title:'IELTS Academic Mock 02', level:'C1', dur:164, status:'draft',
-    scoring:'Band 0-9, rounded to 0.5',
-    guide:['A harder paper: denser academic vocabulary than Mock 01.',
-           'Allow 20 minutes per Reading passage.',
-           'Speaking part 3 probes your opinions, so practise structured answers.'],
-    sections:[['Listening','listening','Multiple choice + gap fill',30],['Reading','reading','Academic reading',60],
-              ['Writing','writing','Task 1 + Task 2',60],['Speaking','speaking','3 parts, recorded',14]] },
-  { id:'toeic-lr-01', family:'toeic', title:'TOEIC Listening & Reading 01', level:'B1', dur:120, status:'draft',
-    scoring:'Scale 10-990 (5-495 per section)',
-    guide:['There is no penalty for a wrong answer, so never leave one blank.',
-           'Part 7 takes the longest, so move quickly through Parts 5-6.',
-           'One clock covers the whole Reading section; pace yourself.'],
-    sections:[['Listening','listening','Parts 1-4, multiple choice',45],['Reading','reading','Parts 5-7, multiple choice',75]] },
-  { id:'toeic-lr-02', family:'toeic', title:'TOEIC Listening & Reading 02', level:'B2', dur:120, status:'draft',
-    scoring:'Scale 10-990 (5-495 per section)',
-    guide:['Pitched at the difficulty of the real exam from 2024 onwards.',
-           'Practise the double and triple passage sets in Part 7.',
-           'Listen on headphones to match exam-room conditions.'],
-    sections:[['Listening','listening','Parts 1-4, multiple choice',45],['Reading','reading','Parts 5-7, multiple choice',75]] },
-  { id:'pte-ac-01', family:'pte', title:'PTE Academic Mock 01', level:'B2', dur:127, status:'draft',
-    scoring:'Scale 10-90, marked entirely by machine',
-    guide:['Speak up, clearly and evenly: the marker rewards fluency.',
-           'Read Aloud and Repeat Sentence carry a lot of weight.',
-           'You cannot go back to a submitted item, so think before pressing Next.'],
-    sections:[['Speaking & Writing','speaking','7 task types, recorded + typed',62],['Reading','reading','5 task types',30],
-              ['Listening','listening','8 task types',35]] }
+              ['Writing','writing','Essay',40],['Speaking','speaking','Recorded',12]] }
 ];
 
 const PACKAGES = [
@@ -897,6 +864,7 @@ function seedQuestions() {
   let n = 0;
 
   for (const [famId, , , , skills] of FAMILIES) {
+    if (famId !== 'vpet') continue;               // VPET-only platform: no sample items for the parked families
     for (const skill of skills) {
       LEVELS.forEach((level, li) => {
         if (skill === 'listening' || skill === 'reading') {
@@ -1024,6 +992,26 @@ function seed() {
     }
   }
 
+  /* Focus on VPET (owner, 2026-08-19). The other five families stay in the
+     catalogue as coming_soon, but their demo tests and sample questions are
+     removed — from the student library, the admin board and the database alike.
+     This runs on EVERY boot, not only a fresh one, so an existing database (the
+     production box included) is scrubbed the next time it starts, not just new
+     installs. Order is dictated by the foreign keys: a test's attempts go first
+     (their parts, answers and scores cascade on attempt_id), then the tests
+     themselves (sections and section_items cascade on the test), and finally the
+     sample questions, whose stray answers are cleared just before them. */
+  const strayTests = qs.all("SELECT id FROM tests WHERE family_id <> 'vpet'").map(r => r.id);
+  if (strayTests.length) {
+    const ph = strayTests.map(() => '?').join(',');
+    qs.run(`DELETE FROM attempts WHERE test_id IN (${ph})`, ...strayTests);
+    qs.run(`DELETE FROM tests WHERE id IN (${ph})`, ...strayTests);
+    console.warn(`[seed] removed ${strayTests.length} non-VPET demo test(s): ${strayTests.join(', ')}`);
+  }
+  qs.run("DELETE FROM attempt_answers WHERE question_id IN (SELECT id FROM questions WHERE family_id <> 'vpet')");
+  const strayQ = qs.run("DELETE FROM questions WHERE family_id <> 'vpet'");
+  if (strayQ.changes) console.warn(`[seed] removed ${strayQ.changes} non-VPET sample question(s).`);
+
   if (!qs.val('SELECT COUNT(*) c FROM users')) {
     // The demo student account (matching the seed account on the front end)
     const ins = db.prepare(`INSERT INTO users (username,email,name,verified,status,interests_json,created_at)
@@ -1062,12 +1050,12 @@ function seed() {
     insC.run('IELT-AC12-96HD', null, 'family', 'ielts', 'unused', daysFromNow(67), null, null, null, daysAgo(9));
     insC.run('TOEC-LR20-26CB', null, 'family', 'toeic', 'unused', daysFromNow(200), null, null, null, daysAgo(7));
     insC.run('PREP-HHAN-2025', null, 'family', 'pte', 'unused', '2025-12-31', null, null, 'An illustrative code, past its date', daysAgo(300));
-    insC.run('PREP-DUNG-ROI1', null, 'test', 'ielts-ac-01', 'redeemed', daysFromNow(140),
+    insC.run('PREP-DUNG-ROI1', null, 'test', 'vpet-b1-01', 'redeemed', daysFromNow(140),
       qs.val("SELECT id FROM users WHERE username='thuhang.nt'"), daysAgo(12), null, daysAgo(13));
 
     // A few spent codes so the reports have something to show
     const users = qs.all("SELECT id FROM users WHERE username IN ('khanhqd','ngocanh.study','baolong.tb')");
-    const refs = [['family','toeic'], ['family','ielts'], ['test','pte-ac-01']];
+    const refs = [['family','toeic'], ['family','ielts'], ['test','vpet-b1-01']];
     users.forEach((u, i) => {
       insC.run(makeCode(), null, refs[i][0], refs[i][1], 'redeemed', daysFromNow(180), u.id, daysAgo(i + 2), null, daysAgo(i + 3));
     });
