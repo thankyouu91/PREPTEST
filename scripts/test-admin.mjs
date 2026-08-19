@@ -581,6 +581,20 @@ const run = async () => {
   check('and holds the code the term was granted through', madeDetail.codes.length === 1,
     'codes ' + madeDetail.codes.length);
 
+  /* Editing an account: a phone can be added or fixed from the admin side, which
+     is what lets an older account be brought up to the standard a bound code needs. */
+  check('An admin-made account starts with no phone on file', !madeDetail.user.phone,
+    JSON.stringify(madeDetail.user.phone));
+  r = await call('PUT', '/api/admin/users/' + madeId, { phone: '098 765 4321' });
+  check('An administrator can set the phone on an account', r.status === 200, 'status ' + r.status);
+  const withPhone = (await call('GET', '/api/admin/users/' + madeId)).data;
+  check('The phone comes back normalised', withPhone.user.phone === '0987654321', withPhone.user.phone);
+  r = await call('PUT', '/api/admin/users/' + madeId, { phone: '12' });
+  check('A malformed phone is refused on edit', r.status === 400, 'status ' + r.status);
+  r = await call('POST', '/api/admin/codes', { planId: 'plus-6m', unlockType: 'family', unlockRef: 'vpet', qty: 1, userId: madeId, reserve: true });
+  check('With a phone on file the account can now have a code reserved to it', r.status === 201,
+    'status ' + r.status);
+
   r = await call('POST', '/api/admin/users', { name: 'Trung lap', email: newEmail });
   check('The same email twice is refused', r.status === 409, 'status ' + r.status);
   r = await call('POST', '/api/admin/users', { name: 'Sai', email: 'khong-phai-email' });

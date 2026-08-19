@@ -351,7 +351,8 @@
           AD.esc(u.name.trim().split(/\s+/).map(w => w[0]).slice(-2).join('').toUpperCase()) + '</span>' +
         '<div class="min-w-0">' +
           '<h3 class="text-lg font-extrabold tracking-tight truncate">' + AD.esc(u.name) + '</h3>' +
-          '<p class="text-[13.5px] text-muted truncate">' + AD.esc(u.email) + ' · @' + AD.esc(u.username) + '</p>' +
+          '<p class="text-[13.5px] text-muted truncate">' + AD.esc(u.email) +
+            (u.phone ? ' · ' + AD.esc(u.phone) : '') + ' · @' + AD.esc(u.username) + '</p>' +
           '<p class="flex flex-wrap gap-1.5 mt-2">' +
             (u.status === 'locked' ? '<span class="badge badge-hl">Locked</span>' : '<span class="badge badge-ok">Active</span>') +
             (u.verified ? '<span class="badge badge-ok">Verified</span>' : '<span class="badge badge-muted">Not verified</span>') +
@@ -368,10 +369,15 @@
       '</div>' +
 
       '<div class="border-t border-line mt-6 pt-5 grid gap-4">' +
-        '<div><label class="label" for="u-note">Internal note</label>' +
-          '<input class="input" id="u-note" value="' + AD.esc(u.note || '') + '" placeholder="Visible to administrators only"></div>' +
+        '<div class="grid sm:grid-cols-2 gap-4">' +
+          '<div><label class="label" for="u-phone">Phone number</label>' +
+            '<input class="input" id="u-phone" type="tel" inputmode="tel" autocomplete="off" value="' + AD.esc(u.phone || '') + '" placeholder="0912 345 678">' +
+            '<p class="help mt-1.5">Needed before a code can be bound to this account.</p></div>' +
+          '<div><label class="label" for="u-note">Internal note</label>' +
+            '<input class="input" id="u-note" value="' + AD.esc(u.note || '') + '" placeholder="Visible to administrators only"></div>' +
+        '</div>' +
         '<div class="flex flex-wrap gap-2.5">' +
-          '<button type="button" id="u-save" class="btn btn-primary btn-md">Save note</button>' +
+          '<button type="button" id="u-save" class="btn btn-primary btn-md">Save changes</button>' +
           (u.verified ? '' : '<button type="button" id="u-verify" class="btn btn-ghost btn-md">Mark as verified</button>') +
           '<button type="button" id="u-lock" class="btn btn-ghost btn-md ' + (u.status === 'locked' ? '' : 'text-danger') + '">' +
             (u.status === 'locked' ? 'Unlock the account' : 'Lock the account') + '</button>' +
@@ -391,8 +397,11 @@
 
     mm.el.querySelector('#u-save').addEventListener('click', async () => {
       try {
-        await AD.put('/admin/users/' + id, { name: u.name, note: mm.el.querySelector('#u-note').value, interests: u.interests });
-        mm.close(); AD.toast('Note saved'); load();
+        await AD.put('/admin/users/' + id, {
+          name: u.name, note: mm.el.querySelector('#u-note').value,
+          phone: mm.el.querySelector('#u-phone').value.trim(), interests: u.interests
+        });
+        mm.close(); AD.toast('Saved'); load();
       } catch (e) { AD.toast(e.message, 'error'); }
     });
     const vb = mm.el.querySelector('#u-verify');

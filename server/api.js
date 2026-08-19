@@ -1312,7 +1312,18 @@ router.put('/admin/users/:id', async (req, res) => {
   const note = str(b.note, 500);
   const interests = Array.isArray(b.interests)
     ? b.interests.map(x => str(x, 20)).filter(familyExists) : jparse(u.interests_json, []);
-  await q.run('UPDATE users SET name=?, note=?, interests_json=? WHERE id=?', name, note, JSON.stringify(interests), id);
+  /* Phone is editable so an older account can be brought up to the standard a
+     bound code needs: a valid number is normalised and kept; an omitted or empty
+     field leaves whatever was there, rather than silently wiping it. */
+  const phoneRaw = str(b.phone, 24);
+  let phone = u.phone;
+  if (phoneRaw) {
+    const phErr = A.phoneProblem(phoneRaw);
+    if (phErr) return bad(res, phErr);
+    phone = A.normalizePhone(phoneRaw);
+  }
+  await q.run('UPDATE users SET name=?, note=?, phone=?, interests_json=? WHERE id=?',
+    name, note, phone || null, JSON.stringify(interests), id);
   await audit(req, 'user.update', 'users/' + id, {});
   res.json({ ok: true });
 });
