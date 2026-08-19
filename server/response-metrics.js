@@ -16,26 +16,26 @@
  * ---------------------------------------------------------------------------
  * WHAT IS HERE, AND WHAT IS HONESTLY NOT
  *
- * `rubrics.js` declares seventeen measurable quantities. This file computes the
- * ones that can be computed from what the platform actually holds, and does not
- * invent the rest. `MISSING` below names each absent one and what it would take.
+ * `rubrics.js` declares seventeen measurable quantities. Thirteen are computed
+ * here or alongside; `MISSING` below names the four that are not, and what each
+ * would take.
  *
- * The two lexical metrics — `spellingErrors` and `cefrBandCoverage` — both need
- * a dictionary. The platform's word lists hold about a hundred entries between
- * them, which is a teaching list, not a lexicon. A spell checker built on a
- * hundred words would mark almost every correct word wrong, and a "CEFR band
- * coverage" from it would be noise with a decimal point. Better to report
- * nothing than a number nobody can trust.
+ * The two lexical metrics — `spellingErrors` and `cefrBandCoverage` — are built
+ * on `data/lexicon.js`, two open word lists committed under `data/lexicon/`.
+ * They were absent until 2026-08-19 for want of a dictionary; the platform's own
+ * teaching word lists hold about a hundred entries between them, and a spell
+ * checker built on those would have marked nearly every correct word wrong.
  *
- * The four waveform metrics need the candidate's audio decoded. Recordings
- * arrive as opaque webm/opus blobs from MediaRecorder, and this application has
- * one npm dependency. Decoding them is a real decision about a real dependency,
- * not something to slip in.
+ * The four that remain need the candidate's audio decoded to a waveform.
+ * Recordings arrive as opaque webm/opus blobs from MediaRecorder and this
+ * application has one npm dependency, so that is a real decision about a real
+ * dependency rather than something to slip in.
  * ---------------------------------------------------------------------------
  */
 'use strict';
 
 const rubrics = require('./data/rubrics');
+const lexicon = require('./data/lexicon');
 
 /**
  * Hesitation markers — sounds that are never anything but hesitation.
@@ -66,8 +66,6 @@ const FILLERS_ONE = new Set(['um', 'uh', 'uhm', 'er', 'erm', 'ah', 'eh', 'hmm', 
 /* Quantities `rubrics.js` names but nothing produces, with the reason. Exported
    so docs and tests read the same list rather than two copies that drift. */
 const MISSING = {
-  spellingErrors: 'Needs a dictionary. The platform holds about a hundred teaching words, not a lexicon.',
-  cefrBandCoverage: 'Needs a CEFR-tagged lexicon, for the same reason.',
   silenceRatio: 'Needs the recording decoded to a waveform.',
   pauseCount: 'Needs the recording decoded to a waveform.',
   meanLengthOfRun: 'Needs pause boundaries, so it needs the waveform too.',
@@ -109,7 +107,54 @@ function measure(text, durationMs) {
 
   const types = new Set(w).size;
 
+  /* Spelling, counted conservatively.
+     ------------------------------------------------------------------
+     Over-counting here invents evidence against a candidate, so every
+     doubtful case is resolved in their favour: regular inflections,
+     contractions, hyphenated compounds, numbers and both spelling
+     varieties all pass. A capitalised word mid-sentence is skipped
+     entirely — it is a name far more often than a misspelling, and no
+     word list holds the world's names.
+
+     The cost is real misses. "occured" reduces to "occur" and passes.
+     That is the direction to be wrong in. */
+  const tokens = raw.split(/\s+/).filter(Boolean);
+  const misspelt = [];
+  tokens.forEach((tok, i) => {
+    const bare = tok.replace(/^[^A-Za-z'’-]+|[^A-Za-z'’-]+$/g, '');
+    if (!bare || bare.length < 2) return;
+    /* Sentence-initial capitals are ordinary words; capitals elsewhere are
+       usually names. The first token of the response counts as initial too. */
+    const initial = i === 0 || /[.!?]["'’)]?$/.test(tokens[i - 1] || '');
+    if (!initial && /^[A-Z]/.test(bare)) return;
+    if (!lexicon.isWord(bare)) misspelt.push(bare.toLowerCase());
+  });
+
+  /* Vocabulary reach, by frequency band (docs/LEARNING.md §1.4).
+     Counted over DISTINCT words: repeating "the" forty times says nothing
+     about range, which is what the `vocabulary` criterion asks about. */
+  const distinct = [...new Set(w)];
+  const byBand = {};
+  let banded = 0;
+  for (const word of distinct) {
+    const b = lexicon.bandOf(word);
+    if (!b) continue;
+    byBand[b] = (byBand[b] || 0) + 1;
+    banded++;
+  }
+  const ORDER = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
+  const share = {};
+  ORDER.forEach(b => { share[b] = banded ? Math.round(((byBand[b] || 0) / banded) * 1000) / 1000 : 0; });
+
   return {
+    /* How many words were not recognised, and which — the list is what makes
+       the number checkable by a person rather than taken on trust. */
+    spellingErrors: misspelt.length,
+    spellingFlagged: misspelt,
+    /* Distribution of distinct words across frequency bands, and how far up
+       the candidate reached at all. `null` when there is nothing to measure. */
+    cefrBandCoverage: banded ? share : null,
+    cefrReach: banded ? [...ORDER].reverse().find(b => (byBand[b] || 0) > 0) || null : null,
     wordCount: w.length,
     /* Blank-line separated blocks. An email written as one wall of text and one
        written with a greeting, body and sign-off differ here, which is what the
@@ -206,6 +251,29 @@ function checkBands(part, bands, metrics) {
         `Covering ${metrics.keyPointsCovered} of ${metrics.keyPointsTotal} key points is band ${should} `
         + `by the rubric's own percentages, but band ${bands.content} was given.`);
     }
+  }
+
+  /* Mechanics against unrecognised words. Band 4 and above on a piece with
+     errors in more than a twentieth of its words is the band and the page
+     disagreeing. The count is deliberately an undercount (see `measure()`), so
+     reaching this threshold takes real, repeated misspelling. */
+  if (has('mechanics') && metrics.wordCount >= 50
+      && bands.mechanics >= 4 && metrics.spellingErrors / metrics.wordCount > 0.05) {
+    flag('mechanics', 'spellingErrors', metrics.spellingErrors,
+      `Band 4 and above describes control of surface accuracy, but ${metrics.spellingErrors} words `
+      + `of ${metrics.wordCount} were not recognised`
+      + (metrics.spellingFlagged && metrics.spellingFlagged.length
+        ? ` (${metrics.spellingFlagged.slice(0, 5).join(', ')})` : '') + '.');
+  }
+
+  /* Vocabulary range against how far up the frequency bands the candidate
+     actually reached. Band 5 is "precise and wide"; an answer of any length
+     that never leaves the commonest 1,800 words has not shown that. */
+  if (has('vocabulary') && metrics.wordCount >= 60 && bands.vocabulary >= 5
+      && metrics.cefrReach && ['A1', 'A2'].includes(metrics.cefrReach)) {
+    flag('vocabulary', 'cefrReach', metrics.cefrReach,
+      'Band 5 describes precise and wide vocabulary, but every distinct word used falls in '
+      + 'the commonest 1,800 of English.');
   }
 
   /* Task fulfilment on an answer far shorter than the prompt asked for. Not a

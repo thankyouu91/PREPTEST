@@ -890,11 +890,54 @@ console.log('\n\x1b[1m== Rubric · ôn tập cá nhân hoá ==\x1b[0m');
   ok(RM.measure('I would like to raise this, so I could not use the parts').fillerCount === 0,
     '"like" là động từ và "so" là liên từ thì không bị tính là ngập ngừng');
 
-  /* Cái gì KHÔNG đo được thì nói ra, không bịa. */
-  ok(Object.keys(RM.MISSING).length === 6, 'Sáu đại lượng chưa dựng được, có nêu tên');
+  /* Cái gì KHÔNG đo được thì nói ra, không bịa. Bốn cái còn lại đều cần giải mã
+     sóng âm — hai cái từ vựng đã dựng được từ 19/08/2026 nhờ từ điển mở. */
+  ok(Object.keys(RM.MISSING).length === 4, 'Bốn đại lượng chưa dựng được, có nêu tên',
+    Object.keys(RM.MISSING).join(', '));
+  ok(!('spellingErrors' in RM.MISSING) && !('cefrBandCoverage' in RM.MISSING),
+    'Hai đại lượng từ vựng không còn nằm trong danh sách thiếu');
   ok(Object.values(RM.MISSING).every(v => v.length > 20),
     'Mỗi cái đều nói rõ thiếu gì mới làm được, không chỉ ghi "chưa làm"');
-  ok(m.notMeasured.length === 6, 'Kết quả đo tự khai phần nó không đo được');
+  ok(m.notMeasured.length === 4, 'Kết quả đo tự khai phần nó không đo được');
+
+  /* ---- Từ điển: chấm chính tả phải sai về phía có lợi cho thí sinh ---- */
+  const L = require('../server/data/lexicon.js');
+  ok(L.WORDS.size > 40000, 'Từ điển đủ lớn để tra chính tả', String(L.WORDS.size));
+
+  const phaiQua = ['walked', 'liking', 'stopped', 'running', 'tried', 'families',
+    'is', 'are', 'were', 'children', 'better', 'went',
+    'colour', 'color', 'realise', 'realize', 'centre', 'center',
+    'well-known', "don't", "it's", "o'clock"];
+  const bịChan = phaiQua.filter(w => !L.isWord(w));
+  ok(bịChan.length === 0,
+    'Biến thể đều đặn, dạng bất quy tắc, viết tắt và CẢ HAI biến thể Anh-Anh/Anh-Mỹ đều qua được',
+    bịChan.join(', '));
+
+  ok(['teh', 'recieve', 'definately', 'acommodation', 'seperate'].every(w => !L.isWord(w)),
+    'Lỗi chính tả thật vẫn bắt được');
+
+  /* Bậc theo hạng tần suất, đúng luật docs/LEARNING.md §1.4. */
+  ok(L.bandOf('the') === 'A1' && L.bandOf('difficult') === 'A2',
+    'Từ hay gặp xếp bậc thấp', L.bandOf('the') + '/' + L.bandOf('difficult'));
+  ok(['C1', 'C2'].includes(L.bandOf('ubiquitous')), 'Từ hiếm xếp bậc cao', L.bandOf('ubiquitous'));
+  ok(L.bandOf('recieve') === null, 'Từ sai chính tả thì không có bậc');
+
+  /* Đếm chính tả trên bài thật. */
+  const saiCT = RM.measure('I am writting to complane about the acommodation wich was not accepteble.');
+  ok(saiCT.spellingErrors >= 4, 'Đếm được lỗi chính tả', String(saiCT.spellingErrors));
+  ok(saiCT.spellingFlagged.length === saiCT.spellingErrors,
+    'Có kèm danh sách từ bị bắt, để người soát kiểm lại được chứ không phải tin suông');
+  ok(RM.measure('I met Helen and Daniel at the Brighton office on Tuesday.').spellingErrors === 0,
+    'Tên riêng giữa câu không bị tính là sai chính tả — không danh sách nào chứa hết tên người');
+  ok(RM.measure('Dear Sir, I am writing about the order I placed last week.').spellingErrors === 0,
+    'Bài viết đúng thì không bắt gì');
+
+  /* Độ với của từ vựng. */
+  const donGian = RM.measure('I go to school every day and I like my school. The school is big and good.');
+  ok(['A1', 'A2'].includes(donGian.cefrReach), 'Bài dùng toàn từ thường thì với tới A1–A2', String(donGian.cefrReach));
+  const cao = RM.measure('The committee acknowledged that its deliberations had been unduly perfunctory.');
+  ok(['C1', 'C2'].includes(cao.cefrReach), 'Bài dùng từ hiếm thì với tới C1–C2', String(cao.cefrReach));
+  ok(RM.measure('').cefrBandCoverage === null, 'Bài rỗng thì không có phân bố bậc, không phải toàn số 0');
 
   /* Mọi đại lượng rubric khai phải hoặc đo được, hoặc nằm trong danh sách thiếu
      — không có cái thứ ba là "quên mất". */
