@@ -938,6 +938,18 @@ const run = async () => {
       asAdmin.data.families.filter(f => f.status === 'coming_soon').map(f => f.id).join(', '));
   }
 
+  /* 16c. View as a student — preview the student site on the demo account without
+     leaving the admin session, and raise the flag the "back to admin" banner reads. */
+  r = await call('POST', '/api/admin/preview-student');
+  check('An administrator can start a student preview', r.status === 200, 'status ' + r.status);
+  check('The preview raises the banner flag', jar.get('prep_preview') === '1', String(jar.get('prep_preview')));
+  const asStudent = await call('GET', '/api/me');
+  check('The preview browser is now the demo student',
+    asStudent.data.user && asStudent.data.user.username === 'student',
+    JSON.stringify(asStudent.data.user && asStudent.data.user.username));
+  r = await call('GET', '/api/admin/reports');
+  check('The admin session survives the preview — both cookies coexist', r.status === 200, 'status ' + r.status);
+
   /* 17. Signing out kills the session */
   r = await call('POST', '/api/admin/logout');
   check('Signs out', r.status === 200);

@@ -1622,6 +1622,22 @@ router.post('/admin/me', async (req, res) => {
   res.json({ ok: true, name });
 });
 
+/* POST /admin/preview-student — look at the student site with real data.
+   It signs THIS browser into the read-only demo student alongside the admin
+   session (prep_user and prep_admin are separate cookies and never collide), and
+   raises a prep_preview flag the student pages read to show a "back to admin"
+   banner. Scoped to the demo account by design: an administrator can walk the
+   platform, never open a real student's private dashboard. Ending the preview is
+   an ordinary student sign-out, which clears the flag too. */
+router.post('/admin/preview-student', async (req, res) => {
+  const demo = await q.get('SELECT id FROM users WHERE username=?', A.DEMO_STUDENT_USER);
+  if (!demo) return res.status(404).json({ error: 'There is no demo student on this server to preview.' });
+  await A.createUserSession(demo.id, req, res);
+  A.setPreviewFlag(res, true);
+  await audit(req, 'admin.preview_student', 'users/' + demo.id, {});
+  res.json({ ok: true });
+});
+
 router.post('/admin/password', async (req, res) => {
   const b = req.body || {};
   const cur = typeof b.current === 'string' ? b.current : '';

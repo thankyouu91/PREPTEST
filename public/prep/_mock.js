@@ -632,3 +632,33 @@ if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch(function () {});
   });
 }
+
+/* ---------------- Admin "view as a student" banner ----------------
+   When an administrator is previewing the student site, a prep_preview flag rides
+   alongside their admin session (the prep_admin cookie is untouched, so the way
+   back is always open). Every student page loads this file, so the banner and its
+   button appear everywhere — dashboard and exam runner alike. Signing out, here or
+   anywhere, clears the flag server-side, so the banner does not outlive the preview. */
+(function () {
+  if (!/(?:^|;\s*)prep_preview=1(?:;|$)/.test(document.cookie)) return;
+  function go() { location.href = '/admin/'; }
+  function mount() {
+    if (document.getElementById('admin-preview-bar')) return;
+    var bar = document.createElement('div');
+    bar.id = 'admin-preview-bar';
+    bar.className = 'fixed top-3 right-3 z-[100] flex items-center gap-2.5 rounded-full panel-brand text-white ps-4 pe-2 py-2 shadow-soft-lg';
+    bar.setAttribute('role', 'status');
+    bar.innerHTML = '<span class="text-[13px] font-semibold">Viewing as a student</span>' +
+      '<button type="button" id="admin-preview-back" class="btn btn-on-brand btn-sm">Back to admin</button>';
+    document.body.appendChild(bar);
+    document.getElementById('admin-preview-back').addEventListener('click', function () {
+      var m = document.cookie.match(/(?:^|;\s*)prep_csrf=([^;]+)/);
+      fetch('/api/auth/logout', {
+        method: 'POST', credentials: 'same-origin',
+        headers: { 'X-CSRF-Token': m ? decodeURIComponent(m[1]) : '' }
+      }).then(go, go);
+    });
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', mount);
+  else mount();
+})();

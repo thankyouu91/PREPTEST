@@ -192,7 +192,7 @@ const AD = {
           '<span class="block text-xs text-muted font-medium">Admin area</span></span>' +
         '</a>' +
         '<nav class="grid gap-1.5">' + nav + '</nav>' +
-        '<a href="/prep/landing/" class="nav-item mt-6">' + this.icon('external', 'w-5 h-5 shrink-0') + '<span>View the student site</span></a>' +
+        '<button type="button" data-view-student class="nav-item mt-6 w-full text-start">' + this.icon('eye', 'w-5 h-5 shrink-0') + '<span>View as a student</span></button>' +
         '<div class="mt-auto pt-6 grid gap-4">' +
           '<button type="button" data-dark class="btn btn-ghost btn-sm" aria-label="Toggle dark mode"><span data-dark-icon></span><span data-dark-label>Dark mode</span></button>' +
           /* The profile lives inside the name: hover (or click) the identity row and a
@@ -293,6 +293,16 @@ const AD = {
       });
       this.qs('[data-profile-pw]', pWrap).addEventListener('click', () => { close(); this.changePassword(); });
     }
+
+    /* "View as a student" opens the real student site — dashboard and exam runner,
+       with the demo account's data — and drops in a banner with the way back. */
+    this.qsa('[data-view-student]').forEach(b => b.addEventListener('click', async () => {
+      b.disabled = true;
+      try {
+        await this.post('/admin/preview-student');
+        location.href = '/prep/';
+      } catch (e) { b.disabled = false; this.toast(e.message, 'error'); }
+    }));
     return admin;
   },
 

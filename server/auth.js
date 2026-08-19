@@ -176,6 +176,17 @@ async function destroyUserSession(req, res) {
   if (token) await q.run('DELETE FROM user_sessions WHERE token_hash=?', sha256(token));
   setCookie(res, 'prep_user', '', { maxAge: 0 });
   setCookie(res, 'prep_csrf', '', { httpOnly: false, maxAge: 0 });
+  /* Signing out also ends an admin's "view as student" preview, so the banner
+     never lingers on a page that is no longer a preview. Harmless for a normal
+     student, who never carries this flag. */
+  setPreviewFlag(res, false);
+}
+
+/* The "view as student" flag. Deliberately NOT HttpOnly: it drives a banner on
+   the student pages and carries nothing sensitive — the actual preview is the
+   prep_user session set alongside it, which IS HttpOnly. */
+function setPreviewFlag(res, on) {
+  setCookie(res, 'prep_preview', on ? '1' : '', { httpOnly: false, maxAge: on ? USER_SESSION_DAYS * 86400 : 0 });
 }
 
 /** Sign out every device — used after a password change or reset */
@@ -571,7 +582,7 @@ module.exports = {
   parseCookies, setCookie, cookieIsSecure,
   createSession, destroySession, currentAdmin, purgeSessions,
   createUserSession, destroyUserSession, dropUserSessions, currentUser, requireUser,
-  ensureCsrfCookie,
+  ensureCsrfCookie, setPreviewFlag,
   throttleKey, isLocked, noteFailure, clearFailures, clearAllLocks,
   totpEnabled, verifySecondFactor, issueRecoveryCodes, recoveryCodesLeft,
   rateLimit, rateLimitPeek, rateLimitNote,
