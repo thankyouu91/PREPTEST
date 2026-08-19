@@ -11,11 +11,16 @@ and [`docs/ACADEMIC.md`](ACADEMIC.md) for why the levels are what they are.
 
 ## 0. Why this document is short and the checker is not
 
-The bank today holds 132 items, written by one person in one stretch. Growing
-it to 500 means several authors, or a model, at several different times — and
-at that point the only thing keeping part C at four options, part B with
-something to mark against, and part A down to a single missing word, is a check
-that **runs**.
+The bank holds 407 items: the original 132, plus five complete papers of 55.
+Growing it further means several authors, or a model, at several different
+times — and at that point the only thing keeping part C at four options, part B
+with something to mark against, and part A down to a single missing word, is a
+check that **runs**.
+
+It earns this on the five forms already. Writing them, the checker caught four
+passages short of the 50-word target, six dictation sentences outside the
+10–14 word band, and a part E whose average sentence length would not have fit
+its clock — none of which reading the file would have shown.
 
 So the rules below come in two kinds, and it is worth knowing which you are
 reading. **Shape** is checked by a program. **Craft** is not, and cannot be.
@@ -41,7 +46,7 @@ going to catch you breaking it:
 | E and H | the answer matches the script once case and punctuation are normalised |
 | D | the prompt states the register in words |
 | B, D, I, J | enough key points for the criterion that marks them, none too short, none duplicated |
-| Scripts | capitalised words that are not common English, which Kokoro will mispronounce |
+| Scripts | proper nouns appearing mid-sentence that are not on the allowlist of names an English voice says correctly |
 
 The checker holds no copy of these rules. It reads the part table from
 `server/data/exam-formats.js` and the marking weights from
@@ -55,19 +60,24 @@ What it cannot see is in §9, and it is most of what makes an item good.
 
 ## 1. Where an item goes
 
-Two files, split by one question: **does the part play audio?**
-
 | File | Parts | Why |
 |---|---|---|
-| `server/data/vpet-items.js` | A, B, C, D, I | No audio. Loaded at startup by `seedVpetItems()`, matched on `ext_key`. |
-| `server/data/vpet-scripts.js` | E, F, G, H, J | Every item carries a script to be read aloud. Imported by `node scripts/nhap-kich-ban.js`. |
+| `server/data/vpet-items.js` | A, B, C, D, I | The original bank, no audio. Loaded at startup by `seedVpetItems()`, matched on `ext_key`. |
+| `server/data/vpet-scripts.js` | E, F, G, H, J | The original bank, audio. Imported by `node scripts/nhap-kich-ban.js`. |
+| `server/data/forms/vpet-form-N.js` | **all ten** | One complete paper per file. Imported by `node scripts/nhap-bo-de.js`, which sorts out audio from the blueprint. |
 
 The split is enforced in both directions. An item in an audio part without a
 script fails; an item in a silent part that carries one also fails, because it
 would show a "Build MP3" button on a part that never plays anything.
 
-**Never put the same item in both files.** They are two import paths writing to
-one table, and the paper builder would draw whichever copy it happened to hit.
+**New material goes in a form file.** Splitting each paper in half by whether a
+part happens to play audio follows the two old import commands, not anything
+about the exam, and at five papers it makes a form impossible to read as a
+form. A form file is one sitting, all ten parts of it.
+
+**Never put the same item in two files.** They are separate import paths writing
+to one table, and the paper builder would draw whichever copy it happened to
+hit.
 
 ---
 
@@ -86,20 +96,21 @@ one table, and the paper builder would draw whichever copy it happened to hit.
 
 ## 3. The parts
 
-Counts are per paper. "Pool" is what the bank holds today.
+Counts are per paper. "Pool" is what the bank holds today, and "Plays" is how
+many times an audio item may be heard in total (§5a).
 
-| | Part | Skill | Type | Items | Min | Audio | Pool |
+| | Part | Skill | Type | Items | Min | Plays | Pool |
 |---|---|---|---|---|---|---|---|
-| A | Sentence Completion | writing | gap | 10 | 10 | — | 30 |
-| B | Passage Reconstruction | writing | essay | 3 | 9 | — | 8 |
-| C | Reading Comprehension | reading | mcq | 3 | 6 | — | 8 |
-| D | E-Mail Writing | writing | essay | 2 | 18 | — | 8 |
-| E | Dictation | listening | gap | 8 | 6 | ✓ | 16 |
-| F | Response Selection | listening | mcq | 8 | 4 | ✓ | 16 |
-| G | Passage Comprehension | listening | mcq | 6 | 6 | ✓ | 12 |
-| H | Repeat | speaking | speaking | 10 | 4 | ✓ | 20 |
-| I | Speaking Situations | speaking | speaking | 2 | 4 | — | 8 |
-| J | Story Retellings | speaking | speaking | 3 | 9 | ✓ | 6 |
+| A | Sentence Completion | writing | gap | 10 | 10 | — | 80 |
+| B | Passage Reconstruction | writing | essay | 3 | 9 | — | 23 |
+| C | Reading Comprehension | reading | mcq | 3 | 6 | — | 23 |
+| D | E-Mail Writing | writing | essay | 2 | 18 | — | 18 |
+| E | Dictation | listening | gap | 8 | 6 | 2 | 56 |
+| F | Response Selection | listening | mcq | 8 | 4 | 3 | 56 |
+| G | Passage Comprehension | listening | mcq | 6 | 6 | **1** | 42 |
+| H | Repeat | speaking | speaking | 10 | 4 | 1 | 70 |
+| I | Speaking Situations | speaking | speaking | 2 | 4 | — | 18 |
+| J | Story Retellings | speaking | speaking | 3 | 9 | 1 | 21 |
 
 55 items, 76 minutes.
 
@@ -182,12 +193,13 @@ A short spoken line; the candidate picks the reply that fits.
 
 A longer spoken passage with comprehension questions.
 
-- Passage around **84 words / 30 seconds** in the current items.
+- Passage around **85 words / 30 seconds**.
 - **Exactly 4 options** per question.
-- ⚠ **The blueprint intends several questions per passage.** The bank currently
-  has one passage per question, and that is what makes part G need 193% of its
-  clock (§8). New part G material should be written as **2 passages × 3
-  questions**, not 6 × 1.
+- The passage plays **once** (§5a). Write it so one hearing is enough: the
+  question should turn on something stated, not on a detail a listener would
+  need to go back for. Several of the strongest items in the bank name the
+  answer and then name three things it is not, which is a shape that survives
+  a single hearing.
 
 ### Part H — Repeat
 
@@ -322,13 +334,39 @@ builds at the 1.25 that was asked for. The auditor now estimates at
 error visible only on scripts nobody has rendered yet — which is exactly when
 an author is deciding whether a new passage fits its clock.
 
-Then:
+### 5a. How many times an item plays
+
+Declared per part in the blueprint, not as one platform-wide number:
+
+| Part | Replays | Why |
+|---|---|---|
+| E | 1 | Dictation — a second hearing is the task. A third does not fit the typing. |
+| F | 2 | Single short lines; the part sits at 84% even at three plays. |
+| G | **0** | A comprehension passage played three times is a reading test with an audio delivery mechanism. |
+| H | 0 | A replay would be answering the question. |
+| J | 0 | The item says "you will hear a short story once". |
+
+This was one flat default of 2 until August 2026, which put part G at **193% of
+its six minutes** — six half-minute passages played three times each is 576
+seconds of listening before a candidate reads a single option. The passages were
+not too long; the allowance was wrong. At the numbers above, G sits at 87% and E
+at 92%.
+
+Changing a number here changes what a candidate is allowed to do, so it is the
+owner's to set. `npm run soat-de` fails any part whose `replays` and `minutes`
+disagree, so a change that does not fit says so immediately.
+
+### 5b. Building the audio
 
 ```
-node scripts/nhap-kich-ban.js --thu      # dry run: what would be imported
-node scripts/nhap-kich-ban.js            # import
-node scripts/dung-audio-kokoro.mjs       # render MP3s
+node scripts/nhap-bo-de.js --thu         # dry run: what would be imported
+node scripts/nhap-bo-de.js               # import a form file
+node scripts/dung-audio-kokoro.mjs       # render MP3s, whole bank in one batch
 ```
+
+The renderer loads the model once for the whole run rather than once per item —
+175 items take minutes rather than an hour and a half. `--part=G` and
+`--so-cau=N` narrow it while drafting.
 
 Editing a script after its MP3 exists **invalidates the approval** — the file no
 longer reads what the item claims. That is deliberate; re-approve in Admin →
@@ -354,64 +392,60 @@ that level draws every item, so a retake is the identical part.
 
 ### Where the bank stands
 
-| Part | Needs | A2 | B1 | B2 | Verdict |
-|---|---|---|---|---|---|
-| A | 10 | 4 | 6 | 20 | shallow, shallow, deep — fine |
-| B | 3 | — | 2 | 6 | shallow, deep — fine |
-| C | 3 | — | 2 | 6 | shallow, deep — fine |
-| D | 2 | — | 4 | 4 | deep, deep — fine |
-| I | 2 | — | 4 | 4 | deep, deep — fine |
-| **E** | **8** | — | **8** | **8** | **exact — repeats** |
-| **F** | **8** | — | **8** | **8** | **exact — repeats** |
-| **G** | **6** | — | **6** | **6** | **exact — repeats** |
-| **H** | **10** | — | **10** | **10** | **exact — repeats** |
-| **J** | **3** | — | **3** | **3** | **exact — repeats** |
+Every part is now deep at both levels, after the five forms were added.
 
-**Every audio part sits exactly on the forbidden number.** Generating two B1
-papers back to back from the authored bank gives identical items for E, F, G, H
-and J — 35 of the 55 items on the paper — with only the order differing. Only
-A, B, C, D and I vary.
+| Part | Needs | A2 | B1 | B2 |
+|---|---|---|---|---|
+| A | 10 | 4 | 36 | 40 |
+| B | 3 | — | 11 | 12 |
+| C | 3 | — | 11 | 12 |
+| D | 2 | — | 10 | 8 |
+| E | 8 | — | 32 | 24 |
+| F | 8 | — | 32 | 24 |
+| G | 6 | — | 24 | 18 |
+| H | 10 | — | 40 | 30 |
+| I | 2 | — | 10 | 8 |
+| J | 3 | — | 12 | 9 |
 
-This is the single strongest reason to grow the bank, and it says exactly where
-to start. To make each audio part deep at both levels:
+**What this fixed.** Before the forms, every audio part held exactly the
+blueprint count at each level — the one number the rule forbids. Two B1 papers
+generated back to back shared all of E, F, G, H and J: 35 of 55 items, with only
+the order differing. Measured again after: **no part identical, about a quarter
+of items overlapping**, which is what a random draw from a deep pool looks like.
 
-| Part | Have | Need for depth | To write |
-|---|---|---|---|
-| E | 8 + 8 | 16 + 16 | **+16** |
-| F | 8 + 8 | 16 + 16 | **+16** |
-| G | 6 + 6 | 12 + 12 | **+12** (as 4 passages × 3 questions per level) |
-| H | 10 + 10 | 20 + 20 | **+20** |
-| J | 3 + 3 | 6 + 6 | **+6** |
-
-70 new scripted items and two whole sittings become genuinely distinct.
-
-**Why this was not already visible.** Two checks both looked at it and both
-missed it, in different ways. `scripts/test-items.mjs` applies the depth rule
-per level, correctly — but it reads `vpet-items.js` and so never sees the five
-scripted parts at all. `soat-de-vpet.mjs` did see them, but summed its pool
-across levels: part E holds 16 items against a blueprint of 8, twice what is
-needed, and the column went green. The 16 are 8 at B1 and 8 at B2, and a B1
-paper draws only from the 8.
-
-`soat-de-vpet.mjs` now counts per level and reports all five as warnings rather
-than blockers, since closing them is 70 items of writing, not a code fix.
-Extending `test-items.mjs` over the scripted parts is worth doing once they are
-grown — until then it would only fail the build on something already known.
+**Why it had not been visible.** Two checks looked at it and both missed it, in
+different ways. `scripts/test-items.mjs` applies the depth rule per level,
+correctly, but reads `vpet-items.js` and so never saw the five scripted parts.
+`soat-de-vpet.mjs` did see them and summed its pool across levels: part E held
+16 items against a blueprint of 8, twice what is needed, and the column went
+green — but the 16 were 8 at B1 and 8 at B2, and a B1 paper draws only from the
+8. It now counts per level.
 
 ---
 
 ## 7. Adding a batch
 
-1. Write the items into the right file (§1), following the part's section (§3).
+A new paper is a new file in `server/data/forms/`, registered in
+`server/data/vpet-forms.js`.
+
+1. Copy an existing form file and replace its content, following §3 part by
+   part. Give it a new `id` — the id becomes each item's `ext_key` prefix, so
+   two forms sharing one would overwrite each other on import.
 2. `npm run kiem-noi-dung` — fix everything it reports. It groups by fault, so
-   eight items with one mistake read as one job.
-3. For audio parts: `node scripts/nhap-kich-ban.js --thu`, then without `--thu`,
-   then `node scripts/dung-audio-kokoro.mjs`.
-4. `node scripts/soat-de-vpet.mjs` — per-part pool depth, audio, marking and
-   whether the part fits its clock.
-5. `SKIP_SHOTS=1 bash scripts/verify.sh` — everything, including the two above.
-6. Approve the audio in Admin → Question bank. Items publish only when audio
-   parts are `approved` and nothing is `retired` or `draft`.
+   eight items with one mistake read as one job rather than eight.
+3. `node scripts/nhap-bo-de.js --thu`, then without `--thu`. Re-running is safe:
+   items match on `ext_key`, so an edit updates rather than duplicates.
+4. `node scripts/dung-audio-kokoro.mjs` for the E, F, G, H and J items.
+5. `node scripts/soat-de-vpet.mjs` — pool depth per level, audio, marking, and
+   whether each part fits its clock.
+6. `SKIP_SHOTS=1 bash scripts/verify.sh` — everything, including steps 2 and 5.
+7. Approve the audio in Admin → Question bank. A paper publishes only when its
+   audio parts are `approved` and nothing in it is `retired` or `draft`.
+
+Editing a script after its MP3 exists pulls `audio_status` back to `none` on
+import. That is deliberate: a changed script beside an unchanged file is a
+question claiming to say one thing while the audio says another, and nobody
+finds out until a candidate hears it.
 
 ---
 
@@ -420,16 +454,17 @@ grown — until then it would only fail the build on something already known.
 These are decisions for the exam owner, not defects the checker can settle.
 They constrain how new material should be written, which is why they are here.
 
-- **Part G needs 193% of its clock.** Six separate 29-second passages for six
-  questions, with replays, cannot fit six minutes. Either the part is written
-  as the blueprint intends — 2 passages × 3 questions — or the clock grows.
-  **New part G material should assume the restructure**, since writing more
-  one-passage-one-question items makes the overrun worse.
-- **Part E needs 104%.** Marginal; one more minute, or one word shorter per
-  sentence, settles it.
 - **Part B's passage does not hide**, although the item says "after it
   disappears". The hide duration and what happens on a page reload both need
   deciding before this part is used for real.
+- **The replay allowances are a judgement, not a published rule.** §5a sets
+  them at what the clock permits. If the real VPET publishes different numbers,
+  those win, and `npm run soat-de` will say immediately whether the minutes
+  still work.
+
+Resolved since the first version of this document: part G at 193% of its clock
+and part E at 104% were both caused by a flat replay default rather than by the
+material (§5a).
 
 ---
 
