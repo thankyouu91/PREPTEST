@@ -138,11 +138,13 @@ const AD = {
   /* ---------- Chrome: sidebar + topbar ---------- */
   NAV: [
     { key: 'reports', label: 'Reports', icon: 'gauge', href: '/admin/' },
-    { key: 'tests', label: 'Tests', icon: 'fileText', href: '/admin/de-thi/' },
-    { key: 'formats', label: 'Formats', icon: 'layers', href: '/admin/format/' },
-    { key: 'bank', label: 'Question bank', icon: 'database', href: '/admin/ngan-hang/' },
-    { key: 'users', label: 'Students', icon: 'users', href: '/admin/hoc-vien/' },
-    { key: 'codes', label: 'Code', icon: 'ticket', href: '/admin/code/' },
+    { key: 'testsystem', label: 'Test System', icon: 'fileText', href: '/admin/de-thi/', tabs: [
+      { key: 'tests', label: 'Tests', href: '/admin/de-thi/' },
+      { key: 'formats', label: 'Formats', href: '/admin/format/' },
+      { key: 'bank', label: 'Question Bank', href: '/admin/ngan-hang/' }
+    ] },
+    { key: 'accounts', label: 'Account Management', icon: 'users', href: '/admin/hoc-vien/', activeFor: ['users'] },
+    { key: 'codes', label: 'Codes', icon: 'ticket', href: '/admin/code/' },
     { key: 'settings', label: 'Administration', icon: 'settings', href: '/admin/quan-tri/' }
   ],
 
@@ -151,12 +153,32 @@ const AD = {
     const app = this.qs('#app'), main = this.qs('#main');
     const active = app.getAttribute('data-active');
 
+    /* A page's data-active may be a sub-tab (tests/formats/bank) or an old key
+       (users); resolve which top-level nav item should light up, and whether the
+       Test System sub-tab bar applies. */
+    const navOwner = (() => {
+      for (const n of this.NAV) {
+        if (n.key === active) return n.key;
+        if (n.tabs && n.tabs.some(t => t.key === active)) return n.key;
+        if (n.activeFor && n.activeFor.indexOf(active) >= 0) return n.key;
+      }
+      return active;
+    })();
+    const tabGroup = this.NAV.find(n => n.key === navOwner && n.tabs);
+    const subtabs = tabGroup
+      ? '<div class="border-b border-line bg-card px-4 sm:px-6 lg:px-8 flex gap-1 overflow-x-auto no-scrollbar" role="tablist" aria-label="Test System sections">' +
+        tabGroup.tabs.map(t => '<a href="' + t.href + '" role="tab" class="shrink-0 px-3.5 py-3 text-sm font-semibold border-b-2 -mb-px transition ' +
+          (t.key === active ? 'border-brand-strong text-brand-strong' : 'border-transparent text-muted hover:text-ink') +
+          '"' + (t.key === active ? ' aria-selected="true"' : '') + '>' + this.esc(t.label) + '</a>').join('') +
+        '</div>'
+      : '';
+
     let admin = { name: '—', username: '', role: '' };
     try { admin = (await this.get('/admin/me')).admin; } catch (e) { return; }
 
     const initials = (admin.name || 'QT').trim().split(/\s+/).map(w => w[0]).slice(-2).join('').toUpperCase();
     const nav = this.NAV.map(n =>
-      '<a href="' + n.href + '" class="nav-item" ' + (n.key === active ? 'aria-current="page"' : '') + '>' +
+      '<a href="' + n.href + '" class="nav-item" ' + (n.key === navOwner ? 'aria-current="page"' : '') + '>' +
       this.icon(n.icon, 'w-5 h-5 shrink-0') + '<span>' + n.label + '</span></a>').join('');
 
     app.insertAdjacentHTML('afterbegin',
@@ -195,8 +217,8 @@ const AD = {
       '</header>' +
       '<nav class="lg:hidden flex gap-1.5 overflow-x-auto no-scrollbar border-b border-line bg-card px-4 py-2.5" aria-label="Navigation">' +
         this.NAV.map(n => '<a href="' + n.href + '" class="chip shrink-0" ' +
-          (n.key === active ? 'aria-pressed="true"' : '') + '>' + n.label + '</a>').join('') +
-      '</nav>');
+          (n.key === navOwner ? 'aria-pressed="true"' : '') + '>' + n.label + '</a>').join('') +
+      '</nav>' + subtabs);
 
     main.classList.add('lg:pl-[264px]', 'min-h-[100dvh]', 'pb-16');
 
