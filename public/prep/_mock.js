@@ -32,7 +32,11 @@ const PREP_FAMILIES = [
    for rendering the pre-start screen.                                 */
 const PREP_TESTS = [
   {
-    id: 'vpet-b1-01', familyId: 'vpet', title: 'VPET four skills B1', level: 'B1',
+    /* VPET is sat at Level 1 or Level 2; the mock carries the same three
+       fields the catalogue sends, so a page built against the mock does not
+       break on the real payload. */
+    id: 'vpet-b1-01', familyId: 'vpet', title: 'VPET four skills, Level 1', level: 'L1',
+    levelName: 'Level 1', levelRange: 'A1 – B1+',
     durationMin: 112, comingSoon: true,
     skills: ['listening', 'reading', 'writing', 'speaking'],
     sections: [

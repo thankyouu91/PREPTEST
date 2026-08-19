@@ -67,6 +67,9 @@
           <div class="flex flex-wrap items-center gap-2" id="head-chips"></div>
           <h2 id="t-title" class="text-2xl sm:text-3xl font-extrabold tracking-tight mt-3.5"></h2>
           <p class="flex flex-wrap items-center gap-x-5 gap-y-2 text-[14px] font-semibold text-muted mt-3" id="t-meta"></p>
+          <!-- What the level measures. Empty and hidden for families that name a
+               CEFR band directly, where the badge already says everything. -->
+          <p class="text-[14.5px] leading-relaxed text-muted mt-2.5 max-w-[62ch]" id="t-level-note" hidden></p>
         </header>
 
         <div class="grid lg:grid-cols-12 gap-6 mt-8">
@@ -146,10 +149,21 @@
 
         PREP.qs('#head-chips').innerHTML =
           '<span class="exam-chip" data-family="' + fam.id + '">' + fam.name + '</span>' +
-          '<span class="badge badge-muted">' + test.level + '</span>' +
+          '<span class="badge badge-muted">' + PREP.esc(test.levelName || test.level) + '</span>' +
+          (test.levelRange ? '<span class="badge badge-muted">' + PREP.esc(test.levelRange) + '</span>' : '') +
           (test.comingSoon ? '<span class="badge badge-hl">Coming soon</span>' : '') +
           (unlocked ? '<span class="badge badge-ok">Unlocked</span>' : '');
         PREP.qs('#t-title').textContent = test.title;
+
+        /* What this level measures, on the screen where the candidate decides to
+           sit it. A paper reports only inside its own level's range, so someone
+           at B2 sitting Level 1 will top out at B1+ however well they do — that
+           is worth knowing before the clock starts, not after the result. */
+        const lvNote = PREP.qs('#t-level-note');
+        if (lvNote) {
+          if (test.levelBlurb) { lvNote.textContent = test.levelBlurb; lvNote.hidden = false; }
+          else lvNote.hidden = true;
+        }
 
         /* 0 items = nothing entered for that part yet; say so instead of showing "0 items" */
         const totalQ = PREP.itemCount(test);

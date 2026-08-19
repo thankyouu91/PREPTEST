@@ -700,25 +700,83 @@ console.log('\n\x1b[1m== Rubric · ôn tập cá nhân hoá ==\x1b[0m');
   ok(new Set(refs).size === refs.length, 'Không có khoá trùng nhau giữa các bộ đề mới');
   ok(!refs.some(r => cu.includes(r)), 'Khoá bộ đề mới không đụng khoá kho cũ');
 
-  /* Độ sâu THEO BẬC. Đây là thứ mà cộng gộp cả bank vào một con số sẽ giấu mất,
-     và là lý do năm bộ đề chia 3 B1 / 2 B2 chứ không chia đều. */
+  /* Độ sâu THEO LEVEL, không theo bậc CEFR.
+     Bộ sinh đề rút từ TẤT CẢ các bậc mà level của đề phủ — Level 1 rút chung
+     A1, A2, A2+, B1, B1+ — nên đó mới là cái bể có thật. Đếm theo từng bậc
+     riêng lẻ sẽ chia nhỏ bể ra và báo thiếu ở chỗ không thiếu. */
+  const EF = require('../server/data/exam-formats.js');
   const tatCa = [
-    ...require('../server/data/vpet-items.js').rows().map(r => ({ part: r.part, level: r.level })),
-    ...require('../server/data/vpet-scripts.js').allItems().map(i => ({ part: i.part, level: i.cefr })),
-    ...all.map(i => ({ part: i.part, level: i.level }))
+    ...require('../server/data/vpet-items.js').rows().map(r => ({ part: r.part, cefr: r.level })),
+    ...require('../server/data/vpet-scripts.js').allItems().map(i => ({ part: i.part, cefr: i.cefr })),
+    ...all.map(i => ({ part: i.part, cefr: i.cefr }))
   ];
   const ket = [];
   for (const [p, n] of Object.entries(bp)) {
-    for (const bac of ['B1', 'B2']) {
-      const c = tatCa.filter(x => x.part === p && x.level === bac).length;
+    for (const lv of EF.VPET_LEVELS) {
+      const c = tatCa.filter(x => x.part === p && lv.cefr.includes(x.cefr)).length;
       /* Nông (ít hơn blueprint) hoặc sâu (gấp đôi trở lên). Ở giữa là chỗ một
          lượt thi lại rút đúng cùng bộ câu. */
-      if (c >= n && c < n * 2) ket.push(`${p}@${bac} ${c}/${n}`);
+      if (c >= n && c < n * 2) ket.push(`${p}@${lv.id} ${c}/${n}`);
     }
   }
   ok(ket.length === 0,
-    'Không part nào ở bậc nào rơi vào khoảng giữa nông và sâu — lượt thi lại rút được đề khác',
+    'Không part nào ở level nào rơi vào khoảng giữa nông và sâu — lượt thi lại rút được đề khác',
     ket.join(', '));
+}
+
+/* ---- Hai level của VPET ----
+   VPET thi ở Level 1 hoặc Level 2, mỗi level phủ một dải CEFR, chứ không thi ở
+   một bậc CEFR. Trước 19/08/2026 `tests.level` giữ một bậc ('B1'), gộp hai thứ
+   khác nhau vào một ô: đề đo cái gì, và một câu trong đề khó tới đâu. */
+{
+  const F = require('../server/data/exam-formats.js');
+  const D = require('../server/data/descriptors.js');
+
+  ok(F.VPET_LEVELS.length === 2 && F.VPET_LEVELS.map(l => l.id).join(',') === 'L1,L2',
+    'VPET có đúng hai level');
+
+  /* Liền mạch: mọi điểm trên thang 10–90 thuộc đúng một level. Bản cũ để
+     B1+ (51–58) không thuộc level nào và tự gọi đó là chỗ "không sạch". */
+  const khong = [];
+  for (let g = 10; g <= 90; g++) if (!F.vpetLevelOfGse(g)) khong.push(g);
+  ok(khong.length === 0, 'Mọi điểm 10–90 đều thuộc một level, không còn khoảng hở',
+    khong.length ? khong[0] + '…' + khong[khong.length - 1] : '');
+
+  const [l1, l2] = F.VPET_LEVELS;
+  ok(l1.gse[1] + 1 === l2.gse[0], 'Hai dải nối nhau đúng tại 58/59',
+    l1.gse.join('-') + ' | ' + l2.gse.join('-'));
+  ok(F.vpetLevelOfGse(58) === 'L1' && F.vpetLevelOfGse(59) === 'L2',
+    'B1+ thuộc Level 1, B2 mở đầu Level 2');
+
+  /* Không bậc nào nằm ở cả hai level. */
+  const trung = l1.cefr.filter(c => l2.cefr.includes(c));
+  ok(trung.length === 0, 'Không bậc CEFR nào thuộc cả hai level', trung.join(','));
+
+  /* Mọi bậc CEFR mà đề dùng đều thuộc một level. `below A1` là KẾT QUẢ chứ
+     không phải độ khó của câu hỏi, nên nó không nằm trong danh sách nào. */
+  const bacDeDung = D.BANDS.map(b => b.band).filter(b => b !== 'below A1');
+  const lac = bacDeDung.filter(b => !F.vpetLevelOfCefr(b));
+  ok(lac.length === 0, 'Mọi bậc CEFR viết được câu hỏi đều thuộc một level', lac.join(','));
+  ok(F.vpetLevelOfCefr('below A1') === null,
+    '"below A1" không phải độ khó câu hỏi nên không thuộc level nào');
+  ok(F.vpetLevelOfGse(15) === 'L1',
+    'Nhưng điểm dưới A1 vẫn báo được ở Level 1 — đó là một kết quả có thật');
+
+  /* Bộ đề phải khai level của đề, tách khỏi bậc CEFR của câu. */
+  const FORMS = require('../server/data/vpet-forms.js');
+  ok(FORMS.FORMS.every(f => F.vpetLevel(f.level)),
+    'Mỗi bộ đề khai một level VPET hợp lệ', FORMS.FORMS.map(f => f.level).join(','));
+  ok(FORMS.FORMS.every(f => F.vpetLevel(f.level).cefr.includes(f.itemCefr)),
+    'Bậc CEFR của câu nằm trong dải mà level của đề phủ',
+    FORMS.FORMS.map(f => f.level + '/' + f.itemCefr).join(' '));
+  const soL1 = FORMS.FORMS.filter(f => f.level === 'L1').length;
+  ok(soL1 === 3 && FORMS.FORMS.length - soL1 === 2,
+    'Ba bộ Level 1, hai bộ Level 2 — đúng tỉ lệ giữ độ sâu cho cả hai level');
+
+  /* Format khai level bằng id level, không phải bằng bậc CEFR. */
+  const fmt = F.FORMATS.find(x => x.id === 'vpet-full');
+  ok(fmt.levels.join(',') === 'L1,L2', 'Format VPET khai hai level chứ không khai dải CEFR',
+    fmt.levels.join(','));
 }
 
 /* ---- Bậc 0 là một bài làm dở, không phải một bài trống ---- */

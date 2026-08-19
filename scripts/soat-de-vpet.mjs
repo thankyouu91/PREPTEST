@@ -182,16 +182,17 @@ for (const bp of Object.values(BLUEPRINT)) {
   let be = OK;
   if (mine.length < bp.items) { be = BAD; hong++; issues.push(`thiếu ${bp.items - mine.length} câu để dựng nổi một đề`); }
   else {
-    const theoBac = {};
-    mine.forEach(i => { theoBac[i.level] = (theoBac[i.level] || 0) + 1; });
-    /* Bậc "đúng bằng" hoặc "trên số blueprint nhưng chưa gấp đôi": lượt thi lại
-       ở bậc ấy sẽ trùng toàn bộ hoặc gần toàn bộ. */
-    const ket = Object.entries(theoBac)
-      .filter(([, n]) => n >= bp.items && n < bp.items * 2)
-      .map(([bac, n]) => `${bac} ${n}/${bp.items}`);
+    /* Đếm theo LEVEL, không theo bậc CEFR. Bộ sinh đề rút từ mọi bậc mà level
+       của đề phủ — Level 1 rút chung A1, A2, A2+, B1, B1+ — nên bể có thật là
+       bể của level. Đếm từng bậc riêng sẽ chẻ nhỏ bể ra rồi báo thiếu ở chỗ
+       không thiếu. */
+    const ket = FORMATS.VPET_LEVELS
+      .map(lv => ({ lv, n: mine.filter(i => lv.cefr.includes(i.level)).length }))
+      .filter(x => x.n >= bp.items && x.n < bp.items * 2)
+      .map(x => `${x.lv.name} ${x.n}/${bp.items}`);
     if (ket.length) {
       be = WARN; canh++;
-      issues.push(`bể đủ tổng cộng nhưng kẹt ở bậc ${ket.join(', ')} — lượt thi lại ở bậc đó rút đúng cùng bộ câu`);
+      issues.push(`bể đủ tổng cộng nhưng kẹt ở ${ket.join(', ')} — lượt thi lại ở level đó rút đúng cùng bộ câu`);
     }
   }
 

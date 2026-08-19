@@ -517,6 +517,22 @@ addColumnIfMissing('questions', 'key_points_json', "TEXT NOT NULL DEFAULT '[]'")
    refers to; every other part leaves it null. */
 addColumnIfMissing('questions', 'passage', 'TEXT');
 
+/* VPET papers sit at Level 1 or Level 2, not at a CEFR band.
+   ---------------------------------------------------------------------------
+   `tests.level` held a band ('B1'), which conflated two different things: what
+   a paper measures, and how hard one item on it is. VPET Level 1 spans A1-B1+
+   and Level 2 spans B2-C2, so a paper labelled 'B1' was claiming a precision
+   the paper does not have, and the generator — which matched a test's level
+   against an item's band as strings — had no way to draw the whole range.
+
+   Items keep their band; that is their difficulty. Only the paper moves.
+   Mapped by where the old band falls: B2 and above became Level 2, everything
+   below it Level 1, which is the same split the bands already implied. */
+db.exec(`
+  UPDATE tests SET level = CASE
+    WHEN level IN ('B2','B2+','C1','C2') THEN 'L2' ELSE 'L1' END
+  WHERE family_id='vpet' AND level NOT IN ('L1','L2')`);
+
 const addedAudioStatus = addColumnIfMissing(
   'questions', 'audio_status', "TEXT NOT NULL DEFAULT 'none'");
 /* none → queued → generating → ready → approved, or failed.
@@ -680,7 +696,9 @@ const FAMILIES = [
 ];
 
 const SEED_TESTS = [
-  { id:'vpet-b1-01', family:'vpet', title:'VPET four skills B1', level:'B1', dur:112, status:'published',
+  /* VPET is sat at Level 1 or Level 2, not at a CEFR band — see VPET_LEVELS in
+     data/exam-formats.js. Level 1 covers A1-B1+, which is what this paper was. */
+  { id:'vpet-b1-01', family:'vpet', title:'VPET four skills, Level 1', level:'L1', dur:112, status:'published',
     scoring:'On the CEFR A1-C2 scale, converted per skill',
     guide:['Have headphones and a microphone ready before the Listening / Speaking parts.',
            'Each part has its own clock; when it runs out the system moves on.',

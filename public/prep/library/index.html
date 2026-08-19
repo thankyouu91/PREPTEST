@@ -52,9 +52,14 @@
             <option value="writing">Writing</option>
             <option value="speaking">Speaking</option>
           </select>
+          <!-- Options are filled from the catalogue, not written here. Six exam
+               families share this control and they do not agree on what a level
+               is: VPET is sat at Level 1 or Level 2, each covering a range of
+               CEFR bands, while IELTS and TOEIC papers name a band directly. A
+               hard-coded A1..C2 list offered VPET candidates six choices that no
+               longer match any paper, and hid the two that do. -->
           <select id="f-level" class="input w-auto py-2.5" aria-label="Filter by level">
             <option value="">Level: all</option>
-            <option>A1</option><option>A2</option><option>B1</option><option>B2</option><option>C1</option><option>C2</option>
           </select>
           <select id="f-status" class="input w-auto py-2.5" aria-label="Filter by status">
             <option value="">Status: all</option>
@@ -160,6 +165,25 @@
       render();
     });
 
+    /* Level options come from the papers that exist.
+       Each distinct level appears once, labelled the way its family names it —
+       "Level 1 · A1 – B1+" for VPET, "B2" for a family that names a band. The
+       order follows the catalogue, which is already sorted by family, so the
+       two VPET levels stay adjacent and in order. */
+    function renderLevels() {
+      const seen = new Map();
+      PREP.tests.forEach(t => {
+        if (!t.level || seen.has(t.level)) return;
+        seen.set(t.level, t.levelRange ? (t.levelName + ' · ' + t.levelRange) : (t.levelName || t.level));
+      });
+      const sel = PREP.qs('#f-level');
+      sel.innerHTML = '<option value="">Level: all</option>' +
+        [...seen].map(([id, label]) =>
+          '<option value="' + PREP.esc(id) + '"' + (state.level === id ? ' selected' : '') + '>' + PREP.esc(label) + '</option>'
+        ).join('');
+    }
+    renderLevels();
+
     /* The remaining filter controls */
     PREP.qs('#q').addEventListener('input', e => { state.q = e.target.value.toLowerCase(); render(); });
     PREP.qs('#f-skill').addEventListener('change', e => { state.skill = e.target.value; render(); });
@@ -191,7 +215,7 @@
       const inner =
         '<div class="flex items-center gap-2 mb-3.5">' +
           '<span class="exam-chip" data-family="' + fam.id + '">' + fam.name + '</span>' +
-          '<span class="badge badge-muted">' + t.level + '</span>' +
+          '<span class="badge badge-muted"' + (t.levelRange ? ' title="' + PREP.esc(t.levelRange) + '"' : '') + '>' + PREP.esc(t.levelName || t.level) + '</span>' +
           (t.comingSoon ? '<span class="badge badge-hl ms-auto">Coming soon</span>' : '') +
         '</div>' +
         '<h3 class="font-bold text-[16px] leading-snug">' + PREP.esc(t.title) + '</h3>' +
@@ -207,7 +231,7 @@
       return '<article class="card card-locked card-hover p-5 flex flex-col">' +
         '<div class="flex items-center gap-2 mb-3.5">' +
           '<span class="exam-chip" data-family="' + fam.id + '">' + fam.name + '</span>' +
-          '<span class="badge badge-muted">' + t.level + '</span>' +
+          '<span class="badge badge-muted"' + (t.levelRange ? ' title="' + PREP.esc(t.levelRange) + '"' : '') + '>' + PREP.esc(t.levelName || t.level) + '</span>' +
           '<span class="w-7 h-7 rounded-full bg-[color:var(--color-card)] border border-line text-muted inline-flex items-center justify-center ms-auto" title="Locked" aria-label="Locked">' + PREP.icon('lock', 'w-[15px] h-[15px]') + '</span>' +
         '</div>' +
         '<h3 class="font-bold text-[16px] leading-snug text-muted">' + PREP.esc(t.title) + '</h3>' +

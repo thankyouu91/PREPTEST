@@ -64,10 +64,10 @@ report, and **certificates are only ever issued after a teacher signs off**. The
 split is a per-test `release_policy` (section 8.1): fast feedback for practice, a
 human gate on anything that becomes a document.
 
-**VPET is sat at one of two levels** (owner, 2026-08-11): Level 1 measures B1 and
-below, Level 2 measures B2 and above. A form never reports outside its own range —
-it reports a ceiling or a floor and recommends the other level instead
-(section 1.7).
+**VPET is sat at one of two levels** (owner, 2026-08-19): **Level 1 covers
+A1 – B1+**, **Level 2 covers B2 – C2**. The two ranges meet at 58/59 with no gap
+between them. A form never reports outside its own range — it reports a ceiling
+or a floor and recommends the other level instead (section 1.7).
 
 **What does not change.** The current architecture is right where it needs to be:
 the storage adapter (`server/storage.js`), the strict CSP with no external
@@ -286,39 +286,64 @@ rounding errors accumulate across four skills.
 
 VPET is sat at one of **two levels** (owner, 2026-08-11):
 
-| Level | Targets | Reliable GSE range | Reliable CEFR |
+| Level | Covers | GSE range | CEFR bands |
 |---|---|---|---|
-| **Level 1** | B1 and below | **10–50** | pre-A1 · A1 · A2 · A2+ · B1 |
-| **Level 2** | B2 and above | **59–90** | B2 · B2+ · C1 · C2 |
+| **Level 1** | A1 – B1+ | **10–58** | below A1 · A1 · A2 · A2+ · B1 · B1+ |
+| **Level 2** | B2 – C2 | **59–90** | B2 · B2+ · C1 · C2 |
+
+**The two ranges are contiguous** (owner, 2026-08-19). Every point on the 10–90
+scale belongs to exactly one level, and 58/59 is the boundary.
+
+This corrected an earlier version of this table which ran Level 1 to 50 and
+started Level 2 at 59, leaving **B1+ (51–58) in neither**. That version said the
+gap "belongs to neither level cleanly" and gave both levels a way to report it
+vaguely — which is a fair description of a problem, not a solution to one. B1+ is
+a Level 1 result. A candidate finishing at the top of Level 1 gets a band, not a
+hedge.
+
+`below A1` (10–21) sits inside Level 1's reporting range without being one of
+its targets: it is what a Level 1 paper says when the candidate did not reach A1.
+That is a real outcome and it needs somewhere to land. It is not an item
+difficulty — no question is written "at below A1".
 
 This is a measurement constraint, not a presentation one, and it has teeth:
 
 - **A form never reports outside its own range.** A Level 1 form cannot certify
   C1 — it contains no items hard enough to distinguish B2 from C1, so a C1 claim
-  from it would be unsupported by evidence. The scoring engine clamps to the
-  level's range and says why.
-- **The GSE 51–58 gap (B1+) belongs to neither level cleanly.** Level 1 reports it
-  as *at or above the ceiling*; Level 2 reports it as *below the floor*. Both are
-  honest; neither pretends to precision it does not have.
-- **Out-of-range results become a recommendation, not a grade.** Ceiling on
-  Level 1 → "you have topped out this level; sit Level 2 to be measured higher."
-  Floor on Level 2 → "this form starts at B2; sit Level 1 for an accurate
-  placement." That is a better learner experience than a meaningless number, and
-  it is also the honest answer.
+  from it would be unsupported by evidence.
+- **Out-of-range results become a recommendation, not a grade.** Above the
+  ceiling on Level 1 → "you have topped out this level; sit Level 2 to be
+  measured higher." Below the floor on Level 2 → "this form starts at B2; sit
+  Level 1 for an accurate placement." Better than a meaningless number, and also
+  the honest answer.
 
 | Outcome | Level 1 form | Level 2 form |
 |---|---|---|
-| GSE ≥ 48 | **ceiling flag** — recommend Level 2 | normal |
-| GSE ≤ 55 | normal | **floor flag** — recommend Level 1 |
+| GSE ≥ 59 | **ceiling** — recommend Level 2 | normal |
+| GSE ≤ 58 | normal | **floor** — recommend Level 1 |
+
+With contiguous ranges these two rules are exact rather than overlapping
+judgement calls: a result is above one level's ceiling precisely when it is
+inside the other's range.
+
+**Where this lives in code.** `VPET_LEVELS` in `server/data/exam-formats.js`,
+with `vpetLevel()`, `vpetLevelOfCefr()` and `vpetLevelOfGse()`. The ceiling and
+floor rules above are **not yet implemented** — the scoring engine does not
+clamp, so a Level 1 paper can currently report a band it has no items to support.
+That is the next piece of work this section implies.
 
 Consequences elsewhere in the platform:
 
-- `tests.level` already exists; the item bank needs items tagged so a Level 1 form
-  never draws Level 2 items. This rides along with the roadmap's "tag items by
-  VPET part" work — the same pass adds the level dimension.
+- **Done.** `tests.level` now holds `L1` or `L2` for VPET rather than a CEFR
+  band, and the generator draws only from the bands its level accepts, so a
+  Level 1 form cannot pick up a Level 2 item. Items keep their CEFR band, which
+  is their difficulty; the level says which of those bands belong on the paper.
+  The two were the same field until 2026-08-19, which is why the generator had
+  no way to express "this paper covers A1 to B1+".
 - Two audio banks in practice: a Level 1 dictation sentence and a Level 2 one are
   different items, so **section 1.2's ~10,550 characters is per form per level**.
-  Budget for both.
+  Budget for both. As built: five forms, three at Level 1 and two at Level 2,
+  with separate audio for each.
 - The rubrics in section 1.5 are shared, but the **anchors** in section 6.5 are
   not: a Level 1 anchor set spanning A1–B1 and a Level 2 set spanning B2–C2 are
   different calibration problems. `rubric_anchors` needs a `level` column.

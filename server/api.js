@@ -21,6 +21,27 @@ router.use(express.json({ limit: '1mb' }));
 /* ============================ Helpers ============================ */
 const SKILLS = ['listening', 'reading', 'writing', 'speaking'];
 const LEVELS = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
+
+/**
+ * The CEFR bands a paper at this level may draw items from.
+ *
+ * VPET is not sat at a CEFR band — it is sat at Level 1 or Level 2, and each
+ * covers a range (A1–B1+, B2–C2). An item still carries a CEFR band, because
+ * that is its difficulty; the level says which of those bands belong on the
+ * paper. Every other family names a band directly, and for them this is just
+ * that band.
+ *
+ * Getting this wrong is not a display bug. A Level 1 paper holding a C1 item
+ * is a paper whose result cannot be defended, because nothing else on it can
+ * tell B2 from C1.
+ */
+function levelBands(level) {
+  const lv = EXAM_FORMATS.vpetLevel(level);
+  return lv ? lv.cefr : [String(level || '').toUpperCase()];
+}
+
+/** Is this a level any family recognises — a CEFR band, or a VPET level id? */
+const validLevel = level => LEVELS.includes(level) || !!EXAM_FORMATS.vpetLevel(level);
 const QTYPES = ['mcq', 'gap', 'essay', 'speaking'];
 const STATUSES = ['draft', 'published', 'archived'];
 
@@ -743,7 +764,7 @@ router.post('/admin/tests', (req, res) => {
   const level = str(b.level, 5).toUpperCase();
   if (!familyExists(familyId)) return bad(res, 'That exam is not valid.');
   if (title.length < 3) return bad(res, 'That test name is too short.');
-  if (!LEVELS.includes(level)) return bad(res, 'That level is not valid.');
+  if (!validLevel(level)) return bad(res, 'That level is not valid.');
 
   let id = slug(b.id || (familyId + '-' + level + '-' + title)).slice(0, 50) || (familyId + '-' + Date.now());
   let i = 1;
@@ -766,7 +787,7 @@ router.put('/admin/tests/:id', (req, res) => {
   const title = str(b.title, 200);
   const level = str(b.level, 5).toUpperCase();
   if (title.length < 3) return bad(res, 'That test name is too short.');
-  if (!LEVELS.includes(level)) return bad(res, 'That level is not valid.');
+  if (!validLevel(level)) return bad(res, 'That level is not valid.');
   q.run(`UPDATE tests SET title=?, level=?, duration_min=?, scoring=?, guide_json=?, updated_at=? WHERE id=?`,
     title, level, int(b.durationMin, 0), str(b.scoring, 300),
     JSON.stringify(Array.isArray(b.guide) ? b.guide.map(g => str(g, 300)).filter(Boolean) : []),
@@ -952,7 +973,7 @@ router.post('/admin/tests/generate', (req, res) => {
   const level = str(b.level, 5).toUpperCase();
   const strict = !!b.strictLevel;
   if (!familyExists(familyId)) return bad(res, 'That exam is not valid.');
-  if (!LEVELS.includes(level)) return bad(res, 'That level is not valid.');
+  if (!validLevel(level)) return bad(res, 'That level is not valid.');
   const bp = Array.isArray(b.blueprint) ? b.blueprint : [];
   if (!bp.length) return bad(res, 'No parts were declared for the test.');
 
@@ -972,10 +993,17 @@ router.post('/admin/tests/generate', (req, res) => {
     const part = EXAM_FORMATS.partsOf(familyId).includes(str(sec.part, 2).toUpperCase())
       ? str(sec.part, 2).toUpperCase() : '';
     const { sql: poolSql, args: poolArgs } = poolWhere(familyId, skill, sec.types, part);
+    /* A level covers a set of CEFR bands, not one. Comparing `level` to an
+       item's band directly worked only while the two happened to use the same
+       vocabulary; a VPET Level 1 paper matches nothing that way, and would
+       quietly fill itself from the fallback — that is, entirely with items from
+       the wrong level. */
+    const bands = levelBands(level);
+    const holes = bands.map(() => '?').join(',');
     const pool = strict
-      ? q.all(`SELECT id FROM questions WHERE ${poolSql} AND level=?`, ...poolArgs, level)
-      : q.all(`SELECT id, (level=?) exact FROM questions WHERE ${poolSql} ORDER BY exact DESC`,
-              level, ...poolArgs);
+      ? q.all(`SELECT id FROM questions WHERE ${poolSql} AND level IN (${holes})`, ...poolArgs, ...bands)
+      : q.all(`SELECT id, (level IN (${holes})) exact FROM questions WHERE ${poolSql} ORDER BY exact DESC`,
+              ...bands, ...poolArgs);
 
     const avail = pool.filter(r => !usedIds.has(r.id));
     if (avail.length < want) {
@@ -1412,8 +1440,16 @@ router.get('/catalog', (req, res) => {
       name: s.name, type: s.type, minutes: s.minutes,
       items: q.val('SELECT COUNT(*) c FROM section_items WHERE section_id=?', s.id)
     }));
+    /* Two fields, because a level id and the thing a candidate reads are not
+       the same. VPET stores `L1`, which means nothing on a card; what a
+       candidate needs before choosing is "Level 1" and what it measures.
+       Families that name a CEFR band directly send the band for both. */
+    const lv = EXAM_FORMATS.vpetLevel(t.level);
     return {
       id: t.id, familyId: t.family_id, title: t.title, level: t.level,
+      levelName: lv ? lv.name : t.level,
+      levelRange: lv ? lv.range : '',
+      levelBlurb: lv ? lv.blurb : '',
       durationMin: t.duration_min, scoring: t.scoring, guide: jparse(t.guide_json, []),
       skills: [...new Set(q.all('SELECT skill FROM sections WHERE test_id=?', t.id).map(r => r.skill))],
       sections,

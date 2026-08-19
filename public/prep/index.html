@@ -257,7 +257,7 @@
       return '<article class="card card-hover p-5 flex flex-col">' +
         '<div class="flex items-center gap-2 mb-3.5">' +
           '<span class="exam-chip" data-family="' + fam.id + '">' + fam.name + '</span>' +
-          '<span class="badge badge-muted">' + t.level + '</span>' +
+          '<span class="badge badge-muted">' + PREP.esc(t.levelName || t.level) + '</span>' +
           (t.comingSoon ? '<span class="badge badge-hl ms-auto">Coming soon</span>' : '') +
         '</div>' +
         '<h4 class="font-bold text-[16px] leading-snug">' + PREP.esc(t.title) + '</h4>' +
@@ -305,7 +305,7 @@
           '</div>' +
           '<div class="flex items-center gap-2 mt-4">' +
             '<span class="exam-chip" data-family="' + fam.id + '">' + fam.name + '</span>' +
-            '<span class="badge badge-muted">' + t.level + '</span>' +
+            '<span class="badge badge-muted">' + PREP.esc(t.levelName || t.level) + '</span>' +
             (t.comingSoon ? '<span class="badge badge-hl">Paper coming soon</span>' : '') +
           '</div>' +
           '<h3 class="text-xl sm:text-2xl font-extrabold tracking-tight mt-3">' + PREP.esc(t.title) + '</h3>' +

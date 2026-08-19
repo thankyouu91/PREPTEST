@@ -218,7 +218,10 @@ const FORMATS = [
   {
     id: 'vpet-full', familyId: 'vpet', kind: 'full',
     name: 'VPET full test (parts A-J, 55 items)',
-    levels: ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'],
+    /* Sat at one of two levels, not at a CEFR band — see VPET_LEVELS below.
+       The bands each level reports are a property of the level, not of the
+       format, which is why they are not listed here. */
+    levels: ['L1', 'L2'],
     scoring: 'CEFR A1-C2 per skill; Speaking parts H, I and J are AI scored',
     guide: VPET_GUIDE, notes: VPET_NOTES, sections: vpetSections()
   },
@@ -546,6 +549,84 @@ function inconsistencies() {
     Empty for a family whose format has no part table, which is every family
     except VPET today. The API validates against this rather than a hardcoded
     A-J list, so the blueprint stays the single source of truth. */
+/* ==========================================================================
+ * The two VPET levels
+ *
+ * VPET is not sat at a CEFR band. It is sat at one of two levels, and each
+ * level measures a range of bands (owner, 2026-08-19):
+ *
+ *   Level 1   A1 – B1+     GSE 10–58
+ *   Level 2   B2 – C2      GSE 59–90
+ *
+ * ---------------------------------------------------------------------------
+ * WHY THIS IS DATA AND NOT A LABEL
+ *
+ * The level decides which items a paper may contain, and therefore what a
+ * result from it can honestly claim. A Level 1 form holds nothing hard enough
+ * to tell B2 from C1, so a C1 result off a Level 1 paper is a number with no
+ * evidence under it. Keeping the accepted bands here, next to the part table,
+ * is what lets the generator refuse to build such a paper in the first place.
+ *
+ * ---------------------------------------------------------------------------
+ * THE RANGES ARE CONTIGUOUS, AND THAT IS THE CORRECTION
+ *
+ * docs/VOICE.md §1.7 previously ran Level 1 to 50 and started Level 2 at 59,
+ * leaving B1+ (51–58) in neither — the document called it a gap that "belongs
+ * to neither level cleanly" and gave both levels a way to report it vaguely.
+ * B1+ belongs to Level 1. A candidate finishing at the top of Level 1 now gets
+ * a band rather than a hedge, and every point on the 10–90 scale belongs to
+ * exactly one level.
+ *
+ * `below A1` (10–21) sits inside Level 1's reporting range without being one of
+ * its targets: it is what a Level 1 paper says when the candidate did not reach
+ * A1, which is a real outcome and needs somewhere to land.
+ * ======================================================================== */
+const VPET_LEVELS = [
+  {
+    id: 'L1',
+    name: 'Level 1',
+    range: 'A1 – B1+',
+    blurb: 'For beginner to lower-intermediate learners. Reports anywhere from below A1 up to B1+.',
+    /* Which item bands a Level 1 paper may draw. `below A1` is a result, not an
+       item difficulty, so it is not here. */
+    cefr: ['A1', 'A2', 'A2+', 'B1', 'B1+'],
+    gse: [10, 58]
+  },
+  {
+    id: 'L2',
+    name: 'Level 2',
+    range: 'B2 – C2',
+    blurb: 'For upper-intermediate learners and above. Reports from B2 up to C2.',
+    cefr: ['B2', 'B2+', 'C1', 'C2'],
+    gse: [59, 90]
+  }
+];
+
+/** One level by its id, or null. */
+function vpetLevel(id) {
+  return VPET_LEVELS.find(l => l.id === String(id || '').toUpperCase()) || null;
+}
+
+/**
+ * Which level an item of this CEFR band belongs to.
+ *
+ * Returns null for a band no level accepts, rather than guessing. An item
+ * tagged `below A1` has no level: it describes a performance, not a question.
+ */
+function vpetLevelOfCefr(cefr) {
+  const c = String(cefr || '');
+  const hit = VPET_LEVELS.find(l => l.cefr.includes(c));
+  return hit ? hit.id : null;
+}
+
+/** Which level a GSE result falls in. Every point 10–90 belongs to exactly one. */
+function vpetLevelOfGse(gse) {
+  const n = Number(gse);
+  if (!Number.isFinite(n)) return null;
+  const hit = VPET_LEVELS.find(l => n >= l.gse[0] && n <= l.gse[1]);
+  return hit ? hit.id : null;
+}
+
 function partsOf(familyId) {
   const out = [];
   for (const f of FORMATS) {
@@ -566,4 +647,7 @@ function sectionOfPart(familyId, part) {
   return null;
 }
 
-module.exports = { FORMATS, totalItems, totalMinutes, inconsistencies, partsOf, sectionOfPart };
+module.exports = {
+  FORMATS, totalItems, totalMinutes, inconsistencies, partsOf, sectionOfPart,
+  VPET_LEVELS, vpetLevel, vpetLevelOfCefr, vpetLevelOfGse
+};

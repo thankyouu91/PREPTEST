@@ -17,8 +17,14 @@
  * ---------------------------------------------------------------------------
  * LEVELS, AND WHY THREE AND TWO
  *
- * Forms 1-3 are B1, forms 4-5 are B2. Not an aesthetic choice — it is what
- * fixes the depth problem docs/BLUEPRINT.md §6 describes.
+ * VPET is sat at one of two levels, and each covers a range of CEFR bands:
+ * Level 1 is A1–B1+, Level 2 is B2–C2. A form therefore carries two things
+ * that are easy to confuse — `level`, the paper's level, and `itemCefr`, the
+ * band its items are written at inside that range.
+ *
+ * Forms 1-3 are Level 1 with B1 items; forms 4-5 are Level 2 with B2 items.
+ * Three and two, rather than an even split, is what fixes the depth problem
+ * docs/BLUEPRINT.md §6 describes.
  *
  * A paper is generated at one level and the builder prefers items at that
  * level, so depth has to be counted per level, not per part. Every audio part
@@ -119,7 +125,13 @@ function allItems() {
           form: form.id,
           formName: form.name,
           part,
+          /* Two different things, and conflating them is what made a Level 1
+             paper indistinguishable from a B1 one. `level` is the paper's — the
+             VPET level it is sat at. `cefr` is the item's difficulty inside that
+             level's range. The bank stores the second; the test row stores the
+             first. */
           level: form.level,
+          cefr: form.itemCefr,
           skill: shape.skill,
           type: shape.type,
           prompt,

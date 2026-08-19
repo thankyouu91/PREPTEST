@@ -81,7 +81,8 @@ tx(() => {
 
     for (const it of items) {
       theoPart[it.part] = (theoPart[it.part] || 0) + 1;
-      const tags = JSON.stringify(['vpet', 'part-' + it.part.toLowerCase(), 'form:' + form.id, 'level-' + it.level]);
+      const tags = JSON.stringify(['vpet', 'part-' + it.part.toLowerCase(), 'form:' + form.id,
+        'level:' + form.level, 'cefr-' + it.cefr]);
       const daCo = q.get('SELECT id, audio_script FROM questions WHERE ext_key=?', it.ref);
 
       if (daCo) {
@@ -96,7 +97,7 @@ tx(() => {
              status='active',
              audio_status = CASE WHEN ? THEN 'none' ELSE audio_status END
            WHERE id=?`,
-          it.skill, it.level, it.type, it.part, it.prompt, JSON.stringify(it.options),
+          it.skill, it.cefr, it.type, it.part, it.prompt, JSON.stringify(it.options),
           it.answer, it.explanation, tags, it.script || null, JSON.stringify(it.keyPoints),
           doi ? 1 : 0, daCo.id);
         capNhat++;
@@ -107,7 +108,7 @@ tx(() => {
               explanation, tags_json, audio_script, key_points_json, audio_status, status,
               source, licence, created_at, created_by)
            VALUES (?, 'vpet', ?,?,?,?,?,?,?,?,?,?,?, 'none', 'active', ?, ?, ?, ?)`,
-          it.ref, it.skill, it.level, it.type, it.part, it.prompt,
+          it.ref, it.skill, it.cefr, it.type, it.part, it.prompt,
           JSON.stringify(it.options), it.answer, it.explanation, tags,
           it.script || null, JSON.stringify(it.keyPoints),
           'written for this platform', 'proprietary', at, admin.id);

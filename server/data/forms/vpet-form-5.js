@@ -11,7 +11,10 @@
 module.exports = {
   id: 'f5',
   name: 'VPET practice form 5',
-  level: 'B2',
+  /* The paper sits at a VPET level; its items carry a CEFR band. Level 2
+     covers B2 – C2, and these items are written at B2 inside it. */
+  level: 'L2',
+  itemCefr: 'B2',
   parts: {
 
     /* ---- A · Sentence Completion (10) ------------------------------ */
