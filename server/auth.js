@@ -428,6 +428,25 @@ function passwordProblem(pw) {
   return null;
 }
 
+/* A Vietnamese phone number: ten digits starting with 0, or the same with a
+   +84 / 84 country prefix. Stored in the local 0-prefixed form so a number
+   entered three different ways is one value in the database (and one match when
+   a code is bound to the account that holds it). */
+const PHONE_RE = /^(0\d{9}|(?:\+?84)\d{9})$/;
+function normalizePhone(phone) {
+  let p = String(phone == null ? '' : phone).replace(/[\s.\-()]/g, '');
+  if (p.startsWith('+84')) p = '0' + p.slice(3);
+  else if (p.startsWith('84') && p.length === 11) p = '0' + p.slice(2);
+  return p;
+}
+/** Returns a message when the phone is missing or malformed, else null. */
+function phoneProblem(phone) {
+  const p = String(phone == null ? '' : phone).replace(/[\s.\-()]/g, '');
+  if (!p) return 'Please enter your phone number.';
+  if (!PHONE_RE.test(p)) return 'That phone number does not look right — a Vietnamese number, e.g. 0912345678.';
+  return null;
+}
+
 /* --------------------- The seed administrator account --------------------- */
 
 /**
@@ -560,5 +579,5 @@ module.exports = {
   requireAdmin, requireOwner, csrfGuard,
   ensureSeedAdmin, ensureDemoStudent, reportAdminAccounts,
   demoStudentPassword, DEMO_STUDENT_USER, DEMO_STUDENT_NAME, generatedPassword,
-  EMAIL_RE, passwordProblem, freeUsername
+  EMAIL_RE, passwordProblem, freeUsername, PHONE_RE, phoneProblem, normalizePhone
 };

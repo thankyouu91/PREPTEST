@@ -49,7 +49,7 @@ const REDEEM_PER_10MIN = Math.max(1, parseInt(process.env.REDEEM_PER_10MIN, 10) 
 
 /* Both live in server/auth.js: an administrator can now create an account too,
    and one rule in two files is two rules within a month. */
-const { EMAIL_RE, passwordProblem } = A;
+const { EMAIL_RE, passwordProblem, phoneProblem, normalizePhone } = A;
 
 /** Log a student's action (no administrator is involved) */
 async function logUser(req, action, username, meta) {
@@ -173,10 +173,13 @@ router.post('/auth/register', A.csrfGuard, async (req, res) => {
   const b = req.body || {};
   const name = str(b.name, 80);
   const email = str(b.email, 160).toLowerCase();
+  const phone = str(b.phone, 24);
   const password = typeof b.password === 'string' ? b.password : '';
 
   if (!name) return bad(res, 'Please enter your full name.');
   if (!EMAIL_RE.test(email)) return bad(res, 'That email address is not valid.');
+  const phErr = phoneProblem(phone);
+  if (phErr) return bad(res, phErr);
   const pwErr = passwordProblem(password);
   if (pwErr) return bad(res, pwErr);
 
@@ -184,9 +187,9 @@ router.post('/auth/register', A.csrfGuard, async (req, res) => {
     return res.status(409).json({ error: 'That email is already registered. Try signing in, or use another address.' });
   }
 
-  await q.run(`INSERT INTO users (username,email,name,pass_hash,verified,status,interests_json,created_at)
-         VALUES (?,?,?,?,0,'active',?,?)`,
-    email, email, name, A.hashPassword(password), JSON.stringify(await cleanInterests(b.interests)), nowISO());
+  await q.run(`INSERT INTO users (username,email,name,phone,pass_hash,verified,status,interests_json,created_at)
+         VALUES (?,?,?,?,?,0,'active',?,?)`,
+    email, email, name, normalizePhone(phone), A.hashPassword(password), JSON.stringify(await cleanInterests(b.interests)), nowISO());
 
   await A.rateLimitNote(rlKey);
   const user = await q.get('SELECT * FROM users WHERE email=?', email);

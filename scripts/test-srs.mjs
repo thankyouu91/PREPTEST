@@ -179,7 +179,7 @@ const stamp = String(process.hrtime.bigint()).slice(-9);
 async function freshLearner(tag) {
   const c = client();
   const r = await c.post('/api/auth/register', {
-    name: 'Review Tester', email: `srs.${tag}.${stamp}@thu-nghiem.vn`, password: 'Ontap12345'
+    name: 'Review Tester', email: `srs.${tag}.${stamp}@thu-nghiem.vn`, password: 'Ontap12345', phone: '0912345678'
   });
   if (r.status !== 201) throw new Error(`could not register a test learner: HTTP ${r.status}`);
   return c;

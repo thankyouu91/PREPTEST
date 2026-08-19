@@ -584,6 +584,7 @@ addColumnIfMissing('families', 'status', "TEXT NOT NULL DEFAULT 'ready'");
    unique index — which also permits many NULLs, exactly what is wanted for
    accounts that never link a Google identity. */
 addColumnIfMissing('users', 'google_sub', 'TEXT');
+addColumnIfMissing('users', 'phone', 'TEXT');
 addIndex('CREATE UNIQUE INDEX IF NOT EXISTS idx_users_google_sub ON users (google_sub)');
 
 /* A code now carries a subscription plan rather than a list of tests: what a

@@ -557,8 +557,8 @@ const PrepState = {
    ============================================================ */
 const PrepAuth = {
   /** POST /api/auth/register — returns { ok, error, verifyLink } */
-  register({ name, email, password, interests }) {
-    return PrepApi.post('/api/auth/register', { name, email, password, interests })
+  register({ name, email, phone, password, interests }) {
+    return PrepApi.post('/api/auth/register', { name, email, phone, password, interests })
       .then(res => {
         if (!res.ok) return { ok: false, error: PrepApi.err(res, 'The account could not be created.') };
         PrepState.reset();

@@ -1148,11 +1148,13 @@ router.post('/admin/users', async (req, res) => {
   const b = req.body || {};
   const name = str(b.name, 120);
   const email = str(b.email, 160).toLowerCase();
+  const phone = str(b.phone, 24);
   const note = str(b.note, 500);
   const planId = str(b.planId, 40);
 
   if (!name) return bad(res, 'Give the student a name.');
   if (!A.EMAIL_RE.test(email)) return bad(res, 'That email address is not valid.');
+  if (phone) { const phErr = A.phoneProblem(phone); if (phErr) return bad(res, phErr); }
   if (await q.val('SELECT 1 FROM users WHERE email=?', email)) {
     return res.status(409).json({ error: 'An account with that email already exists.' });
   }
@@ -1176,9 +1178,9 @@ router.post('/admin/users', async (req, res) => {
   let granted = null;
   await tx(async () => {
     await q.run(
-      `INSERT INTO users (username, email, name, pass_hash, verified, status, interests_json, note, created_at)
-       VALUES (?,?,?,?,1,'active','[]',?,?)`,
-      await A.freeUsername(email), email, name, A.hashPassword(password), note || null, at);
+      `INSERT INTO users (username, email, name, phone, pass_hash, verified, status, interests_json, note, created_at)
+       VALUES (?,?,?,?,?,1,'active','[]',?,?)`,
+      await A.freeUsername(email), email, name, A.normalizePhone(phone) || null, A.hashPassword(password), note || null, at);
     userId = await q.val('SELECT id FROM users WHERE email=?', email);
     if (plan) granted = await grantPlan(userId, plan, req.admin.id, 'Created with the account');
   });

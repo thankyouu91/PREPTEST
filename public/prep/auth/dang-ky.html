@@ -55,6 +55,11 @@
           <p class="field-error" id="err-email">That email address is not valid.</p>
         </div>
         <div>
+          <label class="label" for="phone">Phone number</label>
+          <input class="input" id="phone" name="phone" type="tel" autocomplete="tel" inputmode="tel" placeholder="0912 345 678" required>
+          <p class="field-error" id="err-phone">That phone number does not look right — e.g. 0912345678.</p>
+        </div>
+        <div>
           <label class="label" for="password">Password</label>
           <div class="relative">
             <input class="input pe-12" id="password" name="password" type="password" autocomplete="new-password" placeholder="At least 8 characters, letters and numbers" required>
@@ -164,7 +169,7 @@
     const el = PREP.qs('#' + id);
     if (el && el.classList.contains('input')) el.classList.toggle('input-invalid', bad);
   };
-  ['name','email','password'].forEach(id =>
+  ['name','email','phone','password'].forEach(id =>
     PREP.qs('#' + id).addEventListener('input', () => mark(id, false)));
 
   f.addEventListener('submit', ev => {
@@ -172,9 +177,12 @@
     banner.classList.remove('show');
     const name = PREP.qs('#name').value.trim();
     const email = PREP.qs('#email').value.trim();
+    const phone = PREP.qs('#phone').value.trim();
     let bad = false;
     mark('name', !name); bad = bad || !name;
     mark('email', !PREP.validEmail(email)); bad = bad || !PREP.validEmail(email);
+    const phoneOk = /^(0\d{9}|(?:\+?84)\d{9})$/.test(phone.replace(/[\s.\-()]/g, ''));
+    mark('phone', !phoneOk); bad = bad || !phoneOk;
     // Same rule as the server: at least 8 characters, letters and numbers
     const pwOk = pass.value.length >= 8 && /[A-Za-z]/.test(pass.value) && /\d/.test(pass.value);
     mark('password', !pwOk); bad = bad || !pwOk;
@@ -185,7 +193,7 @@
     btn.disabled = true;
     btn.innerHTML = PREP.icon('loader', 'w-5 h-5 animate-spin-slow') + 'Creating your account';
     const interests = PREP.qsa('[data-fam][aria-pressed="true"]').map(b => b.getAttribute('data-fam'));
-    PrepAuth.register({ name, email, password: pass.value, interests }).then(res => {
+    PrepAuth.register({ name, email, phone, password: pass.value, interests }).then(res => {
       if (!res.ok) {                                     // e.g. email already taken, password too weak
         btn.disabled = false; btn.textContent = 'Create account';
         bannerText.textContent = res.error;

@@ -60,17 +60,23 @@ const NEW_EMAIL = `hocvien.${stamp}@thu-nghiem.vn`;
 console.log('\n\x1b[1m== Registration ==\x1b[0m');
 const c = client();
 
-let r = await c.post('/api/auth/register', { name: 'Test Person', email: 'not-an-email', password: 'Matkhau123' });
+let r = await c.post('/api/auth/register', { name: 'Test Person', email: 'not-an-email', password: 'Matkhau123', phone: '0912345678' });
 ok(r.status === 400, 'Refuses a malformed email');
 
-r = await c.post('/api/auth/register', { name: 'Test Person', email: NEW_EMAIL, password: 'short1' });
+r = await c.post('/api/auth/register', { name: 'Test Person', email: NEW_EMAIL, password: 'Matkhau123' });
+ok(r.status === 400, 'Refuses a registration with no phone number');
+
+r = await c.post('/api/auth/register', { name: 'Test Person', email: NEW_EMAIL, password: 'Matkhau123', phone: 'abc' });
+ok(r.status === 400, 'Refuses a malformed phone number');
+
+r = await c.post('/api/auth/register', { name: 'Test Person', email: NEW_EMAIL, password: 'short1', phone: '0912345678' });
 ok(r.status === 400, 'Refuses a password under 8 characters');
 
-r = await c.post('/api/auth/register', { name: 'Test Person', email: NEW_EMAIL, password: 'nodigitshere' });
+r = await c.post('/api/auth/register', { name: 'Test Person', email: NEW_EMAIL, password: 'nodigitshere', phone: '0912345678' });
 ok(r.status === 400, 'Refuses a password with no digit');
 
 r = await c.post('/api/auth/register', {
-  name: 'Test Person', email: NEW_EMAIL, password: 'Matkhau123',
+  name: 'Test Person', email: NEW_EMAIL, password: 'Matkhau123', phone: '0912345678',
   interests: ['ielts', 'no-such-family', 'ielts']
 });
 ok(r.status === 201, 'Registration succeeds');
@@ -82,7 +88,7 @@ ok(c.jar.has('prep_user') && c.jar.has('prep_csrf'), 'Sets the session cookie an
 const verifyToken = new URL('http://x' + (r.data.verifyLink || '/?')).searchParams.get('token');
 ok(!!verifyToken, 'A verification link is returned (outside production only)');
 
-r = await c.post('/api/auth/register', { name: 'Duplicate', email: NEW_EMAIL, password: 'Matkhau123' });
+r = await c.post('/api/auth/register', { name: 'Duplicate', email: NEW_EMAIL, password: 'Matkhau123', phone: '0912345678' });
 ok(r.status === 409, 'Refuses an email that is already registered');
 ok(r.status !== 429, 'A rejected request does not spend the registration allowance');
 
@@ -207,7 +213,7 @@ ok(r.data.user === null, 'The session is dead after signing out');
 console.log('\n\x1b[1m== Brute-force protection ==\x1b[0m');
 const brute = client();
 const bruteEmail = `dodoan.${stamp}@thu-nghiem.vn`;
-await brute.post('/api/auth/register', { name: 'Target', email: bruteEmail, password: 'Matkhau123' });
+await brute.post('/api/auth/register', { name: 'Target', email: bruteEmail, password: 'Matkhau123', phone: '0912345678' });
 let lastStatus = 0;
 for (let i = 0; i < 6; i++) {
   const rr = await brute.post('/api/auth/login', { username: bruteEmail, password: 'wrong-' + i });

@@ -404,7 +404,7 @@ try {
         page.on('pageerror', e => errs.push(String(e.message)));
 
         const reg = await postWithCsrf(ctx, UI, '/api/auth/register', {
-          name: 'Buyer', email: `buyer.${stamp}@thu-nghiem.vn`, password: 'Muahang123'
+          name: 'Buyer', email: `buyer.${stamp}@thu-nghiem.vn`, password: 'Muahang123', phone: '0912345678'
         });
         ok(reg.ok(), 'and a learner can register on it', String(reg.status()));
 

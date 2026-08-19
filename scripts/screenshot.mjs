@@ -95,7 +95,7 @@ const makeFreshAccount = async (browser) => {
     password: 'Matkhau123'
   };
   const r = await postWithCsrf(ctx, BASE, '/api/auth/register',
-    { name: 'New Student', email: account.email, password: account.password, interests: [] });
+    { name: 'New Student', email: account.email, phone: '0912345678', password: account.password, interests: [] });
   await ctx.close();
   if (!r.ok()) throw new Error('Could not create the empty account: HTTP ' + r.status());
   return account;

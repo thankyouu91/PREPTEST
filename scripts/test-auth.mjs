@@ -162,6 +162,7 @@ check('After signing out the student area is closed', page.url().includes('/dang
 await page.goto(BASE + '/prep/dang-ky/', { waitUntil: 'networkidle' });
 await page.fill('#name', 'Interface Test Person');
 await page.fill('#email', TMP_EMAIL);
+await page.fill('#phone', '0912345678');
 await page.fill('#password', 'yeu');
 await page.check('#terms');
 const leaked = posted('/api/auth/register');

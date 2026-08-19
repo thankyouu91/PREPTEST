@@ -104,6 +104,8 @@
           '<input class="input" id="ns-name" autocomplete="off"></div>' +
         '<div><label class="label" for="ns-email">Email</label>' +
           '<input class="input" id="ns-email" type="email" autocomplete="off"></div>' +
+        '<div><label class="label" for="ns-phone">Phone number</label>' +
+          '<input class="input" id="ns-phone" type="tel" inputmode="tel" autocomplete="off" placeholder="0912 345 678"></div>' +
         '<div><label class="label" for="ns-pass">Password</label>' +
           '<input class="input" id="ns-pass" autocomplete="new-password" ' +
             'placeholder="Leave empty and one is generated for you"></div>' +
@@ -128,6 +130,7 @@
         const r = await AD.post('/admin/users', {
           name: m.el.querySelector('#ns-name').value.trim(),
           email: m.el.querySelector('#ns-email').value.trim(),
+          phone: m.el.querySelector('#ns-phone').value.trim(),
           password: m.el.querySelector('#ns-pass').value,
           planId: m.el.querySelector('#ns-plan').value,
           note: m.el.querySelector('#ns-note').value.trim()

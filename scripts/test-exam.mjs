@@ -274,7 +274,7 @@ try {
   await other.req('GET', '/api/me');
   const email = 'engine.' + Date.now() + '@thu-nghiem.vn';
   await other.req('POST', '/api/auth/register',
-    { name: 'Engine Test Person', email, password: 'Matkhau12345', interests: [] });
+    { name: 'Engine Test Person', email, password: 'Matkhau12345', phone: '0912345678', interests: [] });
   r = await other.req('GET', '/api/attempts/' + attemptId);
   ok(r.status === 404, 'Another person\'s sitting is not visible (404, not 403)', 'status ' + r.status);
 
@@ -331,7 +331,7 @@ try {
   await capped.req('GET', '/api/me');
   const cappedEmail = 'han-muc.' + Date.now() + '@thu-nghiem.vn';
   await capped.req('POST', '/api/auth/register',
-    { name: 'Quota Test Person', email: cappedEmail, password: 'Matkhau12345', interests: [] });
+    { name: 'Quota Test Person', email: cappedEmail, password: 'Matkhau12345', phone: '0912345678', interests: [] });
   r = await admin.req('GET', '/api/admin/users?q=' + encodeURIComponent(cappedEmail));
   const cappedId = r.data.items[0] && r.data.items[0].id;
   ok(!!cappedId, 'Finds the account just registered', String(cappedId));
