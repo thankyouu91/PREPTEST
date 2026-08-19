@@ -455,7 +455,11 @@ Sign up for <span id="plan-cta-name">Plus</span></a>
     }
 
     PREP.qs('#family-skeleton').classList.add('hidden');
-    grid.innerHTML = PREP.families.map(f => {
+    /* The landing is a public page and stays VPET-only: it never lists the parked
+       families, even when an administrator viewing it holds a session that makes
+       the catalogue return them. Filter by status here so the marketing page does
+       not depend on who is looking at it. */
+    grid.innerHTML = PREP.families.filter(f => (f.status || 'ready') !== 'coming_soon').map(f => {
       const n = PREP.testsOf(f.id).length;
       return '<article class="card card-hover p-6 flex flex-col">' +
         '<div class="flex items-center gap-2.5">' +

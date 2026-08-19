@@ -565,6 +565,34 @@ const run = async () => {
   r = await call('POST', '/api/admin/users', { name: 'Goi la', email: 'g.' + newEmail, planId: 'khong-co' });
   check('A plan that does not exist is refused rather than silently skipped', r.status === 400);
 
+  /* Bulk create — a class or a company intake at once, sent as rows the browser
+     has already split from a pasted list or a CSV. Bad rows are skipped, not fatal. */
+  const bulkStamp = String(process.hrtime.bigint()).slice(-9);
+  r = await call('POST', '/api/admin/users/bulk', {
+    planId: 'plus-6m',
+    rows: [
+      { line: 1, email: 'bulk1.' + bulkStamp + '@thu-nghiem.vn', name: 'Bulk One', phone: '0912345678' },
+      { line: 2, email: 'bulk2.' + bulkStamp + '@thu-nghiem.vn', name: 'Bulk Two', phone: '0987654321' },
+      { line: 3, email: 'not-an-email', name: 'No Email', phone: '0912345678' },
+      { line: 4, email: 'bulk4.' + bulkStamp + '@thu-nghiem.vn', name: 'No Phone', phone: '' }
+    ]
+  });
+  check('Bulk create makes the valid rows and skips the rest',
+    r.status === 201 && r.data.created.length === 2 && r.data.errors.length === 2,
+    'created ' + (r.data.created && r.data.created.length) + ', errors ' + (r.data.errors && r.data.errors.length));
+  check('Each created account comes back with a one-time password',
+    r.data.created.every(c => typeof c.password === 'string' && c.password.length >= 10));
+  check('The chosen term is applied to the batch', r.data.plan && r.data.plan.id === 'plus-6m',
+    JSON.stringify(r.data.plan));
+  {
+    const bulkLogin = await fetch(BASE + '/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Cookie: cookieHeader(), 'X-CSRF-Token': decodeURIComponent(jar.get('prep_csrf')) },
+      body: JSON.stringify({ username: r.data.created[0].email, password: r.data.created[0].password })
+    });
+    check('A bulk-created account can sign in straight away', bulkLogin.status === 200, 'status ' + bulkLogin.status);
+  }
+
   /* Granting a second term: entitlementOf() takes the furthest expiry and adds
      the attempts up, so this must extend reach rather than replace it. */
   const beforeGrant = (await call('GET', '/api/admin/users/' + madeId)).data;

@@ -33,6 +33,7 @@
           <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted pointer-events-none" id="search-icon"></span>
           <input id="q" type="search" class="input ps-10 py-2.5" placeholder="Search by name or email…">
         </label>
+        <button type="button" id="bulk-students" class="btn btn-ghost btn-md">Bulk create</button>
         <button type="button" id="new-student" class="btn btn-primary btn-md">New student</button>
       </div>
 
@@ -48,7 +49,7 @@
 <script src="/admin/_admin.js"></script>
 <script>
 (async () => {
-  await AD.mount({ title: 'Students', subtitle: 'Look up an account, what it unlocks, and its orders' });
+  await AD.mount({ title: 'Account Management', subtitle: 'Create accounts one at a time or in bulk, and manage each one' });
   AD.qs('#search-icon').innerHTML = AD.icon('search', 'w-[18px] h-[18px]');
 
   let families = [];
@@ -145,6 +146,82 @@
         btn.disabled = false;
         AD.toast(e.message, 'error');
       }
+    });
+  });
+
+  /* ----- Bulk create: a class or a company intake at once -----
+     The browser splits the pasted text (or a CSV it reads itself) into rows and
+     sends them as JSON — no file upload, no server-side CSV parser. */
+  AD.qs('#bulk-students').addEventListener('click', () => {
+    const m = AD.modal(
+      '<h3 class="text-lg font-extrabold tracking-tight">Bulk create accounts</h3>' +
+      '<p class="text-muted text-[14px] leading-relaxed mt-1.5">One student per line, as ' +
+        '<b>email, name, phone</b>. Paste a list, or load a CSV with those three columns. ' +
+        'Each account is created verified, with a password generated for it.</p>' +
+      '<div class="grid gap-3.5 mt-4">' +
+        '<label class="btn btn-ghost btn-sm w-fit cursor-pointer">Load a CSV file' +
+          '<input type="file" id="bulk-file" accept=".csv,.txt" class="hidden"></label>' +
+        '<textarea class="input font-mono text-[13px] leading-relaxed" id="bulk-text" rows="8" ' +
+          'placeholder="an@truong.edu.vn, Nguyen Van A, 0912345678&#10;binh@truong.edu.vn, Tran Thi B, 0987654321"></textarea>' +
+        '<div><label class="label" for="bulk-plan">Term for everyone (optional)</label>' +
+          '<select class="input" id="bulk-plan"><option value="">No term yet</option>' +
+            plans.map(pl => '<option value="' + AD.esc(pl.id) + '">' + pl.months + ' months · ' + AD.esc(pl.name) + '</option>').join('') +
+          '</select></div>' +
+      '</div>' +
+      '<div id="bulk-result" class="mt-4"></div>' +
+      '<div class="flex flex-wrap gap-2.5 justify-end mt-6">' +
+        '<button type="button" class="btn btn-ghost btn-md" id="bulk-cancel">Close</button>' +
+        '<button type="button" class="btn btn-primary btn-md" id="bulk-go">Create all</button>' +
+      '</div>');
+
+    m.el.querySelector('#bulk-cancel').addEventListener('click', () => m.close());
+    m.el.querySelector('#bulk-file').addEventListener('change', ev => {
+      const file = ev.target.files && ev.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => { m.el.querySelector('#bulk-text').value = String(reader.result || ''); };
+      reader.readAsText(file);
+    });
+
+    function parseRows(text) {
+      const out = [];
+      String(text || '').split(/\r?\n/).forEach((raw, i) => {
+        const s = raw.trim();
+        if (!s) return;
+        const parts = s.split(/[,\t;]/).map(x => x.trim());
+        if (i === 0 && /email/i.test(parts[0]) && parts.some(p => /name|phone/i.test(p))) return;  // a header row
+        out.push({ line: i + 1, email: parts[0] || '', name: parts[1] || '', phone: parts[2] || '' });
+      });
+      return out;
+    }
+
+    m.el.querySelector('#bulk-go').addEventListener('click', async () => {
+      const rows = parseRows(m.el.querySelector('#bulk-text').value);
+      if (!rows.length) { AD.toast('Add at least one line', 'error'); return; }
+      const go = m.el.querySelector('#bulk-go'); go.disabled = true;
+      try {
+        const r = await AD.post('/admin/users/bulk', { rows, planId: m.el.querySelector('#bulk-plan').value });
+        const csv = 'email,name,phone,password\n' + r.created.map(c => {
+          const row = rows.find(x => x.email.toLowerCase() === c.email) || {};
+          return [c.email, c.name, row.phone || '', c.password].map(v => '"' + String(v).replace(/"/g, '""') + '"').join(',');
+        }).join('\n');
+        const host = m.el.querySelector('#bulk-result');
+        host.innerHTML =
+          '<div class="card bg-brand-soft border-0 p-3.5 text-[14px] font-semibold flex items-center gap-3">' +
+            '<span class="flex-1">Created ' + r.created.length + ' account(s)' + (r.errors.length ? ', ' + r.errors.length + ' skipped' : '') + '.</span>' +
+            (r.created.length ? '<button type="button" class="btn btn-ghost btn-sm shrink-0" id="bulk-copy">Copy all (CSV)</button>' : '') +
+          '</div>' +
+          (r.errors.length ? '<div class="mt-3 text-[13px]"><span class="font-bold">Skipped:</span><ul class="mt-1.5 grid gap-1">' +
+            r.errors.map(e => '<li class="text-muted">Line ' + e.line + ' · ' + AD.esc(e.email || '?') + ' — ' + AD.esc(e.error) + '</li>').join('') +
+            '</ul></div>' : '');
+        if (r.created.length) host.querySelector('#bulk-copy').addEventListener('click', () => {
+          navigator.clipboard.writeText(csv).then(
+            () => AD.toast('Copied — paste into a spreadsheet'), () => AD.toast('Could not copy', 'error'));
+        });
+        go.textContent = 'Create more'; go.disabled = false;
+        m.el.querySelector('#bulk-text').value = '';
+        load();
+      } catch (e) { AD.toast(e.message, 'error'); go.disabled = false; }
     });
   });
 

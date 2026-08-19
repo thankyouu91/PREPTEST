@@ -313,6 +313,7 @@ guard đăng nhập, 8 route còn lại là danh sách ở mục 3.
 | POST | `/api/admin/users/:id/password` | `requireAdmin` + `csrfGuard` | yes |
 | POST | `/api/admin/users/:id/status` | `requireAdmin` + `csrfGuard` | yes |
 | POST | `/api/admin/users/:id/verify` | `requireAdmin` + `csrfGuard` | yes |
+| POST | `/api/admin/users/bulk` | `requireAdmin` + `csrfGuard` | yes |
 | GET | `/api/attempts` | `requireUser` | n/a (read) |
 | POST | `/api/attempts` | `requireUser` + `csrfGuard` | yes |
 | GET | `/api/attempts/:id` | `requireUser` | n/a (read) |

@@ -1196,6 +1196,49 @@ router.post('/admin/users', async (req, res) => {
   });
 });
 
+/* POST /admin/users/bulk — create many accounts at once, for a class or a
+   company intake. The browser sends rows it has already split from a pasted
+   list or a CSV it read itself, so there is no file upload and no CSV parser on
+   the server. Each row needs a name, a valid email and a phone; a generated
+   password comes back per account, shown once. Bad rows are reported by line
+   number rather than failing the whole batch. */
+router.post('/admin/users/bulk', async (req, res) => {
+  const b = req.body || {};
+  const rows = Array.isArray(b.rows) ? b.rows.slice(0, 500) : [];
+  const planId = str(b.planId, 40);
+  const plan = planId ? PLANS.byId(planId) : null;
+  if (planId && !plan) return bad(res, 'That plan does not exist.');
+  if (!rows.length) return bad(res, 'There is nothing to create.');
+
+  const created = [], errors = [], seen = new Set();
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i] || {};
+    const line = int(row.line, i + 1);
+    const name = str(row.name, 120);
+    const email = str(row.email, 160).toLowerCase();
+    const phone = str(row.phone, 24);
+    if (!name || !A.EMAIL_RE.test(email)) { errors.push({ line, email, error: 'Missing name or invalid email' }); continue; }
+    const phErr = A.phoneProblem(phone);
+    if (phErr) { errors.push({ line, email, error: phErr }); continue; }
+    if (seen.has(email)) { errors.push({ line, email, error: 'Duplicated within this list' }); continue; }
+    seen.add(email);
+    if (await q.val('SELECT 1 FROM users WHERE email=?', email)) { errors.push({ line, email, error: 'Email already registered' }); continue; }
+    const password = A.generatedPassword();
+    try {
+      await tx(async () => {
+        await q.run(`INSERT INTO users (username, email, name, phone, pass_hash, verified, status, interests_json, created_at)
+                     VALUES (?,?,?,?,?,1,'active','[]',?)`,
+          await A.freeUsername(email), email, name, A.normalizePhone(phone), A.hashPassword(password), nowISO());
+        const userId = await q.val('SELECT id FROM users WHERE email=?', email);
+        if (plan) await grantPlan(userId, plan, req.admin.id, 'Bulk-created');
+      });
+      created.push({ email, name, password });
+    } catch (e) { errors.push({ line, email, error: 'Could not create this account' }); }
+  }
+  await audit(req, 'user.bulk_create', 'users', { created: created.length, errors: errors.length, plan: plan ? plan.id : null });
+  res.status(201).json({ ok: true, created, errors, plan: plan ? { id: plan.id, months: plan.months, name: plan.name } : null });
+});
+
 /** POST /admin/users/:id/grant — put a term on an existing account. */
 router.post('/admin/users/:id/grant', async (req, res) => {
   const id = int(req.params.id, 0);
