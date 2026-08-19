@@ -1,11 +1,12 @@
 /**
  * The English lexicon — is this a word, and how common is it.
  *
- * Two files under `lexicon/`, fetched once by `scripts/tai-tu-dien.mjs` and
- * committed. Each ships its licence beside it; both require the copyright
- * notice to travel with the data, so do not separate them.
+ * Three files under `lexicon/`, fetched once by `scripts/tai-tu-dien.mjs` and
+ * committed. Each ships its licence beside it; both sources require the
+ * copyright notice to travel with the data, so do not separate them.
  *
- *   en-words.txt      49,415 words. SCOWL, en_GB-ise ∪ en_US. "Is this English?"
+ *   en-words.txt      39,965 common words. SCOWL, en_GB-ise ∪ en_US. "Is this English?"
+ *   en-names.txt       9,450 proper nouns from the same source. "Is this a name?"
  *   en-frequency.txt  49,052 words in rank order, OpenSubtitles (MIT). "How common?"
  *
  * ---------------------------------------------------------------------------
@@ -42,8 +43,22 @@ const DIR = path.join(__dirname, 'lexicon');
 
 const read = f => fs.readFileSync(path.join(DIR, f), 'utf8').split('\n').filter(Boolean);
 
-/** Every accepted spelling, both varieties. */
+/** Common words — both varieties, no proper nouns. */
 const WORDS = new Set(read('en-words.txt'));
+
+/**
+ * Proper nouns, kept apart from common words.
+ *
+ * Spelling and syllabus need opposite answers about "Pete". It is not a
+ * misspelling, so `isWord()` accepts it; it is also not a word anyone should be
+ * taught as B2 vocabulary, so `scripts/nhap-tu-vung.mjs` skips it. Merging the
+ * two put "pete", "belgrade" and "cedric" in a B1-C2 candidate list beside
+ * "reasonable" and "negligence".
+ *
+ * A word that is both a name and an ordinary word — mark, bill, rose — is in
+ * WORDS only, because teaching "rose" is perfectly reasonable.
+ */
+const NAMES = new Set(read('en-names.txt'));
 
 /** word → 1-based frequency rank. Missing means rarer than the list goes. */
 const RANK = new Map();
@@ -132,7 +147,7 @@ function isWord(raw) {
   /* A hyphenated compound counts when both halves do — "well-known" is not in
      the list, and neither half is a misspelling. */
   if (w.includes('-')) return w.split('-').filter(Boolean).every(isWord);
-  return bases(w).some(b => WORDS.has(b) || (RANK.get(b) || Infinity) <= FREQ_TRUST);
+  return bases(w).some(b => WORDS.has(b) || NAMES.has(b) || (RANK.get(b) || Infinity) <= FREQ_TRUST);
 }
 
 /** 1-based frequency rank, or null when rarer than the list reaches. */
@@ -157,4 +172,10 @@ function bandOf(raw) {
   return (BANDS.find(b => r <= b.max) || BANDS[BANDS.length - 1]).band;
 }
 
-module.exports = { WORDS, RANK, BANDS, FREQ_TRUST, isWord, rankOf, bandOf, bases, CONTRACTIONS };
+/** Is this a proper noun rather than a common word? */
+const isName = raw => NAMES.has(String(raw || '').toLowerCase());
+
+module.exports = {
+  WORDS, NAMES, RANK, BANDS, FREQ_TRUST,
+  isWord, isName, rankOf, bandOf, bases, CONTRACTIONS
+};

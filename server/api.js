@@ -1664,6 +1664,11 @@ router.get('/learn/vocab/:headword', (req, res) => {
       senses: q.all('SELECT * FROM vocab_senses WHERE entry_id=? ORDER BY sort, id', e.id)
         .map(s => ({
           en: s.en, vi: s.vi, level: s.level, note: s.note,
+          /* Imported senses can arrive without a Vietnamese gloss — Wiktionary
+             simply has none for many ordinary words. The English definition
+             still teaches the word, so the sense is kept; this flag exists so
+             no screen prints an empty line where a translation belongs. */
+          viPending: !s.vi,
           examples: q.all('SELECT * FROM vocab_examples WHERE sense_id=? ORDER BY sort, id', s.id)
             .map(x => ({ en: x.en, vi: x.vi, source: x.source, licence: x.licence }))
         })),

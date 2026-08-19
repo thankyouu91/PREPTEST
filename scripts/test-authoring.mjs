@@ -902,7 +902,13 @@ console.log('\n\x1b[1m== Rubric · ôn tập cá nhân hoá ==\x1b[0m');
 
   /* ---- Từ điển: chấm chính tả phải sai về phía có lợi cho thí sinh ---- */
   const L = require('../server/data/lexicon.js');
-  ok(L.WORDS.size > 40000, 'Từ điển đủ lớn để tra chính tả', String(L.WORDS.size));
+  /* Đếm cả hai tệp. Ngưỡng cũ đếm mỗi WORDS và đỏ ngay hôm tách `en-names.txt`
+     ra — không phải vì từ điển bé đi, mà vì 9.450 tên riêng chuyển sang tệp
+     bên cạnh. `isWord()` tra cả hai, nên phép kiểm cũng phải đếm cả hai. */
+  ok(L.WORDS.size + L.NAMES.size > 45000, 'Từ điển đủ lớn để tra chính tả',
+    L.WORDS.size + ' từ thường + ' + L.NAMES.size + ' tên riêng');
+  ok(L.NAMES.size > 5000 && !L.WORDS.has('cedric') && L.NAMES.has('cedric'),
+    'Tên riêng nằm riêng một tệp — "cedric" không được lọt vào danh sách từ để dạy');
 
   const phaiQua = ['walked', 'liking', 'stopped', 'running', 'tried', 'families',
     'is', 'are', 'were', 'children', 'better', 'went',

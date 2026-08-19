@@ -40,24 +40,29 @@ try {
   ok(r.status === 200, 'Đọc được danh sách từ vựng', 'status ' + r.status);
   const list = r.data;
   ok(list.total >= 12, 'Ngân hàng từ có dữ liệu', 'total ' + list.total);
-  ok(Array.isArray(list.entries) && list.entries.length === list.total,
-    'Danh sách trả về đủ số mục đã đếm', list.entries.length + '/' + list.total);
+  /* Trang mặc định là 50 mục. Phép kiểm cũ đòi `entries.length === total`, và
+     nó chỉ đúng chừng nào kho còn nhỏ hơn một trang — nghĩa là nó hỏng đúng vào
+     ngày trình nhập từ điển làm kho lớn lên, việc mà nó sinh ra để làm. */
+  ok(Array.isArray(list.entries) && list.entries.length === Math.min(list.total, 50),
+    'Danh sách trả về đủ một trang', list.entries.length + '/' + list.total);
   ok(list.levels.length >= 2 && list.parts.length >= 3,
     'Có thống kê theo bậc và theo từ loại', JSON.stringify({ levels: list.levels.length, parts: list.parts.length }));
 
   /* Cùng một mặt chữ ở hai từ loại là hai mục riêng — đó là lý do khoá tự nhiên
-     là (headword, pos) chứ không phải mình headword. */
-  const books = list.entries.filter(e => e.headword === 'book');
+     là (headword, pos) chứ không phải mình headword. Hỏi thẳng bằng từ khoá chứ
+     không lọc trang đầu: trang đầu không hứa chứa từ nào cả. */
+  const books = (await get('/api/learn/vocab?q=book')).data.entries
+    .filter(e => e.headword === 'book');
   ok(books.length === 2, 'Cùng mặt chữ khác từ loại là hai mục', JSON.stringify(books.map(b => b.pos)));
   ok(books.some(b => b.pos === 'noun' && b.level === 'A1') &&
      books.some(b => b.pos === 'verb' && b.level === 'A2'),
     'Hai mục "book" đúng bậc như docs/LEARNING.md §1.2 nêu',
     JSON.stringify(books.map(b => b.pos + '/' + b.level)));
 
-  r = await get('/api/learn/vocab?level=B2');
+  r = await get('/api/learn/vocab?level=B2&limit=200');
   ok(r.status === 200 && r.data.entries.every(e => e.level === 'B2'),
     'Lọc theo bậc chỉ trả về bậc đó', JSON.stringify(r.data.entries.map(e => e.level)));
-  ok(r.data.matched === r.data.entries.length && r.data.matched < r.data.total,
+  ok(r.data.matched < r.data.total && r.data.matched > 0,
     'Số khớp bộ lọc khác tổng số', JSON.stringify({ matched: r.data.matched, total: r.data.total }));
 
   r = await get('/api/learn/vocab?pos=verb');
@@ -185,6 +190,248 @@ try {
   db.prepare('DELETE FROM vocab_senses WHERE id=?').run(sense.id);
   ok(exBefore >= 2 && q.val('SELECT COUNT(*) c FROM vocab_examples WHERE sense_id=?', sense.id) === 0,
     'Xoá một nghĩa kéo theo câu ví dụ của nó (ON DELETE CASCADE)');
+
+  /* ================= Từ điển mở qua API =================
+     Chạy thuần trên `normalise()`, không gọi mạng: bài test không được phụ
+     thuộc vào việc freedictionaryapi.com có sống hay không, và cái cần chứng
+     minh là cách xử lý dữ liệu chứ không phải đường truyền.
+
+     Mọi mẩu dữ liệu dưới đây là hình dạng thật, chép từ lần gọi thật ngày
+     19/08/2026 — "trunk" đúng là mở đầu bằng một nghĩa tiêu đề rỗng, và
+     "reasonable" đúng là mở đầu bằng một nghĩa cổ. */
+  head('Từ điển mở qua API');
+
+  const dict = require_('../server/providers/dictionary.js');
+  const than = (partOfSpeech, senses) => ({
+    source: { url: 'https://en.wiktionary.org/wiki/x', license: { name: 'CC BY-SA 4.0' } },
+    entries: [{ language: { code: 'en' }, partOfSpeech, senses }]
+  });
+  const dinh = (definition, extra) => Object.assign({ definition }, extra || {});
+
+  /* Nghĩa thiếu bản dịch vẫn được giữ. Đây là chỗ hỏng thật: bản đầu bỏ luôn
+     nghĩa nào không có tiếng Việt, và một mẻ B2 mười hai từ chỉ vào được bốn —
+     "festival" và "trunk" rơi hết. Định nghĩa tiếng Anh vẫn dạy được từ. */
+  const khongDich = dict.normalise('festival', than('noun', [
+    dinh('An event or series of special events centred on a celebration.')
+  ]));
+  ok(khongDich && khongDich[0].senses.length === 1,
+    'Nghĩa không có bản dịch tiếng Việt vẫn được giữ, không bị bỏ từ');
+  ok(khongDich && khongDich[0].senses[0].vi === '',
+    'Chỗ chưa dịch để trống chứ không bịa ra chữ',
+    JSON.stringify(khongDich && khongDich[0].senses[0].vi));
+
+  const coDich = dict.normalise('tradition', than('noun', [
+    dinh('A part of culture passed from person to person.', {
+      translations: [{ language: { code: 'fr' }, word: 'tradition' },
+                     { language: { code: 'vi' }, word: 'sự truyền miệng' }]
+    })
+  ]));
+  ok(coDich[0].senses[0].vi === 'sự truyền miệng',
+    'Có bản dịch tiếng Việt thì lấy đúng nó, không lấy nhầm ngôn ngữ khác',
+    coDich[0].senses[0].vi);
+
+  /* Nghĩa cổ không đưa vào giáo trình. "reasonable" ở Wiktionary mở đầu bằng
+     "(now rare) having the faculty of reason" — người học B2 không cần nghĩa
+     đó, và để nó đứng đầu là dạy sai từ. */
+  const cu = dict.normalise('reasonable', than('adjective', [
+    dinh('(now rare) Having the faculty of reason.', { tags: ['archaic'] }),
+    dinh('Just; fair; agreeable to reason.'),
+    dinh('Not expensive; fairly priced.')
+  ]));
+  ok(cu[0].senses.length === 2 && /^Just; fair/.test(cu[0].senses[0].en),
+    'Nghĩa cổ bị loại, nghĩa đang dùng lên đầu', cu[0].senses.map(s => s.en.slice(0, 18)).join(' | '));
+
+  /* Nghĩa "tiêu đề" của Wiktionary là vỏ rỗng: các nghĩa con nằm dưới nó thì
+     API này không trả về, nên lưu lại chỉ được một câu không dạy gì. */
+  const tieuDe = dict.normalise('trunk', than('noun', [
+    dinh('(heading, biology) Part of a body.'),
+    dinh('(heading) A container.'),
+    dinh('The main line or body of anything.')
+  ]));
+  ok(tieuDe[0].senses.length === 1 && /^The main line/.test(tieuDe[0].senses[0].en),
+    'Nghĩa tiêu đề rỗng bị loại', tieuDe[0].senses.map(s => s.en.slice(0, 20)).join(' | '));
+
+  /* Nghĩa chuyên ngành thì giữ nhưng xếp sau. Loại hẳn là sai: "negligence"
+     vốn là từ luật, bỏ nghĩa (law) đi thì mục từ rỗng ruột. */
+  const chuyenNganh = dict.normalise('negligence', than('noun', [
+    dinh('(law, uncountable) The breach of a duty of care.'),
+    dinh('The state of being negligent.')
+  ]));
+  ok(/^The state/.test(chuyenNganh[0].senses[0].en),
+    'Nghĩa phổ thông đứng trước nghĩa chuyên ngành',
+    chuyenNganh[0].senses.map(s => s.en.slice(0, 16)).join(' | '));
+  ok(chuyenNganh[0].senses.length === 2,
+    'Nhưng nghĩa chuyên ngành vẫn được giữ, chỉ xếp sau');
+
+  /* Nhãn ngữ pháp không phải nhãn chuyên ngành. Nếu đọc nhầm "(uncountable)"
+     thành một lĩnh vực thì gần như mọi danh từ đều bị đẩy xuống cuối. */
+  const nguPhap = dict.normalise('advice', than('noun', [
+    dinh('(uncountable) An opinion offered as a guide to action.'),
+    dinh('(law) Formal notice of a transaction.')
+  ]));
+  ok(/^\(uncountable\)/.test(nguPhap[0].senses[0].en),
+    'Nhãn ngữ pháp không bị nhầm thành nhãn chuyên ngành',
+    nguPhap[0].senses[0].en.slice(0, 22));
+
+  /* Ngoặc đầu định nghĩa không phải lúc nào cũng là nhãn lĩnh vực. Wiktionary
+     nhét cả lời dẫn nghĩa vào đó — "(of a situation)" ở `ironic`, "(physical)"
+     ở `accommodation`, "(relational)" ở `facial`. Bản đầu đọc tất cả thành
+     "chuyên ngành", thế là ba từ B2 bình thường bị trình nhập vứt đi. */
+  const dan = dict.normalise('ironic', than('adjective', [
+    dinh('(of a situation) Characterized by irony.'),
+    dinh('(relational) Of or relating to irony.')
+  ]));
+  ok(dict.teachable(dan), 'Lời dẫn nghĩa trong ngoặc không biến từ thường thành từ chuyên ngành');
+
+  /* Và nghĩa theo vùng thì KHÔNG bị đẩy xuống. Nghĩa "chỗ ở" của
+     "accommodation" mang nhãn (British, Australia) vì tiếng Anh-Mỹ nói
+     "accommodations" — đẩy nó xuống thì người học mở thẻ ra gặp nghĩa "sự điều
+     tiết" trước nghĩa họ cần. */
+  const vung = dict.normalise('accommodation', than('noun', [
+    dinh('(British, Australia, a mass noun) Lodging in a dwelling.'),
+    dinh('(physical) Adaptation or adjustment.')
+  ]));
+  ok(/^\(British/.test(vung[0].senses[0].en),
+    'Nghĩa theo vùng không bị đẩy xuống', vung[0].senses[0].en.slice(0, 24));
+
+  /* Giấy phép CC BY-SA đòi ghi nguồn. Không có nguồn thì thà bỏ từ. */
+  ok(dict.normalise('x', { entries: [{ partOfSpeech: 'noun', senses: [dinh('A thing.')] }] }) === null,
+    'Không có nguồn và giấy phép thì không nhận mục từ');
+  ok(dict.normalise('x', than('noun', [dinh('A thing.')]))[0].licence === 'CC BY-SA 4.0',
+    'Giấy phép đi kèm từng mục');
+
+  /* Không còn nghĩa nào dùng được thì trả null, để trình nhập đếm vào ô "không
+     có trong từ điển" thay vì ghi một mục rỗng. */
+  ok(dict.normalise('x', than('noun', [dinh('(heading) A thing.')])) === null,
+    'Mục chỉ toàn nghĩa bỏ đi thì trả null chứ không lưu mục rỗng');
+
+  /* Trần bốn nghĩa mỗi từ loại — thẻ từ vựng không phải trang từ điển. */
+  const nhieu = dict.normalise('set', than('verb',
+    Array.from({ length: 9 }, (_, i) => dinh('Sense number ' + i + ' of a very long entry.'))));
+  ok(nhieu[0].senses.length === 4, 'Mỗi từ loại giữ tối đa bốn nghĩa', String(nhieu[0].senses.length));
+
+  /* ---- Luật giáo trình: tra được không có nghĩa là đáng dạy ----
+     Danh sách tần suất lấy từ phụ đề, nên "randy" và "nah" nằm cùng dải hạng
+     với "negligence" và "voyage". Trước khi tra nghĩa thì không có cách nào
+     phân biệt; sau khi tra thì có. */
+  const muc = (senses) => dict.normalise('x', than('noun', senses))[0];
+
+  ok(dict.teachable(muc([dinh('The state of being negligent.')])),
+    'Từ có nghĩa phổ thông thì nhận');
+  ok(!dict.teachable(muc([
+    dinh('(British, informal) Sexually aroused.'),
+    dinh('(chiefly Scotland) Rude or coarse in manner.')
+  ])), 'Mọi nghĩa đều là khẩu ngữ hoặc phương ngữ thì loại — "randy" vào bảng B2 là hỏng');
+
+  /* Nhãn lĩnh vực KHÔNG phải lý do loại. Bản đầu coi (anatomy), (chemistry) và
+     (law) là đủ để loại, và vứt mất "pelvis", "silicon", "urine",
+     "accommodation" — đúng những từ C1–C2 mà lệnh này sinh ra để thêm vào. */
+  ok(dict.teachable(muc([
+    dinh('(anatomy) The large compound bone structure at the base of the spine.'),
+    dinh('(anatomy) A funnel-shaped cavity.')
+  ])), 'Từ mà mọi nghĩa đều thuộc một lĩnh vực vẫn được nhận — "pelvis" là từ đáng dạy');
+
+  /* Một từ, nhiều từ loại: xét cả từ chứ không xét riêng từng từ loại. "exam"
+     là khẩu ngữ ở danh từ nhưng bình thường ở động từ; loại danh từ đi thì kho
+     giữ đúng nửa sai của từ. */
+  ok(dict.teachable([
+    { senses: [{ en: '(informal) Clipping of examination.', note: 'informal' }] },
+    { senses: [{ en: '(sciences) Shortened form of examine.', note: '' }] }
+  ]), 'Xét cả từ chứ không xét riêng từng từ loại');
+  ok(!dict.teachable(muc([dinh('(slang) Cocaine.'), dinh('(slang) A drug portion.')])),
+    'Mọi nghĩa đều là tiếng lóng thì loại');
+  ok(dict.teachable(muc([
+    dinh('The noise of a horn or whistle.'), dinh('(slang) Cocaine.')
+  ])), 'Nghĩa đời thường có mặt thì nhận, nghĩa lóng phía sau không làm hỏng mục từ');
+
+  /* Nghĩa lóng bị đẩy xuống cuối, y như nghĩa chuyên ngành. Đây là chỗ "sink"
+     hỏng: Wiktionary xếp động từ trước danh từ và mở đầu bằng "(transitive,
+     slang) To drink", nên thẻ của một từ A2 mở ra là một nghĩa lóng. */
+  const cLong = dict.normalise('sink', than('verb', [
+    dinh('(transitive, slang) To drink quickly.'),
+    dinh('(intransitive) To descend below the surface.')
+  ]));
+  ok(/^\(intransitive\)/.test(cLong[0].senses[0].en),
+    'Nghĩa lóng bị đẩy xuống, nghĩa thường lên đầu', cLong[0].senses[0].en.slice(0, 24));
+
+  /* Và xét cả từ: một từ loại mở đầu bằng nghĩa lóng không kéo cả từ xuống nếu
+     từ loại khác vẫn mở đầu đàng hoàng. */
+  ok(dict.teachable([
+    { senses: [{ en: '(transitive, slang) To drink quickly.', note: 'slang' }] },
+    { senses: [{ en: 'A basin used for holding water.', note: '' }] }
+  ]), 'Một từ loại mở đầu bằng tiếng lóng không loại cả từ — "sink" là từ A2');
+  ok(dict.normalise('x', than('noun', [dinh('A coarse word.', { tags: ['vulgar'] })])) === null,
+    'Nghĩa tục bị loại ngay ở tầng từ điển, không còn nghĩa nào thì không có mục từ');
+
+  /* Từ nào có một nghĩa là lời miệt thị thì không dạy, dù các nghĩa còn lại
+     lành. "fag" giữ nghĩa "điếu thuốc" ở Anh và một nghĩa lịch sử trong trường
+     học, nên bỏ riêng nghĩa xúc phạm đi là từ này lọt vào danh sách B2 trông
+     rất vô hại — trong khi nghĩa người học sẽ gặp ngoài đời đúng là nghĩa vừa
+     bỏ. Đây là luật đọc từ nhãn của Wiktionary, không phải danh sách cấm chép
+     tay. */
+  const coMietThi = dict.normalise('fag', {
+    source: { url: 'https://en.wiktionary.org/wiki/x', license: { name: 'CC BY-SA 4.0' } },
+    entries: [
+      { language: { code: 'en' }, partOfSpeech: 'noun',
+        senses: [dinh('(UK, Ireland, colloquial) A cigarette.')] },
+      { language: { code: 'en' }, partOfSpeech: 'noun',
+        senses: [dinh('A slur.', { tags: ['offensive'] }),
+                 dinh('Another slur.', { tags: ['vulgar'] }),
+                 dinh('A third slur.', { tags: ['slur'] })] }
+    ]
+  });
+  ok(coMietThi && coMietThi.length === 1 && coMietThi[0].offensive === true,
+    'Từ loại chỉ toàn nghĩa xúc phạm bị bỏ, nhưng cờ vẫn bám vào cả từ',
+    JSON.stringify(coMietThi && coMietThi.map(e => e.offensive)));
+  ok(!dict.teachable(coMietThi),
+    'Từ có cả một từ loại toàn nghĩa miệt thị thì không dạy, dù nghĩa còn lại lành');
+
+  /* Nhưng MỘT nghĩa thô nằm lẻ trong một mục từ dài thì không định nghĩa cả từ.
+     "cancer" có đúng một nghĩa tính từ tục từ tiếng lóng mạng, bên cạnh nghĩa
+     bệnh — luật đếm-một đã loại mất "cancer", "wet", "cheese" và "curry". */
+  const motNghiaTho = dict.normalise('cancer', {
+    source: { url: 'https://en.wiktionary.org/wiki/x', license: { name: 'CC BY-SA 4.0' } },
+    entries: [
+      { language: { code: 'en' }, partOfSpeech: 'noun',
+        senses: [dinh('(medicine) A disease in which cells divide uncontrollably.')] },
+      { language: { code: 'en' }, partOfSpeech: 'adjective',
+        senses: [dinh('Extremely unpleasant.', { tags: ['vulgar', 'slang'] })] }
+    ]
+  });
+  ok(dict.teachable(motNghiaTho),
+    'Một nghĩa thô lẻ loi trong mục từ dài thì không loại cả từ — "cancer" vẫn phải dạy được');
+
+  /* Và phần luật nhãn với tay không tới thì có danh sách người giữ, ghi rõ là
+     danh sách chứ không giả vờ là luật. */
+  ok(!dict.teachable(dict.normalise('cock', than('noun', [dinh('A male bird.')]))),
+    'Danh sách người giữ chặn được từ mà thứ tự nghĩa của Wiktionary không lộ ra');
+
+  /* Nhãn liệt kê nhiều vùng nhưng có kèm một chuẩn quốc gia thì không phải
+     phương ngữ. "theatre" mang nhãn "(chiefly Australia, Canada, New Zealand,
+     UK, Hong Kong…)" — đọc cái đuôi ấy thành phương ngữ là vứt mất cách viết
+     Anh-Anh của một từ thường. */
+  ok(dict.teachable(dict.normalise('theatre', than('noun', [
+    dinh('(chiefly Australia, Canada, New Zealand, UK, Hong Kong) A place of performance.')
+  ]))), 'Nhãn nhiều vùng có kèm chuẩn quốc gia thì không tính là phương ngữ');
+
+  /* Nhãn có khi chỉ nằm trong ngoặc đầu định nghĩa chứ không nằm ở `tags` —
+     bản đầu chỉ đọc `tags` nên bỏ lọt đúng cái nửa mà người đọc nhìn thấy. */
+  ok(!dict.teachable(muc([dinh('(slang) A thing.'), dinh('(slang) Another thing.')])),
+    'Nhãn lóng viết trong ngoặc, không có ở tags, vẫn bị bắt');
+
+  /* Đây là một phán đoán giáo trình chứ không phải một sự thật ngôn ngữ, nên
+     `normalise()` không được tự áp dụng: người quản trị thêm tay từ nào cũng
+     phải được, kể cả từ mà luật này loại. */
+  ok(dict.normalise('randy', than('adjective', [dinh('(British, informal) Sexually aroused.')])) !== null,
+    'normalise() vẫn trả về đủ, việc lọc là của bên gọi');
+
+  /* Cột `vi` để trống phải lộ ra ở API, nếu không màn hình sẽ in một dòng trắng
+     ở đúng chỗ đáng lẽ là bản dịch. */
+  const chuaDich = q.get("SELECT id FROM vocab_entries WHERE headword='child'");
+  db.prepare("INSERT INTO vocab_senses (entry_id,en,vi,level,sort) VALUES (?,?,'','B2',98)")
+    .run(chuaDich.id, 'A sense imported without a Vietnamese gloss.');
+  const conThieu = q.val("SELECT COUNT(*) c FROM vocab_senses WHERE vi=''");
+  ok(conThieu === 1, 'Đếm được số nghĩa đang chờ dịch', String(conThieu));
 } catch (e) {
   fail++;
   console.log('✗ Lỗi khi chạy: ' + (e && e.stack ? e.stack : e));

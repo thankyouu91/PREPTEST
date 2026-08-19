@@ -53,6 +53,7 @@ const NGUON = {
     ],
     licenceUrl: 'https://raw.githubusercontent.com/wooorm/dictionaries/main/dictionaries/en-GB/license',
     file: 'en-words.txt',
+    names: 'en-names.txt',
     licence: 'en-words.LICENCE.txt'
   },
   /* Tần suất tiếng Anh nói, từ OpenSubtitles (MIT). Dùng để xếp bậc theo hạng
@@ -78,23 +79,37 @@ console.log('─'.repeat(70));
 
 /* ---- Danh sách chính tả ---- */
 {
-  const tu = new Set();
+  /* Tách tên riêng ra tệp khác, theo chữ hoa TRONG NGUỒN.
+     ------------------------------------------------------------------
+     Hai chỗ dùng cần hai thứ khác nhau. Tra chính tả thì tên riêng phải
+     được chấp nhận — "Pete" không phải lỗi chính tả. Nhưng chọn từ để
+     dạy thì không: bản đầu gộp chung và danh sách ứng viên B1–C2 hiện ra
+     "pete", "belgrade", "cedric" nằm cạnh "reasonable" và "negligence". */
+  const tu = new Set(), ten = new Set();
   for (const url of NGUON.chinhTa.urls) {
     const raw = await tai(url);
     const dong = raw.split('\n').slice(1);        // dòng đầu là số lượng
     for (const d of dong) {
       /* Bỏ cờ biến đổi đuôi. Giữ dạng gốc thôi: `server/data/lexicon.js` tự rút
          gọn đuôi lúc tra, nên không cần bung hết biến thể ra tệp. */
-      const w = d.split('/')[0].trim().toLowerCase();
+      const goc = d.split('/')[0].trim();
+      const w = goc.toLowerCase();
       if (!w || /[^a-z'-]/.test(w)) continue;
-      tu.add(w);
+      (/^[A-Z]/.test(goc) ? ten : tu).add(w);
     }
   }
-  const sorted = [...tu].sort();
+  /* Từ vừa là tên vừa là từ thường ("mark", "bill", "rose") thì thuộc cả hai;
+     danh sách từ thường thắng, vì dạy "rose" là hợp lý. */
+  ten.forEach(t => { if (tu.has(t)) ten.delete(t); });
+
+  const sorted = [...tu].sort(), sortedTen = [...ten].sort();
   fs.writeFileSync(path.join(OUT, NGUON.chinhTa.file), sorted.join('\n') + '\n');
+  fs.writeFileSync(path.join(OUT, NGUON.chinhTa.names), sortedTen.join('\n') + '\n');
   fs.writeFileSync(path.join(OUT, NGUON.chinhTa.licence), await tai(NGUON.chinhTa.licenceUrl));
-  console.log(`  ${C.g}✓${C.x} ${NGUON.chinhTa.file}  ${sorted.length.toLocaleString('en-US')} từ  ` +
+  console.log(`  ${C.g}✓${C.x} ${NGUON.chinhTa.file}  ${sorted.length.toLocaleString('en-US')} từ thường  ` +
     `${C.d}${Math.round(fs.statSync(path.join(OUT, NGUON.chinhTa.file)).size / 1024)} KB${C.x}`);
+  console.log(`  ${C.g}✓${C.x} ${NGUON.chinhTa.names}  ${sortedTen.length.toLocaleString('en-US')} tên riêng  ` +
+    `${C.d}${Math.round(fs.statSync(path.join(OUT, NGUON.chinhTa.names)).size / 1024)} KB${C.x}`);
 }
 
 /* ---- Danh sách tần suất ---- */
