@@ -58,6 +58,9 @@ node scripts/test-user-api.mjs || fail=1
 step "Kiểm thử engine làm bài (lượt thi, đồng hồ, nghe lại, hạn mức)"
 node scripts/test-exam.mjs || fail=1
 
+step "Kiểm thử soạn đề (rubric, máy chấm, ý chính, level, audio)"
+node scripts/test-authoring.mjs || fail=1
+
 step "Kiểm thử ngân hàng đề VPET (khớp blueprint, chất lượng từng câu)"
 node scripts/test-items.mjs || fail=1
 

@@ -789,6 +789,29 @@ console.log('\n\x1b[1m== Rubric · ôn tập cá nhân hoá ==\x1b[0m');
     fmt.levels.join(','));
 }
 
+/* ---- Hai bộ chạy kiểm thử phải chạy cùng một danh sách ----
+   `npm test` và `scripts/verify.sh` từng lệch nhau: verify.sh không chạy
+   test-authoring.mjs, còn npm test không chạy test-items.mjs và
+   kiem-noi-dung.mjs. Hậu quả là mọi phép kiểm trong tệp này — rubric, máy chấm,
+   ý chính, level, số lần nghe lại — không có mặt trong lượt chạy mà người ta
+   nhìn vào để nói "xanh hết". Một bộ kiểm thử không được chạy thì tệ hơn không
+   có, vì nó tạo ra niềm tin mà không tạo ra bằng chứng. */
+{
+  const fs2 = require('node:fs');
+  const CHUP = ['screenshot.mjs', 'shot-admin.mjs'];   // chỉ verify.sh chụp ảnh
+  const lay = s => [...new Set((s.match(/node scripts\/[a-z-]+\.(?:mjs|js)/g) || [])
+    .map(x => x.replace('node scripts/', '')))].filter(x => !CHUP.includes(x)).sort();
+
+  const npmTest = lay(JSON.parse(fs2.readFileSync(new URL('../package.json', import.meta.url), 'utf8')).scripts.test);
+  const verify = lay(fs2.readFileSync(new URL('./verify.sh', import.meta.url), 'utf8'));
+
+  const thieuOVerify = npmTest.filter(x => !verify.includes(x));
+  const thieuONpm = verify.filter(x => !npmTest.includes(x));
+  ok(thieuOVerify.length === 0, 'verify.sh chạy đủ mọi bộ kiểm thử mà npm test chạy', thieuOVerify.join(', '));
+  ok(thieuONpm.length === 0, 'npm test chạy đủ mọi bộ kiểm thử mà verify.sh chạy', thieuONpm.join(', '));
+  ok(verify.includes('test-authoring.mjs'), 'Chính tệp này nằm trong verify.sh');
+}
+
 /* ---- Bậc 0 là một bài làm dở, không phải một bài trống ---- */
 {
   const R = require('../server/data/rubrics.js');
