@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>VPET Prep · Mock tests for six English certificates</title>
-  <meta name="description" content="Mock-test platform for VEPT, VPET, OTE, TOEIC, IELTS and PTE: the real paper format, automatic marking, and a per-skill breakdown of what is holding you back.">
+  <title>VPET Prep · Mock tests for the VPET exam</title>
+  <meta name="description" content="Mock-test platform for the VPET exam (Vietnam Proficiency English Test): the real paper format, automatic marking, and a per-skill breakdown of what is holding you back.">
   <meta name="theme-color" content="#1c3d8f">
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <link rel="manifest" href="/manifest.webmanifest">
@@ -34,7 +34,7 @@
       <b data-brand-name class="font-extrabold tracking-tight text-[17px]">VPET Prep</b>
     </a>
     <nav class="hidden md:flex items-center gap-1 mx-auto" aria-label="Main navigation">
-      <a href="#ky-thi" class="px-3.5 py-2 rounded-full text-sm font-semibold text-muted hover:text-ink transition">Exams</a>
+      <a href="#ky-thi" class="px-3.5 py-2 rounded-full text-sm font-semibold text-muted hover:text-ink transition">The exam</a>
       <a href="#cach-hoat-dong" class="px-3.5 py-2 rounded-full text-sm font-semibold text-muted hover:text-ink transition">How it works</a>
       <a href="#bang-gia" class="px-3.5 py-2 rounded-full text-sm font-semibold text-muted hover:text-ink transition">Pricing</a>
     </nav>
@@ -57,16 +57,16 @@
           Sit the real thing first, <span class="text-brand-strong whitespace-nowrap">walk in calm</span>
         </h1>
         <p class="text-[17px] sm:text-lg text-muted leading-relaxed mt-5 max-w-[52ch] rise rise-1">
-          Practice papers for six English certificates: the real structure, marked automatically, with each skill scored on its own.
+          Practice papers for the VPET exam — the real structure, marked automatically, with each skill scored on its own.
         </p>
         <div class="flex flex-wrap items-center gap-3 mt-8 rise rise-2">
           <a href="/prep/dang-ky/" class="btn btn-primary btn-lg">Start free</a>
-          <a href="#ky-thi" class="btn btn-ghost btn-lg">See all six exams</a>
+          <a href="#ky-thi" class="btn btn-ghost btn-lg">See the exam</a>
         </div>
         <ul class="flex flex-wrap gap-x-6 gap-y-2.5 mt-9 rise rise-3" aria-label="Highlights">
           <li class="inline-flex items-center gap-2 text-sm font-semibold text-muted">
             <span class="text-accent-strong"><svg viewBox="0 0 24 24" class="w-[18px] h-[18px]" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span>
-            Six certificates
+            The real VPET format
           </li>
           <li class="inline-flex items-center gap-2 text-sm font-semibold text-muted">
             <span class="text-accent-strong"><svg viewBox="0 0 24 24" class="w-[18px] h-[18px]" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span>
@@ -135,13 +135,13 @@
     </div>
   </section>
 
-  <!-- ===================== THE SIX EXAMS ===================== -->
+  <!-- ===================== THE EXAM ===================== -->
   <section id="ky-thi" class="scroll-mt-20">
     <div class="max-w-shell mx-auto px-4 sm:px-6 py-16 lg:py-24">
       <div class="max-w-[60ch]">
-        <h2 class="text-3xl sm:text-4xl font-extrabold tracking-tight">Choose your exam</h2>
+        <h2 class="text-3xl sm:text-4xl font-extrabold tracking-tight">The exam</h2>
         <p class="text-muted text-[16px] leading-relaxed mt-3">
-          Every exam has its own structure and scale. The practice papers follow each format, so nothing on the day is a surprise.
+          VPET has its own structure and scale. The practice papers follow the real format, so nothing on the day is a surprise.
         </p>
       </div>
 
@@ -169,7 +169,7 @@
         </div>
       </div>
       <ol class="lg:col-span-7 relative grid gap-2">
-        <span class="absolute left-[27px] top-8 bottom-8 w-px bg-line" aria-hidden="true"></span>
+        <span class="absolute left-[44px] top-11 bottom-11 w-px bg-line" aria-hidden="true"></span>
         <li class="relative flex gap-6 p-4 rounded-2xl transition" data-reveal>
           <span class="relative z-10 w-14 h-14 shrink-0 rounded-2xl bg-brand-soft text-brand-strong inline-flex items-center justify-center font-extrabold text-xl">1</span>
           <div class="pt-1.5">
@@ -415,7 +415,7 @@ Sign up for <span id="plan-cta-name">Plus</span></a>
     <nav aria-label="Platform">
       <h3 class="text-sm font-extrabold tracking-tight mb-3.5">Platform</h3>
       <ul class="grid gap-2.5 text-[14.5px] font-medium text-muted">
-        <li><a class="hover:text-ink transition" href="#ky-thi">Exams</a></li>
+        <li><a class="hover:text-ink transition" href="#ky-thi">The exam</a></li>
         <li><a class="hover:text-ink transition" href="#bang-gia">Pricing</a></li>
         <li><a class="hover:text-ink transition" href="/prep/dang-nhap/">Sign in</a></li>
         <li><a class="hover:text-ink transition" href="/prep/dang-ky/">Start free</a></li>
@@ -442,7 +442,7 @@ Sign up for <span id="plan-cta-name">Plus</span></a>
   (function () {
     const t = PREP.tenants.find(x => x.id === PrepTheme.tenant()) || PREP.tenants[0];
     PREP.qsa('[data-brand-name]').forEach(el => { el.textContent = t.name; });
-    document.title = t.name + ' · Mock tests for six English certificates';
+    document.title = t.name + ' · Mock tests for the VPET exam';
   })();
 
   /* Public page: boot() does not require a session, it just loads the catalogue and any session there is */
