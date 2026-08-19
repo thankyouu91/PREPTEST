@@ -634,6 +634,34 @@ console.log('\n\x1b[1m== Rubric · ôn tập cá nhân hoá ==\x1b[0m');
     JSON.stringify(kq));
 }
 
+/* ---- Số lần nghe lại khai theo từng part, và phải vừa đồng hồ ----
+   Trước 19/08/2026 mọi part audio đều chạy ở một hằng số chung là 2, và part G
+   cần 193% đồng hồ ở con số đó. Đoạn văn không dài quá — số lần phát mới sai. */
+{
+  const F = require('../server/data/exam-formats.js');
+  const secs = F.FORMATS.find(f => f.id === 'vpet-full').sections;
+  const audio = secs.filter(s => s.needsAudio);
+
+  ok(audio.length === 5 && audio.every(s => Number.isFinite(s.replays)),
+    'Mọi part có audio đều khai rõ số lần nghe lại, không để rơi vào mặc định chung',
+    audio.map(s => s.part + '=' + s.replays).join(' '));
+
+  ok(F.sectionOfPart('vpet', 'G').replays === 0 && F.sectionOfPart('vpet', 'E').replays === 1,
+    'Part G phát một lần, part E phát hai lần');
+
+  ok(secs.filter(s => !s.needsAudio).every(s => s.replays === undefined),
+    'Part không phát audio thì không khai số lần nghe lại');
+
+  /* Đồng hồ phải chịu được số lần phát mà chính blueprint cho phép. Con số dưới
+     đây là thời lượng audio và thời gian làm bài đo từ kho (xem soat-de-vpet). */
+  const dukien = { E: [45, 240], F: [35, 96], G: [192, 120] };
+  const vo = Object.entries(dukien).filter(([p, [a, lam]]) => {
+    const s = F.sectionOfPart('vpet', p);
+    return a * (1 + s.replays) + lam > s.minutes * 60;
+  }).map(([p]) => p);
+  ok(vo.length === 0, 'Mọi part nghe đều vừa đồng hồ ở đúng số lần phát nó cho phép', vo.join(', '));
+}
+
 /* ---- Bậc 0 là một bài làm dở, không phải một bài trống ---- */
 {
   const R = require('../server/data/rubrics.js');

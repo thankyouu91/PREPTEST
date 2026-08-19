@@ -79,6 +79,39 @@ function vstepSections() {
  * bank (mcq | gap | essay | speaking); minutes are editable defaults, since
  * the part table publishes counts only.
  * ------------------------------------------------------------------ */
+/**
+ * The ten VPET parts.
+ *
+ * ---------------------------------------------------------------------------
+ * `replays` — HOW MANY TIMES AN AUDIO ITEM MAY BE PLAYED AGAIN
+ *
+ * Declared per part because it is part of the exam design, not a platform
+ * setting. `server/exam-api.js` used a flat default of 2 for every audio part,
+ * with a comment saying the owner would set the real numbers per part — the
+ * hook that would have let them was never built, so every part silently ran at
+ * 2, and one of them could not fit its clock at that number.
+ *
+ * Part G was at 193% of its six minutes. Six passages of about half a minute,
+ * each played three times, is 576 seconds of listening before the candidate
+ * has read a single option. The passages were not too long; the allowance was
+ * wrong. A comprehension passage played once is the ordinary arrangement, and
+ * this repository already says so about IELTS Listening two formats below.
+ *
+ *   G  0  Play once. A comprehension passage tests what you took in, and at
+ *          three plays it becomes a reading test with an audio delivery
+ *          mechanism. 193% -> 87% of the clock.
+ *   E  1  Play twice. Dictation is the one part where a second hearing is the
+ *          task rather than a concession, but a third does not fit: eight
+ *          sentences also have to be typed. 104% -> 92%.
+ *   F  2  Kept. Single short lines, and the part sits at 84% even at three
+ *          plays, so there is no reason to take anything away.
+ *   H  0  Repeat what you heard. A replay would be answering the question.
+ *   J  0  The item says "you will hear a short story once" and means it.
+ *
+ * Changing a number here changes what a candidate is allowed to do, so it is
+ * the owner's to set. These are the values the clock permits; a part whose
+ * `replays` and `minutes` disagree is caught by `npm run soat-de`.
+ */
 function vpetSections() {
   return [
     {
@@ -103,22 +136,22 @@ function vpetSections() {
     },
     {
       name: 'Part E - Dictation', part: 'E', skill: 'listening', type: 'Type what you hear',
-      items: 8, minutes: 6, types: ['gap'], needsAudio: true,
+      items: 8, minutes: 6, types: ['gap'], needsAudio: true, replays: 1,
       parts: [{ label: 'E1-E8', items: 8, note: 'One sentence per item, played a fixed number of times. Needs audio.' }]
     },
     {
       name: 'Part F - Response Selection', part: 'F', skill: 'listening', type: 'Multiple choice',
-      items: 8, minutes: 4, types: ['mcq'], needsAudio: true,
+      items: 8, minutes: 4, types: ['mcq'], needsAudio: true, replays: 2,
       parts: [{ label: 'F1-F8', items: 8, note: 'Hear a prompt, pick the natural reply. Needs audio.' }]
     },
     {
       name: 'Part G - Passage Comprehension', part: 'G', skill: 'listening', type: 'Multiple choice',
-      items: 6, minutes: 6, types: ['mcq'], needsAudio: true,
+      items: 6, minutes: 6, types: ['mcq'], needsAudio: true, replays: 0,
       parts: [{ label: 'G1-G6', items: 6, note: 'Longer spoken passages with comprehension questions. Needs audio.' }]
     },
     {
       name: 'Part H - Repeat', part: 'H', skill: 'speaking', type: 'Say the sentence back',
-      items: 10, minutes: 4, types: ['speaking'], needsAudio: true,
+      items: 10, minutes: 4, types: ['speaking'], needsAudio: true, replays: 0,
       parts: [{ label: 'H1-H10', items: 10, note: 'Repeat each sentence exactly. Scores pronunciation and fluency. Needs audio.' }]
     },
     {
@@ -132,7 +165,7 @@ function vpetSections() {
          carries the heaviest weight in the Speaking band, and a 90 s sample is a far
          steadier basis for a rubric judgement than a 45 s one. See docs/VOICE.md. */
       name: 'Part J - Story Retellings', part: 'J', skill: 'speaking', type: 'Retell what you heard',
-      items: 3, minutes: 9, types: ['speaking'], needsAudio: true,
+      items: 3, minutes: 9, types: ['speaking'], needsAudio: true, replays: 0,
       parts: [{ label: 'J1-J3', items: 3, note: 'Listen to a short story, then retell it in your own words. Three minutes per story. Needs audio.' }]
     }
   ];

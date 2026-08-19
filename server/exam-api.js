@@ -36,9 +36,25 @@ const int = (v, dflt) => (Number.isFinite(+v) ? Math.trunc(+v) : dflt);
 const bad = (res, msg) => res.status(400).json({ error: msg });
 
 /** How many times an audio item may be played when the blueprint says nothing.
-    A platform default like the per-part minutes, not a published exam rule —
-    the owner sets the real numbers per part once they are confirmed. */
+    A platform default like the per-part minutes, not a published exam rule. */
 const DEFAULT_REPLAYS = 2;
+
+/**
+ * The replay allowance for one part, from the blueprint, falling back to the
+ * platform default only where a format has not set one.
+ *
+ * This is the hook the constant above promised and did not have. Every audio
+ * part ran at two replays regardless of what its design needed, and part G —
+ * six half-minute passages — needed 193% of its six minutes at that number.
+ * The allowance is read in two places and they must agree: the count shown to
+ * the candidate, and the limit enforced when they press play. A generous
+ * display next to a strict limit is a candidate being refused a replay the
+ * screen just offered them.
+ */
+function replaysFor(familyId, part) {
+  const sec = part ? EXAM_FORMATS.sectionOfPart(familyId, part) : null;
+  return sec && Number.isFinite(sec.replays) ? sec.replays : DEFAULT_REPLAYS;
+}
 
 /* Spoken answers are recorded in the browser and uploaded as bytes. Same
    ceiling and same raw-body approach as the admin MP3 upload: no multipart
@@ -127,6 +143,7 @@ function attemptState(att) {
         items: items.map(it => {
           const saved = byQuestion.get(it.id);
           const used = saved ? saved.replays_used : 0;
+          const allowed = replaysFor(test ? test.family_id : null, p.part);
           return {
             questionId: it.id,
             prompt: it.prompt,
@@ -140,7 +157,7 @@ function attemptState(att) {
             type: it.type,
             options: JSON.parse(it.options_json || '[]'),
             hasAudio: !!it.audio_key,
-            replaysLeft: it.audio_key ? Math.max(0, DEFAULT_REPLAYS - used) : null,
+            replaysLeft: it.audio_key ? Math.max(0, allowed - used) : null,
             answer: saved ? saved.answer : '',
             hasRecording: !!(saved && saved.audio_key)
           };
@@ -385,7 +402,13 @@ router.get('/attempts/:id/items/:questionId/audio', A.requireUser, async (req, r
 
   const row = q.get('SELECT * FROM attempt_answers WHERE attempt_id=? AND question_id=?', att.id, questionId);
   const used = row ? row.replays_used : 0;
-  if (used >= DEFAULT_REPLAYS) {
+  /* Read from the same place the count shown on screen came from. If these two
+     ever disagree the candidate is refused a replay the interface just offered
+     them, mid-exam, with the clock running. */
+  const fam = q.val(
+    'SELECT t.family_id FROM attempts a JOIN tests t ON t.id=a.test_id WHERE a.id=?', att.id);
+  const allowed = replaysFor(fam, item.part);
+  if (used >= allowed) {
     return res.status(429).json({ error: 'You have used every replay for this item.', replaysLeft: 0 });
   }
 
@@ -411,7 +434,7 @@ router.get('/attempts/:id/items/:questionId/audio', A.requireUser, async (req, r
     /* An exam paper carries its own answers: it must not sit in a shared cache, nor
        a private one, because a cached copy is a replay that was never counted. */
     .set('Cache-Control', 'private, no-store')
-    .set('X-Replays-Left', String(Math.max(0, DEFAULT_REPLAYS - used - 1)))
+    .set('X-Replays-Left', String(Math.max(0, allowed - used - 1)))
     .send(file.body);
 });
 

@@ -92,8 +92,15 @@ function audioSeconds(part, need) {
 
 /* Bao nhiêu lần thí sinh được nghe lại. Nghe lại là một phần của đồng hồ chứ
    không phải ngoài nó: cho phép 2 lần nghe lại nghĩa là part E có thể phát
-   mỗi câu ba lần, và ba lần thì gấp ba thời lượng. */
-const NGHE_LAI = 2;
+   mỗi câu ba lần, và ba lần thì gấp ba thời lượng.
+
+   Lấy theo từng part từ blueprint, không dùng một hằng số chung. Dùng chung một
+   con số chính là thứ đẩy part G lên 193%: đoạn văn không dài quá, mà là được
+   phát ba lần trong khi thiết kế của nó là phát một lần. */
+const ngheLai = part => {
+  const sec = FORMATS.sectionOfPart('vpet', part);
+  return sec && Number.isFinite(sec.replays) ? sec.replays : 2;
+};
 
 /**
  * Thời gian một part THẬT SỰ cần, không phải chỉ thời lượng audio.
@@ -125,15 +132,18 @@ function thoiGianCanThuc(part, audio) {
       const go = (chuTB / 2) * n;
       /* Nghe lại là quyền của thí sinh, và part chép chính tả thì hầu như ai
          cũng dùng hết. Tính cả. */
-      return { can: tongAudio * (1 + NGHE_LAI) + go, giaiThich: `nghe ${Math.round(tongAudio)}s ×${1 + NGHE_LAI} + gõ ${Math.round(go)}s` };
+      const r = ngheLai('E');
+      return { can: tongAudio * (1 + r) + go, giaiThich: `nghe ${Math.round(tongAudio)}s ×${1 + r} + gõ ${Math.round(go)}s` };
     }
     case 'F': {
       const chon = 12 * n;                    // đọc 4 phương án rồi chọn
-      return { can: tongAudio * (1 + NGHE_LAI) + chon, giaiThich: `nghe ${Math.round(tongAudio)}s ×${1 + NGHE_LAI} + chọn ${chon}s` };
+      const r = ngheLai('F');
+      return { can: tongAudio * (1 + r) + chon, giaiThich: `nghe ${Math.round(tongAudio)}s ×${1 + r} + chọn ${chon}s` };
     }
     case 'G': {
       const chon = 20 * n;                    // đoạn dài hơn, câu hỏi dài hơn
-      return { can: tongAudio * (1 + NGHE_LAI) + chon, giaiThich: `nghe ${Math.round(tongAudio)}s ×${1 + NGHE_LAI} + đọc/chọn ${chon}s` };
+      const r = ngheLai('G');
+      return { can: tongAudio * (1 + r) + chon, giaiThich: `nghe ${Math.round(tongAudio)}s ×${1 + r} + đọc/chọn ${chon}s` };
     }
     case 'H': {
       /* Nhắc lại: nói lại dài bằng câu vừa nghe, cộng một nhịp lấy hơi. */
