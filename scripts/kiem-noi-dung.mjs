@@ -117,8 +117,12 @@ const cau = [
   })),
   /* Năm bộ đề đầy đủ. Chúng đi qua đúng bộ luật này chứ không có luật riêng —
      một cổng chặn mà nội dung mới được miễn thì không phải là cổng chặn. */
+  /* `level` ở đây là BẬC CEFR của câu, không phải level của đề.
+     Bộ đề mang cả hai: `level` là Level 1 / Level 2 của bài thi, `cefr` là độ
+     khó của từng câu bên trong dải ấy. Cổng chặn này kiểm câu, nên nó lấy bậc
+     CEFR — lấy nhầm sang level của đề thì cả 275 câu đều "bậc không hợp lệ". */
   ...FORMS.allItems().map(i => ({
-    ref: i.ref, part: i.part, type: i.type, skill: i.skill, level: i.level,
+    ref: i.ref, part: i.part, type: i.type, skill: i.skill, level: i.cefr,
     prompt: i.prompt, options: i.options || [], answer: i.answer,
     keyPoints: i.keyPoints || [], script: i.script || '', nguon: 'vpet-forms.js'
   }))

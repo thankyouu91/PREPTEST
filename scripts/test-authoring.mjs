@@ -773,6 +773,16 @@ console.log('\n\x1b[1m== Rubric · ôn tập cá nhân hoá ==\x1b[0m');
   ok(soL1 === 3 && FORMS.FORMS.length - soL1 === 2,
     'Ba bộ Level 1, hai bộ Level 2 — đúng tỉ lệ giữ độ sâu cho cả hai level');
 
+  /* Từng câu mang HAI thứ và chúng không được lẫn vào nhau: `level` là level
+     của đề, `cefr` là bậc của câu. Lẫn một lần rồi: cổng kiểm nội dung đọc
+     nhầm `level` thành bậc CEFR và báo cả 275 câu "bậc không hợp lệ". */
+  const ct = FORMS.allItems();
+  ok(ct.every(i => F.vpetLevel(i.level)), 'Mỗi câu mang level của đề nó thuộc về');
+  const bacHopLe = D.BANDS.map(b => b.band);
+  ok(ct.every(i => bacHopLe.includes(i.cefr)), 'Mỗi câu mang một bậc CEFR có thật');
+  ok(ct.every(i => i.level !== i.cefr),
+    'Hai trường không bao giờ trùng giá trị — nếu trùng thì có chỗ đang gán nhầm');
+
   /* Format khai level bằng id level, không phải bằng bậc CEFR. */
   const fmt = F.FORMATS.find(x => x.id === 'vpet-full');
   ok(fmt.levels.join(',') === 'L1,L2', 'Format VPET khai hai level chứ không khai dải CEFR',
