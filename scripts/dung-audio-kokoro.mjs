@@ -42,6 +42,7 @@
  */
 import { spawn } from 'node:child_process';
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { createRequire } from 'node:module';
@@ -104,6 +105,50 @@ function dungMot(segments) {
     });
     child.stdin.end(JSON.stringify({
       model: MODEL, voices: VOICES, voice: GIONG, speed: TOC_DO, segments
+    }));
+  });
+}
+
+/**
+ * Dựng cả lô trong MỘT lần gọi Python.
+ *
+ * `dungMot` nạp mô hình ONNX 325 MB rồi đọc một câu rồi thoát: mất khoảng 37
+ * giây, trong đó phần đọc chỉ vài giây. Với 175 câu thì đó là hơn một tiếng
+ * rưỡi dành cho việc nạp đi nạp lại cùng một tệp.
+ *
+ * Lô nạp một lần rồi đọc hết, mỗi câu ghi ra một tệp riêng và báo một dòng JSON
+ * trên stderr ngay khi xong. Đo thật: 5 câu mất 11,3 giây thay vì 185 giây.
+ *
+ * Câu nào hỏng thì báo câu ấy và chạy tiếp — dựng lại 174 câu tốt chỉ vì một
+ * kịch bản sai chính là thứ chế độ này sinh ra để tránh.
+ */
+function dungLo(danh, thuMuc) {
+  return new Promise((resolve, reject) => {
+    const child = spawn(PY, [RENDER], { stdio: ['pipe', 'ignore', 'pipe'] });
+    const ketQua = new Map();
+    let dem = '';
+    child.stderr.on('data', d => {
+      dem += d.toString();
+      const dong = dem.split('\n');
+      dem = dong.pop();
+      for (const l of dong) {
+        if (!l.trim()) continue;
+        try {
+          const r = JSON.parse(l);
+          ketQua.set(String(r.id), r);
+          /* Tiến độ ngay khi từng câu xong, chứ không đợi cả lô: một lô 175 câu
+             im lặng bảy phút trông y hệt một lô đã treo. */
+          process.stdout.write(r.ok
+            ? `  ${C.d}dựng ${ketQua.size}/${danh.length}${C.x}\r`
+            : `  ${C.r}✗ ${r.id}: ${String(r.error).slice(0, 50)}${C.x}\n`);
+        } catch (e) { /* dòng không phải JSON thì bỏ qua */ }
+      }
+    });
+    child.on('error', reject);
+    child.on('close', () => { process.stdout.write('\r'.padEnd(40) + '\r'); resolve(ketQua); });
+    child.stdin.end(JSON.stringify({
+      model: MODEL, voices: VOICES, voice: GIONG, speed: TOC_DO, outDir: thuMuc,
+      batch: danh.map(v => ({ id: String(v.row.id), segments: v.parsed.segments }))
     }));
   });
 }
@@ -173,10 +218,20 @@ console.log('');
 let xong = 0, hong = 0, tongGiay = 0, tongByte = 0;
 const batDau = Date.now();
 
+/* Đọc trước cả lô, rồi mới vào vòng ghi kho. Tách làm hai chặng vì chúng hỏng
+   theo hai kiểu khác nhau: đọc hỏng là kịch bản sai, ghi hỏng là kho hoặc CSDL,
+   và trộn lại thì một lỗi mạng giữa chừng buộc phải đọc lại từ đầu. */
+const thuMucTam = fs.mkdtempSync(path.join(os.tmpdir(), 'kokoro-lo-'));
+const daDung = await dungLo(viec, thuMucTam);
+
 for (const v of viec) {
   const nhan = `part ${v.row.part} #${v.row.id}`;
   try {
-    const { mp3, info } = await dungMot(v.parsed.segments);
+    const kq = daDung.get(String(v.row.id));
+    if (!kq) throw new Error('bộ dựng không trả kết quả cho câu này');
+    if (kq.error) throw new Error(kq.error);
+    const info = kq;
+    const mp3 = fs.readFileSync(kq.path);
     if (!mp3.length) throw new Error('bộ dựng không trả về byte nào');
 
     const stored = await storage.put(mp3, 'audio/mpeg');
@@ -220,6 +275,10 @@ for (const v of viec) {
       v.parsed.plain.length, e.message.slice(0, 300), nowISO());
   }
 }
+
+/* Tệp tạm đã vào kho hết rồi thì dọn. Không chặn nếu dọn hỏng: audio đã an
+   toàn, và một thư mục tạm sót lại không đáng để lệnh trả về mã lỗi. */
+try { fs.rmSync(thuMucTam, { recursive: true, force: true }); } catch (e) { /* mặc kệ */ }
 
 const phut = (Date.now() - batDau) / 60000;
 console.log('\n' + '─'.repeat(72));

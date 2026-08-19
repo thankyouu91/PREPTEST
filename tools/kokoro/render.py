@@ -40,9 +40,14 @@ def load_model(model_path, voices_path):
     return Kokoro(model_path, voices_path)
 
 
-def render(job):
-    """job → (mp3 bytes, sample rate, duration in seconds)"""
-    model = load_model(job["model"], job["voices"])
+def render(job, model=None):
+    """job → (mp3 bytes, sample rate, duration in seconds)
+
+    `model` lets the batch path hand in an already-loaded model; left out, one
+    is loaded for this job alone, which is what the single-job path wants.
+    """
+    if model is None:
+        model = load_model(job["model"], job["voices"])
     voice = job.get("voice", "bf_emma")
     speed = float(job.get("speed", 1.25))
     lang = job.get("lang", "en-gb")
@@ -92,8 +97,65 @@ def render(job):
     return mp3, rate, len(audio) / rate
 
 
+def render_batch(job):
+    """Many scripts, one model load.
+
+    The single-job path above loads a 325 MB ONNX model, speaks one sentence and
+    exits. That costs about 37 seconds, of which the speaking is a few — so a
+    bank of 175 items spends an hour and a half loading the same file 175 times.
+
+    Batch mode takes {"batch": [{"id": ..., "segments": [...]}, ...]}, loads once
+    and writes each MP3 to its own file under `outDir`, reporting one JSON line
+    per item on stderr as it goes. Files rather than stdout because the caller
+    needs to tell the results apart, and concatenated MP3 bytes cannot be split
+    back into items.
+
+    One failure does not stop the run: an item that raises is reported with its
+    error and the rest continue. Re-rendering 174 good items to fix one bad
+    script is exactly the waste this mode exists to avoid.
+    """
+    import os
+
+    model = load_model(job["model"], job["voices"])
+    out_dir = job["outDir"]
+    os.makedirs(out_dir, exist_ok=True)
+
+    voice = job.get("voice", "bf_emma")
+    speed = float(job.get("speed", 1.25))
+    lang = job.get("lang", "en-gb")
+    bitrate = int(job.get("bitrate", 128))
+
+    for item in job["batch"]:
+        one = {
+            "model": job["model"], "voices": job["voices"],
+            "voice": item.get("voice", voice),
+            "speed": float(item.get("speed", speed)),
+            "lang": item.get("lang", lang),
+            "bitrate": bitrate,
+            "segments": item["segments"],
+        }
+        try:
+            mp3, rate, seconds = render(one, model=model)
+        except Exception as exc:                              # noqa: BLE001
+            print(json.dumps({"id": item["id"], "error": str(exc)}), file=sys.stderr, flush=True)
+            continue
+
+        path = os.path.join(out_dir, str(item["id"]) + ".mp3")
+        with open(path, "wb") as fh:
+            fh.write(mp3)
+        print(json.dumps({"id": item["id"], "ok": True, "path": path, "sampleRate": rate,
+                          "seconds": round(seconds, 2), "bytes": len(mp3)}),
+              file=sys.stderr, flush=True)
+
+    return 0
+
+
 def main():
     job = json.load(sys.stdin)
+
+    if job.get("batch"):
+        return render_batch(job)
+
     try:
         mp3, rate, seconds = render(job)
     except Exception as exc:                                  # noqa: BLE001
