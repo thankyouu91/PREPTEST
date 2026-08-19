@@ -662,6 +662,65 @@ console.log('\n\x1b[1m== Rubric · ôn tập cá nhân hoá ==\x1b[0m');
   ok(vo.length === 0, 'Mọi part nghe đều vừa đồng hồ ở đúng số lần phát nó cho phép', vo.join(', '));
 }
 
+/* ---- Năm bộ đề đầy đủ ----
+   Kiểm hình dạng từng câu là việc của kiem-noi-dung.mjs. Ở đây kiểm thứ nó
+   không thấy: bộ đề có đủ một lượt thi không, và bể có đủ SÂU THEO BẬC để hai
+   lượt thi khác nhau thật không. */
+{
+  const FORMS = require('../server/data/vpet-forms.js');
+  const F = require('../server/data/exam-formats.js');
+  const bp = {};
+  F.FORMATS.find(f => f.id === 'vpet-full').sections.forEach(s => {
+    const m = /^Part ([A-J])\b/.exec(s.name);
+    if (m) bp[m[1]] = s.items;
+  });
+
+  const all = FORMS.allItems();
+  ok(all.length === 275, 'Năm bộ đề đủ 275 câu', String(all.length));
+
+  const thieu = FORMS.FORMS.filter(form => {
+    const mine = FORMS.itemsOf(form.id);
+    return Object.entries(bp).some(([p, n]) => mine.filter(i => i.part === p).length !== n);
+  }).map(f => f.id);
+  ok(thieu.length === 0, 'Mỗi bộ đề đủ đúng số câu blueprint đòi ở cả mười part', thieu.join(', '));
+
+  ok(all.filter(i => i.script).length === 175, 'Đúng 175 câu cần dựng audio',
+    String(all.filter(i => i.script).length));
+
+  /* Part E và H lấy đáp án thẳng từ kịch bản, nên chúng không thể lệch nhau. */
+  const eh = all.filter(i => ['E', 'H'].includes(i.part));
+  ok(eh.length > 0 && eh.every(i => i.answer === i.script),
+    'Đáp án part E và H lấy thẳng từ kịch bản, không chép tay thành bản thứ hai');
+
+  /* Khoá phải duy nhất trên toàn bộ, kể cả với kho cũ: khoá trùng nghĩa là một
+     câu ghi đè lên câu khác lúc nhập. */
+  const cu = [...require('../server/data/vpet-items.js').rows().map(r => r.key),
+    ...require('../server/data/vpet-scripts.js').allItems().map(i => i.ref)];
+  const refs = all.map(i => i.ref);
+  ok(new Set(refs).size === refs.length, 'Không có khoá trùng nhau giữa các bộ đề mới');
+  ok(!refs.some(r => cu.includes(r)), 'Khoá bộ đề mới không đụng khoá kho cũ');
+
+  /* Độ sâu THEO BẬC. Đây là thứ mà cộng gộp cả bank vào một con số sẽ giấu mất,
+     và là lý do năm bộ đề chia 3 B1 / 2 B2 chứ không chia đều. */
+  const tatCa = [
+    ...require('../server/data/vpet-items.js').rows().map(r => ({ part: r.part, level: r.level })),
+    ...require('../server/data/vpet-scripts.js').allItems().map(i => ({ part: i.part, level: i.cefr })),
+    ...all.map(i => ({ part: i.part, level: i.level }))
+  ];
+  const ket = [];
+  for (const [p, n] of Object.entries(bp)) {
+    for (const bac of ['B1', 'B2']) {
+      const c = tatCa.filter(x => x.part === p && x.level === bac).length;
+      /* Nông (ít hơn blueprint) hoặc sâu (gấp đôi trở lên). Ở giữa là chỗ một
+         lượt thi lại rút đúng cùng bộ câu. */
+      if (c >= n && c < n * 2) ket.push(`${p}@${bac} ${c}/${n}`);
+    }
+  }
+  ok(ket.length === 0,
+    'Không part nào ở bậc nào rơi vào khoảng giữa nông và sâu — lượt thi lại rút được đề khác',
+    ket.join(', '));
+}
+
 /* ---- Bậc 0 là một bài làm dở, không phải một bài trống ---- */
 {
   const R = require('../server/data/rubrics.js');
