@@ -517,6 +517,18 @@ addColumnIfMissing('questions', 'key_points_json', "TEXT NOT NULL DEFAULT '[]'")
    refers to; every other part leaves it null. */
 addColumnIfMissing('questions', 'passage', 'TEXT');
 
+/* How long a candidate's recording ran, in milliseconds.
+   ---------------------------------------------------------------------------
+   Reported by the browser at upload, because nothing on the server can know it
+   without decoding webm/opus, and this application has one npm dependency.
+   `articulationRate` — words per minute, which rubrics.js names as one of the
+   quantities `fluency` is checked against — cannot exist without it.
+
+   Treated as untrusted: it arrives in a header a candidate could edit. It is
+   never scored, only used to flag a band that contradicts it, and the flag it
+   can produce asks a reviewer to look rather than moving a mark. */
+addColumnIfMissing('attempt_answers', 'audio_ms', 'INTEGER');
+
 /* VPET papers sit at Level 1 or Level 2, not at a CEFR band.
    ---------------------------------------------------------------------------
    `tests.level` held a band ('B1'), which conflated two different things: what

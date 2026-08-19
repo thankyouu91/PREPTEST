@@ -462,14 +462,27 @@ router.post('/attempts/:id/items/:questionId/recording',
       return res.status(502).json({ error: 'The recording could not be saved.' });
     }
 
+    /* How long the browser says it recorded for. Untrusted — it comes from a
+       header — so it is clamped to something a part could plausibly produce
+       rather than stored as given. Nothing is scored on it; it feeds the
+       word-per-minute cross-check in server/response-metrics.js, and a value a
+       candidate forged could at worst cause a reviewer to be asked to look at
+       their paper. Out of range or absent stores null, which the metrics layer
+       reads as "not measured" rather than as zero. */
+    const HOUR_MS = 3600000;
+    const claimed = Number(req.headers['x-recording-ms']);
+    const ms = Number.isFinite(claimed) && claimed > 0 && claimed <= HOUR_MS
+      ? Math.round(claimed) : null;
+
     const at = nowISO();
     const prev = q.get('SELECT audio_key FROM attempt_answers WHERE attempt_id=? AND question_id=?',
       att.id, questionId);
     q.run(
-      `INSERT INTO attempt_answers (attempt_id,question_id,section_id,audio_key,updated_at)
-       VALUES (?,?,?,?,?)
-       ON CONFLICT(attempt_id,question_id) DO UPDATE SET audio_key=excluded.audio_key, updated_at=excluded.updated_at`,
-      att.id, questionId, item.section_id, stored.key, at);
+      `INSERT INTO attempt_answers (attempt_id,question_id,section_id,audio_key,audio_ms,updated_at)
+       VALUES (?,?,?,?,?,?)
+       ON CONFLICT(attempt_id,question_id) DO UPDATE SET
+         audio_key=excluded.audio_key, audio_ms=excluded.audio_ms, updated_at=excluded.updated_at`,
+      att.id, questionId, item.section_id, stored.key, ms, at);
     /* On a re-record nothing points at the old file — delete it rather than letting the store fill with orphans. */
     if (prev && prev.audio_key) await storage.remove(prev.audio_key).catch(() => {});
 

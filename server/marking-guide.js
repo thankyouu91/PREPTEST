@@ -33,6 +33,7 @@
 
 const rubrics = require('./data/rubrics');
 const descriptors = require('./data/descriptors');
+const formats = require('./data/exam-formats');
 
 /* The scale runs 10-90 (docs/ACADEMIC.md §2). Band 0 is not a point on it:
    it means nothing markable was produced, which is a different statement from
@@ -105,7 +106,7 @@ function partResult(part, scores) {
  * converted numbers would silently weight the middle of the scale more heavily
  * than the ends, which is not a decision anybody made.
  */
-function skillResult(skill, partScores) {
+function skillResult(skill, partScores, levelId) {
   const weights = skill === 'speaking' ? rubrics.SPEAKING_PART_WEIGHTS
     : skill === 'writing' ? rubrics.WRITING_PART_WEIGHTS : null;
   if (!weights) throw new Error('No part weights for skill: ' + skill);
@@ -124,12 +125,24 @@ function skillResult(skill, partScores) {
   if (!used) return null;
 
   const bandScore = total / used;
-  const gse = bandToGse(bandScore);
+  /* Held inside the range the form can measure. Passing the level is optional
+     only because the other five exam families have no level to hold a result
+     inside — for VPET, leaving it out publishes a number the paper cannot
+     support, so callers there must supply it. */
+  const held = levelledResult(levelId, bandToGse(bandScore));
   return {
     skill,
     bandScore: round1(bandScore),
-    gse,
-    cefr: gse == null ? null : descriptors.bandFor(gse),
+    gse: held.gse,
+    cefr: held.cefr,
+    /* Set when the result fell outside the level's range: what the marking
+       produced before the cap, which way it went, and which level to sit
+       instead. Null on an ordinary result. */
+    level: held.level,
+    rawGse: held.rawGse,
+    capped: held.capped,
+    cappedNote: held.note,
+    recommend: held.recommend,
     /* Which parts actually contributed. A speaking result built from part H
        alone is a different claim from one built from all three, and a report
        that does not say so invites the reader to assume the stronger one. */
@@ -223,6 +236,90 @@ function systemPrompt(part) {
   lines.push('harsh, because nobody appeals a mark in their favour.');
 
   return lines.join('\n');
+}
+
+/**
+ * Hold a result inside the range its form can actually measure.
+ *
+ * ---------------------------------------------------------------------------
+ * WHY A FORM CANNOT REPORT WHATEVER NUMBER COMES OUT
+ *
+ * VPET is sat at Level 1 (A1–B1+) or Level 2 (B2–C2), and a form holds items
+ * from its own level only. A Level 1 paper contains nothing hard enough to tell
+ * B2 from C1, so a C1 result off one is not a measurement — it is an
+ * extrapolation from items that all sat far below the claim. The arithmetic
+ * will happily produce it: score near the top of every criterion on an easy
+ * paper and the weighted band comes out at 6, which converts to 87.
+ *
+ * So the scale position is capped at the level's range, and the fact that it
+ * was capped travels with the result. Silently clamping would be worse than not
+ * clamping: a candidate would see B1+ and have no way to know the paper had
+ * stopped measuring before they did.
+ *
+ * ---------------------------------------------------------------------------
+ * A CEILING IS A RECOMMENDATION, NOT A GRADE
+ *
+ * `capped: 'ceiling'` does not mean "you are B1+". It means "this paper cannot
+ * see any higher, sit Level 2". The two are different claims and the report has
+ * to say which one it is making. Likewise a floor on Level 2 means the paper
+ * started above the candidate, not that they are B2.
+ *
+ * The two ranges are contiguous (10–58, 59–90), so these rules are exact rather
+ * than overlapping judgement calls: a result is above one level's ceiling
+ * precisely when it falls inside the other's range.
+ *
+ * @param {string} levelId  'L1' | 'L2' — the level of the FORM, not the result
+ * @param {number|null} gse the raw scale position the marking produced
+ */
+function levelledResult(levelId, gse) {
+  const level = formats.vpetLevel(levelId);
+  const raw = gse == null ? null : Number(gse);
+
+  /* A family that names a CEFR band directly has no level range to hold a
+     result inside, and neither has an unmarkable attempt. Both pass through. */
+  if (!level || raw == null || !Number.isFinite(raw)) {
+    return {
+      level: levelId || null,
+      gse: raw,
+      cefr: raw == null ? null : descriptors.bandFor(raw),
+      rawGse: raw,
+      capped: null,
+      note: null,
+      recommend: null
+    };
+  }
+
+  const [lo, hi] = level.gse;
+  const other = formats.VPET_LEVELS.find(l => l.id !== level.id);
+  let capped = null;
+  let held = raw;
+
+  if (raw > hi) { capped = 'ceiling'; held = hi; }
+  else if (raw < lo) { capped = 'floor'; held = lo; }
+
+  const note = capped === 'ceiling'
+    ? `This paper measures up to ${level.range.split('–').pop().trim()}. The result reached that ceiling, `
+      + `so it is reported as at or above it rather than higher — ${level.name} holds no items that could show more.`
+    : capped === 'floor'
+      ? `This paper starts at ${level.range.split('–')[0].trim()}. The result fell below that floor, `
+        + `so it is reported as at or below it — ${level.name} holds no items easy enough to place it accurately.`
+      : null;
+
+  return {
+    level: level.id,
+    /* What may be published. */
+    gse: round1(held),
+    cefr: descriptors.bandFor(held),
+    /* What the marking actually produced, kept so a reviewer can see how far
+       outside the range it fell, and so the cap can be revisited if the level
+       boundaries ever move. */
+    rawGse: round1(raw),
+    capped,
+    note,
+    /* Keyed `id` to match VPET_LEVELS, so a caller reading a level out of the
+       format and a level out of a result uses the same field name for both. */
+    recommend: capped ? { id: other.id, name: other.name, range: other.range } : null
+  };
 }
 
 /**
@@ -483,5 +580,5 @@ const MARKED_PARTS = Object.keys(rubrics.PART_RUBRICS);
 module.exports = {
   SCALE_MIN, SCALE_MAX, REFUSALS, NEVER, MARKED_PARTS,
   bandToGse, partResult, skillResult, systemPrompt, userPrompt, responseSchema,
-  wordAccuracy
+  wordAccuracy, levelledResult
 };

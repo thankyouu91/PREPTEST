@@ -145,7 +145,44 @@ not linear — band 3→4 spans 16 points, band 5→6 spans 7 — so averaging
 converted numbers would quietly weight the middle of the scale more heavily
 than the ends. Nobody decided that, so it must not happen by accident.
 
-### 2.4 A partial result says so
+### 2.4 A result never leaves the range its form can measure
+
+VPET is sat at Level 1 (A1–B1+) or Level 2 (B2–C2), and a form holds items from
+its own level only. A Level 1 paper contains nothing hard enough to tell B2 from
+C1, so a C1 result off one is not a measurement — it is an extrapolation from
+items that all sat far below the claim.
+
+The arithmetic will happily produce it. Score at the top of every criterion on a
+Level 1 paper and the weighted band is 6, which converts to **87 — C2**, off a
+paper whose hardest item is B1+.
+
+`levelledResult(levelId, gse)` holds the published position inside the level's
+range and says that it did:
+
+| Form | Raw | Reported | `capped` | Told to |
+|---|---|---|---|---|
+| Level 1 | 87 | 58 · B1+ | `ceiling` | sit Level 2 |
+| Level 1 | 47 | 47 · B1 | — | — |
+| Level 2 | 26 | 59 · B2 | `floor` | sit Level 1 |
+| Level 2 | 70 | 70 · B2+ | — | — |
+
+**Capping silently would be worse than not capping.** A candidate would see B1+
+with no way to know the paper stopped measuring before they did. So `capped`,
+the uncapped `rawGse`, a plain-English `cappedNote` and a `recommend` pointing
+at the other level all travel with the result.
+
+**A ceiling is a recommendation, not a grade.** It does not say "you are B1+"; it
+says "this paper cannot see any higher". Those are different claims and the
+report has to make the right one.
+
+Because the two ranges are contiguous (10–58, 59–90), the two rules are exact
+rather than overlapping judgement calls: a result is above one level's ceiling
+precisely when it falls inside the other's range.
+
+Families that name a CEFR band directly have no range to be held inside, and
+pass through untouched.
+
+### 2.5 A partial result says so
 
 `skillResult()` returns `weightCovered`. A Speaking result built from part H
 alone covers 25% of the weight, and a report that does not say so invites the
@@ -237,6 +274,42 @@ nobody appeals a mark in their favour.
 
 ---
 
+## 5a. Bands that contradict their own evidence
+
+`rubrics.js` names measurable quantities per criterion, and says what for: to
+flag "a fluency band of 5 sitting next to a measured silence ratio of 70%". A
+band is a judgement and stays one; a metric is a fact about the same response.
+When the two cannot both be true, `responseMetrics.checkBands()` says so.
+
+| Fires when | Because |
+|---|---|
+| `fluency` ≥ 4 and under 60 words a minute | Band 4 is "speaks at length with only occasional hesitation" |
+| `fluency` ≥ 4 and over a tenth of words are hesitation sounds | Heavy filler use is what band 2 describes |
+| `vocabulary` ≥ 4 and under 35% distinct words, on 60+ words | Band 4 describes range; band 1 is "repeats the same few words" |
+| `organisation` ≥ 4 on one undivided block of 100+ words | Band 0 is literally "single undivided block, no order" |
+| `content` band two or more off what `keyPointsCovered` implies | The rubric states content bands as percentages of key points |
+| `task` ≥ 4 on under 40% of the words asked for | Band 4 means every required element is present |
+
+**These are flags, not scores. They must never become scores.** Each threshold
+sits where a band and a measurement cannot both be right — far enough apart that
+the flag means "look at this", not "this is a little generous". A checker that
+fires on ordinary marking is one a reviewer learns to dismiss, and then it is
+worth less than nothing: it looks like oversight while providing none. Every
+rule also has a floor on the evidence, because a five-word answer has a
+type-token ratio of 1.0 and tells you nothing about vocabulary range.
+
+**`fillerCount` counts hesitation sounds only** — um, uh, er and their spellings.
+Not "like", "well", "so" or "you know". Those are the commonest fillers in speech
+and also ordinary words: the first version of the list charged two fillers
+against *"I would **like** to raise something, **so** I could not use the parts"*,
+a sentence with no hesitation in it. Telling the filler "like" from the verb
+needs the sentence's grammar, not a word list. The count is therefore an
+undercount, which is the safe direction — it can only miss a flag, never invent
+one, and a metric that manufactures evidence against a candidate is worse than
+one that occasionally stays quiet.
+
+---
+
 ## 6. What must never move a mark
 
 - The candidate's **accent**, where it does not reduce intelligibility.
@@ -270,14 +343,32 @@ Stated here rather than left implied, and consistent with
 4. **Marker consistency is untested.** Whether the same response marked twice
    gets the same band has not been measured. Once there is data, it is cheap to
    check and belongs beside the reliability figures in `ACADEMIC.md` §9.
-5. **The cross-check layer is mostly declared, not built.** `rubrics.js` names
-   17 quantities across its criteria's `measurable` lists and describes them as
-   what "lets the engine flag a fluency band of 5 sitting next to a measured
-   silence ratio of 70%". Five of the seventeen exist. **Twelve do not**, so no
-   such flag can fire today:
+5. **Six of the seventeen measurable quantities still do not exist**, and two
+   of those need a decision rather than an afternoon.
 
    | State | Metrics |
    |---|---|
+   | Computed from text | `wordCount`, `paragraphCount`, `typeTokenRatio`, `fillerCount` |
+   | Computed from text + recording length | `articulationRate`, `durationMs` |
+   | Computed by alignment (§1.1) | `wordErrorRate`, `wordsDropped`, `wordsSubstituted` |
+   | Returned by the marker | `keyPointsCovered`, `keyPointsTotal` |
+   | **Needs a dictionary** | `spellingErrors`, `cefrBandCoverage` |
+   | **Needs the recording decoded** | `silenceRatio`, `pauseCount`, `meanLengthOfRun`, `snrDb` |
+
+   The two lexical ones are not a matter of effort. The platform's word lists
+   hold about a hundred entries between them — a teaching list, not a lexicon.
+   A spell checker built on it would mark nearly every correct word wrong, and
+   a "CEFR band coverage" from it would be noise with a decimal point.
+
+   The four waveform ones need webm/opus decoded. Recordings arrive as opaque
+   blobs from `MediaRecorder` and this application has one npm dependency, so
+   that is a real decision about a real dependency.
+
+   `server/response-metrics.js` names each absent metric and what it would take,
+   in `MISSING`, and a test asserts that every quantity `rubrics.js` declares is
+   either computed or on that list — so a metric cannot be quietly forgotten.
+
+---|---|
    | Computed (§1.1) | `wordErrorRate`, `wordsDropped`, `wordsSubstituted` |
    | Available already | `keyPointsCovered` (returned by the marker), `keyPointsTotal` (the item's own list) |
    | **Not built — text only, cheap** | `wordCount`, `paragraphCount`, `typeTokenRatio`, `spellingErrors`, `durationMs` |
@@ -300,6 +391,9 @@ Stated here rather than left implied, and consistent with
 | Prompt, schema, refusals, conversion | `server/marking-guide.js` |
 | Per-item half of the prompt — key points, the played sentence | `markingGuide.userPrompt()` |
 | Word-level counting for `accuracy` | `markingGuide.wordAccuracy()` |
+| Holding a result inside its level's range | `markingGuide.levelledResult()` |
+| Counting what can be counted from a response | `server/response-metrics.js` |
+| Flagging a band that contradicts its own evidence | `responseMetrics.checkBands()` |
 | The rubric everything is generated from | `server/data/rubrics.js` |
 | Measured value → band, from the bands' own ranges | `rubrics.bandForMeasure()` |
 | Band table and scale lookup | `server/data/descriptors.js` |

@@ -278,6 +278,39 @@ try {
   const spoken = r.data.attempt.parts.find(p => p.part === 'I').items[0];
   ok(spoken.hasRecording === true, 'Trạng thái ghi nhận đã có bản ghi âm');
 
+  /* ---------- Độ dài bản ghi ----------
+     Trình duyệt khai độ dài qua header, vì máy chủ không giải mã webm được và
+     `articulationRate` (số từ mỗi phút) không tồn tại nếu thiếu nó. Nhưng header
+     thì thí sinh sửa được, nên máy chủ kẹp lại chứ không tin. */
+  r = await student.req('POST', '/api/attempts/' + attemptId + '/items/' + speakQ + '/recording',
+    fakeWebm(), { 'Content-Type': 'audio/webm', 'X-Recording-Ms': '45000' });
+  ok(r.status === 201, 'Lưu được bản ghi kèm độ dài trình duyệt khai');
+
+  r = await student.req('POST', '/api/attempts/' + attemptId + '/items/' + speakQ + '/recording',
+    fakeWebm(), { 'Content-Type': 'audio/webm', 'X-Recording-Ms': '999999999' });
+  ok(r.status === 201, 'Độ dài vô lý không làm hỏng việc lưu bản ghi — chỉ bị bỏ đi');
+
+  r = await student.req('POST', '/api/attempts/' + attemptId + '/items/' + speakQ + '/recording',
+    fakeWebm(), { 'Content-Type': 'audio/webm', 'X-Recording-Ms': 'abc' });
+  ok(r.status === 201, 'Độ dài không phải số cũng vậy — header HTTP chỉ nhận ASCII nên đây là dạng rác thực tế');
+
+  /* Đọc thẳng từ CSDL: ba lần gửi trên đều trả 201, nên chỉ nhìn mã trạng thái
+     thì không biết giá trị nào thật sự được giữ. Gửi lại một giá trị hợp lệ ở
+     cuối rồi kiểm — nếu không kiểm, một phiên bản bỏ luôn cột này vẫn xanh. */
+  await student.req('POST', '/api/attempts/' + attemptId + '/items/' + speakQ + '/recording',
+    fakeWebm(), { 'Content-Type': 'audio/webm', 'X-Recording-Ms': '45000' });
+  {
+    const { createRequire } = await import('node:module');
+    const { q: dbq } = createRequire(import.meta.url)('../server/db.js');
+    const luu = dbq.val('SELECT audio_ms FROM attempt_answers WHERE question_id=? ORDER BY id DESC LIMIT 1', speakQ);
+    ok(luu === 45000, 'Độ dài hợp lệ được giữ đúng trong CSDL', String(luu));
+
+    await student.req('POST', '/api/attempts/' + attemptId + '/items/' + speakQ + '/recording',
+      fakeWebm(), { 'Content-Type': 'audio/webm', 'X-Recording-Ms': '999999999' });
+    const bo = dbq.val('SELECT audio_ms FROM attempt_answers WHERE question_id=? ORDER BY id DESC LIMIT 1', speakQ);
+    ok(bo === null, 'Độ dài ngoài khoảng bị bỏ thành null, không phải bị kẹp thành một con số bịa', String(bo));
+  }
+
   /* ---------- Nộp bài ---------- */
   head('Nộp bài');
   r = await student.req('POST', '/api/attempts/' + attemptId + '/submit');

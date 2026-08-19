@@ -424,6 +424,12 @@ const PrepRunner = {
 
     const chunks = [];
     const recorder = new MediaRecorder(stream);
+    /* How long the candidate actually spoke. The browser is the only thing that
+       knows this without decoding the file, and `articulationRate` — words per
+       minute, one of the quantities rubrics.js says fluency is checked against —
+       cannot be computed without it. Wall clock rather than the media duration
+       because webm from MediaRecorder often carries no duration header at all. */
+    const startedAt = Date.now();
     this._rec = { questionId, recorder, stream };
     recorder.addEventListener('dataavailable', e => { if (e.data.size) chunks.push(e.data); });
     recorder.addEventListener('stop', async () => {
@@ -436,7 +442,13 @@ const PrepRunner = {
       const res = await fetch('/api/attempts/' + this.attempt.id + '/items/' + questionId + '/recording', {
         method: 'POST',
         credentials: 'same-origin',
-        headers: { 'Content-Type': blob.type || 'audio/webm', 'X-CSRF-Token': PrepApi.csrf() },
+        headers: {
+          'Content-Type': blob.type || 'audio/webm',
+          'X-CSRF-Token': PrepApi.csrf(),
+          /* A hint, not a fact — the server treats it as untrusted and clamps it.
+             Nothing is scored on the number itself; it feeds a cross-check. */
+          'X-Recording-Ms': String(Date.now() - startedAt)
+        },
         body: blob
       }).catch(() => null);
       if (res && res.ok) { state.textContent = 'Recording saved'; }

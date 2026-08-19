@@ -812,6 +812,138 @@ console.log('\n\x1b[1m== Rubric · ôn tập cá nhân hoá ==\x1b[0m');
   ok(verify.includes('test-authoring.mjs'), 'Chính tệp này nằm trong verify.sh');
 }
 
+/* ---- Trần và sàn: đề không báo ra ngoài dải nó đo được ----
+   Đề Level 1 không chứa câu nào đủ khó để phân biệt B2 với C1, nên một kết quả
+   C1 từ đề Level 1 không phải phép đo mà là ngoại suy. Phép tính thì vẫn cho ra
+   con số ấy: làm tốt mọi tiêu chí trên một đề dễ là bậc 6, quy ra 87. */
+{
+  const G = require('../server/marking-guide.js');
+  const F = require('../server/data/exam-formats.js');
+
+  /* Trong dải thì không đụng tới. */
+  [['L1', 25], ['L1', 47], ['L1', 58], ['L2', 59], ['L2', 70], ['L2', 88]].forEach(([lv, g]) => {
+    const r = G.levelledResult(lv, g);
+    ok(r.capped === null && r.gse === g, `${lv} giữ nguyên điểm ${g} nằm trong dải`);
+  });
+
+  const tran = G.levelledResult('L1', 87);
+  ok(tran.capped === 'ceiling' && tran.gse === 58 && tran.cefr === 'B1+',
+    'Kịch trần Level 1: báo B1+ chứ không báo C2', JSON.stringify(tran.gse + ' ' + tran.cefr));
+  ok(tran.rawGse === 87, 'Điểm thô vẫn giữ lại để người soát biết nó vượt bao xa');
+  ok(tran.recommend && tran.recommend.id === 'L2', 'Kịch trần thì khuyên thi Level 2');
+  ok(/no items that could show more/.test(tran.note || ''),
+    'Kèm lời giải thích rằng đề hết khả năng đo, không phải thí sinh hết khả năng');
+
+  const san = G.levelledResult('L2', 26);
+  ok(san.capped === 'floor' && san.gse === 59 && san.cefr === 'B2', 'Chạm sàn Level 2: báo B2');
+  ok(san.recommend && san.recommend.id === 'L1', 'Chạm sàn thì khuyên thi Level 1');
+
+  /* Hai dải liền nhau nên hai luật này khớp khít: vượt trần level này đúng bằng
+     lúc rơi vào dải level kia, không có vùng xám ở giữa. */
+  const [l1, l2] = F.VPET_LEVELS;
+  ok(G.levelledResult('L1', l2.gse[0]).capped === 'ceiling'
+    && G.levelledResult('L2', l1.gse[1]).capped === 'floor',
+    'Trần của Level 1 và sàn của Level 2 gặp nhau đúng tại 58/59, không chừa vùng xám');
+
+  /* Họ thi gọi thẳng bậc CEFR thì không có dải để kẹp — phải đi qua nguyên vẹn. */
+  const khac = G.levelledResult('B2', 88);
+  ok(khac.capped === null && khac.gse === 88, 'Họ thi không dùng level thì không bị kẹp');
+  ok(G.levelledResult('L1', null).gse === null, 'Không chấm được thì vẫn là không chấm được');
+
+  /* Và đường thật: điểm kỹ năng đi qua kẹp trước khi ra ngoài. */
+  const diem = { H: { accuracy: 6, pronunciation: 6, fluency: 6 } };
+  const kq1 = G.skillResult('speaking', diem, 'L1');
+  const kq2 = G.skillResult('speaking', diem, 'L2');
+  ok(kq1.capped === 'ceiling' && kq1.gse === 58, 'skillResult kẹp theo level của đề');
+  ok(kq2.capped === null && kq2.gse === 87, 'Cùng bài làm ấy trên đề Level 2 thì báo đủ');
+  ok(kq1.rawGse === kq2.rawGse,
+    'Chấm ra cùng một điểm thô — khác nhau là ở đề đo được tới đâu, không phải ở bài làm');
+  ok(G.skillResult('speaking', diem).capped === null,
+    'Không truyền level thì giữ nguyên hành vi cũ cho các họ thi khác');
+}
+
+/* ---- Đại lượng đo được, và đối chiếu với bậc máy chấm cho ----
+   rubrics.js khai 17 đại lượng trong `measurable` và nói rõ chúng để làm gì:
+   "gắn cờ khi bậc fluency 5 nằm cạnh tỉ lệ im lặng đo được 70%". Bậc là phán
+   đoán, đại lượng là sự kiện; phán đoán mâu thuẫn với sự kiện về cùng một bài
+   làm là một điểm số cần người xem lại trước khi công bố. */
+{
+  const RM = require('../server/response-metrics.js');
+  const R = require('../server/data/rubrics.js');
+
+  /* Đếm được cái gì. */
+  const m = RM.measure('The shop was closed.\n\nI went home again.\n\nIt rained all evening.');
+  ok(m.wordCount === 12 && m.paragraphCount === 3, 'Đếm đúng số từ và số đoạn',
+    m.wordCount + 'w ' + m.paragraphCount + 'p');
+  ok(m.typeTokenRatio > 0 && m.typeTokenRatio <= 1, 'Tỉ lệ từ khác nhau nằm trong 0..1');
+  ok(RM.measure('').typeTokenRatio === null, 'Bài rỗng thì không có tỉ lệ, không phải bằng 0');
+  ok(RM.measure('abc').articulationRate === null && RM.measure('abc', 0).articulationRate === null,
+    'Không có độ dài bản ghi thì không có tốc độ nói — null chứ không phải 0');
+  ok(RM.measure('one two three four five six', 30000).articulationRate === 12,
+    'Tốc độ nói tính đúng ra từ/phút');
+
+  /* Chỉ đếm tiếng ngập ngừng. "like" trong "I would like to" và "so" nối câu
+     KHÔNG phải ngập ngừng, và bản đầu tiên của danh sách này đã đếm nhầm cả hai. */
+  ok(RM.measure('um I uh think er so it was like that').fillerCount === 3,
+    'Đếm um, uh, er là ngập ngừng',
+    String(RM.measure('um I uh think er so it was like that').fillerCount));
+  ok(RM.measure('I would like to raise this, so I could not use the parts').fillerCount === 0,
+    '"like" là động từ và "so" là liên từ thì không bị tính là ngập ngừng');
+
+  /* Cái gì KHÔNG đo được thì nói ra, không bịa. */
+  ok(Object.keys(RM.MISSING).length === 6, 'Sáu đại lượng chưa dựng được, có nêu tên');
+  ok(Object.values(RM.MISSING).every(v => v.length > 20),
+    'Mỗi cái đều nói rõ thiếu gì mới làm được, không chỉ ghi "chưa làm"');
+  ok(m.notMeasured.length === 6, 'Kết quả đo tự khai phần nó không đo được');
+
+  /* Mọi đại lượng rubric khai phải hoặc đo được, hoặc nằm trong danh sách thiếu
+     — không có cái thứ ba là "quên mất". */
+  const khai = new Set();
+  Object.values(R.CRITERIA).forEach(c => (c.measurable || []).forEach(x => khai.add(x)));
+  const doDuoc = new Set([...Object.keys(m), 'keyPointsCovered', 'keyPointsTotal',
+    'wordErrorRate', 'wordsDropped', 'wordsSubstituted', 'wordsAsked']);
+  const lac = [...khai].filter(x => !doDuoc.has(x) && !(x in RM.MISSING));
+  ok(lac.length === 0, 'Không đại lượng nào rubric khai mà bị bỏ quên cả hai bên', lac.join(', '));
+
+  /* ---- Đối chiếu: im lặng khi chấm bình thường, kêu khi mâu thuẫn ---- */
+  const sach = RM.measure(
+    'I would like to raise something about the delivery. It arrived late and the box was damaged, '
+    + 'so I could not use the parts inside. Could you send a replacement before Friday, or tell me '
+    + 'when one can arrive? I would rather keep working with you than change supplier over this.', 28000);
+  ok(RM.checkBands('I', { task: 5, fluency: 5, pronunciation: 5, vocabulary: 5, grammar: 5, coherence: 5 }, sach).length === 0,
+    'Bài nói trôi chảy chấm điểm cao thì KHÔNG bị gắn cờ — cổng kêu oan là cổng người ta học cách bỏ qua');
+
+  const ngap = RM.measure('um I think um the delivery uh it was um late and er I could not um use it '
+    + 'so uh maybe you can um send another one er please um thank you er yes', 60000);
+  const co = RM.checkBands('I', { task: 5, fluency: 5, pronunciation: 4, vocabulary: 5, grammar: 4, coherence: 4 }, ngap);
+  ok(co.some(f => f.criterion === 'fluency' && f.metric === 'articulationRate'),
+    'Bậc fluency 5 cạnh tốc độ nói 35 từ/phút thì bị gắn cờ');
+  ok(co.some(f => f.metric === 'fillerCount'), 'Và cạnh 30% số từ là tiếng ngập ngừng cũng vậy');
+  ok(co.every(f => f.why && f.why.length > 30), 'Mỗi cờ nói rõ vì sao hai bên không thể cùng đúng');
+
+  /* Nội dung: bậc đối chiếu thẳng với số ý chính máy chấm tự khai. */
+  const jm = Object.assign(RM.measure('a retelling'), { keyPointsCovered: 2, keyPointsTotal: 6 });
+  ok(RM.checkBands('J', { content: 5, fluency: 4, coherence: 4, pronunciation: 4, vocabulary: 4, grammar: 4 }, jm)
+    .some(f => f.criterion === 'content'), 'Bậc content 5 cạnh "2 trong 6 ý" bị gắn cờ');
+  const jok = Object.assign(RM.measure('a retelling'), { keyPointsCovered: 5, keyPointsTotal: 6 });
+  ok(RM.checkBands('J', { content: 5, fluency: 4, coherence: 4, pronunciation: 4, vocabulary: 4, grammar: 4 }, jok)
+    .length === 0, '"5 trong 6" thì khớp bậc 5, không kêu');
+
+  /* Bố cục: chỉ kêu khi bài đủ dài để việc chia đoạn là một lựa chọn. */
+  const khoi = RM.measure(Array(150).fill('word').join(' '));
+  ok(RM.checkBands('D', { task: 4, grammar: 4, organisation: 5, vocabulary: 4, mechanics: 4 }, khoi)
+    .some(f => f.criterion === 'organisation'), 'Bậc organisation 5 trên một khối 150 từ liền mạch bị gắn cờ');
+  const ngan = RM.measure(Array(60).fill('word').join(' '));
+  ok(!RM.checkBands('D', { task: 4, grammar: 4, organisation: 5, vocabulary: 4, mechanics: 4 }, ngan)
+    .some(f => f.criterion === 'organisation'), 'Bài 60 từ thì không, vì chia đoạn chưa phải là lựa chọn');
+
+  /* Không gắn cờ cho tiêu chí mà part đó không chấm. */
+  ok(RM.checkBands('H', { accuracy: 6, pronunciation: 6, fluency: 6 }, ngap)
+    .every(f => f.criterion in R.PART_RUBRICS.H.criteria),
+    'Chỉ gắn cờ những tiêu chí part đó thật sự chấm');
+  ok(RM.checkBands('Z', { fluency: 6 }, ngap).length === 0, 'Part không có rubric thì không gắn cờ gì');
+}
+
 /* ---- Bậc 0 là một bài làm dở, không phải một bài trống ---- */
 {
   const R = require('../server/data/rubrics.js');

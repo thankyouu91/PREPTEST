@@ -328,9 +328,11 @@ inside the other's range.
 
 **Where this lives in code.** `VPET_LEVELS` in `server/data/exam-formats.js`,
 with `vpetLevel()`, `vpetLevelOfCefr()` and `vpetLevelOfGse()`. The ceiling and
-floor rules above are **not yet implemented** — the scoring engine does not
-clamp, so a Level 1 paper can currently report a band it has no items to support.
-That is the next piece of work this section implies.
+floor rules are implemented in `markingGuide.levelledResult()`, which
+`skillResult()` applies before a position is published — see
+[`MARKING.md`](MARKING.md) §2.4. A perfect performance on a Level 1 paper now
+reports B1+ with a ceiling flag and a recommendation to sit Level 2, rather than
+the C2 the arithmetic alone produces.
 
 Consequences elsewhere in the platform:
 
