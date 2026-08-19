@@ -1070,7 +1070,7 @@ router.get('/admin/users', async (req, res) => {
   res.json({
     total, limit, offset,
     items: rows.map(u => ({
-      id: u.id, username: u.username, email: u.email, name: u.name,
+      id: u.id, username: u.username, email: u.email, name: u.name, phone: u.phone || null,
       verified: !!u.verified, status: u.status, interests: jparse(u.interests_json, []),
       codes: u.codes, spent: u.spent, note: u.note, createdAt: u.created_at, lastLoginAt: u.last_login_at
     }))
@@ -1085,8 +1085,8 @@ router.get('/admin/users/:id', async (req, res) => {
   const orders = await q.all('SELECT * FROM orders WHERE user_id=? ORDER BY created_at DESC', id);
   res.json({
     user: {
-      id: u.id, username: u.username, email: u.email, name: u.name, verified: !!u.verified,
-      status: u.status, interests: jparse(u.interests_json, []), note: u.note,
+      id: u.id, username: u.username, email: u.email, name: u.name, phone: u.phone || null,
+      verified: !!u.verified, status: u.status, interests: jparse(u.interests_json, []), note: u.note,
       createdAt: u.created_at, lastLoginAt: u.last_login_at
     },
     codes: await Promise.all(codes.map(async c => ({
@@ -1379,7 +1379,19 @@ router.get('/admin/batches', async (req, res) => {
   });
 });
 
-/** Issue codes: a batch of many, or one issued straight to a student */
+/**
+ * Issue codes. Three shapes, one endpoint:
+ *   · a batch of many unassigned codes, sold or handed out, redeemed first-come;
+ *   · one code RESERVED to a named account — bound at issue, so only that account
+ *     can activate it, and the term does not start until they do;
+ *   · one code activated on a named account there and then.
+ *
+ * Binding a code to an account is the model a school asked for: each code goes to
+ * exactly one student, and that student has to be a real, reachable account —
+ * hence the requirement that it carry both an email and a phone number. The
+ * "one code, one account" rule is enforced again at redemption; reserving simply
+ * decides the owner up front instead of letting whoever types it first win.
+ */
 router.post('/admin/codes', async (req, res) => {
   const b = req.body || {};
   const type = str(b.unlockType, 20);
@@ -1388,6 +1400,10 @@ router.post('/admin/codes', async (req, res) => {
   const note = str(b.note, 200);
   const expiresAt = str(b.expiresAt, 10) || null;
   const assignTo = int(b.userId, 0) || null;
+  /* Reserve = bind to the account but leave it for them to activate. Off by
+     default, so issuing straight to an account activates it there and then, the
+     way admin-side grants have always worked; reserving is the explicit ask. */
+  const reserve = assignTo ? (b.reserve === true || b.reserve === 'true') : false;
   /* What a code actually grants is a PLAN. It has to be chosen, with no default:
      a code with no plan redeems into nothing, and that mistake only surfaces once
      the buyer is holding the code. */
@@ -1398,19 +1414,31 @@ router.post('/admin/codes', async (req, res) => {
   }
   if (!await validUnlock(type, ref)) return bad(res, 'That unlock is not valid.');
   if (expiresAt && !/^\d{4}-\d{2}-\d{2}$/.test(expiresAt)) return bad(res, 'The expiry date must be YYYY-MM-DD.');
-  if (assignTo && !await q.val('SELECT 1 FROM users WHERE id=?', assignTo)) return bad(res, 'No such student.');
-  if (assignTo && qty !== 1) return bad(res, 'Issuing straight to a student means one code at a time.');
+  if (assignTo && qty !== 1) return bad(res, 'Issuing straight to one account means one code at a time.');
+
+  /* A code bound to an account needs a real account behind it — one that
+     registered with an email AND a phone. An older account with no phone on
+     file is refused here rather than quietly bound to something half-reachable. */
+  let boundUser = null;
+  if (assignTo) {
+    boundUser = await q.get('SELECT id, email, name, phone FROM users WHERE id=?', assignTo);
+    if (!boundUser) return bad(res, 'No such student.');
+    if (!boundUser.phone) {
+      return bad(res, 'That account has no phone number on file. A code bound to one account needs the account to have registered an email and a phone.');
+    }
+  }
 
   const at = nowISO();
-  /* Issuing straight to a student activates it there and then, so the access term has
-     to start counting now. Left empty, entitlementOf() reads it as never expiring —
-     a plan given away for good. */
+  /* Activating now starts the access term now. Left empty, entitlementOf() reads
+     it as never expiring — a plan given away for good — so it is set only on the
+     activate-now path. A reserved code carries no term until the student redeems it. */
   const accessUntil = (() => {
-    if (!assignTo) return null;
+    if (!assignTo || reserve) return null;
     const d = new Date(at);
     d.setMonth(d.getMonth() + plan.months);
     return d.toISOString();
   })();
+  const activatedNow = !!assignTo && !reserve;
   let batchId = null;
   const created = [];
 
@@ -1424,16 +1452,24 @@ router.post('/admin/codes', async (req, res) => {
     for (let i = 0; i < qty; i++) {
       let code = makeCode();
       while (await q.val('SELECT 1 FROM codes WHERE code=?', code)) code = makeCode();
+      /* Reserved codes keep status 'unused' but carry the account they belong to,
+         so redemption can refuse anyone else. Activated codes are 'redeemed' now. */
       await q.run(`INSERT INTO codes (code,batch_id,unlock_type,unlock_ref,plan_id,status,expires_at,access_expires_at,user_id,redeemed_at,note,created_at,created_by)
              VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-        code, batchId, type, ref, plan.id, assignTo ? 'redeemed' : 'unused', expiresAt,
-        accessUntil, assignTo, assignTo ? at : null, note || null, at, req.admin.id);
+        code, batchId, type, ref, plan.id, activatedNow ? 'redeemed' : 'unused', expiresAt,
+        accessUntil, assignTo, activatedNow ? at : null, note || null, at, req.admin.id);
       created.push(code);
     }
   });
 
-  await audit(req, 'code.issue', batchId ? 'batches/' + batchId : 'codes', { qty, plan: plan.id, type, ref, assignTo });
-  res.status(201).json({ created, batchId, qty, plan: { id: plan.id, name: plan.name, months: plan.months } });
+  await audit(req, 'code.issue', batchId ? 'batches/' + batchId : 'codes',
+    { qty, plan: plan.id, type, ref, assignTo, mode: assignTo ? (reserve ? 'reserved' : 'activated') : 'batch' });
+  res.status(201).json({
+    created, batchId, qty,
+    plan: { id: plan.id, name: plan.name, months: plan.months },
+    boundTo: boundUser ? { id: boundUser.id, email: boundUser.email, name: boundUser.name } : null,
+    reserved: reserve
+  });
 });
 
 router.post('/admin/codes/:id/revoke', async (req, res) => {

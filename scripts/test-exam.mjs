@@ -384,6 +384,38 @@ try {
     'An uncapped plan: opening a paper decrements nothing', beforeUnlimited + ' → ' + afterUnlimited);
   if (unlimitedAttempt) await student.req('POST', '/api/attempts/' + unlimitedAttempt + '/submit');
 
+  /* ---------- A reserved code belongs to one account ---------- */
+  head('Reserved codes');
+  /* An administrator can bind a code to a named account at issue time. Reserved
+     this way it stays unused until that account activates it — and no one else
+     can, which is the whole point of "one code, one account" decided up front. */
+  const alice = client(), bob = client();
+  await alice.req('GET', '/api/me'); await bob.req('GET', '/api/me');
+  const aliceEmail = 'alice.' + Date.now() + '@thu-nghiem.vn';
+  const bobEmail = 'bob.' + Date.now() + '@thu-nghiem.vn';
+  await alice.req('POST', '/api/auth/register',
+    { name: 'Alice Reserved', email: aliceEmail, password: 'Matkhau12345', phone: '0912345678', interests: [] });
+  await bob.req('POST', '/api/auth/register',
+    { name: 'Bob Other', email: bobEmail, password: 'Matkhau12345', phone: '0987654321', interests: [] });
+  r = await admin.req('GET', '/api/admin/users?q=' + encodeURIComponent(aliceEmail));
+  const aliceId = r.data.items[0] && r.data.items[0].id;
+  r = await admin.req('POST', '/api/admin/codes',
+    { planId: 'plus-6m', unlockType: 'family', unlockRef: 'vpet', qty: 1, userId: aliceId, reserve: true });
+  ok(r.status === 201 && r.data.reserved === true, 'Reserves a code to Alice at issue', 'status ' + r.status);
+  const reservedCode = r.data.created[0];
+
+  r = await bob.req('POST', '/api/redeem', { code: reservedCode });
+  ok(r.status === 409, 'Another account cannot activate a code reserved for someone else', 'status ' + r.status);
+  r = await bob.req('GET', '/api/me');
+  ok(!r.data.entitlement || r.data.entitlement.planId !== 'plus-6m',
+    'and gains nothing from the attempt', JSON.stringify(r.data.entitlement));
+
+  r = await alice.req('POST', '/api/redeem', { code: reservedCode });
+  ok(r.status === 200, 'The account it was reserved to activates it', 'status ' + r.status);
+  r = await alice.req('GET', '/api/me');
+  ok(r.data.entitlement && r.data.entitlement.planId === 'plus-6m',
+    'and receives the plan the code carried', JSON.stringify(r.data.entitlement));
+
   /* ---------- The exam runner really drives the engine ---------- */
   head('The exam runner');
   /* The backend is thoroughly checked above; this part asks one question: does the

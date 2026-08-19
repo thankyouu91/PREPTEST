@@ -292,6 +292,16 @@ router.post('/redeem', A.requireUser, A.csrfGuard, async (req, res) => {
       entitlement: await entitlementOf(req.user.id)
     });
   }
+  /* A reserved code is bound to one account while still unused: an administrator
+     issued it straight to a named student. Anyone else is told the same thing they
+     would hear about a code already activated elsewhere — one code, one account —
+     without revealing whose it is. */
+  if (code.user_id && code.user_id !== req.user.id) {
+    await logUser(req, 'user.redeem.reserved', req.user.username, { code: raw });
+    return res.status(409).json({
+      error: 'This code is reserved for a different account. Each code works for one account only.'
+    });
+  }
   if (code.expires_at && code.expires_at <= nowISO()) {
     return res.status(410).json({ error: 'This code is past its activation deadline.' });
   }
@@ -310,10 +320,12 @@ router.post('/redeem', A.requireUser, A.csrfGuard, async (req, res) => {
 
   const r = await q.run(
     `UPDATE codes SET status='redeemed', user_id=?, redeemed_at=?, access_expires_at=?
-      WHERE id=? AND status='unused'`,
-    req.user.id, start.toISOString(), until.toISOString(), code.id);
+      WHERE id=? AND status='unused' AND (user_id IS NULL OR user_id=?)`,
+    req.user.id, start.toISOString(), until.toISOString(), code.id, req.user.id);
   /* The status='unused' condition sits inside the UPDATE itself: with two
-  simultaneous presses only one wins, and the other sees 0 rows changed. */
+  simultaneous presses only one wins, and the other sees 0 rows changed. The
+  user_id guard closes the same race for a code reserved between our read and
+  write — it can still only fall to the account it was reserved to. */
   if (!r.changes) {
     return res.status(409).json({ error: 'That code was just activated on another account.' });
   }

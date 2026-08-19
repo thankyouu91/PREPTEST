@@ -493,25 +493,51 @@ const run = async () => {
     String(r.data).split('\r\n')[1].includes('Plus'),
     String(r.data).split('\r\n')[1]);
 
-  /* 11. Issuing straight to a student */
-  const users = (await call('GET', '/api/admin/users?limit=1')).data;
-  const uid = users.items[0].id;
+  /* 11. Binding a code to one account.
+     A code bound to an account needs a real account behind it — one that registered
+     with an email AND a phone. Make one with a phone to bind to, and one without to
+     prove the requirement is enforced. */
+  const bindStamp = String(process.hrtime.bigint()).slice(-9);
+  r = await call('POST', '/api/admin/users', {
+    name: 'Bound Student', email: 'bound.' + bindStamp + '@thu-nghiem.vn', phone: '0912345678'
+  });
+  const uid = r.data.user && r.data.user.id;
+  check('Made an account with a phone to bind a code to', r.status === 201 && uid > 0, 'status ' + r.status);
+
+  /* Activate now (the default when binding to an account): the term starts today,
+     so the access deadline is set and in the future. */
   r = await call('POST', '/api/admin/codes', { planId: 'starter-3m', unlockType: 'family', unlockRef: 'pte', qty: 1, userId: uid });
-  check('Issues a code straight to a student', r.status === 201 && r.data.created.length === 1);
+  check('Activates a code on an account now by default', r.status === 201 && r.data.created.length === 1 && r.data.reserved === false,
+    'status ' + r.status + ', reserved ' + (r.data && r.data.reserved));
   const grantedCode = r.data.created[0];
   const detail = (await call('GET', '/api/admin/users/' + uid)).data;
-  check('The issued code shows in the student profile',
-    detail.codes.some(c => c.code === grantedCode));
-
-  /* Issuing directly activates immediately, so the access period has to start
-     counting now. Leave it empty and the right never expires — a free plan forever. */
+  check('The activated code shows in the student profile', detail.codes.some(c => c.code === grantedCode));
   r = await call('GET', '/api/admin/codes?q=' + encodeURIComponent(grantedCode));
   const granted = r.data.items.find(c => c.code === grantedCode);
-  check('A directly issued code has an access deadline counted from issue',
+  check('An activated code has an access deadline counted from now',
     !!(granted && granted.accessExpiresAt) && new Date(granted.accessExpiresAt) > new Date(),
     granted && granted.accessExpiresAt);
   check('The admin table shows the plan name of a code', granted && /Starter/.test(granted.label),
     granted && granted.label);
+
+  /* Reserve: bound to the account but left for them to activate — unused, no term
+     yet, and marked reserved in the list because it already carries an owner. */
+  r = await call('POST', '/api/admin/codes', { planId: 'plus-6m', unlockType: 'family', unlockRef: 'vpet', qty: 1, userId: uid, reserve: true });
+  check('Reserves a code to an account when asked', r.status === 201 && r.data.reserved === true && !!r.data.boundTo,
+    'status ' + r.status + ', reserved ' + (r.data && r.data.reserved));
+  const reservedCode = r.data.created[0];
+  r = await call('GET', '/api/admin/codes?q=' + encodeURIComponent(reservedCode));
+  const reserved = r.data.items.find(c => c.code === reservedCode);
+  check('A reserved code is unused, carries its account, and has no term yet',
+    reserved && reserved.status === 'unused' && reserved.user && reserved.user.id === uid && !reserved.accessExpiresAt,
+    reserved && JSON.stringify({ status: reserved.status, user: !!reserved.user, exp: reserved.accessExpiresAt }));
+
+  /* An account with no phone cannot be bound to — the code would go to something
+     only half-reachable. */
+  r = await call('POST', '/api/admin/users', { name: 'No Phone', email: 'nophone.' + bindStamp + '@thu-nghiem.vn' });
+  const noPhoneId = r.data.user && r.data.user.id;
+  r = await call('POST', '/api/admin/codes', { planId: 'plus-6m', unlockType: 'family', unlockRef: 'vpet', qty: 1, userId: noPhoneId });
+  check('Refuses to bind a code to an account with no phone', r.status === 400, 'status ' + r.status);
 
   /* 12. Managing students */
   r = await call('POST', '/api/admin/users/' + uid + '/status', { status: 'locked' });
