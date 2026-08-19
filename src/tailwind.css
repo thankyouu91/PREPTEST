@@ -68,6 +68,10 @@
   html { scroll-behavior: smooth; }
   /* Thuộc tính hidden phải thắng mọi display của component class */
   [hidden] { display: none !important; }
+  /* Song ngữ: giấu thân trang tới khi i18n.js dịch xong, để không thấy chữ tiếng
+     Anh nháy lên rồi mới đổi sang tiếng Việt. i18n.js luôn gỡ lớp này (kể cả khi
+     lỗi, qua timeout), nên trang không bao giờ bị kẹt trắng. */
+  html.i18n-hide body { visibility: hidden; }
   body {
     font-family: 'Plus Jakarta Sans', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
     background: var(--color-surface);
@@ -146,6 +150,22 @@
   }
   .btn-soft:hover { background: color-mix(in srgb, var(--color-primary) 16%, transparent); }
   .dark .btn-soft { color: color-mix(in srgb, var(--color-primary) 75%, white); }
+
+  /* ---- Nút chuyển ngôn ngữ VI / EN ----
+     Hai lựa chọn nằm trong một viên thuốc, cái đang chọn được tô đậm — đủ nhỏ để
+     không tranh chỗ với nút chính, đủ rõ để thấy đang ở ngôn ngữ nào. */
+  .lang-switch {
+    @apply inline-flex items-center rounded-full border border-line bg-card p-0.5 shrink-0;
+  }
+  .lang-opt {
+    @apply px-2.5 py-1 rounded-full text-[12px] font-bold text-muted transition;
+  }
+  .lang-opt:hover { color: var(--color-text); }
+  .lang-opt[aria-pressed="true"] {
+    background: var(--color-primary);
+    @apply text-white;
+  }
+  .dark .lang-opt[aria-pressed="true"] { color: #0a1020; }
 
   /* ---- Card / bề mặt ---- */
   .card { @apply bg-card border border-line rounded-2xl shadow-soft; }

@@ -21,6 +21,8 @@
       if(tn&&tn!=='default')document.documentElement.setAttribute('data-tenant',tn);
     }catch(e){}})();
   </script>
+  <!-- Song ngữ: chạy sớm để đặt ngôn ngữ (mặc định tiếng Việt) trước khi vẽ trang -->
+  <script src="/i18n.js"></script>
 </head>
 <body class="bg-surface text-ink">
 
@@ -39,6 +41,11 @@
       <a href="#bang-gia" class="px-3.5 py-2 rounded-full text-sm font-semibold text-muted hover:text-ink transition">Pricing</a>
     </nav>
     <div class="flex items-center gap-2 ms-auto md:ms-0">
+      <!-- Chuyển ngôn ngữ: tiếng Việt mặc định, đổi sang English và ngược lại -->
+      <span class="lang-switch" role="group" aria-label="Language">
+        <button type="button" data-lang="vi" class="lang-opt">VI</button>
+        <button type="button" data-lang="en" class="lang-opt">EN</button>
+      </span>
       <a href="/prep/dang-nhap/" data-when-guest class="btn btn-ghost btn-sm sm:btn-md hidden sm:inline-flex">Sign in</a>
       <a href="/prep/dang-ky/" data-when-guest class="btn btn-primary btn-sm sm:btn-md">
         <span class="sm:hidden">Sign up</span><span class="hidden sm:inline">Start free</span>
@@ -518,6 +525,10 @@ Sign up for <span id="plan-cta-name">Plus</span></a>
       const months = PREP.qs('[data-plan-months]', btn);
       if (!price || !months) return '';
       const m = months.textContent.trim();
+      /* Built from pieces, so no single dictionary entry can match it — the
+         sentence is assembled in whichever language the page is showing. */
+      const vi = window.PREP_I18N && window.PREP_I18N.lang === 'vi';
+      if (vi) return price.textContent.trim() + ' cho ' + m + ' tháng luyện tập';
       return price.textContent.trim() + ' for ' + m + (m === '1' ? ' month' : ' months') + ' of practice';
     }
 
