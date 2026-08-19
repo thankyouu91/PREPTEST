@@ -20,6 +20,8 @@
       if(tn&&tn!=='default')document.documentElement.setAttribute('data-tenant',tn);
     }catch(e){}})();
   </script>
+  <!-- Song ngữ: chạy sớm để đặt ngôn ngữ (mặc định tiếng Việt) trước khi vẽ trang -->
+  <script src="/i18n.js"></script>
 </head>
 <body class="bg-surface text-ink">
 <div id="app" data-active="codes" class="min-h-[100dvh]">
@@ -147,7 +149,7 @@
     /* The plan they hold: you can only weigh up what is missing once you can see what you have. */
     const ent = PrepState.entitlement();
     if (ent) {
-      PREP.qs('#cur-name').textContent = 'You are on the ' + ent.planName + ' plan';
+      PREP.qs('#cur-name').textContent = PREP.t('You are on the ' + ent.planName + ' plan', 'Bạn đang dùng gói ' + ent.planName);
       const bits = [];
       if (ent.expiresAt) bits.push('Valid until ' + PREP.fmtDate(ent.expiresAt));
       bits.push(ent.attemptsLeft === null

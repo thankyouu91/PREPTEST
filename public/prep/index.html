@@ -21,6 +21,8 @@
       if(tn&&tn!=='default')document.documentElement.setAttribute('data-tenant',tn);
     }catch(e){}})();
   </script>
+  <!-- Song ngữ: chạy sớm để đặt ngôn ngữ (mặc định tiếng Việt) trước khi vẽ trang -->
+  <script src="/i18n.js"></script>
 </head>
 <body class="bg-surface text-ink">
 <div id="app" data-active="home" class="min-h-[100dvh]">
@@ -262,8 +264,8 @@
         '</div>' +
         '<h4 class="font-bold text-[16px] leading-snug">' + PREP.esc(t.title) + '</h4>' +
         '<p class="flex items-center gap-4 text-[13px] font-semibold text-muted mt-2 mb-5">' +
-          '<span class="inline-flex items-center gap-1.5">' + PREP.icon('layers', 'w-4 h-4') + t.sections.length + ' parts</span>' +
-          '<span class="inline-flex items-center gap-1.5">' + PREP.icon('clock', 'w-4 h-4') + t.durationMin + ' min</span>' +
+          '<span class="inline-flex items-center gap-1.5">' + PREP.icon('layers', 'w-4 h-4') + PREP.t(t.sections.length + ' parts', t.sections.length + ' phần') + '</span>' +
+          '<span class="inline-flex items-center gap-1.5">' + PREP.icon('clock', 'w-4 h-4') + PREP.t(t.durationMin + ' min', t.durationMin + ' phút') + '</span>' +
         '</p>' +
         '<a href="/prep/bai-thi/' + t.id + '/" class="btn btn-soft btn-md mt-auto w-full">' +
           PREP.icon('play', 'w-4 h-4') + 'Start preparing</a>' +
@@ -315,8 +317,8 @@
               : 'Go back over the structure and the instructions before the paper opens.') +
           '</p>' +
           '<p class="flex flex-wrap items-center gap-x-5 gap-y-2 text-[13.5px] font-semibold text-muted mt-4">' +
-            '<span class="inline-flex items-center gap-1.5">' + PREP.icon('layers', 'w-4 h-4') + t.sections.length + ' parts</span>' +
-            '<span class="inline-flex items-center gap-1.5">' + PREP.icon('clock', 'w-4 h-4') + t.durationMin + ' min</span>' +
+            '<span class="inline-flex items-center gap-1.5">' + PREP.icon('layers', 'w-4 h-4') + PREP.t(t.sections.length + ' parts', t.sections.length + ' phần') + '</span>' +
+            '<span class="inline-flex items-center gap-1.5">' + PREP.icon('clock', 'w-4 h-4') + PREP.t(t.durationMin + ' min', t.durationMin + ' phút') + '</span>' +
             (totalQ ? '<span class="inline-flex items-center gap-1.5">' + PREP.icon('list', 'w-4 h-4') + totalQ + ' items</span>' : '') +
           '</p>' +
           '<div class="flex flex-wrap gap-2.5 mt-6">' +
@@ -345,12 +347,12 @@
           ? '<a href="/prep/thu-vien/" class="card card-locked card-hover p-5 flex flex-col items-center justify-center text-center gap-2.5 min-h-[168px]">' +
               '<span class="w-11 h-11 rounded-full bg-brand-soft text-brand-strong inline-flex items-center justify-center">' + PREP.icon('plus', 'w-5 h-5') + '</span>' +
               '<b class="font-bold text-[15px]">Unlock more tests</b>' +
-              '<span class="text-[13px] text-muted font-medium max-w-[24ch]">' + (PREP.tests.length - mine.length) + ' more tests in the library are waiting for you</span>' +
+              '<span class="text-[13px] text-muted font-medium max-w-[24ch]">' + PREP.t((PREP.tests.length - mine.length) + ' more tests in the library are waiting for you', 'còn ' + (PREP.tests.length - mine.length) + ' bài nữa trong thư viện đang chờ bạn') + '</span>' +
             '</a>'
           : '';
         PREP.qs('#mytests-grid').innerHTML = shown.map(testCard).join('') + filler;
         PREP.qs('#mytests-grid').removeAttribute('hidden');
-        PREP.qs('#mytests-count').textContent = mine.length + ' tests unlocked';
+        PREP.qs('#mytests-count').textContent = PREP.t(mine.length + ' tests unlocked', mine.length + ' bài đã mở');
       } else {
         PREP.qs('#mytests-empty').removeAttribute('hidden');
       }
@@ -418,7 +420,7 @@
                 '<b class="block text-[14px] font-bold truncate">' + PREP.esc(PrepState.codeLabel(c)) + '</b>' +
                 '<span class="block text-[12.5px] text-muted font-medium">' + PREP.maskCode(c.code) + '</span>' +
               '</span>' +
-              '<span class="badge shrink-0 ' + (warn ? 'badge-hl' : 'badge-muted') + '">' + left + ' days left</span>' +
+              '<span class="badge shrink-0 ' + (warn ? 'badge-hl' : 'badge-muted') + '">' + PREP.t(left + ' days left', 'còn ' + left + ' ngày') + '</span>' +
             '</div>';
           }).join('')
         : '<p class="text-[14px] text-muted leading-relaxed">No codes are active.</p>' +
@@ -461,7 +463,7 @@
           '</div>' +
           '<p class="text-[13.5px] text-muted leading-relaxed mt-3 min-h-[40px]">' + PREP.esc(f.format) + '</p>' +
           '<p class="flex items-center justify-between text-sm font-bold mt-3">' +
-            (n ? '<span>' + (openN ? openN + '/' + n + ' unlocked' : n + ' mock tests') + '</span>'
+            (n ? '<span>' + (openN ? PREP.t(openN + '/' + n + ' unlocked', 'đã mở ' + openN + '/' + n) : PREP.t(n + ' mock tests', n + ' đề thi thử')) + '</span>'
                : '<span class="badge badge-hl">Coming soon</span>') +
             '<span class="text-accent-strong opacity-0 group-hover:opacity-100 transition">' + PREP.icon('arrowRight', 'w-5 h-5') + '</span>' +
           '</p>' +

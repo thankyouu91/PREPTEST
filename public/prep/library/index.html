@@ -20,6 +20,8 @@
       if(tn&&tn!=='default')document.documentElement.setAttribute('data-tenant',tn);
     }catch(e){}})();
   </script>
+  <!-- Song ngữ: chạy sớm để đặt ngôn ngữ (mặc định tiếng Việt) trước khi vẽ trang -->
+  <script src="/i18n.js"></script>
 </head>
 <body class="bg-surface text-ink">
 <div id="app" data-active="library" class="min-h-[100dvh]">
@@ -179,8 +181,8 @@
     function metaLine(t, cls) {
       const n = PREP.itemCount(t);
       return '<p class="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[13px] font-semibold ' + cls + ' mt-2.5 mb-5">' +
-        '<span class="inline-flex items-center gap-1.5">' + PREP.icon('layers', 'w-4 h-4') + t.sections.length + ' parts</span>' +
-        '<span class="inline-flex items-center gap-1.5">' + PREP.icon('clock', 'w-4 h-4') + t.durationMin + ' min</span>' +
+        '<span class="inline-flex items-center gap-1.5">' + PREP.icon('layers', 'w-4 h-4') + PREP.t(t.sections.length + ' parts', t.sections.length + ' phần') + '</span>' +
+        '<span class="inline-flex items-center gap-1.5">' + PREP.icon('clock', 'w-4 h-4') + PREP.t(t.durationMin + ' min', t.durationMin + ' phút') + '</span>' +
         (n ? '<span class="inline-flex items-center gap-1.5">' + PREP.icon('list', 'w-4 h-4') + n + ' items</span>' : '') +
       '</p>';
     }
@@ -261,7 +263,7 @@
       }
       grid.innerHTML = list.map(card).join('');
       const open = list.filter(t => PrepState.isUnlocked(t)).length;
-      countEl.textContent = list.length + ' mock tests · ' + open + ' unlocked';
+      countEl.textContent = PREP.t(list.length + ' mock tests · ' + open + ' unlocked', list.length + ' đề thi thử · đã mở ' + open);
     }
 
     /* The real catalogue from the server; on failure keep the fallback data and show a warning strip */

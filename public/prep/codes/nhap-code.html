@@ -20,6 +20,8 @@
       if(tn&&tn!=='default')document.documentElement.setAttribute('data-tenant',tn);
     }catch(e){}})();
   </script>
+  <!-- Song ngữ: chạy sớm để đặt ngôn ngữ (mặc định tiếng Việt) trước khi vẽ trang -->
+  <script src="/i18n.js"></script>
 </head>
 <body class="bg-surface text-ink">
 <div id="app" data-active="codes" class="min-h-[100dvh]">
@@ -152,7 +154,7 @@
         const ent = res.entitlement || {};
         PREP.qs('#ok-code').textContent = code;
         PREP.qs('#ok-label').textContent = res.plan
-          ? res.plan.name + ' plan · ' + PREP.months(res.plan.months)
+          ? PREP.t(res.plan.name + ' plan · ', 'Gói ' + res.plan.name + ' · ') + PREP.months(res.plan.months)
           : 'Activated';
         /* Re-entering your own code is not an error, but it is not a fresh unlock
            either — say what actually happened rather than congratulating them. */

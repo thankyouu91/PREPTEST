@@ -20,6 +20,8 @@
       if(tn&&tn!=='default')document.documentElement.setAttribute('data-tenant',tn);
     }catch(e){}})();
   </script>
+  <!-- Song ngữ: chạy sớm để đặt ngôn ngữ (mặc định tiếng Việt) trước khi vẽ trang -->
+  <script src="/i18n.js"></script>
 </head>
 <body class="bg-surface text-ink">
 <div id="app" data-active="library" class="min-h-[100dvh]">
@@ -174,12 +176,12 @@
               '<b class="block font-bold text-[15px]">' + PREP.esc(s.name) + '</b>' +
               '<span class="block text-[13px] text-muted font-medium mt-0.5">' + PREP.esc(s.type) + '</span>' +
             '</span>' +
-            '<span class="text-right shrink-0 text-[13.5px] font-bold">' + (s.items ? s.items + ' items' : '—') +
+            '<span class="text-right shrink-0 text-[13.5px] font-bold">' + (s.items ? PREP.t(s.items + ' items', s.items + ' câu') : '—') +
               '<span class="block text-muted font-semibold">' + s.minutes + ' min</span>' +
             '</span>' +
           '</div>').join('');
         PREP.qs('#t-total').textContent = totalQ
-          ? 'Total: ' + totalQ + ' items, ' + test.durationMin + ' min'
+          ? PREP.t('Total: ' + totalQ + ' items, ' + test.durationMin + ' min', 'Tổng: ' + totalQ + ' câu, ' + test.durationMin + ' phút')
           : 'Total: ' + test.durationMin + ' min · items still being written';
         PREP.qs('#t-scoring').innerHTML = PREP.icon('award', 'w-[18px] h-[18px]') + PREP.esc(test.scoring);
 

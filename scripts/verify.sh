@@ -173,12 +173,16 @@ step "Spaced repetition (SM-2 schedule, review queue)"
 node scripts/test-srs.mjs || fail=1
 
 step "Interface audit (overflow, contrast, CSP)"
-node scripts/audit.mjs || fail=1
+# In Vietnamese on purpose: that is what a visitor gets, and Vietnamese runs
+# longer than the English it replaces, so this is the run that catches a label
+# overflowing its button. The functional tests pin English (see _browser.mjs).
+PREP_TEST_LANG=vi node scripts/audit.mjs || fail=1
 
 if [ "${SKIP_SHOTS:-0}" != "1" ]; then
   step "Acceptance screenshots"
-  node scripts/screenshot.mjs || fail=1
-  node scripts/shot-admin.mjs || fail=1
+  # Also Vietnamese: these images are the record of what the product looks like.
+  PREP_TEST_LANG=vi node scripts/screenshot.mjs || fail=1
+  PREP_TEST_LANG=vi node scripts/shot-admin.mjs || fail=1
 fi
 
 _close_step

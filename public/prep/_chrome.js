@@ -78,6 +78,12 @@ const PrepChrome = {
         '<nav class="grid gap-1.5" aria-label="Menu">' + nav + '</nav>' +
         '<a href="/prep/nhap-code/" class="btn btn-soft btn-md mt-6 justify-start gap-3">' + PREP.icon('plus', 'w-5 h-5') + 'Enter an unlock code</a>' +
         '<div class="mt-auto pt-6 grid gap-4">' +
+          /* Chuyển ngôn ngữ: /i18n.js tự bắt mọi nút [data-lang], kể cả nút
+             được dựng bằng JS như ở đây, nên không cần nối sự kiện thêm. */
+          '<span class="lang-switch w-full" role="group" aria-label="Language">' +
+            '<button type="button" data-lang="vi" class="lang-opt flex-1">VI</button>' +
+            '<button type="button" data-lang="en" class="lang-opt flex-1">EN</button>' +
+          '</span>' +
           '<div class="flex items-center gap-2">' +
             '<button type="button" data-dark-toggle class="btn btn-ghost btn-sm flex-1" aria-label="Toggle dark mode"><span data-dark-icon></span><span data-dark-label>Dark mode</span></button>' +
             '<div class="relative">' +

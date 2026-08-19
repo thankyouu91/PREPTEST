@@ -29,6 +29,7 @@ const OFFLINE_URL = '/prep/offline/';
 const PRECACHE = [
   OFFLINE_URL,
   '/tailwind-built.css',
+  '/i18n.js',
   '/prep/_mock.js',
   '/prep/_chrome.js',
   '/favicon.svg',

@@ -354,7 +354,388 @@
     'Configuration saved.': 'Đã lưu cấu hình.',
     'Save configuration': 'Lưu cấu hình',
     'Exams': 'Các kỳ thi',
-    'The fixed catalogue of the platform.': 'Danh mục cố định của nền tảng.'
+    'The fixed catalogue of the platform.': 'Danh mục cố định của nền tảng.',
+
+    /* ================= KHU HỌC VIÊN =================
+       Lưu ý: khu tự học (learn/) DẠY tiếng Anh, nên ví dụ ngữ pháp, bậc CEFR và
+       các từ mẫu giữ nguyên tiếng Anh — chỉ dịch phần vỏ giao diện quanh chúng. */
+
+    /* ---- Khung chung (sidebar + thanh trên) ---- */
+    'Home': 'Trang chủ',
+    'Library': 'Thư viện',
+    'Self-study': 'Tự học',
+    'My codes': 'Mã của tôi',
+    'Progress': 'Tiến độ',
+    'Profile': 'Hồ sơ',
+    /* 'Student' is already above, in the admin block — one entry serves both. */
+    'Enter code': 'Nhập mã',
+    'Enter a code': 'Nhập mã',
+    'Enter an unlock code': 'Nhập mã mở khóa',
+    'Self-study opens from the Plus plan': 'Khu tự học mở từ gói Plus',
+    'Page title': 'Tiêu đề trang',
+    'Back to the home page': 'Về trang chủ',
+    'Back to home': 'Về trang chủ',
+    'See all': 'Xem tất cả',
+    'Manage': 'Quản lý',
+    'Got it': 'Đã hiểu',
+
+    /* ---- Bảng điều khiển học viên ---- */
+    'Hello,': 'Xin chào,',
+    'Your tests': 'Bài thi của bạn',
+    'Your progress': 'Tiến độ của bạn',
+    "Today's focus": 'Ưu tiên hôm nay',
+    'Next steps': 'Bước tiếp theo',
+    'Recent activity': 'Hoạt động gần đây',
+    'Practice results': 'Kết quả luyện tập',
+    'Active codes': 'Mã đang hiệu lực',
+    'tests unlocked': 'bài thi đã mở',
+    'Skills with practice available': 'Kỹ năng có bài luyện',
+    'Explore by exam': 'Khám phá theo kỳ thi',
+    'Browse the library': 'Xem thư viện',
+    'Buy more codes': 'Mua thêm mã',
+    'Need more practice?': 'Cần luyện thêm?',
+    'No sittings yet': 'Chưa có lượt thi nào',
+    'You have not unlocked any tests yet': 'Bạn chưa mở khóa bài thi nào',
+    'Unlock a test to start tracking how your practice is going.':
+      'Mở khóa một bài thi để bắt đầu theo dõi tiến độ luyện tập.',
+    'Enter a code you already have to unlock one now, or browse the library and pick a test that matches the exam you are aiming at.':
+      'Nhập mã bạn đang có để mở khóa ngay, hoặc xem thư viện và chọn bài thi khớp với kỳ thi bạn nhắm tới.',
+    'Part-by-part marks and the four-skill breakdown appear here after your first hand-in. The papers are still being written; we will tell you when one opens.':
+      'Điểm từng phần và bảng phân tích bốn kỹ năng sẽ hiện ở đây sau lần nộp bài đầu tiên. Đề vẫn đang được soạn; chúng tôi sẽ báo khi có đề mở.',
+    'Verify your email to protect your account': 'Xác thực email để bảo vệ tài khoản',
+    'Open the email and follow the verification link, or have it sent again.':
+      'Mở email và bấm liên kết xác thực, hoặc yêu cầu gửi lại.',
+
+    /* ---- Đăng nhập / đăng ký / mật khẩu ---- */
+    'Welcome back': 'Chào bạn trở lại',
+    'Sign in to pick up where you left off.': 'Đăng nhập để tiếp tục từ chỗ đang dở.',
+    'Your practice is waiting.': 'Bài luyện của bạn đang chờ.',
+    'Username or email': 'Tên đăng nhập hoặc email',
+    'Your password': 'Mật khẩu của bạn',
+    'Password': 'Mật khẩu',
+    'Email': 'Email',
+    'Full name': 'Họ và tên',
+    'Username': 'Tên đăng nhập',
+    'Show password': 'Hiện mật khẩu',
+    'Stay signed in on this device': 'Duy trì đăng nhập trên thiết bị này',
+    'Forgot password?': 'Quên mật khẩu?',
+    'Forgot your password?': 'Quên mật khẩu?',
+    'No account yet?': 'Chưa có tài khoản?',
+    'Create a free account': 'Tạo tài khoản miễn phí',
+    'Create account': 'Tạo tài khoản',
+    'Already have an account?': 'Đã có tài khoản?',
+    'Continue with Google': 'Tiếp tục với Google',
+    'or': 'hoặc',
+    'Enter your password.': 'Hãy nhập mật khẩu.',
+    'Enter your username or email.': 'Hãy nhập tên đăng nhập hoặc email.',
+    'Please tell us your name.': 'Hãy cho biết tên của bạn.',
+    'That email address is not valid.': 'Địa chỉ email không hợp lệ.',
+    'At least 8 characters, letters and numbers': 'Tối thiểu 8 ký tự, có chữ và số',
+    'At least 8 characters': 'Tối thiểu 8 ký tự',
+    'Password needs at least 8 characters, with both letters and numbers.':
+      'Mật khẩu cần tối thiểu 8 ký tự, gồm cả chữ và số.',
+    'That phone number does not look right — e.g. 0912345678.':
+      'Số điện thoại chưa đúng — ví dụ 0912345678.',
+    'Exams you are interested in': 'Kỳ thi bạn quan tâm',
+    '(choose any)': '(chọn tùy ý)',
+    'I agree to the': 'Tôi đồng ý với',
+    'and the': 'và',
+    'Terms of use': 'Điều khoản sử dụng',
+    'Privacy policy': 'Chính sách bảo mật',
+    'You need to accept the terms to continue.': 'Bạn cần đồng ý điều khoản để tiếp tục.',
+    'Free, and it takes a minute. Unlock tests when you are ready.':
+      'Miễn phí, chỉ mất một phút. Mở khóa bài thi khi bạn sẵn sàng.',
+    'Progress, activated codes and skill breakdowns all live in your account.':
+      'Tiến độ, mã đã kích hoạt và phân tích kỹ năng đều nằm trong tài khoản của bạn.',
+    'Keep practising': 'Tiếp tục luyện',
+    'Back to sign in': 'Quay lại đăng nhập',
+    'Remembered it?': 'Đã nhớ ra?',
+    'Remembered your password?': 'Đã nhớ ra mật khẩu?',
+    'Enter your registered email and we will send a reset link.':
+      'Nhập email đã đăng ký, chúng tôi sẽ gửi liên kết đặt lại.',
+    'Send the reset link': 'Gửi liên kết đặt lại',
+    'Check your inbox': 'Kiểm tra hộp thư',
+    'Try a different email': 'Thử email khác',
+    'Open the reset link': 'Mở liên kết đặt lại',
+    'The trial build does not send real email.': 'Bản dùng thử không gửi email thật.',
+    'Interface demo: the reset email is not actually sent.':
+      'Bản demo giao diện: email đặt lại không thực sự được gửi.',
+    'Set a new password': 'Đặt mật khẩu mới',
+    'Reset password': 'Đặt lại mật khẩu',
+    'Password changed': 'Đã đổi mật khẩu',
+    'Choose a new password. Every signed-in device will have to sign in again.':
+      'Chọn mật khẩu mới. Mọi thiết bị đang đăng nhập sẽ phải đăng nhập lại.',
+    'Sign in with the new password to carry on practising.':
+      'Đăng nhập bằng mật khẩu mới để tiếp tục luyện.',
+    'That link is not valid': 'Liên kết không hợp lệ',
+    'The reset link is missing its token or has expired. Ask for a new one.':
+      'Liên kết đặt lại thiếu mã hoặc đã hết hạn. Hãy yêu cầu liên kết mới.',
+    'Request a new link': 'Yêu cầu liên kết mới',
+
+    /* ---- Xác thực email ---- */
+    'One step to go': 'Còn một bước nữa',
+    'We have sent a verification link to': 'Chúng tôi đã gửi liên kết xác thực tới',
+    'your email address': 'địa chỉ email của bạn',
+    'Open the email and follow the link to activate your account.':
+      'Mở email và bấm liên kết để kích hoạt tài khoản.',
+    'Open the verification link': 'Mở liên kết xác thực',
+    'I have verified it': 'Tôi đã xác thực',
+    'Resend the email': 'Gửi lại email',
+    'Sent again. Check your inbox and your spam folder.':
+      'Đã gửi lại. Kiểm tra hộp thư và cả thư rác.',
+    'Wrong email address?': 'Sai địa chỉ email?',
+    'Sign up again': 'Đăng ký lại',
+    'Your email is verified. Your account is ready.':
+      'Email đã được xác thực. Tài khoản của bạn đã sẵn sàng.',
+    'Go to the dashboard': 'Vào bảng điều khiển',
+    'No mail service is connected yet: in the trial build the verification link appears on the next screen.':
+      'Chưa kết nối dịch vụ email: ở bản dùng thử, liên kết xác thực hiện ở màn hình kế tiếp.',
+    'No mail service is connected: the trial build shows the link right here.':
+      'Chưa kết nối dịch vụ email: bản dùng thử hiện liên kết ngay tại đây.',
+
+    /* ---- Thư viện ---- */
+    'Mock test library': 'Thư viện đề thi thử',
+    'Test library': 'Thư viện đề thi',
+    'Filter by skill': 'Lọc theo kỹ năng',
+    'Filter by status': 'Lọc theo trạng thái',
+    'Skill: all': 'Kỹ năng: tất cả',
+    'Status: all': 'Trạng thái: tất cả',
+    'Clear filters': 'Xóa bộ lọc',
+    'Loading the list…': 'Đang tải danh sách…',
+    'No tests match these filters': 'Không có bài thi khớp bộ lọc',
+    'Loosen a condition, or clear the filters to see the whole library.':
+      'Nới một điều kiện, hoặc xóa bộ lọc để xem toàn bộ thư viện.',
+    'Tell me when a paper is ready': 'Báo tôi khi có đề',
+    'Tell me when it is ready': 'Báo tôi khi có đề',
+    'Your email': 'Email của bạn',
+    'Email for notifications': 'Email nhận thông báo',
+    'Noted. You will be the first to know when a new paper arrives.':
+      'Đã ghi nhận. Bạn sẽ là người đầu tiên biết khi có đề mới.',
+    'The writing team is building papers against the latest structure. Leave your email and we will tell you the moment the first one lands.':
+      'Đội soạn đề đang biên soạn theo cấu trúc mới nhất. Để lại email, chúng tôi sẽ báo ngay khi đề đầu tiên có mặt.',
+
+    /* ---- Chi tiết bài thi ---- */
+    'Test structure': 'Cấu trúc bài thi',
+    'Instructions and notes': 'Hướng dẫn và lưu ý',
+    'Parts of this test': 'Các phần của bài thi',
+    'Back to the library': 'Về thư viện',
+    'Breadcrumb': 'Đường dẫn',
+    'Test not found': 'Không tìm thấy bài thi',
+    'This test does not exist, or it has been taken out of the library.':
+      'Bài thi không tồn tại, hoặc đã được gỡ khỏi thư viện.',
+    'This test is coming soon': 'Bài thi sắp có',
+    'The writing team is still finishing the paper. When it is released it opens in your account automatically.':
+      'Đội soạn đề đang hoàn thiện. Khi phát hành, đề sẽ tự mở trong tài khoản của bạn.',
+
+    /* ---- Phòng thi ---- */
+    'Hand in': 'Nộp bài',
+    'Hand in now?': 'Nộp bài ngay?',
+    'Handed in': 'Đã nộp bài',
+    'Go back and carry on': 'Quay lại làm tiếp',
+    'You have no test in progress': 'Bạn không có bài thi nào đang làm',
+    'Pick a test in the library and press Start.': 'Chọn một bài trong thư viện và bấm Bắt đầu.',
+    'Pick another test': 'Chọn bài khác',
+    'Go to the library': 'Vào thư viện',
+    'See the result': 'Xem kết quả',
+    'Multiple choice and gap-fill are already marked. Writing and Speaking are marked against a rubric, so they follow later.':
+      'Trắc nghiệm và điền khuyết đã được chấm. Viết và Nói chấm theo thang tiêu chí nên sẽ có sau.',
+
+    /* ---- Kết quả ---- */
+    'Test result': 'Kết quả bài thi',
+    'Overall': 'Tổng thể',
+    'Band': 'Bậc',
+    'out of 10': 'trên 10',
+    'Mark per skill': 'Điểm từng kỹ năng',
+    'The part-by-part breakdown': 'Phân tích từng phần',
+    'Part by part, item by item': 'Từng phần, từng câu',
+    'No result yet': 'Chưa có kết quả',
+    'Sit another test': 'Làm bài khác',
+    'See the price list': 'Xem bảng giá',
+    'Your own answers are kept here so you can compare. The correct answers are not shown, because the paper is still used for later sittings.':
+      'Câu trả lời của bạn được giữ lại để đối chiếu. Đáp án đúng không hiển thị, vì đề còn dùng cho các lượt thi sau.',
+
+    /* ---- Mã / mua mã ---- */
+    'Activation code': 'Mã kích hoạt',
+    'Activate code': 'Kích hoạt mã',
+    'Enter another code': 'Nhập mã khác',
+    'Code': 'Mã',
+    'Unlocked.': 'Đã mở khóa.',
+    'is now active:': 'đã hiệu lực:',
+    'Go to the library and start': 'Vào thư viện và bắt đầu',
+    'No code yet?': 'Chưa có mã?',
+    'Buy one': 'Mua mã',
+    'No codes activated yet': 'Chưa kích hoạt mã nào',
+    'Get a code from your school or centre, or buy one directly. Once it is activated, what it unlocks shows up here.':
+      'Nhận mã từ trường hoặc trung tâm, hoặc mua trực tiếp. Sau khi kích hoạt, phần được mở sẽ hiện ở đây.',
+    'Twelve characters, printed on the card or in your purchase email. For example:':
+      'Mười hai ký tự, in trên thẻ hoặc trong email mua hàng. Ví dụ:',
+    'Demo codes for trying the flow': 'Mã demo để thử quy trình',
+    'VPET practice plans': 'Các gói luyện VPET',
+    'Price list': 'Bảng giá',
+    'I already have a code': 'Tôi đã có mã',
+    'Get a code for this plan': 'Nhận mã cho gói này',
+    'Buy through a centre': 'Mua qua trung tâm',
+    'Pay online': 'Thanh toán trực tuyến',
+    'No plans are on sale': 'Chưa có gói nào được bán',
+    'Ask your centre for a code, or come back later.':
+      'Hãy hỏi trung tâm để lấy mã, hoặc quay lại sau.',
+    'One code opens one time-limited plan for': 'Một mã mở một gói có thời hạn cho',
+    'one account': 'một tài khoản',
+    '; the term runs from activation, not from purchase.':
+      '; thời hạn tính từ lúc kích hoạt, không phải lúc mua.',
+    'Contact your centre to buy this plan — each code works for one account only, and the term starts the moment it is activated.':
+      'Liên hệ trung tâm để mua gói này — mỗi mã chỉ dùng cho một tài khoản, và thời hạn bắt đầu ngay khi kích hoạt.',
+    'You will be taken to the payment provider and brought straight back. Your code is issued the moment the payment settles, and it works for one account only.':
+      'Bạn sẽ được chuyển sang cổng thanh toán rồi quay lại ngay. Mã được cấp ngay khi thanh toán hoàn tất, và chỉ dùng cho một tài khoản.',
+    'Every plan includes 150 practice papers and unbroken access for the length of the term. VNPay / MoMo checkout is wired in later.':
+      'Mọi gói đều có 150 đề luyện và truy cập liên tục trong suốt thời hạn. Thanh toán VNPay / MoMo sẽ nối sau.',
+
+    /* ---- Hồ sơ / tài khoản ---- */
+    'Personal details': 'Thông tin cá nhân',
+    'Account sections': 'Các mục tài khoản',
+    'Security': 'Bảo mật',
+    'Session': 'Phiên đăng nhập',
+    'Notifications': 'Thông báo',
+    'Appearance': 'Giao diện',
+    'Order history': 'Lịch sử đơn hàng',
+    'No orders yet': 'Chưa có đơn hàng',
+    'Exams you follow': 'Kỳ thi bạn theo dõi',
+    'Changes saved.': 'Đã lưu thay đổi.',
+    'A name is required.': 'Cần nhập tên.',
+    'Changing your email means verifying the new address.':
+      'Đổi email đồng nghĩa phải xác thực địa chỉ mới.',
+    'A username cannot be changed. Sign in with it or with your email.':
+      'Không thể đổi tên đăng nhập. Dùng nó hoặc email để đăng nhập.',
+    'Repeat the new password': 'Nhập lại mật khẩu mới',
+    'Enter your current password.': 'Hãy nhập mật khẩu hiện tại.',
+    'The two passwords do not match.': 'Hai mật khẩu không khớp.',
+    'A new password needs at least 8 characters, with both letters and digits.':
+      'Mật khẩu mới cần tối thiểu 8 ký tự, gồm cả chữ và số.',
+    'Password changed. Use the new one next time you sign in.':
+      'Đã đổi mật khẩu. Lần sau hãy đăng nhập bằng mật khẩu mới.',
+    'Keeping your account safe': 'Giữ an toàn cho tài khoản',
+    'Use a password of its own, not the one on your email or social accounts.':
+      'Dùng mật khẩu riêng, không trùng với email hay mạng xã hội.',
+    'Sign out of this device. Changing your password signs out every other device.':
+      'Đăng xuất thiết bị này. Đổi mật khẩu sẽ đăng xuất mọi thiết bị khác.',
+    'Sign out on lab machines and shared computers.':
+      'Nhớ đăng xuất trên máy phòng thực hành và máy dùng chung.',
+    'Email notifications': 'Thông báo qua email',
+    'Changes are saved the moment you switch one on or off.':
+      'Thay đổi được lưu ngay khi bạn bật hoặc tắt.',
+    'Practice reminders': 'Nhắc luyện tập',
+    'A gentle weekly nudge if you have an unlocked test you have not sat.':
+      'Nhắc nhẹ mỗi tuần nếu bạn có bài đã mở mà chưa làm.',
+    'New papers released': 'Có đề mới',
+    'Tells you when a new mock test lands for an exam you follow.':
+      'Báo khi có đề thi thử mới cho kỳ thi bạn theo dõi.',
+    'Offers and promotions': 'Ưu đãi và khuyến mãi',
+    'News of discounts on code plans. No more than one email a month.':
+      'Tin giảm giá các gói mã. Không quá một email mỗi tháng.',
+    'Turn on dark mode': 'Bật chế độ tối',
+    'Branding (white-label demo)': 'Thương hiệu (demo white-label)',
+    'Code purchases appear here, along with the codes they issued.':
+      'Các lần mua mã hiện ở đây, kèm mã đã cấp.',
+    'Do not share an activated code: each one works once.':
+      'Đừng chia sẻ mã đã kích hoạt: mỗi mã chỉ dùng một lần.',
+    'See the code plans': 'Xem các gói mã',
+
+    /* ---- Mất kết nối ---- */
+    'No network connection': 'Không có kết nối mạng',
+    'Your device is offline, so this page could not load. Turn Wi-Fi or mobile data back on and try again — anything you had in progress is still there.':
+      'Thiết bị đang ngoại tuyến nên không tải được trang. Bật lại Wi-Fi hoặc dữ liệu di động rồi thử lại — phần bạn đang làm dở vẫn còn nguyên.',
+
+    /* ---- Khu tự học: chỉ phần vỏ giao diện ---- */
+    'Self-study topics': 'Chủ đề tự học',
+    'Filter by level': 'Lọc theo bậc',
+    'Level: all': 'Bậc: tất cả',
+    'Clear filter': 'Xóa bộ lọc',
+    'Nothing at this level': 'Không có mục nào ở bậc này',
+    'Pick another level to see more.': 'Chọn bậc khác để xem thêm.',
+    'This device has no English voice installed, so nothing can be read aloud. The examples are still perfectly readable.':
+      'Thiết bị chưa cài giọng đọc tiếng Anh nên không phát âm được. Các ví dụ vẫn đọc được bình thường.',
+    'Irregular verbs': 'Động từ bất quy tắc',
+    'Linking words': 'Từ nối',
+    'Modal verbs': 'Động từ khuyết thiếu',
+    'Passive and reported speech': 'Câu bị động và tường thuật',
+    'Adjectives and adverbs': 'Tính từ và trạng từ',
+    'Nouns and articles': 'Danh từ và mạo từ',
+    'Clauses': 'Mệnh đề',
+    'Conditionals': 'Câu điều kiện',
+    'Inversion and emphasis': 'Đảo ngữ và nhấn mạnh',
+    'Register and hedging': 'Sắc thái và nói giảm',
+    'Tenses': 'Các thì',
+    'Review': 'Ôn tập',
+
+    /* ---- Nhãn thương hiệu ---- */
+    'Certificate mock tests': 'Thi thử lấy chứng chỉ',
+
+    /* ---- Bảng điều khiển: các nhãn còn lại ---- */
+    'Good afternoon,': 'Chào buổi chiều,',
+    'Good morning,': 'Chào buổi sáng,',
+    'Good evening,': 'Chào buổi tối,',
+    'See the structure': 'Xem cấu trúc',
+    'Other VPET tests': 'Bài VPET khác',
+    'Start preparing': 'Bắt đầu ôn',
+    'Start practising': 'Bắt đầu luyện',
+    'Unlock more tests': 'Mở thêm bài thi',
+    'Verify your email': 'Xác thực email',
+    'Choose the exams you care about': 'Chọn kỳ thi bạn quan tâm',
+    'Activate your first code': 'Kích hoạt mã đầu tiên',
+    "Look at one test's structure": 'Xem cấu trúc một bài thi',
+    'The exams you follow are listed first': 'Kỳ thi bạn theo dõi được xếp trước',
+    'All exams': 'Tất cả kỳ thi',
+    'Active': 'Đang hiệu lực',
+    'Current plan': 'Gói hiện tại',
+    'Mua code': 'Mua mã',
+
+    /* ---- Nội dung gói, do server gửi kèm (server/data/plans.js) ----
+       Dịch ở đây thay vì thêm cột tiếng Việt vào plans.js: mỗi chuỗi là trọn
+       một nút văn bản nên từ điển khớp được, và giá cả vẫn chỉ có một nguồn. */
+    'Ten full sittings to see where you stand.': 'Mười lượt thi đầy đủ để biết bạn đang ở đâu.',
+    '10 full VPET sittings in one month': '10 lượt thi VPET đầy đủ trong một tháng',
+    'Every part of the test, exactly as the real thing': 'Đủ mọi phần của bài thi, đúng như thật',
+    'Score only - no per-part breakdown or written feedback':
+      'Chỉ có điểm - không phân tích từng phần hay nhận xét',
+    'Practise without counting, and study between sittings.':
+      'Luyện không giới hạn, và có cái để học giữa các lượt thi.',
+    'Unlimited VPET sittings for 3 months': 'Thi VPET không giới hạn trong 3 tháng',
+    'Unlimited VPET sittings for 6 months': 'Thi VPET không giới hạn trong 6 tháng',
+    'Full self-study area: vocabulary, grammar, linking words, pronunciation':
+      'Toàn bộ khu tự học: từ vựng, ngữ pháp, từ nối, phát âm',
+    'Detailed report: every part scored, with written feedback':
+      'Báo cáo chi tiết: chấm từng phần, kèm nhận xét',
+    'New practice sets as they are published': 'Bộ đề mới ngay khi phát hành',
+    'Six months, for a target date that is further out.': 'Sáu tháng, cho ngày thi còn xa.',
+
+    /* ---- Câu dài do JS chèn, nhưng vẫn trọn một nút văn bản ---- */
+    "You have not looked at this test's structure yet. Knowing the parts, the timing and the question types in advance is what stops the real room feeling strange.":
+      'Bạn chưa xem cấu trúc bài thi này. Biết trước các phần, thời gian và dạng câu hỏi là điều giúp phòng thi thật không còn xa lạ.',
+    /* Bản không dấu chấm: chuỗi format của kỳ thi do API gửi về. */
+    'Parts A-J, 55 items, AI scored speaking': 'Phần A-J, 55 câu, chấm Nói bằng AI',
+    'No codes yet': 'Chưa có mã nào',
+    /* Câu bị <b> và <a> cắt thành nhiều nút, nên dịch theo từng mảnh. */
+    '. Activate it under': '. Kích hoạt tại mục',
+
+    /* ---- Ôn tập lặp ngắt quãng ---- */
+    'Show answer': 'Hiện đáp án',
+    'How did that go?': 'Bạn làm được đến đâu?',
+    'Again': 'Lại từ đầu',
+    'New': 'Mới',
+    'Check again': 'Kiểm tra lại',
+    'Nothing is due right now': 'Chưa có thẻ nào tới hạn',
+    'Browse the material': 'Xem tài liệu',
+    'Pronounce this card': 'Đọc thẻ này',
+    'Press': 'Bấm',
+    'Space': 'Space',
+    'to reveal, then': 'để hiện đáp án, rồi',
+    'to grade.': 'để chấm.',
+    'Each card comes back just before you would have forgotten it. Answer in your head, reveal, then say honestly how it went — the schedule is only as good as that answer.':
+      'Mỗi thẻ quay lại ngay trước lúc bạn sắp quên. Trả lời trong đầu, hiện đáp án, rồi tự đánh giá thật lòng — lịch ôn chỉ chuẩn khi câu trả lời đó thật.',
+    'sends a card back to the start; the rest push it further away.':
+      'đưa thẻ về lại từ đầu; các mức còn lại đẩy thẻ ra xa hơn.',
+    'This device has no English voice installed, so nothing can be read aloud. The cards are still perfectly readable.':
+      'Thiết bị chưa cài giọng đọc tiếng Anh nên không phát âm được. Các thẻ vẫn đọc được bình thường.'
   };
 
   function tr(s) {

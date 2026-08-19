@@ -178,6 +178,12 @@ const PREP = {
     });
   },
 
+  /* Dịch một câu do JS tự lắp. Từ điển trong /i18n.js chỉ khớp được trọn một nút
+     văn bản, nên những chuỗi ghép từ số và chữ ("3 ngày trước") phải hỏi ngôn ngữ
+     hiện tại ở đây. Không có i18n thì giữ nguyên tiếng Anh. */
+  isVi() { return !!(window.PREP_I18N && window.PREP_I18N.lang === 'vi'); },
+  t(en, vi) { return this.isVi() ? vi : en; },
+
   vnd(n) { return n.toLocaleString('vi-VN') + 'đ'; },
   /** A term, said grammatically — one of the plans is a single month now. */
   months(n) { return n + (Number(n) === 1 ? ' month' : ' months'); },
@@ -201,9 +207,9 @@ const PREP = {
   timeAgo(iso) {
     const diff = -this.daysUntil(iso);
     if (diff === null) return '';
-    if (diff <= 0) return 'today';
-    if (diff === 1) return 'yesterday';
-    if (diff < 30) return diff + ' days ago';
+    if (diff <= 0) return this.t('today', 'hôm nay');
+    if (diff === 1) return this.t('yesterday', 'hôm qua');
+    if (diff < 30) return this.t(diff + ' days ago', diff + ' ngày trước');
     return this.fmtDate(iso);
   },
   fmtDate(iso) {
@@ -524,7 +530,7 @@ const PrepState = {
   name is the right answer; `unlocks` is only for codes issued before the model
   changed, and for data with no plan attached. */
   codeLabel(c) {
-    if (c && c.plan) return c.plan.name + ' plan · ' + PREP.months(c.plan.months);
+    if (c && c.plan) return PREP.t(c.plan.name + ' plan · ', 'Gói ' + c.plan.name + ' · ') + PREP.months(c.plan.months);
     return this.unlockLabel((c && c.unlocks) || {});
   },
 

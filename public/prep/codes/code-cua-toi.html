@@ -20,6 +20,8 @@
       if(tn&&tn!=='default')document.documentElement.setAttribute('data-tenant',tn);
     }catch(e){}})();
   </script>
+  <!-- Song ngữ: chạy sớm để đặt ngôn ngữ (mặc định tiếng Việt) trước khi vẽ trang -->
+  <script src="/i18n.js"></script>
 </head>
 <body class="bg-surface text-ink">
 <div id="app" data-active="codes" class="min-h-[100dvh]">
@@ -159,7 +161,7 @@
         PREP.qs('#code-count').textContent = 'No codes yet';
         return;
       }
-      PREP.qs('#code-count').textContent = codes.length + ' codes activated';
+      PREP.qs('#code-count').textContent = PREP.t(codes.length + ' codes activated', codes.length + ' mã đã kích hoạt');
 
       PREP.qs('#codes-tbody').innerHTML = codes.map((c, i) =>
         '<tr class="border-b border-line last:border-0">' +
