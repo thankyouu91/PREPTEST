@@ -1609,6 +1609,19 @@ router.put('/admin/packages/:id', async (req, res) => {
 });
 
 /** Change your own admin password */
+/* POST /admin/me — an administrator editing their OWN profile. Only the display
+   name: the username is the sign-in handle, and the role is not something an
+   account may grant itself (that lives on the Administration screen, for owners).
+   The name shows in the chrome and the audit log, so it is worth keeping right
+   without opening the full admin-management screen. */
+router.post('/admin/me', async (req, res) => {
+  const name = str(req.body && req.body.name, 120).trim();
+  if (!name) return bad(res, 'Your name cannot be empty.');
+  await q.run('UPDATE admins SET name=? WHERE id=?', name, req.admin.id);
+  await audit(req, 'admin.profile', 'admins/' + req.admin.username, {});
+  res.json({ ok: true, name });
+});
+
 router.post('/admin/password', async (req, res) => {
   const b = req.body || {};
   const cur = typeof b.current === 'string' ? b.current : '';

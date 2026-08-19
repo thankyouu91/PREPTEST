@@ -274,6 +274,7 @@ guard đăng nhập, 8 route còn lại là danh sách ở mục 3.
 | POST | `/api/admin/login` | `csrfGuard` | yes |
 | POST | `/api/admin/logout` | `csrfGuard` | yes |
 | GET | `/api/admin/me` | — | n/a (read) |
+| POST | `/api/admin/me` | `requireAdmin` + `csrfGuard` | yes |
 | PUT | `/api/admin/packages/:id` | `requireAdmin` + `csrfGuard` | yes |
 | POST | `/api/admin/password` | `requireAdmin` + `csrfGuard` | yes |
 | GET | `/api/admin/questions` | `requireAdmin` + `csrfGuard` | n/a (read) |

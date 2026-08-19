@@ -782,6 +782,18 @@ const run = async () => {
   r = await call('POST', '/api/admin/password', { current: 'wrong-one', next: 'MatKhauMoi123' });
   check('Refuses a wrong current password', r.status === 403, 'status ' + r.status);
 
+  /* 14b. Editing your own profile — the name behind the popover in the chrome.
+     Renamed, then put back so the acceptance screenshots show the usual name. */
+  const origAdminName = (await call('GET', '/api/admin/me')).data.admin.name;
+  r = await call('POST', '/api/admin/me', { name: 'Renamed Admin' });
+  check('An administrator can rename their own profile', r.status === 200 && r.data.name === 'Renamed Admin',
+    JSON.stringify(r.data));
+  check('The rename is reflected in /admin/me',
+    (await call('GET', '/api/admin/me')).data.admin.name === 'Renamed Admin');
+  r = await call('POST', '/api/admin/me', { name: '   ' });
+  check('An empty name is refused', r.status === 400, 'status ' + r.status);
+  await call('POST', '/api/admin/me', { name: origAdminName });
+
   /* 15. The audit log records what happened */
   r = await call('GET', '/api/admin/audit?limit=50');
   const actions = r.data.items.map(a => a.action);

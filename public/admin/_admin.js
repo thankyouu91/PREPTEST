@@ -195,13 +195,35 @@ const AD = {
         '<a href="/prep/landing/" class="nav-item mt-6">' + this.icon('external', 'w-5 h-5 shrink-0') + '<span>View the student site</span></a>' +
         '<div class="mt-auto pt-6 grid gap-4">' +
           '<button type="button" data-dark class="btn btn-ghost btn-sm" aria-label="Toggle dark mode"><span data-dark-icon></span><span data-dark-label>Dark mode</span></button>' +
-          '<div class="flex items-center gap-3 border-t border-line pt-4 px-1">' +
-            '<span class="w-10 h-10 rounded-full bg-brand-soft text-brand-strong font-bold text-sm inline-flex items-center justify-center">' + this.esc(initials) + '</span>' +
-            '<span class="min-w-0 flex-1 leading-tight">' +
-              '<span class="block text-sm font-bold truncate">' + this.esc(admin.name) + '</span>' +
-              '<span class="block text-xs text-muted truncate">' + this.esc(admin.role === 'owner' ? 'Owner' : 'Editor') + '</span>' +
-            '</span>' +
-            '<button type="button" data-logout class="p-2 rounded-full text-muted hover:text-danger transition" aria-label="Sign out">' + this.icon('logout', 'w-5 h-5') + '</button>' +
+          /* The profile lives inside the name: hover (or click) the identity row and a
+             panel rises with the editable name, a password change and sign-out. */
+          '<div class="relative" data-profile-wrap>' +
+            '<div data-profile-pop class="hidden absolute bottom-full inset-x-0 mb-2 card p-4 shadow-soft-lg z-50">' +
+              '<p class="text-[12px] font-bold uppercase tracking-wide text-muted">Your profile</p>' +
+              '<div class="flex items-center gap-3 mt-2.5">' +
+                '<span class="w-10 h-10 rounded-full bg-brand-soft text-brand-strong font-bold text-sm inline-flex items-center justify-center shrink-0" data-profile-initials>' + this.esc(initials) + '</span>' +
+                '<span class="min-w-0"><span class="block text-sm font-bold truncate" data-profile-name>' + this.esc(admin.name) + '</span>' +
+                  '<span class="block text-xs text-muted truncate">@' + this.esc(admin.username) + ' · ' + this.esc(admin.role === 'owner' ? 'Owner' : 'Editor') + '</span></span>' +
+              '</div>' +
+              '<label class="label mt-3.5" for="ad-name-input">Display name</label>' +
+              '<div class="flex gap-2">' +
+                '<input class="input" id="ad-name-input" maxlength="120" value="' + this.esc(admin.name) + '">' +
+                '<button type="button" class="btn btn-primary btn-sm shrink-0" data-profile-save>Save</button>' +
+              '</div>' +
+              '<div class="grid gap-1 mt-3">' +
+                '<button type="button" class="btn btn-ghost btn-sm justify-start" data-profile-pw>' + this.icon('lock', 'w-4 h-4') + 'Change password</button>' +
+                '<a href="/admin/quan-tri/" class="btn btn-ghost btn-sm justify-start">' + this.icon('settings', 'w-4 h-4') + 'Administration</a>' +
+                '<button type="button" data-logout class="btn btn-ghost btn-sm justify-start text-danger">' + this.icon('logout', 'w-4 h-4') + 'Sign out</button>' +
+              '</div>' +
+            '</div>' +
+            '<button type="button" data-profile-trigger aria-haspopup="true" aria-expanded="false" class="w-full flex items-center gap-3 border-t border-line pt-4 px-1 text-start rounded-lg hover:bg-surface transition">' +
+              '<span class="w-10 h-10 rounded-full bg-brand-soft text-brand-strong font-bold text-sm inline-flex items-center justify-center shrink-0" data-profile-initials>' + this.esc(initials) + '</span>' +
+              '<span class="min-w-0 flex-1 leading-tight">' +
+                '<span class="block text-sm font-bold truncate" data-profile-name>' + this.esc(admin.name) + '</span>' +
+                '<span class="block text-xs text-muted truncate">' + this.esc(admin.role === 'owner' ? 'Owner' : 'Editor') + '</span>' +
+              '</span>' +
+              '<span class="text-muted shrink-0">' + this.icon('settings', 'w-4 h-4') + '</span>' +
+            '</button>' +
           '</div>' +
         '</div>' +
       '</aside>');
@@ -235,6 +257,42 @@ const AD = {
       try { await this.post('/admin/logout'); } catch (e) {}
       location.href = '/admin/dang-nhap/';
     }));
+
+    /* The profile popover. It opens on hover and on click, and stays open while the
+       pointer or the keyboard focus is inside it — so a name can be typed without it
+       closing under the cursor. Escape or a click elsewhere dismisses it. */
+    const pWrap = this.qs('[data-profile-wrap]');
+    if (pWrap) {
+      const pop = this.qs('[data-profile-pop]', pWrap);
+      const trigger = this.qs('[data-profile-trigger]', pWrap);
+      let hideT = null;
+      const open = () => { clearTimeout(hideT); pop.classList.remove('hidden'); trigger.setAttribute('aria-expanded', 'true'); };
+      const close = () => { pop.classList.add('hidden'); trigger.setAttribute('aria-expanded', 'false'); };
+      const later = () => { clearTimeout(hideT); hideT = setTimeout(() => { if (!pWrap.contains(document.activeElement)) close(); }, 240); };
+      /* Click opens rather than toggles: on a pointer device hover has usually
+         opened it already, so a toggle would read the click as "close". It is
+         dismissed by leaving, by Escape, or by a click elsewhere — which also
+         covers touch, where there is no hover to open it in the first place. */
+      trigger.addEventListener('click', open);
+      pWrap.addEventListener('mouseenter', open);
+      pWrap.addEventListener('mouseleave', later);
+      pWrap.addEventListener('focusin', open);
+      pWrap.addEventListener('focusout', later);
+      document.addEventListener('keydown', e => { if (e.key === 'Escape') close(); });
+      document.addEventListener('click', e => { if (!pWrap.contains(e.target)) close(); });
+      this.qs('[data-profile-save]', pWrap).addEventListener('click', async () => {
+        const val = this.qs('#ad-name-input', pWrap).value.trim();
+        if (!val) { this.toast('Your name cannot be empty', 'error'); return; }
+        try {
+          const r = await this.post('/admin/me', { name: val });
+          const ini = (r.name || '').trim().split(/\s+/).map(w => w[0]).slice(-2).join('').toUpperCase();
+          this.qsa('[data-profile-name]').forEach(el => el.textContent = r.name);
+          this.qsa('[data-profile-initials]').forEach(el => el.textContent = ini);
+          this.toast('Profile saved');
+        } catch (e) { this.toast(e.message, 'error'); }
+      });
+      this.qs('[data-profile-pw]', pWrap).addEventListener('click', () => { close(); this.changePassword(); });
+    }
     return admin;
   },
 
@@ -242,6 +300,38 @@ const AD = {
     const dark = document.documentElement.classList.contains('dark');
     this.qsa('[data-dark-icon]').forEach(el => { el.innerHTML = this.icon(dark ? 'sun' : 'moon', 'w-5 h-5'); });
     this.qsa('[data-dark-label]').forEach(el => { el.textContent = dark ? 'Light mode' : 'Dark mode'; });
+  },
+
+  /* Change the signed-in administrator's own password. On success the server drops
+     every session for the account, so the only honest next step is to sign in again. */
+  changePassword() {
+    const m = this.modal(
+      '<h3 class="text-lg font-extrabold tracking-tight">Change your password</h3>' +
+      '<div class="grid gap-4 mt-5">' +
+        '<div><label class="label" for="cp-cur">Current password</label>' +
+          '<input class="input" id="cp-cur" type="password" autocomplete="current-password"></div>' +
+        '<div><label class="label" for="cp-new">New password</label>' +
+          '<input class="input" id="cp-new" type="password" autocomplete="new-password">' +
+          '<p class="help mt-1.5">At least 10 characters, with both letters and digits.</p></div>' +
+        '<div class="banner banner-error" id="cp-err"><span id="cp-err-text"></span></div>' +
+        '<div class="flex gap-2.5"><button type="button" id="cp-go" class="btn btn-primary btn-md flex-1">Update password</button>' +
+          '<button type="button" data-close class="btn btn-ghost btn-md">Cancel</button></div>' +
+      '</div>');
+    const err = m.el.querySelector('#cp-err');
+    m.el.querySelector('#cp-go').addEventListener('click', async () => {
+      err.classList.remove('show');
+      const current = m.el.querySelector('#cp-cur').value;
+      const next = m.el.querySelector('#cp-new').value;
+      try {
+        await this.post('/admin/password', { current, next });
+        m.close();
+        this.toast('Password changed — please sign in again');
+        setTimeout(() => { location.href = '/admin/dang-nhap/'; }, 1000);
+      } catch (e) {
+        m.el.querySelector('#cp-err-text').textContent = e.message;
+        err.classList.add('show');
+      }
+    });
   },
 
   /* ---------- Toast ---------- */
