@@ -34,6 +34,7 @@ const FORMATS = require('../server/data/exam-formats.js');
 const RUBRICS = require('../server/data/rubrics.js');
 const ITEMS = require('../server/data/vpet-items.js');
 const SCRIPTS = require('../server/data/vpet-scripts.js');
+const FORMS = require('../server/data/vpet-forms.js');
 
 const args = process.argv.slice(2);
 const GON = args.includes('--gon');
@@ -85,15 +86,21 @@ for (const [part, rub] of Object.entries(RUBRICS.PART_RUBRICS)) {
 const norm = s => String(s || '').toLowerCase().replace(/[^a-z0-9\s']/g, '').replace(/\s+/g, ' ').trim();
 
 /* Tên riêng không phải tiếng Anh: Kokoro là model tiếng Anh và sẽ đọc sai.
-   Ở part E nó là lỗi mất điểm oan, vì cả câu hỏi là câu đọc chính tả. */
-const TU_ANH = new Set(('the this that it she he they we you i a an in on at by for from to when where what which who how why '
-  + 'if but and or so then now last next first second third most some all no not there here after before during while within '
-  + 'over under please passengers good welcome monday tuesday wednesday thursday friday saturday sunday january february march '
-  + 'april may june july august september october november december english sorry would could do does did is are was were have '
-  + 'has had can will yes nothing her his their my our its one two three four five six seven eight nine ten almost moving ms mr '
-  + 'mrs dr researchers repayments england europe norway swedish london paris berlin brighton oxford union hall sarah daniel '
-  + 'helen although applicants critics flat learners once only people photography plastics remote several shall thank thanks '
-  + 'these whether years your instead').split(' '));
+   Ở part E nó là lỗi mất điểm oan, vì cả câu hỏi là câu đọc chính tả.
+   ---------------------------------------------------------------------------
+   Chỉ là danh sách TÊN, không phải từ điển. Phép kiểm bên dưới chỉ soi chữ hoa
+   NẰM GIỮA CÂU, nên nó không cần biết "Excuse" hay "Nobody" là từ thường —
+   những chữ ấy đứng đầu câu và không bao giờ tới đây.
+
+   Nuôi một danh sách từ tiếng Anh thường dùng là cuộc chiến không thắng được:
+   bản trước có hơn trăm từ và vẫn báo nhầm 37 câu ngay lần đầu gặp nội dung
+   mới, vì mọi câu đều bắt đầu bằng một chữ hoa nào đó. */
+const TEN_ANH = new Set(('sarah daniel helen grace james thomas emma peter laura martin alice simon clare robert julia '
+  + 'andrew kate michael rachel david london oxford brighton norwich bristol leeds york bath cambridge newcastle dover '
+  + 'england europe norway swedish paris berlin union hall '
+  + 'monday tuesday wednesday thursday friday saturday sunday mondays tuesdays wednesdays thursdays fridays saturdays '
+  + 'sundays january february march april may june july august september october november december '
+  + 'english spanish french german italian christmas easter ms mr mrs dr').split(' '));
 
 /* ------------------------------------------------------------------ */
 
@@ -107,6 +114,13 @@ const cau = [
     ref: i.ref, part: i.part, type: i.type, skill: i.skill, level: i.cefr,
     prompt: i.prompt, options: i.options || [], answer: i.answer,
     keyPoints: i.keyPoints || [], script: i.script || '', nguon: 'vpet-scripts.js'
+  })),
+  /* Năm bộ đề đầy đủ. Chúng đi qua đúng bộ luật này chứ không có luật riêng —
+     một cổng chặn mà nội dung mới được miễn thì không phải là cổng chặn. */
+  ...FORMS.allItems().map(i => ({
+    ref: i.ref, part: i.part, type: i.type, skill: i.skill, level: i.level,
+    prompt: i.prompt, options: i.options || [], answer: i.answer,
+    keyPoints: i.keyPoints || [], script: i.script || '', nguon: 'vpet-forms.js'
   }))
 ];
 
@@ -181,10 +195,23 @@ for (const c of cau) {
     if (new Set(c.keyPoints.map(norm)).size !== c.keyPoints.length) e.push('có hai ý chính trùng nhau');
   }
 
-  /* ---- Tên riêng không phải tiếng Anh trong kịch bản ---- */
+  /* ---- Tên riêng không phải tiếng Anh trong kịch bản ----
+     Chỉ soi chữ hoa GIỮA CÂU. Chữ hoa đầu câu gần như luôn là từ thường, nên
+     bắt chúng chỉ tạo ra báo động giả — và một cổng chặn kêu nhầm là một cổng
+     chặn người ta bắt đầu bỏ qua, kể cả lúc nó kêu đúng.
+
+     Tên đứng đầu câu vì thế lọt qua phép kiểm này. Đó là đánh đổi có chủ ý: đổi
+     lại là mọi lần kêu đều đáng xem. Một tên chỉ xuất hiện đúng một lần và đúng
+     ở đầu câu là hiếm — nhân vật nào cũng được nhắc lại. */
   if (coScript) {
-    const la = [...new Set(c.script.match(/\b[A-Z][a-z]+\b/g) || [])]
-      .filter(w => !TU_ANH.has(w.toLowerCase()));
+    const giuaCau = c.script
+      .replace(/_/g, ' ')
+      .split(/(?<=[.!?])\s+/)
+      .flatMap(cau => cau.trim().split(/\s+/).slice(1))
+      .map(w => (w.match(/^[A-Z][a-z]+/) || [])[0])
+      .filter(Boolean)
+      .filter(w => !TEN_ANH.has(w.toLowerCase()));
+    const la = [...new Set(giuaCau)];
     if (la.length) e.push(`tên riêng máy đọc có thể sai: ${la.join(', ')}`);
   }
 
