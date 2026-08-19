@@ -151,7 +151,7 @@
     if (ent) {
       PREP.qs('#cur-name').textContent = PREP.t('You are on the ' + ent.planName + ' plan', 'Bạn đang dùng gói ' + ent.planName);
       const bits = [];
-      if (ent.expiresAt) bits.push('Valid until ' + PREP.fmtDate(ent.expiresAt));
+      if (ent.expiresAt) bits.push(PREP.t('Valid until ' + PREP.fmtDate(ent.expiresAt), 'Hiệu lực đến ' + PREP.fmtDate(ent.expiresAt)));
       bits.push(ent.attemptsLeft === null
         ? 'Unlimited practice'
         : ent.attemptsLeft + '/' + ent.attemptsLimit + ' sittings left');

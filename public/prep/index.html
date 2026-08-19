@@ -319,11 +319,11 @@
           '<p class="flex flex-wrap items-center gap-x-5 gap-y-2 text-[13.5px] font-semibold text-muted mt-4">' +
             '<span class="inline-flex items-center gap-1.5">' + PREP.icon('layers', 'w-4 h-4') + PREP.t(t.sections.length + ' parts', t.sections.length + ' phần') + '</span>' +
             '<span class="inline-flex items-center gap-1.5">' + PREP.icon('clock', 'w-4 h-4') + PREP.t(t.durationMin + ' min', t.durationMin + ' phút') + '</span>' +
-            (totalQ ? '<span class="inline-flex items-center gap-1.5">' + PREP.icon('list', 'w-4 h-4') + totalQ + ' items</span>' : '') +
+            (totalQ ? '<span class="inline-flex items-center gap-1.5">' + PREP.icon('list', 'w-4 h-4') + PREP.t(totalQ + ' items', totalQ + ' câu') + '</span>' : '') +
           '</p>' +
           '<div class="flex flex-wrap gap-2.5 mt-6">' +
             '<a href="/prep/bai-thi/' + t.id + '/" class="btn btn-primary btn-lg">' + PREP.icon('play', 'w-5 h-5') + 'See the structure</a>' +
-            '<a href="/prep/thu-vien/?family=' + fam.id + '" class="btn btn-ghost btn-lg">Other ' + fam.name + ' tests</a>' +
+            '<a href="/prep/thu-vien/?family=' + fam.id + '" class="btn btn-ghost btn-lg">' + PREP.t('Other ' + fam.name + ' tests', 'Bài ' + fam.name + ' khác') + '</a>' +
           '</div>' +
         '</div>';
     }
@@ -366,7 +366,7 @@
       });
       if (mine.length) {
         PREP.qs('#progress-note').textContent =
-          'You are set up with ' + mine.length + ' of the ' + total + ' tests available. Each paper opens the moment it is released.';
+          PREP.t('You are set up with ' + mine.length + ' of the ' + total + ' tests available. Each paper opens the moment it is released.', 'Bạn đang có ' + mine.length + ' trong ' + total + ' bài thi hiện có. Mỗi đề mở ngay khi được phát hành.');
       }
 
       /* ---------- Skill coverage ---------- */
@@ -377,7 +377,7 @@
         return '<div>' +
           '<div class="flex items-center justify-between text-[13px] font-semibold mb-1.5">' +
             '<span class="inline-flex items-center gap-2 text-muted">' + PREP.icon(ic, 'w-4 h-4') + vi + '</span>' +
-            '<span>' + n + ' tests</span>' +
+            '<span>' + PREP.t(n + ' tests', n + ' bài') + '</span>' +
           '</div>' +
           '<div class="meter"><i data-w="' + Math.round(n / max * 100) + '"></i></div>' +
         '</div>';

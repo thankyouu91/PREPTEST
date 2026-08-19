@@ -183,7 +183,7 @@
       return '<p class="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[13px] font-semibold ' + cls + ' mt-2.5 mb-5">' +
         '<span class="inline-flex items-center gap-1.5">' + PREP.icon('layers', 'w-4 h-4') + PREP.t(t.sections.length + ' parts', t.sections.length + ' phần') + '</span>' +
         '<span class="inline-flex items-center gap-1.5">' + PREP.icon('clock', 'w-4 h-4') + PREP.t(t.durationMin + ' min', t.durationMin + ' phút') + '</span>' +
-        (n ? '<span class="inline-flex items-center gap-1.5">' + PREP.icon('list', 'w-4 h-4') + n + ' items</span>' : '') +
+        (n ? '<span class="inline-flex items-center gap-1.5">' + PREP.icon('list', 'w-4 h-4') + PREP.t(n + ' items', n + ' câu') + '</span>' : '') +
       '</p>';
     }
 

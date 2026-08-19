@@ -718,6 +718,13 @@
     '. Activate it under': '. Kích hoạt tại mục',
 
     /* ---- Ôn tập lặp ngắt quãng ---- */
+    'Coming soon': 'Sắp có',
+    'Three time-limited plans: 1, 3 or 6 months. Activate a code and you are practising straight away.':
+      'Ba gói có thời hạn: 1, 3 hoặc 6 tháng. Kích hoạt mã là luyện được ngay.',
+    'Everything': 'Tất cả',
+    'Vocabulary': 'Từ vựng',
+    'Voice': 'Giọng đọc',
+    'Grammar': 'Ngữ pháp',
     'Show answer': 'Hiện đáp án',
     'How did that go?': 'Bạn làm được đến đâu?',
     'Again': 'Lại từ đầu',
@@ -741,11 +748,20 @@
   function tr(s) {
     if (lang !== 'vi') return s;
     var raw = String(s == null ? '' : s);
-    var key = raw.trim();
-    if (!key) return raw;
-    var vi = VI[key];
-    if (vi == null || vi === key) return raw;
-    return raw.replace(key, vi);      // keep any surrounding whitespace
+    /* Split off the surrounding whitespace so it can be put back untouched:
+       an indented <p> in the HTML source is one text node whose value starts
+       with a newline and a run of spaces, and eating those would reflow it. */
+    var m = raw.match(/^(\s*)([\s\S]*?)(\s*)$/);
+    var body = m[2];
+    if (!body) return raw;
+    /* A long sentence is wrapped across several source lines, so the text node
+       holds newlines and runs of spaces where the dictionary key has one space.
+       Look the flattened form up too, or every long string silently stays
+       English however carefully it was translated. */
+    var vi = VI[body];
+    if (vi == null) vi = VI[body.replace(/\s+/g, ' ')];
+    if (vi == null || vi === body) return raw;
+    return m[1] + vi + m[3];
   }
 
   function trTextNode(n) {
