@@ -51,6 +51,19 @@ actually meet, separated by commas, commonest first:
 
 ## Rules
 
+**Match the part of speech.** The `pos` column says what the row is, and the
+gloss has to be the same kind of word. A verb sense gets a Vietnamese verb or
+verb phrase, a noun sense a noun.
+
+    pos: verb   en: (transitive) To coat with breadcrumbs.
+    vi: tẩm bột chiên xù          ← right
+    vi: bột                       ← wrong: that is a noun, "flour". The row
+                                    asks what the action is called.
+
+This is the easiest mistake to make and the hardest to spot afterwards, because
+the gloss looks like a reasonable Vietnamese word — just not the right kind of
+one. Check the `pos` column on every row before you write.
+
 **Match the sense, not the headword.** Each row is one meaning. "trunk" as the
 main body of something is `thân chính`; "trunk" as swimming trunks is
 `quần bơi`. Read the `en` column every time; never gloss from the headword
@@ -107,10 +120,12 @@ step rejects the row and counts it as a failure.
 
 Go back over the rows and ask three things:
 
-1. Does any gloss restate the definition instead of naming the thing? Shorten
+1. Does every gloss match its `pos` column — a verb for a verb, a noun for a
+   noun? This is the check that catches the most errors.
+2. Does any gloss restate the definition instead of naming the thing? Shorten
    it to the name.
-2. Does any gloss lose a `(field)` or `(place)` label the English carried?
-3. Would a Vietnamese learner at this level read this gloss and know which
+3. Does any gloss lose a `(field)`, `(place)` or usage label the English carried?
+4. Would a Vietnamese learner at this level read this gloss and know which
    Vietnamese word to use? If not, it is not finished.
 
 Then write the file and report: how many rows you filled, how many you left
