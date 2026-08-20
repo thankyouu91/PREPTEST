@@ -81,61 +81,105 @@ function vstepSections() {
  * from; the published table says 6, and 58 is the total Pearson states.
  *
  * Skill and item type per part are the platform's mapping onto its own item
- * bank (mcq | gap | essay | speaking); minutes are editable defaults, since
- * the part table publishes counts only.
+ * bank (mcq | gap | essay | speaking). Timings are the guide's own per-item
+ * numbers - see vpetTiming() - and a part's window is arithmetic over them.
  * ------------------------------------------------------------------ */
+/* Official per-item timings, quoted from the Pearson test-taker guide
+   (Official Guide for Test-Takers, Versant Professional English Test):
+
+     Part A  "You will have 25 seconds to answer."
+     Part B  the passage "will disappear after 30 seconds"; "You have 90 seconds
+             to rewrite the passage."
+     Part C  "You will be asked to answer two multiple-choice questions based on
+             the information displayed. You will have 3 minutes to read the
+             passage and answer the questions."   -> three passages of two
+     Part D  "You have 9 minutes to read the situation and respond."
+     Part E  "You have 25 seconds to type your answer."
+     Part H  "You have 15 seconds to answer." (and start within 6)
+     Part I  "You have 10 seconds to think about your answer. After the beep you
+             have 60 seconds to respond."
+     Part J  "You will hear a short story. It will be spoken once. You have 30
+             seconds to tell the story."
+
+   The guide states no answer time for Parts F and G; `answer` for those two is
+   this platform's own allowance, marked below, chosen so the ten parts land on
+   the 60 minutes the guide gives as the total.
+
+   `audio` is the playback allowance, measured from the bank's own recordings
+   (server/data/audio/manifest.json) and rounded up: E 5.4s, F 4.0s, H 5.4s,
+   G 29s per passage, J 32s per story. A part's window is arithmetic from these,
+   never a number somebody picked - which is what the old 8/8/7/18/4/3/4/3/2/3
+   was, and it gave Part C seven minutes for something the guide gives nine. */
+function vpetTiming() {
+  return {
+    /* group: how many items share one clock and one stimulus. Part C is three
+       passages of two questions, Part G two passages of three; every other part
+       is timed item by item. */
+    A: { answer: 25, group: 1 },
+    B: { read: 30, answer: 90, group: 1 },
+    C: { groupAnswer: 180, group: 2 },
+    D: { answer: 540, group: 1 },
+    E: { answer: 25, audio: 6, group: 1 },
+    F: { answer: 15, audio: 4, group: 1, ours: true },
+    G: { answer: 20, audio: 30, group: 3, ours: true },
+    H: { answer: 15, audio: 6, group: 1 },
+    I: { think: 10, answer: 60, group: 1 },
+    J: { answer: 30, audio: 32, group: 1 }
+  };
+}
+
+/** Seconds a part is given: every group's stimulus plus every item's answer. */
+function partSeconds(part, items) {
+  const t = vpetTiming()[part];
+  if (!t) return 0;
+  const groups = Math.ceil(items / (t.group || 1));
+  const perItem = (t.answer || 0) + (t.think || 0);
+  /* Read time and audio belong to the GROUP - one passage read once, one
+     recording played once - while answer time usually belongs to each item.
+     Part G is where that difference shows: three questions on one passage, so
+     the passage is heard once rather than three times.
+
+     Part C is the other shape again. Its three minutes cover reading the passage
+     AND answering both questions on it, so the whole allowance is the group's
+     and `groupAnswer` carries it - the first draft used `answer` and gave part C
+     eighteen minutes, three times what the guide allows. */
+  const perGroup = (t.read || 0) + (t.audio || 0) + (t.groupAnswer || 0);
+  return groups * perGroup + items * perItem;
+}
+
 function vpetSections() {
+  const S = (part, name, skill, type, items, types, needsAudio, note) => ({
+    name: 'Part ' + part + ' - ' + name, part, skill, type, items,
+    seconds: partSeconds(part, items),
+    /* Kept because the database column, the admin screen and the study pack all
+       speak minutes. Derived, never typed: rounding is display only and the
+       clock a candidate gets comes from `seconds`. */
+    minutes: Math.round(partSeconds(part, items) / 60),
+    types, needsAudio: !!needsAudio,
+    parts: [{ label: part + '1-' + part + items, items, note }]
+  });
+
   return [
-    {
-      name: 'Part A - Sentence Completion', part: 'A', skill: 'writing', type: 'Type the missing word',
-      items: 10, minutes: 8, types: ['gap'],
-      parts: [{ label: 'A1-A10', items: 10, note: 'One word missing per sentence; grammar and collocation in context.' }]
-    },
-    {
-      name: 'Part B - Passage Reconstruction', part: 'B', skill: 'writing', type: 'Read, then rewrite from memory',
-      items: 3, minutes: 8, types: ['essay'],
-      parts: [{ label: 'B1-B3', items: 3, note: 'Passage shown for a short time, then hidden; rebuild it in your own words.' }]
-    },
-    {
-      name: 'Part C - Reading Comprehension', part: 'C', skill: 'reading', type: 'Multiple choice',
-      items: 6, minutes: 7, types: ['mcq'],
-      parts: [{ label: 'C1-C6', items: 6, note: 'Short passages, one question each.' }]
-    },
-    {
-      name: 'Part D - E-Mail Writing', part: 'D', skill: 'writing', type: 'Two emails',
-      items: 2, minutes: 18, types: ['essay'],
-      parts: [{ label: 'D1-D2', items: 2, note: 'Reply to a prompt in a set register; graded on task, tone and accuracy.' }]
-    },
-    {
-      name: 'Part E - Dictation', part: 'E', skill: 'listening', type: 'Type what you hear',
-      items: 8, minutes: 4, types: ['gap'], needsAudio: true,
-      parts: [{ label: 'E1-E8', items: 8, note: 'One sentence per item, played a fixed number of times. Needs audio.' }]
-    },
-    {
-      name: 'Part F - Response Selection', part: 'F', skill: 'listening', type: 'Multiple choice',
-      items: 8, minutes: 3, types: ['mcq'], needsAudio: true,
-      parts: [{ label: 'F1-F8', items: 8, note: 'Hear a prompt, pick the natural reply. Needs audio.' }]
-    },
-    {
-      name: 'Part G - Passage Comprehension', part: 'G', skill: 'listening', type: 'Multiple choice',
-      items: 6, minutes: 4, types: ['mcq'], needsAudio: true,
-      parts: [{ label: 'G1-G6', items: 6, note: 'Longer spoken passages with comprehension questions. Needs audio.' }]
-    },
-    {
-      name: 'Part H - Repeat', part: 'H', skill: 'speaking', type: 'Say the sentence back',
-      items: 10, minutes: 3, types: ['speaking'], needsAudio: true,
-      parts: [{ label: 'H1-H10', items: 10, note: 'Repeat each sentence exactly. Scores pronunciation and fluency. Needs audio.' }]
-    },
-    {
-      name: 'Part I - Speaking Situations', part: 'I', skill: 'speaking', type: 'Respond to a situation',
-      items: 2, minutes: 2, types: ['speaking'],
-      parts: [{ label: 'I1-I2', items: 2, note: 'Speak for up to a minute in the register the situation calls for.' }]
-    },
-    {
-      name: 'Part J - Story Retellings', part: 'J', skill: 'speaking', type: 'Retell what you heard',
-      items: 3, minutes: 3, types: ['speaking'], needsAudio: true,
-      parts: [{ label: 'J1-J3', items: 3, note: 'Listen to a short story, then retell it in your own words. Needs audio.' }]
-    }
+    S('A', 'Sentence Completion', 'writing', 'Type the missing word', 10, ['gap'], false,
+      'One word missing per sentence; grammar and collocation in context.'),
+    S('B', 'Passage Reconstruction', 'writing', 'Read, then rewrite from memory', 3, ['essay'], false,
+      'Passage shown for 30 seconds, then hidden; rebuild it in your own words in 90.'),
+    S('C', 'Reading Comprehension', 'reading', 'Multiple choice', 6, ['mcq'], false,
+      'Three passages, two questions each, three minutes a passage.'),
+    S('D', 'E-Mail Writing', 'writing', 'Two emails', 2, ['essay'], false,
+      'Reply to a prompt in a set register; nine minutes each, graded on task, tone and accuracy.'),
+    S('E', 'Dictation', 'listening', 'Type what you hear', 8, ['gap'], true,
+      'One sentence per item, 25 seconds to type it. Needs audio.'),
+    S('F', 'Response Selection', 'listening', 'Multiple choice', 8, ['mcq'], true,
+      'Hear a prompt, pick the natural reply from three. Needs audio.'),
+    S('G', 'Passage Comprehension', 'listening', 'Multiple choice', 6, ['mcq'], true,
+      'Two spoken passages, three questions each. Needs audio.'),
+    S('H', 'Repeat', 'speaking', 'Say the sentence back', 10, ['speaking'], true,
+      'Repeat each sentence exactly, 15 seconds each. Scores pronunciation and fluency. Needs audio.'),
+    S('I', 'Speaking Situations', 'speaking', 'Respond to a situation', 2, ['speaking'], false,
+      '10 seconds to think, then up to 60 to speak in the register the situation calls for.'),
+    S('J', 'Story Retellings', 'speaking', 'Retell what you heard', 3, ['speaking'], true,
+      'Hear a short story once, then 30 seconds to retell it. Needs audio.')
   ];
 }
 
@@ -148,7 +192,7 @@ const VPET_GUIDE = [
 
 const VPET_NOTES = [
   'Item counts follow the published VPET part table and are fixed: 10-3-6-2-8-8-6-10-2-3.',
-  'Minutes shown are platform defaults; an admin can change them on each test without touching the blueprint.',
+  'Timings come from the official test-taker guide, per item, and each part\'s window is the sum of them.',
   'Audio parts cannot be generated until every question in them has an MP3 attached.'
 ];
 
@@ -492,7 +536,12 @@ function totalItems(f) {
 
 /** The total running time of a format */
 function totalMinutes(f) {
-  return f.sections.reduce((s, x) => s + x.minutes, 0);
+  return Math.round(totalSeconds(f) / 60);
+}
+
+/** The real total: seconds, because a 25-second item cannot be said in minutes. */
+function totalSeconds(f) {
+  return f.sections.reduce((s, x) => s + (x.seconds != null ? x.seconds : x.minutes * 60), 0);
 }
 
 /** Consistency check: the parts' item counts must add up to the section's */
@@ -534,4 +583,5 @@ function sectionOfPart(familyId, part) {
   return null;
 }
 
-module.exports = { FORMATS, totalItems, totalMinutes, inconsistencies, partsOf, sectionOfPart };
+module.exports = { FORMATS, totalItems, totalMinutes, totalSeconds, inconsistencies,
+  partsOf, sectionOfPart, vpetTiming, partSeconds };

@@ -1,7 +1,7 @@
 {
  "tong": {
   "cau": 58,
-  "phut": 60,
+  "phut": 56,
   "phan": 10
  },
  "phan": [
@@ -11,7 +11,7 @@
    "tenEn": "Sentence Completion",
    "lam": "Một câu thiếu đúng một từ. Bạn gõ từ còn thiếu vào.",
    "cau": 10,
-   "phut": 8,
+   "phut": 4,
    "audio": false,
    "meo": {
     "1": [
@@ -32,7 +32,7 @@
    "tenEn": "Passage Reconstruction",
    "lam": "Đọc một đoạn ngắn, đoạn văn biến mất, rồi viết lại bằng lời của mình.",
    "cau": 3,
-   "phut": 8,
+   "phut": 6,
    "audio": false,
    "meo": {
     "1": [
@@ -53,7 +53,7 @@
    "tenEn": "Reading Comprehension",
    "lam": "Đọc đoạn ngắn rồi chọn một trong bốn phương án.",
    "cau": 6,
-   "phut": 7,
+   "phut": 9,
    "audio": false,
    "meo": {
     "1": [
@@ -135,7 +135,7 @@
    "tenEn": "Passage Comprehension",
    "lam": "Nghe một đoạn nói dài hơn rồi trả lời câu hỏi.",
    "cau": 6,
-   "phut": 4,
+   "phut": 3,
    "audio": true,
    "meo": {
     "1": [
@@ -154,7 +154,7 @@
    "tenEn": "Repeat",
    "lam": "Nghe một câu rồi nhắc lại thật chính xác.",
    "cau": 10,
-   "phut": 3,
+   "phut": 4,
    "audio": true,
    "meo": {
     "1": [

@@ -78,7 +78,28 @@ try {
   const vpet = EXAM_FORMATS.FORMATS.find(f => f.id === 'vpet-full');
   ok(!!vpet, 'The VPET blueprint is published');
   ok(EXAM_FORMATS.totalItems(vpet) === 58, 'VPET totals 58 items', String(EXAM_FORMATS.totalItems(vpet)));
-  ok(EXAM_FORMATS.totalMinutes(vpet) === 60, 'VPET totals 60 minutes', String(EXAM_FORMATS.totalMinutes(vpet)));
+  /* The clock, and where it comes from. Every part's window is arithmetic over the
+     per-item timings the Pearson guide states - 25 seconds an item in Part A, 9
+     minutes an e-mail in Part D, 3 minutes a passage in Part C - so a part whose
+     window stops matching its own timing block is red. It used to be ten numbers
+     somebody chose, and Part C had seven minutes for something the guide gives
+     nine. */
+  for (const sec of vpet.sections) {
+    const want = EXAM_FORMATS.partSeconds(sec.part, sec.items);
+    ok(sec.seconds === want,
+      `Part ${sec.part}'s window is what its timings add up to (${want}s)`, `${sec.seconds}s`);
+  }
+
+  /* The guide's "approximately 60 minutes" is the whole sitting, and each part
+     opens with an instruction screen and a sample item that carry no clock here.
+     So the timed windows come to less than 60, and how much less has to stay
+     small enough that the paper still describes the real thing. */
+  const timed = EXAM_FORMATS.totalSeconds(vpet);
+  ok(timed >= 52 * 60 && timed <= 60 * 60,
+    'The timed windows come to between 52 and 60 minutes',
+    (timed / 60).toFixed(1) + ' min');
+  ok(EXAM_FORMATS.totalMinutes(vpet) === Math.round(timed / 60),
+    'The stated total is the timed total, not a rounder number');
   ok(vpet.sections.length === 10, 'VPET has ten parts', String(vpet.sections.length));
   ok(vpet.sections.map(s => s.part).join('') === 'ABCDEFGHIJ',
     'The ten parts are lettered A to J in order', vpet.sections.map(s => s.part).join(''));
@@ -116,7 +137,7 @@ try {
 
     const fmt = EXAM_FORMATS.FORMATS.find(f => f.familyId === paper.family_id && f.kind === 'full');
     const secs = sql(
-      'SELECT id, sort, part, name, skill, type, minutes FROM sections WHERE test_id=? ORDER BY sort', paper.id);
+      'SELECT id, sort, part, name, skill, type, minutes, seconds FROM sections WHERE test_id=? ORDER BY sort', paper.id);
 
     if (isFull) {
       ok(secs.length === fmt.sections.length,
@@ -129,6 +150,15 @@ try {
       const mins = secs.reduce((a, s) => a + s.minutes, 0);
       ok(mins === EXAM_FORMATS.totalMinutes(fmt),
         `The parts add up to ${EXAM_FORMATS.totalMinutes(fmt)} minutes`, String(mins));
+
+      /* Minutes are for the screen; the clock a candidate gets is the seconds
+         column, and that is the one that has to match the blueprint exactly. */
+      const wrongSecs = fmt.sections
+        .map(bp => [bp, secs.find(x => x.part === bp.part)])
+        .filter(([bp, row]) => row && row.seconds !== bp.seconds);
+      ok(wrongSecs.length === 0,
+        'Every part is stored with the blueprint\'s own clock, to the second',
+        wrongSecs.map(([bp, row]) => `${bp.part} ${row.seconds}s not ${bp.seconds}s`).join(', '));
       ok(paper.duration_min === mins,
         'The paper\'s stated duration is the sum of its parts',
         `test says ${paper.duration_min}, parts add to ${mins}`);

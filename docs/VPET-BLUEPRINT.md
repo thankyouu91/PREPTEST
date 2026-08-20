@@ -9,29 +9,43 @@ hỏi đầu tiên; phần 5 là các quy tắc **bắt buộc**, vi phạm là 
 > nội địa Việt Nam - trước 2026-08-20 nền tảng gọi nhầm là "Vietnam Proficiency
 > English Test", đã sửa. VPET cũng **không theo** khung VSTEP.3-5 như VEPT.
 
-> **Độ tin cậy của số liệu.** *Số câu mỗi phần* và *tổng thời gian* lấy từ bảng
-> phần thi Pearson công bố - **không được tự đổi**. *Số phút từng phần* là mặc
-> định do nền tảng tự đặt (Pearson chỉ công bố tổng 60 phút), admin sửa được cho
-> từng đề mà không đụng vào blueprint.
+> **Độ tin cậy của số liệu.** *Số câu mỗi phần* lấy từ bảng phần thi Pearson công
+> bố - **không được tự đổi**. *Thời gian* cũng vậy, từ 2026-08-20: bản
+> **Official Guide for Test-Takers** của Pearson ghi thời gian **theo từng câu**,
+> và blueprint nay lưu đúng những con số đó (`vpetTiming()` trong
+> `server/data/exam-formats.js`), cửa sổ mỗi phần là phép cộng từ chúng chứ không
+> phải số ai đó tự đặt. Trước đó mười con số phút là do nền tảng tự nghĩ ra, và
+> phần C bị cho 7 phút trong khi guide cho 9.
 
 ---
 
 ## 1. Toàn cảnh đề thi
 
-**58 câu · 10 phần · 60 phút · chấm tự động.**
+**58 câu · 10 phần · khoảng 60 phút · chấm tự động.**
 
-| Phần | Tên | Kỹ năng thật | Số câu | Phút | `skill` trên nền tảng | `type` | Cần audio |
-|:----:|-----|--------------|:------:|:----:|------------------|--------|:---------:|
-| A | Sentence Completion | Reading + Writing | 10 | 8 | `writing` | `gap` | – |
-| B | Passage Reconstruction | Writing | 3 | 8 | `writing` | `essay` | – |
-| C | Reading Comprehension | Reading | 6 | 7 | `reading` | `mcq` | – |
-| D | E-mail Writing | Writing | 2 | 18 | `writing` | `essay` | – |
-| E | Dictation | Listening + Writing | 8 | 4 | `listening` | `gap` | ✅ |
-| F | Response Selection | Listening | 8 | 3 | `listening` | `mcq` | ✅ |
-| G | Passage Comprehension | Listening | 6 | 4 | `listening` | `mcq` | ✅ |
-| H | Repeat | Speaking | 10 | 3 | `speaking` | `speaking` | ✅ |
-| I | Speaking Situations | Speaking | 2 | 2 | `speaking` | `speaking` | – |
-| J | Story Retellings | Speaking | 3 | 3 | `speaking` | `speaking` | ✅ |
+Cột *Giờ chính thức* là nguyên văn từ Official Guide của Pearson. Cột *Cửa sổ* là
+thời gian nền tảng thật sự bấm cho cả phần, tính ra từ cột trước - không ai gõ tay.
+
+| Phần | Tên | Kỹ năng thật | Số câu | Giờ chính thức | Cửa sổ | `skill` | `type` | Audio |
+|:----:|-----|--------------|:------:|----------------|:------:|---------|--------|:-----:|
+| A | Sentence Completion | Reading + Writing | 10 | 25 giây/câu | 250s | `writing` | `gap` | – |
+| B | Passage Reconstruction | Writing | 3 | xem 30s, viết 90s | 360s | `writing` | `essay` | – |
+| C | Reading Comprehension | Reading | 6 | 3 phút / đoạn (2 câu) | 540s | `reading` | `mcq` | – |
+| D | E-mail Writing | Writing | 2 | 9 phút/câu | 1080s | `writing` | `essay` | – |
+| E | Dictation | Listening + Writing | 8 | 25 giây/câu | 248s | `listening` | `gap` | ✅ |
+| F | Response Selection | Listening | 8 | *guide không nêu* | 152s | `listening` | `mcq` | ✅ |
+| G | Passage Comprehension | Listening | 6 | *guide không nêu* | 180s | `listening` | `mcq` | ✅ |
+| H | Repeat | Speaking | 10 | 15 giây/câu | 210s | `speaking` | `speaking` | ✅ |
+| I | Speaking Situations | Speaking | 2 | nghĩ 10s, nói 60s | 140s | `speaking` | `speaking` | – |
+| J | Story Retellings | Speaking | 3 | 30 giây/câu | 186s | `speaking` | `speaking` | ✅ |
+
+**Tổng cửa sổ bấm giờ: 3346 giây ≈ 55,8 phút.** Guide ghi "approximately 60
+minutes" cho cả buổi thi, phần chênh là mười màn hình hướng dẫn kèm câu mẫu ở đầu
+mỗi phần - nền tảng có hiện chúng nhưng không bấm giờ.
+
+> Hai phần F và G guide **không** công bố thời gian trả lời. Con số ở đây là của
+> nền tảng, đánh dấu `ours: true` trong `vpetTiming()`, chọn sao cho tổng rơi
+> đúng vào 60 phút guide nêu. Ai có số chính thức thì sửa ở đúng một chỗ đó.
 
 Chuỗi số câu để đối chiếu nhanh: **10-3-6-2-8-8-6-10-2-3**.
 

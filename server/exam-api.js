@@ -59,9 +59,19 @@ async function ownAttempt(req) {
 }
 
 /** Minutes allowed for a section, from the test as built. */
+/**
+ * How long a part is open for, in SECONDS.
+ *
+ * `sections.seconds` when it is set, because that is the only column that can
+ * hold what VPET actually allows - 25 seconds an item in Part A, 15 in Part F.
+ * Rounded to minutes those become 30 and 0, and ten such roundings do not
+ * cancel out. Falls back to minutes for a paper built before the column existed.
+ */
 async function partWindow(sectionId) {
-  const s = await q.get('SELECT minutes FROM sections WHERE id=?', sectionId);
-  return Math.max(0, (s && s.minutes) || 0);
+  const s = await q.get('SELECT minutes, seconds FROM sections WHERE id=?', sectionId);
+  if (!s) return 0;
+  if (s.seconds != null && s.seconds > 0) return Math.max(0, s.seconds);
+  return Math.max(0, (s.minutes || 0) * 60);
 }
 
 /** Seconds left in a part; null when it has no timer or has not started. */
@@ -277,11 +287,11 @@ router.post('/attempts/:id/parts/:sectionId/start', A.requireUser, A.csrfGuard, 
   }
 
   const at = new Date();
-  const minutes = await partWindow(sectionId);
-  const ends = minutes ? new Date(at.getTime() + minutes * 60000).toISOString() : null;
+  const secs = await partWindow(sectionId);
+  const ends = secs ? new Date(at.getTime() + secs * 1000).toISOString() : null;
   await q.run('UPDATE attempt_parts SET started_at=?, ends_at=? WHERE id=?', at.toISOString(), ends, row.id);
   await q.run('UPDATE attempts SET updated_at=? WHERE id=?', at.toISOString(), att.id);
-  res.json({ sectionId, startedAt: at.toISOString(), endsAt: ends, secondsLeft: minutes ? minutes * 60 : null });
+  res.json({ sectionId, startedAt: at.toISOString(), endsAt: ends, secondsLeft: secs || null });
 });
 
 /** Finish a part early — no going back, exactly as in the real room. */

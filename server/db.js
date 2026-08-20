@@ -646,6 +646,12 @@ addIndex('CREATE UNIQUE INDEX IF NOT EXISTS idx_q_ext_key ON questions (ext_key)
    letter back out of the section name would break the moment an admin renames
    it, which they are free to do. */
 addColumnIfMissing('sections', 'part', 'TEXT');
+/* The clock a part really gets. `minutes` cannot hold it: VPET times Part A at 25
+   seconds an item and Part F at 15, so a minutes-only window is either generous
+   or short by up to half a minute on every part, and the ten roundings do not
+   cancel. `minutes` stays for the admin screen and the study pack; the deadline
+   comes from here whenever it is set. */
+addColumnIfMissing('sections', 'seconds', 'INTEGER');
 
 /* The marking trail for each item (docs/SCORING.md §2.4). A mark has to be
 explicable: when a candidate disputes one, it must be possible to see which items
@@ -995,12 +1001,13 @@ function buildPaperFromBlueprint(testId, familyId, level) {
 
   for (const { sort, bp, ids } of plan) {
     const cur = qs.get(
-      'SELECT id, name, skill, type, minutes, part FROM sections WHERE test_id=? AND sort=?', testId, sort);
+      'SELECT id, name, skill, type, minutes, seconds, part FROM sections WHERE test_id=? AND sort=?',
+      testId, sort);
 
     let secId;
     if (!cur) {
-      qs.run('INSERT INTO sections (test_id,name,skill,type,minutes,sort,part) VALUES (?,?,?,?,?,?,?)',
-        testId, bp.name, bp.skill, bp.type, bp.minutes, sort, bp.part);
+      qs.run('INSERT INTO sections (test_id,name,skill,type,minutes,seconds,sort,part) VALUES (?,?,?,?,?,?,?,?)',
+        testId, bp.name, bp.skill, bp.type, bp.minutes, bp.seconds, sort, bp.part);
       secId = qs.val('SELECT id FROM sections WHERE test_id=? AND sort=?', testId, sort);
       changed++;
     } else {
@@ -1016,9 +1023,9 @@ function buildPaperFromBlueprint(testId, familyId, level) {
          An admin who wants different timings builds their own paper through
          /admin/tests/generate; this function only ever touches SEED_TESTS. */
       if (cur.name !== bp.name || cur.skill !== bp.skill || cur.type !== bp.type
-          || cur.part !== bp.part || cur.minutes !== bp.minutes) {
-        qs.run('UPDATE sections SET name=?, skill=?, type=?, part=?, minutes=? WHERE id=?',
-          bp.name, bp.skill, bp.type, bp.part, bp.minutes, secId);
+          || cur.part !== bp.part || cur.minutes !== bp.minutes || cur.seconds !== bp.seconds) {
+        qs.run('UPDATE sections SET name=?, skill=?, type=?, part=?, minutes=?, seconds=? WHERE id=?',
+          bp.name, bp.skill, bp.type, bp.part, bp.minutes, bp.seconds, secId);
         changed++;
       }
     }
