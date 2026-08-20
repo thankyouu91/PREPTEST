@@ -331,6 +331,103 @@ try {
   ok(before && after && after.earned != null, 'And the paper still has its marks afterwards',
     JSON.stringify({ before: before && before.earned, after: after && after.earned }));
 
+  /* ---------------------------------------------------------------- *
+   * It comes back for what it could not finish
+   * ---------------------------------------------------------------- */
+  head('Nothing is left unmarked for ever');
+
+  /* The queue is process memory and every deploy empties it. What has to survive
+     a restart is the INTENTION to mark, and that lives in ai_marking_backlog.
+     These checks are on the table and on due(), not on a timer - a test that
+     waits ten minutes for a sweep is a test nobody runs. */
+  const aiRun = await import('../server/ai-marking-run.js').then(m => m.default || m);
+
+  r = await student.req('POST', '/api/attempts', { testId: 'vpet-b1-01' });
+  const att4 = r.data.attempt;
+  const pD4 = att4.parts.find(p => p.part === 'D');
+  await student.req('POST', '/api/attempts/' + att4.id + '/parts/' + pD4.sectionId + '/start');
+  await student.req('PATCH', '/api/attempts/' + att4.id + '/answers',
+    { answers: pD4.items.map(it => ({ questionId: it.questionId, answer: 'An answer the marker will fail on.' })) });
+  await student.req('POST', '/api/attempts/' + att4.id + '/submit');
+
+  mode = 'error';
+  r = await admin.req('POST', '/api/admin/attempts/' + att4.id + '/mark', {});
+  ok(r.data.failed >= 2, 'A paper the model refused to mark comes back failed', JSON.stringify(r.data));
+
+  let bl = await q.get('SELECT tries, next_try, last_note FROM ai_marking_backlog WHERE attempt_id=?', att4.id);
+  ok(!!bl, 'A paper that could not be finished is written down, so a restart cannot lose it',
+    JSON.stringify(bl));
+  /* `>= 1` rather than `=== 1`: the sweeper is live in this server and may have
+     had its own go at the paper. What matters is that failures are counted, not
+     that this test was the only one counting. */
+  ok(bl && bl.tries >= 1, 'With the failure counted against it', bl && String(bl.tries));
+  ok(bl && Date.parse(bl.next_try) > Date.now(),
+    'And a time to try again, in the future rather than at once', bl && bl.next_try);
+
+  /* The backoff is the difference between retrying a broken key and hammering
+     it. A paper not yet due must not be picked up. */
+  let dueIds = (await aiRun.due(500)).map(x => x.id);
+  ok(!dueIds.includes(att4.id), 'It is not swept again immediately - the backoff holds it',
+    JSON.stringify(dueIds).slice(0, 80));
+
+  /* Wind the clock back rather than wait for it. */
+  await q.run('UPDATE ai_marking_backlog SET next_try=? WHERE attempt_id=?',
+    new Date(Date.now() - 60e3).toISOString(), att4.id);
+  dueIds = (await aiRun.due(500)).map(x => x.id);
+  ok(dueIds.includes(att4.id), 'Once the wait is over it is due again', JSON.stringify(dueIds).slice(0, 80));
+
+  ok(aiRun.BACKOFF_MIN.length > 1
+    && aiRun.BACKOFF_MIN.every((v, i, a) => i === 0 || v >= a[i - 1]),
+    'The wait grows with each failure rather than staying flat', JSON.stringify(aiRun.BACKOFF_MIN));
+
+  mode = 'good';
+  r = await admin.req('POST', '/api/admin/ai/sweep', {});
+  ok(r.status === 200 && r.data.queued >= 1, 'The sweep queues what is due', JSON.stringify(r.data));
+
+  /* sweep() queues and returns; the pass itself is behind it. Ask for this one
+     paper directly, which joins the pass already in flight rather than starting
+     a second - the same guarantee the submit hook relies on. */
+  await admin.req('POST', '/api/admin/attempts/' + att4.id + '/mark', {});
+  bl = await q.get('SELECT tries FROM ai_marking_backlog WHERE attempt_id=?', att4.id);
+  ok(!bl, 'A paper that finishes is taken off the list', JSON.stringify(bl));
+
+  const done4 = await q.get(
+    "SELECT scaled, pending FROM attempt_scores WHERE attempt_id=? AND skill='overall'", att4.id);
+  ok(done4 && done4.pending === 0 && done4.scaled != null,
+    'And it ends up with a band, having failed on the way', JSON.stringify(done4));
+
+  /* The backlog nobody could clear: papers finished BEFORE a key was ever
+     pasted in. Their submit hook found no key and returned; no later submit will
+     ever fire for them again. The sweep is the only thing that can reach them. */
+  head('The papers finished before there was a key');
+
+  await admin.req('PUT', '/api/admin/ai', { apiKey: '' });
+  r = await student.req('POST', '/api/attempts', { testId: 'vpet-b1-01' });
+  const att5 = r.data.attempt;
+  const pD5 = att5.parts.find(p => p.part === 'D');
+  await student.req('POST', '/api/attempts/' + att5.id + '/parts/' + pD5.sectionId + '/start');
+  await student.req('PATCH', '/api/attempts/' + att5.id + '/answers',
+    { answers: pD5.items.map(it => ({ questionId: it.questionId, answer: 'Written while nobody was marking.' })) });
+  await student.req('POST', '/api/attempts/' + att5.id + '/submit');
+
+  const noKey = await q.get(
+    "SELECT pending FROM attempt_scores WHERE attempt_id=? AND skill='overall'", att5.id);
+  ok(!noKey || noKey.pending === 1, 'With no key the paper is submitted unmarked, as before',
+    JSON.stringify(noKey));
+  ok((await aiRun.sweep()).skipped === 'no-key', 'And a sweep with no key does nothing at all');
+
+  await admin.req('PUT', '/api/admin/ai', { baseUrl: STUB, model: 'stub-model', apiKey: KEY });
+  dueIds = (await aiRun.due(500)).map(x => x.id);
+  ok(dueIds.includes(att5.id),
+    'The moment a key exists, the paper is due a pass without anyone touching it',
+    JSON.stringify(dueIds).slice(0, 80));
+
+  r = await admin.req('POST', '/api/admin/attempts/' + att5.id + '/mark', {});
+  const done5 = await q.get(
+    "SELECT scaled, pending FROM attempt_scores WHERE attempt_id=? AND skill='overall'", att5.id);
+  ok(done5 && done5.pending === 0 && done5.scaled != null,
+    'And it is marked - the historical backlog clears itself', JSON.stringify(done5));
+
   head('Only the owner touches the key');
   /* The demo student is not an administrator at all; the sharper case is an
      administrator who is not the owner, which the admin suite covers for other
@@ -338,6 +435,10 @@ try {
   const stranger = client();
   r = await stranger.req('PUT', '/api/admin/ai', { apiKey: 'sk-somebody-elses-key-here' });
   ok(r.status === 401 || r.status === 403, 'A caller with no admin session is refused', 'status ' + r.status);
+  /* The sweep spends against the credential too, so it is not a route a stranger
+     may start - twenty papers is twenty papers' worth of somebody's account. */
+  r = await stranger.req('POST', '/api/admin/ai/sweep', {});
+  ok(r.status === 401 || r.status === 403, 'Nor may a stranger start a sweep', 'status ' + r.status);
 
 } catch (e) {
   fail++;

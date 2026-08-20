@@ -1638,7 +1638,13 @@ router.get('/admin/ai', requireOwner, async (req, res) => {
     `SELECT COUNT(*) c FROM attempt_answers aa
        JOIN questions qs ON qs.id = aa.question_id
       WHERE aa.earned IS NULL AND qs.type IN ('essay','speaking')`);
-  res.set('Cache-Control', 'no-store').json({ ai: s, waiting });
+  /* Papers, not answers. The count above is the honest size of the job and the
+     one below is the honest size of the queue - a screen showing only the first
+     leaves an owner unable to tell one badly-stuck paper from forty ordinary
+     ones. `due` is what the next sweep would actually pick up. */
+  const backlog = await q.val('SELECT COUNT(*) c FROM ai_marking_backlog');
+  const dueNow = (await aiRun.due(1000)).length;
+  res.set('Cache-Control', 'no-store').json({ ai: s, waiting, backlog, due: dueNow });
 });
 
 router.put('/admin/ai', requireOwner, async (req, res) => {
@@ -1695,6 +1701,24 @@ router.put('/admin/ai', requireOwner, async (req, res) => {
     fields: Object.keys(b).map(k => (/key/i.test(k) ? k + ':changed' : k))
   });
   res.json({ ok: true, ai: await aiMarking.settings() });
+});
+
+/**
+ * Queue every paper that is due another marking pass.
+ *
+ * The sweeper does this by itself every ten minutes; this is the button for the
+ * moment a key is first pasted in, when the honest answer to "what about the
+ * sittings already finished?" should not be "wait ten minutes and hope".
+ *
+ * Returns as soon as the papers are queued rather than waiting for the marking:
+ * twenty papers is twenty minutes of model calls, and no browser holds a request
+ * open that long.
+ */
+router.post('/admin/ai/sweep', requireOwner, async (req, res) => {
+  if (!await aiMarking.ready()) return bad(res, 'No marking key is configured.');
+  const out = await aiRun.sweep();
+  await audit(req, 'ai.sweep', 'attempts', out);
+  res.json({ ok: true, ...out });
 });
 
 router.post('/admin/ai/test', requireOwner, async (req, res) => {

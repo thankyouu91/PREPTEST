@@ -335,6 +335,14 @@ app.use((err, req, res, next) => {
     A.purgeSessions().catch(e => console.error('[purge] ' + (e && e.message)));
   }, 30 * 60e3).unref();
 
+  /* Look for papers whose writing and speaking are still unmarked, and mark
+     them. This is what makes the marking pass survive a restart: the queue is
+     memory, every deploy empties it, and without something that comes back and
+     asks again, a paper caught mid-pass keeps a null band for ever. Also clears
+     the backlog of sittings finished before anyone pasted a key. Does nothing
+     at all when there is no key. */
+  require('./server/ai-marking-run').startSweeper();
+
   const server = app.listen(PORT, async () => {
     console.log(`VPET Prep chạy tại http://localhost:${PORT}`);
     console.log(`  · Học viên:  http://localhost:${PORT}/prep/landing/`);

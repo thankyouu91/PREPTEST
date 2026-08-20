@@ -29,6 +29,24 @@
  * double click - must not have two passes writing the same rows, and a hundred
  * candidates finishing at once must not open a hundred concurrent conversations
  * with the model.
+ *
+ * ## And something outside the process remembers
+ *
+ * The queue is memory, so on its own it lasts exactly as long as the process.
+ * Every deploy restarts this server, and a restart mid-pass used to drop that
+ * paper for ever: kick() is called from the submit route, submitting twice is
+ * refused, and nothing else ever asked again. The candidate kept the null band
+ * this whole feature exists to end.
+ *
+ * So `ai_marking_backlog` holds a row per paper that still owes marks, and
+ * `sweep()` re-queues whatever is due. That one table also answers three
+ * separate complaints with the same mechanism:
+ *
+ *   · papers submitted BEFORE anybody pasted a key, which no submit will ever
+ *     fire for again
+ *   · an item that came back 'failed' - the note on it says "It will be tried
+ *     again", and now something actually does
+ *   · whatever was queued when the process went away
  */
 'use strict';
 
@@ -52,6 +70,32 @@ const inFlight = new Map();
 /** Papers waiting their turn. Marking runs one paper at a time, in order. */
 const queue = [];
 let draining = false;
+
+/**
+ * Minutes to wait before trying a paper again, by how many tries it has had.
+ *
+ * Front-loaded because most failures are the transient kind - a 429, a timeout,
+ * a gateway restarting - and those clear in minutes. The tail is long because
+ * the failures that survive an hour are the other kind: a key that has been
+ * revoked, a speaking item with no transcription service configured. Retrying
+ * those every minute would spend an account's credit on the same refusal
+ * thousands of times a day and bury the real work behind it.
+ *
+ * The last value repeats for ever rather than giving up. A paper that cannot be
+ * marked today can be marked the day somebody fixes the setting, and giving up
+ * silently is how the backlog this replaced came to exist.
+ */
+const BACKOFF_MIN = [1, 5, 20, 60, 360, 1440];
+
+/** How many papers one sweep may queue. A bound, not a target. */
+const SWEEP_LIMIT = 20;
+
+/** How often to look for work. */
+const SWEEP_EVERY_MS = 10 * 60e3;
+
+/* Not at zero: the first sweep waits until the server is actually serving.
+   Marking a backlog is never more urgent than answering the first request. */
+const SWEEP_FIRST_MS = 15e3;
 
 /* Which parts are marked by rubric rather than by comparison, and how. `spoken`
    means the answer is a recording that has to be transcribed first. */
@@ -284,13 +328,119 @@ async function clearRubricMarks(attemptId) {
   return r.changes || 0;
 }
 
+/**
+ * Write down what a pass left behind, so something can come back to it.
+ *
+ * Deliberately measured rather than inferred. The pass counts what it marked,
+ * but "marked 12" does not say whether anything is left - an item can be skipped
+ * for a reason that will still be true tomorrow, and a pass that fell over
+ * before its last item counted nothing at all. So this asks the same question
+ * the next pass will ask, `pending()`, and records the answer.
+ */
+async function noteOutcome(attemptId) {
+  const left = (await pending(attemptId)).length;
+  const now = nowISO();
+  if (!left) {
+    await q.run('DELETE FROM ai_marking_backlog WHERE attempt_id=?', attemptId);
+    return 0;
+  }
+  const tries = (await q.val('SELECT tries FROM ai_marking_backlog WHERE attempt_id=?', attemptId)) || 0;
+  const wait = BACKOFF_MIN[Math.min(tries, BACKOFF_MIN.length - 1)];
+  const next = new Date(Date.now() + wait * 60e3).toISOString();
+  const note = left + ' item(s) still unmarked after ' + (tries + 1) + ' attempt(s).';
+  await q.run(
+    `INSERT INTO ai_marking_backlog (attempt_id,tries,next_try,last_note,updated_at)
+     VALUES (?,?,?,?,?)
+     ON CONFLICT(attempt_id) DO UPDATE
+        SET tries=excluded.tries, next_try=excluded.next_try,
+            last_note=excluded.last_note, updated_at=excluded.updated_at`,
+    attemptId, tries + 1, next, note, now);
+  return left;
+}
+
+/**
+ * Submitted papers that still owe rubric marks and are due another try.
+ *
+ * A paper with no backlog row has never been looked at - a sitting submitted
+ * before the key was configured, or one whose pass died with the process - and
+ * is due immediately. That is the whole point: the row is a record of tries, not
+ * a licence to be marked.
+ */
+async function due(limit) {
+  return q.all(
+    `SELECT a.id
+       FROM attempts a
+       JOIN attempt_parts ap ON ap.attempt_id = a.id
+       JOIN section_items si ON si.section_id = ap.section_id
+       JOIN questions qs ON qs.id = si.question_id
+       LEFT JOIN attempt_answers aa
+              ON aa.attempt_id = a.id AND aa.question_id = si.question_id
+       LEFT JOIN ai_marking_backlog b ON b.attempt_id = a.id
+      WHERE a.status = 'submitted'
+        AND qs.type IN ('essay','speaking')
+        AND aa.earned IS NULL
+        AND (b.next_try IS NULL OR b.next_try <= ?)
+      GROUP BY a.id
+      ORDER BY a.submitted_at
+      LIMIT ?`, nowISO(), limit);
+}
+
+/**
+ * Queue every paper that is due. Returns how many, without waiting for them.
+ *
+ * Bounded on purpose. An install that turns marking on for the first time may
+ * have hundreds of finished papers, and queueing all of them at once would hold
+ * the single marking queue for hours - so every new submission would wait behind
+ * a backlog from last month. Twenty per sweep, ten minutes apart, clears a
+ * hundred papers in under an hour and never blocks the front of the queue for
+ * long.
+ */
+async function sweep(opts) {
+  const limit = (opts && opts.limit) || SWEEP_LIMIT;
+  if (!await ai.ready()) return { queued: 0, skipped: 'no-key' };
+  const rows = await due(limit);
+  for (const r of rows) kick(r.id);
+  if (rows.length) console.warn('[ai] sweep: ' + rows.length + ' paper(s) queued for marking.');
+  return { queued: rows.length };
+}
+
+let sweepTimer = null;
+
+/**
+ * Start looking for unmarked papers, now and then every ten minutes.
+ *
+ * Unref'd, both timers. A test script that requires this module must still be
+ * able to exit, and a timer that keeps the event loop alive turns every suite
+ * into one that hangs at the end for no reason a reader could guess.
+ */
+function startSweeper(opts) {
+  if (sweepTimer) return sweepTimer;
+  const go = () => sweep(opts).catch(e => console.warn('[ai] sweep: ' + ai.scrub(e && e.message)));
+  setTimeout(go, (opts && opts.firstMs) || SWEEP_FIRST_MS).unref();
+  sweepTimer = setInterval(go, (opts && opts.everyMs) || SWEEP_EVERY_MS);
+  sweepTimer.unref();
+  return sweepTimer;
+}
+
+/** For tests, which must not inherit a timer from the suite before them. */
+function stopSweeper() {
+  if (sweepTimer) clearInterval(sweepTimer);
+  sweepTimer = null;
+}
+
 /** Mark everything outstanding on one paper, then re-score it. */
 async function run(attemptId, opts) {
   if (!await ai.ready()) return { skipped: 'no-key' };
   if (opts && opts.force) await clearRubricMarks(attemptId);
 
   const rows = await pending(attemptId);
-  if (!rows.length) return { marked: 0, failed: 0, skipped: 0 };
+  /* Nothing owed. Still worth a call: a paper finished by an earlier pass may
+     have left a backlog row behind, and a row that outlives the work it stands
+     for is a sweep that keeps picking up a paper with nothing to do. */
+  if (!rows.length) {
+    try { await noteOutcome(attemptId); } catch (e) { /* the next pass tidies it */ }
+    return { marked: 0, failed: 0, skipped: 0, left: 0 };
+  }
 
   let marked = 0, failed = 0, skipped = 0;
   for (const row of rows) {
@@ -315,8 +465,15 @@ async function run(attemptId, opts) {
   }
 
   await markAttempt(attemptId);
-  console.warn(`[ai] attempt ${attemptId}: ${marked} marked, ${skipped} skipped, ${failed} failed.`);
-  return { marked, failed, skipped };
+  /* Last, and outside the loop: what is still owed decides whether this paper
+     comes back. Its own try, because a bookkeeping failure must not throw away
+     a pass that did real work. */
+  let left = 0;
+  try { left = await noteOutcome(attemptId); }
+  catch (e) { console.warn('[ai] attempt ' + attemptId + ': backlog not recorded: ' + ai.scrub(e && e.message)); }
+  console.warn(`[ai] attempt ${attemptId}: ${marked} marked, ${skipped} skipped, ${failed} failed`
+    + (left ? `, ${left} still owed.` : '.'));
+  return { marked, failed, skipped, left };
 }
 
 async function drain() {
@@ -379,4 +536,7 @@ function runNow(attemptId, opts) {
   return start(attemptId, opts);
 }
 
-module.exports = { kick, runNow, pending, clearRubricMarks, RUBRIC_PARTS };
+module.exports = {
+  kick, runNow, pending, clearRubricMarks, RUBRIC_PARTS,
+  sweep, due, startSweeper, stopSweeper, noteOutcome, BACKOFF_MIN, SWEEP_LIMIT
+};

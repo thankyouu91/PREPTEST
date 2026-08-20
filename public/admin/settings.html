@@ -128,8 +128,14 @@
     const err = a.lastError
       ? '<div class="banner banner-error show"><span>Last check failed: ' + AD.esc(a.lastError) + '</span></div>' : '';
 
+    /* Two numbers, because they answer different questions. The first is the
+       size of the job; the second is how many PAPERS the next sweep would pick
+       up, which is what tells an owner whether anything is actually moving. */
     const waiting = d.waiting
-      ? '<p class="text-[13.5px] font-semibold">' + d.waiting + ' answer(s) across all sittings are waiting to be marked.</p>'
+      ? '<p class="text-[13.5px] font-semibold">' + d.waiting + ' answer(s) across all sittings are waiting to be marked.' +
+        (d.due ? ' <span class="font-normal text-muted">' + d.due + ' paper(s) are due a pass; marking runs by itself ' +
+          'every ten minutes.</span>' : ' <span class="font-normal text-muted">None are due right now - ' +
+          'a paper that has just failed waits before it is tried again.</span>') + '</p>'
       : '<p class="text-[13.5px] text-muted">Nothing is waiting to be marked.</p>';
 
     box.innerHTML = status + err +
@@ -165,6 +171,8 @@
         '<div class="flex flex-wrap gap-2.5">' +
           '<button type="button" class="btn btn-primary btn-md" id="ai-save">Save</button>' +
           '<button type="button" class="btn btn-soft btn-md" id="ai-test"' + (a.hasKey ? '' : ' disabled') + '>Test the connection</button>' +
+          (a.hasKey && d.waiting
+            ? '<button type="button" class="btn btn-soft btn-md" id="ai-sweep">Mark what is waiting</button>' : '') +
           (a.hasKey ? '<button type="button" class="btn btn-ghost btn-md" id="ai-clear">Remove the key</button>' : '') +
         '</div>' +
         '<div id="ai-out"></div>' +
@@ -199,6 +207,28 @@
 
     const clear = AD.qs('#ai-clear');
     if (clear) clear.addEventListener('click', () => save({ apiKey: '' }, 'The key has been removed.'));
+
+    /* The button for the moment a key is first pasted in. The sweeper would find
+       these papers within ten minutes anyway; what this saves is an owner having
+       to take that on trust. It queues and returns - twenty papers is twenty
+       minutes of marking and no browser waits that long - so the message says
+       what was started, not what was finished. */
+    const sweepBtn = AD.qs('#ai-sweep');
+    if (sweepBtn) sweepBtn.addEventListener('click', async (ev) => {
+      const btn = ev.currentTarget;
+      btn.disabled = true;
+      try {
+        const r = await AD.post('/admin/ai/sweep', {});
+        out.innerHTML = '<div class="banner banner-success show"><span>' +
+          (r.queued
+            ? AD.esc(String(r.queued)) + ' paper(s) queued. They are marked one at a time; ' +
+              'reload in a few minutes to see the count fall.'
+            : 'Nothing is due a pass right now.') + '</span></div>';
+      } catch (e) {
+        out.innerHTML = '<div class="banner banner-error show"><span>' + AD.esc(e.message) + '</span></div>';
+      }
+      btn.disabled = false;
+    });
 
     AD.qs('#ai-test').addEventListener('click', async (ev) => {
       const btn = ev.currentTarget;

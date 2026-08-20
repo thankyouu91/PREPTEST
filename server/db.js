@@ -523,6 +523,28 @@ CREATE TABLE IF NOT EXISTS settings (
   value TEXT NOT NULL
 );
 
+/* Papers whose writing and speaking are still owed a mark.
+
+   The marking pass used to live entirely in process memory: a queue, an array,
+   and two callers — a submit, and an administrator pressing a button. Which
+   meant a restart during a pass, and every deploy is one, dropped that work
+   with nothing left behind that knew to pick it up. The candidate kept a null
+   band for ever and nobody could see why.
+
+   So the intention to mark a paper is written down. A row here says "this paper
+   still owes marks, try again after next_try"; the row is deleted the moment
+   nothing is outstanding. The try count drives the backoff, so a model that is
+   down is retried soon and a paper that can never be finished — speaking with
+   no transcription service configured — settles to once a day and costs nothing
+   until somebody fixes the setting. */
+CREATE TABLE IF NOT EXISTS ai_marking_backlog (
+  attempt_id INTEGER PRIMARY KEY REFERENCES attempts(id) ON DELETE CASCADE,
+  tries      INTEGER NOT NULL DEFAULT 0,
+  next_try   TEXT NOT NULL,
+  last_note  TEXT,
+  updated_at TEXT NOT NULL
+);
+
 /* One administrator's standing permission to act on their Google account —
    today only Classroom. The refresh token is stored ENCRYPTED (AES-256-GCM,
    see server/classroom.js): unlike a TOTP secret, which is useless without the
@@ -546,6 +568,7 @@ CREATE INDEX IF NOT EXISTS idx_audit_at  ON audit (at DESC);
 CREATE INDEX IF NOT EXISTS idx_att_user  ON attempts (user_id, status);
 CREATE INDEX IF NOT EXISTS idx_att_ans   ON attempt_answers (attempt_id);
 CREATE INDEX IF NOT EXISTS idx_att_score ON attempt_scores (attempt_id);
+CREATE INDEX IF NOT EXISTS idx_ai_due    ON ai_marking_backlog (next_try);
 `;
 db.exec(SCHEMA_SQL);
 
