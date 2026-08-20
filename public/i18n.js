@@ -549,6 +549,13 @@
     /* ---- Phòng thi ---- */
     'Sitting the test': 'Đang làm bài',
     'Each recording plays once.': 'Mỗi bản ghi chỉ phát một lần.',
+    /* Ghi chú chấm bài do khâu chấm rubric ghi lên từng câu. */
+    'Awaiting marking': 'Đang chờ chấm',
+    'Left blank': 'Bỏ trống',
+    'Nothing was recorded for this item.': 'Câu này chưa có bản ghi nào.',
+    'The recording could not be read.': 'Không đọc được bản ghi.',
+    'Speaking is not marked yet: no transcription service is configured.':
+      'Phần Nói chưa chấm được: chưa cấu hình dịch vụ chuyển giọng nói thành chữ.',
     /* Phần D: con số nằm ở node riêng nên chữ quanh nó dịch được. */
     'Write at least': 'Viết tối thiểu',
     'words.': 'từ.',

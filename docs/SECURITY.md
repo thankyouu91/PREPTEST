@@ -259,6 +259,10 @@ guard đăng nhập, 8 route còn lại là danh sách ở mục 3.
 
 | Method | Endpoint | Guards | Write limit |
 |---|---|---|---|
+| GET | `/api/admin/ai` | `requireAdmin` + `csrfGuard` + `requireOwner` | n/a (read) |
+| PUT | `/api/admin/ai` | `requireAdmin` + `csrfGuard` + `requireOwner` | yes |
+| POST | `/api/admin/ai/test` | `requireAdmin` + `csrfGuard` + `requireOwner` | yes |
+| POST | `/api/admin/attempts/:id/mark` | `requireAdmin` + `csrfGuard` + `requireOwner` | yes |
 | GET | `/api/admin/audit` | `requireAdmin` + `csrfGuard` | n/a (read) |
 | GET | `/api/admin/batches` | `requireAdmin` + `csrfGuard` | n/a (read) |
 | GET | `/api/admin/classroom` | `requireAdmin` + `csrfGuard` | n/a (read) |

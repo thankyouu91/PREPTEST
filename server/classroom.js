@@ -71,44 +71,14 @@ const tokenEndpoint = () => process.env.GOOGLE_TOKEN_ENDPOINT || TOKEN_ENDPOINT;
 
 /* ------------------------------ Sealing ------------------------------ */
 
-/**
- * The key, or null. 32 bytes, base64 — generate one with:
- *   node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
- *
- * A wrong length throws rather than being padded or hashed into shape: a key
- * that is quietly stretched is a key nobody can reproduce later, and the day
- * that matters is the day the database has to be read on another machine.
- */
-function encryptionKey() {
-  const raw = process.env.TOKEN_ENCRYPTION_KEY || '';
-  if (!raw) return null;
-  const key = Buffer.from(raw, 'base64');
-  if (key.length !== 32) {
-    throw new Error('TOKEN_ENCRYPTION_KEY must be exactly 32 bytes, base64 encoded');
-  }
-  return key;
-}
-
-/** iv.ciphertext.tag, all base64url. GCM, so a tampered row fails to open. */
-function seal(plaintext) {
-  const key = encryptionKey();
-  if (!key) throw new Error('TOKEN_ENCRYPTION_KEY is not set, so a refresh token cannot be stored');
-  const iv = crypto.randomBytes(12);
-  const cipher = crypto.createCipheriv('aes-256-gcm', key, iv);
-  const body = Buffer.concat([cipher.update(String(plaintext), 'utf8'), cipher.final()]);
-  return [iv, body, cipher.getAuthTag()].map(b => b.toString('base64url')).join('.');
-}
-
-function open(sealed) {
-  const key = encryptionKey();
-  if (!key) throw new Error('TOKEN_ENCRYPTION_KEY is not set, so a stored refresh token cannot be read');
-  const parts = String(sealed || '').split('.');
-  if (parts.length !== 3) throw new Error('The stored token is not in the expected format');
-  const [iv, body, tag] = parts.map(p => Buffer.from(p, 'base64url'));
-  const decipher = crypto.createDecipheriv('aes-256-gcm', key, iv);
-  decipher.setAuthTag(tag);
-  return Buffer.concat([decipher.update(body), decipher.final()]).toString('utf8');
-}
+/* Sealing moved to server/sealed.js the day a second caller appeared - the AI
+   marking key needs the same envelope, and two implementations of it is how a
+   database ends up with rows only one of them can open. The three names below
+   are kept so the rest of this file reads as it did. */
+const sealed = require('./sealed');
+const encryptionKey = sealed.encryptionKey;
+const seal = t => sealed.seal(t, 'a refresh token');
+const open = t => sealed.open(t, 'a stored refresh token');
 
 /* ------------------------------ State ------------------------------ */
 

@@ -142,7 +142,7 @@ async function markAttempt(attemptId) {
   const rows = await q.all(
     `SELECT si.question_id, ap.section_id, s.skill,
             qs.type, qs.answer,
-            aa.id answer_id, aa.answer given, aa.audio_key
+            aa.id answer_id, aa.answer given, aa.audio_key, aa.earned, aa.max_score
        FROM attempt_parts ap
        JOIN sections s ON s.id = ap.section_id
        JOIN section_items si ON si.section_id = ap.section_id
@@ -159,7 +159,18 @@ async function markAttempt(attemptId) {
         { earned: 0, max: 0, pending: 0, marked: 0 };
       bySkill.set(r.skill, bucket);
 
-      const mark = markItem({ type: r.type, answer: r.answer }, r.given);
+      let mark = markItem({ type: r.type, answer: r.answer }, r.given);
+
+      /* Not machine-markable, but somebody - or something - has already marked it
+         against a rubric and written the result on the row. Rubric marks are on
+         the same 0-1 scale per item as everything else, so they join the same
+         bucket and the skill can finish. Before server/ai-marking.js existed
+         nothing ever wrote these, which is why `overall` was null on every paper
+         ever submitted. */
+      if (!mark && r.earned != null && r.max_score) {
+        mark = { earned: r.earned, max: r.max_score, note: null, alreadyStored: true };
+      }
+
       if (!mark) {
         /* Writing and Speaking: waiting on a rubric. Counted separately so we know the skill is unfinished. */
         bucket.pending += 1;
@@ -172,7 +183,7 @@ async function markAttempt(attemptId) {
       /* Only leave a trail for items that already have an answer row. A wholly blank
          item has no row at all; it still counts in the denominator above, and there
          is no reason to create an empty row just to record "0". */
-      if (r.answer_id) {
+      if (r.answer_id && !mark.alreadyStored) {
         await q.run('UPDATE attempt_answers SET earned=?, max_score=?, mark_note=?, marked_at=? WHERE id=?',
           mark.earned, mark.max, mark.note, at, r.answer_id);
       }
@@ -264,6 +275,11 @@ async function resultOf(attemptId, detailed) {
          — the more you leave blank, the more perfect the part looks. */
       const marked = items.map(i => {
         const auto = AUTO_TYPES.includes(i.type);
+        /* A rubric mark counts here too. This used to read the number off the
+           item TYPE alone, so an essay the marker had already scored still came
+           back as `earned: null` with "Awaiting marking" under it - the mark
+           existed in the skill total and was invisible on the item. */
+        const rubric = !auto && i.earned != null && i.max_score;
         return {
           questionId: i.question_id,
           type: i.type,
@@ -272,8 +288,8 @@ async function resultOf(attemptId, detailed) {
           the paper is reused for later sittings and for other people. */
           given: i.given || '',
           hasRecording: !!i.audio_key,
-          earned: auto ? (i.earned == null ? 0 : i.earned) : null,
-          max: auto ? 1 : null,
+          earned: auto ? (i.earned == null ? 0 : i.earned) : (rubric ? i.earned : null),
+          max: auto ? 1 : (rubric ? i.max_score : null),
           note: i.mark_note || (auto ? 'Left blank' : 'Awaiting marking')
         };
       });

@@ -828,6 +828,16 @@ router.delete('/admin/tests/:id', async (req, res) => {
   const id = str(req.params.id, 60);
   const used = await q.val("SELECT COUNT(*) c FROM codes WHERE unlock_type='test' AND unlock_ref=?", id);
   if (used) return bad(res, used + ' codes point at this test. Archive it rather than deleting it.');
+  /* Same answer for a test somebody has sat. attempts.test_id has no ON DELETE
+     CASCADE - deliberately, because a sitting is a person's record and must not
+     vanish with the paper - so the delete used to fail on the foreign key and
+     come back as a 500 with a stack trace in the log. Refusing it in words, the
+     way the codes case already did, is the same outcome said properly. */
+  const sat = await q.val('SELECT COUNT(*) c FROM attempts WHERE test_id=?', id);
+  if (sat) {
+    return bad(res, sat + ' sitting(s) have been taken on this test, so it cannot be deleted. '
+      + 'Archive it instead: it leaves the catalogue and the results stay readable.');
+  }
   const r = await q.run('DELETE FROM tests WHERE id=?', id);
   if (!r.changes) return res.status(404).json({ error: 'No such test.' });
   await audit(req, 'test.delete', 'tests/' + id, {});
@@ -1567,8 +1577,19 @@ router.post('/admin/classroom/unlink', async (req, res) => {
 });
 
 /* ======================= SETTINGS · AUDIT LOG ======================= */
+/* What the settings screen is allowed to see.
+   This was `SELECT key, value FROM settings` and everything it found went to the
+   browser. That was harmless while the table held a brand name and a notice, and
+   it stopped being harmless the moment anything sealed went in beside them - a
+   row added tomorrow would have been published by default rather than withheld
+   by default. A whitelist inverts that: a new key is invisible until somebody
+   decides it may be seen, which is the direction that fails safe. */
+const PUBLIC_SETTING_KEYS = ['brand.name', 'brand.tenant', 'platform.notice'];
+
 router.get('/admin/settings', async (req, res) => {
-  const rows = await q.all('SELECT key, value FROM settings');
+  const rows = await q.all(
+    `SELECT key, value FROM settings WHERE key IN (${PUBLIC_SETTING_KEYS.map(() => '?').join(',')})`,
+    ...PUBLIC_SETTING_KEYS);
   const settings = {};
   rows.forEach(r => { settings[r.key] = r.value; });
   res.json({
@@ -1587,12 +1608,118 @@ router.get('/admin/settings', async (req, res) => {
 
 router.put('/admin/settings', async (req, res) => {
   const b = (req.body && req.body.settings) || {};
-  const allowed = ['brand.name', 'brand.tenant', 'platform.notice'];
+  const allowed = PUBLIC_SETTING_KEYS;
   const ins = require('./db').db.prepare(
     'INSERT INTO settings (key,value) VALUES (?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value');
   for (const k of allowed) if (k in b) ins.run(k, str(b[k], 300));
   await audit(req, 'settings.update', 'settings', { keys: Object.keys(b) });
   res.json({ ok: true });
+});
+
+/* ======================= AI MARKING =======================
+   Where the key for the model that marks writing and speaking is set. Owner
+   only, and write-only: the key goes in and never comes back out, because a
+   screen that can show a key is a screen that can leak one. What comes back is
+   whether one is set, its last four characters so an operator can tell WHICH
+   key is in use, and whether the last check worked. */
+
+const aiMarking = require('./ai-marking');
+const aiRun = require('./ai-marking-run');
+
+/* server/auth.js already exports requireOwner and other routes use it; a second
+   role test here would be a second thing to keep in step. Everything on this
+   credential - reading its status included, since the key hint and the endpoint
+   are its shape - is owner business. */
+const requireOwner = A.requireOwner;
+
+router.get('/admin/ai', requireOwner, async (req, res) => {
+  const s = await aiMarking.settings();
+  const waiting = await q.val(
+    `SELECT COUNT(*) c FROM attempt_answers aa
+       JOIN questions qs ON qs.id = aa.question_id
+      WHERE aa.earned IS NULL AND qs.type IN ('essay','speaking')`);
+  res.set('Cache-Control', 'no-store').json({ ai: s, waiting });
+});
+
+router.put('/admin/ai', requireOwner, async (req, res) => {
+  const b = req.body || {};
+
+  if ('baseUrl' in b || 'model' in b || 'sttBaseUrl' in b || 'sttModel' in b) {
+    /* Only the fields that were actually sent. `str()` of an absent field is '',
+       which fell through to the default - so a request that changed the model
+       name silently reset the endpoint and switched transcription off. */
+    const now = await aiMarking.settings();
+    const url = 'baseUrl' in b ? str(b.baseUrl, 200) : now.baseUrl;
+    const sttUrl = 'sttBaseUrl' in b ? str(b.sttBaseUrl, 200) : now.sttBaseUrl;
+    const model = 'model' in b ? str(b.model, 100) : now.model;
+    const sttModel = 'sttModel' in b ? str(b.sttModel, 100) : now.sttModel;
+    /* A model name is interpolated into a multipart body, so a newline in it
+       would let the caller write their own headers into the request. */
+    if (/[\r\n]/.test(model) || /[\r\n]/.test(sttModel)) {
+      return bad(res, 'A model name cannot contain a line break.');
+    }
+    /* An http:// endpoint would put the key on the wire in clear. Loopback is the
+       one exception, and a real one: a gateway on 127.0.0.1 never reaches a
+       network, and refusing it would rule out both a self-hosted proxy and any
+       way of testing this without a live account. Anything else must be https. */
+    const okEndpoint = u => /^https:\/\//i.test(u)
+      || /^http:\/\/(127\.0\.0\.1|\[::1\]|localhost)(:\d+)?(\/|$)/i.test(u);
+    for (const [label, u] of [['The model endpoint', url], ['The transcription endpoint', sttUrl]]) {
+      if (u && !okEndpoint(u)) {
+        return bad(res, label + ' must be an https address (http is allowed only on this machine).');
+      }
+    }
+    await aiMarking.setProvider({
+      baseUrl: url || aiMarking.DEFAULTS.baseUrl,
+      model: model || aiMarking.DEFAULTS.model,
+      sttBaseUrl: sttUrl,
+      sttModel: sttModel || aiMarking.DEFAULTS.sttModel
+    });
+  }
+
+  /* An absent field leaves the stored key alone; an explicit empty string
+     clears it. Otherwise saving a changed model name would wipe the key. */
+  for (const [field, which] of [['apiKey', 'model'], ['sttApiKey', 'stt']]) {
+    if (!(field in b)) continue;
+    const raw = String(b[field] == null ? '' : b[field]).trim();
+    if (raw && raw.length < 12) return bad(res, 'That does not look like an API key.');
+    try {
+      await aiMarking.setKey(which, raw || null);
+    } catch (e) {
+      return bad(res, e.message);
+    }
+  }
+
+  /* The key itself never reaches the audit log - only that one was set. */
+  await audit(req, 'ai.settings', 'settings', {
+    fields: Object.keys(b).map(k => (/key/i.test(k) ? k + ':changed' : k))
+  });
+  res.json({ ok: true, ai: await aiMarking.settings() });
+});
+
+router.post('/admin/ai/test', requireOwner, async (req, res) => {
+  const out = await aiMarking.testConnection();
+  await audit(req, 'ai.test', 'settings', { ok: out.ok });
+  res.status(out.ok ? 200 : 502).json(out);
+});
+
+/** Mark one paper's outstanding writing and speaking now, and wait for it. */
+/* Owner-only as well: it spends against the credential, and an unbounded pass
+   is not something every admin role should be able to start. */
+router.post('/admin/attempts/:id/mark', requireOwner, async (req, res) => {
+  const id = int(req.params.id, 0);
+  if (!await q.val('SELECT 1 FROM attempts WHERE id=?', id)) {
+    return res.status(404).json({ error: 'No such sitting.' });
+  }
+  if (!await aiMarking.ready()) return bad(res, 'No marking key is configured.');
+  /* ?force=1 throws away the marks already given and makes them again - for a
+     changed model, or a mark that is plainly wrong. Without it a marked item is
+     never revisited, which is what stops an automatic retry from quietly
+     rewriting a candidate's result. */
+  const force = String(req.query.force || '') === '1';
+  const out = await aiRun.runNow(id, { force });
+  await audit(req, 'ai.mark', 'attempts/' + id, { ...out, force });
+  res.json({ ok: true, ...out });
 });
 
 router.put('/admin/packages/:id', async (req, res) => {

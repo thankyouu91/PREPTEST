@@ -522,6 +522,12 @@ router.post('/attempts/:id/submit', A.requireUser, A.csrfGuard, async (req, res)
 
   analytics.track(req, 'exam_submit', { test_id: att.test_id, answered, total });
   res.json({ ok: true, submittedAt: at, answered, total });
+
+  /* Writing and speaking go to the rubric marker AFTER the receipt has gone. A
+     dozen model calls is a minute the candidate would otherwise spend on a
+     spinner, and a closed tab would lose the lot. Deliberately not awaited; the
+     result screen fills in as the marks land. No-op when no key is configured. */
+  require('./ai-marking-run').kick(att.id);
 });
 
 /**

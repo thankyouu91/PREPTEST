@@ -93,6 +93,129 @@
       '</div>' +
     '</div>';
 
+  /* ---------------- AI marking ----------------
+     Reading and Listening mark themselves the moment a paper is handed in.
+     Writing and Speaking need a rubric, and until a key is put in here nothing
+     ever marks them - which is why a submitted paper used to show no overall
+     band at all, permanently. The key is write-only: it is sealed before it is
+     stored and no route ever returns it, so this screen can say WHICH key is in
+     use (its last four characters) but never what it is. */
+  AD.qs('#p-general').insertAdjacentHTML('beforeend',
+    '<div class="card p-6 sm:p-7 mt-6 grid gap-4 content-start" id="ai-card">' +
+      '<div class="grid gap-1">' +
+        '<h2 class="text-lg font-extrabold tracking-tight">Marking writing and speaking</h2>' +
+        '<p class="text-[13.5px] text-muted">Reading and Listening are marked automatically. ' +
+          'Writing and Speaking need a model - without one they stay unmarked and no overall band is given.</p>' +
+      '</div>' +
+      '<div id="ai-body"><div class="skeleton h-24 w-full rounded-2xl"></div></div>' +
+    '</div>');
+
+  async function aiLoad() {
+    const box = AD.qs('#ai-body');
+    let d;
+    try { d = await AD.get('/admin/ai'); }
+    catch (e) { box.innerHTML = AD.errorBox(e.message); return; }
+    const a = d.ai;
+
+    const status = !a.canStore
+      ? '<div class="banner banner-warn show"><span>This server has no <code>TOKEN_ENCRYPTION_KEY</code>, ' +
+          'so a key cannot be stored safely. Set one and restart before using this.</span></div>'
+      : a.hasKey
+        ? '<div class="banner banner-success show"><span>A key ending <b>' + AD.esc(a.keyHint) + '</b> is in use' +
+            (a.checkedAt ? ', last checked ' + AD.esc(new Date(a.checkedAt).toLocaleString()) : '') + '.</span></div>'
+        : '<div class="banner banner-warn show"><span>No key yet, so writing and speaking are not being marked.</span></div>';
+
+    const err = a.lastError
+      ? '<div class="banner banner-error show"><span>Last check failed: ' + AD.esc(a.lastError) + '</span></div>' : '';
+
+    const waiting = d.waiting
+      ? '<p class="text-[13.5px] font-semibold">' + d.waiting + ' answer(s) across all sittings are waiting to be marked.</p>'
+      : '<p class="text-[13.5px] text-muted">Nothing is waiting to be marked.</p>';
+
+    box.innerHTML = status + err +
+      '<div class="grid gap-4 mt-4">' +
+        '<div class="grid sm:grid-cols-2 gap-4">' +
+          '<label class="grid gap-1.5"><span class="label">Model endpoint</span>' +
+            '<input class="input" id="ai-url" value="' + AD.esc(a.baseUrl) + '" placeholder="https://api.anthropic.com"></label>' +
+          '<label class="grid gap-1.5"><span class="label">Model</span>' +
+            '<input class="input" id="ai-model" value="' + AD.esc(a.model) + '"></label>' +
+        '</div>' +
+        '<label class="grid gap-1.5"><span class="label">API key</span>' +
+          '<input class="input" id="ai-key" type="password" autocomplete="off" placeholder="' +
+            (a.hasKey ? 'Leave blank to keep the key already saved' : 'Paste the key') + '">' +
+          '<span class="text-[12.5px] text-muted">Stored encrypted. It is never shown again and never sent to a browser.</span></label>' +
+
+        '<details class="mt-2"><summary class="text-[13.5px] font-semibold cursor-pointer">Speaking: transcription</summary>' +
+          '<p class="text-[13px] text-muted mt-2 max-w-[62ch]">The model reads text, not audio, so a spoken answer is ' +
+            'transcribed first. Without this, Speaking stays unmarked and says so. What is scored is the transcript - ' +
+            'the words and the grammar - not pronunciation or fluency.</p>' +
+          '<div class="grid sm:grid-cols-2 gap-4 mt-3">' +
+            '<label class="grid gap-1.5"><span class="label">Transcription endpoint</span>' +
+              '<input class="input" id="ai-stt-url" value="' + AD.esc(a.sttBaseUrl) + '" placeholder="https://api.openai.com"></label>' +
+            '<label class="grid gap-1.5"><span class="label">Transcription model</span>' +
+              '<input class="input" id="ai-stt-model" value="' + AD.esc(a.sttModel) + '"></label>' +
+          '</div>' +
+          '<label class="grid gap-1.5 mt-3"><span class="label">Transcription API key' +
+            (a.hasSttKey ? ' (ending ' + AD.esc(a.sttKeyHint) + ')' : '') + '</span>' +
+            '<input class="input" id="ai-stt-key" type="password" autocomplete="off" placeholder="' +
+              (a.hasSttKey ? 'Leave blank to keep the key already saved' : 'Paste the key') + '"></label>' +
+        '</details>' +
+
+        waiting +
+        '<div class="flex flex-wrap gap-2.5">' +
+          '<button type="button" class="btn btn-primary btn-md" id="ai-save">Save</button>' +
+          '<button type="button" class="btn btn-soft btn-md" id="ai-test"' + (a.hasKey ? '' : ' disabled') + '>Test the connection</button>' +
+          (a.hasKey ? '<button type="button" class="btn btn-ghost btn-md" id="ai-clear">Remove the key</button>' : '') +
+        '</div>' +
+        '<div id="ai-out"></div>' +
+      '</div>';
+
+    const out = AD.qs('#ai-out');
+    const save = async (patch, done) => {
+      try {
+        await AD.put('/admin/ai', patch);
+        out.innerHTML = '<div class="banner banner-success show"><span>' + done + '</span></div>';
+        await aiLoad();
+      } catch (e) {
+        out.innerHTML = '<div class="banner banner-error show"><span>' + AD.esc(e.message) + '</span></div>';
+      }
+    };
+
+    AD.qs('#ai-save').addEventListener('click', () => {
+      const body = {
+        baseUrl: AD.qs('#ai-url').value.trim(),
+        model: AD.qs('#ai-model').value.trim(),
+        sttBaseUrl: AD.qs('#ai-stt-url').value.trim(),
+        sttModel: AD.qs('#ai-stt-model').value.trim()
+      };
+      /* Only send a key field when one was typed. Sending an empty string means
+         "clear it", and saving a changed model name must not wipe the key. */
+      const k = AD.qs('#ai-key').value.trim();
+      if (k) body.apiKey = k;
+      const sk = AD.qs('#ai-stt-key').value.trim();
+      if (sk) body.sttApiKey = sk;
+      save(body, 'Saved.');
+    });
+
+    const clear = AD.qs('#ai-clear');
+    if (clear) clear.addEventListener('click', () => save({ apiKey: '' }, 'The key has been removed.'));
+
+    AD.qs('#ai-test').addEventListener('click', async (ev) => {
+      const btn = ev.currentTarget;
+      btn.disabled = true;
+      out.innerHTML = '<p class="text-[13.5px] text-muted">Asking the model to mark one sample answer…</p>';
+      try {
+        const r = await AD.post('/admin/ai/test', {});
+        out.innerHTML = '<div class="banner banner-success show"><span>Working. ' + AD.esc(r.model) +
+          ' marked the sample ' + AD.esc(String(r.sample.score)) + '/10.</span></div>';
+      } catch (e) {
+        out.innerHTML = '<div class="banner banner-error show"><span>' + AD.esc(e.message) + '</span></div>';
+      }
+      btn.disabled = false;
+      });
+  }
+  aiLoad();
+
   /* ---------------- Google Classroom ----------------
      Read-only for now: connect a teacher's account, list their courses, pull a
      roster and show which students already have an account here. Publishing

@@ -823,11 +823,21 @@ const run = async () => {
     ['test.create', 'test.generate', 'code.issue', 'code.revoke'].every(a => actions.includes(a)),
     actions.slice(0, 6).join(', '));
 
-  /* 16. Clean up the test data */
+  /* 16. Clean up the test data.
+     Archive BEFORE deleting. DELETE refuses a test that codes point at, and
+     trips a foreign key once anything has been sat against it - and the suite
+     ignored the result, so "Automated test paper" stayed PUBLISHED in the
+     student catalogue with a section called Reading and no part letter. Archiving
+     first means the catalogue is clean whether or not the row can go. */
+  await call('POST', '/api/admin/tests/' + testId + '/status', { status: 'archived' });
+  await call('POST', '/api/admin/tests/' + autoTest.id + '/status', { status: 'archived' });
   await call('DELETE', '/api/admin/tests/' + testId);
   await call('DELETE', '/api/admin/tests/' + autoTest.id);
-  const gone = await call('GET', '/api/admin/tests/' + testId);
-  check('The test paper can be deleted', gone.status === 404, 'status ' + gone.status);
+
+  const left = await call('GET', '/api/admin/tests/' + testId);
+  check('The test paper is gone, or at least out of the catalogue',
+    left.status === 404 || (left.data && left.data.status === 'archived'),
+    'status ' + left.status + ' ' + JSON.stringify(left.data && left.data.status));
 
   /* 16b. Audio on a question (VPET parts E, F, G, H, J)
      Raw bytes rather than multipart — the server reads the body whole. */

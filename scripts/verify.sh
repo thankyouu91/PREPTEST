@@ -122,6 +122,15 @@ node -e "
 # a flaky test does. Same again for code redemption: 12 per 10 minutes, one per run.
 # These are all three of the time-window limits the suite passes through (see
 # docs/SECURITY.md §2); raise them here only, never in the source.
+# A throwaway sealing key for this run, so the marking suite can store one at all.
+# Never a fixed value: a key written into a repository is not a key.
+export TOKEN_ENCRYPTION_KEY="${TOKEN_ENCRYPTION_KEY:-$(node -e "console.log(require('crypto').randomBytes(32).toString('base64'))")}"
+# The sign-in lockout is deliberately NOT raised here. It is keyed on IP ×
+# username, so the deliberate wrong passwords in the suite land on their own
+# throwaway names and never accumulate against a name a later step needs. And
+# scripts/test-user-api.mjs drives that lockout on purpose and asserts the 429:
+# raising the ceiling for the gate would quietly delete the check that the
+# lockout works at all.
 REGISTER_PER_HOUR=200 FORGOT_PER_HOUR=200 REDEEM_PER_10MIN=200 node server.js > /tmp/prep-verify-server.log 2>&1 &
 SERVER_PID=$!
 cleanup() { kill "$SERVER_PID" 2>/dev/null || true; }
@@ -162,6 +171,11 @@ node scripts/test-items.mjs || fail=1
 # published, and a fixture left behind is one of the things it is here to catch.
 step "The paper a candidate sits (parts, counts, no part sharing another's items)"
 node scripts/test-paper.mjs || fail=1
+
+# Needs a TOKEN_ENCRYPTION_KEY to store a key at all, and the suite stands up its
+# own stub model on loopback - no real account, no network, no cost.
+step "Marking writing and speaking (the key, the rubric pass, what a candidate sees)"
+node scripts/test-ai-marking.mjs || fail=1
 
 step "Payments (gateway signatures, settlement rules, one code per order)"
 node scripts/test-payments.mjs || fail=1

@@ -313,8 +313,19 @@ app.use((err, req, res, next) => {
   await secrets.load();
   /* The bank's own recordings, into whatever store this install uses. After
      secrets, because S3 and GCS need their credentials; before listen(), because
-     an audio item served without its audio is a question nobody was asked. */
-  await attachBankAudio();
+     an audio item served without its audio is a question nobody was asked.
+
+     Its own catch, and this is not decoration. The first version was a bare
+     await in front of the two lines below, so an unreachable bucket did not just
+     leave Part E silent - it stopped ensureSeedAdmin() and ensureDemoStudent()
+     from ever running, and the whole platform came up with nobody able to sign
+     in. Nothing about a recording should be able to do that. */
+  try {
+    await attachBankAudio();
+  } catch (e) {
+    console.error('[audio] the bank recordings could not be stored this boot: ' + (e && e.message));
+    console.error('        Parts E, F, G, H and J may play nothing until this is fixed.');
+  }
 
   await A.ensureSeedAdmin();
   await A.ensureDemoStudent();

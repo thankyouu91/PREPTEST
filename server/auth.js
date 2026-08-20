@@ -230,8 +230,22 @@ async function requireUser(req, res, next) {
    Reading and writing on every failed sign-in and every write request is the
    cost. It is a handful of indexed statements against a local database, which
    is the same order of cost as the scrypt verification standing next to it. */
-const MAX_ATTEMPTS = 5;
 const LOCK_MS = 15 * 60e3;
+
+/**
+ * How many failed sign-ins lock a name for fifteen minutes.
+ *
+ * Not configurable, and deliberately so. This was briefly an environment
+ * variable the test gate could raise, on the theory that the gate's own
+ * deliberate wrong passwords were locking an account a later step needed. They
+ * are not: the bucket below is IP × USERNAME, so each throwaway name in the
+ * suite carries its own count and none of them touch the demo student. What a
+ * raisable ceiling did instead was silently disable
+ * scripts/test-user-api.mjs's brute-force checks - the two that exist to prove
+ * this constant does anything. A number the gate can turn off is a number the
+ * gate stops testing.
+ */
+const MAX_ATTEMPTS = 5;
 
 function throttleKey(req, username) {
   return (req.ip || '?') + '|' + String(username || '').toLowerCase();
