@@ -37,6 +37,43 @@ const LAY = val('--lay');
 const RA = val('--ra');
 const NAP = val('--nap');
 
+/* ---------------------------------------------------------------- kiểm ---- */
+/* Chạy được mà không cần server và không cần CSDL, vì chỗ gọi nó là một tác vụ
+   tự động sắp commit — nó phải trả lời được "tệp này có hỏng không" bằng đúng
+   một lệnh. `scripts/test-vocab.mjs` kiểm cùng những điều này, nhưng chỉ chạy
+   khi có server, mà lúc sắp commit thì chưa chắc đã có. */
+if (args.includes('--kiem')) {
+  const fs2 = fs.readFileSync(store.FILE, 'utf8').split('\n');
+  const than = fs2.filter((l, i) => l.trim() && i > 0);
+  const loi = [];
+
+  const lech = than.filter(l => l.split('\t').length !== store.COLUMNS.length);
+  if (lech.length) loi.push(`${lech.length} dòng lệch cột: ${lech[0].slice(0, 60)}`);
+
+  const dem = new Map();
+  store.read().forEach(r => {
+    const k = store.key(r.headword, r.pos, r.en);
+    dem.set(k, (dem.get(k) || 0) + 1);
+    if (!r.level || !r.headword || !r.pos || !r.en) loi.push('dòng thiếu cột khoá: ' + k.slice(0, 50));
+  });
+  const trung = [...dem.entries()].filter(([, n]) => n > 1);
+  if (trung.length) loi.push(`${trung.length} khoá trùng: ${trung[0][0].slice(0, 50)}`);
+
+  const CO_DAU_K = /[àáảãạăằắẳẵặâầấẩẫậèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđ]/i;
+  const anh = store.read().filter(r => r.vi && r.vi.length > 24 && !CO_DAU_K.test(r.vi));
+  if (anh.length) loi.push(`${anh.length} ô dịch vẫn là tiếng Anh: ${anh[0].vi.slice(0, 50)}`);
+
+  if (loi.length) {
+    console.log(`\n  ${C.r}Tệp bản dịch có vấn đề:${C.x}`);
+    loi.slice(0, 6).forEach(l => console.log(`    · ${l}`));
+    console.log('');
+    process.exit(1);
+  }
+  const p0 = store.progress();
+  console.log(`  Tệp bản dịch sạch: ${p0.total} dòng, ${p0.done} đã dịch, ${p0.todo} chờ dịch.`);
+  process.exit(0);
+}
+
 /* ---------------------------------------------------------------- đếm ---- */
 if (args.includes('--dem') || (!LAY && !NAP)) {
   const p = store.progress();
