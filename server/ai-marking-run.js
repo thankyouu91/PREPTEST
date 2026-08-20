@@ -97,6 +97,43 @@ const SWEEP_EVERY_MS = 10 * 60e3;
    Marking a backlog is never more urgent than answering the first request. */
 const SWEEP_FIRST_MS = 15e3;
 
+/**
+ * How long to wait for a recording to come back from the store.
+ *
+ * There is no timeout inside the storage drivers - none of the S3, GCS or
+ * Supabase fetches carries a signal - and Node's default is to wait for ever.
+ * Papers are marked ONE at a time, so a single stalled read is not one slow
+ * item: it is every candidate on this server waiting behind it, indefinitely,
+ * with the queue silent. Thirty seconds is far longer than a one-megabyte
+ * object ever legitimately takes.
+ */
+const STORAGE_MS = 30e3;
+
+/**
+ * How many failed tries before an empty transcript is believed to be silence.
+ *
+ * The count comes from ai_marking_backlog, so this is "after the paper has come
+ * back around twice" - about half an hour with the backoff below.
+ */
+const SILENCE_AFTER_TRIES = 2;
+
+/**
+ * `p`, unless it takes longer than `ms`, in which case an error.
+ *
+ * The underlying request is NOT cancelled - there is no signal to cancel it
+ * with, which is the whole problem. What this guarantees is narrower and is the
+ * one that matters here: the marking queue moves on. An abandoned socket costs
+ * one file descriptor until the runtime gives up on it; an abandoned queue
+ * costs every paper behind it.
+ */
+function withDeadline(p, ms, what) {
+  let timer;
+  const limit = new Promise((_, reject) => {
+    timer = setTimeout(() => reject(new Error('Timed out waiting for ' + what)), ms);
+  });
+  return Promise.race([p, limit]).finally(() => clearTimeout(timer));
+}
+
 /* Which parts are marked by rubric rather than by comparison, and how. `spoken`
    means the answer is a recording that has to be transcribed first. */
 const RUBRIC_PARTS = {
@@ -163,7 +200,7 @@ async function rowFor(attemptId, row) {
  * is a setting somebody has not filled in, and telling the candidate their
  * speaking "scored nothing" for that reason would be a lie.
  */
-async function words(row) {
+async function words(row, tries) {
   /* Nothing recorded is a zero, not a skip. A skip leaves the item pending, one
      pending item leaves Speaking pending, and Speaking pending leaves the whole
      band withheld - so a candidate who simply did not answer one speaking
@@ -176,7 +213,7 @@ async function words(row) {
      what is on the other side of this call is somebody's metered account. */
   const MAX_AUDIO = 10 * 1024 * 1024;
   try {
-    const file = await storage.get(row.audio_key);
+    const file = await withDeadline(storage.get(row.audio_key), STORAGE_MS, 'the recording');
     bytes = file.body;
   } catch (e) {
     return { skip: 'The recording could not be read.' };
@@ -200,7 +237,22 @@ async function words(row) {
     console.warn('[ai] transcription failed: ' + ai.scrub(e && e.message));
     return { retry: 'The recording could not be transcribed. It will be tried again.' };
   }
-  if (!text) return { blank: 'No words could be made out in this recording.' };
+  /* An empty transcript is ambiguous in the one direction that costs a
+     candidate marks. It may be genuine silence - somebody who recorded nothing
+     but background noise - or a transcription service that answered 200 with
+     an empty string, which is what a wrong audio format, a truncated upload or
+     a bad day at the provider all look like. Scoring the first case zero is
+     right; scoring the second case zero puts a service fault on somebody's
+     record and calls it their speaking.
+     So it is retried first, and only becomes a zero once the backoff has been
+     round several times and the answer has not changed. That is a judgement
+     the platform can only make with the try count in front of it, which is
+     exactly what ai_marking_backlog now holds. */
+  if (!text) {
+    return tries >= SILENCE_AFTER_TRIES
+      ? { blank: 'No words could be made out in this recording.' }
+      : { retry: 'No words could be made out yet. The recording will be tried again.' };
+  }
   return { text };
 }
 
@@ -215,7 +267,7 @@ function sniffMime(buf) {
 }
 
 /** Mark one item and write the result down. Returns 'marked' | 'skipped' | 'failed'. */
-async function markRow(attemptId, row) {
+async function markRow(attemptId, row, tries) {
   const cfg = RUBRIC_PARTS[row.part];
   if (!cfg) return 'skipped';
   const rowId = await rowFor(attemptId, row);
@@ -225,7 +277,7 @@ async function markRow(attemptId, row) {
   let source = null;
 
   if (cfg.spoken) {
-    const w = await words(row);
+    const w = await words(row, tries || 0);
     if (w.blank) {
       /* A real zero: the item was sat and nothing usable came back. */
       await q.run('UPDATE attempt_answers SET earned=0, max_score=1, mark_note=?, marked_at=? WHERE id=?',
@@ -442,6 +494,16 @@ async function run(attemptId, opts) {
     return { marked: 0, failed: 0, skipped: 0, left: 0 };
   }
 
+  /* How many times this paper has already been round. Read once, before the
+     loop, because it decides one thing only: whether a recording that keeps
+     transcribing to nothing is still worth another try or is simply silent. A
+     forced re-mark starts that judgement over - an administrator pressing it has
+     usually just changed the very setting that was producing the empty
+     transcripts. */
+  const tries = (opts && opts.force)
+    ? 0
+    : ((await q.val('SELECT tries FROM ai_marking_backlog WHERE attempt_id=?', attemptId)) || 0);
+
   let marked = 0, failed = 0, skipped = 0;
   for (const row of rows) {
     /* markRow's own try covers the model call only. Transcription, storage and
@@ -449,7 +511,7 @@ async function run(attemptId, opts) {
        single unreadable recording left every later item unmarked for ever. */
     let r;
     try {
-      r = await markRow(attemptId, row);
+      r = await markRow(attemptId, row, tries);
     } catch (e) {
       console.warn('[ai] item ' + row.question_id + ' threw: ' + ai.scrub(e && e.message));
       r = 'failed';

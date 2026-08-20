@@ -206,11 +206,33 @@
                 '<span class="block text-[12.5px] text-muted font-medium mt-1">' +
                   (it.hasRecording ? 'Recorded' : (it.given ? 'You answered: ' + PREP.esc(it.given) : 'Left blank')) +
                 '</span>' +
+                feedback(it) +
               '</span>' +
               markChip(it) +
             '</li>').join('') + '</ul>' +
         '</article>').join('');
       PREP.qs('#r-parts-box').removeAttribute('hidden');
+    }
+
+    /**
+     * What the marker said about this item, when it said anything worth reading.
+     *
+     * This is the half of marking a practice platform exists for. The band tells
+     * a candidate where they are; the note tells them what to change - and for a
+     * spoken answer it also carries the disclosure that the mark was made from a
+     * transcript, so nobody believes their pronunciation was assessed. All of it
+     * was already being computed, stored and sent, and this screen was throwing
+     * it away.
+     *
+     * The two fallbacks the server fills in are skipped: the chip beside the
+     * item already says "Left blank" and "Awaiting marking", and printing the
+     * same words twice reads as a bug rather than as emphasis.
+     */
+    function feedback(it) {
+      const n = (it.note || '').trim();
+      if (!n || n === 'Left blank' || n === 'Awaiting marking') return '';
+      return '<span class="block text-[12.5px] leading-relaxed mt-1.5 ps-3 border-s-2 border-line">' +
+        PREP.esc(n) + '</span>';
     }
 
     /** The right / wrong / awaiting-marking chip for one item */

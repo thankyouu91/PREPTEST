@@ -110,11 +110,27 @@
       '<div id="ai-body"><div class="skeleton h-24 w-full rounded-2xl"></div></div>' +
     '</div>');
 
-  async function aiLoad() {
+  /**
+   * @param flash a message to show once the card has been rebuilt, or nothing.
+   *
+   * It has to be passed in rather than written before the call. Saving used to
+   * put a banner in #ai-out and then reload, and the reload replaces the whole
+   * card - so the confirmation was destroyed before the browser painted it and
+   * pressing Save appeared to do nothing at all.
+   */
+  async function aiLoad(flash) {
     const box = AD.qs('#ai-body');
     let d;
     try { d = await AD.get('/admin/ai'); }
-    catch (e) { box.innerHTML = AD.errorBox(e.message); return; }
+    catch (e) {
+      /* Not an error for an editor - it is the rule. This card is owner-only,
+         and every other admin was being shown a red failure panel on a screen
+         they had done nothing wrong to reach. */
+      box.innerHTML = e.status === 403
+        ? '<p class="text-[13.5px] text-muted">Only the owner account can set up marking.</p>'
+        : AD.errorBox(e.message);
+      return;
+    }
     const a = d.ai;
 
     const status = !a.canStore
@@ -179,11 +195,15 @@
       '</div>';
 
     const out = AD.qs('#ai-out');
+    if (flash) {
+      out.innerHTML = '<div class="banner banner-' + (flash.bad ? 'error' : 'success') + ' show"><span>' +
+        AD.esc(flash.text) + '</span></div>';
+    }
     const save = async (patch, done) => {
       try {
         await AD.put('/admin/ai', patch);
-        out.innerHTML = '<div class="banner banner-success show"><span>' + done + '</span></div>';
-        await aiLoad();
+        /* The message goes THROUGH the reload, not before it. */
+        await aiLoad({ text: done });
       } catch (e) {
         out.innerHTML = '<div class="banner banner-error show"><span>' + AD.esc(e.message) + '</span></div>';
       }

@@ -16,6 +16,7 @@
  * comes out the other side with a band on it.
  */
 import http from 'node:http';
+import { readFile } from 'node:fs/promises';
 import { DEMO_PASSWORD, ADMIN_PASSWORD } from './_demo.mjs';
 
 const BASE = process.env.BASE || 'http://127.0.0.1:3000';
@@ -54,6 +55,21 @@ function client() {
       rs(r);
       const ct = r.headers.get('content-type') || '';
       return { status: r.status, data: ct.includes('json') ? await r.json().catch(() => null) : null, headers: r.headers };
+    },
+    /* A spoken answer goes up as raw bytes, not JSON - so it needs its own way
+       through the same cookie jar. */
+    async raw(path, buf, contentType) {
+      if (!jar.has('prep_csrf')) await this.req('GET', '/prep/landing/');
+      const headers = {
+        Accept: 'application/json',
+        'Content-Type': contentType,
+        'X-CSRF-Token': jar.get('prep_csrf'),
+        Cookie: [...jar].map(([k, v]) => k + '=' + encodeURIComponent(v)).join('; ')
+      };
+      const r = await fetch(BASE + path, { method: 'POST', headers, body: buf, redirect: 'manual' });
+      rs(r);
+      const ct = r.headers.get('content-type') || '';
+      return { status: r.status, data: ct.includes('json') ? await r.json().catch(() => null) : null };
     }
   };
 }
@@ -63,17 +79,28 @@ function client() {
  * ------------------------------------------------------------------ */
 
 let mode = 'good';                 // good | prose | outOfRange | slow | error
+/* What the stub transcription service hears. '' is the case that matters: a
+   provider answering 200 with no words, which is what a wrong container, a
+   truncated upload and a bad afternoon all look like from here. */
+let heard = 'The delivery is late so I moved the installation to Thursday.';
 const seen = [];                   // every request the stub received
 
 const stub = http.createServer((req, res) => {
-  let body = '';
-  req.on('data', c => { body += c; });
+  const chunks = [];
+  req.on('data', c => { chunks.push(c); });
   req.on('end', () => {
+    const raw = Buffer.concat(chunks);
+    const body = raw.toString('latin1');
     seen.push({ url: req.url, headers: req.headers, body });
     const reply = (code, obj) => {
       res.writeHead(code, { 'content-type': 'application/json' });
       res.end(JSON.stringify(obj));
     };
+    /* Transcription is a different endpoint with a different answer shape, and
+       it has to be told apart from marking or a recording comes back scored. */
+    if (/\/audio\/transcriptions/.test(req.url || '')) {
+      return reply(200, { text: heard });
+    }
     if (mode === 'error') return reply(429, { error: { message: 'rate limited' } });
     if (mode === 'slow') return;                       // never answers
     const text =
@@ -395,6 +422,92 @@ try {
     "SELECT scaled, pending FROM attempt_scores WHERE attempt_id=? AND skill='overall'", att4.id);
   ok(done4 && done4.pending === 0 && done4.scaled != null,
     'And it ends up with a band, having failed on the way', JSON.stringify(done4));
+
+  /* ---------------------------------------------------------------- *
+   * A recording that really exists
+   * ---------------------------------------------------------------- */
+  head('Speaking, from a recording that is really there');
+
+  /* Every speaking check so far has been about a paper with NOTHING recorded,
+     which exercises the zero path and none of the rest. This one uploads real
+     audio, so transcription runs, the rubric sees words, and the two answers
+     that a service can give - words, and nothing - are told apart. */
+  const mp3 = await readFile(new URL('../server/data/audio/vpet-e-01.mp3', import.meta.url));
+
+  await admin.req('PUT', '/api/admin/ai',
+    { baseUrl: STUB, model: 'stub-model', sttBaseUrl: STUB, sttModel: 'stub-stt', sttApiKey: KEY + '-stt' });
+  r = await admin.req('GET', '/api/admin/ai');
+  ok(r.data.ai.hasSttKey === true, 'A transcription service is configured', JSON.stringify(r.data.ai.hasSttKey));
+
+  r = await student.req('POST', '/api/attempts', { testId: 'vpet-b1-01' });
+  const att6 = r.data.attempt;
+  const pH = att6.parts.find(p => p.part === 'H');
+  await student.req('POST', '/api/attempts/' + att6.id + '/parts/' + pH.sectionId + '/start');
+  const spokenItem = pH.items[0];
+  r = await student.raw('/api/attempts/' + att6.id + '/items/' + spokenItem.questionId + '/recording',
+    mp3, 'audio/mpeg');
+  ok(r.status === 201, 'A spoken answer is uploaded', 'status ' + r.status + ' ' + JSON.stringify(r.data));
+
+  /* The service answers 200 with no words. That is NOT proof of silence - it is
+     what a wrong format or a bad afternoon looks like - and scoring it zero
+     would put a provider's fault on somebody's record as their speaking. */
+  heard = '';
+  mode = 'good';
+  await student.req('POST', '/api/attempts/' + att6.id + '/submit');
+  await admin.req('POST', '/api/admin/attempts/' + att6.id + '/mark', {});
+
+  let spokenRow = await q.get(
+    'SELECT earned, mark_note FROM attempt_answers WHERE attempt_id=? AND question_id=?',
+    att6.id, spokenItem.questionId);
+  ok(spokenRow && spokenRow.earned == null,
+    'An empty transcript is not scored zero on the first try - a silent service is not a silent candidate',
+    JSON.stringify(spokenRow));
+  ok(spokenRow && /tried again/i.test(spokenRow.mark_note || ''),
+    'And the candidate is told it will be tried again', spokenRow && spokenRow.mark_note);
+
+  /* After the paper has been round enough times with the same answer, silence
+     is the better reading, and a mark has to be given rather than withheld for
+     ever. Wind the try count up rather than wait out the backoff. */
+  await q.run('UPDATE ai_marking_backlog SET tries=?, next_try=? WHERE attempt_id=?',
+    5, new Date(Date.now() - 60e3).toISOString(), att6.id);
+  await admin.req('POST', '/api/admin/attempts/' + att6.id + '/mark', {});
+  spokenRow = await q.get(
+    'SELECT earned, mark_note FROM attempt_answers WHERE attempt_id=? AND question_id=?',
+    att6.id, spokenItem.questionId);
+  ok(spokenRow && spokenRow.earned === 0,
+    'But after repeated tries with the same empty answer it is finally scored',
+    JSON.stringify(spokenRow));
+
+  /* And with real words, the rubric marks it and says what it marked. */
+  heard = 'The delivery is late so I moved the installation to Thursday.';
+  r = await student.req('POST', '/api/attempts', { testId: 'vpet-b1-01' });
+  const att7 = r.data.attempt;
+  const pH7 = att7.parts.find(p => p.part === 'H');
+  await student.req('POST', '/api/attempts/' + att7.id + '/parts/' + pH7.sectionId + '/start');
+  const spoken7 = pH7.items[0];
+  await student.raw('/api/attempts/' + att7.id + '/items/' + spoken7.questionId + '/recording', mp3, 'audio/mpeg');
+  await student.req('POST', '/api/attempts/' + att7.id + '/submit');
+  await admin.req('POST', '/api/admin/attempts/' + att7.id + '/mark', {});
+
+  const marked7 = await q.get(
+    'SELECT earned, mark_note FROM attempt_answers WHERE attempt_id=? AND question_id=?',
+    att7.id, spoken7.questionId);
+  ok(marked7 && marked7.earned > 0, 'A recording with words in it is marked', JSON.stringify(marked7));
+  /* The disclosure exists because nobody listened to this person's voice. It has
+     to reach the candidate, not just the rubric. */
+  ok(marked7 && /transcript/i.test(marked7.mark_note || ''),
+    'And the mark says it was made from a transcript, not from the voice',
+    marked7 && marked7.mark_note);
+
+  r = await student.req('GET', '/api/attempts/' + att7.id + '/result');
+  const notes = (r.data.parts || []).flatMap(p => p.items || []).map(i => i.note).filter(Boolean);
+  ok(notes.some(n => /transcript/i.test(n)),
+    'The result the candidate reads carries that note, rather than dropping it',
+    JSON.stringify(notes.slice(0, 2)).slice(0, 160));
+
+  /* Put the transcription service away again so the later sections behave as
+     they did before this one ran. */
+  await admin.req('PUT', '/api/admin/ai', { sttApiKey: '', sttBaseUrl: '' });
 
   /* The backlog nobody could clear: papers finished BEFORE a key was ever
      pasted in. Their submit hook found no key and returned; no later submit will

@@ -1634,10 +1634,23 @@ const requireOwner = A.requireOwner;
 
 router.get('/admin/ai', requireOwner, async (req, res) => {
   const s = await aiMarking.settings();
+  /* Counted the same way the pass finds work - from the PAPER, left-joining the
+     answers - and not from attempt_answers alone. An item the candidate never
+     touched has no answer row, so a count starting there could not see the very
+     items pending() was rewritten to find, and the two numbers disagreed by
+     exactly the ones that matter. Restricted to submitted sittings for the same
+     reason the pass is: a paper still being written is not waiting on anybody. */
   const waiting = await q.val(
-    `SELECT COUNT(*) c FROM attempt_answers aa
-       JOIN questions qs ON qs.id = aa.question_id
-      WHERE aa.earned IS NULL AND qs.type IN ('essay','speaking')`);
+    `SELECT COUNT(*) c
+       FROM attempts a
+       JOIN attempt_parts ap ON ap.attempt_id = a.id
+       JOIN section_items si ON si.section_id = ap.section_id
+       JOIN questions qs ON qs.id = si.question_id
+       LEFT JOIN attempt_answers aa
+              ON aa.attempt_id = a.id AND aa.question_id = si.question_id
+      WHERE a.status = 'submitted'
+        AND qs.type IN ('essay','speaking')
+        AND aa.earned IS NULL`);
   /* Papers, not answers. The count above is the honest size of the job and the
      one below is the honest size of the queue - a screen showing only the first
      leaves an owner unable to tell one badly-stuck paper from forty ordinary
