@@ -443,15 +443,37 @@ const run = async () => {
   check('Two draws of part A at B2 do not coincide exactly',
     overlap < 10, 'overlap ' + overlap + '/10');
 
-  /* A shortage must still be reported per part, not per skill. Part E is the
-     sharpest place to check: it needs audio so the bank holds nothing, while part A
-     is full of the same gap-fill type. */
+  /* A shortage must be reported per part, not per skill. Part E is still the
+     sharpest place to check even now the bank can fill it: part A holds thirty
+     items of the same `gap` type, so a generator pooling by type rather than by
+     part letter would happily make up the difference. Asking for more Part E
+     items than exist is what forces the question.
+
+     This assertion used to read the other way round - it expected a 409 because
+     part E was empty - which made "the audio parts have no items" a thing the
+     suite required. It went red the day they were written, which is the right
+     way for that kind of assertion to fail. */
   r = await call('POST', '/api/admin/tests/generate', {
     familyId: 'vpet', level: 'B1',
-    blueprint: [{ name: 'Part E - Dictation', part: 'E', skill: 'listening', type: 'Dictation', items: 8, minutes: 6, types: ['gap'] }]
+    blueprint: [{ name: 'Part E - Dictation', part: 'E', skill: 'listening', type: 'Dictation', items: 40, minutes: 6, types: ['gap'] }]
   });
-  check('The shortage is reported against part E, not filled from another part',
-    r.status === 409 && r.data.shortages[0].part === 'E', JSON.stringify(r.data.shortages || r.data));
+  check('A shortage is reported against part E, not filled from another part',
+    r.status === 409 && (r.data.shortages || []).length === 1
+      && r.data.shortages[0].part === 'E' && r.data.shortages[0].need === 40
+      && r.data.shortages[0].have < 40,
+    JSON.stringify(r.data.shortages || r.data));
+
+  /* And the part it CAN fill, it fills - from its own pool only. */
+  r = await call('POST', '/api/admin/tests/generate', {
+    familyId: 'vpet', level: 'B1',
+    blueprint: [{ name: 'Part E - Dictation', part: 'E', skill: 'listening', type: 'Dictation', items: 8, minutes: 4, types: ['gap'] }]
+  });
+  {
+    const items = (((r.data.sections || [])[0]) || {}).items || [];
+    check('Part E builds eight items, every one of them a part E item',
+      r.status === 201 && items.length === 8 && items.every(i => i.part === 'E'),
+      JSON.stringify({ status: r.status, n: items.length, parts: [...new Set(items.map(i => i.part))] }));
+  }
 
   /* A section remembers its letter, or a later redraw searches the whole skill and
      pulls in items belonging to another part. */
@@ -864,6 +886,12 @@ const run = async () => {
     !JSON.stringify(r.data).includes('audio_key'),
     'no hasAudio flag');
 
+  /* Everything the blueprint says needs sound, so the format's own count can be
+     checked against a second, independent path to the same fact. */
+  const audioLetters = ['E', 'F', 'G', 'H', 'J'];
+  const r2 = await call('GET', '/api/admin/questions?family=vpet&limit=300');
+  r2.data.items = (r2.data.items || []).filter(x => audioLetters.includes(x.part) && x.status === 'active');
+
   r = await call('GET', '/api/admin/exam-formats?familyId=vpet');
   {
     const list = Array.isArray(r.data) ? r.data : (r.data.items || r.data.formats || []);
@@ -872,8 +900,19 @@ const run = async () => {
       vpet ? vpet.totalItems + ' items / ' + vpet.sections.length + ' parts' : 'format not found');
     const audioParts = vpet ? vpet.sections.filter(s => s.needsAudio) : [];
     check('The five audio parts are marked', audioParts.length === 5, audioParts.length + ' parts');
-    check('Reports missing audio while the bank lacks the files',
-      !!vpet && vpet.audioShortBy > 0 && vpet.ready === false, vpet ? String(vpet.audioShortBy) : '-');
+    /* `audioShortBy` counts items in an audio part with no recording attached, and
+       `ready` is false while any part is short of either items or sound. Both used
+       to be asserted in their unhappy state, because the bank had no recordings at
+       all; now that it has, the same two fields have to agree the other way. The
+       cross-check keeps them honest - a hardcoded zero would pass the first line
+       and fail the second. */
+    check('The format reports itself ready, with no audio missing',
+      !!vpet && vpet.audioShortBy === 0 && vpet.shortBy === 0 && vpet.ready === true,
+      vpet ? JSON.stringify({ shortBy: vpet.shortBy, audioShortBy: vpet.audioShortBy, ready: vpet.ready }) : '-');
+
+    const mute = (r2.data.items || []).filter(x => !x.hasAudio);
+    check('And the question list agrees: every item of an audio part has sound',
+      mute.length === 0, mute.map(x => x.id).join(', '));
   }
 
   r = await call('DELETE', '/api/admin/questions/' + audioQid + '/audio');
