@@ -36,10 +36,24 @@ const str = (v, max) => (typeof v === 'string' ? v.trim().slice(0, max || 400) :
 const int = (v, dflt) => (Number.isFinite(+v) ? Math.trunc(+v) : dflt);
 const bad = (res, msg) => res.status(400).json({ error: msg });
 
-/** How many times an audio item may be played when the blueprint says nothing.
-    A platform default like the per-part minutes, not a published exam rule —
-    the owner sets the real numbers per part once they are confirmed. */
+/** How many times an audio item may be played when the blueprint says nothing. */
 const DEFAULT_REPLAYS = 2;
+
+const EXAM_FORMATS = require('./data/exam-formats');
+
+/**
+ * How many times THIS part's audio may be played.
+ *
+ * VPET plays each recording once: "You will hear the sentence only once" (Part E)
+ * and "It will be spoken once" (Part J), with no replay control described for any
+ * other part either. The blueprint carries the number per part; two remains the
+ * fallback for a family that publishes no part table, where nothing is known.
+ */
+function playsFor(familyId, part) {
+  if (!familyId || !part) return DEFAULT_REPLAYS;
+  const sec = EXAM_FORMATS.sectionOfPart(familyId, part);
+  return sec && sec.plays ? sec.plays : DEFAULT_REPLAYS;
+}
 
 /* Spoken answers are recorded in the browser and uploaded as bytes. Same
    ceiling and same raw-body approach as the admin MP3 upload: no multipart
@@ -96,7 +110,7 @@ function partOpen(row) {
 async function attemptState(att) {
   const test = await q.get('SELECT * FROM tests WHERE id=?', att.test_id);
   const parts = await q.all(
-    `SELECT ap.*, s.name, s.skill, s.type, s.minutes, s.sort
+    `SELECT ap.*, s.name, s.skill, s.type, s.minutes, s.seconds, s.sort, s.part AS section_part
        FROM attempt_parts ap JOIN sections s ON s.id = ap.section_id
       WHERE ap.attempt_id=? ORDER BY s.sort, s.id`, att.id);
 
@@ -119,9 +133,11 @@ async function attemptState(att) {
            FROM section_items si JOIN questions qs ON qs.id = si.question_id
           WHERE si.section_id=? ORDER BY si.sort, si.id`, p.section_id);
       const open = partOpen(p);
+      const plays = playsFor(test ? test.family_id : null, p.part || p.section_part);
       return {
         sectionId: p.section_id,
-        part: p.part || null,
+        part: p.part || p.section_part || null,
+        plays,
         name: p.name,
         skill: p.skill,
         type: p.type,
@@ -140,7 +156,7 @@ async function attemptState(att) {
             type: it.type,
             options: JSON.parse(it.options_json || '[]'),
             hasAudio: !!it.audio_key,
-            replaysLeft: it.audio_key ? Math.max(0, DEFAULT_REPLAYS - used) : null,
+            replaysLeft: it.audio_key ? Math.max(0, plays - used) : null,
             answer: saved ? saved.answer : '',
             hasRecording: !!(saved && saved.audio_key)
           };
@@ -386,8 +402,16 @@ router.get('/attempts/:id/items/:questionId/audio', A.requireUser, async (req, r
 
   const row = await q.get('SELECT * FROM attempt_answers WHERE attempt_id=? AND question_id=?', att.id, questionId);
   const used = row ? row.replays_used : 0;
-  if (used >= DEFAULT_REPLAYS) {
-    return res.status(429).json({ error: 'You have used every replay for this item.', replaysLeft: 0 });
+  const test = await q.get('SELECT family_id FROM tests WHERE id=?', att.test_id);
+  const sec = await q.get('SELECT part FROM sections WHERE id=?', item.section_id);
+  const plays = playsFor(test && test.family_id, sec && sec.part);
+  if (used >= plays) {
+    return res.status(429).json({
+      error: plays === 1
+        ? 'This recording plays once, and it has been played.'
+        : 'You have used every replay for this item.',
+      replaysLeft: 0
+    });
   }
 
   let file;
@@ -412,7 +436,7 @@ router.get('/attempts/:id/items/:questionId/audio', A.requireUser, async (req, r
     /* An exam paper carries its own answers: it must not sit in a shared cache, nor
        a private one, because a cached copy is a replay that was never counted. */
     .set('Cache-Control', 'private, no-store')
-    .set('X-Replays-Left', String(Math.max(0, DEFAULT_REPLAYS - used - 1)))
+    .set('X-Replays-Left', String(Math.max(0, plays - used - 1)))
     .send(file.body);
 });
 

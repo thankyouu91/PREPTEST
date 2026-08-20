@@ -214,6 +214,21 @@ const PrepRunner = {
     this.startClock(p);
   },
 
+  /**
+   * What the play button's caption should say.
+   *
+   * "1 replays left" was both ungrammatical and wrong. On a part that plays once
+   * - which on VPET is every audio part - the single play remaining is the FIRST
+   * one, and calling it a replay tells the candidate they have already had their
+   * turn. What they need to know before clicking is that there is no second
+   * chance.
+   */
+  playLabel(p, left) {
+    if (left <= 0) return 'Already played';
+    if (p && p.plays === 1) return 'Plays once - no replay';
+    return left === 1 ? '1 replay left' : left + ' replays left';
+  },
+
   /** One item: the prompt, somewhere to answer, and a play / record button if needed */
   itemHTML(p, it, i) {
     const id = 'q' + it.questionId;
@@ -249,7 +264,7 @@ const PrepRunner = {
             (it.replaysLeft <= 0 ? ' disabled' : '') + '>' +
             PREP.icon('play', 'w-4 h-4') + '<span>Nghe</span></button>' +
           '<span class="text-[13px] font-semibold text-muted" data-plays="' + it.questionId + '">' +
-            (it.replaysLeft > 0 ? it.replaysLeft + ' replays left' : 'No replays left') + '</span>' +
+            PREP.esc(this.playLabel(p, it.replaysLeft)) + '</span>' +
         '</div>'
       : '';
 
@@ -362,6 +377,9 @@ const PrepRunner = {
   async play(questionId) {
     const btn = PREP.qs('[data-play="' + questionId + '"]');
     const label = PREP.qs('[data-plays="' + questionId + '"]');
+    /* Which part this item belongs to, so the caption can say "plays once"
+       rather than counting replays that do not exist. */
+    const p = this.part(this.activeSection);
     if (!btn || btn.disabled) return;
     btn.disabled = true;
 
@@ -369,15 +387,20 @@ const PrepRunner = {
        straight to <audio src> turns a 429 into a bare "cannot play". */
     const url = '/api/attempts/' + this.attempt.id + '/items/' + questionId + '/audio';
     let blob;
+    /* Read off the server's header, not off the caption. It used to be recovered
+       with label.textContent.match(/\d+/) — so a caption without a digit in it,
+       which is every caption on a part that plays once, silently became zero. */
+    let left = 0;
     try {
       const res = await fetch(url, { credentials: 'same-origin' });
       if (!res.ok) {
         const msg = await res.json().catch(() => ({}));
         label.textContent = msg.error || 'Cannot play this';
-        if (res.status === 429) label.textContent = 'No replays left';
+        if (res.status === 429) label.textContent = 'Already played';
         return;
       }
-      label.textContent = (res.headers.get('X-Replays-Left') || 0) + ' replays left';
+      left = +(res.headers.get('X-Replays-Left') || 0);
+      label.textContent = this.playLabel(p, left);
       blob = await res.blob();
     } catch (e) {
       label.textContent = 'Connection lost';
@@ -389,7 +412,6 @@ const PrepRunner = {
     const audio = new Audio(src);
     audio.addEventListener('ended', () => {
       URL.revokeObjectURL(src);
-      const left = parseInt((label.textContent.match(/\d+/) || [0])[0], 10);
       btn.disabled = left <= 0;
     });
     audio.play().catch(() => { label.textContent = 'The browser blocked autoplay'; btn.disabled = false; });

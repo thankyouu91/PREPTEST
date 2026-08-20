@@ -154,9 +154,18 @@ function vpetSections() {
      every item against it. */
   const CHOICES = { C: 4, F: 3 };
 
+  /* How many times an audio item plays. The guide is explicit twice - Part E
+     "You will hear the sentence only once", Part J "It will be spoken once" -
+     and describes no replay control anywhere else either, so F, G and H are one
+     pass as well. That last part is a reading of the guide rather than a
+     quotation from it; if a replay ever turns out to be allowed, this is the one
+     place to say so. */
+  const PLAYS = { E: 1, F: 1, G: 1, H: 1, J: 1 };
+
   const S = (part, name, skill, type, items, types, needsAudio, note) => ({
     name: 'Part ' + part + ' - ' + name, part, skill, type, items,
     choices: CHOICES[part] || null,
+    plays: PLAYS[part] || null,
     seconds: partSeconds(part, items),
     /* Kept because the database column, the admin screen and the study pack all
        speak minutes. Derived, never typed: rounding is display only and the

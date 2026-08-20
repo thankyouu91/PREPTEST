@@ -203,25 +203,41 @@ try {
   ok(r.data.rejected.length === 1 && r.data.rejected[0].reason === 'not-in-attempt',
     'Nothing can be written for an item outside the sitting', JSON.stringify(r.data));
 
-  /* ---------- Replays: counted on the server ---------- */
-  head('Replay count');
+  /* ---------- Plays: counted on the server ---------- */
+  head('Play count');
+
+  /* How many plays this part gets comes from the blueprint, not from a number
+     written here. It used to assert two, which was the platform's own default;
+     the guide gives one - "You will hear the sentence only once" - and an
+     assertion that hardcodes the old answer is an assertion that argues against
+     the fix. The fixture paper is Part F, so it is Part F's allowance that is
+     under test. */
+  const { sectionOfPart } = await import('../server/data/exam-formats.js').then(m => m.default || m);
+  const PLAYS = sectionOfPart('vpet', 'F').plays;
+  ok(PLAYS >= 1, 'The blueprint says how many times part F plays', String(PLAYS));
+
   const listenOnce = () => student.req('GET', '/api/attempts/' + attemptId + '/items/' + made[0] + '/audio');
-  r = await listenOnce();
-  ok(r.status === 200 && r.data.length > 0, 'The first listen returns the file', 'status ' + r.status);
-  ok(r.headers.get('x-replays-left') === '1', 'One replay left after the first', r.headers.get('x-replays-left'));
-  ok((r.headers.get('cache-control') || '').includes('no-store'),
-    'Exam audio is never cached', r.headers.get('cache-control'));
+
+  for (let n = 1; n <= PLAYS; n++) {
+    r = await listenOnce();
+    ok(r.status === 200 && r.data.length > 0, 'Play ' + n + ' of ' + PLAYS + ' returns the file', 'status ' + r.status);
+    ok(r.headers.get('x-replays-left') === String(PLAYS - n),
+      'After play ' + n + ' the server says ' + (PLAYS - n) + ' left', r.headers.get('x-replays-left'));
+    if (n === 1) {
+      ok((r.headers.get('cache-control') || '').includes('no-store'),
+        'Exam audio is never cached', r.headers.get('cache-control'));
+    }
+  }
 
   r = await listenOnce();
-  ok(r.status === 200 && r.headers.get('x-replays-left') === '0', 'The second listen is the last',
-    r.headers.get('x-replays-left'));
-
-  r = await listenOnce();
-  ok(r.status === 429, 'Out of replays the server refuses, independent of the browser', 'status ' + r.status);
+  ok(r.status === 429, 'One play past the allowance the server refuses, independent of the browser',
+    'status ' + r.status);
 
   r = await student.req('GET', '/api/attempts/' + attemptId);
-  const itemAfter = r.data.attempt.parts.find(p => p.part === 'F').items.find(i => i.questionId === made[0]);
-  ok(itemAfter.replaysLeft === 0, 'The returned state reports the right number of replays left', String(itemAfter.replaysLeft));
+  const partF = r.data.attempt.parts.find(p => p.part === 'F');
+  const itemAfter = partF.items.find(i => i.questionId === made[0]);
+  ok(itemAfter.replaysLeft === 0, 'The returned state reports no plays left', String(itemAfter.replaysLeft));
+  ok(partF.plays === PLAYS, 'The part tells the browser its play allowance', String(partF.plays));
 
   /* Closing a part early: the same partOpen() guards the out-of-time case too, so
      this exercises that path directly without waiting out a real minute on every

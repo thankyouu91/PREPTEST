@@ -98,7 +98,7 @@ Ký hiệu: ✅ đúng · ⚠️ đúng một phần · ❌ chưa làm
 |---|---|
 | 8 câu, 25 giây | ✅ |
 | Có bản ghi cho từng câu | ✅ |
-| **Chỉ nghe một lần** | ❌ nền tảng cho nghe lại 2 lần |
+| **Chỉ nghe một lần** | ✅ đã sửa 2026-08-20 |
 
 ---
 
@@ -113,6 +113,7 @@ Ký hiệu: ✅ đúng · ⚠️ đúng một phần · ❌ chưa làm
 | 8 câu, có bản ghi | ✅ |
 | **Ba lựa chọn** | ✅ đã sửa 2026-08-20 |
 | Thời gian | ⚠️ 15 giây/câu là con số của nền tảng, guide không công bố |
+| Nghe một lần | ✅ guide không mô tả nút nghe lại ở phần nào |
 
 ---
 
@@ -129,6 +130,7 @@ Ký hiệu: ✅ đúng · ⚠️ đúng một phần · ❌ chưa làm
 | 6 câu, có bản ghi | ✅ |
 | **Trả lời bằng miệng** | ❌ đang là trắc nghiệm 4 lựa chọn |
 | **2 đoạn × 3 câu hỏi**, đoạn nghe một lần cho cả ba | ❌ đang là 6 đoạn rời |
+| Nghe một lần | ✅ |
 
 ---
 
@@ -143,6 +145,7 @@ Ký hiệu: ✅ đúng · ⚠️ đúng một phần · ❌ chưa làm
 |---|---|
 | 10 câu, 15 giây | ✅ |
 | Có bản ghi | ✅ |
+| Nghe một lần | ✅ |
 | **Bắt đầu nói trong 6 giây nếu không sẽ chuyển câu** | ❌ |
 
 ---
@@ -170,7 +173,7 @@ Ký hiệu: ✅ đúng · ⚠️ đúng một phần · ❌ chưa làm
 |---|---|
 | 3 câu, 30 giây | ✅ |
 | Có bản ghi | ✅ |
-| **Chỉ nghe một lần** | ❌ nền tảng cho nghe lại 2 lần |
+| **Chỉ nghe một lần** | ✅ đã sửa 2026-08-20 |
 | **Bíp báo hết giờ** | ❌ |
 
 ---
@@ -180,7 +183,7 @@ Ký hiệu: ✅ đúng · ⚠️ đúng một phần · ❌ chưa làm
 | # | Việc | Phần | Cỡ |
 |---|------|:----:|:--:|
 | 1 | ~~Ba lựa chọn thay vì bốn~~ | F | ✅ xong |
-| 2 | Audio chỉ phát một lần | E, J | Nhỏ |
+| 2 | ~~Audio chỉ phát một lần~~ | E, J | ✅ xong |
 | 3 | Tối thiểu 100 từ + đếm từ | D | Nhỏ |
 | 4 | Đoạn văn tự ẩn sau 30 giây | B | Vừa |
 | 5 | Đồng hồ và tiếng bíp cho từng câu nói | H, I, J | Vừa |
