@@ -488,6 +488,20 @@ try {
   ok(p.done + p.todo === p.total && p.done > 0,
     'Số đếm tiến độ khớp với nội dung tệp', JSON.stringify(p));
 
+  /* Lấy lô có bỏ qua: bốn lô rời nhau thì mới giao được cho bốn người dịch cùng
+     lúc. Không có tham số này thì lô sau chỉ khác lô trước sau khi lô trước đã
+     trộn xong — các lô buộc phải nối tiếp, và lần chạy tự động đầu tiên vì thế
+     chỉ làm được 37 nghĩa thay vì 160. */
+  const choDich = banDich.filter(r => !r.vi);
+  const lo = (bo, n) => choDich.slice(bo, bo + n).map(r => store.key(r.headword, r.pos, r.en));
+  const bonLo = [lo(0, 40), lo(40, 40), lo(80, 40), lo(120, 40)];
+  const gop = new Set(bonLo.flat());
+  ok(gop.size === bonLo.reduce((n, l) => n + l.length, 0),
+    'Bốn lô liên tiếp không chồng lấn dòng nào',
+    gop.size + '/' + bonLo.reduce((n, l) => n + l.length, 0));
+  ok(bonLo[0].length && bonLo[1].length && bonLo[0][0] !== bonLo[1][0],
+    'Lô thứ hai bắt đầu ở dòng khác lô thứ nhất');
+
   /* Cột `vi` để trống phải lộ ra ở API, nếu không màn hình sẽ in một dòng trắng
      ở đúng chỗ đáng lẽ là bản dịch. */
   const chuaDich = q.get("SELECT id FROM vocab_entries WHERE headword='child'");

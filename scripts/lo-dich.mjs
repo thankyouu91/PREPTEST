@@ -6,9 +6,11 @@
  * việc trên một tệp lô nhỏ, còn kho chung chỉ bị sửa bởi bước trộn — bước này
  * đối chiếu từng khoá, nên một tệp lô hỏng cũng không thể làm xáo kho.
  *
- *   node scripts/lo-dich.mjs --lay=150 --ra=/tmp/lo.tsv
- *   node scripts/lo-dich.mjs --nap=/tmp/lo.tsv
+ *   node scripts/lo-dich.mjs --lay=40 --ra=/tmp/lo1.tsv
+ *   node scripts/lo-dich.mjs --lay=40 --bo=40 --ra=/tmp/lo2.tsv   (lô rời nhau)
+ *   node scripts/lo-dich.mjs --nap=/tmp/lo1.tsv
  *   node scripts/lo-dich.mjs --dem
+ *   node scripts/lo-dich.mjs --kiem
  *
  * ---------------------------------------------------------------------------
  * BƯỚC TRỘN TỪ CHỐI NHỮNG GÌ
@@ -96,7 +98,14 @@ if (args.includes('--dem') || (!LAY && !NAP)) {
 /* ------------------------------------------------------------ lấy lô ---- */
 if (LAY) {
   const n = Math.max(1, Number(LAY));
-  const lo = store.read().filter(r => !r.vi).slice(0, n);
+  /* Bỏ qua bao nhiêu dòng chưa dịch trước khi lấy.
+     Lý do có tham số này: không có nó thì `--lay` luôn trả về đúng N dòng đầu,
+     nên hai lô chỉ rời nhau sau khi lô trước đã được trộn — tức là các lô phải
+     chạy nối tiếp. Lần chạy đầu tiên vì thế chỉ làm được một lô rồi hết lượt,
+     37 nghĩa thay vì 160. Với `--bo` thì lấy được bốn lô rời nhau ngay từ đầu
+     và giao cho bốn người dịch cùng lúc. */
+  const bo = Math.max(0, Number(val('--bo') || 0));
+  const lo = store.read().filter(r => !r.vi).slice(bo, bo + n);
   if (!lo.length) {
     console.log(`\n  ${C.g}Không còn nghĩa nào chờ dịch.${C.x}\n`);
     process.exit(0);
