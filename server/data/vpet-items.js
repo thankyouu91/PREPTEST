@@ -206,8 +206,10 @@ const PART_C = [
     'The author has said she wrote that chapter first and spent two years building the ' +
     'rest of the book towards it. Critics who disliked the novel tended to object not to ' +
     'the ending but to how slowly the middle moves.\n\nWhat do the critical reviews object to?',
-    ['The pace of the middle section', 'The ending being predictable',
-      'The order in which the book was written', 'The length of the whole novel'],
+    ['The length of the whole novel',
+      'The pace of the middle section',
+      'The ending being predictable',
+      'The order in which the book was written'],
     'The pace of the middle section',
     'The last sentence says so directly, and rules out the ending. "The order it was written in" is stated but never criticised.'],
   ['vpet-c-03', 'B2',
@@ -215,8 +217,10 @@ const PART_C = [
     'not fall, because the shop and cafe took more than the tickets ever had. The director ' +
     'is cautious all the same: two thirds of the extra visitors live within the city, and ' +
     'the museum had hoped to draw people from further away.\n\nWhy is the director cautious?',
-    ['The new visitors are mostly local', 'The museum is losing money',
-      'The shop and cafe are too small', 'Visitor numbers have started to fall'],
+    ['The shop and cafe are too small',
+      'Visitor numbers have started to fall',
+      'The new visitors are mostly local',
+      'The museum is losing money'],
     'The new visitors are mostly local',
     'The caution is about who came, not how many. The passage says plainly that income did not fall, which removes the second option.'],
 
@@ -226,8 +230,10 @@ const PART_C = [
     'In July and August it also stays open until ten at night, an hour later than usual. ' +
     'The lane reserved for slow swimmers is closed during school lessons on Tuesday and ' +
     'Thursday mornings.\n\nWhen is the slow lane unavailable?',
-    ['On two mornings a week during lessons', 'Every morning before eight',
-      'Throughout July and August', 'At weekends only'],
+    ['Every morning before eight',
+      'Throughout July and August',
+      'At weekends only',
+      'On two mornings a week during lessons'],
     'On two mornings a week during lessons',
     'The passage names Tuesday and Thursday mornings. The other options each reuse a real detail from the text but attach it to the wrong thing.'],
   ['vpet-c-05', 'B2',
@@ -245,8 +251,10 @@ const PART_C = [
     'and left a second group without one. Over six months the first group used four per ' +
     'cent less fuel. The effect was almost entirely produced in the first three weeks, ' +
     'after which the two groups behaved much the same.\n\nWhat does the study suggest about the display?',
-    ['Its effect faded after a short time', 'It saved fuel steadily over six months',
-      'It made no difference at any point', 'It worked only for experienced drivers'],
+    ['It worked only for experienced drivers',
+      'Its effect faded after a short time',
+      'It saved fuel steadily over six months',
+      'It made no difference at any point'],
     'Its effect faded after a short time',
     'The last sentence is the finding: the saving is real but front-loaded. "Steadily over six months" is the reading the last sentence exists to rule out.'],
 
@@ -257,8 +265,10 @@ const PART_C = [
     'authors, who had the least money, more often took the share — not out of confidence, ' +
     'they said, but because the sum offered to them was too small to make much difference.' +
     '\n\nWhy did debut authors more often choose the share of sales?',
-    ['The sum offered to them up front was very small', 'They were confident their books would sell well',
-      'They had more money behind them than established authors', 'The publisher would not offer them a payment up front'],
+    ['They had more money behind them than established authors',
+      'The publisher would not offer them a payment up front',
+      'The sum offered to them up front was very small',
+      'They were confident their books would sell well'],
     'The sum offered to them up front was very small',
     'The clause after the dash gives the reason and rules out confidence in the same breath. The last option turns a small offer into no offer, which the passage does not say.'],
   ['vpet-c-08', 'B2',
@@ -266,8 +276,10 @@ const PART_C = [
     'electricity use fell by a third. Residents of two streets asked for the old lighting ' +
     'back, saying the dimming left them uneasy. The council restored full lighting on those ' +
     'streets and kept the sensors everywhere else.\n\nHow did the council answer the complaints?',
-    ['It restored full lighting on those two streets only', 'It took the sensors out across the whole town',
-      'It made no change and kept the sensors everywhere', 'It dimmed the lights further to save more'],
+    ['It took the sensors out across the whole town',
+      'It made no change and kept the sensors everywhere',
+      'It dimmed the lights further to save more',
+      'It restored full lighting on those two streets only'],
     'It restored full lighting on those two streets only',
     'The last sentence draws the line precisely: full lighting on the two streets, sensors elsewhere. Each distractor takes that partial reversal to a total one, to none at all, or to the opposite.'],
 
@@ -290,10 +302,10 @@ const PART_C = [
     'in the first month, then crept back up as drivers learned which streets lay outside the ' +
     'charged zone. Two years on, the centre is quieter than before, but the roads ringing it ' +
     'carry more cars than they were built for.\n\nWhat has been the lasting effect of the fee?',
-    ['Traffic moved to the surrounding roads rather than disappearing',
+    ['Drivers stopped coming into the city altogether',
+      'Traffic moved to the surrounding roads rather than disappearing',
       'Traffic returned to exactly the level it was before',
-      'The centre is as busy now as it was before the fee',
-      'Drivers stopped coming into the city altogether'],
+      'The centre is as busy now as it was before the fee'],
     'Traffic moved to the surrounding roads rather than disappearing',
     'The last sentence holds both halves: the centre is quieter, the ring roads busier. Two distractors keep only the second half and drop the first.'],
   ['vpet-c-11', 'B2',
@@ -302,10 +314,10 @@ const PART_C = [
     'containing nothing, their scores improved almost as much. The researchers did not ' +
     'conclude the drug was useless, only that the first trial could not show what it did.' +
     '\n\nWhat do the researchers say about the first trial?',
-    ['It was not designed to show whether the drug itself worked',
-      'It proved the drug had no effect on pain',
-      'It showed the drug worked better than a tablet containing nothing',
-      'It recorded the pain scores incorrectly'],
+    ['It showed the drug worked better than a tablet containing nothing',
+      'It recorded the pain scores incorrectly',
+      'It was not designed to show whether the drug itself worked',
+      'It proved the drug had no effect on pain'],
     'It was not designed to show whether the drug itself worked',
     'The last sentence separates "useless" from "unproven" and picks the second. The distractor saying the drug has no effect is exactly the conclusion the researchers decline to draw.'],
   ['vpet-c-12', 'B2',
@@ -313,10 +325,10 @@ const PART_C = [
     'happier, but managers found meetings harder to arrange and junior staff said they saw ' +
     'less of colleagues they had learned from. The firm kept the policy and set two fixed ' +
     'days a week when everyone is in.\n\nWhat problem did the two fixed days address?',
-    ['People were overlapping too little to meet and learn from each other',
-      'Output had started to fall once hours were flexible',
+    ['Output had started to fall once hours were flexible',
       'Staff were unhappy with being able to choose their hours',
-      'Managers wanted the old fixed working week back'],
+      'Managers wanted the old fixed working week back',
+      'People were overlapping too little to meet and learn from each other'],
     'People were overlapping too little to meet and learn from each other',
     'The two complaints are meetings and contact with colleagues, and both are about overlap. Output and happiness are given as the things that did NOT go wrong.'],
   ['vpet-c-13', 'B2',
@@ -335,10 +347,10 @@ const PART_C = [
     'until a book comes back. Returns arrived no later than before, and the number of people ' +
     'using the library rose, particularly among those who had previously stopped coming ' +
     'because they owed money.\n\nWhat was the main effect of dropping the fines?',
-    ['More people used the library, without books coming back later',
+    ['The library collected more money than it had from fines',
+      'More people used the library, without books coming back later',
       'Books started coming back considerably later than before',
-      'Borrowing fell because there was no penalty for lateness',
-      'The library collected more money than it had from fines'],
+      'Borrowing fell because there was no penalty for lateness'],
     'More people used the library, without books coming back later',
     'Both findings sit in the second sentence and the right answer keeps them together. The distractors each contradict one of the two.']
 ];

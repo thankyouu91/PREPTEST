@@ -148,8 +148,15 @@ function partSeconds(part, items) {
 }
 
 function vpetSections() {
+  /* How many options an mcq part shows. The guide is explicit for F - "You will
+     see three possible answers" - and silent for C, which keeps the four it has
+     always had. A number here rather than in the items means the suite can check
+     every item against it. */
+  const CHOICES = { C: 4, F: 3 };
+
   const S = (part, name, skill, type, items, types, needsAudio, note) => ({
     name: 'Part ' + part + ' - ' + name, part, skill, type, items,
+    choices: CHOICES[part] || null,
     seconds: partSeconds(part, items),
     /* Kept because the database column, the admin screen and the study pack all
        speak minutes. Derived, never typed: rounding is display only and the

@@ -181,10 +181,36 @@ try {
   /* Multiple choice: the answer must be among the options, and no two options may
      be identical — two the same and the item measures nothing at all. */
   const mcqs = items.filter(i => i.type === 'mcq');
-  ok(mcqs.every(i => i.options.length === 4), 'Every mcq has exactly 4 options');
+  /* Four is not a universal truth: part F shows three, because the guide says so.
+     Read the number off the blueprint rather than asserting the one that happened
+     to be right for the part that existed first. */
+  const wrongCount = mcqs.filter(i => {
+    const want = partOf[i.part].choices;
+    return want && i.options.length !== want;
+  });
+  ok(wrongCount.length === 0,
+    'Every mcq shows the number of options its part declares',
+    wrongCount.map(i => `${i.key} has ${i.options.length}, part ${i.part} wants ${partOf[i.part].choices}`).join(', '));
   ok(mcqs.every(i => i.options.includes(i.answer)), 'The answer is always among the options');
   ok(mcqs.every(i => new Set(i.options).size === i.options.length), 'No two options are identical');
   ok(mcqs.every(i => i.options.every(o => o.trim())), 'No option is left blank');
+
+  /* Where the key sits. Every one of the fourteen reading items was written with
+     the correct option first, which makes part C - the whole Reading mark -
+     answerable by always clicking the top choice, without reading anything. The
+     rule: no part may put its key in the same position more than two thirds of
+     the time. Checked per part, because a bank-wide average hides exactly this. */
+  for (const letter of PARTS) {
+    const mine = mcqs.filter(i => i.part === letter);
+    if (mine.length < 3) continue;
+    const at = {};
+    mine.forEach(i => { const k = i.options.indexOf(i.answer); at[k] = (at[k] || 0) + 1; });
+    const worst = Math.max(...Object.values(at));
+    ok(worst <= Math.ceil(mine.length * 2 / 3),
+      `Part ${letter} does not park its answer in one position`,
+      `${worst} of ${mine.length} at position ${Object.keys(at).find(k => at[k] === worst)}`
+      + ' — a candidate who notices scores without reading');
+  }
 
   /* Essay and speaking are rubric-marked: a pre-written answer is the wrong model,
      marking.js leaves them pending rather than comparing strings. */
