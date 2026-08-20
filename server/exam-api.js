@@ -55,6 +55,36 @@ function playsFor(familyId, part) {
   return sec && sec.plays ? sec.plays : DEFAULT_REPLAYS;
 }
 
+/**
+ * How this part paces the items inside it, or null when it does not.
+ *
+ * Only Part B for now, and only because the guide is explicit about it: the
+ * passage "will disappear after 30 seconds", then "You have 90 seconds to
+ * rewrite the passage." A part rendered all at once, with all three passages
+ * sitting on the screen for six minutes, is a copying exercise wearing a memory
+ * exercise's name - and someone practising on it would arrive at the real test
+ * having practised the wrong skill.
+ *
+ * The numbers come from the blueprint's timing table, the same one that decides
+ * how long the part itself runs, so the two can never drift apart. Parts H, I
+ * and J want this as well - a clock and a beep per spoken answer - and will get
+ * it from here rather than from a second table.
+ *
+ * The part's own clock stays authoritative and stays on the server. This paces
+ * what a candidate SEES inside that window; it is not a second enforcement
+ * layer, and it does not pretend to be one.
+ */
+function pacingFor(familyId, part) {
+  if (!familyId || !part) return null;
+  const t = EXAM_FORMATS.vpetTiming()[part];
+  /* `read` is the marker: it is what makes a part two-phase. A part whose items
+     are simply answered one after another needs nothing here. */
+  if (!t || !t.read) return null;
+  const sec = EXAM_FORMATS.sectionOfPart(familyId, part);
+  if (!sec) return null;
+  return { read: t.read, answer: t.answer || 0 };
+}
+
 /* Spoken answers are recorded in the browser and uploaded as bytes. Same
    ceiling and same raw-body approach as the admin MP3 upload: no multipart
    parser, so no new dependency. */
@@ -139,11 +169,20 @@ async function attemptState(att) {
          a word count against it instead of leaving the candidate to guess. */
       const bp = test && letter ? EXAM_FORMATS.sectionOfPart(test.family_id, letter) : null;
       const minWords = bp && bp.minWords ? bp.minWords : null;
+      /* How the exam paces the items INSIDE this part, when it paces them at
+         all. Part B is the case that forced this: the guide says the passage
+         "will disappear after 30 seconds", and a part that renders all three
+         passages at once and leaves them there is not a memory task, it is a
+         copying task. Sent as the blueprint's own numbers rather than as a flag,
+         so the browser is showing what the exam says instead of a constant
+         somebody typed into a script. */
+      const pacing = letter ? pacingFor(test ? test.family_id : null, letter) : null;
       return {
         sectionId: p.section_id,
         part: p.part || p.section_part || null,
         plays,
         minWords,
+        pacing,
         name: p.name,
         skill: p.skill,
         type: p.type,

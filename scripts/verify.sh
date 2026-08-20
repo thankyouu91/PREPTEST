@@ -163,6 +163,11 @@ node scripts/test-user-api.mjs || fail=1
 step "Exam engine (sittings, timers, replays, quotas)"
 node scripts/test-exam.mjs || fail=1
 
+# A browser, because the API cannot see this: whether the Part B passage is on
+# the screen or gone, every request and response is identical.
+step "The exam screen (Part B hides its passage)"
+node scripts/test-exam-ui.mjs || fail=1
+
 step "VPET item bank (blueprint match, per-item quality)"
 node scripts/test-items.mjs || fail=1
 

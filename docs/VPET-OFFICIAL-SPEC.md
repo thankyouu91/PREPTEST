@@ -53,7 +53,7 @@ Ký hiệu: ✅ đúng · ⚠️ đúng một phần · ❌ chưa làm
 | Thuộc tính | Trạng thái |
 |---|---|
 | 3 câu, cửa sổ 120 giây | ✅ |
-| **Đoạn văn tự ẩn sau 30 giây** | ❌ đoạn văn nằm nguyên trên màn hình, biến bài thi trí nhớ thành bài chép lại |
+| **Đoạn văn tự ẩn sau 30 giây** | ✅ đã sửa 2026-08-20 — mỗi lần một đoạn: 30 giây đọc, đoạn văn **bị gỡ khỏi trang**, rồi 90 giây viết |
 
 ---
 
@@ -185,7 +185,7 @@ Ký hiệu: ✅ đúng · ⚠️ đúng một phần · ❌ chưa làm
 | 1 | ~~Ba lựa chọn thay vì bốn~~ | F | ✅ xong |
 | 2 | ~~Audio chỉ phát một lần~~ | E, J | ✅ xong |
 | 3 | ~~Tối thiểu 100 từ + đếm từ~~ | D | ✅ xong |
-| 4 | Đoạn văn tự ẩn sau 30 giây | B | Vừa |
+| 4 | ~~Đoạn văn tự ẩn sau 30 giây~~ | B | ✅ xong |
 | 5 | Đồng hồ và tiếng bíp cho từng câu nói | H, I, J | Vừa |
 | 6 | Gom 3 màn × 2 câu hỏi | C | Vừa |
 | 7 | Trả lời bằng miệng, 2 đoạn × 3 câu | G | Lớn |

@@ -148,6 +148,10 @@ const PrepRunner = {
 
   async showPart(sectionId, skipFlush) {
     if (!skipFlush) await this.flush();
+    /* Leaving a paced part abandons its per-item clocks. Coming back starts the
+       part again at the first unanswered item, which is the same thing a reload
+       does and for the same reason: those clocks only ever lived in this tab. */
+    if (this.pace && this.pace.sectionId !== sectionId) this.stopPace();
     this.activeSection = sectionId;
     const p = this.part(sectionId);
     if (!p) return;
@@ -192,6 +196,12 @@ const PrepRunner = {
               + '<span>words.</span></p>' : '') +
           (p.plays === 1 && p.items.some(x => x.hasAudio)
             ? '<p class="text-[14px] font-semibold mt-1">Each recording plays once.</p>' : '') +
+          /* Said here because it cannot be discovered later: by the time a
+             candidate learns the passage goes away, it has gone away. */
+          (p.pacing
+            ? '<p class="text-[14px] font-semibold mt-1">One passage at a time. You get <b>' +
+              p.pacing.read + '</b> <span>seconds to read it, then it disappears and you have</span> <b>' +
+              p.pacing.answer + '</b> <span>seconds to rewrite it.</span></p>' : '') +
           (p.minutes
             ? '<p class="text-[14px] font-semibold text-muted mt-4 max-w-[44ch] mx-auto">Pressing start begins the clock. When it runs out this part closes, and it cannot be reopened.</p>'
             : '') +
@@ -202,6 +212,13 @@ const PrepRunner = {
       PREP.qs('#ex-clock').setAttribute('hidden', '');
       return;
     }
+
+    /* A part the exam paces item by item is a different screen: one item, one
+       phase, and no way to look ahead. Only while the part is OPEN - once it is
+       finished the whole thing is shown at once, because then it is a record of
+       what happened rather than an exam. */
+    if (p.pacing && !closed) return this.showPaced(p);
+    this.stopPace();
 
     box.innerHTML =
       '<div class="flex flex-wrap items-baseline gap-x-3 gap-y-1 mb-4">' +
@@ -219,6 +236,143 @@ const PrepRunner = {
       if (btn) btn.addEventListener('click', () => this.closePart(sectionId));
     }
     this.startClock(p);
+  },
+
+  /* ---------- Parts the exam paces item by item ---------- */
+
+  /**
+   * Part B, as the exam actually runs it.
+   *
+   *   "You will read a passage on the screen. The passage will disappear after
+   *    30 seconds. After the passage disappears, you need to rewrite the meaning
+   *    of it in your own words. You have 90 seconds to rewrite the passage."
+   *
+   * Before this, all three passages were rendered at once and stayed on screen
+   * for the whole six minutes. Everything about that was defensible except the
+   * one thing the part measures: nobody had to remember anything. Somebody
+   * practising on it would have practised copying, and found that out on the day.
+   *
+   * ## What this does and does not guarantee
+   *
+   * The passage is REMOVED from the page, not hidden with a class - a hidden
+   * element is still there to be read. What it is not is tamper-proof: the text
+   * arrived in the sitting payload, and somebody determined enough to open the
+   * network tab can still read it. The real test runs in a locked-down browser
+   * and this one runs in yours. The honest description is that this makes the
+   * practice faithful, not that it makes cheating impossible - and a candidate
+   * cheating themselves in practice has only bought a worse result later.
+   *
+   * The part's own clock, on the server, still decides when the part ends. This
+   * paces what happens inside that window.
+   */
+  pace: null,
+
+  stopPace() {
+    if (this.pace && this.pace.timer) clearInterval(this.pace.timer);
+    this.pace = null;
+  },
+
+  /**
+   * Which item to start on after a reload.
+   *
+   * The phase timers live in this tab and nowhere else, so a refresh cannot be
+   * made to resume mid-passage. Starting at the first item with nothing written
+   * is the reading that costs a candidate least: it never re-shows a passage
+   * somebody has already answered from, and it never skips one they have not.
+   */
+  firstUnanswered(p) {
+    const i = p.items.findIndex(it => !String(it.answer || '').trim());
+    return i < 0 ? p.items.length - 1 : i;
+  },
+
+  showPaced(p) {
+    if (!this.pace || this.pace.sectionId !== p.sectionId) {
+      this.stopPace();
+      this.pace = { sectionId: p.sectionId, index: this.firstUnanswered(p), phase: 'read', endsAt: 0, timer: null };
+    }
+    this.renderPaced(p);
+  },
+
+  renderPaced(p) {
+    const st = this.pace;
+    const it = p.items[st.index];
+    if (!it) { this.stopPace(); this.closePart(p.sectionId); return; }
+
+    const seconds = st.phase === 'read' ? p.pacing.read : p.pacing.answer;
+    if (!st.endsAt) st.endsAt = Date.now() + seconds * 1000;
+
+    const reading = st.phase === 'read';
+    PREP.qs('#ex-part').innerHTML =
+      '<div class="flex flex-wrap items-baseline gap-x-3 gap-y-1 mb-4">' +
+        '<h3 class="font-extrabold text-xl tracking-tight">' + PREP.esc(p.name) + '</h3>' +
+        '<span class="text-[13.5px] font-semibold text-muted">' +
+          'Passage ' + (st.index + 1) + ' of ' + p.items.length + '</span>' +
+      '</div>' +
+      '<article class="card p-5">' +
+        '<p class="flex flex-wrap items-center gap-2.5 text-[13.5px] font-semibold">' +
+          '<span class="badge ' + (reading ? 'badge-ok' : 'badge-muted') + '">' +
+            (reading ? 'Read and remember' : 'Write it in your own words') + '</span>' +
+          '<span class="ms-auto tabular-nums" data-pace-left>' + seconds + 's</span>' +
+        '</p>' +
+        (reading
+          ? '<p class="text-[16px] leading-relaxed mt-4">' + PREP.esc(it.prompt) + '</p>' +
+            '<p class="text-[13px] text-muted font-semibold mt-4">' +
+              'The passage disappears when the time runs out. You cannot get it back.</p>'
+          : /* The prompt is deliberately absent from here. */
+            '<p class="text-[13px] text-muted font-semibold mt-1">' +
+              'Include all the details you can - this is not a summary.</p>' +
+            '<textarea class="input mt-3" rows="10" data-answer="' + it.questionId + '" ' +
+              'aria-label="Rewrite the passage"></textarea>') +
+      '</article>' +
+      '<button type="button" id="ex-close" class="btn btn-ghost btn-md mt-6">Finish this part</button>';
+
+    const close = PREP.qs('#ex-close');
+    if (close) close.addEventListener('click', () => { this.stopPace(); this.closePart(p.sectionId); });
+    if (!reading) {
+      this.wireItems(p, false);
+      const ta = PREP.qs('[data-answer="' + it.questionId + '"]');
+      if (ta) ta.focus();
+    }
+
+    if (st.timer) clearInterval(st.timer);
+    st.timer = setInterval(() => this.paceTick(p), 250);
+    this.paceTick(p);
+    this.startClock(p);
+  },
+
+  /**
+   * One tick of the per-item clock.
+   *
+   * Reading runs out into writing; writing runs out into the next passage. The
+   * answer is flushed BEFORE the screen changes - what somebody typed in the
+   * last second of a 90-second window is the part of their answer they were
+   * most rushed over, and losing it to a re-render would be the platform's
+   * fault rather than theirs.
+   */
+  paceTick(p) {
+    const st = this.pace;
+    if (!st) return;
+    const left = Math.max(0, Math.ceil((st.endsAt - Date.now()) / 1000));
+    const el = PREP.qs('[data-pace-left]');
+    if (el) el.textContent = left + 's';
+    if (left > 0) return;
+
+    clearInterval(st.timer);
+    st.timer = null;
+    if (st.phase === 'read') {
+      st.phase = 'answer';
+      st.endsAt = 0;
+      this.renderPaced(p);
+      return;
+    }
+    this.flush().then(() => {
+      if (!this.pace) return;
+      this.pace.index += 1;
+      this.pace.phase = 'read';
+      this.pace.endsAt = 0;
+      if (this.pace.index >= p.items.length) { this.stopPace(); this.closePart(p.sectionId); return; }
+      this.renderPaced(p);
+    });
   },
 
   /**
