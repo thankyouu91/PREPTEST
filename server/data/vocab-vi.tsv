@@ -661,7 +661,7 @@ B1	royal	adj	Of or relating to a monarch or his (or her) family.	(thuộc) hoàn
 B1	royal	noun	(paper) A standard size of writing paper, measuring 24 by 19 inches.	(giấy) khổ giấy royal	ok
 B1	royal	noun	A stag with twelve points (six on each antler).	(săn bắn) hươu đực gạc mười hai nhánh	ok
 B1	royal	noun	Any of various lycaenid butterflies.		
-B1	royal	noun	The fourth tine of an antler's beam.		
+B1	royal	noun	The fourth tine of an antler's beam.	nhánh gạc thứ tư (của hươu)	
 B1	ruin	noun	(countable, sometimes in the plural) The remains of a destroyed or dilapidated construction, such as a house or castle.	tàn tích, phế tích, đống đổ nát	ok
 B1	ruin	noun	(uncountable) Something that leads to serious trouble or destruction.	nguyên nhân dẫn đến sụp đổ, mầm mống diệt vong	ok
 B1	ruin	noun	(uncountable) The state of being a ruin, destroyed or decayed.	hư hại	sai nghĩa — "hư hại" chỉ mang nghĩa "bị hư hỏng" nhẹ, không truyền tải được nghĩa "trạng thái đổ nát/điêu tàn hoàn toàn" của "ruin" — nên là "cảnh hoang tàn, cảnh điêu tàn"
@@ -872,7 +872,7 @@ B1	temple	noun	(figurative) Any place seen as an important centre for some activ
 B1	temple	noun	(ophthalmology) Either of the sidepieces on a set of spectacles, extending backwards from the hinge toward the ears and, usually, turning down around them.	(nhãn khoa) càng kính, gọng kính	ok
 B1	temple	noun	(weaving) A contrivance used in a loom for keeping the web stretched transversely.	(dệt) thanh căng vải (trong khung cửi)	ok
 B1	temple	noun	A house of worship, especially:	đền thờ, chùa, đền	ok
-B1	temple	noun	A meeting house of the Oddfellows fraternity; its members.		
+B1	temple	noun	A meeting house of the Oddfellows fraternity; its members.	hội quán (của hội kín Oddfellows)	
 B1	temple	verb	(transitive) To build a temple for; to appropriate a temple to; to temple a god	dựng đền thờ (để tôn thờ ai/cái gì)	ok
 B1	theory	noun	(chess and similar games) The standardization and study of fixed sequences of moves, especially in the opening phase of a game.	(cờ vua) lý thuyết khai cuộc	ok
 B1	theory	noun	(sciences) A coherent statement or set of ideas that explains observed facts or phenomena and correctly predicts new facts or phenomena not previously observed, or which sets out the laws and principles of something known or observed; a hypothesis confirmed by observation, experiment etc.	học thuyết, lý thuyết	ok
@@ -881,7 +881,7 @@ B1	theory	noun	A description of an event or system that is considered to be accu
 B1	thief	noun	One who carries out a theft.	kẻ trộm, tên trộm, kẻ cắp	ok
 B1	thief	noun	One who steals another person's property, especially by stealth and without using force or violence.	kẻ trộm (lén lút, không dùng bạo lực)	ok
 B1	toilet	noun	(figuratively) A very shabby or dirty place.	(nghĩa bóng) chỗ bẩn thỉu, nơi tồi tàn	ok
-B1	toilet	noun	(incel slang, derogatory) A woman.	(tiếng lóng, miệt thị) phụ nữ	
+B1	toilet	noun	(incel slang, derogatory) A woman.	(tiếng lóng, miệt thị) phụ nữ	thiếu nhãn "incel" — bản dịch chỉ giữ "tiếng lóng, miệt thị", mất thông tin đây là tiếng lóng riêng của cộng đồng incel
 B1	toilet	noun	(UK, India, Australia, Hong Kong) A room, enclosed area or single-purpose building containing a fixture or fixtures used for urination and defecation; a bathroom or water closet.	(Anh) nhà vệ sinh, phòng vệ sinh	thiếu nhãn vùng — tiếng Anh ghi (UK, India, Australia, Hong Kong) nhưng bản dịch chỉ giữ "(Anh)", bỏ mất India, Australia, Hong Kong
 B1	toilet	noun	A fixture used for urination and defecation, particularly one with a large bowl and ring-shaped seat which uses water to flush the waste material into a septic tank or sewer system.	bồn cầu, toa lét	ok
 B1	toilet	verb	To assist another (a child, etc.) in using a toilet.	giúp (ai đó) đi vệ sinh	ok
@@ -959,7 +959,7 @@ B2	angle	noun	A viewpoint; a way of looking at something.	góc nhìn, quan đi�
 B2	angle	verb	(figurative, informal, with for) To attempt to subtly persuade someone to offer a desired thing.	(khẩu ngữ) gạ gẫm, khéo léo đòi	ok
 B2	angle	verb	(intransitive, informal) To change direction rapidly.	(khẩu ngữ) rẽ ngoặt, đổi hướng đột ngột	ok
 B2	angle	verb	(intransitive) To try to catch fish with a hook and line.	câu cá	ok
-B2	angle	verb	(transitive, billiards) To hamper (oneself or one's opponent) by leaving the cue ball in the jaws of a pocket such that the surround of the pocket (the "angle") blocks the path from cue ball to object ball.		
+B2	angle	verb	(transitive, billiards) To hamper (oneself or one's opponent) by leaving the cue ball in the jaws of a pocket such that the surround of the pocket (the "angle") blocks the path from cue ball to object ball.	(bi-a) chắn bi cái ở miệng lỗ	
 B2	angle	verb	(transitive, informal) To present or argue something in a particular way or from a particular viewpoint.	trình bày theo góc độ riêng	thiếu nhãn khẩu ngữ — nên có "(khẩu ngữ)" như các nghĩa liền kề (angle for, angle: đổi hướng)
 B2	angle	verb	(transitive, often in the passive) To place (something) at an angle.	đặt nghiêng, để chéo	ok
 B2	apology	noun	A formal justification, defence.	(trang trọng) lời biện hộ, lời bào chữa	ok
@@ -971,11 +971,11 @@ B2	atmosphere	noun	The air in a particular place.	bầu không khí	ok
 B2	atmosphere	noun	The gases surrounding the Earth or any astronomical body.	khí quyển	ok
 B2	august	adj	Awe-inspiring, majestic, noble, venerable.	(trang trọng) uy nghi, tôn nghiêm	ok
 B2	august	adj	Of noble birth.	cao quý, thuộc dòng dõi quý tộc	ok
-B2	august	noun	Alternative form of auguste (“kind of clown”).		
+B2	august	noun	Alternative form of auguste (“kind of clown”).	hề auguste (một kiểu hề xiếc)	
 B2	auntie	noun	(Asia, Africa, Australia, New Zealand) Term of familiarity or respect for a middle-aged or elderly woman.	cô, dì (cách gọi thân mật phụ nữ lớn tuổi)	thiếu nhãn vùng miền — en ghi rõ (Asia, Africa, Australia, New Zealand) nhưng vi không thể hiện, dễ khiến học viên tưởng đây là cách dùng phổ quát chứ không phải theo vùng
 B2	auntie	noun	(endearing) Diminutive of aunt.	dì, cô (cách gọi thân mật)	ok
 B2	auntie	noun	(Hong Kong) Female domestic helper.	(Hồng Kông) người giúp việc nữ	ok
-B2	auntie	noun	(LGBTQ, slang, US) An elderly gay man.	(tiếng lóng LGBTQ, Mỹ) người đồng tính nam lớn tuổi	
+B2	auntie	noun	(LGBTQ, slang, US) An elderly gay man.	(tiếng lóng LGBTQ, Mỹ) người đồng tính nam lớn tuổi	ok
 B2	auntie	verb	To be or behave like the aunt of.	cư xử như dì/cô của (ai đó)	ok
 B2	backup	adj	(computing) That is intended as a backup.	(tin học) dự phòng, sao lưu	ok
 B2	backup	adj	Standby, reserve or extra.	dự phòng, dự trữ	ok
@@ -986,13 +986,13 @@ B2	backup	noun	A reserve or substitute.	người/vật dự phòng, phương án
 B2	backup	noun	An accumulation of material caused by a (partial) obstruction or (complete) blockage of the flow or movement of the material, or an accumulation of material that causes an overflow due to the flow being greater than the maximum possible flow.	sự ùn tắc, sự tràn ngược do tắc nghẽn	ok
 B2	backup	verb	(computing, nonstandard) Alternative form of back up.	(tin học, không chuẩn) sao lưu	ok
 B2	batman	noun	(by extension, informal) A personal assistant or supporter.	(thân mật) trợ lý riêng, người giúp việc thân tín	ok
-B2	batman	noun	(historical units of measure) A Turkish unit of weight varying by location, time, and item from 2–8 okas (about 2.5–10 kg).	(lịch sử) đơn vị trọng lượng của Thổ Nhĩ Kỳ	
+B2	batman	noun	(historical units of measure) A Turkish unit of weight varying by location, time, and item from 2–8 okas (about 2.5–10 kg).	(lịch sử) đơn vị trọng lượng của Thổ Nhĩ Kỳ	ok
 B2	batman	noun	(military) A servant or valet to a military officer.	(quân sự) lính hầu, cần vụ	ok
-B2	batman	noun	(Turkish units of measure) A unit of weight established in 1931 equal to 10 kg.	(Thổ Nhĩ Kỳ) đơn vị trọng lượng bằng 10 kg	
+B2	batman	noun	(Turkish units of measure) A unit of weight established in 1931 equal to 10 kg.	(Thổ Nhĩ Kỳ) đơn vị trọng lượng bằng 10 kg	ok
 B2	batman	noun	Coelostathma discopunctana, a moth of Eastern North America.		
 B2	batman	verb	(slang, climbing) To climb up or down a rope free hand (i.e. as Batman does).	(leo núi, lóng) trèo/đu dây bằng tay không	ok
 B2	batman	verb	To act as a batman, wait on an officer.	(quân sự) làm cần vụ, hầu hạ sĩ quan	ok
-B2	behalf	noun	(when adopted by someone else) One's role or rightful place; stead or authority.	vai trò, thẩm quyền	
+B2	behalf	noun	(when adopted by someone else) One's role or rightful place; stead or authority.	vai trò, thẩm quyền	ok
 B2	behalf	noun	The interest, benefit, or wellbeing of someone or something.	lợi ích, quyền lợi	ok
 B2	belly	noun	stomach (an organ in animals that stores food in the process of digestion)	dạ dày, bụng	ok
 B2	belly	noun	The abdomen (especially a fat one).	bụng, bụng phệ	ok
@@ -1041,7 +1041,7 @@ B2	bush	noun	(historical) A shrub or branch, properly, a branch of ivy (sacred t
 B2	bush	noun	(horticulture) A woody plant distinguished from a tree by its multiple stems and lower height, being usually less than six metres tall; a horticultural rather than strictly botanical category.	cây bụi, bụi cây	ok
 B2	bush	noun	(hunting) The tail, or brush, of a fox.	(săn bắn) đuôi cáo	ok
 B2	bush	noun	A mechanical attachment, usually a metallic socket with a screw thread, such as the mechanism by which a camera is attached to a tripod stand.	bạc lót có ren, đế ren (gắn thiết bị)	ok
-B2	bush	noun	A piece of copper, screwed into a gun, through which the venthole is bored.		
+B2	bush	noun	A piece of copper, screwed into a gun, through which the venthole is bored.	(kỹ thuật) ống lót đồng (ở lỗ châm ngòi súng cổ)	
 B2	bush	noun	A shrub cut off, or a shrublike branch of a tree.	cành cây bụi (bị cắt)	ok
 B2	bush	noun	A thick washer or hollow cylinder of metal.	bạc lót, ống lót kim loại	ok
 B2	bush	verb	(intransitive) To branch thickly in the manner of a bush.	mọc rậm rạp như bụi cây	ok
@@ -1111,298 +1111,298 @@ B2	clay	noun	A clay pipe for smoking tobacco.	tẩu thuốc bằng đất sét	o
 B2	clay	noun	A mineral substance made up of small crystals of silica and alumina, that is ductile when moist; the material of pre-fired ceramics.	đất sét	ok
 B2	clay	noun	A moth, Mythimna ferrago		
 B2	clay	noun	An earth material with ductile qualities.	đất sét	ok
-B2	clay	verb	(transitive, of sugar) To purify using clay.	lọc đường bằng đất sét	
-B2	clay	verb	(transitive) To add clay to, to spread clay onto.	trát đất sét, rải đất sét	
-B2	cloud	noun	(figurative) Anything unsubstantial.	(nghĩa bóng) điều mơ hồ, ảo ảnh	
+B2	clay	verb	(transitive, of sugar) To purify using clay.	lọc đường bằng đất sét	ok
+B2	clay	verb	(transitive) To add clay to, to spread clay onto.	trát đất sét, rải đất sét	ok
+B2	cloud	noun	(figurative) Anything unsubstantial.	(nghĩa bóng) điều mơ hồ, ảo ảnh	ok
 B2	cloud	noun	A visible mass of water droplets suspended in the air.	mây	ok
-B2	cloud	noun	Any mass of dust, steam or smoke resembling such a mass.	đám (khói, bụi, hơi nước)	
-B2	cloud	noun	Anything which makes things foggy or gloomy.	(nghĩa bóng) bóng đen, điều u ám	
-B2	cloud	verb	(intransitive) To become foggy or gloomy, or obscured from sight.	trở nên mờ mịt, u ám	
-B2	cloud	verb	(transitive) To make obscure.	làm mờ, che khuất	
-B2	cloud	verb	(transitive) To overspread or hide with a cloud or clouds.	che phủ, phủ mây	
-B2	cloud	verb	Of the breath, to become cloud; to turn into mist.	mờ đi, đọng hơi nước	
-B2	clown	noun	A clownfish.	cá hề	
-B2	clown	noun	A person who acts in a silly fashion.	kẻ khờ khạo, người hay giỡn	
-B2	clown	noun	A slapstick performance artist often associated with a circus and usually characterized by bright, oversized clothing, a red nose, face paint, and a brightly colored wig.	chú hề	
-B2	clown	noun	A stupid person.	kẻ ngu ngốc, đồ ngốc	
-B2	clown	verb	(intransitive) To act in a silly or playful fashion.	giỡn hớt, làm trò hề	
-B2	clown	verb	(transitive, African-American Vernacular) To ridicule, make fun of.	(tiếng lóng Mỹ) chế giễu, giễu cợt	
-B2	colour	adj	Commonwealth and Ireland standard spelling of color.	có màu	
-B2	colour	noun	Commonwealth and Ireland standard spelling of color.	màu, màu sắc	
-B2	colour	verb	Commonwealth and Ireland standard spelling of color.	tô màu, nhuộm màu	
-B2	comment	noun	(linguistics) The part of a sentence that provides new information regarding the current theme.	(ngôn ngữ học) phần thuyết	
-B2	comment	noun	(programming) A remark embedded in source code in such a way that it will be ignored by the compiler or interpreter, typically to help people to understand the code.	(tin học) chú thích	
-B2	comment	noun	(uncountable) The act of commenting.	sự bình luận, sự nhận xét	
-B2	comment	noun	A spoken or written remark.	lời nhận xét, bình luận	
-B2	comment	verb	(intransitive, with "on" or "about") To make remarks or notes; to express a view regarding.	bình luận, nhận xét	
-B2	comment	verb	(transitive, software, of code) To comment out (code); to disable by converting into a comment.	(tin học) vô hiệu hoá bằng chú thích	
-B2	comment	verb	(transitive, software, of code) To insert comments into (source code).	(tin học) thêm chú thích vào mã	
+B2	cloud	noun	Any mass of dust, steam or smoke resembling such a mass.	đám (khói, bụi, hơi nước)	ok
+B2	cloud	noun	Anything which makes things foggy or gloomy.	(nghĩa bóng) bóng đen, điều u ám	ok
+B2	cloud	verb	(intransitive) To become foggy or gloomy, or obscured from sight.	trở nên mờ mịt, u ám	ok
+B2	cloud	verb	(transitive) To make obscure.	làm mờ, che khuất	ok
+B2	cloud	verb	(transitive) To overspread or hide with a cloud or clouds.	che phủ, phủ mây	ok
+B2	cloud	verb	Of the breath, to become cloud; to turn into mist.	mờ đi, đọng hơi nước	ok
+B2	clown	noun	A clownfish.	cá hề	ok
+B2	clown	noun	A person who acts in a silly fashion.	kẻ khờ khạo, người hay giỡn	ok
+B2	clown	noun	A slapstick performance artist often associated with a circus and usually characterized by bright, oversized clothing, a red nose, face paint, and a brightly colored wig.	chú hề	ok
+B2	clown	noun	A stupid person.	kẻ ngu ngốc, đồ ngốc	ok
+B2	clown	verb	(intransitive) To act in a silly or playful fashion.	giỡn hớt, làm trò hề	ok
+B2	clown	verb	(transitive, African-American Vernacular) To ridicule, make fun of.	(tiếng lóng Mỹ) chế giễu, giễu cợt	dịch nhãn sai — "African-American Vernacular" bị dịch thành "tiếng lóng Mỹ" chung chung, mất tính đặc thù phương ngữ AAVE
+B2	colour	adj	Commonwealth and Ireland standard spelling of color.	có màu	ok
+B2	colour	noun	Commonwealth and Ireland standard spelling of color.	màu, màu sắc	ok
+B2	colour	verb	Commonwealth and Ireland standard spelling of color.	tô màu, nhuộm màu	ok
+B2	comment	noun	(linguistics) The part of a sentence that provides new information regarding the current theme.	(ngôn ngữ học) phần thuyết	ok
+B2	comment	noun	(programming) A remark embedded in source code in such a way that it will be ignored by the compiler or interpreter, typically to help people to understand the code.	(tin học) chú thích	ok
+B2	comment	noun	(uncountable) The act of commenting.	sự bình luận, sự nhận xét	ok
+B2	comment	noun	A spoken or written remark.	lời nhận xét, bình luận	ok
+B2	comment	verb	(intransitive, with "on" or "about") To make remarks or notes; to express a view regarding.	bình luận, nhận xét	ok
+B2	comment	verb	(transitive, software, of code) To comment out (code); to disable by converting into a comment.	(tin học) vô hiệu hoá bằng chú thích	ok
+B2	comment	verb	(transitive, software, of code) To insert comments into (source code).	(tin học) thêm chú thích vào mã	ok
 B2	comment	verb	(transitive) To remark.	bình luận	ok
 B2	complain	verb	(intransitive) To express feelings of pain, dissatisfaction, or resentment.	phàn nàn	ok
 B2	complain	verb	(intransitive) To make a formal accusation or bring a formal charge.	thưa kiện	ok
-B2	complain	verb	To creak or squeak, as a timber or wheel.	kêu cọt kẹt, kêu kẽo kẹt	
-B2	confident	adj	Self-assured, self-reliant, sure of oneself.	tự tin	
-B2	confident	adj	Very sure of something; positive.	chắc chắn, tin chắc	
-B2	deaf	adj	Of or relating to the community of deaf people.	thuộc cộng đồng người điếc	
-B2	deaf	adj	Unable (or partially able) to hear.	điếc, khiếm thính	
-B2	deaf	adj	Unwilling to listen or be persuaded; determinedly inattentive.	không chịu nghe, bỏ ngoài tai	
-B2	defendant	adj	Serving, or suitable, for defense; defensive, defending.	có tính phòng thủ, để bảo vệ	
-B2	defendant	noun	(law) In civil proceedings, the party responding to the complaint; one who is sued and called upon to make satisfaction for a wrong complained of by another.	(luật) bị đơn	
-B2	defendant	noun	(law) In criminal proceedings, the accused.	(luật) bị cáo	
-B2	discover	verb	(transitive, chess) To create by moving a piece out of another piece's line of attack.	(cờ vua) tạo nước chiếu ẩn	
-B2	discover	verb	(transitive, law) To question (a person) as part of discovery in a lawsuit.	(luật) thẩm vấn để thu thập chứng cứ	
-B2	discover	verb	(transitive) To find or learn something for the first time.	khám phá, phát hiện	
-B2	downtown	adj	Of, relating to, or situated in the central business district.	thuộc trung tâm thành phố	
-B2	downtown	adv	(basketball) Outside the three-point line, or generally far from the basket.	(bóng rổ) từ xa, ngoài vạch ba điểm	
+B2	complain	verb	To creak or squeak, as a timber or wheel.	kêu cọt kẹt, kêu kẽo kẹt	ok
+B2	confident	adj	Self-assured, self-reliant, sure of oneself.	tự tin	ok
+B2	confident	adj	Very sure of something; positive.	chắc chắn, tin chắc	ok
+B2	deaf	adj	Of or relating to the community of deaf people.	thuộc cộng đồng người điếc	ok
+B2	deaf	adj	Unable (or partially able) to hear.	điếc, khiếm thính	ok
+B2	deaf	adj	Unwilling to listen or be persuaded; determinedly inattentive.	không chịu nghe, bỏ ngoài tai	ok
+B2	defendant	adj	Serving, or suitable, for defense; defensive, defending.	có tính phòng thủ, để bảo vệ	ok
+B2	defendant	noun	(law) In civil proceedings, the party responding to the complaint; one who is sued and called upon to make satisfaction for a wrong complained of by another.	(luật) bị đơn	ok
+B2	defendant	noun	(law) In criminal proceedings, the accused.	(luật) bị cáo	ok
+B2	discover	verb	(transitive, chess) To create by moving a piece out of another piece's line of attack.	(cờ vua) tạo nước chiếu ẩn	sai nghĩa — "chiếu ẩn" chỉ nói đến chiếu tướng, trong khi định nghĩa gốc là tạo đòn tấn công ẩn nói chung (discovered attack), không nhất thiết là chiếu
+B2	discover	verb	(transitive, law) To question (a person) as part of discovery in a lawsuit.	(luật) thẩm vấn để thu thập chứng cứ	ok
+B2	discover	verb	(transitive) To find or learn something for the first time.	khám phá, phát hiện	ok
+B2	downtown	adj	Of, relating to, or situated in the central business district.	thuộc trung tâm thành phố	ok
+B2	downtown	adv	(basketball) Outside the three-point line, or generally far from the basket.	(bóng rổ) từ xa, ngoài vạch ba điểm	ok
 B2	downtown	adv	In or towards the central business district.	dưới phố	ok
-B2	downtown	noun	(chiefly US, Canada) The main business part of a city or town, usually located at or near its center.	trung tâm thành phố	
-B2	downtown	noun	(slang) Heroin.	(tiếng lóng) heroin	
-B2	downtown	noun	(US, slang) The human genitalia.	(tiếng lóng, Mỹ) bộ phận sinh dục	
-B2	earl	noun	(entomology) Any of various nymphalid butterflies of the genus Tanaecia. Other butterflies in this genus are called counts and viscounts.	(côn trùng học) bướm chi Tanaecia	
+B2	downtown	noun	(chiefly US, Canada) The main business part of a city or town, usually located at or near its center.	trung tâm thành phố	thiếu nhãn vùng miền "(chiefly US, Canada)" — các nghĩa khác của "downtown" trong bảng đều giữ nhãn vùng miền, nghĩa này lại bỏ
+B2	downtown	noun	(slang) Heroin.	(tiếng lóng) heroin	ok
+B2	downtown	noun	(US, slang) The human genitalia.	(tiếng lóng, Mỹ) bộ phận sinh dục	ok
+B2	earl	noun	(entomology) Any of various nymphalid butterflies of the genus Tanaecia. Other butterflies in this genus are called counts and viscounts.	(côn trùng học) bướm chi Tanaecia	ok
 B2	earl	noun	(nobility) A British or Irish nobleman next in rank above a viscount and below a marquess; equivalent to a European count. A female using the style is termed a countess.	bá tước	ok
 B2	evidence	noun	Facts or signs that show whether something is true.	bằng chứng	ok
-B2	exam	noun	(informal) Clipping of examination, especially when meaning “test” or in compound terms.	kỳ thi, bài thi	
-B2	exam	verb	(sciences) Shortened form of examine	(khoa học) kiểm tra, khảo sát	
+B2	exam	noun	(informal) Clipping of examination, especially when meaning “test” or in compound terms.	kỳ thi, bài thi	ok
+B2	exam	verb	(sciences) Shortened form of examine	(khoa học) kiểm tra, khảo sát	ok
 B2	existence	noun	(Ontology) The state of being, existing, or occurring; beinghood.	tồn tại	ok
-B2	existence	noun	Empirical reality; the substance of the physical universe. (Dictionary of Philosophy; 1968)	thực tại vật chất, sự tồn tại	
-B2	extreme	adj	Drastic, or of great severity.	cực đoan, khắc nghiệt	
+B2	existence	noun	Empirical reality; the substance of the physical universe. (Dictionary of Philosophy; 1968)	thực tại vật chất, sự tồn tại	ok
+B2	extreme	adj	Drastic, or of great severity.	cực đoan, khắc nghiệt	ok
 B2	extreme	adj	Excessive, or far beyond the norm.	cực đoan	ok
 B2	extreme	adj	In the greatest or highest degree; intense.	cực đại	chưa sát nghĩa, "cực đại" là thuật ngữ toán học chỉ giá trị lớn nhất; nghĩa "intense" nên là "cực độ, tột độ"
 B2	extreme	adj	Of a place, the most remote, farthest or outermost.	điểm cực	sai từ loại, đây là tính từ nhưng "điểm cực" là danh từ — nên là "xa nhất, tận cùng, cực"
-B2	extreme	noun	(mathematics) Either of the two numbers at the ends of a proportion, as 1 and 6 in 1:2=3:6.	(toán học) số hạng ngoại	
-B2	extreme	noun	A drastic expedient.	biện pháp cực đoan	
-B2	extreme	noun	Each of the things at opposite ends of a range or scale.	thái cực	
-B2	extreme	noun	The greatest or utmost point, degree, or condition.	cực điểm, mức độ tột cùng	
-B2	fairy	adj	Like a fairy; fanciful, whimsical, delicate.	giống tiên, huyền ảo	
+B2	extreme	noun	(mathematics) Either of the two numbers at the ends of a proportion, as 1 and 6 in 1:2=3:6.	(toán học) số hạng ngoại	ok
+B2	extreme	noun	A drastic expedient.	biện pháp cực đoan	ok
+B2	extreme	noun	Each of the things at opposite ends of a range or scale.	thái cực	ok
+B2	extreme	noun	The greatest or utmost point, degree, or condition.	cực điểm, mức độ tột cùng	ok
+B2	fairy	adj	Like a fairy; fanciful, whimsical, delicate.	giống tiên, huyền ảo	ok
 B2	fairy	noun	(mythology) A mythical being of human form with magical powers, known in many sizes and descriptions, although often depicted in modern illustrations only as a small sprite with gauze-like wings, especially one that is female. Fairies are revered in some modern forms of paganism.	tiên nữ	ok
-B2	fairy	noun	A legendary Chinese immortal.	tiên (thần thoại Trung Hoa)	
-B2	fairy	noun	A member of two species of hummingbird in the genus Heliothryx.	(điểu học) chim ruồi chi Heliothryx	
-B2	fairy	noun	An enchantress, or creature of overpowering charm.	người đẹp mê hoặc, yêu nữ	
+B2	fairy	noun	A legendary Chinese immortal.	tiên (thần thoại Trung Hoa)	ok
+B2	fairy	noun	A member of two species of hummingbird in the genus Heliothryx.	(điểu học) chim ruồi chi Heliothryx	ok
+B2	fairy	noun	An enchantress, or creature of overpowering charm.	người đẹp mê hoặc, yêu nữ	ok
 B2	fantasy	noun	(literature) The literary genre generally dealing with themes of magic and the supernatural, imaginary worlds and creatures, etc.	kì ảo	ok
-B2	fantasy	noun	(slang) The drug gamma-hydroxybutyric acid.	(tiếng lóng) GHB (một loại ma túy)	
-B2	fantasy	noun	A fantastical design.	hình mẫu kỳ ảo	
-B2	fantasy	noun	That which comes from one's imagination.	trí tưởng tượng, điều tưởng tượng	
-B2	fantasy	verb	To conceive (something) mentally; to imagine.	tưởng tượng, hình dung	
-B2	fantasy	verb	To conceive mentally; to imagine.	tưởng tượng, hình dung	
-B2	fantasy	verb	To fantasize about something).	mơ tưởng về, tưởng tượng về	
-B2	farewell	adj	Parting, valedictory, final.	chia tay, tiễn biệt	
-B2	farewell	noun	A departure; the act of leaving.	sự ra đi, sự chia tay	
-B2	farewell	noun	A wish of happiness or safety at parting, especially a permanent departure.	lời tạm biệt, lời chia tay	
-B2	farewell	phrase	Goodbye	tạm biệt	
-B2	farewell	verb	To bid farewell or say goodbye.	từ biệt, tạm biệt	
-B2	favourite	adj	(positive, high-register or archaic) Liked, cherished.	(trang trọng, cổ) được yêu thích, được quý mến	
-B2	favourite	adj	(superlative) Most-liked. (In other words, [person]'s favorite [noun] = the [noun] that [person] likes the most.)	yêu thích nhất	
-B2	favourite	noun	(in the plural) A short curl dangling over the temples, fashionable in the reign of Charles II.		
-B2	favourite	noun	A contestant or competitor thought most likely to win.	ứng cử viên hàng đầu	
-B2	favourite	noun	A person or thing who enjoys special regard or favour.	người, vật được yêu thích	
-B2	favourite	noun	A person who is preferred or trusted above all others.	người được sủng ái, người tin cậy nhất	
-B2	favourite	verb	(Internet) To add to one's list of favourite items on a website that allows users to compile such lists.	đánh dấu yêu thích, thêm vào mục yêu thích	
-B2	favourite	verb	(Internet) To bookmark.	đánh dấu, lưu lại	
-B2	favourite	verb	To favour.	ưu ái, thiên vị	
-B2	fence	noun	(by extension) The place whence such a middleman operates.	nơi tiêu thụ đồ ăn cắp	
-B2	fence	noun	A guard or guide on machinery.	(kỹ thuật) tấm chắn bảo vệ	
+B2	fantasy	noun	(slang) The drug gamma-hydroxybutyric acid.	(tiếng lóng) GHB (một loại ma túy)	ok
+B2	fantasy	noun	A fantastical design.	hình mẫu kỳ ảo	ok
+B2	fantasy	noun	That which comes from one's imagination.	trí tưởng tượng, điều tưởng tượng	ok
+B2	fantasy	verb	To conceive (something) mentally; to imagine.	tưởng tượng, hình dung	ok
+B2	fantasy	verb	To conceive mentally; to imagine.	tưởng tượng, hình dung	ok
+B2	fantasy	verb	To fantasize about something).	mơ tưởng về, tưởng tượng về	ok
+B2	farewell	adj	Parting, valedictory, final.	chia tay, tiễn biệt	ok
+B2	farewell	noun	A departure; the act of leaving.	sự ra đi, sự chia tay	ok
+B2	farewell	noun	A wish of happiness or safety at parting, especially a permanent departure.	lời tạm biệt, lời chia tay	ok
+B2	farewell	phrase	Goodbye	tạm biệt	ok
+B2	farewell	verb	To bid farewell or say goodbye.	từ biệt, tạm biệt	ok
+B2	favourite	adj	(positive, high-register or archaic) Liked, cherished.	(trang trọng, cổ) được yêu thích, được quý mến	ok
+B2	favourite	adj	(superlative) Most-liked. (In other words, [person]'s favorite [noun] = the [noun] that [person] likes the most.)	yêu thích nhất	ok
+B2	favourite	noun	(in the plural) A short curl dangling over the temples, fashionable in the reign of Charles II.	lọn tóc xoăn ngắn trước thái dương	
+B2	favourite	noun	A contestant or competitor thought most likely to win.	ứng cử viên hàng đầu	ok
+B2	favourite	noun	A person or thing who enjoys special regard or favour.	người, vật được yêu thích	ok
+B2	favourite	noun	A person who is preferred or trusted above all others.	người được sủng ái, người tin cậy nhất	ok
+B2	favourite	verb	(Internet) To add to one's list of favourite items on a website that allows users to compile such lists.	đánh dấu yêu thích, thêm vào mục yêu thích	ok
+B2	favourite	verb	(Internet) To bookmark.	đánh dấu, lưu lại	ok
+B2	favourite	verb	To favour.	ưu ái, thiên vị	ok
+B2	fence	noun	(by extension) The place whence such a middleman operates.	nơi tiêu thụ đồ ăn cắp	ok
+B2	fence	noun	A guard or guide on machinery.	(kỹ thuật) tấm chắn bảo vệ	ok
 B2	fence	noun	A thin artificial barrier that separates two pieces of land or forms a perimeter enclosing the lands of a house, building, etc.	hàng rào	ok
-B2	fence	noun	Skill in oral debate.	tài hùng biện, khả năng tranh luận	
-B2	fence	verb	(intransitive, equestrianism) To jump over a fence.	(đua ngựa) nhảy qua rào	
-B2	fence	verb	(transitive) To defend or guard.	phòng thủ, bảo vệ	
-B2	fence	verb	(transitive) To enclose, contain or separate by building fence.	rào lại, quây rào	
-B2	fence	verb	(transitive) To engage in the selling or buying of stolen goods.	tiêu thụ đồ ăn cắp, buôn đồ gian	
-B2	festival	adj	Pertaining to a feast or feast day; festive. (Now only as the noun used attributively.)	thuộc lễ hội, mang tính lễ hội	
-B2	festival	noun	(biblical) A feast or feast day.	(Kinh Thánh) ngày lễ, lễ hội tôn giáo	
-B2	festival	noun	(Caribbean, Jamaica, uncountable) Fried cornbread.	(Jamaica) bánh bột ngô chiên	
-B2	festival	noun	An event or series of special events centred on the celebration or promotion of some theme or aspect of the community, often held at regular intervals.	lễ hội, liên hoan	
-B2	festival	noun	In mythology, a set of celebrations in the honour of a god.	(thần thoại) lễ hội tôn vinh thần	
-B2	fifty	noun	(countable) A banknote or coin with a denomination of 50.	tờ (đồng) mệnh giá 50	
-B2	fifty	noun	(cricket) A batsman's score of at least 50 runs and less than 100 runs.		
+B2	fence	noun	Skill in oral debate.	tài hùng biện, khả năng tranh luận	ok
+B2	fence	verb	(intransitive, equestrianism) To jump over a fence.	(đua ngựa) nhảy qua rào	dịch sai nhãn — "equestrianism" bị dịch thành "đua ngựa" (horse racing), trong khi đây là môn cưỡi ngựa/nhảy vượt chướng ngại vật nói chung, không phải đua ngựa
+B2	fence	verb	(transitive) To defend or guard.	phòng thủ, bảo vệ	ok
+B2	fence	verb	(transitive) To enclose, contain or separate by building fence.	rào lại, quây rào	ok
+B2	fence	verb	(transitive) To engage in the selling or buying of stolen goods.	tiêu thụ đồ ăn cắp, buôn đồ gian	ok
+B2	festival	adj	Pertaining to a feast or feast day; festive. (Now only as the noun used attributively.)	thuộc lễ hội, mang tính lễ hội	ok
+B2	festival	noun	(biblical) A feast or feast day.	(Kinh Thánh) ngày lễ, lễ hội tôn giáo	ok
+B2	festival	noun	(Caribbean, Jamaica, uncountable) Fried cornbread.	(Jamaica) bánh bột ngô chiên	ok
+B2	festival	noun	An event or series of special events centred on the celebration or promotion of some theme or aspect of the community, often held at regular intervals.	lễ hội, liên hoan	ok
+B2	festival	noun	In mythology, a set of celebrations in the honour of a god.	(thần thoại) lễ hội tôn vinh thần	ok
+B2	fifty	noun	(countable) A banknote or coin with a denomination of 50.	tờ (đồng) mệnh giá 50	ok
+B2	fifty	noun	(cricket) A batsman's score of at least 50 runs and less than 100 runs.	(cricket) điểm số từ 50 đến 99	
 B2	fifty	noun	The cardinal number occurring after forty-nine and before fifty-one.	năm mươi	ok
-B2	flow	noun	(Scotland) A bog or mire, especially a rough, waterlogged one.	(Scotland) đầm lầy	
-B2	flow	noun	Movement in people or things characterized with a continuous motion, involving either a non solid mass or a multitude.	dòng người, luồng di chuyển	
-B2	flow	noun	Smoothness or continuity.	sự trôi chảy, sự liền mạch	
-B2	flow	noun	The movement of a real or figurative fluid.	dòng chảy	
-B2	flow	noun	The rising movement of the tide.	con nước lên, triều lên	
-B2	flow	verb	(intransitive) To have or be in abundance; to abound, so as to run or flow over.	tràn đầy, dồi dào	
+B2	flow	noun	(Scotland) A bog or mire, especially a rough, waterlogged one.	(Scotland) đầm lầy	ok
+B2	flow	noun	Movement in people or things characterized with a continuous motion, involving either a non solid mass or a multitude.	dòng người, luồng di chuyển	ok
+B2	flow	noun	Smoothness or continuity.	sự trôi chảy, sự liền mạch	ok
+B2	flow	noun	The movement of a real or figurative fluid.	dòng chảy	ok
+B2	flow	noun	The rising movement of the tide.	con nước lên, triều lên	ok
+B2	flow	verb	(intransitive) To have or be in abundance; to abound, so as to run or flow over.	tràn đầy, dồi dào	ok
 B2	flow	verb	(intransitive) To move as a fluid from one position to another.	chảy	ok
-B2	flow	verb	(intransitive) To move or match smoothly, gracefully, or continuously.	trôi chảy, diễn ra suôn sẻ	
-B2	flow	verb	(intransitive) To proceed; to issue forth; to emanate.	phát ra, bắt nguồn từ	
-B2	footage	noun	(usually uncountable) An amount of film or tape that has been used to record something.	đoạn phim, cảnh quay	
-B2	footage	noun	A measurement in feet.	số đo tính bằng feet	
-B2	foster	adj	Providing parental care to children not related to oneself.	nuôi dưỡng (không ruột thịt)	
-B2	foster	adj	Receiving such care.	được nhận nuôi	
-B2	foster	adj	Related by such care.	có quan hệ nuôi dưỡng	
-B2	foster	noun	(countable, informal) A foster parent.	cha nuôi, mẹ nuôi	
-B2	foster	noun	(uncountable) The care given to another; guardianship.	sự nuôi dưỡng, sự giám hộ	
-B2	foster	verb	(transitive) To nurse or cherish something.	nuôi dưỡng, ấp ủ	
-B2	foster	verb	(transitive) To nurture or bring up offspring, or to provide similar parental care to an unrelated child.	nuôi dưỡng, nuôi nấng	
-B2	foster	verb	(transitive) To promote the development of something; to cultivate and grow a thing.	thúc đẩy, nuôi dưỡng	
-B2	frame	noun	A human body or the structure thereof; the size, shape, sturdiness etc. of a person's body as described in a certain way; one's build.	vóc dáng, thân hình	
+B2	flow	verb	(intransitive) To move or match smoothly, gracefully, or continuously.	trôi chảy, diễn ra suôn sẻ	ok
+B2	flow	verb	(intransitive) To proceed; to issue forth; to emanate.	phát ra, bắt nguồn từ	ok
+B2	footage	noun	(usually uncountable) An amount of film or tape that has been used to record something.	đoạn phim, cảnh quay	ok
+B2	footage	noun	A measurement in feet.	số đo tính bằng feet	ok
+B2	foster	adj	Providing parental care to children not related to oneself.	nuôi dưỡng (không ruột thịt)	ok
+B2	foster	adj	Receiving such care.	được nhận nuôi	ok
+B2	foster	adj	Related by such care.	có quan hệ nuôi dưỡng	ok
+B2	foster	noun	(countable, informal) A foster parent.	cha nuôi, mẹ nuôi	ok
+B2	foster	noun	(uncountable) The care given to another; guardianship.	sự nuôi dưỡng, sự giám hộ	ok
+B2	foster	verb	(transitive) To nurse or cherish something.	nuôi dưỡng, ấp ủ	ok
+B2	foster	verb	(transitive) To nurture or bring up offspring, or to provide similar parental care to an unrelated child.	nuôi dưỡng, nuôi nấng	ok
+B2	foster	verb	(transitive) To promote the development of something; to cultivate and grow a thing.	thúc đẩy, nuôi dưỡng	ok
+B2	frame	noun	A human body or the structure thereof; the size, shape, sturdiness etc. of a person's body as described in a certain way; one's build.	vóc dáng, thân hình	ok
 B2	frame	noun	A rigid, generally rectangular mounting for paper, canvas or other flexible material.	khung	ok
-B2	frame	noun	Anything composed of parts fitted and united together; a fabric; a structure.	cấu trúc, kết cấu	
-B2	frame	noun	The structural elements of a building or other constructed object.	khung (nhà, công trình)	
-B2	frame	verb	(transitive) To bring or put into form or order; adjust the parts or elements of; compose; contrive; plan; devise.	soạn thảo, xây dựng, hình thành	
-B2	frame	verb	(transitive) To construct by fitting together or uniting various parts; fabricate by union of constituent parts.	lắp ráp, dựng lên	
-B2	frame	verb	(transitive) To fit, as for a specific end or purpose; make suitable or comfortable; adapt; adjust.	điều chỉnh cho phù hợp	
-B2	frame	verb	(transitive) To put together the structural elements of (a constructed object such as a building).	dựng khung (nhà)	
+B2	frame	noun	Anything composed of parts fitted and united together; a fabric; a structure.	cấu trúc, kết cấu	ok
+B2	frame	noun	The structural elements of a building or other constructed object.	khung (nhà, công trình)	ok
+B2	frame	verb	(transitive) To bring or put into form or order; adjust the parts or elements of; compose; contrive; plan; devise.	soạn thảo, xây dựng, hình thành	ok
+B2	frame	verb	(transitive) To construct by fitting together or uniting various parts; fabricate by union of constituent parts.	lắp ráp, dựng lên	ok
+B2	frame	verb	(transitive) To fit, as for a specific end or purpose; make suitable or comfortable; adapt; adjust.	điều chỉnh cho phù hợp	ok
+B2	frame	verb	(transitive) To put together the structural elements of (a constructed object such as a building).	dựng khung (nhà)	ok
 B2	gene	noun	(genetics) A theoretical unit of heredity of living organisms which may take several values and (in principle) predetermines a precise trait of an organism's form (phenotype), such as hair color.	gen	ok
-B2	gene	noun	(molecular biology) A segment of DNA or RNA from a cell's or an organism's genome, that may take several forms and thus parameterizes a phenomenon, such as (often) the structure of a protein.	(sinh học) gen	
+B2	gene	noun	(molecular biology) A segment of DNA or RNA from a cell's or an organism's genome, that may take several forms and thus parameterizes a phenomenon, such as (often) the structure of a protein.	(sinh học) gen	ok
 B2	gray	adj	(sometimes figurative) Dreary, gloomy, cloudy.	buồn	chưa sát nghĩa, đây là "u ám, ảm đạm, tẻ nhạt" (thời tiết/không khí) chứ không đơn thuần là "buồn"
-B2	gray	adj	Gray-haired.	tóc hoa râm, tóc bạc	
-B2	gray	adj	Of a color between black and white, having neutral hue and intermediate brightness.	màu xám	
-B2	gray	adj	Of indistinct, disputed or uncertain quality or acceptability.	mập mờ, không rõ ràng	
-B2	gray	noun	A gray whale, Eschrichtius robustus.	cá voi xám	
-B2	gray	noun	A gray wolf	sói xám	
+B2	gray	adj	Gray-haired.	tóc hoa râm, tóc bạc	ok
+B2	gray	adj	Of a color between black and white, having neutral hue and intermediate brightness.	màu xám	ok
+B2	gray	adj	Of indistinct, disputed or uncertain quality or acceptability.	mập mờ, không rõ ràng	ok
+B2	gray	noun	A gray whale, Eschrichtius robustus.	cá voi xám	ok
+B2	gray	noun	A gray wolf	sói xám	ok
 B2	gray	noun	An achromatic colour between black and white.	màu xám	ok
 B2	gray	noun	An animal or thing of grey colour, such as a horse, badger, or salmon.	màu xám	sai nghĩa, nghĩa này chỉ "con vật/vật có màu xám" (ví dụ ngựa xám), không phải bản thân màu xám đã nêu ở dòng trên
-B2	gray	noun	In the International System of Units, the derived unit of absorbed dose of radiation (radiation absorbed by a patient); one joule of energy absorbed per kilogram of the patient's mass.	(vật lý) gray (đơn vị đo liều hấp thụ bức xạ)	
-B2	gray	verb	(demography, slang) To turn progressively older, alluding to graying of hair through aging (used in context of the population of a geographic region)	(nhân khẩu học, thông tục) già hóa (dân số)	
-B2	gray	verb	(ergative) To turn gray.	chuyển sang màu xám, bạc đi	
-B2	gray	verb	(transitive, photography) To give a soft effect to (a photograph) by covering the negative while printing with a ground-glass plate.	(nhiếp ảnh) làm mờ nhẹ (khi in ảnh)	
-B2	grey	adj	(South Africa, slang) Synonym of coloured (pertaining to the mixed race of black and white).		
-B2	grey	adj	Commonwealth standard spelling of gray.	xám	
-B2	grey	noun	Commonwealth standard spelling of gray.		
-B2	grey	verb	Commonwealth standard spelling of gray.		
-B2	habit	noun	(botany, mineralogy) Form of growth or general appearance and structure of a plant or crystal.		
-B2	habit	noun	A long piece of clothing worn by monks and nuns.		
-B2	habit	noun	A piece of clothing worn for a specific activity; a uniform.		
-B2	habit	noun	An action performed on a regular basis.		
+B2	gray	noun	In the International System of Units, the derived unit of absorbed dose of radiation (radiation absorbed by a patient); one joule of energy absorbed per kilogram of the patient's mass.	(vật lý) gray (đơn vị đo liều hấp thụ bức xạ)	ok
+B2	gray	verb	(demography, slang) To turn progressively older, alluding to graying of hair through aging (used in context of the population of a geographic region)	(nhân khẩu học, thông tục) già hóa (dân số)	ok
+B2	gray	verb	(ergative) To turn gray.	chuyển sang màu xám, bạc đi	ok
+B2	gray	verb	(transitive, photography) To give a soft effect to (a photograph) by covering the negative while printing with a ground-glass plate.	(nhiếp ảnh) làm mờ nhẹ (khi in ảnh)	ok
+B2	grey	adj	(South Africa, slang) Synonym of coloured (pertaining to the mixed race of black and white).	(Nam Phi, tiếng lóng) lai (da đen và da trắng)	
+B2	grey	adj	Commonwealth standard spelling of gray.	xám	ok
+B2	grey	noun	Commonwealth standard spelling of gray.	(Anh) màu xám	
+B2	grey	verb	Commonwealth standard spelling of gray.	(Anh) chuyển sang màu xám, bạc màu	
+B2	habit	noun	(botany, mineralogy) Form of growth or general appearance and structure of a plant or crystal.	(thực vật học, khoáng vật học) dạng sinh trưởng, hình dạng bên ngoài	
+B2	habit	noun	A long piece of clothing worn by monks and nuns.	áo dòng, áo tu sĩ	
+B2	habit	noun	A piece of clothing worn for a specific activity; a uniform.	trang phục chuyên dụng, đồng phục	
+B2	habit	noun	An action performed on a regular basis.	thói quen	
 B2	habit	noun	An action performed repeatedly and automatically, usually without awareness.	thói quen	ok
 B2	habit	noun	An addiction.	thói	chưa sát nghĩa, đây là "chứng nghiện" — "thói" quá chung chung, nên là "tật nghiện, thói nghiện"
-B2	habit	verb	(transitive) To clothe.		
+B2	habit	verb	(transitive) To clothe.	mặc quần áo cho, khoác áo cho	
 B2	helicopter	noun	(aircraft) An aircraft that is borne along by one or more sets of long rotating blades which allow it to hover, move in any direction including reverse, or land; and typically having a smaller set of blades on its tail to stabilize the aircraft.	máy bay lên thẳng	ok
-B2	helicopter	noun	(dance) A breakdance move in which the dancer spins on the floor while extending the legs to resemble the blades of a helicopter.		
-B2	helicopter	noun	A powered troweling machine with spinning blades used to spread concrete.		
-B2	helicopter	noun	A whirling trick performed with devil sticks.		
-B2	helicopter	verb	(intransitive) To travel by helicopter.		
-B2	helicopter	verb	(transitive) To transport by helicopter.		
-B2	helicopter	verb	To overprotect one's children, as a helicopter parent does.		
-B2	helicopter	verb	To rotate like a helicopter blade.		
-B2	homicide	noun	(countable, uncountable, crime) The killing of one person by another, whether premeditated or unintentional.		
-B2	homicide	noun	(countable, US, police jargon) A victim of homicide; a person who has been unlawfully killed by someone else.		
-B2	homicide	noun	(countable) A person who kills another.		
-B2	homicide	noun	(uncountable, US) The department within a police force that investigates cases of homicide.		
-B2	hood	adj	Relating to inner-city everyday life, both positive and negative aspects; especially people’s attachment to and love for their neighborhoods.		
-B2	hood	noun	(African-American Vernacular, slang) A neighborhood.		
-B2	hood	noun	(slang) Any poor suburb or neighbourhood.		
-B2	hood	noun	(slang) Gangster, thug.		
-B2	hood	noun	(UK) Person wearing a hoodie.		
-B2	hood	noun	A covering for the head, usually attached to a larger garment such as a jacket or cloak.		
-B2	hood	noun	A distinctively colored fold of material, representing a university degree.		
-B2	hood	noun	An enclosure that protects something, especially from above.		
+B2	helicopter	noun	(dance) A breakdance move in which the dancer spins on the floor while extending the legs to resemble the blades of a helicopter.	(breakdance) động tác xoay chân kiểu cánh quạt trực thăng	
+B2	helicopter	noun	A powered troweling machine with spinning blades used to spread concrete.	(xây dựng) máy xoa láng bê tông cánh quạt xoay	
+B2	helicopter	noun	A whirling trick performed with devil sticks.	(xiếc gậy) chiêu xoay gậy kiểu cánh quạt trực thăng	
+B2	helicopter	verb	(intransitive) To travel by helicopter.	đi bằng trực thăng, bay bằng trực thăng	
+B2	helicopter	verb	(transitive) To transport by helicopter.	chở bằng trực thăng, vận chuyển bằng trực thăng	
+B2	helicopter	verb	To overprotect one's children, as a helicopter parent does.	bảo bọc con cái thái quá (kiểu cha mẹ trực thăng)	
+B2	helicopter	verb	To rotate like a helicopter blade.	quay tít như cánh quạt trực thăng	
+B2	homicide	noun	(countable, uncountable, crime) The killing of one person by another, whether premeditated or unintentional.	(hình sự) tội giết người, hành vi giết người	
+B2	homicide	noun	(countable, US, police jargon) A victim of homicide; a person who has been unlawfully killed by someone else.	(Mỹ, cảnh sát) nạn nhân bị giết, người bị sát hại	
+B2	homicide	noun	(countable) A person who kills another.	kẻ giết người	
+B2	homicide	noun	(uncountable, US) The department within a police force that investigates cases of homicide.	(Mỹ, cảnh sát) đội điều tra án mạng, phòng trọng án	
+B2	hood	adj	Relating to inner-city everyday life, both positive and negative aspects; especially people’s attachment to and love for their neighborhoods.	(tiếng lóng, Mỹ) đậm chất khu phố nghèo, mang phong cách đường phố	
+B2	hood	noun	(African-American Vernacular, slang) A neighborhood.	(tiếng lóng, Mỹ) khu phố, xóm	
+B2	hood	noun	(slang) Any poor suburb or neighbourhood.	(khẩu ngữ) khu dân cư nghèo, xóm nghèo	
+B2	hood	noun	(slang) Gangster, thug.	(tiếng lóng) tay anh chị, côn đồ, du côn	
+B2	hood	noun	(UK) Person wearing a hoodie.	(Anh, khẩu ngữ) kẻ mặc áo hoodie	
+B2	hood	noun	A covering for the head, usually attached to a larger garment such as a jacket or cloak.	mũ trùm đầu, mũ liền áo	
+B2	hood	noun	A distinctively colored fold of material, representing a university degree.	(học thuật) khăn choàng vai (biểu tượng học vị)	
+B2	hood	noun	An enclosure that protects something, especially from above.	nắp che, chụp bảo vệ	
 B2	hood	noun	Particular parts of conveyances		
-B2	hood	verb	(intransitive, of skin and soft tissue) To grow over the eyelid but not the eye itself.		
-B2	hood	verb	(transitive) To cover (something) with a hood.		
-B2	hood	verb	(transitive) To extend out from (something), in the manner of a hood.		
+B2	hood	verb	(intransitive, of skin and soft tissue) To grow over the eyelid but not the eye itself.	sụp xuống, chảy xệ (che mí mắt)	
+B2	hood	verb	(transitive) To cover (something) with a hood.	trùm mui cho, đậy nắp cho	
+B2	hood	verb	(transitive) To extend out from (something), in the manner of a hood.	nhô ra che phủ (như mui xe)	
 B2	host	noun	(Christianity) The consecrated bread of the Eucharist.	bánh lễ	ok
 B2	host	noun	A large number of items; a large inventory.	loạt	ok
 B2	host	noun	A moderator or master of ceremonies for a performance.	chủ tế	sai nghĩa, "chủ tế" là người chủ trì nghi lễ tôn giáo, không phải người dẫn chương trình/MC
 B2	host	noun	A multitude of people arrayed as an army; used also in religious senses, as: Heavenly host (of angels)	đạo quân	ok
-B2	host	noun	A person or organization responsible for running an event.		
-B2	host	noun	One that provides a facility for an event.		
-B2	host	noun	One which receives or entertains a guest, socially, commercially, or officially.		
-B2	host	verb	(computing, Internet) To run software made available to a remote user or process.		
+B2	host	noun	A person or organization responsible for running an event.	chủ nhà, đơn vị tổ chức	
+B2	host	noun	One that provides a facility for an event.	nước/nơi đăng cai	
+B2	host	noun	One which receives or entertains a guest, socially, commercially, or officially.	chủ nhà, người tiếp đón	
+B2	host	verb	(computing, Internet) To run software made available to a remote user or process.	(tin học) lưu trữ (trên máy chủ)	
 B2	host	verb	To perform the role of a host.	đăng cai	nghĩa hẹp, "đăng cai" chỉ dùng cho việc đăng cai sự kiện/giải đấu, không bao quát nghĩa chung "làm chủ nhà/dẫn chương trình"
-B2	humanity	noun	(countable) Any academic subject belonging to the humanities.		
-B2	humanity	noun	(uncountable) Humankind; human beings as a group.		
-B2	humanity	noun	(uncountable) The human condition or nature.		
+B2	humanity	noun	(countable) Any academic subject belonging to the humanities.	ngành khoa học nhân văn	
+B2	humanity	noun	(uncountable) Humankind; human beings as a group.	loài người, nhân loại	
+B2	humanity	noun	(uncountable) The human condition or nature.	bản chất con người, tính người	
 B2	humanity	noun	(uncountable) The quality of being benevolent; humane traits of character; humane qualities or aspects.	nhân tính	ok
-B2	impact	noun	(chiefly medicine) A forced impinging.		
-B2	impact	noun	(figurative, proscribed) A significant or strong influence or effect.		
+B2	impact	noun	(chiefly medicine) A forced impinging.	(y học) sự chèn ép, sự kẹt cứng	
+B2	impact	noun	(figurative, proscribed) A significant or strong influence or effect.	(không chuẩn) tác động, ảnh hưởng mạnh	
 B2	impact	noun	The force or energy of a collision of two objects.	va chạm	ok
-B2	impact	noun	The striking of one body against another; collision.		
-B2	impact	verb	(transitive, figurative, proscribed) To significantly or strongly influence or affect; to have an impact on.		
-B2	impact	verb	(transitive) To collide or strike, the act of impinging.		
-B2	impact	verb	(transitive) To compress; to compact; to press into something or pack together.		
-B2	individual	adj	Intended for a single person as opposed to more than one person.		
-B2	individual	adj	Not divisible without losing its identity.		
-B2	individual	adj	Relating to a single person or thing as opposed to more than one.		
-B2	individual	noun	(law) A single physical human being as a legal subject, as opposed to a legal person such as a corporation.		
-B2	individual	noun	(statistics) An element belonging to a population.		
+B2	impact	noun	The striking of one body against another; collision.	sự va chạm, va đập	
+B2	impact	verb	(transitive, figurative, proscribed) To significantly or strongly influence or affect; to have an impact on.	(không chuẩn) tác động đến, ảnh hưởng đến	
+B2	impact	verb	(transitive) To collide or strike, the act of impinging.	va chạm, va đập vào	
+B2	impact	verb	(transitive) To compress; to compact; to press into something or pack together.	nén chặt, ép chặt	
+B2	individual	adj	Intended for a single person as opposed to more than one person.	riêng lẻ, dành cho từng người	
+B2	individual	adj	Not divisible without losing its identity.	đơn lẻ, không thể chia nhỏ	
+B2	individual	adj	Relating to a single person or thing as opposed to more than one.	riêng, cá nhân	
+B2	individual	noun	(law) A single physical human being as a legal subject, as opposed to a legal person such as a corporation.	(luật) cá nhân, thể nhân	
+B2	individual	noun	(statistics) An element belonging to a population.	(thống kê) cá thể	
 B2	individual	noun	A person considered alone, rather than as belonging to a group of people.	cá nhân	ok
-B2	individual	noun	An object, be it a thing or an agent, as contrasted to a class.		
-B2	intelligent	adj	Characterized by thoughtful interaction.		
-B2	intelligent	adj	Having at least a similar level of brain power to humankind.		
+B2	individual	noun	An object, be it a thing or an agent, as contrasted to a class.	cá thể	
+B2	intelligent	adj	Characterized by thoughtful interaction.	thông minh, lanh lợi	
+B2	intelligent	adj	Having at least a similar level of brain power to humankind.	có trí tuệ (như con người)	
 B2	intelligent	adj	Of high or especially quick cognitive capacity, bright.	thông minh	ok
-B2	intelligent	adj	Well thought-out, well considered.		
-B2	intelligent	noun	A member of the intelligentsia; an intelligent person.		
-B2	intense	adj	Of a characteristic: extreme or very high or strong in degree; severe; also, excessive, towering.		
-B2	intense	adj	Of a person: very emotional or passionate.		
-B2	intense	adj	Of a thing: possessing some characteristic to an extreme or very high or strong degree.		
-B2	intense	adj	Of feelings, thoughts, etc.: strongly focused; ardent, deep, earnest, passionate.		
-B2	investigate	verb	(intransitive) To conduct an inquiry or examination.		
+B2	intelligent	adj	Well thought-out, well considered.	khôn ngoan, được cân nhắc kỹ	
+B2	intelligent	noun	A member of the intelligentsia; an intelligent person.	người trí thức	
+B2	intense	adj	Of a characteristic: extreme or very high or strong in degree; severe; also, excessive, towering.	mạnh, dữ dội, gay gắt	
+B2	intense	adj	Of a person: very emotional or passionate.	nồng nhiệt, đầy nhiệt huyết	
+B2	intense	adj	Of a thing: possessing some characteristic to an extreme or very high or strong degree.	mãnh liệt, cực độ	
+B2	intense	adj	Of feelings, thoughts, etc.: strongly focused; ardent, deep, earnest, passionate.	sâu sắc, tha thiết, mãnh liệt	
+B2	investigate	verb	(intransitive) To conduct an inquiry or examination.	điều tra, tìm hiểu	
 B2	investigate	verb	(transitive) To examine, look into, or scrutinize in order to discover something hidden or secret.	điều tra	ok
-B2	investigate	verb	(transitive) To inquire into or study in order to ascertain facts or information.		
-B2	invitation	noun	(fencing) A line that is intentionally left open to encourage the opponent to attack.		
-B2	invitation	noun	A document or verbal message conveying an invitation.		
-B2	invitation	noun	Allurement; enticement.		
+B2	investigate	verb	(transitive) To inquire into or study in order to ascertain facts or information.	điều tra, nghiên cứu	
+B2	invitation	noun	(fencing) A line that is intentionally left open to encourage the opponent to attack.	(đấu kiếm) thế mở (nhử đối phương tấn công)	
+B2	invitation	noun	A document or verbal message conveying an invitation.	thiệp mời, lời mời	
+B2	invitation	noun	Allurement; enticement.	sức lôi cuốn, sự quyến rũ	
 B2	invitation	noun	The act of inviting; solicitation; the requesting of a person's company.	lời mời	ok
-B2	jeez	phrase	Alternative spelling of geez.		
-B2	judgment	noun	(law) The act of determining, as in courts of law, what is conformable to law and justice; also, the determination, decision, or sentence of a court, or of a judge.		
-B2	judgment	noun	The act of judging.		
-B2	judgment	noun	The conclusion or result of judging; an opinion; a decision.		
-B2	judgment	noun	The power or faculty of performing such operations; especially, when unqualified, the faculty of judging or deciding rightly, justly, or wisely.		
+B2	jeez	phrase	Alternative spelling of geez.	trời ơi	
+B2	judgment	noun	(law) The act of determining, as in courts of law, what is conformable to law and justice; also, the determination, decision, or sentence of a court, or of a judge.	(luật) phán quyết, bản án	
+B2	judgment	noun	The act of judging.	sự phán xét, sự đánh giá	
+B2	judgment	noun	The conclusion or result of judging; an opinion; a decision.	nhận định, phán đoán	
+B2	judgment	noun	The power or faculty of performing such operations; especially, when unqualified, the faculty of judging or deciding rightly, justly, or wisely.	khả năng phán đoán, sự sáng suốt	
 B2	kit	noun	(by extension) A cat in general.		
-B2	kit	noun	A circular wooden vessel, made of hooped staves.		
-B2	kit	noun	A collection of items forming the equipment of a soldier, carried in a knapsack.		
+B2	kit	noun	A circular wooden vessel, made of hooped staves.	thùng gỗ tròn (có đai)	
+B2	kit	noun	A collection of items forming the equipment of a soldier, carried in a knapsack.	(quân sự) bộ quân trang	
 B2	kit	noun	A kind of basket made especially from straw of rushes, especially for holding fish; by extension, the contents of such a basket or similar container, used as a measure of weight.		
 B2	kit	noun	A kit fox (Vulpes macrotis).		
-B2	kit	noun	A kitten (young cat).		
-B2	kit	noun	A school of pigeons, especially domesticated, trained pigeons.		
-B2	kit	noun	A young fox.		
-B2	kit	noun	Any collection of items needed for a specific purpose, especially for use by a workman, or personal effects packed for travelling.		
+B2	kit	noun	A kitten (young cat).	mèo con	
+B2	kit	noun	A school of pigeons, especially domesticated, trained pigeons.	đàn bồ câu nuôi	
+B2	kit	noun	A young fox.	cáo con	
+B2	kit	noun	Any collection of items needed for a specific purpose, especially for use by a workman, or personal effects packed for travelling.	bộ dụng cụ, đồ nghề	
 B2	kit	noun	Synonym of kit violin.		
-B2	kit	verb	(transitive) To assemble or collect something into kits.		
-B2	kit	verb	(transitive) To equip (somebody) with something.		
-B2	knight	noun	(by extension) An armored and mounted warrior of the Middle Ages.		
-B2	knight	noun	(historical) A minor nobleman with an honourable military rank who had served as a page and squire.		
-B2	knight	noun	(historical) A young servant or follower; a trained military attendant in service of a lord.		
-B2	knight	noun	(modern) A person on whom a knighthood has been conferred by a monarch.		
-B2	knight	verb	(chess, transitive) To promote (a pawn) to a knight.		
-B2	knight	verb	(transitive) To confer knighthood upon.		
-B2	laundry	noun	A business whose primary purpose is to conceal the origins of money received illegally.		
-B2	laundry	noun	A laundering; a washing.		
+B2	kit	verb	(transitive) To assemble or collect something into kits.	đóng gói thành bộ	
+B2	kit	verb	(transitive) To equip (somebody) with something.	trang bị (cho ai thứ gì)	
+B2	knight	noun	(by extension) An armored and mounted warrior of the Middle Ages.	hiệp sĩ	
+B2	knight	noun	(historical) A minor nobleman with an honourable military rank who had served as a page and squire.	(sử) hiệp sĩ (tước quý tộc bậc thấp)	
+B2	knight	noun	(historical) A young servant or follower; a trained military attendant in service of a lord.	(sử) thị đồng, tuỳ tùng	
+B2	knight	noun	(modern) A person on whom a knighthood has been conferred by a monarch.	hiệp sĩ (được phong tước)	
+B2	knight	verb	(chess, transitive) To promote (a pawn) to a knight.	(cờ vua) phong (tốt) thành mã	
+B2	knight	verb	(transitive) To confer knighthood upon.	phong tước hiệp sĩ	
+B2	laundry	noun	A business whose primary purpose is to conceal the origins of money received illegally.	vỏ bọc rửa tiền	
+B2	laundry	noun	A laundering; a washing.	sự giặt giũ, việc giặt là	
 B2	laundry	noun	A place or room where laundering is done - including, by extension, other forms of laundering than clothes washing.	phòng giặt là	ok
-B2	laundry	noun	That which needs to be, is being, or has been laundered.		
-B2	lend	noun	(anatomy, UK dialectal) The lumbar region; loin.		
-B2	lend	noun	(chiefly dialectal, with "the") Loan (permission to borrow (something)).		
-B2	lend	noun	(UK dialectal, of a person or animal) The loins; flank; buttocks.		
-B2	lend	verb	(intransitive) To make a loan.		
-B2	lend	verb	(reflexive) To be suitable or applicable, to fit.		
-B2	lend	verb	(transitive) To allow to be used by someone temporarily, on condition that it or its equivalent will be returned.		
-B2	lend	verb	To afford; to grant or furnish in general.		
-B2	limit	adj	(poker) Being a fixed limit game.		
-B2	limit	noun	(category theory) The cone of a diagram through which any other cone of that same diagram can factor uniquely.		
-B2	limit	noun	(poker) Fixed limit.		
-B2	limit	noun	A restriction; a bound beyond which one may not go or proceed.		
-B2	limit	noun	The final, utmost, or furthest point; the border or edge.		
-B2	limit	verb	(mathematics, intransitive) To have a limit in a particular set.		
+B2	laundry	noun	That which needs to be, is being, or has been laundered.	đồ giặt, quần áo cần giặt	
+B2	lend	noun	(anatomy, UK dialectal) The lumbar region; loin.	(giải phẫu, Anh) vùng thắt lưng	
+B2	lend	noun	(chiefly dialectal, with "the") Loan (permission to borrow (something)).	(phương ngữ) sự cho mượn	
+B2	lend	noun	(UK dialectal, of a person or animal) The loins; flank; buttocks.	(Anh, phương ngữ) vùng hông, mông	
+B2	lend	verb	(intransitive) To make a loan.	cho vay	
+B2	lend	verb	(reflexive) To be suitable or applicable, to fit.	phù hợp, thích hợp (với)	
+B2	lend	verb	(transitive) To allow to be used by someone temporarily, on condition that it or its equivalent will be returned.	cho mượn	
+B2	lend	verb	To afford; to grant or furnish in general.	mang lại, đem lại	
+B2	limit	adj	(poker) Being a fixed limit game.	(poker) có mức cược cố định	
+B2	limit	noun	(category theory) The cone of a diagram through which any other cone of that same diagram can factor uniquely.	(toán học) giới hạn (lý thuyết phạm trù)	
+B2	limit	noun	(poker) Fixed limit.	(poker) mức cược cố định	
+B2	limit	noun	A restriction; a bound beyond which one may not go or proceed.	giới hạn, hạn mức	
+B2	limit	noun	The final, utmost, or furthest point; the border or edge.	giới hạn, ranh giới	
+B2	limit	verb	(mathematics, intransitive) To have a limit in a particular set.	(toán học) có giới hạn (trong một tập hợp)	
 B2	limit	verb	(transitive) To restrict; to circumscribe; not to allow to go beyond a certain bound, to set boundaries.	hạn chế	ok
-B2	lousy	adj	(colloquial, usually with with) Filled or packed (with something, usually bad).		
-B2	lousy	adj	(colloquial) Unwanted and often unpleasant.		
-B2	lousy	adj	(colloquial) Unwell; under the weather.		
-B2	lousy	adj	Infested with lice.		
-B2	loyal	adj	Faithful to a person or cause.		
+B2	lousy	adj	(colloquial, usually with with) Filled or packed (with something, usually bad).	(khẩu ngữ) đầy rẫy, tràn ngập	
+B2	lousy	adj	(colloquial) Unwanted and often unpleasant.	(khẩu ngữ) tệ, dở	
+B2	lousy	adj	(colloquial) Unwell; under the weather.	(khẩu ngữ) khó ở, mệt mỏi	
+B2	lousy	adj	Infested with lice.	đầy chấy, có chấy	
+B2	loyal	adj	Faithful to a person or cause.	trung thành	
 B2	loyal	adj	Firm in allegiance to a person or institution; allegiant.	trung thành	ok
-B2	loyal	adj	Having or demonstrating undivided and constant support for someone or something.		
-B2	meantime	adv	During the interval; meanwhile.		
-B2	meantime	noun	The time spent waiting for another event; time in between.		
-B2	meanwhile	adv	During an intervening time; from now until a future time.		
-B2	meanwhile	adv	During the time that something is happening, often specifically in a different place.		
-B2	meanwhile	adv	In contrast to aspects previously mentioned.		
-B2	meanwhile	noun	The time between two events.		
-B2	mickey	adj	(Australia, informal) Short for Mickey Mouse (“excellent, grouse”).		
-B2	mickey	noun	(chiefly Canada, informal) A small bottle of liquor, such as whiskey, usually holding 375 millilitres (13.2 imperial fluid ounces; 12.7 U.S. fluid ounces), typically shaped to fit in one's pocket.		
-B2	mickey	noun	(computing) The smallest distance that a computer mouse can move a cursor on a screen, which is used to measure the device's resolution or sensitivity.		
-B2	mickey	noun	A young bull, especially one which is unbranded and running wild; a bullock.		
+B2	loyal	adj	Having or demonstrating undivided and constant support for someone or something.	trung thành, tận tụy	
+B2	meantime	adv	During the interval; meanwhile.	trong khi đó, trong lúc đó	
+B2	meantime	noun	The time spent waiting for another event; time in between.	khoảng thời gian chờ đợi	
+B2	meanwhile	adv	During an intervening time; from now until a future time.	trong khi đó, tạm thời	
+B2	meanwhile	adv	During the time that something is happening, often specifically in a different place.	trong khi đó (ở nơi khác)	
+B2	meanwhile	adv	In contrast to aspects previously mentioned.	trong khi đó, ngược lại	
+B2	meanwhile	noun	The time between two events.	khoảng thời gian giữa hai sự kiện	
+B2	mickey	adj	(Australia, informal) Short for Mickey Mouse (“excellent, grouse”).	(Úc, khẩu ngữ) tuyệt vời, hết sảy	
+B2	mickey	noun	(chiefly Canada, informal) A small bottle of liquor, such as whiskey, usually holding 375 millilitres (13.2 imperial fluid ounces; 12.7 U.S. fluid ounces), typically shaped to fit in one's pocket.	(Canada, khẩu ngữ) chai rượu nhỏ (bỏ túi)	
+B2	mickey	noun	(computing) The smallest distance that a computer mouse can move a cursor on a screen, which is used to measure the device's resolution or sensitivity.	(tin học) mickey (đơn vị đo độ phân giải chuột)	
+B2	mickey	noun	A young bull, especially one which is unbranded and running wild; a bullock.	(Úc) bò tơ hoang chưa đóng dấu	
 B2	mickey	noun	The noisy miner (Manorina melanocephala), a honeyeater endemic to eastern and southeastern Australia.		
-B2	mickey	verb	(transitive) Sometimes followed by up: short for mickey-finn (“to drug (someone) with a Mickey Finn (“an alcoholic or non-alcoholic drink deliberately doctored with a drug intended to quickly render the drinker unconscious”); to secretly put a drug into (someone's drink) to render them unconscious”).		
-B2	minor	adj	Lesser, smaller in importance, size, degree, seriousness, or significance compared to another option, particularly:		
-B2	minor	noun	(Australian football) Synonym of behind: a one-point kick.		
-B2	minor	noun	(Catholicism) Alternative letter-case form of Minor: a Franciscan friar, a Clarist nun.		
-B2	minor	noun	(ice hockey) Ellipsis of minor penalty (“a penalty requiring a player to leave the ice for 2 minutes unless the opposing team scores”).		
-B2	minor	noun	A lesser person or thing, a person, group, or thing of minor rank or in the minor leagues.		
-B2	minor	verb	Used in a phrasal verb: minor in.		
-B2	monitor	noun	A device that detects and informs on the presence, quantity, etc., of something.		
-B2	monitor	noun	A monitor lizard (Varanus spp. and extinct relatives in family Varanidae).		
-B2	monitor	noun	A studio monitor or loudspeaker.		
+B2	mickey	verb	(transitive) Sometimes followed by up: short for mickey-finn (“to drug (someone) with a Mickey Finn (“an alcoholic or non-alcoholic drink deliberately doctored with a drug intended to quickly render the drinker unconscious”); to secretly put a drug into (someone's drink) to render them unconscious”).	(lóng) bỏ thuốc mê vào đồ uống (của ai đó)	
+B2	minor	adj	Lesser, smaller in importance, size, degree, seriousness, or significance compared to another option, particularly:	nhỏ, thứ yếu, không đáng kể	
+B2	minor	noun	(Australian football) Synonym of behind: a one-point kick.	(bóng đá Úc) cú ghi một điểm (behind)	
+B2	minor	noun	(Catholicism) Alternative letter-case form of Minor: a Franciscan friar, a Clarist nun.	(Công giáo) tu sĩ dòng Phanxicô, nữ tu dòng Clara	
+B2	minor	noun	(ice hockey) Ellipsis of minor penalty (“a penalty requiring a player to leave the ice for 2 minutes unless the opposing team scores”).	(khúc côn cầu) phạt nhỏ (2 phút)	
+B2	minor	noun	A lesser person or thing, a person, group, or thing of minor rank or in the minor leagues.	đội/giải hạng dưới, thành phần thứ yếu	
+B2	minor	verb	Used in a phrasal verb: minor in.	học chuyên ngành phụ	
+B2	monitor	noun	A device that detects and informs on the presence, quantity, etc., of something.	thiết bị giám sát, máy theo dõi	
+B2	monitor	noun	A monitor lizard (Varanus spp. and extinct relatives in family Varanidae).	kỳ đà	
+B2	monitor	noun	A studio monitor or loudspeaker.	(âm nhạc) loa kiểm âm	
 B2	monitor	noun	Someone who watches over something; a person in charge of something or someone.		
 B2	monitor	verb	(transitive) To watch over; to guard.	giám sát	ok
 B2	monk	noun	(colloquial) A monkey.		
@@ -2472,7 +2472,7 @@ C1	supermarket	noun	(figurative) A one-stop shop; a place offering a range of pr
 C1	supermarket	noun	A chain of such stores.	siêu thị	thiếu nghĩa — đây là nghĩa "chuỗi siêu thị" (hệ thống nhiều cửa hàng), "siêu thị" đơn thuần trùng với nghĩa đơn lẻ ở dòng khác, không thể hiện ý "chain of stores" — nên là "chuỗi siêu thị"
 C1	supermarket	noun	A large self-service store that sells groceries and, usually, medications, household goods, and/or clothing.	siêu thị	ok
 C1	sushi	noun	(proscribed) Raw fish, especially as a Japanese dish.	sushi	thiếu nghĩa và nhãn — gloss chỉ lặp lại từ phiên âm "sushi", không truyền tải nghĩa "cá sống" (nghĩa bị coi là dùng sai) của mục này — nên có nhãn và nghĩa dạng "(nghĩa bị coi là sai) cá sống"
-C1	sushi	noun	A Japanese dish made of small portions of sticky white rice flavored with vinegar, usually wrapped in seaweed and filled or topped with fish, vegetables or meat.	sushi	
+C1	sushi	noun	A Japanese dish made of small portions of sticky white rice flavored with vinegar, usually wrapped in seaweed and filled or topped with fish, vegetables or meat.	sushi	ok
 C1	sushi	verb	(transitive, informal) To prepare (a food) as sushi.		
 C1	swine	noun	(derogatory) A contemptible person (plural swine or swines).		
 C1	swine	noun	(plural swine) A pig (the animal).		
@@ -2505,7 +2505,7 @@ C1	til	prep	(colloquial) until, till
 C1	translate	noun	(mathematical analysis) In Euclidean spaces: a set of points obtained by adding a given fixed vector to each point of a given set.		
 C1	translate	verb	Senses relating to a change of position.		
 C1	translate	verb	Senses relating to the change of information, etc., from one form to another.		
-C1	treaty	noun	(countable, international law) A formal binding agreement concluded by subjects of international law, namely, states and international organizations; a convention, a pact.	điều ước	
+C1	treaty	noun	(countable, international law) A formal binding agreement concluded by subjects of international law, namely, states and international organizations; a convention, a pact.	điều ước	ok
 C1	treaty	verb	(intransitive) To enter into a treaty.		
 C1	treaty	verb	(transitive) To get into (a specific situation) through a treaty.		
 C1	unlock	noun	(video games) An initially hidden feature that is made available to reward the player for some achievement.		
@@ -2513,15 +2513,15 @@ C1	unlock	noun	The act of unlocking something.
 C1	unlock	verb	(transitive, mobile telephony) To configure (a mobile phone) so that it is not bound to any particular carrier.		
 C1	unlock	verb	(transitive) To disclose or reveal previously unknown knowledge or potential.		
 C1	unlock	verb	(transitive) To obtain access to something; to meet the requirements of a security or protection system.		
-C1	unlock	verb	(transitive) To undo or open a lock or something locked by, for example, turning a key, or selecting a combination.	mở khóa	
+C1	unlock	verb	(transitive) To undo or open a lock or something locked by, for example, turning a key, or selecting a combination.	mở khóa	ok
 C1	unlucky	adj	Bringing ill luck.		
 C1	unlucky	adj	Having ill luck.		
 C1	unlucky	adj	Inauspicious.		
-C1	unlucky	adj	Unfortunate, marked by misfortune.	xui xẻo	
+C1	unlucky	adj	Unfortunate, marked by misfortune.	xui xẻo	ok
 C1	urban	adj	Having authority or jurisdiction over a city or town.		
 C1	urban	adj	Living in a city or town.		
-C1	urban	adj	Of, pertaining to, characteristic of, or happening or located in, a city or town; of, pertaining to, or characteristic of life in such a place, especially when contrasted with the countryside.	thành phố	
-C1	urine	noun	(physiology) Liquid waste consisting of water, salts, and urea, which is made in the kidneys, stored in the bladder, then released through the urethra.	nước tiểu	
+C1	urban	adj	Of, pertaining to, characteristic of, or happening or located in, a city or town; of, pertaining to, or characteristic of life in such a place, especially when contrasted with the countryside.	thành phố	sai từ loại — "thành phố" là danh từ (city); tính từ nên là "(thuộc) đô thị, thành thị"
+C1	urine	noun	(physiology) Liquid waste consisting of water, salts, and urea, which is made in the kidneys, stored in the bladder, then released through the urethra.	nước tiểu	ok
 C1	venture	noun	A risky or daring undertaking or journey.		
 C1	venture	noun	An event that is not, or cannot be, foreseen.		
 C1	venture	noun	The thing risked; especially, something sent to sea in trade.		
@@ -2554,10 +2554,10 @@ C1	workshop	verb	(transitive, business) To improve through collaboration.
 C1	workshop	verb	(transitive) To help a playwright revise a draft of (a play) by rehearsing it with actors and critiquing the results.		
 C1	workshop	verb	(transitive) To work on or revise something, especially collaboratively, in a workshop.		
 C2	abundance	noun	A large quantity; many.		
-C2	abundance	noun	An overflowing fullness or ample sufficiency; profusion; copious supply; superfluity; plentifulness.	phong phú	
+C2	abundance	noun	An overflowing fullness or ample sufficiency; profusion; copious supply; superfluity; plentifulness.	phong phú	sai từ loại — đây là danh từ (act/state), "phong phú" là tính từ; nên là "sự phong phú"
 C2	abundance	noun	Frequency, amount, ratio of something within a given environment or sample.		
 C2	abundance	noun	Wealth; affluence; plentiful amount of resources.		
-C2	accommodation	noun	(British, Australia, a mass noun) Lodging in a dwelling or similar living quarters afforded to travellers in hotels or on cruise ships, or students, etc.	phòng ở	
+C2	accommodation	noun	(British, Australia, a mass noun) Lodging in a dwelling or similar living quarters afforded to travellers in hotels or on cruise ships, or students, etc.	phòng ở	ok
 C2	accommodation	noun	(countable, geology) The place where sediments can make, or have made, a sedimentation.		
 C2	accommodation	noun	(personal) Adaptation or adjustment.		
 C2	accommodation	noun	(physical) Adaptation or adjustment.		
@@ -2571,17 +2571,17 @@ C2	aft	adj	located at the back of a boat, ship, or airplane
 C2	aft	adv	(nautical) At, near, or towards the stern of a vessel (with the frame of reference within the vessel).		
 C2	aft	noun	(nautical) The rear part (after end) of a ship or other vessel.		
 C2	almond	adj	Brownish, resembling the colour of an almond nut.		
-C2	almond	noun	(countable) The seed within the drupe of a small deciduous tree in family Rosaceae, Prunus amygdalus, considered a culinary nut.	hạnh nhân	
-C2	almond	noun	(countable) The tree that produces almonds.	hạnh đào	
+C2	almond	noun	(countable) The seed within the drupe of a small deciduous tree in family Rosaceae, Prunus amygdalus, considered a culinary nut.	hạnh nhân	ok
+C2	almond	noun	(countable) The tree that produces almonds.	hạnh đào	ok
 C2	almond	noun	(uncountable) The colour of the kernel of an almond without its shell and thin seed coat, a creamy off-white colour.		
-C2	almond	noun	Other plants that produce almond-like nuts:	hạnh nhân	
+C2	almond	noun	Other plants that produce almond-like nuts:	hạnh nhân	nghi ngờ dữ liệu tiếng Anh: đây là tiêu đề danh mục dẫn vào các nghĩa con, không phải một định nghĩa hoàn chỉnh — không đủ căn cứ để đối chiếu nghĩa cho "hạnh nhân"
 C2	aneurysm	noun	(pathology) An abnormal blood-filled swelling of an artery or vein, resulting from a localized weakness in the wall of the vessel.		
-C2	arthritis	noun	Inflammation of a joint or joints causing pain and/or disability, swelling and stiffness, and due to various causes such as infection, trauma, degenerative changes or metabolic disorders: any of several disease entities.	viêm khớp	
+C2	arthritis	noun	Inflammation of a joint or joints causing pain and/or disability, swelling and stiffness, and due to various causes such as infection, trauma, degenerative changes or metabolic disorders: any of several disease entities.	viêm khớp	ok
 C2	assurance	noun	Excessive boldness; impudence; audacity		
 C2	assurance	noun	Firmness of mind; undoubting steadiness; intrepidity, courage, or self-confidence.		
 C2	assurance	noun	The act of assuring; a declaration intended to inspire full confidence; something designed to give confidence to someone.		
 C2	assurance	noun	The state of being assured; total confidence or trust; a lack of doubt; certainty; guarantee.		
-C2	astronomy	noun	The study of the physical universe beyond the Earth's atmosphere, including the process of mapping locations and properties of the matter and radiation in the universe.	thiên văn học	
+C2	astronomy	noun	The study of the physical universe beyond the Earth's atmosphere, including the process of mapping locations and properties of the matter and radiation in the universe.	thiên văn học	ok
 C2	atmospheric	adj	(painting) Translucent or hazy.		
 C2	atmospheric	adj	Evoking a particular emotional or aesthetic quality.		
 C2	atmospheric	adj	Of, relating to, produced by, or coming from the atmosphere.		
@@ -2618,12 +2618,12 @@ C2	bossy	adj	Ornamented with bosses; studded.
 C2	bossy	adj	Tending to give orders to others, especially when unwarranted; domineering.		
 C2	caterpillar	noun	(mathematics) A set of subtrees of a tree.		
 C2	caterpillar	noun	A vehicle with a caterpillar track; a crawler.		
-C2	caterpillar	noun	The larva of a butterfly or moth; leafworm.	sâu	
+C2	caterpillar	noun	The larva of a butterfly or moth; leafworm.	sâu	ok
 C2	caterpillar	verb	(intransitive) To move along slowly, drawing one's body up, in the manner of a caterpillar.		
-C2	chainsaw	noun	(forestry, machinery, DIY) A power saw that has a power-driven and fast-revolving chain of metal teeth, usually used to cut trees.	cưa máy	
+C2	chainsaw	noun	(forestry, machinery, DIY) A power saw that has a power-driven and fast-revolving chain of metal teeth, usually used to cut trees.	cưa máy	ok
 C2	chainsaw	verb	(figurative) To make quick and substantial spending cuts.		
 C2	chainsaw	verb	(transitive, forestry, DIY) To cut with a chainsaw.		
-C2	chestnut	adj	Of a deep reddish-brown colour, like that of a chestnut fruit (noun sense 1).	nâu hạt dẻ	
+C2	chestnut	adj	Of a deep reddish-brown colour, like that of a chestnut fruit (noun sense 1).	nâu hạt dẻ	ok
 C2	chestnut	noun	(by extension) Things resembling a chestnut fruit in appearance or colour.		
 C2	chestnut	noun	(countable, figurative) Chiefly in old chestnut: a joke, meme, phrase, ploy, etc. which has been repeated so often as to have grown ineffective or tiresome; a cliché.		
 C2	chestnut	noun	(countable) An edible nut (technically a fruit) of the Spanish chestnut or sweet chestnut tree (Castanea sativa); also (chiefly preceded by a descriptive word), a nut from a related shrub or tree; or a similar nut from an unrelated plant.		
@@ -2639,9 +2639,9 @@ C2	commentary	noun	A series of comments or annotations; especially, a book of ex
 C2	commentary	noun	An oral relation of an event, especially broadcast by television or radio, as it occurs.		
 C2	consultation	noun	A conference for the exchange of information and advice.		
 C2	consultation	noun	An appointment or meeting with a professional person, such as a doctor.		
-C2	consultation	noun	The act of consulting.	sự tham khảo	
+C2	consultation	noun	The act of consulting.	sự tham khảo	ok
 C2	cosy	adj	(of a person) Warm and comfortable.		
-C2	cosy	adj	(of a place or object) Affording comfort and warmth; snug; social and comfortable.	ấm cúng	
+C2	cosy	adj	(of a place or object) Affording comfort and warmth; snug; social and comfortable.	ấm cúng	ok
 C2	cosy	noun	A padded or knit covering for any item (often an electronic device such as a laptop computer).		
 C2	cosy	noun	A padded or knit covering put on an item to keep it warm, especially a teapot or egg.		
 C2	cosy	noun	A work of crime fiction in which sex and violence are downplayed or treated humorously, and the crime and detection take place in a small, socially intimate community.		
@@ -2651,10 +2651,10 @@ C2	criteria	noun	(nonstandard, proscribed) A single criterion.
 C2	cutler	noun	One whose business is making or dealing in cutlery.		
 C2	deluxe	adj	Very fine in quality or luxurious.		
 C2	deluxe	noun	Something that is deluxe.		
-C2	dementia	noun	(pathology) A progressive decline in cognitive function due to damage or disease in the brain beyond what might be expected from normal aging. Areas particularly affected include memory, attention, judgement, language and problem solving.	suy giảm trí nhớ	
+C2	dementia	noun	(pathology) A progressive decline in cognitive function due to damage or disease in the brain beyond what might be expected from normal aging. Areas particularly affected include memory, attention, judgement, language and problem solving.	suy giảm trí nhớ	sai nghĩa — dementia là tên bệnh "chứng mất trí / chứng sa sút trí tuệ", "suy giảm trí nhớ" chỉ là một triệu chứng (mất trí nhớ), không bao quát đủ
 C2	dementia	noun	Madness or insanity.		
-C2	diameter	noun	(geometry) Any straight line between two points on the circumference of a circle that passes through the centre/center of the circle; a chord that passes through the center of the circle.	đường kính	
-C2	diameter	noun	(geometry) The length of such a line.	đường kính	
+C2	diameter	noun	(geometry) Any straight line between two points on the circumference of a circle that passes through the centre/center of the circle; a chord that passes through the center of the circle.	đường kính	ok
+C2	diameter	noun	(geometry) The length of such a line.	đường kính	ok
 C2	diameter	noun	(geometry) The maximum distance between any two points in a metric space.		
 C2	diameter	noun	(graph theory) The maximum eccentricity over all vertices in a graph.		
 C2	diplomacy	noun	Tact and subtle skill in dealing with people so as to avoid or settle hostility.		
@@ -2674,7 +2674,7 @@ C2	duet	verb	(intransitive, zoology, of pairs of animals) To communicate (warnin
 C2	duet	verb	(intransitive) To perform a duet.		
 C2	duet	verb	(transitive) (of two people) To say at the same time, to chorus.		
 C2	duet	verb	(transitive) To perform (sing, play, etc.) as a duet.		
-C2	elect	adj	(postpositive) Who has been elected in a specified post, but has not yet entered office.	tân cử	
+C2	elect	adj	(postpositive) Who has been elected in a specified post, but has not yet entered office.	tân cử	ok
 C2	elect	adj	Chosen; taken by preference from among two or more.		
 C2	elect	noun	(theology) In Calvinist theology, one foreordained to Heaven. In other Christian theologies, someone chosen by God for salvation.		
 C2	elect	noun	One chosen or set apart.		
@@ -2715,11 +2715,11 @@ C2	flask	noun	A nuclear flask, a large, secure lead-lined container for the tran
 C2	flask	verb	(dentistry) To invest a denture in a flask so as to produce a sectional mold.		
 C2	florist	noun	A florist's shop.		
 C2	florist	noun	A person who cultivates flowers.		
-C2	florist	noun	A person who sells flowers.	người bán hoa	
+C2	florist	noun	A person who sells flowers.	người bán hoa	ok
 C2	florist	noun	A person who studies or writes about flowers.		
 C2	foggy	adj	(figuratively) Confused, befuddled, or vague.		
 C2	foggy	adj	Being, covered with, or pertaining to fog (“tall grass etc that grows after, or is left after, cutting; moss”)		
-C2	foggy	adj	Obscured by mist or fog; unclear; hazy.	có sương mù	
+C2	foggy	adj	Obscured by mist or fog; unclear; hazy.	có sương mù	ok
 C2	frail	adj	Easily broken physically; not firm or durable; liable to fail and perish.		
 C2	frail	adj	Liable to fall from virtue or be led into sin; not strong against temptation; weak in resolution; unchaste.		
 C2	frail	adj	Mentally fragile.		
@@ -2738,7 +2738,7 @@ C2	gallon	noun	(British, Canada) exactly 4.54609 liters; an imperial gallon
 C2	gallon	noun	(US) 231 cubic inches or approximately 3.785 liters for liquids (a "U.S. liquid gallon")		
 C2	gallon	noun	(US) one-eighth of a U.S. bushel or approximately 4.405 liters for dry goods (a "U.S. dry gallon").		
 C2	gallon	noun	A unit of volume, equivalent to eight pints		
-C2	geisha	noun	A Japanese female entertainer skilled in various arts such as tea ceremony, dancing, singing and calligraphy.	geisha	
+C2	geisha	noun	A Japanese female entertainer skilled in various arts such as tea ceremony, dancing, singing and calligraphy.	geisha	ok
 C2	gore	noun	(obsolete except in dialects) Dirt, filth, often dung or mud.		
 C2	gore	noun	(surveying, chiefly US) A small piece of land left unincorporated due to competing surveys or a surveying error.		
 C2	gore	noun	A triangular or rhomboid piece of fabric, especially one forming part of a three-dimensional surface such as a sail or a skirt.		
@@ -2747,7 +2747,7 @@ C2	gore	noun	Blood, especially that from a wound when thickened due to exposure 
 C2	gore	noun	Carnage, bloodshed, murder, violence.		
 C2	gore	noun	Pictures and videos of graphic violence and human death.		
 C2	gore	noun	The curved surface that lies between two close lines of longitude on a globe, or an equivalent section of a spherical or dome-shaped object in general.ᵂᵖ		
-C2	gore	verb	(transitive, of an animal) To pierce with a horn or tusk.	húc	
+C2	gore	verb	(transitive, of an animal) To pierce with a horn or tusk.	húc	ok
 C2	gore	verb	To cut into a triangular form.		
 C2	gore	verb	To provide with a gore.		
 C2	hallucination	noun	(artificial intelligence) A confident but incorrect response given by an artificial intelligence; a confabulation.		
@@ -2773,7 +2773,7 @@ C2	hoop	noun	Any circular band or ring.
 C2	hoop	verb	(intransitive, slang) To play basketball.		
 C2	hoop	verb	(transitive) To bind or fasten using a hoop.		
 C2	hoop	verb	(transitive) To clasp; to encircle; to surround.		
-C2	hymn	noun	A song of praise or worship, especially a religious one.	thánh ca	
+C2	hymn	noun	A song of praise or worship, especially a religious one.	thánh ca	ok
 C2	hymn	verb	(ambitransitive) To sing a hymn.		
 C2	hymn	verb	(transitive) To praise or extol in hymns.		
 C2	hypocrisy	noun	An instance of hypocrisy.		
@@ -2782,7 +2782,7 @@ C2	hypocrisy	noun	The contrivance of a false appearance of virtue or goodness, w
 C2	hypocrisy	noun	The practice of engaging in the same behaviour or activity for which one criticises another; moral self-contradiction whereby the behavior of one or more people belies their own claimed or implied possession of certain beliefs, standards or virtues.		
 C2	hysteria	noun	(informal, psychopathology) Synonym of conversion disorder.		
 C2	hysteria	noun	(medicine, nosologically dated) A mental disorder characterized by emotional excitability etc. without an organic cause.		
-C2	hysteria	noun	Behavior exhibiting excessive or uncontrollable emotions, in a wide range from joy to panic but usually including anxiety or fear.	ittêri	
+C2	hysteria	noun	Behavior exhibiting excessive or uncontrollable emotions, in a wide range from joy to panic but usually including anxiety or fear.	ittêri	"ittêri" không phải từ tiếng Việt chuẩn, khó nhận diện — nên là "chứng cuồng loạn"
 C2	ideology	noun	(uncountable) The study of the origin and nature of ideas.		
 C2	ideology	noun	Doctrine, philosophy, body of beliefs or principles belonging to an individual or group.		
 C2	illegitimate	adj	Not conforming to known principles, or established or accepted rules or standards.		
@@ -2794,7 +2794,7 @@ C2	illegitimate	verb	(transitive) To make illegitimate.
 C2	illiterate	adj	Having less than an expected standard of familiarity with language and literature, or having little formal education.		
 C2	illiterate	adj	Ignorant in a specified way or about a specified subject.		
 C2	illiterate	adj	Not conforming to prescribed standards of speech or writing.		
-C2	illiterate	adj	Unable to read and write.	dốt nát	
+C2	illiterate	adj	Unable to read and write.	dốt nát	ok
 C2	illiterate	noun	A person ignorant about a given subject. (The relevant subject is usually named as a noun adjunct.)		
 C2	illiterate	noun	An illiterate person, one either not able to read and write or not knowing how.		
 C2	invaluable	adj	Having great or incalculable value.		
@@ -2803,7 +2803,7 @@ C2	jerky	adj	Characterized by physical jerking, or by sudden and uneven progress
 C2	jerky	noun	Lean meat cured and preserved by cutting into thin strips and air-drying in the sun.		
 C2	jerky	verb	(transitive) To cure and preserve (meat) by drying it, making jerky.		
 C2	labyrinth	noun	(anatomy) A tortuous anatomical structure:		
-C2	labyrinth	noun	(Greek mythology) A maze-like structure built by Daedalus in Knossos, containing the Minotaur.	mê cung	
+C2	labyrinth	noun	(Greek mythology) A maze-like structure built by Daedalus in Knossos, containing the Minotaur.	mê cung	ok
 C2	labyrinth	noun	Any of various satyrine butterflies of the genus Neope.		
 C2	labyrinth	verb	To arrange in the form of a labyrinth.		
 C2	labyrinth	verb	To become lost and confused, as if in a labyrinth.		
@@ -2813,7 +2813,7 @@ C2	leftover	adj	Remaining; left behind; extra; odd; in reserve.
 C2	leftover	noun	(chiefly in the plural, usually of food) Remaining after a meal is complete or eaten for a later meal or snack.		
 C2	leftover	noun	Something left behind; an excess or remainder.		
 C2	literal	adj	Actual, real, physical.		
-C2	literal	adj	Exactly as stated; read or understood without interpretation; according to the letter; not figurative or metaphorical; following the letter or exact words; not taking liberties; etymonic rather than idiomatic.	nghĩa đen	
+C2	literal	adj	Exactly as stated; read or understood without interpretation; according to the letter; not figurative or metaphorical; following the letter or exact words; not taking liberties; etymonic rather than idiomatic.	nghĩa đen	ok
 C2	literal	adj	Following the historical-grammatical method of biblical interpretation.		
 C2	literal	adj	That which generally assumes that the plainest reading of a given text is correct but which allows for metaphor where context indicates it.		
 C2	literal	noun	(epigraphy, typography) A misprint (or occasionally a scribal error) that affects a letter.		
@@ -2838,11 +2838,11 @@ C2	malicious	adj	Intending to do harm; characterized by spite and malice.
 C2	mammoth	adj	Comparable to a mammoth in its size; very large, huge, gigantic.		
 C2	mammoth	noun	(figuratively) Something very large of its kind.		
 C2	mammoth	noun	A kind of large donkey.		
-C2	mammoth	noun	Any species of the extinct genus Mammuthus, of large, usually hairy, elephant-like mammals with long curved tusks and an inclined back, which became extinct with the last retreat of ice age glaciers during the late Pleistocene period, and are known from fossils, frozen carcasses, and Paleolithic cave paintings found in North America and Eurasia.	voi ma mút	
+C2	mammoth	noun	Any species of the extinct genus Mammuthus, of large, usually hairy, elephant-like mammals with long curved tusks and an inclined back, which became extinct with the last retreat of ice age glaciers during the late Pleistocene period, and are known from fossils, frozen carcasses, and Paleolithic cave paintings found in North America and Eurasia.	voi ma mút	ok
 C2	meatball	noun	(graphical user interface) A menu icon of three horizontal dots.		
 C2	meatball	noun	(motor racing) Ellipsis of meatball flag.		
 C2	meatball	noun	(slang) A stupid person; a meathead.		
-C2	meatball	noun	A ball of minced or ground meat, seasoned and cooked.	thịt viên	
+C2	meatball	noun	A ball of minced or ground meat, seasoned and cooked.	thịt viên	ok
 C2	microscopic	adj	(figurative) Carried out with great attention to detail.		
 C2	microscopic	adj	Of, or relating to microscopes or microscopy; microscopal		
 C2	microscopic	adj	So small that it can only be seen with the aid of a microscope.		
@@ -2866,8 +2866,8 @@ C2	mow	noun	Alternative form of mew (a seagull)
 C2	mow	noun	The act of mowing (a garden, grass, etc.).		
 C2	mow	noun	The place in a barn where hay or grain in the sheaf is stowed.		
 C2	mow	verb	(agriculture) To put into mows.		
-C2	mow	verb	(transitive, often with through) To cut down or slaughter in great numbers.	cắt	
-C2	mow	verb	(transitive) To cut down grass or crops.	cắt	
+C2	mow	verb	(transitive, often with through) To cut down or slaughter in great numbers.	cắt	thiếu nghĩa — đây là nghĩa bóng "tàn sát, quét ngã hàng loạt", "cắt" (giống hệt nghĩa cắt cỏ ở dòng khác) không truyền tải được nghĩa này
+C2	mow	verb	(transitive) To cut down grass or crops.	cắt	ok
 C2	mow	verb	To make grimaces, mock.		
 C2	mutton	adj	(Cockney rhyming slang) deaf.		
 C2	mutton	noun	(historical) An old Anglo-French gold coin impressed with the image of a lamb.		
@@ -2889,7 +2889,7 @@ C2	nutty	adj	Resembling or characteristic of nuts.
 C2	observatory	noun	A lookout (vantage point with a view of the surrounding area)		
 C2	observatory	noun	A place where stars, planets and other celestial bodies are observed, usually through a telescope; also place for observing meteorological or other natural phenomena.		
 C2	obsolete	adj	(biology) Imperfectly developed; not very distinct.		
-C2	obsolete	adj	(of words, equipment, etc.) No longer in use or no longer useful; now disused or neglected (often in favour of something newer, better, or more fashionable); outmoded.	lỗi thời	
+C2	obsolete	adj	(of words, equipment, etc.) No longer in use or no longer useful; now disused or neglected (often in favour of something newer, better, or more fashionable); outmoded.	lỗi thời	ok
 C2	obsolete	noun	An obsolete thing or person.		
 C2	obsolete	verb	(transitive) To cause to become obsolete.		
 C2	ointment	noun	(medicine) A viscous preparation of oils and/or fats, usually containing medication, used as a treatment or as an emollient.		
@@ -2919,13 +2919,13 @@ C2	pant	verb	(intransitive) To sigh; to flutter; to languish.
 C2	partridge	noun	(ornithology) Any bird of a number of genera in the family Phasianidae, notably in the genera Perdix and Alectoris.		
 C2	partridge	noun	(uncountable) The flesh or meat of this bird eaten as food.		
 C2	pelvis	noun	(anatomy) A funnel-shaped cavity, especially such a cavity in the kidney into which urine passes towards the ureter.		
-C2	pelvis	noun	(anatomy) The large compound bone structure at the base of the spine that supports the legs in hominids.	khung chậu	
+C2	pelvis	noun	(anatomy) The large compound bone structure at the base of the spine that supports the legs in hominids.	khung chậu	ok
 C2	pelvis	noun	(loosely, by extension) The pelvic region of the human body.		
 C2	penal	adj	Exorbitant.		
 C2	penal	adj	Of or relating to punishment.		
 C2	penal	adj	Serving as a place of punishment.		
 C2	penal	adj	Subject to punishment; punishable.		
-C2	persecution	noun	The act of persecuting, especially a specific group of people; an instance of persecution.	sự khủng bố	
+C2	persecution	noun	The act of persecuting, especially a specific group of people; an instance of persecution.	sự khủng bố	ok
 C2	philosophical	adj	Detached, calm, stoic.		
 C2	philosophical	adj	Of, or pertaining to, philosophy.		
 C2	philosophical	adj	Rational; analytic or critically minded; thoughtful.		
@@ -2947,14 +2947,14 @@ C2	predicament	noun	A definite class, state or condition.
 C2	predicament	noun	An unfortunate or trying position or condition.		
 C2	prostate	adj	Alternative spelling of pro-state.		
 C2	prostate	adj	Of or relating to the prostate gland.		
-C2	prostate	noun	The prostate gland.	tuyến tiền liệt	
+C2	prostate	noun	The prostate gland.	tuyến tiền liệt	ok
 C2	prudent	adj	Frugal; economical; not extravagant.		
 C2	prudent	adj	Practically wise, judicious, shrewd.		
 C2	prudent	adj	Sagacious in adapting means to ends; circumspect in action, or in determining any line of conduct.		
 C2	psyche	noun	(chiefly psychology) The human mind as the central force in thought, emotion, and behavior of an individual.		
 C2	psyche	noun	A small white butterfly, Leptosia nina, family Pieridae, of Asia and Australasia.		
 C2	psyche	noun	Abbreviation of psychology.		
-C2	psyche	noun	The human soul, mind, or spirit.	tâm	
+C2	psyche	noun	The human soul, mind, or spirit.	tâm	ok
 C2	psyche	phrase	(colloquial) Alternative form of psych.		
 C2	psyche	verb	Alternative form of psych.		
 C2	rad	noun	(automotive, plumbing, slang) Clipping of radiator.		
@@ -2979,7 +2979,7 @@ C2	ruse	noun	(uncountable) Cunning, guile, trickery.
 C2	ruse	verb	(intransitive) To deceive or trick using a ruse.		
 C2	salami	noun	(baseball) A grand slam.		
 C2	salami	noun	(slang) The penis.		
-C2	salami	noun	A large cured meat sausage of Italian origin, served in slices.	xúc xích ý	
+C2	salami	noun	A large cured meat sausage of Italian origin, served in slices.	xúc xích ý	lỗi chính tả — "ý" (tên nước Ý) phải viết hoa: "xúc xích Ý"
 C2	samba	noun	(dance) A Brazilian ballroom dance or dance style.		
 C2	samba	noun	(music) A Brazilian musical genre, to which the aforementioned dance is danced, which has its roots in West Africa via the slave trade.		
 C2	samba	verb	(intransitive) To dance the samba.		
@@ -2991,7 +2991,7 @@ C2	serenity	noun	A lack of agitation or disturbance.
 C2	serenity	noun	A title given to a reigning prince or similar dignitary.		
 C2	serenity	noun	The state of being serene; calmness; peacefulness.		
 C2	silicon	noun	(chemistry, countable) A single atom of this element.		
-C2	silicon	noun	(chemistry, uncountable) A nonmetallic element (symbol Si) with an atomic number of 14 and atomic weight of 28.0855.	silic	
+C2	silicon	noun	(chemistry, uncountable) A nonmetallic element (symbol Si) with an atomic number of 14 and atomic weight of 28.0855.	silic	ok
 C2	silicon	noun	(slang) A computer processor.		
 C2	silicon	noun	(slang) Computing.		
 C2	silicon	noun	Abbreviation of silicon chip.		
@@ -3043,23 +3043,23 @@ C2	submission	noun	The act of submitting or yielding; surrender.
 C2	submission	noun	The thing which has been submitted.		
 C2	succession	noun	An act, process, or instance of succeeding:		
 C2	swain	noun	(poetic) A rural lover; a male sweetheart in a pastoral setting.		
-C2	syphilis	noun	(pathology) A disease spread via sexual activity, caused by the bacterium Treponema pallidum.	giang mai	
+C2	syphilis	noun	(pathology) A disease spread via sexual activity, caused by the bacterium Treponema pallidum.	giang mai	ok
 C2	toot	noun	(Australia, slang) A toilet.		
 C2	toot	noun	(by extension, countable, informal) A fart; flatus.		
 C2	toot	noun	(countable, slang) A portion of cocaine that a person snorts.		
-C2	toot	noun	(countable) The noise of a horn or whistle.	tiếng còi	
+C2	toot	noun	(countable) The noise of a horn or whistle.	tiếng còi	ok
 C2	toot	noun	(uncountable, slang) Cocaine.		
 C2	toot	verb	To peep; to look narrowly.		
 C2	toot	verb	To produce the noise of a horn or whistle.		
 C2	toot	verb	To see; to spy.		
 C2	toot	verb	To stand out, or be prominent.		
 C2	tourism	noun	(figurative) The act of visiting another region or jurisdiction for a particular purpose.		
-C2	tourism	noun	The act of travelling or sightseeing, particularly away from one's home.	sự du lịch	
+C2	tourism	noun	The act of travelling or sightseeing, particularly away from one's home.	sự du lịch	ok
 C2	tourism	noun	The industry in which such travels and sightseeing are organized.		
 C2	trainee	noun	A juvenile inmate being trained and (re)educated in a reformatory school.		
 C2	trainee	noun	Someone who is still in the process of being formally trained in a workplace.		
-C2	ulcer	noun	(figurative) Anything that festers and corrupts like an open sore; a vice in character.	loét	
-C2	ulcer	noun	(pathology) An open sore of the skin, eyes or mucous membrane, often caused by an initial abrasion and generally maintained by an inflammation and/or an infection.	loét	
+C2	ulcer	noun	(figurative) Anything that festers and corrupts like an open sore; a vice in character.	loét	thiếu nhãn nghĩa bóng — đây là nghĩa ẩn dụ (cái xấu ăn sâu, thói hư), "loét" trùng với nghĩa y học ở dòng khác; nên là "ung nhọt (nghĩa bóng)"
+C2	ulcer	noun	(pathology) An open sore of the skin, eyes or mucous membrane, often caused by an initial abrasion and generally maintained by an inflammation and/or an infection.	loét	ok
 C2	ulcer	noun	(pathology) Peptic ulcer.		
 C2	ulcer	verb	To ulcerate.		
 C2	undergo	verb	(transitive) To experience; to pass through a phase.		
@@ -3070,7 +3070,7 @@ C2	unprofessional	adj	Lacking a profession.
 C2	unprofessional	adj	Not relating to professional occupation or employment; nonprofessional.		
 C2	unprofessional	adj	Unbecoming of a professional; hence inappropriate in the workplace.		
 C2	unprofessional	noun	One who is not a professional.		
-C2	vendor	noun	A person or a company that vends or sells.	ngưởi bán hàng rong	
+C2	vendor	noun	A person or a company that vends or sells.	ngưởi bán hàng rong	lỗi chính tả "ngưởi" → "người"; đồng thời nghĩa quá hẹp — vendor là người/công ty bán hàng nói chung, không riêng "bán hàng rong"
 C2	vendor	noun	A vending machine.		
 C2	vendor	verb	(transitive, software engineering) As the software vendor, to bundle one's own, possibly modified version of dependencies with a standard program.		
 C2	vendor	verb	(transitive, software engineering) To bundle third-party dependencies with the source code for one's own program.		
