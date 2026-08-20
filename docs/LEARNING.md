@@ -102,8 +102,52 @@ Khác kế hoạch:
 - **Nghĩa tiếng Việt còn thiếu nhiều.** Wiktionary dịch không đều: "tradition" có
   nghĩa tiếng Việt, "festival" và "trunk" không. Mục từ vẫn giữ, `vocab_senses.vi`
   để trống, API trả kèm cờ `viPending` để màn hình không in dòng trắng vào đúng
-  chỗ đáng lẽ là bản dịch. Chạy `scripts/nhap-tu-vung.mjs` sẽ in ra còn bao nhiêu
-  nghĩa chờ dịch, kèm câu truy vấn lấy danh sách.
+  chỗ đáng lẽ là bản dịch. Phần thiếu đang được dịch dần — xem §1.5.
+
+### 1.5 Bản dịch tiếng Việt: tệp là gốc, không phải cơ sở dữ liệu
+
+`data/prep.sqlite` nằm trong `.gitignore`, và mọi thứ trong đó đều dựng lại
+được: mục từ tự soạn thì `seedVocab()` nạp lại, mục từ nhập thì
+`nhap-tu-vung.mjs` tải lại từ Wiktionary.
+
+**Bản dịch của người là ngoại lệ duy nhất.** Không tải lại được — Wiktionary
+chính là chỗ nó không có. Nên nó phải nằm trong git, ở
+`server/data/vocab-vi.tsv`, và cơ sở dữ liệu là bản sao ở hạ nguồn:
+
+```
+nhap-tu-vung.mjs    → điền vocab_senses từ API, cột vi thường trống
+xuat-can-dich.mjs   → ghi mọi nghĩa ra tệp TSV, giữ nguyên bản dịch tệp đã có
+(người / tác nhân)  → điền cột vi
+nap-ban-dich.mjs    → nạp tệp TSV trở lại vocab_senses
+```
+
+Tệp thắng API: Wiktionary sau này có mọc thêm nghĩa tiếng Việt cho một từ đã
+được dịch thì vẫn giữ bản của người. Bản ấy viết cho người học Việt ở đúng bậc
+đó; bản của wiki mới hơn nhưng chưa chắc hợp hơn.
+
+**Luồng dịch theo lô** — `scripts/lo-dich.mjs`:
+
+```
+node scripts/lo-dich.mjs --dem                  # tiến độ theo từng bậc
+node scripts/lo-dich.mjs --lay=40 --ra=lo.tsv   # lấy 40 dòng chưa dịch
+node scripts/lo-dich.mjs --nap=lo.tsv           # trộn bản dịch xong vào kho
+```
+
+Bước trộn từ chối bốn loại rác và đếm riêng từng loại: khoá không có trong kho,
+ô trống, ô vẫn là tiếng Anh, và dòng đã có bản dịch (không đè). Nó thoát với mã
+khác 0 khi cả lô không ghi được gì, để một tác vụ tự động biết là hỏng chứ không
+tưởng là xong.
+
+Người dịch là tác nhân `dich-thuat` (`.claude/agents/dich-thuat.md`) — một người
+làm từ điển chứ không phải người dịch câu. Quy tắc đầy đủ nằm trong tệp đó; hai
+điều quan trọng nhất: gloss là **từ tiếng Việt người học cần dùng**, không phải
+bản dịch của định nghĩa tiếng Anh; và **không biết thì để trống**, vì một ô
+trống sẽ được lấy lại ở lượt sau còn một câu đoán thì không ai kiểm lại nữa.
+
+Hình dạng tệp được `scripts/test-vocab.mjs` kiểm trong verify: đủ năm cột, không
+khoá trùng, không ô dịch nào còn là tiếng Anh. Một dòng lệch cột sẽ đẩy sai mọi
+cột sau nó, và không ai thấy cho tới khi người học mở thẻ ra gặp bản dịch của
+một từ khác.
 
 Dựng lại kho từ vựng (kho nằm trong `data/prep.sqlite`, không theo git):
 

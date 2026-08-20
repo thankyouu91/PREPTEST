@@ -425,6 +425,47 @@ try {
   ok(dict.normalise('randy', than('adjective', [dinh('(British, informal) Sexually aroused.')])) !== null,
     'normalise() vẫn trả về đủ, việc lọc là của bên gọi');
 
+  /* ================= Kho bản dịch tiếng Việt =================
+     `server/data/vocab-vi.tsv` do một tác nhân dịch ghi vào theo giờ, không có
+     ai ngồi cạnh. Nên hình dạng của tệp phải được kiểm ở đây: một dòng lệch cột
+     sẽ đẩy sai mọi cột sau nó, và không ai phát hiện ra cho tới khi người học
+     mở thẻ từ ra và thấy bản dịch của một từ khác. */
+  head('Kho bản dịch tiếng Việt');
+
+  const store = require_('../server/data/vocab-vi.js');
+  const banDich = store.read();
+
+  ok(banDich.length > 3000, 'Kho bản dịch có đủ dòng', String(banDich.length));
+
+  const raw = require_('node:fs').readFileSync(store.FILE, 'utf8').split('\n')
+    .filter((l, i) => l.trim() && i > 0);
+  const lechCot = raw.filter(l => l.split('\t').length !== store.COLUMNS.length);
+  ok(lechCot.length === 0, 'Mọi dòng đúng năm cột — lệch một cột là sai cả tệp',
+    lechCot.slice(0, 2).map(l => l.slice(0, 50)).join(' | '));
+
+  /* Khoá trùng thì bước trộn ghi vào dòng đầu và bỏ quên dòng sau, im lặng. */
+  const khoa = new Map();
+  banDich.forEach(r => {
+    const k = store.key(r.headword, r.pos, r.en);
+    khoa.set(k, (khoa.get(k) || 0) + 1);
+  });
+  const trung = [...khoa.entries()].filter(([, n]) => n > 1);
+  ok(trung.length === 0, 'Không khoá nào trùng', trung.slice(0, 2).map(([k]) => k.slice(0, 46)).join(' | '));
+
+  ok(banDich.every(r => r.level && r.headword && r.pos && r.en),
+    'Bốn cột khoá không dòng nào để trống');
+
+  /* Bản dịch mà vẫn là tiếng Anh nghĩa là tác nhân chép lại định nghĩa. Bước
+     trộn đã chặn, nhưng chặn ở một chỗ thì phải kiểm ở chỗ khác. */
+  const CO_DAU = /[àáảãạăằắẳẵặâầấẩẫậèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđ]/i;
+  const conAnh = banDich.filter(r => r.vi && r.vi.length > 24 && !CO_DAU.test(r.vi));
+  ok(conAnh.length === 0, 'Không bản dịch nào còn là tiếng Anh',
+    conAnh.slice(0, 2).map(r => r.headword + ': ' + r.vi.slice(0, 40)).join(' | '));
+
+  const p = store.progress();
+  ok(p.done + p.todo === p.total && p.done > 0,
+    'Số đếm tiến độ khớp với nội dung tệp', JSON.stringify(p));
+
   /* Cột `vi` để trống phải lộ ra ở API, nếu không màn hình sẽ in một dòng trắng
      ở đúng chỗ đáng lẽ là bản dịch. */
   const chuaDich = q.get("SELECT id FROM vocab_entries WHERE headword='child'");
