@@ -1,0 +1,253 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Bộ tài liệu VPET · VPET Prep</title>
+  <meta name="description" content="Bộ tài liệu luyện thi VPET bằng tiếng Việt: mười phần A-J, mẹo làm bài theo từng cấp độ, lộ trình ôn 8 tuần. Đọc trực tiếp hoặc tải PDF.">
+  <meta name="theme-color" content="#1c3d8f">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="preload" href="/fonts/pjs-800-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/fonts/pjs-400-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/tailwind-built.css">
+  <style>body{font-family:'Plus Jakarta Sans',system-ui,sans-serif}</style>
+  <script>
+    /* Boot: dark mode + tenant before paint, so the colours do not flash */
+    (function(){try{
+      var t=localStorage.getItem('prep.theme');
+      if(t==='dark'||(!t&&matchMedia('(prefers-color-scheme: dark)').matches))document.documentElement.classList.add('dark');
+      var tn=localStorage.getItem('prep.tenant');
+      if(tn&&tn!=='default')document.documentElement.setAttribute('data-tenant',tn);
+    }catch(e){}})();
+  </script>
+  <!-- Song ngữ: chạy sớm để đặt ngôn ngữ (mặc định tiếng Việt) trước khi vẽ trang -->
+  <script src="/i18n.js"></script>
+</head>
+<body class="bg-surface text-ink">
+
+<header class="sticky top-0 z-40 border-b border-line bg-[color:var(--color-surface)]/85 backdrop-blur-md">
+  <div class="max-w-shell mx-auto flex items-center gap-4 h-16 px-4 sm:px-6">
+    <a href="/prep/landing/" class="flex items-center gap-2.5 shrink-0" aria-label="VPET Prep home">
+      <span class="inline-flex items-center justify-center rounded-xl text-white panel-brand w-9 h-9">
+        <svg viewBox="0 0 24 24" class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21.4 10.9a1 1 0 0 0 0-1.8L12.8 5.2a2 2 0 0 0-1.6 0L2.6 9.1a1 1 0 0 0 0 1.8l8.6 3.9a2 2 0 0 0 1.6 0Z"/><path d="M22 10.5V16"/><path d="M6 12.5V16a6 3 0 0 0 12 0v-3.5"/></svg>
+      </span>
+      <b data-brand-name class="font-extrabold tracking-tight text-[17px] hidden sm:inline">VPET Prep</b>
+    </a>
+    <a href="/prep/landing/" class="text-sm font-semibold text-muted hover:text-ink transition ms-2 hidden md:inline">Back to the home page</a>
+    <div class="flex items-center gap-2 ms-auto">
+      <span class="lang-switch" role="group" aria-label="Language">
+        <button type="button" data-lang="vi" class="lang-opt">VI</button>
+        <button type="button" data-lang="en" class="lang-opt">EN</button>
+      </span>
+      <a href="/prep/dang-ky/" class="btn btn-primary btn-sm sm:btn-md">Start free</a>
+    </div>
+  </div>
+</header>
+
+<main id="main">
+  <!-- ===== Đầu trang + chọn cấp độ ===== -->
+  <section class="halo-brand border-b border-line">
+    <div class="max-w-shell mx-auto px-4 sm:px-6 pt-12 pb-10 lg:pt-16">
+      <p class="text-[12.5px] font-bold uppercase tracking-[0.16em] text-muted">VPET · Versant Professional English Test</p>
+      <h1 class="text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight mt-3 text-balance">Bộ tài liệu luyện thi VPET</h1>
+      <p class="text-muted text-[16px] leading-relaxed mt-3 max-w-[62ch]">
+        Mười phần A-J, mẹo làm bài cho từng phần, lộ trình ôn 8 tuần. Chọn cấp độ của bạn rồi đọc thẳng ở đây - hoặc tải bản PDF về xem sau.
+      </p>
+
+      <!-- Chọn cấp độ: hai nút, đổi là cả trang đổi theo -->
+      <div class="flex flex-wrap items-center gap-3 mt-8">
+        <div class="lang-switch" role="group" aria-label="Chọn cấp độ">
+          <button type="button" class="lang-opt !px-5 !py-2 !text-[13.5px]" data-level="1" aria-pressed="true">Level 1</button>
+          <button type="button" class="lang-opt !px-5 !py-2 !text-[13.5px]" data-level="2" aria-pressed="false">Level 2</button>
+        </div>
+        <a id="pdf-link" href="/tai-lieu/vpet-level-1.pdf" download class="btn btn-ghost btn-md">
+          <svg viewBox="0 0 24 24" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/></svg>
+          <span id="pdf-label">Tải bản PDF</span>
+        </a>
+      </div>
+
+      <!-- Tóm tắt cấp độ đang chọn -->
+      <div id="level-summary" class="card p-5 sm:p-6 mt-7 max-w-[70ch]">
+        <div class="skeleton h-5 w-1/3 mb-3"></div><div class="skeleton h-4 w-4/5"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== Mười phần, mở ra đọc được ===== -->
+  <section class="max-w-shell mx-auto px-4 sm:px-6 py-12 lg:py-16">
+    <div class="flex flex-wrap items-baseline gap-3">
+      <h2 class="text-2xl sm:text-3xl font-extrabold tracking-tight">Mười phần thi</h2>
+      <p class="text-[13.5px] font-semibold text-muted" id="parts-hint">Bấm vào một phần để xem chi tiết</p>
+      <button type="button" id="toggle-all" class="btn btn-ghost btn-sm ms-auto">Mở tất cả</button>
+    </div>
+
+    <div id="parts" class="grid gap-3 mt-6">
+      <div class="card p-5"><div class="skeleton h-5 w-2/5 mb-3"></div><div class="skeleton h-4 w-3/4"></div></div>
+      <div class="card p-5"><div class="skeleton h-5 w-2/5 mb-3"></div><div class="skeleton h-4 w-3/4"></div></div>
+      <div class="card p-5"><div class="skeleton h-5 w-2/5 mb-3"></div><div class="skeleton h-4 w-3/4"></div></div>
+    </div>
+
+    <div id="load-error" class="mt-6"></div>
+  </section>
+
+  <!-- ===== Lộ trình ôn ===== -->
+  <section class="border-y border-line bg-[color:var(--color-card)]">
+    <div class="max-w-shell mx-auto px-4 sm:px-6 py-12 lg:py-16">
+      <h2 class="text-2xl sm:text-3xl font-extrabold tracking-tight">Lộ trình ôn 8 tuần</h2>
+      <ol id="roadmap" class="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-6"></ol>
+    </div>
+  </section>
+
+  <!-- ===== Trước ngày thi ===== -->
+  <section class="max-w-shell mx-auto px-4 sm:px-6 py-12 lg:py-16">
+    <h2 class="text-2xl sm:text-3xl font-extrabold tracking-tight">Trước ngày thi</h2>
+    <ul class="grid sm:grid-cols-2 gap-x-8 gap-y-3 mt-6 text-[15px] font-medium text-muted max-w-[80ch]">
+      <li class="flex gap-2.5"><span class="text-accent-strong mt-0.5 shrink-0"><svg viewBox="0 0 24 24" class="w-[18px] h-[18px]" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></span><span>Thử tai nghe và micro trước, không đợi đến lúc vào thi.</span></li>
+      <li class="flex gap-2.5"><span class="text-accent-strong mt-0.5 shrink-0"><svg viewBox="0 0 24 24" class="w-[18px] h-[18px]" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></span><span>Chọn phòng yên tĩnh - phần Nói ghi âm cả tiếng ồn xung quanh.</span></li>
+      <li class="flex gap-2.5"><span class="text-accent-strong mt-0.5 shrink-0"><svg viewBox="0 0 24 24" class="w-[18px] h-[18px]" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></span><span>Kiểm tra đường truyền mạng.</span></li>
+      <li class="flex gap-2.5"><span class="text-accent-strong mt-0.5 shrink-0"><svg viewBox="0 0 24 24" class="w-[18px] h-[18px]" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></span><span>Mỗi phần có đồng hồ riêng, không quay lại được.</span></li>
+      <li class="flex gap-2.5"><span class="text-accent-strong mt-0.5 shrink-0"><svg viewBox="0 0 24 24" class="w-[18px] h-[18px]" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></span><span>Phần Nói: chờ hết tiếng bíp rồi mới nói.</span></li>
+      <li class="flex gap-2.5"><span class="text-accent-strong mt-0.5 shrink-0"><svg viewBox="0 0 24 24" class="w-[18px] h-[18px]" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></span><span>Không bỏ trống câu nào - sai không bị trừ điểm.</span></li>
+    </ul>
+
+    <div class="card panel-brand text-white border-0 p-7 sm:p-9 mt-12 flex flex-wrap items-center gap-6">
+      <div class="min-w-[260px] flex-1">
+        <h3 class="text-xl sm:text-2xl font-extrabold tracking-tight">Đọc xong rồi, giờ luyện thử</h3>
+        <p class="text-white/85 text-[15px] leading-relaxed mt-2">Tạo tài khoản miễn phí và làm một đề đúng cấu trúc thật.</p>
+      </div>
+      <a href="/prep/dang-ky/" class="btn btn-on-brand btn-lg">Start free</a>
+    </div>
+
+    <p class="text-[13px] text-muted/80 font-medium mt-8">
+      VPET is published by Pearson. These packs are written for this platform and reproduce no part of a real exam.
+    </p>
+  </section>
+</main>
+
+<script src="/prep/_mock.js"></script>
+<script>
+(() => {
+  const esc = PREP.esc;
+  const qs = s => document.querySelector(s);
+  let data = null, level = '1', allOpen = false;
+
+  /* Cấp độ đang xem được nhớ lại ở ?level=, để gửi đường dẫn cho người khác vẫn
+     mở đúng cấp độ đó. */
+  const fromUrl = new URLSearchParams(location.search).get('level');
+  if (fromUrl === '2') level = '2';
+
+  const iconChevron =
+    '<svg viewBox="0 0 24 24" class="w-5 h-5 shrink-0 text-muted transition-transform" data-chev fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>';
+
+  function renderSummary() {
+    const L = data.capDo[level];
+    qs('#level-summary').innerHTML =
+      '<div class="flex flex-wrap items-center gap-2.5">' +
+        '<span class="badge ' + (level === '1' ? 'badge-ok' : 'badge-hl') + '">' + esc(L.ma) + '</span>' +
+        '<span class="text-[13px] font-bold text-muted">CEFR ' + esc(L.cefr) + ' · ' + esc(L.gse) + '</span>' +
+      '</div>' +
+      '<p class="text-[15px] leading-relaxed mt-3">' + esc(L.aiCho) + '</p>' +
+      '<div class="flex flex-wrap gap-x-7 gap-y-2 mt-4 pt-4 border-t border-line text-[13.5px] font-semibold text-muted">' +
+        '<span><b class="text-ink">' + data.tong.cau + '</b> câu hỏi</span>' +
+        '<span><b class="text-ink">' + data.tong.phut + '</b> phút</span>' +
+        '<span><b class="text-ink">' + data.tong.phan + '</b> phần A → J</span>' +
+        '<span><b class="text-ink">4</b> kỹ năng chấm riêng</span>' +
+      '</div>';
+  }
+
+  function renderParts() {
+    qs('#parts').innerHTML = data.phan.map((p, i) => {
+      const meo = (p.meo[level] || []);
+      return '<article class="card overflow-hidden">' +
+        '<button type="button" class="w-full text-start p-5 flex items-center gap-4 hover:bg-surface transition" ' +
+                'data-part="' + i + '" aria-expanded="false">' +
+          '<span class="w-9 h-9 rounded-xl panel-brand text-white font-extrabold text-[15px] inline-flex items-center justify-center shrink-0">' + esc(p.ma) + '</span>' +
+          '<span class="min-w-0 flex-1">' +
+            '<span class="block font-extrabold text-[16px] tracking-tight truncate">' + esc(p.ten) + '</span>' +
+            '<span class="block text-[12.5px] text-muted truncate">' + esc(p.tenEn) + '</span>' +
+          '</span>' +
+          '<span class="hidden sm:flex items-center gap-2 shrink-0">' +
+            (p.audio ? '<span class="badge badge-ok">có audio</span>' : '') +
+            '<span class="badge badge-muted">' + p.cau + ' câu · ' + p.phut + "′</span>" +
+          '</span>' + iconChevron +
+        '</button>' +
+        '<div class="hidden border-t border-line px-5 py-5" data-body="' + i + '">' +
+          '<p class="text-[15px] leading-relaxed">' + esc(p.lam) + '</p>' +
+          '<div class="sm:hidden flex flex-wrap gap-2 mt-3">' +
+            (p.audio ? '<span class="badge badge-ok">có audio</span>' : '') +
+            '<span class="badge badge-muted">' + p.cau + ' câu · ' + p.phut + "′</span>" +
+          '</div>' +
+          (meo.length
+            ? '<p class="text-[12px] font-bold uppercase tracking-wide text-muted mt-5 mb-2.5">Mẹo làm bài</p>' +
+              '<ul class="grid gap-2.5">' + meo.map(m =>
+                '<li class="flex gap-2.5 text-[14.5px] leading-relaxed">' +
+                  '<span class="text-accent-strong mt-1 shrink-0"><svg viewBox="0 0 24 24" class="w-[15px] h-[15px]" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></span>' +
+                  '<span>' + esc(m).replace(/\*\*(.+?)\*\*/g, '<b class="text-ink">$1</b>') + '</span>' +
+                '</li>').join('') + '</ul>'
+            : '') +
+        '</div>' +
+      '</article>';
+    }).join('');
+
+    PREP.qsa('[data-part]').forEach(btn => btn.addEventListener('click', () => {
+      const body = qs('[data-body="' + btn.getAttribute('data-part') + '"]');
+      const open = body.classList.toggle('hidden') === false;
+      btn.setAttribute('aria-expanded', String(open));
+      const chev = btn.querySelector('[data-chev]');
+      if (chev) chev.classList.toggle('rotate-180', open);
+    }));
+  }
+
+  function renderRoadmap() {
+    qs('#roadmap').innerHTML = data.capDo[level].lotrinh.map(([tuan, viec], i) =>
+      '<li class="card p-5">' +
+        '<span class="badge badge-muted">' + esc(tuan) + '</span>' +
+        '<p class="text-[14.5px] leading-relaxed mt-3">' + esc(viec) + '</p>' +
+      '</li>').join('');
+  }
+
+  function setLevel(next) {
+    level = next;
+    PREP.qsa('[data-level]').forEach(b =>
+      b.setAttribute('aria-pressed', String(b.getAttribute('data-level') === level)));
+    qs('#pdf-link').setAttribute('href', '/tai-lieu/vpet-level-' + level + '.pdf');
+    const url = new URL(location.href);
+    url.searchParams.set('level', level);
+    history.replaceState(null, '', url);
+    allOpen = false;
+    qs('#toggle-all').textContent = 'Mở tất cả';
+    renderSummary(); renderParts(); renderRoadmap();
+  }
+
+  qs('#toggle-all').addEventListener('click', () => {
+    allOpen = !allOpen;
+    PREP.qsa('[data-body]').forEach(b => b.classList.toggle('hidden', !allOpen));
+    PREP.qsa('[data-part]').forEach(b => {
+      b.setAttribute('aria-expanded', String(allOpen));
+      const chev = b.querySelector('[data-chev]');
+      if (chev) chev.classList.toggle('rotate-180', allOpen);
+    });
+    qs('#toggle-all').textContent = allOpen ? 'Thu gọn tất cả' : 'Mở tất cả';
+  });
+
+  PREP.qsa('[data-level]').forEach(b =>
+    b.addEventListener('click', () => setLevel(b.getAttribute('data-level'))));
+
+  /* Nội dung lấy từ cùng một tệp JSON mà scripts/make-vpet-docs.mjs dựng ra bản
+     PDF, nên trang này và bản tải về không thể lệch nhau. */
+  fetch('/tai-lieu/guide.json', { headers: { Accept: 'application/json' } })
+    .then(r => { if (!r.ok) throw new Error('Máy chủ trả về ' + r.status); return r.json(); })
+    .then(d => { data = d; setLevel(level); })
+    .catch(err => {
+      qs('#parts').innerHTML = '';
+      qs('#level-summary').innerHTML = '<p class="text-[15px]">Không tải được nội dung.</p>';
+      qs('#load-error').innerHTML = PREP.errorBox
+        ? PREP.errorBox(err.message)
+        : '<div class="banner banner-error show" role="alert"><span>Không tải được bộ tài liệu: ' +
+          esc(err.message) + '. Bạn vẫn tải được bản PDF ở trên.</span></div>';
+    });
+})();
+</script>
+</body>
+</html>

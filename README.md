@@ -76,6 +76,7 @@ Lệnh khác:
 | `npm run dev` | chạy server với `--watch` |
 | `cai-dat\chay-server.bat` | **Windows**: nhấn đúp để chạy — tự kiểm tra Node, cài thư viện, build CSS, bật server và mở trình duyệt. Xem [`cai-dat/README.md`](cai-dat/README.md) |
 | `npm run build` | build lại CSS (**bắt buộc chạy + commit sau khi thêm class mới**) |
+| `npm run docs:vpet` | dựng bộ tài liệu VPET từ `server/data/exam-formats.js` ra `public/tai-lieu/`: `guide.json` cho trang đọc trực tiếp `/prep/tai-lieu/`, cùng hai bản PDF Level 1 / Level 2. Một nguồn, hai đầu ra, nên trang web và bản tải về không lệch nhau được. **Bắt buộc chạy + commit sau khi sửa cấu trúc đề hoặc nội dung tài liệu** — máy chủ chỉ chạy `npm ci --omit=dev`, mà Playwright là devDependency nên nó không tự dựng lại được |
 | `npm run screenshot` | chụp desktop + mobile mọi màn vào `docs/screenshots/`, báo lỗi console/CSP |
 | `node scripts/audit.mjs` | audit tràn ngang, tương phản WCAG AA, nút xuống dòng, chiều cao nav (light + dark, 5 bề rộng) |
 | `node scripts/test-auth.mjs` | kiểm thử luồng tài khoản trên giao diện: đăng ký, đăng nhập, guard, xác thực email, đặt lại mật khẩu |

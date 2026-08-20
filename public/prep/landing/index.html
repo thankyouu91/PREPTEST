@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>VPET Prep · Mock tests for the VPET exam</title>
-  <meta name="description" content="Mock-test platform for the VPET exam (Vietnam Proficiency English Test): the real paper format, automatic marking, and a per-skill breakdown of what is holding you back.">
+  <meta name="description" content="Mock-test platform for the VPET exam (Versant Professional English Test): the real paper format, automatic marking, and a per-skill breakdown of what is holding you back.">
   <meta name="theme-color" content="#1c3d8f">
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <link rel="manifest" href="/manifest.webmanifest">
@@ -37,6 +37,7 @@
     </a>
     <nav class="hidden md:flex items-center gap-1 mx-auto" aria-label="Main navigation">
       <a href="#ky-thi" class="px-3.5 py-2 rounded-full text-sm font-semibold text-muted hover:text-ink transition">The exam</a>
+      <a href="#tai-lieu" class="px-3.5 py-2 rounded-full text-sm font-semibold text-muted hover:text-ink transition">Study pack</a>
       <a href="#cach-hoat-dong" class="px-3.5 py-2 rounded-full text-sm font-semibold text-muted hover:text-ink transition">How it works</a>
       <a href="#bang-gia" class="px-3.5 py-2 rounded-full text-sm font-semibold text-muted hover:text-ink transition">Pricing</a>
     </nav>
@@ -46,7 +47,10 @@
         <button type="button" data-lang="vi" class="lang-opt">VI</button>
         <button type="button" data-lang="en" class="lang-opt">EN</button>
       </span>
-      <a href="/prep/dang-nhap/" data-when-guest class="btn btn-ghost btn-sm sm:btn-md hidden sm:inline-flex">Sign in</a>
+      <!-- Sign in appears from lg up: with four section links the header runs 21px
+           over the viewport at exactly 768px, and the section nav is worth more on a
+           landing page than a second auth button. Start free still carries the CTA. -->
+      <a href="/prep/dang-nhap/" data-when-guest class="btn btn-ghost btn-sm sm:btn-md hidden lg:inline-flex">Sign in</a>
       <a href="/prep/dang-ky/" data-when-guest class="btn btn-primary btn-sm sm:btn-md">
         <span class="sm:hidden">Sign up</span><span class="hidden sm:inline">Start free</span>
       </a>
@@ -160,6 +164,84 @@
       </div>
 
       <div id="family-cards" class="grid sm:grid-cols-2 lg:grid-cols-3 gap-5 mt-10 hidden"></div>
+    </div>
+  </section>
+
+  <!-- ===================== STUDY MATERIAL (two framed packs) =====================
+       Both the interactive page at /prep/tai-lieu/ and the PDFs come out of one
+       source: scripts/make-vpet-docs.mjs writes guide.json for the page and renders
+       the PDFs beside it at build time, so nothing is assembled at runtime and the
+       two can never drift apart. Both packs are Vietnamese whichever interface
+       language is on: they are study material for Vietnamese learners, not
+       interface copy. -->
+  <section id="tai-lieu" class="scroll-mt-20">
+    <div class="max-w-shell mx-auto px-4 sm:px-6 py-16 lg:py-24">
+      <div class="max-w-[52ch]">
+        <h2 class="text-3xl sm:text-4xl font-extrabold tracking-tight text-balance">The study pack</h2>
+        <p class="text-muted text-[16px] leading-relaxed mt-3">
+          Everything the exam asks of you, part by part, in Vietnamese. Two packs, one for each VPET level. Read them right here, or take the PDF. No account needed.
+        </p>
+      </div>
+
+      <div class="grid md:grid-cols-2 gap-5 md:gap-6 mt-10">
+
+        <article class="card p-7 sm:p-8 flex flex-col" data-reveal>
+          <div class="flex items-center gap-2.5">
+            <span class="badge badge-ok">Level 1</span>
+            <span class="text-[12.5px] font-bold text-muted">CEFR A1-B1+ · GSE 10-58</span>
+          </div>
+          <h3 class="font-extrabold text-[19px] tracking-tight mt-4">Nền tảng vững, thi lấy chứng chỉ cơ bản</h3>
+          <p class="text-muted text-[14.5px] leading-relaxed mt-2">
+            For a learner from beginner to intermediate, proving everyday working English.
+          </p>
+          <ul class="grid gap-2.5 mt-6 text-[14.5px] font-medium text-muted flex-1">
+            <li class="flex gap-2.5"><span class="text-accent-strong mt-0.5"><svg viewBox="0 0 24 24" class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></span><span>Toàn cảnh 10 phần A-J, kèm số câu và thời gian</span></li>
+            <li class="flex gap-2.5"><span class="text-accent-strong mt-0.5"><svg viewBox="0 0 24 24" class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></span><span>Mẹo làm bài cho từng phần, viết cho người mới</span></li>
+            <li class="flex gap-2.5"><span class="text-accent-strong mt-0.5"><svg viewBox="0 0 24 24" class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></span><span>Lộ trình ôn 8 tuần</span></li>
+            <li class="flex gap-2.5"><span class="text-accent-strong mt-0.5"><svg viewBox="0 0 24 24" class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></span><span>Danh sách kiểm tra trước ngày thi</span></li>
+          </ul>
+          <a href="/prep/tai-lieu/?level=1" class="btn btn-primary btn-md mt-7 w-full">
+            <svg viewBox="0 0 24 24" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+            Open the Level 1 pack
+          </a>
+          <a href="/tai-lieu/vpet-level-1.pdf" download class="btn btn-ghost btn-md mt-2.5 w-full">
+            <svg viewBox="0 0 24 24" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/></svg>
+            Download as PDF
+          </a>
+          <p class="text-[12.5px] text-muted/80 font-medium mt-2.5 text-center">Read it here, or take the PDF · tiếng Việt</p>
+        </article>
+
+        <article class="card p-7 sm:p-8 flex flex-col" data-reveal>
+          <div class="flex items-center gap-2.5">
+            <span class="badge badge-hl">Level 2</span>
+            <span class="text-[12.5px] font-bold text-muted">CEFR B1-C2 · GSE 51-90</span>
+          </div>
+          <h3 class="font-extrabold text-[19px] tracking-tight mt-4">Đẩy điểm lên mức chuyên môn</h3>
+          <p class="text-muted text-[14.5px] leading-relaxed mt-2">
+            For a learner already past B1, aiming at a professional or international role.
+          </p>
+          <ul class="grid gap-2.5 mt-6 text-[14.5px] font-medium text-muted flex-1">
+            <li class="flex gap-2.5"><span class="text-accent-strong mt-0.5"><svg viewBox="0 0 24 24" class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></span><span>Cùng bộ khung 10 phần, chiến thuật ở mức B2 trở lên</span></li>
+            <li class="flex gap-2.5"><span class="text-accent-strong mt-0.5"><svg viewBox="0 0 24 24" class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></span><span>Các bẫy hay gặp: đảo ngữ, sắc thái, ý suy ra</span></li>
+            <li class="flex gap-2.5"><span class="text-accent-strong mt-0.5"><svg viewBox="0 0 24 24" class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></span><span>Lộ trình ôn 8 tuần theo điểm từng kỹ năng</span></li>
+            <li class="flex gap-2.5"><span class="text-accent-strong mt-0.5"><svg viewBox="0 0 24 24" class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></span><span>Danh sách kiểm tra trước ngày thi</span></li>
+          </ul>
+          <a href="/prep/tai-lieu/?level=2" class="btn btn-primary btn-md mt-7 w-full">
+            <svg viewBox="0 0 24 24" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+            Open the Level 2 pack
+          </a>
+          <a href="/tai-lieu/vpet-level-2.pdf" download class="btn btn-ghost btn-md mt-2.5 w-full">
+            <svg viewBox="0 0 24 24" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/></svg>
+            Download as PDF
+          </a>
+          <p class="text-[12.5px] text-muted/80 font-medium mt-2.5 text-center">Read it here, or take the PDF · tiếng Việt</p>
+        </article>
+
+      </div>
+
+      <p class="text-[13px] text-muted/80 font-medium mt-6">
+        VPET is published by Pearson. These packs are written for this platform and reproduce no part of a real exam.
+      </p>
     </div>
   </section>
 
@@ -429,6 +511,7 @@ Sign up for <span id="plan-cta-name">Plus</span></a>
       <h3 class="text-sm font-extrabold tracking-tight mb-3.5">Platform</h3>
       <ul class="grid gap-2.5 text-[14.5px] font-medium text-muted">
         <li><a class="hover:text-ink transition" href="#ky-thi">The exam</a></li>
+        <li><a class="hover:text-ink transition" href="#tai-lieu">Study pack</a></li>
         <li><a class="hover:text-ink transition" href="#bang-gia">Pricing</a></li>
         <li><a class="hover:text-ink transition" href="/prep/dang-nhap/">Sign in</a></li>
         <li><a class="hover:text-ink transition" href="/prep/dang-ky/">Start free</a></li>

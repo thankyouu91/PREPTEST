@@ -1,0 +1,264 @@
+{
+ "tong": {
+  "cau": 58,
+  "phut": 60,
+  "phan": 10
+ },
+ "phan": [
+  {
+   "ma": "A",
+   "ten": "Hoàn thành câu",
+   "tenEn": "Sentence Completion",
+   "lam": "Một câu thiếu đúng một từ. Bạn gõ từ còn thiếu vào.",
+   "cau": 10,
+   "phut": 8,
+   "audio": false,
+   "meo": {
+    "1": [
+     "Đọc hết cả câu trước khi điền - từ cần điền thường phụ thuộc vào vế sau.",
+     "Chú ý giới từ đi kèm động từ (depend **on**, good **at**, afraid **of**).",
+     "Chỉ điền MỘT từ. Nếu nghĩ ra hai từ, gần như chắc chắn bạn đang hiểu sai câu."
+    ],
+    "2": [
+     "Nhận diện cấu trúc cố định: \"no choice but to\", \"it is high time\", \"on the grounds that\".",
+     "Đảo ngữ sau trạng ngữ đứng đầu (Hardly had I..., Not only did he...) là dạng ra thường xuyên ở B2+.",
+     "Phân biệt cặp dễ lẫn: by/until, for/since, in force/into force."
+    ]
+   }
+  },
+  {
+   "ma": "B",
+   "ten": "Dựng lại đoạn văn",
+   "tenEn": "Passage Reconstruction",
+   "lam": "Đọc một đoạn ngắn, đoạn văn biến mất, rồi viết lại bằng lời của mình.",
+   "cau": 3,
+   "phut": 8,
+   "audio": false,
+   "meo": {
+    "1": [
+     "Khi đọc, nhớ Ý chứ đừng cố nhớ CHỮ. Ghi nhanh 3 ý chính trong đầu.",
+     "Viết lại bằng câu đơn giản của mình vẫn được điểm; chép sai nguyên văn thì không.",
+     "Viết đủ ý quan trọng hơn viết câu dài."
+    ],
+    "2": [
+     "Giữ đủ quan hệ logic giữa các ý (nguyên nhân, tương phản), không chỉ giữ sự kiện.",
+     "Diễn đạt lại bằng cấu trúc của mình được đánh giá cao hơn là chép gần nguyên văn.",
+     "Một đoạn 3-5 ý: mất một ý là mất một phần điểm, nên rà lại trước khi nộp."
+    ]
+   }
+  },
+  {
+   "ma": "C",
+   "ten": "Đọc hiểu",
+   "tenEn": "Reading Comprehension",
+   "lam": "Đọc đoạn ngắn rồi chọn một trong bốn phương án.",
+   "cau": 6,
+   "phut": 7,
+   "audio": false,
+   "meo": {
+    "1": [
+     "Đọc câu hỏi trước, rồi mới đọc đoạn - bạn sẽ biết cần tìm gì.",
+     "Đáp án đúng thường diễn đạt lại ý, không lặp nguyên chữ trong đoạn.",
+     "Phương án nào dùng lại y hệt chữ trong đoạn thường là bẫy."
+    ],
+    "2": [
+     "Câu hỏi ở mức này hỏi ý SUY RA, không phải ý có sẵn trên mặt chữ.",
+     "Nhiễu hay gặp: đảo quan hệ nhân - quả, biến một phần thành toàn bộ, biến điều \"được nêu\" thành điều \"bị phê phán\".",
+     "Câu cuối đoạn thường chứa kết luận - và cũng thường là chỗ ra đáp án."
+    ]
+   }
+  },
+  {
+   "ma": "D",
+   "ten": "Viết email",
+   "tenEn": "E-Mail Writing",
+   "lam": "Viết email trả lời một tình huống, đúng văn phong đề yêu cầu.",
+   "cau": 2,
+   "phut": 18,
+   "audio": false,
+   "meo": {
+    "1": [
+     "Bám đúng ba việc đề yêu cầu. Thiếu một việc là mất điểm nhiệm vụ.",
+     "Câu ngắn, đúng ngữ pháp tốt hơn câu dài mà sai.",
+     "Có lời chào và lời kết. Email thiếu hai thứ này bị trừ điểm văn phong."
+    ],
+    "2": [
+     "Ba trục chấm điểm: hoàn thành nhiệm vụ, văn phong, độ chính xác. Thiếu trục nào mất trục đó.",
+     "Nêu vấn đề mà không đề nghị gì cụ thể là lỗi phổ biến nhất - người đọc không có gì để hành động.",
+     "Formal nghĩa là không viết tắt, không tiếng lóng, và câu có chủ ngữ đầy đủ."
+    ]
+   }
+  },
+  {
+   "ma": "E",
+   "ten": "Chính tả (nghe - viết)",
+   "tenEn": "Dictation",
+   "lam": "Nghe một câu rồi gõ lại nguyên văn.",
+   "cau": 8,
+   "phut": 4,
+   "audio": true,
+   "meo": {
+    "1": [
+     "Nghe trọn câu rồi mới gõ, đừng gõ đuổi theo từng từ.",
+     "Chú ý đuôi -s, -ed và mạo từ a/the - đây là chỗ mất điểm nhiều nhất.",
+     "Không nghe rõ một từ thì cứ đoán và viết tiếp; bỏ trống chắc chắn không có điểm."
+    ],
+    "2": [
+     "Câu dài hơn ở mức này: chia câu thành cụm khi nghe, đừng nhớ từng từ rời.",
+     "Giữ đúng dấu câu và chữ hoa - có tính điểm."
+    ]
+   }
+  },
+  {
+   "ma": "F",
+   "ten": "Chọn câu đáp lại",
+   "tenEn": "Response Selection",
+   "lam": "Nghe một lời thoại, chọn câu đáp lại tự nhiên nhất.",
+   "cau": 8,
+   "phut": 3,
+   "audio": true,
+   "meo": {
+    "1": [
+     "Nghe kỹ TỪ ĐỂ HỎI (what, where, when, why) - nó quyết định câu trả lời.",
+     "Cả bốn phương án đều đúng ngữ pháp, nên đừng loại bằng ngữ pháp.",
+     "Chọn câu đáp tự nhiên như người bản xứ nói, không phải câu đúng nhất về nghĩa đen."
+    ],
+    "2": [
+     "Nhiễu ở mức này sai về CHỨC NĂNG (lệch mục đích, sai mức lịch sự), không sai ngữ pháp.",
+     "Chú ý sắc thái: một lời từ chối lịch sự khác hẳn một lời từ chối thẳng."
+    ]
+   }
+  },
+  {
+   "ma": "G",
+   "ten": "Nghe hiểu đoạn dài",
+   "tenEn": "Passage Comprehension",
+   "lam": "Nghe một đoạn nói dài hơn rồi trả lời câu hỏi.",
+   "cau": 6,
+   "phut": 4,
+   "audio": true,
+   "meo": {
+    "1": [
+     "Nghe lấy ý chính ở câu đầu và câu cuối - đó thường là nơi đặt ý.",
+     "Đừng hoảng khi nghe sót một từ; mạch chung mới là thứ được hỏi."
+    ],
+    "2": [
+     "Đoạn dài hơn và có lập luận: theo dõi quan điểm của người nói, không chỉ sự kiện.",
+     "Câu hỏi thường nhắm vào thái độ hoặc hàm ý, không vào chi tiết."
+    ]
+   }
+  },
+  {
+   "ma": "H",
+   "ten": "Nhắc lại câu",
+   "tenEn": "Repeat",
+   "lam": "Nghe một câu rồi nhắc lại thật chính xác.",
+   "cau": 10,
+   "phut": 3,
+   "audio": true,
+   "meo": {
+    "1": [
+     "Nghe hết câu rồi mới nói, đừng nói đuổi.",
+     "Nói to, rõ, đều. Đọc nhỏ và ngập ngừng bị trừ điểm trôi chảy.",
+     "Quên một từ thì vẫn nói tiếp phần còn lại; dừng hẳn là mất nhiều điểm hơn."
+    ],
+    "2": [
+     "Câu dài dần qua từng item - đó chính là cơ chế phân loại của phần này.",
+     "Giữ đúng trọng âm và ngữ điệu; đọc đều đều như máy vẫn bị trừ."
+    ]
+   }
+  },
+  {
+   "ma": "I",
+   "ten": "Nói theo tình huống",
+   "tenEn": "Speaking Situations",
+   "lam": "Đọc một tình huống rồi nói tối đa một phút.",
+   "cau": 2,
+   "phut": 2,
+   "audio": false,
+   "meo": {
+    "1": [
+     "Trả lời đủ ba việc đề yêu cầu, theo đúng thứ tự đó.",
+     "Xưng hô đúng với người nghe: bạn bè khác, nhân viên khách sạn khác.",
+     "Nói chậm mà rõ hơn là nói nhanh mà vấp."
+    ],
+    "2": [
+     "Đề luôn có một khó khăn (từ chối, phàn nàn, thương lượng). Xử lý được khó khăn đó mới có điểm cao.",
+     "Vừa cứng rắn vừa lịch sự là yêu cầu khó nhất - dùng \"I understand..., however...\" để giữ cả hai.",
+     "Nói hết một phút; dừng ở giây thứ 20 là tự bỏ điểm."
+    ]
+   }
+  },
+  {
+   "ma": "J",
+   "ten": "Kể lại câu chuyện",
+   "tenEn": "Story Retellings",
+   "lam": "Nghe một mẩu chuyện ngắn rồi kể lại bằng lời của mình.",
+   "cau": 3,
+   "phut": 3,
+   "audio": true,
+   "meo": {
+    "1": [
+     "Kể theo đúng trình tự: mở đầu - chuyện xảy ra - kết thúc.",
+     "Dùng từ nối đơn giản: first, then, after that, finally.",
+     "Không nhớ chi tiết thì kể ý chính; bỏ trắng mới là mất điểm."
+    ],
+    "2": [
+     "Giữ mạch truyện VÀ quan hệ nhân quả giữa các sự kiện.",
+     "Dùng từ vựng chủ động của mình thay vì lặp lại nguyên văn - phần này chấm cả vốn từ.",
+     "Kể ở thì quá khứ nhất quán từ đầu đến cuối."
+    ]
+   }
+  }
+ ],
+ "capDo": {
+  "1": {
+   "ma": "Level 1",
+   "cefr": "A1-B1+",
+   "gse": "GSE 10-58",
+   "aiCho": "Người mới bắt đầu đến trung cấp, cần chứng minh khả năng tiếng Anh giao tiếp cơ bản trong công việc.",
+   "lotrinh": [
+    [
+     "Tuần 1-2",
+     "Nắm cấu trúc 10 phần. Làm quen phần A và C - hai phần dễ lấy điểm nhất."
+    ],
+    [
+     "Tuần 3-4",
+     "Luyện nghe mỗi ngày 20 phút với phần E và F. Bắt đầu viết email ngắn (phần D)."
+    ],
+    [
+     "Tuần 5-6",
+     "Luyện nói: phần H nhắc lại câu mỗi ngày 10 câu, phần I nói một tình huống mỗi ngày."
+    ],
+    [
+     "Tuần 7-8",
+     "Thi thử trọn đề 60 phút, ít nhất 3 lần. Xem lại phần nào điểm thấp nhất rồi tập trung vào đó."
+    ]
+   ]
+  },
+  "2": {
+   "ma": "Level 2",
+   "cefr": "B1-C2",
+   "gse": "GSE 51-90",
+   "aiCho": "Người đã vững tiếng Anh, cần chứng chỉ cho vị trí chuyên môn hoặc môi trường làm việc quốc tế.",
+   "lotrinh": [
+    [
+     "Tuần 1-2",
+     "Thi thử một đề đầy đủ để biết điểm xuất phát. Ghi lại điểm từng kỹ năng."
+    ],
+    [
+     "Tuần 3-4",
+     "Tập trung vào hai kỹ năng yếu nhất. Phần B và D là nơi lấy lại điểm nhanh nhất ở mức này."
+    ],
+    [
+     "Tuần 5-6",
+     "Luyện phần J và I với đồng hồ bấm giờ - nói đủ thời lượng là một phần của điểm."
+    ],
+    [
+     "Tuần 7-8",
+     "Thi thử hằng tuần. Ở mức này, giữ ổn định quan trọng hơn cải thiện thêm."
+    ]
+   ]
+  }
+ }
+}

@@ -7,6 +7,7 @@
     "start": "node server.js",
     "dev": "node --watch server.js",
     "build": "tailwindcss -i ./src/tailwind.css -o ./public/tailwind-built.css --minify",
+    "docs:vpet": "node scripts/make-vpet-docs.mjs",
     "screenshot": "node scripts/screenshot.mjs",
     "screenshot:admin": "node scripts/shot-admin.mjs",
     "test": "node scripts/test-accounts.js && node scripts/test-admin.mjs && node scripts/test-auth.mjs && node scripts/test-catalog.mjs && node scripts/test-user-api.mjs && node scripts/test-exam.mjs && node scripts/test-learn.mjs && node scripts/audit.mjs",

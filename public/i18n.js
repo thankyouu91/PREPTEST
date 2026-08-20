@@ -76,6 +76,25 @@
 
     /* ---- The exam section ---- */
     'The exam': 'Kỳ thi',
+
+    /* ---- Bộ tài liệu (PDF) ----
+       Ruột hai bản PDF vốn đã là tiếng Việt cho cả hai ngôn ngữ giao diện: đó là
+       học liệu cho người học Việt Nam, không phải chữ của giao diện. Ở đây chỉ
+       dịch phần vỏ quanh nó. */
+    'Study pack': 'Tài liệu',
+    'The study pack': 'Bộ tài liệu luyện thi',
+    'Everything the exam asks of you, part by part, in Vietnamese. Two packs, one for each VPET level. Read them right here, or take the PDF. No account needed.':
+      'Toàn bộ những gì kỳ thi yêu cầu, đi từng phần một, bằng tiếng Việt. Hai bộ cho hai cấp độ VPET. Đọc ngay tại đây, hoặc tải bản PDF về. Không cần tài khoản.',
+    'For a learner from beginner to intermediate, proving everyday working English.':
+      'Dành cho người từ mới bắt đầu đến trung cấp, cần chứng minh tiếng Anh công việc hằng ngày.',
+    'For a learner already past B1, aiming at a professional or international role.':
+      'Dành cho người đã qua mức B1, nhắm tới vị trí chuyên môn hoặc môi trường quốc tế.',
+    'Open the Level 1 pack': 'Mở bộ Level 1',
+    'Open the Level 2 pack': 'Mở bộ Level 2',
+    'Download as PDF': 'Tải bản PDF',
+    'Read it here, or take the PDF · tiếng Việt': 'Đọc tại chỗ, hoặc tải PDF · tiếng Việt',
+    'VPET is published by Pearson. These packs are written for this platform and reproduce no part of a real exam.':
+      'VPET do Pearson phát hành. Hai bộ tài liệu này do nền tảng tự biên soạn, không sao chép bất kỳ phần nào của đề thi thật.',
     'VPET has its own structure and scale. The practice papers follow the real format, so nothing on the day is a surprise.':
       'VPET có cấu trúc và thang điểm riêng. Đề luyện bám sát đề thật, nên vào phòng thi bạn không gặp bất ngờ nào.',
     'See details': 'Xem chi tiết',
