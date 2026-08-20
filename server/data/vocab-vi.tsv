@@ -935,7 +935,7 @@ B2	absolute	adj	Complete, utter, outright; unmitigated, not qualified or diminis
 B2	absolute	adj	Free from imperfection, perfect, complete; especially, perfectly embodying a quality in its essential characteristics or to its highest degree.	hoàn hảo, hoàn thiện	ok
 B2	absolute	adj	Free of restrictions, limitations, qualifications or conditions; unconditional.	tuyệt đối, không điều kiện	ok
 B2	absolute	adj	Pure, free from mixture or adulteration; unmixed.	nguyên chất, tinh khiết	ok
-B2	absolute	noun	(geometry) In a plane, the two imaginary circular points at infinity; in space of three dimensions, the imaginary circle at infinity.	(hình học) cái tuyệt đối	
+B2	absolute	noun	(geometry) In a plane, the two imaginary circular points at infinity; in space of three dimensions, the imaginary circle at infinity.	(hình học) cái tuyệt đối	không đủ căn cứ để soát — thuật ngữ hình học xạ ảnh chuyên biệt ("the absolute"); không chắc "cái tuyệt đối" là thuật ngữ chuẩn hay chỉ là dịch nghĩa đen của tính từ "absolute".
 B2	absolute	noun	(philosophy, usually capitalized, usually preceded by "the") A realm which exists without reference to anything else; that which can be imagined purely by itself; absolute ego.	(triết học) cái Tuyệt đối	ok
 B2	absolute	noun	(philosophy, usually capitalized, usually preceded by "the") The whole of reality; the totality to which everything is reduced; the unity of spirit and nature; God.	(triết học) cái Tuyệt đối, Thượng đế	ok
 B2	absolute	noun	That which exists (or has a certain property, nature, size, etc) independent of references to other standards or external conditions; that which is universally valid; that which is not relative, conditional, qualified or mitigated.	chân lý tuyệt đối, điều tuyệt đối	ok
@@ -1461,7 +1461,7 @@ B2	organization	noun	(countable) A group of people or other legal entities with 
 B2	organization	noun	(uncountable) The quality of being organized.	tổ chức	sai nghĩa, đây là "tính có tổ chức, sự ngăn nắp" (một phẩm chất) chứ không phải "tổ chức" (thực thể) như dòng trên
 B2	organization	noun	(uncountable) The way in which something is organized, such as a book or an article.	cách tổ chức, cách sắp xếp	ok
 B2	ouch	noun	(informal) Something that causes discomfort or pain.	(khẩu ngữ) điều gây đau đớn	ok
-B2	ouch	noun	Alternative form of ouche.	(cổ) trâm cài, khuy nạm ngọc	
+B2	ouch	noun	Alternative form of ouche.	(cổ) trâm cài, khuy nạm ngọc	ok
 B2	ouch	phrase	A reply to an insult seen as savage (frequently one that is tongue-in-cheek or joking).	ui da (đáp lại lời chê cay nghiệt)	ok
 B2	ouch	phrase	An expression in sympathy at another's pain.	ui da, tội quá (tỏ ý thông cảm)	ok
 B2	ouch	phrase	An expression of disappointment.	ôi, tiếc quá (tỏ ý thất vọng)	ok
@@ -2138,7 +2138,7 @@ C1	hose	verb	(transitive) To water or spray with a hose.	tưới bằng vòi nư
 C1	hurricane	noun	(cocktails) A sweet alcoholic drink made with rum, lemon juice (or sometimes other fruit juice), and either passion fruit syrup or fassionola.	(cocktail) rượu Hurricane (rum pha nước ép trái cây)	ok
 C1	hurricane	noun	(figurative) A great forceful onrush.	(nghĩa bóng) cơn lốc, làn sóng dữ dội	ok
 C1	hurricane	noun	(in particular, meteorology) A severe tropical cyclone in the North Atlantic Ocean, Caribbean Sea, Gulf of Mexico, or in the eastern North Pacific off the west coast of Mexico, with winds of 119 km/h (74 miles per hour) or greater accompanied by rain, lightning, and thunder that sometimes moves into temperate latitudes.	(khí tượng) bão (cuồng phong)	ok
-C1	hurricane	noun	(sports, aerial freestyle skiing) "full—triple-full—full" – an acrobatic maneuver consisting of three flips and five twists, with one twist on the first flip, three twists on the second flip, one twist on the third flip		
+C1	hurricane	noun	(sports, aerial freestyle skiing) "full—triple-full—full" – an acrobatic maneuver consisting of three flips and five twists, with one twist on the first flip, three twists on the second flip, one twist on the third flip	(trượt tuyết tự do) cú nhào lộn "hurricane"	
 C1	hurricane	noun	A severe tropical cyclone; an intense storm rotating around a central eye.	cơn bão, bão	ok
 C1	hurricane	verb	(ambitransitive, of the weather) To be violent, with winds of 119 km/h (74 miles per hour) or greater, usually accompanied by rain, lightning, and thunder.	thổi mạnh như bão, nổi cơn bão	ok
 C1	hurricane	verb	To attempt to accomplish a great deal with a frenzied effort.	làm việc cuồng nhiệt, dồn hết sức	ok
@@ -2257,7 +2257,7 @@ C1	partnership	noun	The state of being associated with a partner.	mối quan h�
 C1	pawn	noun	(chess) The most numerous chess piece, or a similar piece in a similar game. In chess, each side starts with eight; moves are only forward, and attacks are only diagonally or en passant.	tốt	ok
 C1	pawn	noun	(idiomatic) A person being manipulated by another, being used to some end.	con tốt thí, quân cờ trong tay người khác	ok
 C1	pawn	noun	(uncountable) The state of being held as security for a loan, or as a pledge.	sự cầm cố, sự thế chấp	ok
-C1	pawn	noun	A gallery.		
+C1	pawn	noun	A gallery.	(cổ) hành lang có mái	
 C1	pawn	noun	Alternative form of paan.	trầu	ok
 C1	pawn	noun	An instance of pawning something.	lần cầm đồ	ok
 C1	pawn	verb	(transitive) To give as security on a loan of money; especially, to deposit (something) at a pawn shop.	cầm đồ, thế chấp	ok
@@ -2271,17 +2271,17 @@ C1	peach	noun	(euphemestic, often in plural) Buttock or bottom.	(uyển ngữ) m
 C1	peach	noun	(uncountable) A light yellow-red colour.	màu hồng đào	ok
 C1	peculiar	adj	Common or usual for a certain place or circumstance; specific or particular.	đặc trưng, riêng biệt	ok
 C1	peculiar	adj	Out of the ordinary; odd; strange; unusual.	kỳ lạ, khác thường	ok
-C1	peculiar	noun	(UK, canon law) an ecclesiastical district, parish, chapel or church outside the jurisdiction of the bishop of the diocese in which it is situated.	(giáo luật, Anh) giáo khu biệt lập	
+C1	peculiar	noun	(UK, canon law) an ecclesiastical district, parish, chapel or church outside the jurisdiction of the bishop of the diocese in which it is situated.	(giáo luật, Anh) giáo khu biệt lập	ok
 C1	peculiar	noun	That which is peculiar; a sole or exclusive property; a prerogative; a characteristic.	đặc quyền, đặc điểm riêng	ok
-C1	peel	noun	(countable, rugby) The action of peeling away from a formation.		
+C1	peel	noun	(countable, rugby) The action of peeling away from a formation.	(bóng bầu dục) sự tách khỏi đội hình	
 C1	peel	noun	(countable) A cosmetic preparation designed to remove dead skin or to exfoliate.	kem tẩy da chết, sản phẩm lột da	ok
 C1	peel	noun	(curling) A takeout which removes a stone from play as well as the delivered stone.		
-C1	peel	noun	(Scotland, curling) An equal or match; a draw.	(Scotland, bi đá trên băng) trận hòa	
+C1	peel	noun	(Scotland, curling) An equal or match; a draw.	(Scotland, bi đá trên băng) trận hòa	ok
 C1	peel	noun	(usually uncountable) The skin or outer layer of a fruit, vegetable, etc.	vỏ (trái cây, rau củ)	ok
 C1	peel	noun	A shovel or similar instrument, now especially a pole with a flat disc at the end used for removing pizza or loaves of bread from a baker's oven.	xẻng lấy bánh (pizza)	ok
-C1	peel	noun	A T-shaped implement used by printers and bookbinders for hanging wet sheets of paper on lines or poles to dry.		
+C1	peel	noun	A T-shaped implement used by printers and bookbinders for hanging wet sheets of paper on lines or poles to dry.	(nghề in) sào chữ T treo giấy	
 C1	peel	noun	Alternative form of peal (“a small or young salmon”).	cá hồi con	ok
-C1	peel	verb	(croquet) To send through a hoop (of a ball other than one's own).		
+C1	peel	verb	(croquet) To send through a hoop (of a ball other than one's own).	(croquet) đưa bóng đối phương qua cổng	
 C1	peel	verb	(curling) To play a peel shot.		
 C1	peel	verb	(intransitive) To become detached, come away, especially in flakes or strips; to shed skin in such a way.	bong ra, tróc ra	ok
 C1	peel	verb	(intransitive) To remove one's clothing.	cởi quần áo, cởi đồ	ok
@@ -2301,7 +2301,7 @@ C1	pinch	verb	To squeeze between the thumb and forefinger.	kẹp, bóp	ok
 C1	pinch	verb	To squeeze between two objects.	kẹp, ép	ok
 C1	porch	noun	(architecture) A covered entrance to a building, whether taken from the interior, and forming a sort of vestibule within the main wall, or projecting without and with a separate roof. A porch often has chair(s), table(s) and swings.	hiên nhà có mái	ok
 C1	porch	noun	A portico; a covered walk.	hành lang có mái, cổng có cột	ok
-C1	porch	noun	The platform outside the external hatch of a spacecraft.	(du hành vũ trụ) sàn ngoài khoang tàu vũ trụ	
+C1	porch	noun	The platform outside the external hatch of a spacecraft.	(du hành vũ trụ) sàn ngoài khoang tàu vũ trụ	ok
 C1	portal	adj	(anatomy) Of or relating to a porta, especially the porta of the liver.	(giải phẫu) thuộc cửa (gan)	ok
 C1	portal	noun	(bridge-building) The space, at one end, between opposite trusses when these are terminated by inclined braces.		
 C1	portal	noun	(science fiction and fantasy) A magical or technological aperture leading to another location, period in time, or dimension.	cổng (không gian/thời gian)	ok
@@ -2324,243 +2324,243 @@ C1	probation	noun	A period of time when a person occupies a position only condit
 C1	probation	noun	A testing period of time.	thời gian thử thách, giai đoạn thử nghiệm	ok
 C1	psychology	noun	(countable) The mental, emotional, and behavioral characteristics pertaining to a specified person, group, or activity.	tâm lý	ok
 C1	psychology	noun	(uncountable, chiefly historical) The study of the soul.	(cổ) khoa học về linh hồn	ok
-C1	psychology	noun	(uncountable) The study of human or animal behavior.	tâm lý học	
+C1	psychology	noun	(uncountable) The study of human or animal behavior.	tâm lý học	ok
 C1	psychology	noun	(uncountable) The study of the human mind.	tâm lý học	ok
 C1	publish	verb	(intransitive) To issue a medium (e.g. publication).	xuất bản	ok
 C1	publish	verb	(transitive) To announce to the public.	công bố	ok
-C1	publish	verb	(transitive) To issue (something, such as printed work) for distribution and/or sale.	xuất bản, phát hành	
-C1	publish	verb	(transitive) To issue the work of (an author).	xuất bản (tác phẩm của tác giả)	
-C1	quarrel	noun	(countable, archery, historical) An arrow or bolt for a crossbow or an arbalest (“a late, large type of crossbow”), traditionally with the head square in its cross section.	(cổ) mũi tên nỏ	
-C1	quarrel	noun	(countable, architecture) A diamond- or square-shaped piece of glass forming part of a lattice window.	(kiến trúc) ô kính hình thoi	
-C1	quarrel	noun	(countable, Northern England, architecture) A square tile; a quarry tile; (uncountable) such tiles collectively.	(Bắc Anh, kiến trúc) gạch lát vuông	
+C1	publish	verb	(transitive) To issue (something, such as printed work) for distribution and/or sale.	xuất bản, phát hành	ok
+C1	publish	verb	(transitive) To issue the work of (an author).	xuất bản (tác phẩm của tác giả)	ok
+C1	quarrel	noun	(countable, archery, historical) An arrow or bolt for a crossbow or an arbalest (“a late, large type of crossbow”), traditionally with the head square in its cross section.	(cổ) mũi tên nỏ	ok
+C1	quarrel	noun	(countable, architecture) A diamond- or square-shaped piece of glass forming part of a lattice window.	(kiến trúc) ô kính hình thoi	ok
+C1	quarrel	noun	(countable, Northern England, architecture) A square tile; a quarry tile; (uncountable) such tiles collectively.	(Bắc Anh, kiến trúc) gạch lát vuông	ok
 C1	quarrel	noun	(countable) A dispute or heated argument (especially one that is verbal).	cãi cọ	ok
-C1	quarrel	noun	(countable) Often preceded by a form of to have: a basis or ground of dispute or objection; a complaint; also, a feeling or situation of ill will and unhappiness caused by this.	mối bất hòa, xích mích	
-C1	quarrel	verb	(intransitive, also figuratively) To argue fiercely; to contend; to squabble; to cease to be on friendly terms, to fall out.	cãi nhau, tranh cãi	
-C1	quarrel	verb	(intransitive) To find fault; to cavil.	bắt bẻ, phàn nàn	
-C1	quarrel	verb	(transitive, obsolete except Scotland) To argue or squabble with (someone).	(cổ, Scotland) cãi nhau với	
-C1	rapid	adj	(England, dialectal) Violent, severe.	(phương ngữ Anh) dữ dội, gay gắt	
-C1	rapid	adj	Needing only a brief exposure time. (of a lens, plate, film, etc.)	(nhiếp ảnh) nhạy sáng, tốc độ nhanh	
-C1	rapid	adj	Steep, changing altitude quickly. (of a slope)	dốc đứng, dốc gấp	
-C1	rapid	adj	Very swift or quick.	nhanh, mau lẹ	
-C1	rapid	noun	(chess) Ellipsis of rapid chess.	(cờ vua) cờ nhanh	
-C1	rapid	noun	(usually in the plural) A rough section of a river or stream which is difficult to navigate due to the swift and turbulent motion of the water.	ghềnh, thác ghềnh	
-C1	reflect	verb	(intransitive) To be bent back (light, etc.) from a surface.	phản xạ, phản chiếu	
-C1	reflect	verb	(intransitive) To be mirrored.	phản chiếu, soi bóng	
-C1	reflect	verb	(transitive) To bend back (light, etc.) from a surface.	phản chiếu, phản xạ	
+C1	quarrel	noun	(countable) Often preceded by a form of to have: a basis or ground of dispute or objection; a complaint; also, a feeling or situation of ill will and unhappiness caused by this.	mối bất hòa, xích mích	ok
+C1	quarrel	verb	(intransitive, also figuratively) To argue fiercely; to contend; to squabble; to cease to be on friendly terms, to fall out.	cãi nhau, tranh cãi	ok
+C1	quarrel	verb	(intransitive) To find fault; to cavil.	bắt bẻ, phàn nàn	ok
+C1	quarrel	verb	(transitive, obsolete except Scotland) To argue or squabble with (someone).	(cổ, Scotland) cãi nhau với	ok
+C1	rapid	adj	(England, dialectal) Violent, severe.	(phương ngữ Anh) dữ dội, gay gắt	ok
+C1	rapid	adj	Needing only a brief exposure time. (of a lens, plate, film, etc.)	(nhiếp ảnh) nhạy sáng, tốc độ nhanh	ok
+C1	rapid	adj	Steep, changing altitude quickly. (of a slope)	dốc đứng, dốc gấp	ok
+C1	rapid	adj	Very swift or quick.	nhanh, mau lẹ	ok
+C1	rapid	noun	(chess) Ellipsis of rapid chess.	(cờ vua) cờ nhanh	ok
+C1	rapid	noun	(usually in the plural) A rough section of a river or stream which is difficult to navigate due to the swift and turbulent motion of the water.	ghềnh, thác ghềnh	ok
+C1	reflect	verb	(intransitive) To be bent back (light, etc.) from a surface.	phản xạ, phản chiếu	ok
+C1	reflect	verb	(intransitive) To be mirrored.	phản chiếu, soi bóng	ok
+C1	reflect	verb	(transitive) To bend back (light, etc.) from a surface.	phản chiếu, phản xạ	ok
 C1	reflect	verb	(transitive) To mirror, or show the image of something.	phản chiếu	ok
 C1	reign	noun	The exercise of sovereign power.	sự trị vì	ok
 C1	reign	noun	The period during which a monarch rules.	triều đại	ok
-C1	reign	noun	The territory or sphere over which a kingdom; empire; realm; dominion, etc. is ruled.	vương quốc, lãnh thổ	
+C1	reign	noun	The territory or sphere over which a kingdom; empire; realm; dominion, etc. is ruled.	vương quốc, lãnh thổ	ok
 C1	reign	verb	(intransitive) To exercise sovereign power, to rule as a monarch.	trị vì	ok
-C1	reign	verb	To be a dominant quality of a place or situation; to prevail, predominate, rule.	ngự trị, bao trùm, chiếm ưu thế	
-C1	reign	verb	To be the winner of the most recent iteration of a competition.	đương kim vô địch, giữ ngôi vô địch	
-C1	reject	noun	(aviation) A rejected takeoff.	(hàng không) sự hủy cất cánh	
-C1	reject	noun	(colloquial) A rejected defective product in a production line.	(khẩu ngữ) hàng lỗi, phế phẩm	
-C1	reject	noun	(derogatory, slang) An unpopular person.	(lóng, miệt thị) kẻ bị ruồng bỏ	
-C1	reject	noun	Something that is rejected.	vật bị loại, hàng bị loại	
-C1	reject	verb	(basketball) To block a shot, especially if it sends the ball off the court.	(bóng rổ) chặn bóng, block	
-C1	reject	verb	(transitive) To refuse a romantic advance.	từ chối (tình cảm), cự tuyệt	
+C1	reign	verb	To be a dominant quality of a place or situation; to prevail, predominate, rule.	ngự trị, bao trùm, chiếm ưu thế	ok
+C1	reign	verb	To be the winner of the most recent iteration of a competition.	đương kim vô địch, giữ ngôi vô địch	ok
+C1	reject	noun	(aviation) A rejected takeoff.	(hàng không) sự hủy cất cánh	ok
+C1	reject	noun	(colloquial) A rejected defective product in a production line.	(khẩu ngữ) hàng lỗi, phế phẩm	ok
+C1	reject	noun	(derogatory, slang) An unpopular person.	(lóng, miệt thị) kẻ bị ruồng bỏ	ok
+C1	reject	noun	Something that is rejected.	vật bị loại, hàng bị loại	ok
+C1	reject	verb	(basketball) To block a shot, especially if it sends the ball off the court.	(bóng rổ) chặn bóng, block	ok
+C1	reject	verb	(transitive) To refuse a romantic advance.	từ chối (tình cảm), cự tuyệt	ok
 C1	reject	verb	(transitive) To refuse to accept; to forswear.	từ chối	ok
-C1	reserved	adj	(comparable) Slow to reveal emotion or opinions.	kín đáo, dè dặt	
-C1	reserved	adj	(not comparable) Set aside for a particular person or purpose; spoken for.	đã đặt trước, dành riêng	
-C1	restless	adj	Deprived of rest or sleep.	bị mất ngủ, thiếu ngủ	
-C1	restless	adj	Not allowing or affording rest.	không yên tĩnh, làm mất ngủ	
-C1	restless	adj	Not satisfied to be at rest or in peace; averse to repose; eager for change; discontented.	bồn chồn, bất an, muốn thay đổi	
-C1	restless	adj	Without rest; unable to be still or quiet; uneasy; continually moving.	hiếu động, không ngồi yên, bồn chồn	
-C1	robe	noun	(US) The skin of an animal, especially the bison, dressed with the fur on, and used as a wrap.	(Mỹ) tấm da lông thú (làm khăn choàng)	
-C1	robe	noun	A long loose outer garment, often signifying honorary stature.	áo choàng	
-C1	robe	noun	A wardrobe, especially one built into a bedroom.	tủ quần áo	
-C1	robe	noun	The largest and strongest tobacco leaves.		
-C1	robe	verb	(intransitive) To put on official vestments.	mặc áo choàng (nghi lễ)	
-C1	robe	verb	(transitive) To clothe; to dress.	mặc, khoác áo cho	
-C1	salon	noun	(art) An art gallery or exhibition; especially the Paris salon or autumn salon.	(nghệ thuật) phòng triển lãm tranh, phòng tranh	
-C1	salon	noun	A beauty salon or similar establishment.	tiệm làm đẹp, salon	
-C1	salon	noun	A gathering of people for a social or intellectual meeting.	buổi họp mặt trí thức, salon văn học	
-C1	salon	noun	A large room, especially one used to receive and entertain guests.	phòng khách lớn, phòng tiếp khách	
-C1	selection	noun	A musical piece.	đoạn nhạc, bản nhạc	
-C1	selection	noun	A variety of items taken from a larger collection.	bộ tuyển chọn, những thứ được chọn lọc	
-C1	selection	noun	Something selected.	cái được chọn, lựa chọn	
-C1	selection	noun	The process or act of selecting.	sự lựa chọn, sự tuyển chọn	
-C1	sensation	noun	(psychology, physiology) Excitation of sensory organs.	(sinh lý học) sự kích thích giác quan	
-C1	sensation	noun	A physical feeling or perception from something that comes into contact with the body; something sensed.	cảm giác	
-C1	sensation	noun	A widespread reaction of interest or excitement.	sự kiện gây chấn động, hiện tượng gây xôn xao	
-C1	setup	noun	(operations) The process or instance of arranging resources for performing a specific operation, as a run of a particular product.	(kỹ thuật) sự thiết lập, sự cài đặt	
-C1	setup	noun	A situation orchestrated to frame someone; a covert effort to place the blame on somebody.	âm mưu gài bẫy, vụ dàn dựng	
-C1	setup	noun	Equipment designed for a particular purpose; an apparatus.	bộ thiết bị, dàn máy	
-C1	setup	noun	The fashion in which something is organized or arranged.	cách bố trí, cách sắp xếp	
-C1	shaft	noun	(by extension) Anything cast or thrown as a spear or javelin.	ngọn lao, mũi tên	
-C1	shaft	noun	(literary) A beam or ray of light.	(văn chương) tia sáng	
-C1	shaft	noun	Any long thin object, such as the handle of a tool.	cán, trục dài	
-C1	shaft	noun	The long, narrow, central body of a spear, arrow, or javelin.	thân (giáo, tên, lao)	
-C1	shaft	verb	(transitive, slang) To fuck over; to cause harm to, especially through deceit or treachery.	(thông tục) chơi xỏ, lừa gạt	
-C1	shaft	verb	(transitive, slang) To fuck; to have sexual intercourse with.	(tục, lóng) địt	
-C1	shaft	verb	(transitive) To equip with a shaft.	lắp cán, tra cán	
-C1	shin	noun	A fishplate for a railway		
+C1	reserved	adj	(comparable) Slow to reveal emotion or opinions.	kín đáo, dè dặt	ok
+C1	reserved	adj	(not comparable) Set aside for a particular person or purpose; spoken for.	đã đặt trước, dành riêng	ok
+C1	restless	adj	Deprived of rest or sleep.	bị mất ngủ, thiếu ngủ	ok
+C1	restless	adj	Not allowing or affording rest.	không yên tĩnh, làm mất ngủ	ok
+C1	restless	adj	Not satisfied to be at rest or in peace; averse to repose; eager for change; discontented.	bồn chồn, bất an, muốn thay đổi	ok
+C1	restless	adj	Without rest; unable to be still or quiet; uneasy; continually moving.	hiếu động, không ngồi yên, bồn chồn	ok
+C1	robe	noun	(US) The skin of an animal, especially the bison, dressed with the fur on, and used as a wrap.	(Mỹ) tấm da lông thú (làm khăn choàng)	ok
+C1	robe	noun	A long loose outer garment, often signifying honorary stature.	áo choàng	ok
+C1	robe	noun	A wardrobe, especially one built into a bedroom.	tủ quần áo	ok
+C1	robe	noun	The largest and strongest tobacco leaves.	(nghề trồng thuốc lá) lá to và chắc nhất	
+C1	robe	verb	(intransitive) To put on official vestments.	mặc áo choàng (nghi lễ)	ok
+C1	robe	verb	(transitive) To clothe; to dress.	mặc, khoác áo cho	ok
+C1	salon	noun	(art) An art gallery or exhibition; especially the Paris salon or autumn salon.	(nghệ thuật) phòng triển lãm tranh, phòng tranh	ok
+C1	salon	noun	A beauty salon or similar establishment.	tiệm làm đẹp, salon	ok
+C1	salon	noun	A gathering of people for a social or intellectual meeting.	buổi họp mặt trí thức, salon văn học	ok
+C1	salon	noun	A large room, especially one used to receive and entertain guests.	phòng khách lớn, phòng tiếp khách	ok
+C1	selection	noun	A musical piece.	đoạn nhạc, bản nhạc	ok
+C1	selection	noun	A variety of items taken from a larger collection.	bộ tuyển chọn, những thứ được chọn lọc	ok
+C1	selection	noun	Something selected.	cái được chọn, lựa chọn	ok
+C1	selection	noun	The process or act of selecting.	sự lựa chọn, sự tuyển chọn	ok
+C1	sensation	noun	(psychology, physiology) Excitation of sensory organs.	(sinh lý học) sự kích thích giác quan	mất nhãn — tiếng Anh ghi cả "(psychology, physiology)" nhưng bản dịch chỉ giữ "(sinh lý học)", bỏ mất "tâm lý học".
+C1	sensation	noun	A physical feeling or perception from something that comes into contact with the body; something sensed.	cảm giác	ok
+C1	sensation	noun	A widespread reaction of interest or excitement.	sự kiện gây chấn động, hiện tượng gây xôn xao	ok
+C1	setup	noun	(operations) The process or instance of arranging resources for performing a specific operation, as a run of a particular product.	(kỹ thuật) sự thiết lập, sự cài đặt	ok
+C1	setup	noun	A situation orchestrated to frame someone; a covert effort to place the blame on somebody.	âm mưu gài bẫy, vụ dàn dựng	ok
+C1	setup	noun	Equipment designed for a particular purpose; an apparatus.	bộ thiết bị, dàn máy	ok
+C1	setup	noun	The fashion in which something is organized or arranged.	cách bố trí, cách sắp xếp	ok
+C1	shaft	noun	(by extension) Anything cast or thrown as a spear or javelin.	ngọn lao, mũi tên	sai nghĩa — "mũi tên" (tên/arrow) là vật được bắn chứ không phải vật "cast or thrown" như lao/giáo; thêm "mũi tên" vào đây không đúng.
+C1	shaft	noun	(literary) A beam or ray of light.	(văn chương) tia sáng	ok
+C1	shaft	noun	Any long thin object, such as the handle of a tool.	cán, trục dài	ok
+C1	shaft	noun	The long, narrow, central body of a spear, arrow, or javelin.	thân (giáo, tên, lao)	ok
+C1	shaft	verb	(transitive, slang) To fuck over; to cause harm to, especially through deceit or treachery.	(thông tục) chơi xỏ, lừa gạt	lệch nhãn — "slang" nên dịch là "(lóng)" (như các nghĩa "slang" khác của chính mục "shaft" trong bảng), "(thông tục)" ứng với "colloquial/informal" hơn.
+C1	shaft	verb	(transitive, slang) To fuck; to have sexual intercourse with.	(tục, lóng) địt	ok
+C1	shaft	verb	(transitive) To equip with a shaft.	lắp cán, tra cán	ok
+C1	shin	noun	A fishplate for a railway	(đường sắt, phương ngữ Anh) tấm nối ray	
 C1	shin	noun	The front part of the leg below the knee; the front edge of the shin bone: Shinbone on Wikipedia.Wikipedia	ống quyển	ok
-C1	shin	noun	The twenty-first letter of many Semitic alphabets/abjads (Phoenician, Aramaic, Hebrew, Syriac, Arabic and others): Shin (letter) on Wikipedia.Wikipedia	chữ Shin (bảng chữ cái Semit)	
-C1	shin	verb	(US, slang) To run about borrowing money hastily and temporarily, as when trying to make a payment.	(Mỹ, thông tục) chạy vạy vay tiền	
-C1	shin	verb	To climb up or lower oneself down a mast, tree, rope, or the like, by embracing it alternately with the arms and legs, without help of steps, spurs, or the like.	trèo (ôm lấy cột, cây, dây)	
-C1	shin	verb	To strike with the shin.	đá bằng ống chân	
-C1	shovel	noun	(especially US, loosely) Any shovel in the above senses, or any spade.	xẻng, mai	
-C1	shovel	noun	A hand tool with a handle, used for moving portions of material such as earth, snow, and grain from one place to another, with some forms also used for digging. In strict usage differentiated from a spade, which is designed solely for small-scale digging and incidental tasks such as chopping of small roots.	cái xẻng	
-C1	shovel	noun	A mechanical part of an excavator with a similar function.	gàu xúc (máy xúc)	
-C1	shovel	noun	Ellipsis of shovel hat.	mũ giáo sĩ hình xẻng	
-C1	shovel	verb	(transitive, figuratively) To move with a shoveling motion.	xúc, tống (nhanh, nhiều)	
-C1	shovel	verb	To move materials with a shovel.	xúc (bằng xẻng)	
+C1	shin	noun	The twenty-first letter of many Semitic alphabets/abjads (Phoenician, Aramaic, Hebrew, Syriac, Arabic and others): Shin (letter) on Wikipedia.Wikipedia	chữ Shin (bảng chữ cái Semit)	ok
+C1	shin	verb	(US, slang) To run about borrowing money hastily and temporarily, as when trying to make a payment.	(Mỹ, thông tục) chạy vạy vay tiền	lệch nhãn — "slang" nên dịch là "(lóng)"; "(thông tục)" ứng với "colloquial/informal" hơn là "slang".
+C1	shin	verb	To climb up or lower oneself down a mast, tree, rope, or the like, by embracing it alternately with the arms and legs, without help of steps, spurs, or the like.	trèo (ôm lấy cột, cây, dây)	ok
+C1	shin	verb	To strike with the shin.	đá bằng ống chân	ok
+C1	shovel	noun	(especially US, loosely) Any shovel in the above senses, or any spade.	xẻng, mai	ok
+C1	shovel	noun	A hand tool with a handle, used for moving portions of material such as earth, snow, and grain from one place to another, with some forms also used for digging. In strict usage differentiated from a spade, which is designed solely for small-scale digging and incidental tasks such as chopping of small roots.	cái xẻng	ok
+C1	shovel	noun	A mechanical part of an excavator with a similar function.	gàu xúc (máy xúc)	ok
+C1	shovel	noun	Ellipsis of shovel hat.	mũ giáo sĩ hình xẻng	ok
+C1	shovel	verb	(transitive, figuratively) To move with a shoveling motion.	xúc, tống (nhanh, nhiều)	ok
+C1	shovel	verb	To move materials with a shovel.	xúc (bằng xẻng)	ok
 C1	sip	noun	A small mouthful of drink.	hớp	ok
-C1	sip	noun	An event at which people drink alcohol in small, usually subintoxicating amounts.	(thông tục) buổi nhâm nhi rượu	
-C1	sip	verb	(figurative, transitive) To consume slowly.	nhấm nháp, thưởng thức từ từ	
-C1	sip	verb	(intransitive) To drink a small quantity.	nhấp, nhấp một ngụm	
+C1	sip	noun	An event at which people drink alcohol in small, usually subintoxicating amounts.	(thông tục) buổi nhâm nhi rượu	ok
+C1	sip	verb	(figurative, transitive) To consume slowly.	nhấm nháp, thưởng thức từ từ	ok
+C1	sip	verb	(intransitive) To drink a small quantity.	nhấp, nhấp một ngụm	ok
 C1	sip	verb	(transitive) To drink slowly, small mouthfuls at a time.	hớp	ok
-C1	sip	verb	(transitive) To taste the liquor of; to drink out of.	nhấp, uống thử	
-C1	sleeve	noun	A (usually tubular) covering or lining to protect a piece of machinery etc.	ống lót, vỏ bọc	
-C1	sleeve	noun	A protective jacket or case, especially for a record, containing art and information about the contents; also the analogous leaflet found in a packaged CD.	bìa đĩa (nhạc)	
-C1	sleeve	noun	A tattoo covering the whole arm.	hình xăm trọn tay	
+C1	sip	verb	(transitive) To taste the liquor of; to drink out of.	nhấp, uống thử	ok
+C1	sleeve	noun	A (usually tubular) covering or lining to protect a piece of machinery etc.	ống lót, vỏ bọc	ok
+C1	sleeve	noun	A protective jacket or case, especially for a record, containing art and information about the contents; also the analogous leaflet found in a packaged CD.	bìa đĩa (nhạc)	ok
+C1	sleeve	noun	A tattoo covering the whole arm.	hình xăm trọn tay	ok
 C1	sleeve	noun	The part of a garment that covers the arm.	tay áo	ok
-C1	sleeve	verb	(magic tricks) To hide something up one's sleeve.	giấu trong tay áo	
-C1	sleeve	verb	(transitive) To fit and attach a sleeve to an upper garment (e.g. to a shirt, blouse, sweater, jacket, coat, etc.) or to a folder.	may/lắp tay áo (vào)	
-C1	spa	noun	(Ireland, slang) A clumsy person (see spastic)	(Ireland, lóng) người vụng về	
-C1	spa	noun	(Ireland, slang) An idiot; a gobshite	(Ireland, lóng) đồ ngốc	
-C1	spa	noun	A health club.	câu lạc bộ sức khỏe, spa	
-C1	spa	noun	A health resort near a mineral spring or hot spring.	khu nghỉ dưỡng suối khoáng	
-C1	spa	noun	A hot tub.	bồn tắm nước nóng, bồn sục	
-C1	spa	noun	A trendy or fashionable resort.	khu nghỉ dưỡng thời thượng	
-C1	spine	noun	(neuroscience) Ellipsis of dendritic spine.		
-C1	spine	noun	A linear payscale operated by some large organizations that allows flexibility for local and specific conditions.	thang lương	
+C1	sleeve	verb	(magic tricks) To hide something up one's sleeve.	giấu trong tay áo	ok
+C1	sleeve	verb	(transitive) To fit and attach a sleeve to an upper garment (e.g. to a shirt, blouse, sweater, jacket, coat, etc.) or to a folder.	may/lắp tay áo (vào)	ok
+C1	spa	noun	(Ireland, slang) A clumsy person (see spastic)	(Ireland, lóng) người vụng về	ok
+C1	spa	noun	(Ireland, slang) An idiot; a gobshite	(Ireland, lóng) đồ ngốc	ok
+C1	spa	noun	A health club.	câu lạc bộ sức khỏe, spa	ok
+C1	spa	noun	A health resort near a mineral spring or hot spring.	khu nghỉ dưỡng suối khoáng	ok
+C1	spa	noun	A hot tub.	bồn tắm nước nóng, bồn sục	ok
+C1	spa	noun	A trendy or fashionable resort.	khu nghỉ dưỡng thời thượng	ok
+C1	spine	noun	(neuroscience) Ellipsis of dendritic spine.	(giải phẫu thần kinh) gai đuôi gai	
+C1	spine	noun	A linear payscale operated by some large organizations that allows flexibility for local and specific conditions.	thang lương	ok
 C1	spine	noun	Something resembling a backbone, such as a ridge, or a long, central structure from which other structures radiate.	xương sống	ok
 C1	spine	noun	The narrow, bound edge of a book that encloses the inner edges of the pages, facing outwards when the book is on a shelf and typically bearing the title and the author's and publisher's name.	gáy sách	ok
-C1	stash	noun	(countable, textiles) A collection of yarn or other materials not yet allocated to any particular craft project.	(đan len) kho len tích trữ	
-C1	stash	noun	(countable, US, slang, informal, African-American Vernacular) A place where drugs are stored.	(lóng, Mỹ) chỗ giấu ma tuý	
-C1	stash	noun	(countable) A collection, sometimes hidden.	kho, chỗ cất giấu	
-C1	stash	noun	(nonstandard, informal, slang) A mustache.	(không chuẩn, lóng) ria mép	
-C1	stash	noun	(uncountable, UK, slang) Clothing or other items branded with a particular university club or society's logo.	(Anh, lóng) đồ có logo hội, câu lạc bộ	
-C1	stash	verb	(transitive) To hide or store away for later use.	giấu, cất giữ	
-C1	sticky	adj	Difficult, awkward.	khó xử, rắc rối	
-C1	sticky	adj	Of a death: unpleasant, grisly.	(về cái chết) thảm khốc, rùng rợn	
-C1	sticky	adj	Of weather: hot and windless and with high humidity, so that people feel sticky from sweating.	oi bức, nóng ẩm	
-C1	sticky	adj	Tending to stick; able to adhere via the drying of a viscous substance.	dính	
-C1	sticky	noun	(Australia, colloquial) A sweet dessert wine.	(Úc, thông tục) rượu vang ngọt tráng miệng	
-C1	sticky	noun	(Internet) A discussion thread fixed at the top of the list of topics or threads so as to keep it in view.	(Internet) bài ghim (trên diễn đàn)	
-C1	sticky	noun	(manufacturing) A small adhesive particle found in wastepaper.	(công nghiệp giấy) hạt dính (tạp chất trong giấy tái chế)	
-C1	sticky	noun	A sticky note, such as a post-it note.		
-C1	sticky	verb	(Internet, bulletin boards, transitive) to fix a thread at the top of the list of topics or threads so as to keep it in view.		
-C1	submarine	adj	(baseball) Of a pitch, thrown with the hand lower than the elbow.		
-C1	submarine	adj	Being, relating to, or made for use underwater, especially beneath the sea.		
-C1	submarine	adj	Hidden or undisclosed.		
-C1	submarine	noun	(baseball) A pitch delivered with an underhand motion.		
-C1	submarine	noun	(nautical) A boat that can go underwater.		
-C1	submarine	noun	Alternative form of submarine sandwich.		
-C1	submarine	noun	Any submarine plant or animal.		
-C1	submarine	verb	(intransitive, automotive) To slide forwards underneath one's seat belt (during a crash or sudden stop).		
-C1	submarine	verb	(intransitive, sometimes figurative) To sink or submerge oneself.		
-C1	submarine	verb	(intransitive) To operate or serve on a submarine.		
-C1	submarine	verb	(transitive) To torpedo; to destroy with a sudden sneak attack.		
+C1	stash	noun	(countable, textiles) A collection of yarn or other materials not yet allocated to any particular craft project.	(đan len) kho len tích trữ	ok
+C1	stash	noun	(countable, US, slang, informal, African-American Vernacular) A place where drugs are stored.	(lóng, Mỹ) chỗ giấu ma tuý	ok
+C1	stash	noun	(countable) A collection, sometimes hidden.	kho, chỗ cất giấu	ok
+C1	stash	noun	(nonstandard, informal, slang) A mustache.	(không chuẩn, lóng) ria mép	ok
+C1	stash	noun	(uncountable, UK, slang) Clothing or other items branded with a particular university club or society's logo.	(Anh, lóng) đồ có logo hội, câu lạc bộ	ok
+C1	stash	verb	(transitive) To hide or store away for later use.	giấu, cất giữ	ok
+C1	sticky	adj	Difficult, awkward.	khó xử, rắc rối	ok
+C1	sticky	adj	Of a death: unpleasant, grisly.	(về cái chết) thảm khốc, rùng rợn	ok
+C1	sticky	adj	Of weather: hot and windless and with high humidity, so that people feel sticky from sweating.	oi bức, nóng ẩm	ok
+C1	sticky	adj	Tending to stick; able to adhere via the drying of a viscous substance.	dính	ok
+C1	sticky	noun	(Australia, colloquial) A sweet dessert wine.	(Úc, thông tục) rượu vang ngọt tráng miệng	ok
+C1	sticky	noun	(Internet) A discussion thread fixed at the top of the list of topics or threads so as to keep it in view.	(Internet) bài ghim (trên diễn đàn)	ok
+C1	sticky	noun	(manufacturing) A small adhesive particle found in wastepaper.	(công nghiệp giấy) hạt dính (tạp chất trong giấy tái chế)	ok
+C1	sticky	noun	A sticky note, such as a post-it note.	giấy nhớ, giấy note	
+C1	sticky	verb	(Internet, bulletin boards, transitive) to fix a thread at the top of the list of topics or threads so as to keep it in view.	(diễn đàn, mạng) ghim (chủ đề)	
+C1	submarine	adj	(baseball) Of a pitch, thrown with the hand lower than the elbow.	(bóng chày) ném hạ tay thấp	
+C1	submarine	adj	Being, relating to, or made for use underwater, especially beneath the sea.	dưới biển, ngầm	
+C1	submarine	adj	Hidden or undisclosed.	ngầm, kín đáo	
+C1	submarine	noun	(baseball) A pitch delivered with an underhand motion.	(bóng chày) cú ném tay thấp	
+C1	submarine	noun	(nautical) A boat that can go underwater.	(hàng hải) tàu ngầm	
+C1	submarine	noun	Alternative form of submarine sandwich.	bánh mì kẹp dài	
+C1	submarine	noun	Any submarine plant or animal.	sinh vật sống dưới nước	
+C1	submarine	verb	(intransitive, automotive) To slide forwards underneath one's seat belt (during a crash or sudden stop).	(ô tô) trượt luồn xuống dưới dây an toàn	
+C1	submarine	verb	(intransitive, sometimes figurative) To sink or submerge oneself.	chìm xuống, lặn xuống	
+C1	submarine	verb	(intransitive) To operate or serve on a submarine.	phục vụ trên tàu ngầm	
+C1	submarine	verb	(transitive) To torpedo; to destroy with a sudden sneak attack.	phá ngầm, hủy hoại bất ngờ	
 C1	sultan	noun	(card games, uncountable) A variant of solitaire, played with two decks of cards.		
-C1	sultan	noun	(historical) The holder of a secular office, formally subordinate to, but de facto the power behind the throne of, the caliph.		
-C1	sultan	noun	A breed of chicken originating in Turkey, kept primarily in gardens for ornamental reasons. See: sultan (chicken)		
+C1	sultan	noun	(historical) The holder of a secular office, formally subordinate to, but de facto the power behind the throne of, the caliph.	(lịch sử) quốc vương Hồi giáo	
+C1	sultan	noun	A breed of chicken originating in Turkey, kept primarily in gardens for ornamental reasons. See: sultan (chicken)	giống gà Sultan (gà cảnh)	
 C1	sultan	noun	A hereditary ruler in various Muslim states (sultanate), varying from petty principalities (as in Yemen), often vassal of a greater ruler, to independent realms, such as Oman, Brunei, Morocco (until 1957) or an empire such as the Turkish Ottoman Empire.	vua	ok
-C1	sunlight	noun	(attributive) Synonym of photic (“describing that part of the near-surface ocean in which photosynthesis is possible.”).		
-C1	sunlight	noun	(figuratively) Brightness, hope; a positive outlook.		
+C1	sunlight	noun	(attributive) Synonym of photic (“describing that part of the near-surface ocean in which photosynthesis is possible.”).	(hải dương học) tầng có ánh sáng mặt trời	
+C1	sunlight	noun	(figuratively) Brightness, hope; a positive outlook.	(nghĩa bóng) niềm hy vọng, sự tươi sáng	
 C1	sunlight	noun	All the electromagnetic radiation given off by the Sun; especially, that in the visible spectrum and that bathes the Earth.	ánh nắng	ok
-C1	sunlight	noun	Synonym of sunrise.		
-C1	sunlight	verb	To work on the side (at a secondary job) during the daytime.		
-C1	sunrise	noun	(figuratively) Any great awakening.		
-C1	sunrise	noun	The change in color of the sky at dawn.		
+C1	sunlight	noun	Synonym of sunrise.	bình minh	
+C1	sunlight	verb	To work on the side (at a secondary job) during the daytime.	làm thêm việc (vào ban ngày)	
+C1	sunrise	noun	(figuratively) Any great awakening.	(nghĩa bóng) sự thức tỉnh, khởi đầu mới	
+C1	sunrise	noun	The change in color of the sky at dawn.	cảnh bình minh, ráng đông	
 C1	sunrise	noun	The time of day when the sun appears above the eastern horizon.	bình minh	ok
-C1	sunrise	verb	(business, uncommon, transitive) To phase in.		
-C1	supermarket	noun	(figurative) A one-stop shop; a place offering a range of products or services.		
+C1	sunrise	verb	(business, uncommon, transitive) To phase in.	(kinh doanh) triển khai dần	
+C1	supermarket	noun	(figurative) A one-stop shop; a place offering a range of products or services.	(nghĩa bóng) nơi có đầy đủ mọi thứ	
 C1	supermarket	noun	A chain of such stores.	siêu thị	thiếu nghĩa — đây là nghĩa "chuỗi siêu thị" (hệ thống nhiều cửa hàng), "siêu thị" đơn thuần trùng với nghĩa đơn lẻ ở dòng khác, không thể hiện ý "chain of stores" — nên là "chuỗi siêu thị"
 C1	supermarket	noun	A large self-service store that sells groceries and, usually, medications, household goods, and/or clothing.	siêu thị	ok
 C1	sushi	noun	(proscribed) Raw fish, especially as a Japanese dish.	sushi	thiếu nghĩa và nhãn — gloss chỉ lặp lại từ phiên âm "sushi", không truyền tải nghĩa "cá sống" (nghĩa bị coi là dùng sai) của mục này — nên có nhãn và nghĩa dạng "(nghĩa bị coi là sai) cá sống"
 C1	sushi	noun	A Japanese dish made of small portions of sticky white rice flavored with vinegar, usually wrapped in seaweed and filled or topped with fish, vegetables or meat.	sushi	ok
-C1	sushi	verb	(transitive, informal) To prepare (a food) as sushi.		
-C1	swine	noun	(derogatory) A contemptible person (plural swine or swines).		
-C1	swine	noun	(plural swine) A pig (the animal).		
-C1	swine	noun	(slang, derogatory) A police officer; a "pig".		
-C1	swine	noun	(slang, derogatory) Something difficult or awkward; a pain.		
-C1	terminal	adj	Appearing at the end; top or apex of a physical object.		
-C1	terminal	adj	Fatal; resulting in death.		
-C1	terminal	adj	Occurring at the end of a word, sentence, or period of time, and serves to terminate it		
-C1	terminal	noun	A building in an airport where passengers transfer from ground transportation to the facilities that allow them to board airplanes.		
-C1	terminal	noun	A harbour facility where ferries embark and disembark passengers and load and unload vehicles.		
-C1	terminal	noun	A rail station where service begins and ends; the end of the line. For example: Grand Central Terminal in New York City.		
-C1	terminal	noun	A rate charged on all freight, regardless of distance, and supposed to cover the expenses of station service, as distinct from mileage rate, generally proportionate to the distance and intended to cover movement expenses.		
-C1	terminal	verb	To store bulk liquids (such as oil or chemicals) in storage tanks prior to further distribution.		
-C1	thorough	adj	Painstaking and careful not to miss or omit any detail.		
-C1	thorough	adj	Utter; complete; absolute.		
-C1	thorough	noun	(UK, dialect) A furrow between two ridges, to drain off the surface water.		
-C1	tidy	adj	(data science, of data in a dataset) Normalized in a certain way that optimizes for data analysis.		
-C1	tidy	adj	Appropriate or suitable as regards occasion, circumstances, arrangement, or order.		
-C1	tidy	adj	Arranged neatly and in order.		
-C1	tidy	adj	Not messy; neat and controlled.		
-C1	tidy	noun	(now chiefly in combination with a modifier) A container or other device for storing or organizing loose items in a tidy fashion.		
-C1	tidy	noun	A cover, often of tatting, drawn work, or other ornamental work, for the back of a chair, the arms of a sofa, etc.		
-C1	tidy	noun	The wren.		
-C1	tidy	phrase	(Wales) Expression of agreement or positive acknowledgement, usually in reply to a question; great, fine.		
-C1	tidy	verb	To make tidy; to neaten.		
-C1	til	conj	(colloquial) until, till		
+C1	sushi	verb	(transitive, informal) To prepare (a food) as sushi.	làm sushi, chế biến thành sushi	
+C1	swine	noun	(derogatory) A contemptible person (plural swine or swines).	(xúc phạm) đồ khốn, đồ lợn	
+C1	swine	noun	(plural swine) A pig (the animal).	con lợn, con heo	
+C1	swine	noun	(slang, derogatory) A police officer; a "pig".	(lóng, khinh miệt) cớm	
+C1	swine	noun	(slang, derogatory) Something difficult or awkward; a pain.	(lóng) của nợ, chuyện phiền toái	
+C1	terminal	adj	Appearing at the end; top or apex of a physical object.	ở cuối, ở đỉnh	
+C1	terminal	adj	Fatal; resulting in death.	gây tử vong, ở giai đoạn cuối	
+C1	terminal	adj	Occurring at the end of a word, sentence, or period of time, and serves to terminate it	ở vị trí cuối (từ, câu)	
+C1	terminal	noun	A building in an airport where passengers transfer from ground transportation to the facilities that allow them to board airplanes.	nhà ga (sân bay)	
+C1	terminal	noun	A harbour facility where ferries embark and disembark passengers and load and unload vehicles.	bến cảng	
+C1	terminal	noun	A rail station where service begins and ends; the end of the line. For example: Grand Central Terminal in New York City.	ga cuối, ga đầu mối	
+C1	terminal	noun	A rate charged on all freight, regardless of distance, and supposed to cover the expenses of station service, as distinct from mileage rate, generally proportionate to the distance and intended to cover movement expenses.	(vận tải) cước đầu bến	
+C1	terminal	verb	To store bulk liquids (such as oil or chemicals) in storage tanks prior to further distribution.	(kỹ thuật) chứa (dầu, hoá chất) trong kho đầu mối	
+C1	thorough	adj	Painstaking and careful not to miss or omit any detail.	kỹ lưỡng, cẩn thận, tỉ mỉ	
+C1	thorough	adj	Utter; complete; absolute.	hoàn toàn, triệt để	
+C1	thorough	noun	(UK, dialect) A furrow between two ridges, to drain off the surface water.	(Anh, phương ngữ) rãnh thoát nước	
+C1	tidy	adj	(data science, of data in a dataset) Normalized in a certain way that optimizes for data analysis.	(khoa học dữ liệu) (dữ liệu) được chuẩn hoá	
+C1	tidy	adj	Appropriate or suitable as regards occasion, circumstances, arrangement, or order.	thích hợp, phù hợp	
+C1	tidy	adj	Arranged neatly and in order.	gọn gàng, ngăn nắp	
+C1	tidy	adj	Not messy; neat and controlled.	gọn gàng, sạch sẽ	
+C1	tidy	noun	(now chiefly in combination with a modifier) A container or other device for storing or organizing loose items in a tidy fashion.	hộp/giá đựng đồ gọn gàng	
+C1	tidy	noun	A cover, often of tatting, drawn work, or other ornamental work, for the back of a chair, the arms of a sofa, etc.	khăn phủ trang trí (lưng ghế, tay ghế)	
+C1	tidy	noun	The wren.	chim hồng tước	
+C1	tidy	phrase	(Wales) Expression of agreement or positive acknowledgement, usually in reply to a question; great, fine.	(xứ Wales) tốt, được đấy	
+C1	tidy	verb	To make tidy; to neaten.	dọn dẹp, sắp xếp gọn gàng	
+C1	til	conj	(colloquial) until, till	(khẩu ngữ) cho đến khi	
 C1	til	noun	Any of species Ocotea foetens in family Lauraceae, native to Madeira and the Canary Islands.		
-C1	til	noun	Sesame (plant: Sesamum indicum)		
-C1	til	prep	(colloquial) until, till		
-C1	translate	noun	(mathematical analysis) In Euclidean spaces: a set of points obtained by adding a given fixed vector to each point of a given set.		
+C1	til	noun	Sesame (plant: Sesamum indicum)	cây vừng, cây mè	
+C1	til	prep	(colloquial) until, till	(khẩu ngữ) đến, cho đến	
+C1	translate	noun	(mathematical analysis) In Euclidean spaces: a set of points obtained by adding a given fixed vector to each point of a given set.	(toán học) ảnh tịnh tiến	
 C1	translate	verb	Senses relating to a change of position.		
 C1	translate	verb	Senses relating to the change of information, etc., from one form to another.		
 C1	treaty	noun	(countable, international law) A formal binding agreement concluded by subjects of international law, namely, states and international organizations; a convention, a pact.	điều ước	ok
-C1	treaty	verb	(intransitive) To enter into a treaty.		
-C1	treaty	verb	(transitive) To get into (a specific situation) through a treaty.		
-C1	unlock	noun	(video games) An initially hidden feature that is made available to reward the player for some achievement.		
-C1	unlock	noun	The act of unlocking something.		
-C1	unlock	verb	(transitive, mobile telephony) To configure (a mobile phone) so that it is not bound to any particular carrier.		
-C1	unlock	verb	(transitive) To disclose or reveal previously unknown knowledge or potential.		
-C1	unlock	verb	(transitive) To obtain access to something; to meet the requirements of a security or protection system.		
+C1	treaty	verb	(intransitive) To enter into a treaty.	đàm phán, thương lượng	
+C1	treaty	verb	(transitive) To get into (a specific situation) through a treaty.	đạt được bằng hiệp ước	
+C1	unlock	noun	(video games) An initially hidden feature that is made available to reward the player for some achievement.	tính năng mở khóa	
+C1	unlock	noun	The act of unlocking something.	sự mở khóa	
+C1	unlock	verb	(transitive, mobile telephony) To configure (a mobile phone) so that it is not bound to any particular carrier.	(viễn thông) mở mạng điện thoại	
+C1	unlock	verb	(transitive) To disclose or reveal previously unknown knowledge or potential.	khai mở, tiết lộ	
+C1	unlock	verb	(transitive) To obtain access to something; to meet the requirements of a security or protection system.	mở khóa	
 C1	unlock	verb	(transitive) To undo or open a lock or something locked by, for example, turning a key, or selecting a combination.	mở khóa	ok
-C1	unlucky	adj	Bringing ill luck.		
-C1	unlucky	adj	Having ill luck.		
-C1	unlucky	adj	Inauspicious.		
+C1	unlucky	adj	Bringing ill luck.	gở, xui	
+C1	unlucky	adj	Having ill luck.	xui xẻo, không may	
+C1	unlucky	adj	Inauspicious.	điềm gở, không lành	
 C1	unlucky	adj	Unfortunate, marked by misfortune.	xui xẻo	ok
 C1	urban	adj	Having authority or jurisdiction over a city or town.		
-C1	urban	adj	Living in a city or town.		
+C1	urban	adj	Living in a city or town.	thành thị, đô thị	
 C1	urban	adj	Of, pertaining to, characteristic of, or happening or located in, a city or town; of, pertaining to, or characteristic of life in such a place, especially when contrasted with the countryside.	thành phố	sai từ loại — "thành phố" là danh từ (city); tính từ nên là "(thuộc) đô thị, thành thị"
 C1	urine	noun	(physiology) Liquid waste consisting of water, salts, and urea, which is made in the kidneys, stored in the bladder, then released through the urethra.	nước tiểu	ok
-C1	venture	noun	A risky or daring undertaking or journey.		
-C1	venture	noun	An event that is not, or cannot be, foreseen.		
-C1	venture	noun	The thing risked; especially, something sent to sea in trade.		
-C1	venture	verb	(intransitive, with at or on) To dare to engage in; to attempt without any certainty of success.		
-C1	venture	verb	(transitive) To put or send on a venture or chance.		
-C1	venture	verb	(transitive) To risk or offer.		
-C1	venture	verb	(transitive) To undertake a risky or daring journey.		
-C1	virtue	noun	(conceptually): (uncountable) The idea of all that is good or excellent (in every sense of those terms) in a human being, collectively instantiated by a varying number of human traits known as "the virtues", the enumeration of which vary by the many virtue systems which have developed within different cultures, religions, and historical periods.		
-C1	virtue	noun	(countable) An attribute of a personality (a "personality trait") which predisposes a person to behaviors resulting in human goodness; an admirable quality.		
-C1	virtue	noun	(uncountable) Accordance with moral principles; conformity of behaviour or thought with the strictures of morality; good moral conduct.		
-C1	virtue	noun	A particular manifestation of moral excellence in a person.		
-C1	voyage	noun	A long journey, especially by ship.		
-C1	voyage	verb	(intransitive) To go on a long journey.		
-C1	waist	noun	A part of a piece of clothing that covers the waist.		
-C1	waist	noun	The middle part of anything.		
-C1	waist	noun	The middle portion of the hull of a ship or the fuselage of an aircraft.		
-C1	waist	noun	The narrow connection between the thorax and abdomen in certain insects (e.g., bees, ants and wasps).		
-C1	warp	noun	(countable) A distortion:		
-C1	warp	noun	(figurative) The foundation, the basis, the undergirding.		
-C1	warp	noun	(uncountable) The state, quality, or condition of being twisted, physically or mentally:		
-C1	warp	noun	(weaving) The threads that run lengthwise in a woven fabric; crossed by the woof or weft.		
-C1	warp	verb	(ambitransitive, agriculture) To fertilize (low-lying land) by letting the tide, a river, or other water in upon it to deposit silt and alluvial matter.		
-C1	warp	verb	(transitive, weaving) To arrange strands of thread lengthwise on a loom.		
+C1	venture	noun	A risky or daring undertaking or journey.	công việc mạo hiểm, dự án mạo hiểm	
+C1	venture	noun	An event that is not, or cannot be, foreseen.	sự may rủi, việc bất ngờ	
+C1	venture	noun	The thing risked; especially, something sent to sea in trade.	hàng hóa mạo hiểm, hàng gửi đi buôn bán đường biển	
+C1	venture	verb	(intransitive, with at or on) To dare to engage in; to attempt without any certainty of success.	liều làm, mạo hiểm làm	
+C1	venture	verb	(transitive) To put or send on a venture or chance.	liều gửi đi, mạo hiểm đưa vào	
+C1	venture	verb	(transitive) To risk or offer.	liều nêu ra, mạo muội đưa ra	
+C1	venture	verb	(transitive) To undertake a risky or daring journey.	mạo hiểm thực hiện chuyến đi	
+C1	virtue	noun	(conceptually): (uncountable) The idea of all that is good or excellent (in every sense of those terms) in a human being, collectively instantiated by a varying number of human traits known as "the virtues", the enumeration of which vary by the many virtue systems which have developed within different cultures, religions, and historical periods.	đức hạnh, đạo đức	
+C1	virtue	noun	(countable) An attribute of a personality (a "personality trait") which predisposes a person to behaviors resulting in human goodness; an admirable quality.	đức tính, phẩm chất tốt	
+C1	virtue	noun	(uncountable) Accordance with moral principles; conformity of behaviour or thought with the strictures of morality; good moral conduct.	đức hạnh, hạnh kiểm tốt	
+C1	virtue	noun	A particular manifestation of moral excellence in a person.	đức tính, việc làm tốt đẹp	
+C1	voyage	noun	A long journey, especially by ship.	chuyến đi dài (bằng tàu thủy), hải trình	
+C1	voyage	verb	(intransitive) To go on a long journey.	đi du hành, du hành	
+C1	waist	noun	A part of a piece of clothing that covers the waist.	phần eo (quần/áo), cạp	
+C1	waist	noun	The middle part of anything.	phần giữa, khúc giữa	
+C1	waist	noun	The middle portion of the hull of a ship or the fuselage of an aircraft.	phần giữa thân tàu, phần giữa thân máy bay	
+C1	waist	noun	The narrow connection between the thorax and abdomen in certain insects (e.g., bees, ants and wasps).	phần eo nối ngực và bụng (ở côn trùng)	
+C1	warp	noun	(countable) A distortion:	sự biến dạng, sự vênh	
+C1	warp	noun	(figurative) The foundation, the basis, the undergirding.	nền tảng, cơ sở	
+C1	warp	noun	(uncountable) The state, quality, or condition of being twisted, physically or mentally:	tình trạng cong vênh, méo mó	
+C1	warp	noun	(weaving) The threads that run lengthwise in a woven fabric; crossed by the woof or weft.	(dệt) sợi dọc	
+C1	warp	verb	(ambitransitive, agriculture) To fertilize (low-lying land) by letting the tide, a river, or other water in upon it to deposit silt and alluvial matter.	(nông nghiệp) bồi đắp phù sa	
+C1	warp	verb	(transitive, weaving) To arrange strands of thread lengthwise on a loom.	(dệt) mắc sợi dọc	
 C1	warp	verb	To move:		
-C1	warp	verb	To twist or become twisted, physically or mentally.		
-C1	workshop	noun	A brief, intensive course of education for a small group, emphasizing interaction and practical problem solving.		
-C1	workshop	noun	A room, especially one which is not particularly large, used for manufacturing or other light industrial work.		
-C1	workshop	noun	An academic conference.		
-C1	workshop	verb	(transitive, business) To improve through collaboration.		
-C1	workshop	verb	(transitive) To help a playwright revise a draft of (a play) by rehearsing it with actors and critiquing the results.		
-C1	workshop	verb	(transitive) To work on or revise something, especially collaboratively, in a workshop.		
-C2	abundance	noun	A large quantity; many.		
+C1	warp	verb	To twist or become twisted, physically or mentally.	làm cong vênh, méo mó	
+C1	workshop	noun	A brief, intensive course of education for a small group, emphasizing interaction and practical problem solving.	buổi hội thảo thực hành, lớp tập huấn	
+C1	workshop	noun	A room, especially one which is not particularly large, used for manufacturing or other light industrial work.	xưởng, xưởng sản xuất nhỏ	
+C1	workshop	noun	An academic conference.	hội thảo khoa học	
+C1	workshop	verb	(transitive, business) To improve through collaboration.	(kinh doanh) cải thiện qua thảo luận nhóm	
+C1	workshop	verb	(transitive) To help a playwright revise a draft of (a play) by rehearsing it with actors and critiquing the results.	(sân khấu) chỉnh sửa kịch bản qua diễn thử	
+C1	workshop	verb	(transitive) To work on or revise something, especially collaboratively, in a workshop.	chỉnh sửa, hoàn thiện (qua hội thảo)	
+C2	abundance	noun	A large quantity; many.	sự dồi dào, số lượng lớn	
 C2	abundance	noun	An overflowing fullness or ample sufficiency; profusion; copious supply; superfluity; plentifulness.	phong phú	sai từ loại — đây là danh từ (act/state), "phong phú" là tính từ; nên là "sự phong phú"
-C2	abundance	noun	Frequency, amount, ratio of something within a given environment or sample.		
-C2	abundance	noun	Wealth; affluence; plentiful amount of resources.		
+C2	abundance	noun	Frequency, amount, ratio of something within a given environment or sample.	độ phong phú, tần suất xuất hiện	
+C2	abundance	noun	Wealth; affluence; plentiful amount of resources.	sự sung túc, giàu có	
 C2	accommodation	noun	(British, Australia, a mass noun) Lodging in a dwelling or similar living quarters afforded to travellers in hotels or on cruise ships, or students, etc.	phòng ở	ok
-C2	accommodation	noun	(countable, geology) The place where sediments can make, or have made, a sedimentation.		
-C2	accommodation	noun	(personal) Adaptation or adjustment.		
-C2	accommodation	noun	(physical) Adaptation or adjustment.		
+C2	accommodation	noun	(countable, geology) The place where sediments can make, or have made, a sedimentation.	(địa chất) không gian lắng đọng trầm tích	
+C2	accommodation	noun	(personal) Adaptation or adjustment.	(tâm lý) sự thích nghi, sự điều chỉnh	
+C2	accommodation	noun	(physical) Adaptation or adjustment.	(sinh lý) sự điều tiết (của mắt)	
 C2	accordance	noun	Agreement; harmony; conformity; compliance.		
 C2	accordance	noun	The act of granting something.		
 C2	administer	verb	(intransitive) To minister (to).		
