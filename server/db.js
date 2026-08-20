@@ -1000,11 +1000,20 @@ function buildPaperFromBlueprint(testId, familyId, level) {
       changed++;
     } else {
       secId = cur.id;
-      /* `minutes` is deliberately not forced back: the blueprint publishes item
-         counts, not timings, and an admin is allowed to retime a part. */
-      if (cur.name !== bp.name || cur.skill !== bp.skill || cur.type !== bp.type || cur.part !== bp.part) {
-        qs.run('UPDATE sections SET name=?, skill=?, type=?, part=? WHERE id=?',
-          bp.name, bp.skill, bp.type, bp.part, secId);
+      /* Minutes come from the blueprint too, with no exception for a value already
+         stored. The first draft of this kept whatever was there, reasoning that the
+         part table publishes item counts rather than timings and an admin may
+         legitimately retime a part. The production box showed what that reasoning
+         costs: its first four sections still carried 25, 35, 40 and 12 minutes from
+         the retired four-block paper, so the rebuilt paper was correctly lettered
+         A to J and ran 112 minutes. Those numbers were not somebody's choice, they
+         were debris, and no rule could tell the two apart.
+         An admin who wants different timings builds their own paper through
+         /admin/tests/generate; this function only ever touches SEED_TESTS. */
+      if (cur.name !== bp.name || cur.skill !== bp.skill || cur.type !== bp.type
+          || cur.part !== bp.part || cur.minutes !== bp.minutes) {
+        qs.run('UPDATE sections SET name=?, skill=?, type=?, part=?, minutes=? WHERE id=?',
+          bp.name, bp.skill, bp.type, bp.part, bp.minutes, secId);
         changed++;
       }
     }
