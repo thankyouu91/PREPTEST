@@ -174,18 +174,46 @@ chỉ khác lô trước sau khi lô trước đã trộn xong.
 Nhịp thật đo được: **146 nghĩa một lần chạy**, khoảng 13% số dòng để trống vì
 người dịch không chắc — đúng hành vi mong muốn.
 
-#### Cái mà dây chuyền này KHÔNG kiểm
+#### Vòng soát: người đọc lại được quyền nghi, không được quyền sửa
 
 Các phép kiểm soát *hình dạng* tệp, không soát *nghĩa*. Một bản dịch sai vẫn qua
-được mọi cửa nếu nó là một từ tiếng Việt hợp lệ nằm đúng cột.
+được mọi cửa nếu nó là một từ tiếng Việt hợp lệ nằm đúng cột — `bread (verb) —
+to coat with breadcrumbs` từng lọt với gloss "bột", một danh từ. Không phép kiểm
+nào bắt được; nó bị bắt bằng cách đọc.
 
-Đã gặp thật: `bread (verb) — to coat with breadcrumbs` bị dịch thành "bột" —
-danh từ, trong khi dòng hỏi tên của hành động. Không cửa nào bắt được. Luật
-"gloss phải cùng từ loại với cột `pos`" trong `.claude/agents/dich-thuat.md` là
-biện pháp duy nhất, và nó là một lời dặn chứ không phải một phép kiểm.
+Nên có tác nhân thứ hai đọc lại, `.claude/agents/soat-dich.md`, ghi kết quả vào
+cột thứ sáu `soat`. Ba trạng thái, không có trạng thái thứ tư:
 
-Nghĩa là **kho này cần người soát**, ít nhất là soát mẫu. Trạng thái hiện tại là
-"đã dịch", không phải "đã duyệt".
+| `soat` | nghĩa là |
+|---|---|
+| trống | chưa ai đọc lại |
+| `ok` | đã đọc, người soát đứng sau bản dịch |
+| chữ khác | đã đọc và nghi ngờ — chính chữ ấy nói nghi gì, và có thể đề xuất bản thay |
+
+**Người soát không được sửa đè cột `vi`.** `--napsoat` bỏ qua mọi thay đổi nó
+làm với `vi` và đếm số lần nó thử. Đây là chỗ chịu lực của thiết kế: một người
+soát được quyền sửa đè sẽ âm thầm xoá bản dịch đúng mỗi khi chính nó mới là bên
+sai, và không để lại dấu vết nào là đã từng có bất đồng. Nghi ngờ thì ghi ra rẻ
+và kiểm lại rẻ. Áp dụng một đề xuất bị gắn cờ vẫn là quyết định của người.
+
+Hiệu chỉnh cũng quan trọng ngang luật: tệp hướng dẫn liệt kê cả **những gì
+KHÔNG tính là sai** — một từ đồng nghĩa mình thích hơn, một cách diễn đạt gọn
+hơn, ít lựa chọn hơn. Cổng kêu oan là cổng người ta học cách bỏ qua, nên nó được
+dặn rằng phần lớn dòng phải là `ok`, và phải đọc lại chính các cờ của mình để bỏ
+những cờ chỉ là sở thích.
+
+Lô 30 dòng đầu: 28 đạt, 2 bị gắn cờ, cả hai đều là lỗi thật —
+`assistant (noun)` dịch là "phó thủ" (không phải từ tiếng Việt), và
+`ashamed (verb)` dịch y hệt dòng tính từ ngay trên.
+
+```
+node scripts/lo-dich.mjs --laysoat=100 --ra=/tmp/s1.tsv   # lô chờ soát
+node scripts/lo-dich.mjs --napsoat=/tmp/s1.tsv            # trộn kết quả soát
+```
+
+Dù vậy, **vòng soát không biến kho thành "đã duyệt"**. Nó là một ý kiến thứ hai,
+không phải một sự thật. Số dòng bị gắn cờ là danh sách người cần xem, và
+`--dem` in ra số ấy mỗi lần chạy.
 
 Dựng lại kho từ vựng (kho nằm trong `data/prep.sqlite`, không theo git):
 
