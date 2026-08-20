@@ -90,7 +90,7 @@
     PREP.qsa('[data-brand-name]').forEach(el => { el.textContent = t.name; });
   })();
 
-  /* POST /api/auth/forgot — the server always answers the same way, so this screen
+  /* POST /api/auth/forgot - the server always answers the same way, so this screen
      never reveals which addresses are registered. */
   const f = PREP.qs('#f'), btn = PREP.qs('#submit'), email = PREP.qs('#email');
   email.addEventListener('input', () => {

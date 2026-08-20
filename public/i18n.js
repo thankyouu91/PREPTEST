@@ -10,7 +10,7 @@
    Why match text nodes instead of tagging every element with a key: the pages
    are plain HTML across ~30 files, much of it rendered by JS at runtime. A
    MutationObserver re-runs the swap on anything added after load, so dynamically
-   built menus, modals and cards get translated too — without touching the code
+   built menus, modals and cards get translated too - without touching the code
    that renders them.
 
    Loaded early in <head> (like the theme boot) so the language and a no-flash
@@ -33,7 +33,7 @@
 
   document.documentElement.setAttribute('lang', lang);
   /* Hide the body until the swap has run, but ONLY when we are actually going to
-     translate — otherwise an English reader would see a needless blank flash. The
+     translate - otherwise an English reader would see a needless blank flash. The
      class is removed on DOMContentLoaded (always fires) and by a safety timeout,
      so a failure to translate can never leave the page hidden. */
   if (lang === 'vi') {
@@ -54,85 +54,85 @@
     'Support': 'Hỗ trợ',
 
     /* ---- Hero ---- */
-    'Sit the real thing first,': 'Thi thử bản thật trước,',
-    'walk in calm': 'vào phòng thi thảnh thơi',
-    'Practice papers for the VPET exam — the real structure, marked automatically, with each skill scored on its own.':
-      'Đề luyện thi VPET — đúng cấu trúc thật, chấm tự động, mỗi kỹ năng chấm điểm riêng.',
-    'See the exam': 'Xem kỳ thi',
-    'The real VPET format': 'Đúng định dạng VPET',
-    'Marked automatically': 'Chấm tự động',
-    'See the weak spot': 'Thấy rõ điểm yếu',
+    'Sit the real thing first,': 'Luyện tập trên nền tảng giả lập chuẩn,',
+    'walk in calm': 'tự tin thi thật',
+    'Practice papers for the VPET exam - the real structure, marked automatically, with each skill scored on its own.':
+      'Đề luyện VPET bám sát cấu trúc đề thật, chấm tự động, có điểm riêng cho từng kỹ năng.',
+    'See the exam': 'Tìm hiểu kỳ thi',
+    'The real VPET format': 'Đúng cấu trúc VPET',
+    'Marked automatically': 'Chấm điểm tự động',
+    'See the weak spot': 'Biết ngay mình yếu ở đâu',
     'Unlocked': 'Đã mở',
     'ready': 'sẵn sàng',
     'Listening': 'Nghe',
     'Reading': 'Đọc',
     'Writing': 'Viết',
     'Speaking': 'Nói',
-    'Suggested: more Writing practice': 'Gợi ý: luyện Viết thêm',
+    'Suggested: more Writing practice': 'Gợi ý: luyện thêm kỹ năng Viết',
     'Practise now': 'Luyện ngay',
     'Paper submitted': 'Đã nộp bài',
-    'Results come straight back': 'Có kết quả ngay',
+    'Results come straight back': 'Có kết quả ngay lập tức',
     'Interface mock-up': 'Ảnh minh họa giao diện',
 
     /* ---- The exam section ---- */
     'The exam': 'Kỳ thi',
     'VPET has its own structure and scale. The practice papers follow the real format, so nothing on the day is a surprise.':
-      'VPET có cấu trúc và thang điểm riêng. Đề luyện bám sát định dạng thật, nên ngày thi không có gì bất ngờ.',
+      'VPET có cấu trúc và thang điểm riêng. Đề luyện bám sát đề thật, nên vào phòng thi bạn không gặp bất ngờ nào.',
     'See details': 'Xem chi tiết',
     '1 mock tests': '1 đề thi',
-    'Vietnam Proficiency English Test': 'Kỳ thi Năng lực tiếng Anh Việt Nam',
-    'Parts A-J, 55 items, AI scored speaking.': 'Phần A-J, 55 câu, chấm Nói bằng AI.',
+    'Versant Professional English Test': 'Bài thi tiếng Anh chuyên nghiệp Versant',
+    'Parts A-J, 58 items, AI scored speaking.': 'Gồm 10 phần A-J, 58 câu, phần Nói chấm bằng AI.',
 
     /* ---- Three steps ---- */
-    'Three steps and you are practising': 'Ba bước là bắt đầu luyện',
+    'Three steps and you are practising': 'Ba bước là vào luyện được ngay',
     'No card needed to start. The account is free; you only pay for the practice you actually use.':
-      'Không cần thẻ để bắt đầu. Tài khoản miễn phí; bạn chỉ trả cho phần luyện thực sự dùng.',
+      'Không cần thẻ ngân hàng. Tài khoản miễn phí, bạn chỉ trả tiền cho phần mình thực sự luyện.',
     'Create an account': 'Tạo tài khoản',
     'A minute with a school or personal email; verify it and you are in.':
-      'Một phút với email trường hoặc cá nhân; xác thực là vào được.',
-    'Buy or enter a code': 'Mua hoặc nhập mã',
+      'Chỉ một phút với email trường hoặc email cá nhân, xác thực xong là dùng được.',
+    'Buy or enter a code': 'Mua mã hoặc nhập mã có sẵn',
     'A code opens the plan you chose. Got one from your school or class? Type it in and it unlocks.':
-      'Mã mở gói bạn chọn. Được trường hay lớp cấp mã? Nhập vào là mở khóa.',
-    'Practise like the real sitting': 'Luyện như thi thật',
+      'Mã sẽ mở gói bạn chọn. Được trường hoặc lớp phát mã? Nhập vào là mở khóa ngay.',
+    'Practise like the real sitting': 'Luyện đúng như thi thật',
     'The same clock, structure and scale. Hand it in and the per-skill breakdown is there.':
-      'Cùng đồng hồ, cấu trúc và thang điểm. Nộp bài là có bảng phân tích từng kỹ năng.',
+      'Cùng thời gian, cấu trúc và thang điểm. Nộp bài xong là có ngay bảng phân tích từng kỹ năng.',
 
     /* ---- Why this one (bento) ---- */
-    'Practise the weak spot, not everything at random': 'Luyện đúng điểm yếu, không luyện tràn lan',
-    'Marked automatically, results right away': 'Chấm tự động, có kết quả ngay',
+    'Practise the weak spot, not everything at random': 'Luyện đúng chỗ còn yếu, không luyện dàn trải',
+    'Marked automatically, results right away': 'Chấm tự động, trả kết quả ngay',
     'Hand it in and every part is scored, with a note on what went wrong. No waiting for a teacher, no guessing.':
-      'Nộp bài là mọi phần được chấm, kèm ghi chú chỗ sai. Không chờ giáo viên, không đoán mò.',
+      'Nộp bài là từng phần được chấm, kèm ghi chú chỗ sai. Không phải chờ giáo viên, không phải đoán.',
     'Listening · Part 3': 'Nghe · Phần 3',
     '18/20 correct': '18/20 đúng',
-    'All four skills scored separately': 'Chấm riêng cả bốn kỹ năng',
+    'All four skills scored separately': 'Bốn kỹ năng chấm điểm riêng',
     'Listening, Reading, Writing and Speaking kept apart, so you can see which one is pulling the score down.':
-      'Nghe, Đọc, Viết và Nói tách riêng, để bạn thấy kỹ năng nào kéo điểm xuống.',
-    'Topics drawn from recent papers': 'Chủ đề lấy từ đề gần đây',
+      'Nghe, Đọc, Viết, Nói được tách riêng để bạn biết kỹ năng nào đang kéo điểm xuống.',
+    'Topics drawn from recent papers': 'Chủ đề lấy từ các kỳ thi gần đây',
     'Topics written to match the most recent sittings of each certificate.':
-      'Chủ đề viết bám sát các kỳ thi gần nhất.',
-    'Aligned to CEFR A1-C2': 'Theo khung CEFR A1-C2',
+      'Nội dung biên soạn bám sát các kỳ thi gần nhất.',
+    'Aligned to CEFR A1-C2': 'Chuẩn khung CEFR A1-C2',
     'Start at the level you are on and step the difficulty up as you go.':
-      'Bắt đầu từ đúng trình độ và nâng dần độ khó.',
-    'Practise anywhere, on any device': 'Luyện mọi nơi, trên mọi thiết bị',
+      'Bắt đầu từ đúng trình độ hiện tại rồi nâng dần độ khó.',
+    'Practise anywhere, on any device': 'Luyện mọi lúc, trên mọi thiết bị',
     'Smooth on a phone or a laptop, with progress following your account.':
-      'Mượt trên điện thoại hay laptop, tiến độ theo tài khoản.',
+      'Chạy mượt trên điện thoại lẫn máy tính, tiến độ luôn đi theo tài khoản.',
 
     /* ---- Pricing ---- */
-    'Choose how long you practise, not which papers': 'Chọn thời lượng luyện, không phải chọn đề',
+    'Choose how long you practise, not which papers': 'Chọn thời gian luyện, không phải chọn đề',
     'One code, one account. Pay once for the whole term - no monthly subscription, no hidden charges.':
-      'Một mã, một tài khoản. Trả một lần cho cả kỳ - không thuê bao tháng, không phí ẩn.',
+      'Một mã dùng cho một tài khoản. Trả một lần cho trọn kỳ hạn, không thuê bao tháng, không phí ẩn.',
     'Most popular': 'Phổ biến nhất',
     'month': 'tháng',
     'months': 'tháng',
-    'Ten full sittings, enough to see where you stand.': 'Mười lượt thi đầy đủ, đủ để biết bạn đang ở đâu.',
+    'Ten full sittings, enough to see where you stand.': 'Mười lượt thi đầy đủ, đủ để biết mình đang ở đâu.',
     'Practise without counting, and have something to study between sittings.':
-      'Luyện không giới hạn, và có cái để học giữa các lượt thi.',
-    'Six months, for a test date that is further off.': 'Sáu tháng, cho ngày thi còn xa.',
+      'Luyện không giới hạn, lại có tài liệu để học giữa các lượt thi.',
+    'Six months, for a test date that is further off.': 'Sáu tháng, dành cho ngày thi còn xa.',
     '10 full VPET sittings': '10 lượt thi VPET đầy đủ',
-    'Score and CEFR band after every sitting': 'Điểm và bậc CEFR sau mỗi lượt',
-    'All ten parts A-J, exactly as the real paper': 'Đủ mười phần A-J, đúng như đề thật',
-    'Practice stops after the tenth sitting': 'Dừng luyện sau lượt thứ mười',
-    'Vocabulary and grammar area stays locked': 'Khu từ vựng và ngữ pháp vẫn khóa',
+    'Score and CEFR band after every sitting': 'Có điểm và bậc CEFR sau mỗi lượt thi',
+    'All ten parts A-J, exactly as the real paper': 'Đủ mười phần A-J, giống hệt đề thật',
+    'Practice stops after the tenth sitting': 'Hết lượt thứ mười là dừng',
+    'Vocabulary and grammar area stays locked': 'Chưa mở khu từ vựng và ngữ pháp',
     'Score only, no per-part breakdown': 'Chỉ có điểm, không phân tích từng phần',
     'Unlimited VPET sittings': 'Thi VPET không giới hạn',
     'The whole self-study area: vocabulary, grammar, linking words, pronunciation':
@@ -140,21 +140,21 @@
     'Detailed per-part report with written feedback': 'Báo cáo chi tiết từng phần kèm nhận xét',
     'New papers the day they are published': 'Đề mới ngay khi phát hành',
     'The whole self-study area': 'Toàn bộ khu tự học',
-    'Best value per month': 'Đáng giá nhất theo tháng',
+    'Best value per month': 'Tính theo tháng là rẻ nhất',
     'Sign up for': 'Đăng ký gói',
     '799.000đ for 3 months of practice': '799.000đ cho 3 tháng luyện tập',
     'VNPay and MoMo payment open alongside the first paper release. An activation code binds permanently to the first account that uses it.':
-      'Thanh toán VNPay và MoMo mở cùng đợt đề đầu tiên. Mã kích hoạt gắn vĩnh viễn với tài khoản đầu tiên dùng nó.',
+      'Thanh toán VNPay và MoMo sẽ mở cùng đợt đề đầu tiên. Mã kích hoạt gắn vĩnh viễn với tài khoản dùng nó đầu tiên.',
 
     /* ---- Testimonials ---- */
-    'Built around what students actually need': 'Xây quanh nhu cầu thật của học viên',
+    'Built around what students actually need': 'Làm theo đúng nhu cầu của người học',
     'Illustrative quotes for the demo stage.': 'Trích dẫn minh họa cho giai đoạn demo.',
     '"I had only ever practised on paper, so the computer-based exam threw me. Sitting the real format first made all the difference."':
-      '"Mình chỉ từng luyện trên giấy nên thi trên máy thấy lạ. Thi thử đúng định dạng trước tạo ra khác biệt lớn."',
+      '"Mình chỉ quen luyện trên giấy nên vào thi máy thấy bỡ ngỡ. Được thi thử đúng cấu trúc trước khác hẳn."',
     '"My Writing score was low and I had no idea why. The per-skill breakdown showed me exactly which part was weak."':
-      '"Điểm Viết của mình thấp mà không hiểu vì sao. Bảng phân tích từng kỹ năng chỉ đúng phần yếu."',
+      '"Điểm Viết của mình thấp mà không hiểu vì sao. Bảng phân tích từng kỹ năng chỉ ra đúng chỗ mình yếu."',
     '"Our class got codes from the university. I typed mine in and the papers were there. Nothing to install."':
-      '"Lớp mình được trường cấp mã. Nhập mã vào là có đề luôn. Không phải cài gì cả."',
+      '"Lớp mình được trường phát mã. Nhập mã vào là có đề ngay, không phải cài đặt gì."',
     'Third year, Foreign Trade University': 'Năm ba, Đại học Ngoại thương',
     'Second year, HCMC University of Technology': 'Năm hai, Đại học Bách khoa TP.HCM',
     'First year, HUTECH': 'Năm nhất, HUTECH',
@@ -163,14 +163,14 @@
     'from entering a code to practising': 'từ lúc nhập mã đến khi luyện',
 
     /* ---- Closing CTA ---- */
-    'The exam date will not wait. Start today.': 'Ngày thi sẽ không chờ. Bắt đầu hôm nay.',
+    'The exam date will not wait. Start today.': 'Ngày thi không chờ ai. Bắt đầu từ hôm nay.',
     'Create a free account, look through the library, and unlock when you are ready.':
-      'Tạo tài khoản miễn phí, xem qua thư viện, và mở khóa khi bạn sẵn sàng.',
+      'Tạo tài khoản miễn phí, xem trước thư viện đề, và mở khóa khi bạn thấy sẵn sàng.',
 
     /* ---- Footer ---- */
     'An independent mock-test platform for Vietnamese students. Not affiliated with any examination board.':
-      'Nền tảng thi thử độc lập cho học viên Việt Nam. Không liên kết với hội đồng thi nào.',
-    'How codes work': 'Mã hoạt động thế nào',
+      'Nền tảng luyện thi thử độc lập dành cho người học Việt Nam, không trực thuộc hội đồng thi nào.',
+    'How codes work': 'Mã dùng thế nào',
     'Terms (being written)': 'Điều khoản (đang soạn)',
     'Privacy (being written)': 'Bảo mật (đang soạn)',
     '© 2026 VPET Prep. For practice only, not an official examination.':
@@ -180,7 +180,7 @@
        KHU QUẢN TRỊ (admin)
        Chỉ dịch phần giao diện: menu, tiêu đề, nút, cột bảng, bộ lọc, hộp
        thoại. KHÔNG dịch dữ liệu (tên học viên, email, mã code, tên đề thi,
-       nhật ký) — đó là nội dung, không phải chữ của giao diện.
+       nhật ký) - đó là nội dung, không phải chữ của giao diện.
        ===================================================================== */
     /* ---- Khung admin ---- */
     'Admin area': 'Khu quản trị',
@@ -331,8 +331,8 @@
     'One specific test': 'Một đề cụ thể',
     'Several exams (combo)': 'Nhiều kỳ thi (combo)',
     'Issue to': 'Cấp cho',
-    'A batch — many codes': 'Một lô — nhiều mã',
-    'One account — bound to a student': 'Một tài khoản — gắn cho một học viên',
+    'A batch - many codes': 'Một lô - nhiều mã',
+    'One account - bound to a student': 'Một tài khoản - gắn cho một học viên',
     'How many codes': 'Số lượng mã',
     'Find the account': 'Tìm tài khoản',
     'When': 'Khi nào',
@@ -358,7 +358,7 @@
 
     /* ================= KHU HỌC VIÊN =================
        Lưu ý: khu tự học (learn/) DẠY tiếng Anh, nên ví dụ ngữ pháp, bậc CEFR và
-       các từ mẫu giữ nguyên tiếng Anh — chỉ dịch phần vỏ giao diện quanh chúng. */
+       các từ mẫu giữ nguyên tiếng Anh - chỉ dịch phần vỏ giao diện quanh chúng. */
 
     /* ---- Khung chung (sidebar + thanh trên) ---- */
     'Home': 'Trang chủ',
@@ -367,7 +367,7 @@
     'My codes': 'Mã của tôi',
     'Progress': 'Tiến độ',
     'Profile': 'Hồ sơ',
-    /* 'Student' is already above, in the admin block — one entry serves both. */
+    /* 'Student' is already above, in the admin block - one entry serves both. */
     'Enter code': 'Nhập mã',
     'Enter a code': 'Nhập mã',
     'Enter an unlock code': 'Nhập mã mở khóa',
@@ -434,8 +434,8 @@
     'At least 8 characters': 'Tối thiểu 8 ký tự',
     'Password needs at least 8 characters, with both letters and numbers.':
       'Mật khẩu cần tối thiểu 8 ký tự, gồm cả chữ và số.',
-    'That phone number does not look right — e.g. 0912345678.':
-      'Số điện thoại chưa đúng — ví dụ 0912345678.',
+    'That phone number does not look right - e.g. 0912345678.':
+      'Số điện thoại chưa đúng - ví dụ 0912345678.',
     'Exams you are interested in': 'Kỳ thi bạn quan tâm',
     '(choose any)': '(chọn tùy ý)',
     'I agree to the': 'Tôi đồng ý với',
@@ -583,8 +583,8 @@
     'one account': 'một tài khoản',
     '; the term runs from activation, not from purchase.':
       '; thời hạn tính từ lúc kích hoạt, không phải lúc mua.',
-    'Contact your centre to buy this plan — each code works for one account only, and the term starts the moment it is activated.':
-      'Liên hệ trung tâm để mua gói này — mỗi mã chỉ dùng cho một tài khoản, và thời hạn bắt đầu ngay khi kích hoạt.',
+    'Contact your centre to buy this plan - each code works for one account only, and the term starts the moment it is activated.':
+      'Liên hệ trung tâm để mua gói này - mỗi mã chỉ dùng cho một tài khoản, và thời hạn bắt đầu ngay khi kích hoạt.',
     'You will be taken to the payment provider and brought straight back. Your code is issued the moment the payment settles, and it works for one account only.':
       'Bạn sẽ được chuyển sang cổng thanh toán rồi quay lại ngay. Mã được cấp ngay khi thanh toán hoàn tất, và chỉ dùng cho một tài khoản.',
     'Every plan includes 150 practice papers and unbroken access for the length of the term. VNPay / MoMo checkout is wired in later.':
@@ -642,8 +642,8 @@
 
     /* ---- Mất kết nối ---- */
     'No network connection': 'Không có kết nối mạng',
-    'Your device is offline, so this page could not load. Turn Wi-Fi or mobile data back on and try again — anything you had in progress is still there.':
-      'Thiết bị đang ngoại tuyến nên không tải được trang. Bật lại Wi-Fi hoặc dữ liệu di động rồi thử lại — phần bạn đang làm dở vẫn còn nguyên.',
+    'Your device is offline, so this page could not load. Turn Wi-Fi or mobile data back on and try again - anything you had in progress is still there.':
+      'Thiết bị đang ngoại tuyến nên không tải được trang. Bật lại Wi-Fi hoặc dữ liệu di động rồi thử lại - phần bạn đang làm dở vẫn còn nguyên.',
 
     /* ---- Khu tự học: chỉ phần vỏ giao diện ---- */
     'Self-study topics': 'Chủ đề tự học',
@@ -712,7 +712,7 @@
     "You have not looked at this test's structure yet. Knowing the parts, the timing and the question types in advance is what stops the real room feeling strange.":
       'Bạn chưa xem cấu trúc bài thi này. Biết trước các phần, thời gian và dạng câu hỏi là điều giúp phòng thi thật không còn xa lạ.',
     /* Bản không dấu chấm: chuỗi format của kỳ thi do API gửi về. */
-    'Parts A-J, 55 items, AI scored speaking': 'Phần A-J, 55 câu, chấm Nói bằng AI',
+    'Parts A-J, 58 items, AI scored speaking': 'Gồm 10 phần A-J, 58 câu, phần Nói chấm bằng AI',
     'No codes yet': 'Chưa có mã nào',
     /* Câu bị <b> và <a> cắt thành nhiều nút, nên dịch theo từng mảnh. */
     '. Activate it under': '. Kích hoạt tại mục',
@@ -737,8 +737,8 @@
     'Space': 'Space',
     'to reveal, then': 'để hiện đáp án, rồi',
     'to grade.': 'để chấm.',
-    'Each card comes back just before you would have forgotten it. Answer in your head, reveal, then say honestly how it went — the schedule is only as good as that answer.':
-      'Mỗi thẻ quay lại ngay trước lúc bạn sắp quên. Trả lời trong đầu, hiện đáp án, rồi tự đánh giá thật lòng — lịch ôn chỉ chuẩn khi câu trả lời đó thật.',
+    'Each card comes back just before you would have forgotten it. Answer in your head, reveal, then say honestly how it went - the schedule is only as good as that answer.':
+      'Mỗi thẻ quay lại ngay trước lúc bạn sắp quên. Trả lời trong đầu, hiện đáp án, rồi tự đánh giá thật lòng - lịch ôn chỉ chuẩn khi câu trả lời đó thật.',
     'sends a card back to the start; the rest push it further away.':
       'đưa thẻ về lại từ đầu; các mức còn lại đẩy thẻ ra xa hơn.',
     'This device has no English voice installed, so nothing can be read aloud. The cards are still perfectly readable.':
@@ -811,8 +811,8 @@
     }).observe(document.body, { childList: true, subtree: true });
   }
 
-  /* Delegated, so a switch that is injected later — the admin chrome builds its
-     sidebar from JS after this file has run — still works, in both languages.
+  /* Delegated, so a switch that is injected later - the admin chrome builds its
+     sidebar from JS after this file has run - still works, in both languages.
      markToggles() only paints which side is current; the click is handled once
      on the document. */
   function markToggles(root) {

@@ -1,5 +1,5 @@
 /**
- * PrepGrammar — the shared grammar reference block, used by every group of
+ * PrepGrammar - the shared grammar reference block, used by every group of
  * grammar points (tenses, nouns and articles, modals, the passive…).
  *
  * A page calls PrepGrammar.mount({ grp, unit, signalsLabel, confuseLabel }); the
@@ -207,7 +207,7 @@ const PrepGrammar = {
     PrepTTS.init();
     PrepTTS.mountControls($('#tts-controls'));
     PrepTTS.bindSelection($('#main'));
-    // Delegated once on #list — however many times the inside is redrawn, no
+    // Delegated once on #list - however many times the inside is redrawn, no
     // further listeners are needed.
     PrepTTS.bindClicks($('#list'));
 

@@ -169,7 +169,7 @@
             '<td class="px-5 py-3.5"><code class="font-bold tracking-wide">' + AD.esc(c.code) + '</code></td>' +
             '<td class="px-4 py-3.5 truncate max-w-[220px]">' + AD.esc(c.label) + '</td>' +
             '<td class="px-4 py-3.5 hidden lg:table-cell text-muted truncate max-w-[180px]">' +
-              (c.user ? AD.esc(c.user.name) : '—') + '</td>' +
+              (c.user ? AD.esc(c.user.name) : '-') + '</td>' +
             '<td class="px-4 py-3.5 hidden sm:table-cell text-muted whitespace-nowrap">' + AD.date(c.expiresAt) + '</td>' +
             '<td class="px-4 py-3.5">' + statusBadge(c) + '</td>' +
             '<td class="px-5 py-3.5 text-right whitespace-nowrap">' +
@@ -223,7 +223,7 @@
               ? PLAN_LIST.map(p => '<option value="' + AD.esc(p.id) + '">' +
                   AD.esc(p.name + ' · ' + AD.months(p.months) + ' · ' + p.price.toLocaleString('vi-VN') + 'đ') +
                   '</option>').join('')
-              : '<option value="">The price list could not be loaded — reload the page</option>') +
+              : '<option value="">The price list could not be loaded - reload the page</option>') +
           '</select>' +
           '<p class="help mt-1.5">Sets the term, the number of sittings, and access to self-study.</p></div>' +
         /* A dropdown rather than a row of chips: one line, and it scales as exams grow. */
@@ -236,13 +236,13 @@
             '</select></div>' +
           '<div><label class="label" for="i-mode">Issue to</label>' +
             '<select class="input" id="i-mode">' +
-              '<option value="batch">A batch — many codes</option>' +
-              '<option value="account">One account — bound to a student</option>' +
+              '<option value="batch">A batch - many codes</option>' +
+              '<option value="account">One account - bound to a student</option>' +
             '</select></div>' +
         '</div>' +
         '<div id="ref-box"></div>' +
 
-        /* Batch fields — many codes handed out, redeemed first come. */
+        /* Batch fields - many codes handed out, redeemed first come. */
         '<div id="batch-box"><div class="grid gap-4">' +
           '<div class="grid grid-cols-2 gap-4">' +
             '<div><label class="label" for="i-qty">How many codes</label>' +
@@ -254,7 +254,7 @@
             '<input class="input" id="i-name" placeholder="e.g. IELTS class K63, intake 1"></div>' +
         '</div></div>' +
 
-        /* Account fields — one code bound to a named student. */
+        /* Account fields - one code bound to a named student. */
         '<div id="account-box" class="hidden"><div class="grid gap-4">' +
           '<div><label class="label" for="i-acct-q">Find the account</label>' +
             '<input class="input" id="i-acct-q" type="search" placeholder="Search by email or name…" autocomplete="off">' +
@@ -264,8 +264,8 @@
           '<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">' +
             '<div><label class="label" for="i-when">When</label>' +
               '<select class="input" id="i-when">' +
-                '<option value="reserve">Reserve it — they activate it</option>' +
-                '<option value="now">Activate now — access starts today</option>' +
+                '<option value="reserve">Reserve it - they activate it</option>' +
+                '<option value="now">Activate now - access starts today</option>' +
               '</select></div>' +
             '<div><label class="label" for="i-acct-exp">Activation deadline</label>' +
               '<input class="input" id="i-acct-exp" type="date" value="' + in6mo + '"></div>' +
@@ -346,7 +346,7 @@
                     (ok ? 'hover:border-brand' : 'opacity-70') + '" ' + (ok ? 'data-pick="' + i + '"' : 'disabled') + '>' +
                   '<span class="min-w-0"><b class="block truncate text-[14px]">' + AD.esc(u.name || u.email) + '</b>' +
                     '<span class="block text-[12px] text-muted truncate">' + AD.esc(u.email) +
-                      ' · ' + (ok ? AD.esc(u.phone) : 'no phone — can’t bind') + '</span></span>' +
+                      ' · ' + (ok ? AD.esc(u.phone) : 'no phone - can’t bind') + '</span></span>' +
                   (ok ? '' : '<span class="badge badge-muted ms-auto shrink-0">no phone</span>') +
                 '</button>';
               }).join('')
@@ -366,7 +366,7 @@
       try {
         const d = await AD.get('/admin/users/' + preUser);
         pick({ id: d.user.id, name: d.user.name, email: d.user.email, phone: d.user.phone });
-        if (!d.user.phone) AD.toast('That account has no phone on file — add one before binding a code', 'error');
+        if (!d.user.phone) AD.toast('That account has no phone on file - add one before binding a code', 'error');
       } catch (e) {}
     }
 
@@ -422,7 +422,7 @@
           (reserved ? 'Reserved a code for ' : 'Activated a code for ') + AD.esc(boundTo.name || boundTo.email) + '</h3>' +
         '<p class="text-muted text-[14px] mt-1.5">' +
           (reserved
-            ? 'Send it to them — only this account can activate it, and the term starts when they do.'
+            ? 'Send it to them - only this account can activate it, and the term starts when they do.'
             : 'Access is on now. Keep the code as their receipt.') + '</p>'
       : '<h3 class="text-lg font-extrabold tracking-tight mt-4">Issued ' + codes.length + ' code' + (codes.length === 1 ? '' : 's') + '</h3>' +
         '<p class="text-muted text-[14px] mt-1.5">Copy them, or download the CSV to send out.</p>';

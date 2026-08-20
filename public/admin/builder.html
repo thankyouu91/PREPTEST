@@ -46,7 +46,7 @@
   async function load() {
     try {
       T = await AD.get('/admin/tests/' + encodeURIComponent(testId));
-      /* This exam's part table, so a hand-added part can carry a letter too — without
+      /* This exam's part table, so a hand-added part can carry a letter too - without
       one, a later reshuffle draws from the whole skill instead of the part. */
       if (!FAM_PARTS) {
         try {
@@ -219,7 +219,7 @@
         '</div>' +
         ((FAM_PARTS && FAM_PARTS.length)
           ? '<div><label class="label" for="s-part">Blueprint part</label><select class="input" id="s-part">' +
-              '<option value="">— no part —</option>' +
+              '<option value="">- no part -</option>' +
               FAM_PARTS.map(p2 => '<option value="' + AD.esc(p2.part) + '">' + AD.esc(p2.name) + '</option>').join('') +
             '</select><p class="help mt-1.5">With a part attached, a later reshuffle draws only from that part.</p></div>'
           : '') +
@@ -234,7 +234,7 @@
     skillEl.addEventListener('change', () => {
       if (!nameEl.value) nameEl.placeholder = 'VD: ' + skillEl.options[skillEl.selectedIndex].text;
     });
-    /* Choosing a part fills in the name and skill from the blueprint — retyping them
+    /* Choosing a part fills in the name and skill from the blueprint - retyping them
     by hand only creates a chance for part A to carry part C's skill. */
     if (partEl) partEl.addEventListener('change', () => {
       const p2 = FAM_PARTS.find(x => x.part === partEl.value);

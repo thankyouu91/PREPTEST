@@ -868,7 +868,7 @@ const run = async () => {
   {
     const list = Array.isArray(r.data) ? r.data : (r.data.items || r.data.formats || []);
     const vpet = list.find(f => f.id === 'vpet-full');
-    check('The VPET format has exactly 55 items across 10 parts', !!vpet && vpet.totalItems === 55 && vpet.sections.length === 10,
+    check('The VPET format has exactly 58 items across 10 parts', !!vpet && vpet.totalItems === 58 && vpet.sections.length === 10,
       vpet ? vpet.totalItems + ' items / ' + vpet.sections.length + ' parts' : 'format not found');
     const audioParts = vpet ? vpet.sections.filter(s => s.needsAudio) : [];
     check('The five audio parts are marked', audioParts.length === 5, audioParts.length + ' parts');

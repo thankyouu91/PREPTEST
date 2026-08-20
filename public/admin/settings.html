@@ -187,7 +187,7 @@
               '</tr></thead><tbody>' +
               r.students.map(stu =>
                 '<tr class="border-t border-line">' +
-                  '<td class="td font-semibold">' + AD.esc(stu.name || '—') + '</td>' +
+                  '<td class="td font-semibold">' + AD.esc(stu.name || '-') + '</td>' +
                   '<td class="td text-muted">' + AD.esc(stu.email || 'not shared') + '</td>' +
                   '<td class="td">' + (stu.localUserId
                     ? '<span class="badge badge-ok">' + AD.esc(stu.localName || 'linked') + '</span>'
@@ -353,7 +353,7 @@
   }
 
   /* Step two shows the secret and asks for a code from it. Nothing is switched on
-     until that code checks out — the point of the two steps is that an
+     until that code checks out - the point of the two steps is that an
      authenticator which never received the secret cannot pass this. */
   function tfStep2(r) {
     tfBody.innerHTML =
@@ -364,7 +364,7 @@
       '<div><span class="label">Secret</span>' +
         '<code class="block card p-3 text-[15px] tracking-[0.2em] break-all select-all" id="tf-secret">' +
           AD.esc(r.secret.replace(/(.{4})/g, '$1 ').trim()) + '</code>' +
-        '<p class="help">Type it in by hand — the app will ask for a name too, use ' +
+        '<p class="help">Type it in by hand - the app will ask for a name too, use ' +
           '<b>VPET Prep</b>. There is no QR code yet.</p></div>' +
       '<div class="banner banner-error" id="tf-err"><span id="tf-err-text"></span></div>' +
       '<div class="grid sm:grid-cols-[1fr_auto_auto] gap-3 items-end max-w-xl">' +
@@ -396,7 +396,7 @@
     tfState.className = 'badge badge-ok shrink-0';
     tfBody.innerHTML =
       '<div class="banner banner-success show"><span>Two-factor is on.</span></div>' +
-      '<div><span class="label">Recovery codes — write these down now</span>' +
+      '<div><span class="label">Recovery codes - write these down now</span>' +
         '<ul class="card p-4 grid sm:grid-cols-2 gap-x-8 gap-y-1 mt-1 font-mono text-[14px] select-all">' +
           codes.map(c => '<li>' + AD.esc(c) + '</li>').join('') + '</ul>' +
         '<p class="help">Shown once. Only their hashes are stored, so nothing and nobody can print ' +
@@ -449,9 +449,9 @@
           items.map(a =>
             '<tr class="border-b border-line last:border-0">' +
               '<td class="px-5 py-3 text-muted whitespace-nowrap">' + AD.dateTime(a.at) + '</td>' +
-              '<td class="px-4 py-3 font-semibold">' + AD.esc(a.admin || '—') + '</td>' +
+              '<td class="px-4 py-3 font-semibold">' + AD.esc(a.admin || '-') + '</td>' +
               '<td class="px-4 py-3"><code class="text-[13px]">' + AD.esc(a.action) + '</code></td>' +
-              '<td class="px-5 py-3 hidden md:table-cell text-muted truncate max-w-[260px]">' + AD.esc(a.target || '—') + '</td>' +
+              '<td class="px-5 py-3 hidden md:table-cell text-muted truncate max-w-[260px]">' + AD.esc(a.target || '-') + '</td>' +
             '</tr>').join('') +
           '</tbody></table></div></div>'
         : AD.emptyBox('history', 'No actions yet', 'Every administrator change is recorded here.');

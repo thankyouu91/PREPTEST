@@ -265,7 +265,78 @@ const PART_C = [
     ['It restored full lighting on those two streets only', 'It took the sensors out across the whole town',
       'It made no change and kept the sensors everywhere', 'It dimmed the lights further to save more'],
     'It restored full lighting on those two streets only',
-    'The last sentence draws the line precisely: full lighting on the two streets, sensors elsewhere. Each distractor takes that partial reversal to a total one, to none at all, or to the opposite.']
+    'The last sentence draws the line precisely: full lighting on the two streets, sensors elsewhere. Each distractor takes that partial reversal to a total one, to none at all, or to the opposite.'],
+
+  /* Fourth, fifth and sixth sets, all B2. Part C asks for six items a sitting, so
+     the level a paper is built at needs twelve to avoid handing back the same six
+     on a retake — see "No part sits between shallow and deep" in test-items.mjs. */
+  ['vpet-c-09', 'B2',
+    'A supermarket moved its fruit and vegetables from the back of the shop to just inside ' +
+    'the entrance. Sales of them rose by a fifth. Sales of everything else were unchanged, ' +
+    'which the manager took as the point: the aim had been to add to what people bought, ' +
+    'not to shift the same spending around.\n\nWhy was the manager pleased that other sales stayed flat?',
+    ['It showed the fruit sales were additional, not moved from elsewhere',
+      'It showed customers were spending less overall',
+      'It proved the other aisles needed rearranging too',
+      'It meant the shop could reduce its range'],
+    'It showed the fruit sales were additional, not moved from elsewhere',
+    'The final clause states the aim, so flat sales elsewhere are the evidence it was met. The other options read a flat figure as a problem, which the passage says it is not.'],
+  ['vpet-c-10', 'B2',
+    'A city introduced a fee for driving into the centre at peak times. Traffic fell sharply ' +
+    'in the first month, then crept back up as drivers learned which streets lay outside the ' +
+    'charged zone. Two years on, the centre is quieter than before, but the roads ringing it ' +
+    'carry more cars than they were built for.\n\nWhat has been the lasting effect of the fee?',
+    ['Traffic moved to the surrounding roads rather than disappearing',
+      'Traffic returned to exactly the level it was before',
+      'The centre is as busy now as it was before the fee',
+      'Drivers stopped coming into the city altogether'],
+    'Traffic moved to the surrounding roads rather than disappearing',
+    'The last sentence holds both halves: the centre is quieter, the ring roads busier. Two distractors keep only the second half and drop the first.'],
+  ['vpet-c-11', 'B2',
+    'A hospital asked patients to rate their pain before and after a new painkiller. Scores ' +
+    'improved markedly. When the trial was repeated with half the patients given a tablet ' +
+    'containing nothing, their scores improved almost as much. The researchers did not ' +
+    'conclude the drug was useless, only that the first trial could not show what it did.' +
+    '\n\nWhat do the researchers say about the first trial?',
+    ['It was not designed to show whether the drug itself worked',
+      'It proved the drug had no effect on pain',
+      'It showed the drug worked better than a tablet containing nothing',
+      'It recorded the pain scores incorrectly'],
+    'It was not designed to show whether the drug itself worked',
+    'The last sentence separates "useless" from "unproven" and picks the second. The distractor saying the drug has no effect is exactly the conclusion the researchers decline to draw.'],
+  ['vpet-c-12', 'B2',
+    'A firm let staff choose their own hours. Output held steady and people reported being ' +
+    'happier, but managers found meetings harder to arrange and junior staff said they saw ' +
+    'less of colleagues they had learned from. The firm kept the policy and set two fixed ' +
+    'days a week when everyone is in.\n\nWhat problem did the two fixed days address?',
+    ['People were overlapping too little to meet and learn from each other',
+      'Output had started to fall once hours were flexible',
+      'Staff were unhappy with being able to choose their hours',
+      'Managers wanted the old fixed working week back'],
+    'People were overlapping too little to meet and learn from each other',
+    'The two complaints are meetings and contact with colleagues, and both are about overlap. Output and happiness are given as the things that did NOT go wrong.'],
+  ['vpet-c-13', 'B2',
+    'An airline began boarding passengers from the back of the plane forwards. Boarding got ' +
+    'quicker on short flights but slower on long ones, where passengers carry more and take ' +
+    'longer to stow it. The airline now uses the method only on routes under two hours.' +
+    '\n\nWhy is the method limited to shorter routes?',
+    ['On longer flights the extra luggage cancels out the saving',
+      'Passengers on longer flights refused to board that way',
+      'Short flights carry fewer passengers to board',
+      'The method was found to be unsafe on long flights'],
+    'On longer flights the extra luggage cancels out the saving',
+    'The middle sentence gives the cause directly: more to stow, slower boarding. The other options supply reasons the passage never mentions.'],
+  ['vpet-c-14', 'B2',
+    'A library replaced its late fines with a system that simply blocks further borrowing ' +
+    'until a book comes back. Returns arrived no later than before, and the number of people ' +
+    'using the library rose, particularly among those who had previously stopped coming ' +
+    'because they owed money.\n\nWhat was the main effect of dropping the fines?',
+    ['More people used the library, without books coming back later',
+      'Books started coming back considerably later than before',
+      'Borrowing fell because there was no penalty for lateness',
+      'The library collected more money than it had from fines'],
+    'More people used the library, without books coming back later',
+    'Both findings sit in the second sentence and the right answer keeps them together. The distractors each contradict one of the two.']
 ];
 
 /* ---------------- Part D · E-Mail Writing (writing, essay) ----------------

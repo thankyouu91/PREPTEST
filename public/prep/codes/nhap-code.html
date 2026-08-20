@@ -126,7 +126,7 @@
       input.focus();
     }));
 
-    /* Activation — POST /api/redeem, checked on the server */
+    /* Activation - POST /api/redeem, checked on the server */
     const f = PREP.qs('#f'), btn = PREP.qs('#submit');
     f.addEventListener('submit', ev => {
       ev.preventDefault();
@@ -157,7 +157,7 @@
           ? PREP.t(res.plan.name + ' plan · ', 'Gói ' + res.plan.name + ' · ') + PREP.months(res.plan.months)
           : 'Activated';
         /* Re-entering your own code is not an error, but it is not a fresh unlock
-           either — say what actually happened rather than congratulating them. */
+           either - say what actually happened rather than congratulating them. */
         PREP.qs('#ok-title').textContent = res.already
           ? 'This code is already active'
           : 'Unlocked.';

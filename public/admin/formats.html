@@ -27,7 +27,7 @@
         <h2 class="text-2xl font-extrabold tracking-tight">Standard paper formats</h2>
         <p class="text-muted text-[15px] leading-relaxed mt-2">
           The real structure of each exam. Pick a format and the generator produces a paper with the
-          right item count, timing and item types — no blueprint typed in by hand.
+          right item count, timing and item types - no blueprint typed in by hand.
           The <b class="text-ink">bank</b> column says how many items are still missing before you can generate.
         </p>
       </section>
@@ -183,7 +183,7 @@ AD.mount({ title: 'Standard paper formats' }).then(async () => {
       const t = await AD.post('/admin/tests/generate', {
         familyId: f.familyId,
         level: lvl,
-        title: f.name + ' — ' + lvl,
+        title: f.name + ' - ' + lvl,
         scoring: f.scoring,
         guide: f.guide,
         strictLevel: AD.qs('#f-strict').checked,
@@ -197,7 +197,7 @@ AD.mount({ title: 'Standard paper formats' }).then(async () => {
       btn.disabled = false;
       btn.textContent = 'Generate';
       const sh = err.data && err.data.shortages;
-      AD.toast(err.message + (sh ? ' — ' + sh.map(s => s.section + ' short by ' + (s.need - s.have)).join(', ') : ''), 'error');
+      AD.toast(err.message + (sh ? ' - ' + sh.map(s => s.section + ' short by ' + (s.need - s.have)).join(', ') : ''), 'error');
     }
   }
 

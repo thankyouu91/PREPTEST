@@ -115,7 +115,7 @@
     <div class="border-t border-line mt-5 pt-5">
       <p class="text-[14.5px] font-bold">Buy through a centre</p>
       <p id="bm-centre" class="text-muted text-[14px] leading-relaxed mt-1.5">
-        Contact your centre to buy this plan — each code works for one account only, and the term
+        Contact your centre to buy this plan - each code works for one account only, and the term
         starts the moment it is activated.
       </p>
     </div>
@@ -136,7 +136,7 @@
     /* Why they were bounced here. Only known reasons are accepted: the parameter
        comes from the address bar, so it never goes straight into the page. */
     const LOCKED = {
-      'self-study': 'Self-study — vocabulary, grammar, linking words, pronunciation — opens from the Plus plan upwards. Your current plan does not include it.',
+      'self-study': 'Self-study - vocabulary, grammar, linking words, pronunciation - opens from the Plus plan upwards. Your current plan does not include it.',
       'detailed-report': 'The detailed report opens from the Plus plan upwards. Starter shows the mark and the band only.',
       'attempts': 'You have used every sitting your Starter plan allows. Move up to Plus or Pro to practise without a cap.'
     };
@@ -214,7 +214,7 @@
     /* ----- Paying online -----
        Which gateways exist is the server's answer, asked once. With none
        configured the whole block stays hidden and the modal reads exactly as
-       it did before online payment was built — the "ask your centre" route is
+       it did before online payment was built - the "ask your centre" route is
        not a fallback bolted on, it is still the normal way to buy. */
     let providers = [];
     let paying = false;
@@ -231,7 +231,7 @@
          live it is one route of two, not the only one. */
       PREP.qs('#bm-centre').textContent = providers.length
         ? 'Already have a code from your centre, or paying by transfer? A centre code works exactly the same way.'
-        : 'Contact your centre to buy this plan — each code works for one account only, and the term starts the moment it is activated.';
+        : 'Contact your centre to buy this plan - each code works for one account only, and the term starts the moment it is activated.';
       if (!providers.length) return;
       PREP.qs('#bm-providers').innerHTML = providers.map((p, i) =>
         '<button type="button" data-provider="' + PREP.esc(p.id) + '" class="btn ' +

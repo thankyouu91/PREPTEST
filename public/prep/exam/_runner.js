@@ -1,11 +1,11 @@
 /* ============================================================
-   PrepRunner — the sitting screen.
+   PrepRunner - the sitting screen.
 
    The rule: this screen holds NO rules of its own. The clock, the replay count
    and whether a write is still accepted are all decided by the server
    (server/exam-api.js); here we only draw what the server said and tell the
    candidate what is happening. So every save pulls fresh state back, and the
-   local countdown is resynced from `secondsLeft` after each API call — drift on
+   local countdown is resynced from `secondsLeft` after each API call - drift on
    the candidate's machine cannot move the real deadline.
    ============================================================ */
 
@@ -68,7 +68,7 @@ const PrepRunner = {
     const why = PREP.qs('#none-why');
     const alt = PREP.qs('#none-alt');
     /* When the server says why it refused, show exactly that reason and a way
-       forward — "no tests" with no reason is a useless answer. */
+       forward - "no tests" with no reason is a useless answer. */
     if (err.need === 'plan') {
       why.textContent = err.error || 'You have no plan in force.';
       alt.href = '/prep/mua-code/'; alt.textContent = 'See the price list';
@@ -91,7 +91,7 @@ const PrepRunner = {
     const alt = PREP.qs('#none-alt');
     alt.href = '/prep/lam-bai/';
     alt.textContent = 'Carry on with it';
-    /* The primary button becomes "hand in the unfinished one" — that is the
+    /* The primary button becomes "hand in the unfinished one" - that is the
     action that clears the way to the new test, and without it they are
     stuck with nothing to press. */
     const main = PREP.qs('#none a.btn-primary');
@@ -286,7 +286,7 @@ const PrepRunner = {
     const paint = () => {
       const m = Math.floor(left / 60), s = left % 60;
       PREP.qs('#ex-clock-text').textContent = m + ':' + String(s).padStart(2, '0');
-      /* Change colour under a minute — the one moment the clock should draw the eye. */
+      /* Change colour under a minute - the one moment the clock should draw the eye. */
       box.classList.toggle('clock-low', left <= 60);
     };
     paint();
@@ -396,7 +396,7 @@ const PrepRunner = {
       stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     } catch (e) {
       /* Refusing microphone access is the candidate's choice, not a system fault
-         — say what is needed instead of reporting a breakage. */
+         - say what is needed instead of reporting a breakage. */
       state.textContent = 'This page has not been given microphone access';
       return;
     }

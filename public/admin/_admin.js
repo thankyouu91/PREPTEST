@@ -1,5 +1,5 @@
 /* ============================================================
-   The admin area — shared helpers: API client, chrome, formatting, icons.
+   The admin area - shared helpers: API client, chrome, formatting, icons.
    Self-contained; it depends on none of the student-side code.
    ============================================================ */
 
@@ -70,19 +70,19 @@ const AD = {
      to become "1 month" wherever a duration is shown. */
   months(n) { return n + (Number(n) === 1 ? ' month' : ' months'); },
   date(iso) {
-    if (!iso) return '—';
+    if (!iso) return '-';
     const d = new Date(iso);
     if (isNaN(d)) return String(iso);
     return String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0') + '/' + d.getFullYear();
   },
   dateTime(iso) {
-    if (!iso) return '—';
+    if (!iso) return '-';
     const d = new Date(iso);
     if (isNaN(d)) return String(iso);
     return this.date(iso) + ' ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
   },
   ago(iso) {
-    if (!iso) return '—';
+    if (!iso) return '-';
     const s = (Date.now() - new Date(iso)) / 1000;
     if (s < 60) return 'just now';
     if (s < 3600) return Math.floor(s / 60) + ' minutes ago';
@@ -182,7 +182,7 @@ const AD = {
         '</div>'
       : '';
 
-    let admin = { name: '—', username: '', role: '' };
+    let admin = { name: '-', username: '', role: '' };
     try { admin = (await this.get('/admin/me')).admin; } catch (e) { return; }
 
     const initials = (admin.name || 'QT').trim().split(/\s+/).map(w => w[0]).slice(-2).join('').toUpperCase();
@@ -272,7 +272,7 @@ const AD = {
     }));
 
     /* The profile popover. It opens on hover and on click, and stays open while the
-       pointer or the keyboard focus is inside it — so a name can be typed without it
+       pointer or the keyboard focus is inside it - so a name can be typed without it
        closing under the cursor. Escape or a click elsewhere dismisses it. */
     const pWrap = this.qs('[data-profile-wrap]');
     if (pWrap) {
@@ -284,7 +284,7 @@ const AD = {
       const later = () => { clearTimeout(hideT); hideT = setTimeout(() => { if (!pWrap.contains(document.activeElement)) close(); }, 240); };
       /* Click opens rather than toggles: on a pointer device hover has usually
          opened it already, so a toggle would read the click as "close". It is
-         dismissed by leaving, by Escape, or by a click elsewhere — which also
+         dismissed by leaving, by Escape, or by a click elsewhere - which also
          covers touch, where there is no hover to open it in the first place. */
       trigger.addEventListener('click', open);
       pWrap.addEventListener('mouseenter', open);
@@ -307,8 +307,8 @@ const AD = {
       this.qs('[data-profile-pw]', pWrap).addEventListener('click', () => { close(); this.changePassword(); });
     }
 
-    /* "View as a student" opens the real student site — dashboard and exam runner,
-       with the demo account's data — and drops in a banner with the way back. */
+    /* "View as a student" opens the real student site - dashboard and exam runner,
+       with the demo account's data - and drops in a banner with the way back. */
     this.qsa('[data-view-student]').forEach(b => b.addEventListener('click', async () => {
       b.disabled = true;
       try {
@@ -348,7 +348,7 @@ const AD = {
       try {
         await this.post('/admin/password', { current, next });
         m.close();
-        this.toast('Password changed — please sign in again');
+        this.toast('Password changed - please sign in again');
         setTimeout(() => { location.href = '/admin/dang-nhap/'; }, 1000);
       } catch (e) {
         m.el.querySelector('#cp-err-text').textContent = e.message;

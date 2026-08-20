@@ -118,7 +118,7 @@
   ['username', 'password', 'code'].forEach(id => AD.qs('#' + id).addEventListener('input', () => mark(id, false)));
 
   /* The second factor appears only once the server has said this account has one
-     — it answers needCode on the first attempt. Two consequences worth keeping:
+     - it answers needCode on the first attempt. Two consequences worth keeping:
      the password is NOT cleared when the code is what was missing, because
      retyping a correct password to fix a wrong code is pure friction; and once
      the field is showing, it stays. */

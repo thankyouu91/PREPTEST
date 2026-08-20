@@ -129,7 +129,7 @@
 
     const res = await PrepApi.get('/api/attempts/' + id + '/result');
     if (!res.ok) {
-      /* A 409 means it has not been handed in — that is not an error but unfinished
+      /* A 409 means it has not been handed in - that is not an error but unfinished
          business, so point straight back at where to carry on. */
       if (res.status === 409) {
         return showNone('This test has not been handed in', PrepApi.err(res), '/prep/lam-bai/', 'Carry on with it');
@@ -147,7 +147,7 @@
     PREP.qs('#r-disclaimer').textContent = r.disclaimer || '';
 
     /* The overall mark only appears once everything is marked. Until then show a
-    dash and say what is outstanding — a half-computed number gets read as
+    dash and say what is outstanding - a half-computed number gets read as
     the final result. */
     PREP.qs('#r-overall').textContent = r.overall == null ? '–' : PREP.score(r.overall);
     if (r.band && r.band.band) {

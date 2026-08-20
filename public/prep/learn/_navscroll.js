@@ -9,7 +9,7 @@
  *   2. A fade at the edge, so the eye reads the rail as scrollable at a glance.
  *   3. A thin visible scrollbar that can be dragged with the mouse.
  *
- * It also scrolls the current entry into view on load — before this, opening the
+ * It also scrolls the current entry into view on load - before this, opening the
  * last page in the list left its own chip off screen.
  *
  * No inline styles: everything goes through classes in src/tailwind.css, to stay
@@ -21,7 +21,7 @@
   var LE = 'http://www.w3.org/2000/svg';
 
   /** An arrow button; cls must be a class name written out IN FULL, never built
-      by concatenation — Tailwind scans the source for class names, and a name it
+      by concatenation - Tailwind scans the source for class names, and a name it
       cannot see is dropped from the built CSS. */
   function taoNut(cls, nhan, d) {
     var b = document.createElement('button');

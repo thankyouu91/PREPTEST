@@ -208,7 +208,7 @@
             '<span class="w-2 h-2 rounded-full bg-accent mt-1.5 shrink-0"></span>' +
             '<span class="min-w-0"><b class="font-semibold">' + AD.esc(r.action) + '</b>' +
               (r.target ? ' <span class="text-muted">' + AD.esc(r.target) + '</span>' : '') +
-              '<span class="block text-muted text-[12.5px] mt-0.5">' + AD.esc(r.admin_name || '—') +
+              '<span class="block text-muted text-[12.5px] mt-0.5">' + AD.esc(r.admin_name || '-') +
               ' · ' + AD.ago(r.at) + '</span></span>' +
           '</li>').join('') + '</ul>'
       : '<p class="text-[14px] text-muted">No actions have been recorded.</p>';

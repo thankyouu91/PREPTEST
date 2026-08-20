@@ -1,7 +1,7 @@
 /* ============================================================
-   PrepTTS — pronunciation through the browser's built-in Web Speech API
+   PrepTTS - pronunciation through the browser's built-in Web Speech API
    ------------------------------------------------------------
-   Free, no API key, no outbound request — so it never touches the platform's
+   Free, no API key, no outbound request - so it never touches the platform's
    strict CSP.
 
    Three ways to trigger it:
@@ -12,7 +12,7 @@
    British (en-GB) / American (en-US) is selectable and remembered in localStorage.
 
    Limit: the voices come from the operating system. A machine with no English
-   voice installed cannot speak — onUnavailable() fires then, so the interface can
+   voice installed cannot speak - onUnavailable() fires then, so the interface can
    show IPA rather than saying nothing.
    ============================================================ */
 const PrepTTS = {
@@ -115,7 +115,7 @@ const PrepTTS = {
 
   /* ---------- Split a sentence into tappable words ----------
      Returns HTML: each word wrapped in <button data-say>, punctuation left alone.
-     Used on example sentences — tap a word, hear that word. */
+     Used on example sentences - tap a word, hear that word. */
   wordify(sentence, cls) {
     const esc = s => String(s).replace(/[&<>"']/g, c =>
       ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));

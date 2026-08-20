@@ -1,5 +1,5 @@
 /**
- * Service worker — installability and a usable offline screen.
+ * Service worker - installability and a usable offline screen.
  *
  * What it deliberately does NOT do is as important as what it does, because a
  * cache on a study platform is a place answers can leak from:

@@ -275,7 +275,7 @@
             ['mcq','gap','essay','speaking'].map(t2 => '<option value="' + t2 + '"' + (t2 === d.type ? ' selected' : '') + '>' + AD.TYPE_LABEL[t2] + '</option>').join('') + '</select></div>' +
         '</div>' +
         /* The part picker only appears for exams with a part table. Choosing a part
-           fixes the skill and item type — the server refuses a mismatch, so they are
+           fixes the skill and item type - the server refuses a mismatch, so they are
            set here to match rather than left for the operator to guess. */
         '<div id="q-part-box" hidden><label class="label" for="q-part">Part</label>' +
           '<select class="input" id="q-part"></select>' +
@@ -309,11 +309,11 @@
       const list = partsOf(famEl.value);
       partBox.hidden = !list.length;
       if (!list.length) { partEl.innerHTML = ''; return; }
-      partEl.innerHTML = '<option value="">— no part —</option>' +
+      partEl.innerHTML = '<option value="">- no part -</option>' +
         list.map(p2 => '<option value="' + AD.esc(p2.part) + '"' +
           (p2.part === d.part ? ' selected' : '') + '>' + AD.esc(p2.name) + '</option>').join('');
     }
-    /* Choosing a part pulls the skill and item type with it — part A is writing and
+    /* Choosing a part pulls the skill and item type with it - part A is writing and
        gap fill, and picking anything else is refused by the server anyway. */
     function syncFromPart() {
       const p2 = partsOf(famEl.value).find(x => x.part === partEl.value);
@@ -419,7 +419,7 @@
     const level = get('do_kho').toUpperCase();
     const type = TYPE_ALIAS[norm(get('dang_cau'))];
     /* The part letter: left blank for exams with no part table. The server is what
-       checks the letter exists and matches the skill — all that happens here is
+       checks the letter exists and matches the skill - all that happens here is
        upper-casing, so "a" and "A" land in the same place. */
     const part = get('phan_thi').trim().toUpperCase();
     const prompt = get('noi_dung');
@@ -573,7 +573,7 @@
             '<p class="text-[12.5px] font-bold uppercase tracking-wide text-muted mb-2">Rejected rows</p>' +
             bad.slice(0, 30).map(b =>
               '<p class="text-[13px] leading-relaxed"><b>Row ' + b.row + ':</b> ' + AD.esc(b.error) +
-              (b.preview ? ' <span class="text-muted">— ' + AD.esc(b.preview) + '…</span>' : '') + '</p>').join('') +
+              (b.preview ? ' <span class="text-muted">- ' + AD.esc(b.preview) + '…</span>' : '') + '</p>').join('') +
             (bad.length > 30 ? '<p class="text-[12.5px] text-muted mt-2">…and ' + (bad.length - 30) + ' more.</p>' : '') +
             '</div>'
           : '') +

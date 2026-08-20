@@ -1,5 +1,5 @@
 /* ============================================================
-   VPET Prep — STUDENT-SIDE DATA + STATE
+   VPET Prep - STUDENT-SIDE DATA + STATE
    ------------------------------------------------------------
    The catalogue (families / tests / code plans) is now read for real from
    `GET /api/catalog`. The PREP_* arrays below are only FALLBACK DATA:
@@ -9,7 +9,7 @@
    Student accounts have a real backend too: `PrepAuth` calls
    `/api/auth/…`, and `PrepState` takes the profile and entitlements from `/api/me`.
 
-   A page starts with `PREP.boot({ auth: true })` — catalogue and session load in
+   A page starts with `PREP.boot({ auth: true })` - catalogue and session load in
    parallel, then it renders. `PrepState.load()` reads synchronously after that.
 
    ============================================================ */
@@ -25,22 +25,29 @@
 // The five still exist in server/db.js (FAMILIES) and an administrator still
 // sees them; put one back here when it is opened again.
 const PREP_FAMILIES = [
-  { id: 'vpet',  name: 'VPET',  sub: 'Vietnam Proficiency English Test',          format: 'Parts A-J, 55 items, AI scored speaking', status: 'ready' }
+  { id: 'vpet',  name: 'VPET',  sub: 'Versant Professional English Test',         format: 'Parts A-J, 58 items, AI scored speaking', status: 'ready' }
 ];
 
 /* ---------------- Mock tests (NO paper content yet) ----------------
-   comingSoon = true: nothing entered yet — only a "format descriptor"
+   comingSoon = true: nothing entered yet - only a "format descriptor"
    for rendering the pre-start screen.                                 */
 const PREP_TESTS = [
   {
     id: 'vpet-b1-01', familyId: 'vpet', title: 'VPET four skills B1', level: 'B1',
-    durationMin: 112, comingSoon: true,
+    durationMin: 60, comingSoon: true,
     skills: ['listening', 'reading', 'writing', 'speaking'],
+    /* Ten lettered parts, 58 items, 60 minutes - the real VPET shape. */
     sections: [
-      { name: 'Listening', type: 'Multiple choice', items: 20, minutes: 25 },
-      { name: 'Reading',   type: 'Multiple choice', items: 25, minutes: 35 },
-      { name: 'Writing',   type: 'Essay',           items: 2,  minutes: 40 },
-      { name: 'Speaking',  type: 'Recorded',        items: 3,  minutes: 12 }
+      { name: 'Part A - Sentence Completion',    type: 'Type the missing word',            items: 10, minutes: 8 },
+      { name: 'Part B - Passage Reconstruction', type: 'Read, then rewrite from memory',   items: 3,  minutes: 8 },
+      { name: 'Part C - Reading Comprehension',  type: 'Multiple choice',                  items: 6,  minutes: 7 },
+      { name: 'Part D - E-Mail Writing',         type: 'Two emails',                       items: 2,  minutes: 18 },
+      { name: 'Part E - Dictation',              type: 'Type what you hear',               items: 8,  minutes: 4 },
+      { name: 'Part F - Response Selection',     type: 'Multiple choice',                  items: 8,  minutes: 3 },
+      { name: 'Part G - Passage Comprehension',  type: 'Multiple choice',                  items: 6,  minutes: 4 },
+      { name: 'Part H - Repeat',                 type: 'Say the sentence back',            items: 10, minutes: 3 },
+      { name: 'Part I - Speaking Situations',    type: 'Respond to a situation',           items: 2,  minutes: 2 },
+      { name: 'Part J - Story Retellings',       type: 'Retell what you heard',            items: 3,  minutes: 3 }
     ],
     scoring: 'On the CEFR A1-C2 scale, converted per skill',
     guide: [
@@ -90,7 +97,7 @@ const PREP_TENANTS = [
 ];
 
 /* ============================================================
-   PREP — shared helpers
+   PREP - shared helpers
    ============================================================ */
 const PREP = {
   families: PREP_FAMILIES,
@@ -106,7 +113,7 @@ const PREP = {
   _catalogPromise: null,
 
   /* Read the real catalogue from the server. Calling it repeatedly still fetches once.
-     Always resolves { ok, error } — a network failure keeps the fallback data rather than breaking the page. */
+     Always resolves { ok, error } - a network failure keeps the fallback data rather than breaking the page. */
   loadCatalog() {
     if (this._catalogPromise) return this._catalogPromise;
     this._catalogPromise = fetch('/api/catalog', {
@@ -159,7 +166,7 @@ const PREP = {
   _bootPromise: null,
 
   /* Boot a page: load the catalogue and the student session in parallel.
-     Pass { auth: true } on a page that requires signing in — with no session it
+     Pass { auth: true } on a page that requires signing in - with no session it
      redirects to sign-in and does NOT resolve, so the page never half-renders.
      (The real guard is on the server; this is the second layer, for cached HTML.) */
   boot(opts) {
@@ -185,7 +192,7 @@ const PREP = {
   t(en, vi) { return this.isVi() ? vi : en; },
 
   vnd(n) { return n.toLocaleString('vi-VN') + 'đ'; },
-  /** A term, said grammatically — one of the plans is a single month now. */
+  /** A term, said grammatically - one of the plans is a single month now. */
   months(n) { return n + (Number(n) === 1 ? ' month' : ' months'); },
 
   /** Skill labels. The same four values the server uses, in one place so one edit changes them everywhere. */
@@ -238,7 +245,7 @@ const PREP = {
     return n; // 0-1 weak · 2 fair · 3 good · 4 strong
   },
 
-  /* Inline SVG icons (Lucide, stroke 1.9, currentColor) — one set only */
+  /* Inline SVG icons (Lucide, stroke 1.9, currentColor) - one set only */
   icon(name, cls) {
     const paths = {
       home: '<path d="M3 9.5 12 3l9 6.5V20a1.5 1.5 0 0 1-1.5 1.5H15V14a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v7.5H4.5A1.5 1.5 0 0 1 3 20Z"/>',
@@ -312,7 +319,7 @@ const PREP = {
 };
 
 /* ============================================================
-   PrepTheme — dark mode + tenant (white-label)
+   PrepTheme - dark mode + tenant (white-label)
    ============================================================ */
 const PrepTheme = {
   toggleDark() {
@@ -334,9 +341,9 @@ const PrepTheme = {
 
 
 /* ============================================================
-   PrepApi — calls the student account API (/api/auth/…, /api/me)
+   PrepApi - calls the student account API (/api/auth/…, /api/me)
    Attaches the CSRF token from the prep_csrf cookie to every state-changing request.
-   Always resolves { ok, status, data } — a network failure never throws out.
+   Always resolves { ok, status, data } - a network failure never throws out.
    ============================================================ */
 const PrepApi = {
   csrf() {
@@ -370,12 +377,12 @@ const PrepApi = {
 };
 
 /* ============================================================
-   PrepState — student state
+   PrepState - student state
    ------------------------------------------------------------
    Identity, entitlements, codes and orders come from GET /api/me.
    What has NO API yet still sits in localStorage, per account:
-     · seenTestIds — which test structures have been looked at (the home checklist)
-     · notif       — notification preferences
+     · seenTestIds - which test structures have been looked at (the home checklist)
+     · notif       - notification preferences
    // TODO(backend): move seenTestIds and notif to a user-state API
 
    fetch() goes to the network (once per page); load() reads the merged copy, synchronously.
@@ -409,7 +416,7 @@ const PrepState = {
   fetch() {
     if (this._promise) return this._promise;
     this._promise = PrepApi.get('/api/me').then(res => {
-      // a 200 with user: null means not signed in — not an error
+      // a 200 with user: null means not signed in - not an error
       this._server = res.ok ? res.data : null;
       this._rebuild();
       return this._merged;
@@ -418,7 +425,7 @@ const PrepState = {
   },
 
   _rebuild() {
-    /* The price list comes back even when signed out — the sales screens need it
+    /* The price list comes back even when signed out - the sales screens need it
     before there is an account, so it is kept separate from the merged profile. */
     this._plans = (this._server && this._server.plans) || [];
     if (!this._server || !this._server.user) { this._merged = null; return; }
@@ -453,7 +460,7 @@ const PrepState = {
      The three questions every screen asks before it draws: which plan is in
      force, is this area allowed, how many sittings are left. The answers come
      from the server only; these are just tidy readers. The interface dims things
-     using them, but the server refuses independently — dimming is a courtesy,
+     using them, but the server refuses independently - dimming is a courtesy,
      not a fence. */
 
   /** The entitlement in force, or null when no plan is live. */
@@ -509,7 +516,7 @@ const PrepState = {
     try {
       /* Go through PrepApi rather than calling fetch directly: the CSRF token and
          the swallowing of network errors already live there. An earlier version
-         called fetch itself and took the token with PREP.csrf() — that function
+         called fetch itself and took the token with PREP.csrf() - that function
          is on PrepApi, not PREP, so EVERY activation threw a TypeError and fell
          into the "connection lost" branch below, even on a perfect connection. */
       const res = await PrepApi.post('/api/redeem', { code });
@@ -559,12 +566,12 @@ const PrepState = {
 };
 
 /* ============================================================
-   PrepAuth — student accounts over the real API (/api/auth/…)
+   PrepAuth - student accounts over the real API (/api/auth/…)
    Every function is async and returns { ok, error, … }.
    Passwords only travel up to the server; the client never keeps one.
    ============================================================ */
 const PrepAuth = {
-  /** POST /api/auth/register — returns { ok, error, verifyLink } */
+  /** POST /api/auth/register - returns { ok, error, verifyLink } */
   register({ name, email, phone, password, interests }) {
     return PrepApi.post('/api/auth/register', { name, email, phone, password, interests })
       .then(res => {
@@ -574,7 +581,7 @@ const PrepAuth = {
       });
   },
 
-  /** POST /api/auth/login — accepts a username or an email */
+  /** POST /api/auth/login - accepts a username or an email */
   login(identifier, password) {
     return PrepApi.post('/api/auth/login', { username: identifier, password })
       .then(res => {
@@ -584,33 +591,33 @@ const PrepAuth = {
       });
   },
 
-  /** POST /api/me/password — change the password; other devices are signed out */
+  /** POST /api/me/password - change the password; other devices are signed out */
   changePassword(currentPw, newPw) {
     return PrepApi.post('/api/me/password', { current: currentPw, next: newPw })
       .then(res => res.ok ? { ok: true } : { ok: false, error: PrepApi.err(res, 'The password could not be changed.') });
   },
 
-  /** POST /api/auth/verify — exchange the token from the email link for verified status */
+  /** POST /api/auth/verify - exchange the token from the email link for verified status */
   verify(token) {
     return PrepApi.post('/api/auth/verify', { token })
       .then(res => res.ok ? { ok: true } : { ok: false, error: PrepApi.err(res, 'That link is not valid.') });
   },
 
-  /** POST /api/auth/verify/send — send the verification link again */
+  /** POST /api/auth/verify/send - send the verification link again */
   resendVerify() {
     return PrepApi.post('/api/auth/verify/send')
       .then(res => res.ok ? { ok: true, verifyLink: res.data.verifyLink }
                           : { ok: false, error: PrepApi.err(res, 'It could not be sent again.') });
   },
 
-  /** POST /api/auth/forgot — always returns ok, so it never reveals which emails exist */
+  /** POST /api/auth/forgot - always returns ok, so it never reveals which emails exist */
   forgot(email) {
     return PrepApi.post('/api/auth/forgot', { email })
       .then(res => res.ok ? { ok: true, resetLink: res.data.resetLink }
                           : { ok: false, error: PrepApi.err(res, 'The request could not be sent.') });
   },
 
-  /** POST /api/auth/reset — reset the password using the token from the email */
+  /** POST /api/auth/reset - reset the password using the token from the email */
   reset(token, password) {
     return PrepApi.post('/api/auth/reset', { token, password })
       .then(res => res.ok ? { ok: true } : { ok: false, error: PrepApi.err(res, 'The password could not be reset.') });
@@ -643,7 +650,7 @@ if ('serviceWorker' in navigator) {
    When an administrator is previewing the student site, a prep_preview flag rides
    alongside their admin session (the prep_admin cookie is untouched, so the way
    back is always open). Every student page loads this file, so the banner and its
-   button appear everywhere — dashboard and exam runner alike. Signing out, here or
+   button appear everywhere - dashboard and exam runner alike. Signing out, here or
    anywhere, clears the flag server-side, so the banner does not outlive the preview. */
 (function () {
   if (!/(?:^|;\s*)prep_preview=1(?:;|$)/.test(document.cookie)) return;

@@ -783,7 +783,7 @@ async function audit(req, action, target, meta) {
 /* VPET is the only family being built right now; every other family is parked
    as coming_soon. Columns: id, name, sub, format, skills, sort, status. */
 const FAMILIES = [
-  ['vpet',  'VPET',  'Vietnam Proficiency English Test', 'Parts A-J, 55 items, AI scored speaking', ['listening','reading','writing','speaking'], 1, 'ready'],
+  ['vpet',  'VPET',  'Versant Professional English Test', 'Parts A-J, 58 items, AI scored speaking', ['listening','reading','writing','speaking'], 1, 'ready'],
   ['vept',  'VEPT',  'Vietnam English Proficiency Test', '4 skills, CEFR aligned', ['listening','reading','writing','speaking'], 2, 'coming_soon'],
   ['ote',   'OTE',   'Oxford Test of English',    'Adaptive, 4 modules, CEFR A2-B2', ['listening','reading','writing','speaking'], 3, 'coming_soon'],
   ['toeic', 'TOEIC', 'Test of English for International Communication', 'L&R / S&W, 990 point scale', ['listening','reading'], 4, 'coming_soon'],
@@ -792,13 +792,25 @@ const FAMILIES = [
 ];
 
 const SEED_TESTS = [
-  { id:'vpet-b1-01', family:'vpet', title:'VPET four skills B1', level:'B1', dur:112, status:'published',
+  /* The demo paper follows the real VPET shape: ten lettered parts, A to J, 58
+     items, 60 minutes. It used to be four generic skill blocks over 112 minutes,
+     which described no exam that exists — see server/data/exam-formats.js for the
+     published part table this mirrors. */
+  { id:'vpet-b1-01', family:'vpet', title:'VPET four skills B1', level:'B1', dur:60, status:'published',
     scoring:'On the CEFR A1-C2 scale, converted per skill',
     guide:['Have headphones and a microphone ready before the Listening / Speaking parts.',
            'Each part has its own clock; when it runs out the system moves on.',
            'Writing and Speaking are marked automatically and come back with comments.'],
-    sections:[['Listening','listening','Multiple choice',25],['Reading','reading','Multiple choice',35],
-              ['Writing','writing','Essay',40],['Speaking','speaking','Recorded',12]] }
+    sections:[['Part A - Sentence Completion','writing','Type the missing word',8],
+              ['Part B - Passage Reconstruction','writing','Read, then rewrite from memory',8],
+              ['Part C - Reading Comprehension','reading','Multiple choice',7],
+              ['Part D - E-Mail Writing','writing','Two emails',18],
+              ['Part E - Dictation','listening','Type what you hear',4],
+              ['Part F - Response Selection','listening','Multiple choice',3],
+              ['Part G - Passage Comprehension','listening','Multiple choice',4],
+              ['Part H - Repeat','speaking','Say the sentence back',3],
+              ['Part I - Speaking Situations','speaking','Respond to a situation',2],
+              ['Part J - Story Retellings','speaking','Retell what you heard',3]] }
 ];
 
 const PACKAGES = [

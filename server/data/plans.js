@@ -1,5 +1,5 @@
 /**
- * Subscription plans — the commercial model of the platform.
+ * Subscription plans - the commercial model of the platform.
  *
  * One code unlocks one plan for one account, for a fixed number of months.
  * There is no per-exam or per-test purchase any more: the catalogue is VPET
@@ -10,7 +10,7 @@
  *   plus-6m       799,000 VND    3 months    unlimited attempts, everything
  *   pro-12m     1,299,000 VND    6 months    unlimited attempts, everything
  *
- * Each plan also carries a `listPrice` — the price before the launch discount —
+ * Each plan also carries a `listPrice` - the price before the launch discount -
  * shown struck through next to what is actually charged. The plan `id`s keep the
  * month suffix they were born with (…-3m, …-6m, …-12m); those strings are opaque
  * keys referenced by seeds, issued codes and tests, so they are NOT renamed when
@@ -26,7 +26,7 @@
  *   detailedReport  starter gets the score and band only; the others get the
  *                per-part breakdown with written feedback
  *
- * Money is stored in whole dong — never a float. Duration is stored in months
+ * Money is stored in whole dong - never a float. Duration is stored in months
  * and turned into a date when a code is redeemed, so a code bought today and
  * redeemed in March starts counting in March.
  */

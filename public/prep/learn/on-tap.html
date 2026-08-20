@@ -32,7 +32,7 @@
         <h2 class="text-2xl sm:text-[28px] font-extrabold tracking-tight">Review</h2>
         <p class="text-muted text-[15px] leading-relaxed mt-2">
           Each card comes back just before you would have forgotten it. Answer in your head,
-          reveal, then say honestly how it went — the schedule is only as good as that answer.
+          reveal, then say honestly how it went - the schedule is only as good as that answer.
           <b class="text-ink">Again</b> sends a card back to the start; the rest push it further away.
         </p>
       </section>
@@ -156,7 +156,7 @@
     PrepChrome.mount({ title: 'Review' });
 
     /* The four buttons, in the order the server sends them: worst to best.
-       Colour carries the same order — a red "again" and a green "easy" — so the
+       Colour carries the same order - a red "again" and a green "easy" - so the
        hand learns the row before the eye reads it. */
     const GRADE_LOOK = {
       again: { label: 'Again', cls: 'btn-danger', key: '1' },
@@ -228,7 +228,7 @@
       if (!current) return;
 
       el('c-deck').textContent = current.deckLabel;
-      el('c-level').textContent = current.level || '—';
+      el('c-level').textContent = current.level || '-';
       show('c-new', !!current.isNew);
       show('c-lapses', current.lapses > 0);
       if (current.lapses > 0) el('c-lapses').textContent = 'missed ' + current.lapses + '×';
@@ -310,7 +310,7 @@
           }
           answered++;
           tallyLocally(card, res.data);
-          /* A card graded "again" is not finished with — it comes back at the
+          /* A card graded "again" is not finished with - it comes back at the
              end of this batch rather than in ten minutes' time, because a
              session the learner is still sitting in is the cheapest place to
              meet it again. The server has already scheduled it properly. */

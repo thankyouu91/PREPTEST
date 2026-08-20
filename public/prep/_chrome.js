@@ -1,5 +1,5 @@
 /* ============================================================
-   VPET Prep — shared chrome for the signed-in pages
+   VPET Prep - shared chrome for the signed-in pages
    (sidebar desktop · topbar · bottom-nav mobile · dark mode ·
     tenant switcher white-label · toast)
 
@@ -12,7 +12,7 @@
 
 const PrepChrome = {
   /* `feature` marks an entry that only opens from a given plan upwards. Without
-     the entitlement the entry still shows — so people know the platform has it —
+     the entitlement the entry still shows - so people know the platform has it -
      but dimmed, padlocked and pointed at the price list rather than into a page
      the server will bounce them out of. */
   NAV: [

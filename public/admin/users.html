@@ -59,7 +59,7 @@
   try {
     const cat = await AD.get('/catalog');
     families = cat.families || [];
-    /* The three plans ARE the three terms — 3, 6 and 12 months. Read from the
+    /* The three plans ARE the three terms - 3, 6 and 12 months. Read from the
        server rather than typed in here, so a change to the price list moves
        this screen with it instead of leaving it quietly wrong. */
     plans = cat.plans || [];
@@ -70,7 +70,7 @@
    * Show a generated password once.
    *
    * The column holds a scrypt hash, so this is the only moment it is readable
-   * anywhere — after this modal closes nobody, including the administrator who
+   * anywhere - after this modal closes nobody, including the administrator who
    * created it, can get it back. Said plainly, and with a copy button, because
    * the alternative is somebody squinting at a toast that has already gone.
    */
@@ -88,7 +88,7 @@
       '<div class="flex justify-end mt-5"><button type="button" class="btn btn-primary btn-md" id="once-done">Done</button></div>');
     m.el.querySelector('#once-copy').addEventListener('click', () => {
       navigator.clipboard.writeText(password).then(
-        () => AD.toast('Copied'), () => AD.toast('Could not copy — select it by hand', 'error'));
+        () => AD.toast('Copied'), () => AD.toast('Could not copy - select it by hand', 'error'));
     });
     m.el.querySelector('#once-done').addEventListener('click', () => m.close());
   }
@@ -100,7 +100,7 @@
     const m = AD.modal(
       '<h3 class="text-lg font-extrabold tracking-tight">New student</h3>' +
       '<p class="text-muted text-[14px] leading-relaxed mt-1.5">The account is created already ' +
-        'verified — you have confirmed the address yourself — and can be given a term at the ' +
+        'verified - you have confirmed the address yourself - and can be given a term at the ' +
         'same time.</p>' +
       '<div class="grid gap-4 mt-5">' +
         '<div><label class="label" for="ns-name">Full name</label>' +
@@ -153,7 +153,7 @@
 
   /* ----- Bulk create: a class or a company intake at once -----
      The browser splits the pasted text (or a CSV it reads itself) into rows and
-     sends them as JSON — no file upload, no server-side CSV parser. */
+     sends them as JSON - no file upload, no server-side CSV parser. */
   AD.qs('#bulk-students').addEventListener('click', () => {
     const m = AD.modal(
       '<h3 class="text-lg font-extrabold tracking-tight">Bulk create accounts</h3>' +
@@ -214,11 +214,11 @@
             (r.created.length ? '<button type="button" class="btn btn-ghost btn-sm shrink-0" id="bulk-copy">Copy all (CSV)</button>' : '') +
           '</div>' +
           (r.errors.length ? '<div class="mt-3 text-[13px]"><span class="font-bold">Skipped:</span><ul class="mt-1.5 grid gap-1">' +
-            r.errors.map(e => '<li class="text-muted">Line ' + e.line + ' · ' + AD.esc(e.email || '?') + ' — ' + AD.esc(e.error) + '</li>').join('') +
+            r.errors.map(e => '<li class="text-muted">Line ' + e.line + ' · ' + AD.esc(e.email || '?') + ' - ' + AD.esc(e.error) + '</li>').join('') +
             '</ul></div>' : '');
         if (r.created.length) host.querySelector('#bulk-copy').addEventListener('click', () => {
           navigator.clipboard.writeText(csv).then(
-            () => AD.toast('Copied — paste into a spreadsheet'), () => AD.toast('Could not copy', 'error'));
+            () => AD.toast('Copied - paste into a spreadsheet'), () => AD.toast('Could not copy', 'error'));
         });
         go.textContent = 'Create more'; go.disabled = false;
         m.el.querySelector('#bulk-text').value = '';
@@ -278,7 +278,7 @@
             '<td class="px-4 py-3.5 hidden md:table-cell">' +
               (u.interests.length
                 ? u.interests.map(i => '<span class="exam-chip me-1" data-family="' + i + '">' + AD.esc(famName(i)) + '</span>').join('')
-                : '<span class="text-muted">—</span>') + '</td>' +
+                : '<span class="text-muted">-</span>') + '</td>' +
             '<td class="px-4 py-3.5 hidden sm:table-cell text-right font-bold">' + u.codes + '</td>' +
             '<td class="px-4 py-3.5 hidden lg:table-cell text-right font-bold whitespace-nowrap">' + AD.vnd(u.spent) + '</td>' +
             '<td class="px-4 py-3.5 whitespace-nowrap">' +
@@ -327,7 +327,7 @@
     /* An order used to be a record of something that had already happened, so
        its status never needed showing. With a gateway in front of it an order
        exists before the money moves, and "paid" now has to be told apart from
-       "waiting" and "did not go through" — otherwise a pending row reads as a
+       "waiting" and "did not go through" - otherwise a pending row reads as a
        sale and the revenue tile is the only place the difference shows up. */
     const ORDER_STATE = {
       paid: ['badge-ok', 'Paid'],
@@ -387,7 +387,7 @@
           '<button type="button" id="u-code" class="btn btn-soft btn-md ms-auto">' + AD.icon('ticket', 'w-4 h-4') + 'Issue a code</button>' +
         '</div>' +
         /* A term, straight from the account rather than by way of the code
-           screen. The three plans ARE the three terms — 3, 6 and 12 months —
+           screen. The three plans ARE the three terms - 3, 6 and 12 months -
            so the buttons are built from the price list rather than hard-coded,
            and a fourth plan appears here by itself. */
         '<div><p class="label mb-2">Give this account a term</p>' +
@@ -441,7 +441,7 @@
       const pl = plans.find(x => x.id === b.getAttribute('data-grant'));
       if (!await AD.confirm('Give ' + AD.months(pl.months) + '?',
         u.name + ' gets the ' + pl.name + ' plan, starting today. A code is issued and '
-        + 'activated on the account in one step — nothing to send them.', 'Give the term')) return;
+        + 'activated on the account in one step - nothing to send them.', 'Give the term')) return;
       try {
         const r = await AD.post('/admin/users/' + id + '/grant', { planId: pl.id });
         mm.close();

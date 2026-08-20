@@ -1,5 +1,5 @@
 /**
- * The standard paper formats for each exam — the platform's "subject knowledge".
+ * The standard paper formats for each exam - the platform's "subject knowledge".
  *
  * Each format describes the real paper: how many sections, how many items and
  * minutes in each, which item types, and what it is marked on. Choosing a format
@@ -13,25 +13,26 @@
  *   levels      the levels it can be used at
  *   scoring     a description of the marking scale
  *   guide       the instructions shown on the pre-start screen
- *   sections[]  the SEPARATELY TIMED BLOCKS — this is the blueprint sent to
+ *   sections[]  the SEPARATELY TIMED BLOCKS - this is the blueprint sent to
  *               POST /api/admin/tests/generate
  *     name, skill, type (a label), items, minutes, types[] (which item types to draw)
  *     parts[]   what is inside the block; for display and to explain the design
  *   notes[]     notes on the exam itself: why it splits this way, and the usual traps
  *
- * Sources: each examining body's published documentation; VEPT and VPET follow the
- * VSTEP.3-5 format (Circular 01/2014/TT-BGDĐT). See docs/SCORING.md.
+ * Sources: each examining body's published documentation. VEPT follows the VSTEP.3-5
+ * format (Circular 01/2014/TT-BGDĐT); VPET is Pearson's Versant Professional English
+ * Test and has a part table of its own. See docs/SCORING.md.
  */
 'use strict';
 
-/* The VSTEP format, shared by VEPT and VPET — two domestic certificates on one framework */
+/* The VSTEP format, shared by VEPT and VPET - two domestic certificates on one framework */
 function vstepSections() {
   return [
     {
       name: 'Listening', skill: 'listening', type: 'Multiple choice', items: 35, minutes: 40,
       types: ['mcq'],
       parts: [
-        { label: 'Part 1', items: 8, note: 'Announcements and short instructions — played once' },
+        { label: 'Part 1', items: 8, note: 'Announcements and short instructions - played once' },
         { label: 'Part 2', items: 12, note: 'A conversation between two people' },
         { label: 'Part 3', items: 15, note: 'Longer talks and lectures' }
       ]
@@ -67,13 +68,17 @@ function vstepSections() {
 }
 
 /* ------------------------------------------------------------------ *
- * VPET blueprint — ten lettered parts, A to J, 55 items in total.
+ * VPET blueprint - ten lettered parts, A to J, 58 items in total.
  *
- * Item counts are fixed by the published VPET part table:
+ * VPET is Pearson's Versant Professional English Test. Item counts are fixed
+ * by the published VPET part table:
  *   A Sentence Completion 10 · B Passage Reconstruction 3
- *   C Reading Comprehension 3 · D E-Mail Writing 2
+ *   C Reading Comprehension 6 · D E-Mail Writing 2
  *   E Dictation 8 · F Response Selection 8 · G Passage Comprehension 6
  *   H Repeat 10 · I Speaking Situations 2 · J Story Retellings 3
+ *
+ * Part C said 3 here until 2026-08-20, which is where the old "55 items" came
+ * from; the published table says 6, and 58 is the total Pearson states.
  *
  * Skill and item type per part are the platform's mapping onto its own item
  * bank (mcq | gap | essay | speaking); minutes are editable defaults, since
@@ -83,18 +88,18 @@ function vpetSections() {
   return [
     {
       name: 'Part A - Sentence Completion', part: 'A', skill: 'writing', type: 'Type the missing word',
-      items: 10, minutes: 10, types: ['gap'],
+      items: 10, minutes: 8, types: ['gap'],
       parts: [{ label: 'A1-A10', items: 10, note: 'One word missing per sentence; grammar and collocation in context.' }]
     },
     {
       name: 'Part B - Passage Reconstruction', part: 'B', skill: 'writing', type: 'Read, then rewrite from memory',
-      items: 3, minutes: 9, types: ['essay'],
+      items: 3, minutes: 8, types: ['essay'],
       parts: [{ label: 'B1-B3', items: 3, note: 'Passage shown for a short time, then hidden; rebuild it in your own words.' }]
     },
     {
       name: 'Part C - Reading Comprehension', part: 'C', skill: 'reading', type: 'Multiple choice',
-      items: 3, minutes: 6, types: ['mcq'],
-      parts: [{ label: 'C1-C3', items: 3, note: 'Short passages, one question each.' }]
+      items: 6, minutes: 7, types: ['mcq'],
+      parts: [{ label: 'C1-C6', items: 6, note: 'Short passages, one question each.' }]
     },
     {
       name: 'Part D - E-Mail Writing', part: 'D', skill: 'writing', type: 'Two emails',
@@ -103,46 +108,46 @@ function vpetSections() {
     },
     {
       name: 'Part E - Dictation', part: 'E', skill: 'listening', type: 'Type what you hear',
-      items: 8, minutes: 6, types: ['gap'], needsAudio: true,
+      items: 8, minutes: 4, types: ['gap'], needsAudio: true,
       parts: [{ label: 'E1-E8', items: 8, note: 'One sentence per item, played a fixed number of times. Needs audio.' }]
     },
     {
       name: 'Part F - Response Selection', part: 'F', skill: 'listening', type: 'Multiple choice',
-      items: 8, minutes: 4, types: ['mcq'], needsAudio: true,
+      items: 8, minutes: 3, types: ['mcq'], needsAudio: true,
       parts: [{ label: 'F1-F8', items: 8, note: 'Hear a prompt, pick the natural reply. Needs audio.' }]
     },
     {
       name: 'Part G - Passage Comprehension', part: 'G', skill: 'listening', type: 'Multiple choice',
-      items: 6, minutes: 6, types: ['mcq'], needsAudio: true,
+      items: 6, minutes: 4, types: ['mcq'], needsAudio: true,
       parts: [{ label: 'G1-G6', items: 6, note: 'Longer spoken passages with comprehension questions. Needs audio.' }]
     },
     {
       name: 'Part H - Repeat', part: 'H', skill: 'speaking', type: 'Say the sentence back',
-      items: 10, minutes: 4, types: ['speaking'], needsAudio: true,
+      items: 10, minutes: 3, types: ['speaking'], needsAudio: true,
       parts: [{ label: 'H1-H10', items: 10, note: 'Repeat each sentence exactly. Scores pronunciation and fluency. Needs audio.' }]
     },
     {
       name: 'Part I - Speaking Situations', part: 'I', skill: 'speaking', type: 'Respond to a situation',
-      items: 2, minutes: 4, types: ['speaking'],
+      items: 2, minutes: 2, types: ['speaking'],
       parts: [{ label: 'I1-I2', items: 2, note: 'Speak for up to a minute in the register the situation calls for.' }]
     },
     {
       name: 'Part J - Story Retellings', part: 'J', skill: 'speaking', type: 'Retell what you heard',
-      items: 3, minutes: 6, types: ['speaking'], needsAudio: true,
+      items: 3, minutes: 3, types: ['speaking'], needsAudio: true,
       parts: [{ label: 'J1-J3', items: 3, note: 'Listen to a short story, then retell it in your own words. Needs audio.' }]
     }
   ];
 }
 
 const VPET_GUIDE = [
-  'Ten parts, A to J, 55 items in one sitting. Every part has its own timer.',
+  'Ten parts, A to J, 58 items in one sitting. Every part has its own timer.',
   'Parts E, F, G, H and J play audio. Check your headphones before you start.',
   'Parts H, I and J record your voice. Speak after the beep and stay in the time shown.',
   'Reading and Listening are marked automatically; Writing and Speaking are AI scored, then a reviewer can override.'
 ];
 
 const VPET_NOTES = [
-  'Item counts follow the published VPET part table and are fixed: 10-3-3-2-8-8-6-10-2-3.',
+  'Item counts follow the published VPET part table and are fixed: 10-3-6-2-8-8-6-10-2-3.',
   'Minutes shown are platform defaults; an admin can change them on each test without touching the blueprint.',
   'Audio parts cannot be generated until every question in them has an MP3 attached.'
 ];
@@ -155,7 +160,7 @@ const VSTEP_GUIDE = [
 
 const VSTEP_NOTES = [
   'The four skills are sat back to back, about 180 minutes in all.',
-  'Reading gets harder across the four passages — do not spend the time on the first.',
+  'Reading gets harder across the four passages - do not spend the time on the first.',
   'Writing Task 2 carries more weight than Task 1 in the Writing mark.'
 ];
 
@@ -170,9 +175,9 @@ const FORMATS = [
   },
 
   /* ------------------------- VPET -------------------------
-     The official VPET blueprint: ten lettered parts, A to J, 55 items.
+     The official VPET blueprint: ten lettered parts, A to J, 58 items.
      Item counts come straight from the published part table and must not be
-     changed. Minutes are platform defaults an admin can edit per test — the
+     changed. Minutes are platform defaults an admin can edit per test - the
      part table does not publish timings.
 
      Each lettered part is its own timed section because every part has a
@@ -180,7 +185,7 @@ const FORMATS = [
      (E, F, G, H, J) need an MP3 attached to each question. */
   {
     id: 'vpet-full', familyId: 'vpet', kind: 'full',
-    name: 'VPET full test (parts A-J, 55 items)',
+    name: 'VPET full test (parts A-J, 58 items)',
     levels: ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'],
     scoring: 'CEFR A1-C2 per skill; Speaking parts H, I and J are AI scored',
     guide: VPET_GUIDE, notes: VPET_NOTES, sections: vpetSections()
@@ -189,7 +194,7 @@ const FORMATS = [
   /* ------------------------ IELTS ------------------------- */
   {
     id: 'ielts-academic-full', familyId: 'ielts', kind: 'full',
-    name: 'IELTS Academic — all four skills',
+    name: 'IELTS Academic - all four skills',
     levels: ['B1', 'B2', 'C1', 'C2'],
     scoring: 'Band 0-9, rounded to 0.5',
     guide: [
@@ -199,7 +204,7 @@ const FORMATS = [
     ],
     notes: [
       'Listening and Reading are 40 items each, converted from raw score to band by a table of their own.',
-      'Academic Reading is harder than General Training at the same raw score — the conversion tables differ.',
+      'Academic Reading is harder than General Training at the same raw score - the conversion tables differ.',
       'Nothing is deducted for a wrong answer, so never leave one blank.'
     ],
     sections: [
@@ -207,10 +212,10 @@ const FORMATS = [
         name: 'Listening', skill: 'listening', type: 'Multiple choice + gap fill', items: 40, minutes: 30,
         types: ['mcq', 'gap'],
         parts: [
-          { label: 'Part 1', items: 10, note: 'An everyday conversation between two people — usually filling in a form' },
+          { label: 'Part 1', items: 10, note: 'An everyday conversation between two people - usually filling in a form' },
           { label: 'Part 2', items: 10, note: 'A monologue in an everyday situation' },
           { label: 'Part 3', items: 10, note: 'An academic discussion, up to four speakers' },
-          { label: 'Part 4', items: 10, note: 'An academic lecture — the hardest, with no break in it' }
+          { label: 'Part 4', items: 10, note: 'An academic lecture - the hardest, with no break in it' }
         ]
       },
       {
@@ -243,7 +248,7 @@ const FORMATS = [
   },
   {
     id: 'ielts-listening-module', familyId: 'ielts', kind: 'module',
-    name: 'IELTS — Listening practice on its own',
+    name: 'IELTS - Listening practice on its own',
     levels: ['A2', 'B1', 'B2', 'C1'],
     scoring: 'Band 0-9 for Listening alone',
     guide: ['One skill on its own; no overall mark is calculated.'],
@@ -261,7 +266,7 @@ const FORMATS = [
   },
   {
     id: 'ielts-reading-module', familyId: 'ielts', kind: 'module',
-    name: 'IELTS Academic — Reading practice on its own',
+    name: 'IELTS Academic - Reading practice on its own',
     levels: ['A2', 'B1', 'B2', 'C1'],
     scoring: 'Band 0-9 for Reading alone',
     guide: ['One skill on its own; no overall mark is calculated.'],
@@ -280,18 +285,18 @@ const FORMATS = [
   /* ------------------------ TOEIC ------------------------- */
   {
     id: 'toeic-lr-full', familyId: 'toeic', kind: 'full',
-    name: 'TOEIC Listening & Reading — the full 200-item paper',
+    name: 'TOEIC Listening & Reading - the full 200-item paper',
     levels: ['A2', 'B1', 'B2', 'C1'],
     scoring: 'Scale 10-990 (5-495 per section)',
     guide: [
-      'Nothing is deducted for a wrong answer — never leave one blank; guess when time runs short.',
+      'Nothing is deducted for a wrong answer - never leave one blank; guess when time runs short.',
       'Listening runs for 45 minutes without a break and cannot be rewound.',
-      'Reading shares 75 minutes across Parts 5, 6 and 7 — pace it yourself.'
+      'Reading shares 75 minutes across Parts 5, 6 and 7 - pace it yourself.'
     ],
     notes: [
       'Part 7 is 54 of the 100 Reading items, so move fast through Parts 5 and 6 to buy time for it.',
       'Raw scores convert through an equating table specific to each paper; the platform table is a reference.',
-      'A full paper needs 200 items in the bank — check coverage before generating one.'
+      'A full paper needs 200 items in the bank - check coverage before generating one.'
     ],
     sections: [
       {
@@ -308,7 +313,7 @@ const FORMATS = [
         name: 'Reading', skill: 'reading', type: 'Parts 5-7, multiple choice', items: 100, minutes: 75,
         types: ['mcq'],
         parts: [
-          { label: 'Part 5', items: 30, note: 'Incomplete sentences — grammar and vocabulary' },
+          { label: 'Part 5', items: 30, note: 'Incomplete sentences - grammar and vocabulary' },
           { label: 'Part 6', items: 16, note: '4 texts × 4 gaps, one of which takes a whole sentence' },
           { label: 'Part 7', items: 54, note: '29 single-passage items + 25 double and triple passage items' }
         ]
@@ -317,7 +322,7 @@ const FORMATS = [
   },
   {
     id: 'toeic-lr-mini', familyId: 'toeic', kind: 'mini',
-    name: 'TOEIC L&R — a 100-item short cut for quick practice',
+    name: 'TOEIC L&R - a 100-item short cut for quick practice',
     levels: ['A2', 'B1', 'B2'],
     scoring: 'A reference scale, estimated from half a paper',
     guide: ['Half the paper, for practice in about 60 minutes.'],
@@ -385,11 +390,11 @@ const FORMATS = [
   /* ------------------------- PTE -------------------------- */
   {
     id: 'pte-academic-full', familyId: 'pte', kind: 'full',
-    name: 'PTE Academic — the whole paper, machine marked',
+    name: 'PTE Academic - the whole paper, machine marked',
     levels: ['B1', 'B2', 'C1'],
     scoring: 'Scale 10-90, marked entirely by machine',
     guide: [
-      'Speak up, clearly and evenly — the marker rewards fluency over a native accent.',
+      'Speak up, clearly and evenly - the marker rewards fluency over a native accent.',
       'Some multiple-answer items DO deduct marks for a wrong pick, unlike TOEIC.',
       'You cannot return to a submitted item, so think before pressing Next.'
     ],
@@ -441,7 +446,7 @@ const FORMATS = [
   /* -------------------------- OTE ------------------------- */
   {
     id: 'ote-listening', familyId: 'ote', kind: 'module',
-    name: 'Oxford Test of English — Listening module',
+    name: 'Oxford Test of English - Listening module',
     levels: ['A2', 'B1', 'B2'],
     scoring: 'CEFR (below A2 / A2 / B1 / B2) with a score of 51-140',
     guide: ['Taken module by module; there is no requirement to sit all four skills.'],
@@ -462,7 +467,7 @@ const FORMATS = [
   },
   {
     id: 'ote-reading', familyId: 'ote', kind: 'module',
-    name: 'Oxford Test of English — Reading module',
+    name: 'Oxford Test of English - Reading module',
     levels: ['A2', 'B1', 'B2'],
     scoring: 'CEFR (below A2 / A2 / B1 / B2) with a score of 51-140',
     guide: ['Taken module by module; there is no requirement to sit all four skills.'],
@@ -518,7 +523,7 @@ function partsOf(familyId) {
   return out;
 }
 
-/** The blueprint section that owns a part letter — used to describe a part in
+/** The blueprint section that owns a part letter - used to describe a part in
     the interface without repeating its name in a second place. */
 function sectionOfPart(familyId, part) {
   for (const f of FORMATS) {
