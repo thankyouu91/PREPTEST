@@ -1,13 +1,13 @@
 /**
- * VPET item bank - the parts that need no audio: A, B, C, D and I.
+ * VPET item bank - parts A, B, C, D and I. The five parts that need a recording
+ * (E, F, G, H, J) are in vpet-items-audio.js and come back from the same rows().
  *
  * WRITING NEW ITEMS? Read docs/VPET-BLUEPRINT.md first. It describes all ten
  * parts - what each one measures, how to write one, and the traps - plus the
  * depth rule below and what the bank is still missing.
  *
- * Sixty-eight items: A 30, B 8, C 14, D 8, I 8. Parts E, F, G, H and J are missing
- * on purpose: each is an audio part, and a script with no recording behind it is
- * not an item a candidate can sit. They arrive with the voice work.
+ * A 30, B 8, C 14, D 8, I 8 here; E 10, F 10, G 8, H 12, J 4 next door. A hundred
+ * and twelve in all, enough to fill every part of a paper.
  *
  * Depth is counted per level, not per part, because that is what the generator
  * reacts to. It orders the pool exact-level-first and then takes what it needs,
@@ -467,6 +467,11 @@ const PART_I = [
     'Scored on the three moves — interrupt, summarise, invite — and on whether the interruption stays courteous. Cutting the speaker off without acknowledging the point they were making misses.']
 ];
 
+/* The five audio parts live in their own file because their rows carry a `say`
+   string and a bundled recording. They are the same bank, so they come back from
+   the same call - nothing downstream should have to know there are two files. */
+const AUDIO_PARTS = require('./vpet-items-audio');
+
 /** Every item, flattened into the shape the seed inserts. */
 function rows() {
   const out = [];
@@ -492,7 +497,7 @@ function rows() {
   for (const [key, level, prompt, explanation] of PART_I)
     push(key, 'I', 'speaking', 'speaking', level, prompt, [], '', explanation);
 
-  return out;
+  return out.concat(AUDIO_PARTS.rows());
 }
 
 module.exports = { rows, SOURCE, LICENCE };

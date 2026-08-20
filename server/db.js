@@ -611,6 +611,11 @@ addColumnIfMissing('admins', 'totp_last_counter', 'INTEGER');
 addColumnIfMissing('questions', 'audio_key', 'TEXT');
 addColumnIfMissing('questions', 'audio_bytes', 'INTEGER');
 addColumnIfMissing('questions', 'audio_at', 'TEXT');
+/* Which bundled recording is attached, by content hash. Without it the only way
+   to know whether a re-recorded `say` has reached the database is to compare
+   bytes, and attachBankAudio() would either re-upload all forty-four files on
+   every boot or never notice a change. */
+addColumnIfMissing('questions', 'audio_sha', 'TEXT');
 
 /* Which lettered VPET part an item belongs to (A-J), or NULL for families that
    have no part table. Skill alone cannot separate them: parts B and D are both
@@ -1063,6 +1068,67 @@ function buildPaperFromBlueprint(testId, familyId, level) {
       + ' Write the missing items (see docs/VPET-BLUEPRINT.md); the paper stays short until then.');
   }
   return short;
+}
+
+/**
+ * Put the bank's bundled recordings into whatever store this install uses.
+ *
+ * Parts E, F, G, H and J are audio items: the words are in `say`, the recording
+ * is committed at server/data/audio/<key>.mp3 by scripts/make-vpet-audio.mjs,
+ * and the question row needs the storage key of a copy that server/storage.js
+ * can serve. That copy is what this makes.
+ *
+ * Asynchronous, and therefore NOT part of seed(). Every storage driver except
+ * the local disk one talks over the network, so the upload cannot happen at
+ * require() time with the rest of the seeding. server.js awaits it in the block
+ * that already runs before listen(), so nothing is ever served an item whose
+ * audio has not landed.
+ *
+ * Idempotent by content hash: a recording already attached is skipped, a
+ * re-recorded one replaces its predecessor and the old object is deleted. A
+ * failure is reported and skipped rather than thrown - one unreachable bucket
+ * must not stop the server from starting.
+ */
+async function attachBankAudio() {
+  const storage = require('./storage');
+  const dir = path.join(__dirname, 'data', 'audio');
+  if (!fs.existsSync(dir)) return { attached: 0, missing: 0, failed: 0 };
+
+  const items = require('./data/vpet-items').rows().filter(r => r.say);
+  let attached = 0, missing = 0, failed = 0;
+
+  for (const it of items) {
+    const file = path.join(dir, it.key + '.mp3');
+    if (!fs.existsSync(file)) { missing++; continue; }
+
+    const buf = fs.readFileSync(file);
+    const sha = crypto.createHash('sha256').update(buf).digest('hex').slice(0, 16);
+    const row = await q.get('SELECT id, audio_key, audio_sha FROM questions WHERE ext_key=?', it.key);
+    if (!row) { missing++; continue; }
+    if (row.audio_key && row.audio_sha === sha) continue;
+
+    try {
+      const put = await storage.put(buf, 'audio/mpeg');
+      await q.run('UPDATE questions SET audio_key=?, audio_bytes=?, audio_at=?, audio_sha=? WHERE id=?',
+        put.key, put.bytes, nowISO(), sha, row.id);
+      /* Only after the new one is safely recorded, so a crash in between leaves a
+         stray object rather than a question pointing at nothing. */
+      if (row.audio_key && row.audio_key !== put.key) {
+        try { await storage.remove(row.audio_key); } catch (e) { /* an orphan is not worth failing over */ }
+      }
+      attached++;
+    } catch (e) {
+      failed++;
+      console.warn(`[audio] ${it.key}: could not be stored (${e && e.message}).`);
+    }
+  }
+
+  if (attached) console.warn(`[audio] ${attached} bank recording(s) stored via ${storage.driverName()}.`);
+  if (missing) {
+    console.warn(`[audio] ${missing} item(s) have no recording on disk.`
+      + ' Run `npm run audio:vpet` and commit what it writes.');
+  }
+  return { attached, missing, failed };
 }
 
 /** First-run seed (idempotent: it only runs while a table is empty) */
@@ -1547,4 +1613,4 @@ module.exports = { db, q, tx, nowISO, jparse, makeCode, audit, DB_FILE, seedVoca
   SCHEMA_SQL, ADDED_COLUMNS, ADDED_INDEXES,
   /* Exported for scripts/test-paper.mjs, which checks a stored paper against
      the same plan the builder works from. */
-  fullFormatOf, plannedPaper, buildPaperFromBlueprint };
+  fullFormatOf, plannedPaper, buildPaperFromBlueprint, attachBankAudio };

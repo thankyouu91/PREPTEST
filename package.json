@@ -12,7 +12,8 @@
     "screenshot:admin": "node scripts/shot-admin.mjs",
     "test": "node scripts/test-accounts.js && node scripts/test-admin.mjs && node scripts/test-auth.mjs && node scripts/test-catalog.mjs && node scripts/test-user-api.mjs && node scripts/test-exam.mjs && node scripts/test-paper.mjs && node scripts/test-learn.mjs && node scripts/audit.mjs",
     "verify": "bash scripts/verify.sh",
-    "icons": "node scripts/make-icons.mjs"
+    "icons": "node scripts/make-icons.mjs",
+    "audio:vpet": "node scripts/make-vpet-audio.mjs"
   },
   "dependencies": {
     "express": "^4.21.2"

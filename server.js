@@ -28,7 +28,7 @@ const A = require('./server/auth');
 const security = require('./server/security');
 const lifecycle = require('./server/lifecycle');
 const analytics = require('./server/analytics');
-const { q } = require('./server/db');
+const { q, attachBankAudio } = require('./server/db');
 const { entitlementOf } = require('./server/entitlements');
 const { asyncRoutes } = require('./server/async-route');
 const secrets = require('./server/secrets');
@@ -311,6 +311,10 @@ app.use((err, req, res, next) => {
      into a module constant at import, because modules are required above this
      line. scripts/test-secrets.mjs enforces that by reading the source. */
   await secrets.load();
+  /* The bank's own recordings, into whatever store this install uses. After
+     secrets, because S3 and GCS need their credentials; before listen(), because
+     an audio item served without its audio is a question nobody was asked. */
+  await attachBankAudio();
 
   await A.ensureSeedAdmin();
   await A.ensureDemoStudent();

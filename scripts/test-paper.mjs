@@ -29,24 +29,18 @@ const ok = (c, name, detail) => {
 const head = t => console.log('\n\x1b[1m== ' + t + ' ==\x1b[0m');
 
 /**
- * The parts the bank cannot fill today, and why.
+ * The parts the bank cannot fill, and why.
  *
- * Declared here rather than tolerated silently, and checked in BOTH directions:
- * a part missing more than this is red, and so is a part that has since been
- * written but is still listed. A tolerance nobody has to update is a tolerance
- * that quietly becomes the specification.
+ * Empty, and the empty object is the point: every part of the paper is filled to
+ * its blueprint count. It held E, F, G, H and J for as long as those five had no
+ * items and no recordings.
  *
- * Every one of these needs recorded audio before it can hold anything, which is
- * why they are the five still empty. See docs/VPET-BLUEPRINT.md for what each
- * part's items have to look like.
+ * Checked in BOTH directions, so it cannot drift back into a tolerance nobody
+ * reads: a part short of the blueprint and not listed here is red, and a part
+ * listed here that turns out to be full is red too. Add an entry only with the
+ * reason written down, and delete it the day the reason stops being true.
  */
-const KNOWN_SHORT = {
-  E: { have: 0, why: 'dictation sentences, each needing a recording' },
-  F: { have: 0, why: 'spoken prompts, each needing a recording' },
-  G: { have: 0, why: 'spoken passages, each needing a recording' },
-  H: { have: 0, why: 'sentences to repeat, each needing a recording' },
-  J: { have: 0, why: 'short stories to retell, each needing a recording' }
-};
+const KNOWN_SHORT = {};
 
 /**
  * The paper is read through a raw connection of our own, NOT through
@@ -245,9 +239,9 @@ try {
 
       const total = fmt.sections.reduce(
         (a, s) => a + (shortfall[s.part] === undefined ? s.items : shortfall[s.part]), 0);
+      const waiting = Object.keys(KNOWN_SHORT).length;
       console.log(`\n   The paper holds ${total} of ${EXAM_FORMATS.totalItems(fmt)} items.`
-        + ` ${Object.keys(KNOWN_SHORT).length} parts wait on content and recordings —`
-        + ' see docs/VPET-BLUEPRINT.md.');
+        + (waiting ? ` ${waiting} part(s) wait on content — see docs/VPET-BLUEPRINT.md.` : ' Every part is full.'));
     }
   }
 
