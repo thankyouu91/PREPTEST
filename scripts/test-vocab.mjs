@@ -241,6 +241,28 @@ try {
   ok(cu[0].senses.length === 2 && /^Just; fair/.test(cu[0].senses[0].en),
     'Nghĩa cổ bị loại, nghĩa đang dùng lên đầu', cu[0].senses.map(s => s.en.slice(0, 18)).join(' | '));
 
+  /* Dạng chia và lỗi chính tả không phải nghĩa. "plural of datum" thì từ gốc
+     đã có mục riêng và dạng chia thuộc về bảng `vocab_forms`; còn "Misspelling
+     of bloc." từng nằm trong danh sách B1 như một nghĩa của "block" — một thẻ
+     dạy người học viết sai từ. */
+  const vun = dict.normalise('block', than('noun', [
+    dinh('Misspelling of bloc.', { tags: ['alt of', 'misspelling'] }),
+    dinh('simple past and past participle of ashame', { tags: ['form of', 'past'] }),
+    dinh('A substantial, often cuboid, piece of any substance.')
+  ]));
+  ok(vun[0].senses.length === 1 && /^A substantial/.test(vun[0].senses[0].en),
+    'Dạng chia và lỗi chính tả bị loại, không thành thẻ từ vựng',
+    vun[0].senses.map(s => s.en.slice(0, 20)).join(' | '));
+
+  /* Nhưng "alt of" trần thì giữ: "Ellipsis of swimming trunks" đúng là nghĩa
+     người học cần biết. Loại cả nhóm là loại nhầm. */
+  const rutGon = dict.normalise('trunk', than('noun', [
+    dinh('(in the plural) Ellipsis of swimming trunks.',
+      { tags: ['abbreviation', 'alt of', 'ellipsis', 'in plural'] })
+  ]));
+  ok(rutGon && rutGon[0].senses.length === 1,
+    '"alt of" trần vẫn giữ — dạng rút gọn là nghĩa đáng dạy');
+
   /* Nghĩa "tiêu đề" của Wiktionary là vỏ rỗng: các nghĩa con nằm dưới nó thì
      API này không trả về, nên lưu lại chỉ được một câu không dạy gì. */
   const tieuDe = dict.normalise('trunk', than('noun', [

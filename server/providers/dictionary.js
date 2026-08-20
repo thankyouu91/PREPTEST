@@ -106,7 +106,17 @@ const str = (v, max) => (typeof v === 'string' ? v.trim().slice(0, max) : '');
  * harmless direction. Over-reading a parenthetical is the direction that costs
  * real words.
  */
-const SKIP_TAGS = new Set(['obsolete', 'archaic', 'dated', 'rare']);
+const SKIP_TAGS = new Set([
+  'obsolete', 'archaic', 'dated', 'rare',
+  /* An inflection pointer, not a meaning: "simple past and past participle of
+     ashame", "plural of datum". The base word is already an entry and the forms
+     belong in `vocab_forms`; as a card of its own it teaches nothing. */
+  'form of',
+  /* And a misspelling is worse than nothing. "Misspelling of bloc." had landed
+     in the B1 list as a sense of "block" — a card teaching a learner to write
+     the wrong word. */
+  'misspelling'
+]);
 
 /**
  * Dropped — and if a whole etymology consists of them, the word is marked.
