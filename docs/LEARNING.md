@@ -149,6 +149,44 @@ khoá trùng, không ô dịch nào còn là tiếng Anh. Một dòng lệch c�
 cột sau nó, và không ai thấy cho tới khi người học mở thẻ ra gặp bản dịch của
 một từ khác.
 
+#### Chạy tự động theo giờ
+
+Một routine bắn việc này mỗi giờ vào một phiên chuyên trách. Hai điều dựng nó
+lên, và cả hai đều phải trả giá mới biết:
+
+**Phiên phải được gắn repo.** `create_trigger` với `create_new_session_on_fire`
+tạo phiên mới trong container trắng và **không gắn nguồn nào** — `sources` rỗng,
+nên proxy không cấp quyền cho repo riêng tư và cả clone lẫn push đều không xong.
+Thêm lệnh `git clone` vào lời nhắc không cứu được. Cách chạy được là tạo phiên
+bằng `create_session` với `source_url` + `source_revision`, rồi cho routine bắn
+vào phiên đó bằng `persistent_session_id`. Lưu ý `update_trigger` không nhận
+tham số ấy — muốn đổi phiên đích thì phải xoá trigger và tạo lại.
+
+**Mỗi lần bắn là một việc trọn vẹn.** Lời nhắc bản đầu chia việc thành "bốn vòng
+nối tiếp"; phiên bám vào chữ "vòng" và làm mỗi lần bắn một vòng, trải lời nhắc
+ban đầu qua bốn tiếng — 33 tới 37 nghĩa một giờ thay vì 160. Lời nhắc hiện tại
+bỏ hẳn khái niệm vòng: lấy ba lô, dịch hết, trộn hết, commit, dừng.
+
+Kèm theo đó, `--lay` cần `--bo=N` (bỏ qua N dòng chưa dịch) thì ba lô mới rời
+nhau ngay từ đầu và giao được cho ba người dịch cùng lúc; không có nó thì lô sau
+chỉ khác lô trước sau khi lô trước đã trộn xong.
+
+Nhịp thật đo được: **146 nghĩa một lần chạy**, khoảng 13% số dòng để trống vì
+người dịch không chắc — đúng hành vi mong muốn.
+
+#### Cái mà dây chuyền này KHÔNG kiểm
+
+Các phép kiểm soát *hình dạng* tệp, không soát *nghĩa*. Một bản dịch sai vẫn qua
+được mọi cửa nếu nó là một từ tiếng Việt hợp lệ nằm đúng cột.
+
+Đã gặp thật: `bread (verb) — to coat with breadcrumbs` bị dịch thành "bột" —
+danh từ, trong khi dòng hỏi tên của hành động. Không cửa nào bắt được. Luật
+"gloss phải cùng từ loại với cột `pos`" trong `.claude/agents/dich-thuat.md` là
+biện pháp duy nhất, và nó là một lời dặn chứ không phải một phép kiểm.
+
+Nghĩa là **kho này cần người soát**, ít nhất là soát mẫu. Trạng thái hiện tại là
+"đã dịch", không phải "đã duyệt".
+
 Dựng lại kho từ vựng (kho nằm trong `data/prep.sqlite`, không theo git):
 
 ```
