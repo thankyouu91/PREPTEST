@@ -9,6 +9,8 @@
  *   node scripts/lo-dich.mjs --lay=40 --ra=/tmp/lo1.tsv
  *   node scripts/lo-dich.mjs --lay=40 --bo=40 --ra=/tmp/lo2.tsv   (lô rời nhau)
  *   node scripts/lo-dich.mjs --nap=/tmp/lo1.tsv
+ *   node scripts/lo-dich.mjs --laysoat=100 --ra=/tmp/s1.tsv       (lô chờ soát)
+ *   node scripts/lo-dich.mjs --napsoat=/tmp/s1.tsv
  *   node scripts/lo-dich.mjs --dem
  *   node scripts/lo-dich.mjs --kiem
  *
@@ -38,6 +40,8 @@ const C = { d: '\x1b[2m', b: '\x1b[1m', g: '\x1b[32m', r: '\x1b[31m', y: '\x1b[3
 const LAY = val('--lay');
 const RA = val('--ra');
 const NAP = val('--nap');
+const LAY_SOAT = val('--laysoat');
+const NAP_SOAT = val('--napsoat');
 
 /* ---------------------------------------------------------------- kiểm ---- */
 /* Chạy được mà không cần server và không cần CSDL, vì chỗ gọi nó là một tác vụ
@@ -76,6 +80,75 @@ if (args.includes('--kiem')) {
   process.exit(0);
 }
 
+/* ------------------------------------------------------- lấy lô soát ---- */
+/* Lấy những dòng ĐÃ dịch mà chưa ai đọc lại. Cột `soat` để trống sẵn cho người
+   soát điền: 'ok' nếu đứng sau bản dịch, hoặc một câu nói rõ nghi ngờ gì. */
+if (LAY_SOAT) {
+  const n = Math.max(1, Number(LAY_SOAT));
+  const bo = Math.max(0, Number(val('--bo') || 0));
+  const lo = store.read().filter(r => r.vi && !r.soat).slice(bo, bo + n);
+  if (!lo.length) {
+    console.log(`\n  ${C.g}Không còn dòng nào chờ soát.${C.x}\n`);
+    process.exit(0);
+  }
+  const out = store.COLUMNS.join('\t') + '\n'
+    + lo.map(r => [r.level, r.headword, r.pos, r.en, r.vi, ''].join('\t')).join('\n') + '\n';
+  if (RA) { fs.writeFileSync(RA, out, 'utf8'); console.log(`  ${lo.length} dòng chờ soát → ${RA}`); }
+  else process.stdout.write(out);
+  process.exit(0);
+}
+
+/* --------------------------------------------------------- trộn soát ---- */
+/* Chỉ ghi cột `soat`. Không đụng vào `vi` — xem phần đầu server/data/vocab-vi.js:
+   người soát được phép nghi ngờ, không được phép sửa đè. Một người soát sai mà
+   sửa đè thì bản dịch đúng biến mất và không còn dấu vết nào là đã có bất đồng. */
+if (NAP_SOAT) {
+  const dong = fs.readFileSync(NAP_SOAT, 'utf8').split('\n');
+  const kho = store.read();
+  const chiSo = new Map();
+  kho.forEach((r, i) => chiSo.set(store.key(r.headword, r.pos, r.en), i));
+
+  let ghi = 0, dat = 0, ngo = 0, laKhoa = 0, trong = 0, doiVi = 0;
+  const viDuNgo = [];
+
+  dong.forEach((line, i) => {
+    if (!line.trim() || i === 0) return;
+    const c = line.split('\t');
+    if (c.length < 6) return;
+    const [, headword, pos, en, vi, soatTho] = c;
+    const soat = store.clean(soatTho);
+    const at = chiSo.get(store.key(store.clean(headword), store.clean(pos), store.clean(en)));
+
+    if (at === undefined) { laKhoa++; return; }
+    if (!soat) { trong++; return; }
+    /* Người soát trả về bản dịch khác với bản trong kho: bỏ qua phần đó, chỉ
+       nhận lời nhận xét. Đếm riêng để biết chuyện này có hay xảy ra không. */
+    if (store.clean(vi) !== kho[at].vi) doiVi++;
+
+    kho[at].soat = soat;
+    ghi++;
+    if (soat === 'ok') dat++;
+    else { ngo++; if (viDuNgo.length < 6) viDuNgo.push(`${kho[at].headword} (${kho[at].pos}): ${soat.slice(0, 70)}`); }
+  });
+
+  if (ghi) store.write(kho);
+  const p1 = store.progress();
+
+  console.log(`\n${C.b}Trộn kết quả soát${C.x}`);
+  console.log('─'.repeat(64));
+  console.log(`  ${C.g}${dat} dòng được xác nhận${C.x}`
+    + (ngo ? ` · ${C.y}${ngo} dòng bị nghi ngờ${C.x}` : '')
+    + (trong ? ` · ${C.d}${trong} ô soát trống${C.x}` : '')
+    + (laKhoa ? ` · ${C.r}${laKhoa} khoá không có trong kho${C.x}` : '')
+    + (doiVi ? ` · ${C.r}${doiVi} dòng người soát tự sửa bản dịch (đã bỏ qua)${C.x}` : ''));
+  viDuNgo.forEach(v => console.log(`    ${C.y}?${C.x} ${C.d}${v}${C.x}`));
+  console.log(`  Đã soát ${C.g}${p1.soat}${C.x}/${p1.done} bản dịch`
+    + ` · ${C.y}${p1.ngo} dòng cần người xem${C.x} · còn ${p1.choSoat} chờ soát`);
+  console.log('─'.repeat(64) + '\n');
+
+  process.exit(ghi ? 0 : 1);
+}
+
 /* ---------------------------------------------------------------- đếm ---- */
 if (args.includes('--dem') || (!LAY && !NAP)) {
   const p = store.progress();
@@ -84,6 +157,9 @@ if (args.includes('--dem') || (!LAY && !NAP)) {
   console.log('─'.repeat(56));
   console.log(`  ${C.g}${p.done}${C.x} / ${p.total} nghĩa đã có bản dịch tiếng Việt`
     + `  ${C.d}(${(p.done / p.total * 100).toFixed(1)}%)${C.x}`);
+  console.log(`  ${C.g}${p.soat}${C.x} / ${p.done} bản dịch đã được đọc lại`
+    + (p.ngo ? `  ${C.y}· ${p.ngo} dòng bị nghi ngờ, cần người xem${C.x}` : '')
+    + (p.choSoat ? `  ${C.d}· ${p.choSoat} chờ soát${C.x}` : ''));
   ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'].forEach(b => {
     const n = rows.filter(r => r.level === b);
     if (!n.length) return;

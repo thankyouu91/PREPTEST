@@ -462,7 +462,7 @@ try {
   const raw = require_('node:fs').readFileSync(store.FILE, 'utf8').split('\n')
     .filter((l, i) => l.trim() && i > 0);
   const lechCot = raw.filter(l => l.split('\t').length !== store.COLUMNS.length);
-  ok(lechCot.length === 0, 'Mọi dòng đúng năm cột — lệch một cột là sai cả tệp',
+  ok(lechCot.length === 0, 'Mọi dòng đúng sáu cột — lệch một cột là sai cả tệp',
     lechCot.slice(0, 2).map(l => l.slice(0, 50)).join(' | '));
 
   /* Khoá trùng thì bước trộn ghi vào dòng đầu và bỏ quên dòng sau, im lặng. */
@@ -501,6 +501,35 @@ try {
     gop.size + '/' + bonLo.reduce((n, l) => n + l.length, 0));
   ok(bonLo[0].length && bonLo[1].length && bonLo[0][0] !== bonLo[1][0],
     'Lô thứ hai bắt đầu ở dòng khác lô thứ nhất');
+
+  /* ---- Vòng soát ----
+     Cột thứ sáu ghi lời của người đọc lại. Ba trạng thái, không có trạng thái
+     thứ tư: trống là chưa ai đọc, 'ok' là đã đọc và đứng sau bản dịch, còn lại
+     là đã đọc và nghi ngờ — chính chữ ấy nói nghi gì. */
+  ok(store.COLUMNS.length === 6 && store.COLUMNS[5] === 'soat',
+    'Tệp có cột soat cho vòng đọc lại', store.COLUMNS.join(','));
+
+  ok(banDich.every(r => !r.soat || r.vi),
+    'Không dòng nào chưa dịch mà đã có kết quả soát — soát cái chưa có thì soát gì');
+
+  /* Đếm phải tách bạch: "đã soát" khác "đã soát và đạt". Gộp hai số ấy là giấu
+     mất đúng cái danh sách cần người xem. */
+  ok(p.soat === banDich.filter(r => r.vi && r.soat).length &&
+     p.ngo === banDich.filter(r => r.vi && r.soat && r.soat !== 'ok').length &&
+     p.choSoat === p.done - p.soat,
+    'Số đếm vòng soát khớp với nội dung tệp',
+    JSON.stringify({ soat: p.soat, ngo: p.ngo, choSoat: p.choSoat }));
+
+  /* Lô soát chỉ được lấy dòng đã dịch mà chưa ai đọc. */
+  const choSoat = banDich.filter(r => r.vi && !r.soat);
+  ok(choSoat.length === p.choSoat, 'Hàng đợi soát đúng bằng số dòng đã dịch chưa soát');
+
+  /* Người soát không được sửa đè bản dịch — xem phần đầu server/data/vocab-vi.js.
+     Chỗ chặn nằm trong --napsoat; ở đây kiểm rằng lô soát phát ra có mang sẵn
+     bản dịch để đối chiếu, nếu không thì người soát không có gì để soát. */
+  const dongSoat = choSoat[0];
+  ok(!dongSoat || (dongSoat.vi && dongSoat.en),
+    'Lô soát mang theo cả định nghĩa tiếng Anh lẫn bản dịch');
 
   /* Cột `vi` để trống phải lộ ra ở API, nếu không màn hình sẽ in một dòng trắng
      ở đúng chỗ đáng lẽ là bản dịch. */
