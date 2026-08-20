@@ -548,6 +548,14 @@
 
     /* ---- Phòng thi ---- */
     'Sitting the test': 'Đang làm bài',
+    'Each recording plays once.': 'Mỗi bản ghi chỉ phát một lần.',
+    /* Phần D: con số nằm ở node riêng nên chữ quanh nó dịch được. */
+    'Write at least': 'Viết tối thiểu',
+    'words.': 'từ.',
+    'of 100 words': 'trên 100 từ',
+    'words - the minimum is met': 'từ - đã đủ mức tối thiểu',
+    'Plays once - no replay': 'Phát một lần - không nghe lại',
+    'Already played': 'Đã phát',
     'This part has no questions yet, so there is nothing to sit. It is on the paper because the exam has it - your result will not count it.':
       'Phần này chưa có câu hỏi nào nên chưa làm được. Nó vẫn nằm trên đề vì kỳ thi thật có phần này - kết quả của bạn sẽ không tính phần này.',
     'Hand in': 'Nộp bài',

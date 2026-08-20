@@ -83,8 +83,8 @@ Ký hiệu: ✅ đúng · ⚠️ đúng một phần · ❌ chưa làm
 |---|---|
 | 2 câu, 9 phút mỗi câu | ✅ |
 | Tình huống công sở, gửi cho người cụ thể | ✅ |
-| **Tối thiểu 100 từ** | ❌ không nêu, không chặn |
-| **Hiện số từ đang viết** | ❌ ô nhập 6 dòng, không đếm |
+| **Tối thiểu 100 từ** | ✅ nêu trước khi bấm giờ, đếm ngay dưới ô viết |
+| **Hiện số từ đang viết** | ✅ ô 14 dòng, đếm sống |
 
 ---
 
@@ -184,7 +184,7 @@ Ký hiệu: ✅ đúng · ⚠️ đúng một phần · ❌ chưa làm
 |---|------|:----:|:--:|
 | 1 | ~~Ba lựa chọn thay vì bốn~~ | F | ✅ xong |
 | 2 | ~~Audio chỉ phát một lần~~ | E, J | ✅ xong |
-| 3 | Tối thiểu 100 từ + đếm từ | D | Nhỏ |
+| 3 | ~~Tối thiểu 100 từ + đếm từ~~ | D | ✅ xong |
 | 4 | Đoạn văn tự ẩn sau 30 giây | B | Vừa |
 | 5 | Đồng hồ và tiếng bíp cho từng câu nói | H, I, J | Vừa |
 | 6 | Gom 3 màn × 2 câu hỏi | C | Vừa |

@@ -185,6 +185,13 @@ const PrepRunner = {
           '<h3 class="font-extrabold text-xl tracking-tight">' + PREP.esc(p.name) + '</h3>' +
           '<p class="text-muted text-[15px] mt-2">' + PREP.esc(p.type) + ' · ' + p.items.length + ' items' +
             (p.minutes ? ' · ' + p.minutes + ' min' : ' · no time limit') + '</p>' +
+          /* The rules the exam states for this part, said before the clock starts
+             rather than discovered inside it. */
+          (p.minWords
+            ? '<p class="text-[14px] font-semibold mt-3">Write at least <b>' + p.minWords + '</b> '
+              + '<span>words.</span></p>' : '') +
+          (p.plays === 1 && p.items.some(x => x.hasAudio)
+            ? '<p class="text-[14px] font-semibold mt-1">Each recording plays once.</p>' : '') +
           (p.minutes
             ? '<p class="text-[14px] font-semibold text-muted mt-4 max-w-[44ch] mx-auto">Pressing start begins the clock. When it runs out this part closes, and it cannot be reopened.</p>'
             : '') +
@@ -229,6 +236,26 @@ const PrepRunner = {
     return left === 1 ? '1 replay left' : left + ' replays left';
   },
 
+  /** Words written, against the floor the exam sets. */
+  countWords(text) {
+    const t = String(text || '').trim();
+    return t ? t.split(/\s+/).length : 0;
+  },
+
+  /* The number and the words around it are separate nodes on purpose. i18n.js
+     translates whole text nodes against a dictionary, so "12 of 100 words" can
+     never match a key while "of 100 words" can. */
+  wordCountSuffix(text, min) {
+    return this.countWords(text) >= min ? 'words - the minimum is met' : 'of ' + min + ' words';
+  },
+
+  wordCountHTML(qid, text, min) {
+    return '<p class="text-[13px] font-semibold mt-2" role="status">' +
+      '<b data-wc="' + qid + '">' + this.countWords(text) + '</b> ' +
+      '<span data-wc-note="' + qid + '">' + PREP.esc(this.wordCountSuffix(text, min)) + '</span>' +
+    '</p>';
+  },
+
   /** One item: the prompt, somewhere to answer, and a play / record button if needed */
   itemHTML(p, it, i) {
     const id = 'q' + it.questionId;
@@ -251,8 +278,14 @@ const PrepRunner = {
             (it.hasRecording ? 'Recording saved' : 'Not recorded') + '</span>' +
         '</div>';
     } else if (it.type === 'essay') {
-      body = '<textarea class="input mt-3" rows="6" data-answer="' + it.questionId + '" ' +
-        'aria-label="Your writing">' + PREP.esc(it.answer) + '</textarea>';
+      /* Part D is nine minutes and at least a hundred words; six rows made that
+         look like a comment box. The floor comes from the blueprint, so a part
+         without one simply gets no counter rather than an invented target. */
+      const min = p.minWords || 0;
+      body = '<textarea class="input mt-3" rows="' + (min ? 14 : 8) + '" data-answer="' + it.questionId + '" ' +
+        (min ? 'data-min-words="' + min + '" ' : '') +
+        'aria-label="Your writing">' + PREP.esc(it.answer) + '</textarea>' +
+        (min ? this.wordCountHTML(it.questionId, it.answer, min) : '');
     } else {
       body = '<input class="input mt-3" data-answer="' + it.questionId + '" ' +
         'value="' + PREP.esc(it.answer) + '" aria-label="Your answer">';
@@ -283,6 +316,18 @@ const PrepRunner = {
       const ev = el.type === 'radio' ? 'change' : 'input';
       el.addEventListener(ev, () => {
         this._dirty.set(qid, el.type === 'radio' ? el.value : el.value);
+        const min = +(el.getAttribute('data-min-words') || 0);
+        if (min) {
+          const n = PREP.qs('[data-wc="' + qid + '"]');
+          const note = PREP.qs('[data-wc-note="' + qid + '"]');
+          const met = this.countWords(el.value) >= min;
+          if (n) n.textContent = this.countWords(el.value);
+          if (note) note.textContent = this.wordCountSuffix(el.value, min);
+          if (n && n.parentElement) {
+            n.parentElement.classList.toggle('text-muted', !met);
+            n.parentElement.classList.toggle('text-accent-strong', met);
+          }
+        }
         this.saveSoon();
       });
       el.addEventListener('blur', () => this.flush());

@@ -133,11 +133,17 @@ async function attemptState(att) {
            FROM section_items si JOIN questions qs ON qs.id = si.question_id
           WHERE si.section_id=? ORDER BY si.sort, si.id`, p.section_id);
       const open = partOpen(p);
+      const letter = p.part || p.section_part;
       const plays = playsFor(test ? test.family_id : null, p.part || p.section_part);
+      /* The floor the guide sets for this part's writing, so the browser can show
+         a word count against it instead of leaving the candidate to guess. */
+      const bp = test && letter ? EXAM_FORMATS.sectionOfPart(test.family_id, letter) : null;
+      const minWords = bp && bp.minWords ? bp.minWords : null;
       return {
         sectionId: p.section_id,
         part: p.part || p.section_part || null,
         plays,
+        minWords,
         name: p.name,
         skill: p.skill,
         type: p.type,

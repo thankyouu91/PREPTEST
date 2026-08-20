@@ -162,10 +162,16 @@ function vpetSections() {
      place to say so. */
   const PLAYS = { E: 1, F: 1, G: 1, H: 1, J: 1 };
 
+  /* "You must write at least 100 words" (Part D). The guide sets no floor for
+     Part B, whose tip is qualitative - "include all the details you can" - so
+     part B has none here either rather than one somebody guessed. */
+  const MIN_WORDS = { D: 100 };
+
   const S = (part, name, skill, type, items, types, needsAudio, note) => ({
     name: 'Part ' + part + ' - ' + name, part, skill, type, items,
     choices: CHOICES[part] || null,
     plays: PLAYS[part] || null,
+    minWords: MIN_WORDS[part] || null,
     seconds: partSeconds(part, items),
     /* Kept because the database column, the admin screen and the study pack all
        speak minutes. Derived, never typed: rounding is display only and the
