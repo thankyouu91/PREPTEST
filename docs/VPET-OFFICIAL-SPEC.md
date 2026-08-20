@@ -20,7 +20,7 @@ Ký hiệu: ✅ đúng · ⚠️ đúng một phần · ❌ chưa làm
 | Số phần | 10 (A-J) | 10 ✅ |
 | Số câu | "approximately 58 items" | 58 ✅ |
 | Tổng thời gian | "the total length of the test is approximately 60 minutes" | 3346 giây bấm giờ ≈ 55,8 phút + 10 màn hướng dẫn không bấm giờ ✅ |
-| Cách bấm giờ | "Each question is timed." | Bấm theo **phần**, không theo từng câu ⚠️ |
+| Cách bấm giờ | "Each question is timed." | B, H, I, J bấm **theo từng câu**; A, C, D, E, F, G vẫn bấm theo phần ⚠️ |
 | Cấp độ | Level 1 = A1-B1+ (GSE 10-58) · Level 2 = B1-C2 (GSE 51-90) | ✅ |
 | Chủ đề | "the ability to communicate in **everyday workplace English**" | ngân hàng đề bám công sở/đời thường ✅ |
 | Đầu mỗi phần | "Each part starts with instructions and a sample item" | có màn bắt đầu, **chưa có câu mẫu** ⚠️ |
@@ -146,7 +146,7 @@ Ký hiệu: ✅ đúng · ⚠️ đúng một phần · ❌ chưa làm
 | 10 câu, 15 giây | ✅ |
 | Có bản ghi | ✅ |
 | Nghe một lần | ✅ |
-| **Bắt đầu nói trong 6 giây nếu không sẽ chuyển câu** | ❌ |
+| **Bắt đầu nói trong 6 giây nếu không sẽ chuyển câu** | ⚠️ có hiện đồng hồ và nêu rõ quy tắc, nhưng **không tự cắt** — xem ghi chú dưới |
 
 ---
 
@@ -158,8 +158,8 @@ Ký hiệu: ✅ đúng · ⚠️ đúng một phần · ❌ chưa làm
 | Thuộc tính | Trạng thái |
 |---|---|
 | 2 câu, cửa sổ 70 giây | ✅ |
-| **10 giây chuẩn bị, rồi tiếng bíp** | ❌ |
-| **Giới hạn 60 giây mỗi câu** | ❌ không giới hạn từng câu |
+| **10 giây chuẩn bị, rồi tiếng bíp** | ✅ đã sửa 2026-08-20 |
+| **Giới hạn 60 giây mỗi câu** | ✅ đồng hồ riêng từng câu, hết giờ tự lưu |
 
 ---
 
@@ -174,7 +174,7 @@ Ký hiệu: ✅ đúng · ⚠️ đúng một phần · ❌ chưa làm
 | 3 câu, 30 giây | ✅ |
 | Có bản ghi | ✅ |
 | **Chỉ nghe một lần** | ✅ đã sửa 2026-08-20 |
-| **Bíp báo hết giờ** | ❌ |
+| **Bíp báo hết giờ** | ✅ đã sửa 2026-08-20 — bíp rồi lưu, đúng thứ tự guide mô tả |
 
 ---
 
@@ -186,10 +186,20 @@ Ký hiệu: ✅ đúng · ⚠️ đúng một phần · ❌ chưa làm
 | 2 | ~~Audio chỉ phát một lần~~ | E, J | ✅ xong |
 | 3 | ~~Tối thiểu 100 từ + đếm từ~~ | D | ✅ xong |
 | 4 | ~~Đoạn văn tự ẩn sau 30 giây~~ | B | ✅ xong |
-| 5 | Đồng hồ và tiếng bíp cho từng câu nói | H, I, J | Vừa |
+| 5 | ~~Đồng hồ và tiếng bíp cho từng câu nói~~ | H, I, J | ✅ xong |
 | 6 | Gom 3 màn × 2 câu hỏi | C | Vừa |
 | 7 | Trả lời bằng miệng, 2 đoạn × 3 câu | G | Lớn |
 | 8 | Câu mẫu ở đầu mỗi phần | tất cả | Vừa |
 
 Số câu và thời gian - hai thứ dễ sai nhất và khó thấy nhất - đã đúng và có
-`scripts/test-paper.mjs` giữ. Phần còn lại là cách tương tác.
+`scripts/test-paper.mjs` giữ. Cách tương tác từng phần có
+`scripts/test-exam-ui.mjs` giữ, chạy bằng trình duyệt thật vì API không phân
+biệt được đoạn văn còn trên màn hình hay đã biến mất.
+
+## 3. Một chỗ cố tình không làm giống
+
+"Start speaking within 6 seconds, or the test will move on" — nền tảng **hiện**
+quy tắc và đếm giờ, nhưng **không tự chuyển câu khi im lặng**. Muốn làm đúng thì
+phải đoán được lúc nào thí sinh bắt đầu nói; một bộ dò giọng đoán sai sẽ cắt
+ngang câu trả lời — hỏng nặng hơn cái nó định ngăn. Micro tự mở, đồng hồ chạy,
+hết giờ tự lưu; phần còn lại nói thật là chưa làm chứ không giả vờ đã làm.

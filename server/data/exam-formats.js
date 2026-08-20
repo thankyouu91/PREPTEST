@@ -115,6 +115,12 @@ function vpetTiming() {
     /* group: how many items share one clock and one stimulus. Part C is three
        passages of two questions, Part G two passages of three; every other part
        is timed item by item. */
+    /* `startWithin` is the guide's other rule about a spoken answer: how long
+       the candidate may sit in silence before the test gives up on them. It is
+       NOT part of the arithmetic - the window is the same either way - so it is
+       carried here only to be shown on the screen. `audio` above is a playback
+       measurement and happens to be 6 for Part H as well; the two are unrelated
+       and reusing one for the other would tie a rule to a recording length. */
     A: { answer: 25, group: 1 },
     B: { read: 30, answer: 90, group: 1 },
     C: { groupAnswer: 180, group: 2 },
@@ -122,8 +128,8 @@ function vpetTiming() {
     E: { answer: 25, audio: 6, group: 1 },
     F: { answer: 15, audio: 4, group: 1, ours: true },
     G: { answer: 20, audio: 30, group: 3, ours: true },
-    H: { answer: 15, audio: 6, group: 1 },
-    I: { think: 10, answer: 60, group: 1 },
+    H: { answer: 15, audio: 6, group: 1, startWithin: 6 },
+    I: { think: 10, answer: 60, group: 1, startWithin: 15 },
     J: { answer: 30, audio: 32, group: 1 }
   };
 }

@@ -112,8 +112,45 @@ try {
   ok(await page.locator('#ex-part article').count() === 1,
     'Only one passage is on the page at all',
     String(await page.locator('#ex-part article').count()));
+  ok(errs.length === 0, 'Part B raised no console errors', JSON.stringify(errs).slice(0, 240));
 
-  ok(errs.length === 0, 'The screen raised no console errors', JSON.stringify(errs).slice(0, 240));
+  head('Part H: one sentence, one clock, one open microphone');
+
+  /* The spoken parts are paced for a different reason from Part B - not to take
+     a stimulus away, but because "You have 15 seconds to answer" is invisible on
+     a clock that only counts the whole part. */
+  await page.goto(BASE + '/prep/lam-bai/', { waitUntil: 'networkidle' });
+  await page.locator('button', { hasText: /Part H/ }).first().click();
+  await page.waitForTimeout(400);
+
+  const hStart = await page.textContent('#ex-part') || '';
+  ok(/One item at a time/.test(hStart), 'The start screen says items come one at a time', hStart.slice(0, 200));
+  ok(/Start speaking within/.test(hStart),
+    'And states the rule about starting to speak', hStart.slice(0, 240));
+  ok(!/seconds to read it/.test(hStart),
+    "And does NOT show Part B's reading rule, which is not this part's");
+
+  await page.click('#ex-enter');
+  await page.waitForTimeout(600);
+
+  /* The recording is played, not offered. Chromium has no audio device here, so
+     play() rejects and the phase moves straight on - which is the behaviour that
+     matters: a missing recording must not strand a candidate on a dead screen
+     with the part clock running. */
+  await page.waitForFunction(() => PrepRunner.pace && PrepRunner.pace.phase === 'answer',
+    null, { timeout: 10000 }).catch(() => {});
+  const hAnswer = await page.textContent('#ex-part') || '';
+  ok(/Speak now/.test(hAnswer), 'It reaches the speaking phase by itself, with no button to press',
+    hAnswer.slice(0, 200));
+  ok(await page.locator('[data-pace-left]').count() === 1, 'The spoken answer has a clock of its own');
+  ok(/Start speaking within/.test(hAnswer), 'The rule is repeated where it applies');
+  ok(await page.locator('#ex-part article').count() === 1, 'Only one item is on the page');
+
+  /* No microphone in this browser, so the state line says so rather than
+     claiming to be recording. Either message is fine; a crash is not. */
+  ok(errs.filter(e => !/microphone|getUserMedia|NotFoundError|play\(\)/i.test(e)).length === 0,
+    'Nothing broke on a machine with no microphone',
+    JSON.stringify(errs).slice(0, 240));
 } catch (e) {
   fail++;
   console.log('\n✗ The suite threw: ' + (e && e.stack ? e.stack : e));

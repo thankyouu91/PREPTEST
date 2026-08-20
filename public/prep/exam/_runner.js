@@ -197,11 +197,24 @@ const PrepRunner = {
           (p.plays === 1 && p.items.some(x => x.hasAudio)
             ? '<p class="text-[14px] font-semibold mt-1">Each recording plays once.</p>' : '') +
           /* Said here because it cannot be discovered later: by the time a
-             candidate learns the passage goes away, it has gone away. */
-          (p.pacing
+             candidate learns the passage goes away, it has gone away - and by
+             the time they learn the microphone opened by itself, it has been
+             open for several of their fifteen seconds. */
+          (p.pacing && p.pacing.read
             ? '<p class="text-[14px] font-semibold mt-1">One passage at a time. You get <b>' +
               p.pacing.read + '</b> <span>seconds to read it, then it disappears and you have</span> <b>' +
               p.pacing.answer + '</b> <span>seconds to rewrite it.</span></p>' : '') +
+          (p.pacing && p.pacing.spoken
+            ? '<p class="text-[14px] font-semibold mt-1">One item at a time. ' +
+              (p.pacing.think
+                ? '<b>' + p.pacing.think + '</b> <span>seconds to think, a beep, then</span> '
+                : '<span>You get</span> ') +
+              '<b>' + p.pacing.answer + '</b> <span>seconds to speak. The microphone opens by ' +
+              'itself and your answer is saved when the time runs out.</span></p>' +
+              (p.pacing.startWithin
+                ? '<p class="text-[14px] font-semibold mt-1">Start speaking within <b>' +
+                  p.pacing.startWithin + '</b> <span>seconds.</span></p>' : '')
+            : '') +
           (p.minutes
             ? '<p class="text-[14px] font-semibold text-muted mt-4 max-w-[44ch] mx-auto">Pressing start begins the clock. When it runs out this part closes, and it cannot be reopened.</p>'
             : '') +
@@ -241,7 +254,11 @@ const PrepRunner = {
   /* ---------- Parts the exam paces item by item ---------- */
 
   /**
-   * Part B, as the exam actually runs it.
+   * The parts the exam runs one item at a time.
+   *
+   * Two shapes, for two reasons.
+   *
+   * Part B takes its stimulus away:
    *
    *   "You will read a passage on the screen. The passage will disappear after
    *    30 seconds. After the passage disappears, you need to rewrite the meaning
@@ -252,15 +269,30 @@ const PrepRunner = {
    * one thing the part measures: nobody had to remember anything. Somebody
    * practising on it would have practised copying, and found that out on the day.
    *
+   * Parts H, I and J are spoken, and a spoken answer has a beginning and an end
+   * that somebody has to be told about. Fifteen seconds to repeat a sentence,
+   * sixty to answer a situation, thirty to retell a story - none of which a
+   * candidate can see on a clock that only counts the whole part. So each item
+   * gets its own countdown, the microphone opens by itself, and the answer is
+   * saved when the time runs out rather than when somebody remembers to press
+   * stop.
+   *
    * ## What this does and does not guarantee
    *
-   * The passage is REMOVED from the page, not hidden with a class - a hidden
-   * element is still there to be read. What it is not is tamper-proof: the text
-   * arrived in the sitting payload, and somebody determined enough to open the
-   * network tab can still read it. The real test runs in a locked-down browser
-   * and this one runs in yours. The honest description is that this makes the
-   * practice faithful, not that it makes cheating impossible - and a candidate
-   * cheating themselves in practice has only bought a worse result later.
+   * The Part B passage is REMOVED from the page, not hidden with a class - a
+   * hidden element is still there to be read. What it is not is tamper-proof:
+   * the text arrived in the sitting payload, and somebody determined enough to
+   * open the network tab can still read it. The real test runs in a locked-down
+   * browser and this one runs in yours. The honest description is that this
+   * makes the practice faithful, not that it makes cheating impossible - and a
+   * candidate cheating themselves in practice has only bought a worse result
+   * later.
+   *
+   * "Start speaking within 6 seconds, or the test will move on" is SHOWN, not
+   * enforced. Enforcing it means deciding when somebody has started speaking,
+   * and a voice-activity detector that is wrong cuts a candidate off mid-answer
+   * - a worse failure than the one it prevents. The countdown is there and the
+   * rule is stated; the platform does not pretend to hear.
    *
    * The part's own clock, on the server, still decides when the part ends. This
    * paces what happens inside that window.
@@ -279,16 +311,75 @@ const PrepRunner = {
    * made to resume mid-passage. Starting at the first item with nothing written
    * is the reading that costs a candidate least: it never re-shows a passage
    * somebody has already answered from, and it never skips one they have not.
+   * A spoken part counts a saved recording as an answer, for the same reason.
    */
   firstUnanswered(p) {
-    const i = p.items.findIndex(it => !String(it.answer || '').trim());
+    const done = it => String(it.answer || '').trim() || it.hasRecording;
+    const i = p.items.findIndex(it => !done(it));
     return i < 0 ? p.items.length - 1 : i;
+  },
+
+  /** The phase an item opens in: read it, hear it, think about it, or answer. */
+  firstPhase(p, it) {
+    if (p.pacing.read) return 'read';
+    if (it && it.hasAudio) return 'listen';
+    if (p.pacing.think) return 'think';
+    return 'answer';
+  },
+
+  /** What comes after `phase`, or null when the item is over. */
+  nextPhase(p, it, phase) {
+    if (phase === 'read') return 'answer';
+    if (phase === 'listen') return p.pacing.think ? 'think' : 'answer';
+    if (phase === 'think') return 'answer';
+    return null;
+  },
+
+  /** How many seconds this phase gets. */
+  phaseSeconds(p, phase) {
+    if (phase === 'read') return p.pacing.read;
+    if (phase === 'think') return p.pacing.think;
+    if (phase === 'listen') return 0;      /* as long as the recording lasts */
+    return p.pacing.answer;
+  },
+
+  /**
+   * The beep.
+   *
+   *   Part I  "After the beep you have 60 seconds to respond."
+   *   Part J  "After 30 seconds you will hear another beep and your answer will
+   *            be saved."
+   *
+   * Made rather than fetched: an oscillator is four lines, and an audio file
+   * would be one more asset to ship, cache and get wrong on a slow connection at
+   * the exact moment it is needed. Wrapped because a browser that refuses to
+   * make sound before the page is interacted with must not take the exam down
+   * with it - a missing beep is a smaller failure than a missing part.
+   */
+  beep(hz) {
+    try {
+      const Ctx = window.AudioContext || window.webkitAudioContext;
+      if (!Ctx) return;
+      this._audio = this._audio || new Ctx();
+      const o = this._audio.createOscillator();
+      const g = this._audio.createGain();
+      o.frequency.value = hz || 880;
+      g.gain.value = 0.08;
+      o.connect(g); g.connect(this._audio.destination);
+      o.start();
+      o.stop(this._audio.currentTime + 0.18);
+    } catch (e) { /* no sound is not a reason to stop the exam */ }
   },
 
   showPaced(p) {
     if (!this.pace || this.pace.sectionId !== p.sectionId) {
       this.stopPace();
-      this.pace = { sectionId: p.sectionId, index: this.firstUnanswered(p), phase: 'read', endsAt: 0, timer: null };
+      const index = this.firstUnanswered(p);
+      this.pace = {
+        sectionId: p.sectionId, index,
+        phase: this.firstPhase(p, p.items[index]),
+        endsAt: 0, timer: null
+      };
     }
     this.renderPaced(p);
   },
@@ -298,56 +389,165 @@ const PrepRunner = {
     const it = p.items[st.index];
     if (!it) { this.stopPace(); this.closePart(p.sectionId); return; }
 
-    const seconds = st.phase === 'read' ? p.pacing.read : p.pacing.answer;
-    if (!st.endsAt) st.endsAt = Date.now() + seconds * 1000;
+    const seconds = this.phaseSeconds(p, st.phase);
+    if (!st.endsAt && seconds) st.endsAt = Date.now() + seconds * 1000;
 
-    const reading = st.phase === 'read';
+    const noun = p.pacing.read ? 'Passage' : 'Item';
     PREP.qs('#ex-part').innerHTML =
       '<div class="flex flex-wrap items-baseline gap-x-3 gap-y-1 mb-4">' +
         '<h3 class="font-extrabold text-xl tracking-tight">' + PREP.esc(p.name) + '</h3>' +
         '<span class="text-[13.5px] font-semibold text-muted">' +
-          'Passage ' + (st.index + 1) + ' of ' + p.items.length + '</span>' +
+          noun + ' ' + (st.index + 1) + ' of ' + p.items.length + '</span>' +
       '</div>' +
       '<article class="card p-5">' +
         '<p class="flex flex-wrap items-center gap-2.5 text-[13.5px] font-semibold">' +
-          '<span class="badge ' + (reading ? 'badge-ok' : 'badge-muted') + '">' +
-            (reading ? 'Read and remember' : 'Write it in your own words') + '</span>' +
-          '<span class="ms-auto tabular-nums" data-pace-left>' + seconds + 's</span>' +
+          '<span class="badge ' + (st.phase === 'answer' ? 'badge-muted' : 'badge-ok') + '">' +
+            this.phaseLabel(p, st.phase) + '</span>' +
+          (seconds ? '<span class="ms-auto tabular-nums" data-pace-left>' + seconds + 's</span>' : '') +
         '</p>' +
-        (reading
-          ? '<p class="text-[16px] leading-relaxed mt-4">' + PREP.esc(it.prompt) + '</p>' +
-            '<p class="text-[13px] text-muted font-semibold mt-4">' +
-              'The passage disappears when the time runs out. You cannot get it back.</p>'
-          : /* The prompt is deliberately absent from here. */
-            '<p class="text-[13px] text-muted font-semibold mt-1">' +
-              'Include all the details you can - this is not a summary.</p>' +
-            '<textarea class="input mt-3" rows="10" data-answer="' + it.questionId + '" ' +
-              'aria-label="Rewrite the passage"></textarea>') +
+        this.phaseBody(p, it, st.phase) +
       '</article>' +
       '<button type="button" id="ex-close" class="btn btn-ghost btn-md mt-6">Finish this part</button>';
 
     const close = PREP.qs('#ex-close');
     if (close) close.addEventListener('click', () => { this.stopPace(); this.closePart(p.sectionId); });
-    if (!reading) {
+    /* Before any phase returns early. The part clock is the one a candidate
+       checks to know how much of the whole thing is left, and a listening phase
+       that stopped painting it would look like a stopped exam. */
+    this.startClock(p);
+
+    if (st.phase === 'answer' && !p.pacing.spoken) {
       this.wireItems(p, false);
       const ta = PREP.qs('[data-answer="' + it.questionId + '"]');
       if (ta) ta.focus();
     }
 
+    /* Hearing it is a phase of its own, and it ends when the recording does
+       rather than after a number of seconds. Started here, not on a click:
+       "You will hear one sentence at a time" is not an invitation to press
+       play. */
+    if (st.phase === 'listen') {
+      this.playPaced(p, it);
+      return;
+    }
+
+    /* The microphone opens by itself, because the exam does not ask twice. The
+       beep is what tells the candidate the window has started - Part I says so
+       explicitly, and Part H is the same shape without the sentence. */
+    if (st.phase === 'answer' && p.pacing.spoken) {
+      this.beep(880);
+      this.startPacedRecording(it);
+    }
+
     if (st.timer) clearInterval(st.timer);
     st.timer = setInterval(() => this.paceTick(p), 250);
     this.paceTick(p);
-    this.startClock(p);
+  },
+
+  phaseLabel(p, phase) {
+    if (phase === 'read') return 'Read and remember';
+    if (phase === 'listen') return 'Listen';
+    if (phase === 'think') return 'Think about your answer';
+    if (p.pacing.spoken) return 'Speak now';
+    return 'Write it in your own words';
+  },
+
+  phaseBody(p, it, phase) {
+    if (phase === 'read') {
+      return '<p class="text-[16px] leading-relaxed mt-4">' + PREP.esc(it.prompt) + '</p>' +
+        '<p class="text-[13px] text-muted font-semibold mt-4">' +
+          'The passage disappears when the time runs out. You cannot get it back.</p>';
+    }
+    if (phase === 'listen') {
+      return '<p class="text-[15px] leading-relaxed mt-4">' + PREP.esc(it.prompt) + '</p>' +
+        '<p class="text-[13px] text-muted font-semibold mt-3">Playing once. There is no replay.</p>';
+    }
+    if (phase === 'think') {
+      return '<p class="text-[15px] leading-relaxed mt-4">' + PREP.esc(it.prompt) + '</p>' +
+        '<p class="text-[13px] text-muted font-semibold mt-3">' +
+          'You will hear a beep, and then your time to answer begins.</p>';
+    }
+    if (p.pacing.spoken) {
+      /* The prompt stays up for a spoken answer. Part B hides its passage because
+         remembering it IS the task; nothing about repeating a sentence or
+         retelling a story is helped by taking the question away. */
+      return '<p class="text-[15px] leading-relaxed mt-4">' + PREP.esc(it.prompt) + '</p>' +
+        '<p class="flex flex-wrap items-center gap-2.5 mt-4">' +
+          '<span class="badge badge-danger" data-rec-live>Recording</span>' +
+          '<span class="text-[13px] font-semibold text-muted" data-rec-state="' + it.questionId + '">' +
+            'The microphone is open</span>' +
+        '</p>' +
+        (p.pacing.startWithin
+          ? '<p class="text-[13px] text-muted font-semibold mt-3">Start speaking within <b>' +
+            p.pacing.startWithin + '</b> <span>seconds. Your answer is saved when the time runs out.</span></p>'
+          : '<p class="text-[13px] text-muted font-semibold mt-3">' +
+            'Your answer is saved when the time runs out.</p>');
+    }
+    /* The prompt is deliberately absent here: this is Part B's writing phase. */
+    return '<p class="text-[13px] text-muted font-semibold mt-1">' +
+        'Include all the details you can - this is not a summary.</p>' +
+      '<textarea class="input mt-3" rows="10" data-answer="' + it.questionId + '" ' +
+        'aria-label="Rewrite the passage"></textarea>';
+  },
+
+  /**
+   * Play this item's recording, and move on when it ends.
+   *
+   * No button and no clock: the phase lasts exactly as long as the audio. An
+   * error - a missing file, a store that will not answer - moves on rather than
+   * stopping, because a candidate stuck on a silent screen with a part clock
+   * running is the worst of the available outcomes.
+   */
+  playPaced(p, it) {
+    const done = () => {
+      if (!this.pace || this.pace.phase !== 'listen') return;
+      this.pace.phase = this.nextPhase(p, it, 'listen');
+      this.pace.endsAt = 0;
+      this.renderPaced(p);
+    };
+    const url = '/api/attempts/' + this.attempt.id + '/items/' + it.questionId + '/audio';
+    const audio = new Audio(url);
+    audio.addEventListener('ended', done);
+    audio.addEventListener('error', done);
+    audio.play().catch(() => done());
+  },
+
+  /**
+   * Open the microphone for this item, with no button pressed.
+   *
+   * Reuses toggleRecord so there is one recorder, one upload path and one set of
+   * failure messages. It expects a button to relabel; a spoken phase has none,
+   * so it is handed a detached one. That is deliberately cheap - the alternative
+   * is a second copy of the recording code, and two recorders is how a platform
+   * ends up uploading somebody's answer twice.
+   */
+  startPacedRecording(it, attempt) {
+    /* The previous item's recorder clears itself on its `stop` event, which is
+       asynchronous. Usually the upload in between is long enough; when it is
+       not, toggleRecord sees a recorder still in flight and refuses with
+       "Already recording another item" - and the candidate's window opens with
+       a dead microphone. So: wait for it, briefly, rather than assume. */
+    const tries = attempt || 0;
+    if (this._rec && tries < 20) {
+      setTimeout(() => this.startPacedRecording(it, tries + 1), 50);
+      return;
+    }
+    const ghost = document.createElement('button');
+    ghost.innerHTML = '<span></span>';
+    this.toggleRecord(it.questionId, ghost);
   },
 
   /**
    * One tick of the per-item clock.
    *
-   * Reading runs out into writing; writing runs out into the next passage. The
-   * answer is flushed BEFORE the screen changes - what somebody typed in the
-   * last second of a 90-second window is the part of their answer they were
-   * most rushed over, and losing it to a re-render would be the platform's
-   * fault rather than theirs.
+   * Reading runs out into writing; a spoken window runs out into the next item,
+   * stopping the recorder on the way - which is what saves the answer, and is
+   * why the beep comes before the upload rather than after it.
+   *
+   * The written answer is flushed BEFORE the screen changes. What somebody typed
+   * in the last second of a 90-second window is the part they were most rushed
+   * over, and losing it to a re-render would be the platform's fault rather than
+   * theirs.
    */
   paceTick(p) {
     const st = this.pace;
@@ -359,18 +559,29 @@ const PrepRunner = {
 
     clearInterval(st.timer);
     st.timer = null;
-    if (st.phase === 'read') {
-      st.phase = 'answer';
+
+    const it = p.items[st.index];
+    const next = this.nextPhase(p, it, st.phase);
+    if (next) {
+      st.phase = next;
       st.endsAt = 0;
       this.renderPaced(p);
       return;
     }
+
+    /* The item is over. A recording in progress is stopped first: that is what
+       uploads it. "After 30 seconds you will hear another beep and your answer
+       will be saved" - the beep, then the saving. */
+    if (p.pacing.spoken) {
+      this.beep(660);
+      if (this._rec) { try { this._rec.recorder.stop(); } catch (e) { /* already stopped */ } }
+    }
     this.flush().then(() => {
       if (!this.pace) return;
       this.pace.index += 1;
-      this.pace.phase = 'read';
-      this.pace.endsAt = 0;
       if (this.pace.index >= p.items.length) { this.stopPace(); this.closePart(p.sectionId); return; }
+      this.pace.phase = this.firstPhase(p, p.items[this.pace.index]);
+      this.pace.endsAt = 0;
       this.renderPaced(p);
     });
   },

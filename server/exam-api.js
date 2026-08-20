@@ -55,20 +55,34 @@ function playsFor(familyId, part) {
   return sec && sec.plays ? sec.plays : DEFAULT_REPLAYS;
 }
 
+/* Parts whose answer is spoken. They are paced for a different reason from
+   Part B: not to take a stimulus away, but because a spoken answer has a
+   beginning and an end that somebody has to be told about. */
+const SPOKEN_PARTS = ['H', 'I', 'J'];
+
 /**
  * How this part paces the items inside it, or null when it does not.
  *
- * Only Part B for now, and only because the guide is explicit about it: the
- * passage "will disappear after 30 seconds", then "You have 90 seconds to
- * rewrite the passage." A part rendered all at once, with all three passages
- * sitting on the screen for six minutes, is a copying exercise wearing a memory
- * exercise's name - and someone practising on it would arrive at the real test
- * having practised the wrong skill.
+ * Two kinds of part need it, for two different reasons.
+ *
+ * Part B, because the guide is explicit: the passage "will disappear after 30
+ * seconds", then "You have 90 seconds to rewrite the passage." A part rendered
+ * all at once, with all three passages sitting on the screen for six minutes,
+ * is a copying exercise wearing a memory exercise's name.
+ *
+ * Parts H, I and J, because a spoken answer is timed per item and the candidate
+ * cannot see a clock that only counts the whole part:
+ *
+ *   H  "You have 15 seconds to answer." · "Start speaking within 6 seconds, or
+ *      the test will move on to the next question."
+ *   I  "You have 10 seconds to think about your answer. After the beep you have
+ *      60 seconds to respond." · "Answer within 15 seconds or the test will move
+ *      on."
+ *   J  "You have 30 seconds to tell the story. After 30 seconds you will hear
+ *      another beep and your answer will be saved."
  *
  * The numbers come from the blueprint's timing table, the same one that decides
- * how long the part itself runs, so the two can never drift apart. Parts H, I
- * and J want this as well - a clock and a beep per spoken answer - and will get
- * it from here rather than from a second table.
+ * how long the part itself runs, so the two can never drift apart.
  *
  * The part's own clock stays authoritative and stays on the server. This paces
  * what a candidate SEES inside that window; it is not a second enforcement
@@ -77,12 +91,21 @@ function playsFor(familyId, part) {
 function pacingFor(familyId, part) {
   if (!familyId || !part) return null;
   const t = EXAM_FORMATS.vpetTiming()[part];
-  /* `read` is the marker: it is what makes a part two-phase. A part whose items
-     are simply answered one after another needs nothing here. */
-  if (!t || !t.read) return null;
+  if (!t) return null;
   const sec = EXAM_FORMATS.sectionOfPart(familyId, part);
   if (!sec) return null;
-  return { read: t.read, answer: t.answer || 0 };
+  const spoken = SPOKEN_PARTS.includes(part);
+  /* `read` makes a part two-phase; a spoken answer makes it paced whatever else
+     is true of it. Everything else - a gap to type, a box to tick - is answered
+     item after item and needs nothing here. */
+  if (!t.read && !spoken) return null;
+  return {
+    read: t.read || 0,
+    think: t.think || 0,
+    answer: t.answer || 0,
+    startWithin: t.startWithin || 0,
+    spoken
+  };
 }
 
 /* Spoken answers are recorded in the browser and uploaded as bytes. Same
