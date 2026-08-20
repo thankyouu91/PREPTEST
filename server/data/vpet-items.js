@@ -1,7 +1,11 @@
 /**
- * VPET item bank — the parts that need no audio: A, B, C, D and I.
+ * VPET item bank - the parts that need no audio: A, B, C, D and I.
  *
- * Sixty-two items: A 30, B 8, C 8, D 8, I 8. Parts E, F, G, H and J are missing
+ * WRITING NEW ITEMS? Read docs/VPET-BLUEPRINT.md first. It describes all ten
+ * parts - what each one measures, how to write one, and the traps - plus the
+ * depth rule below and what the bank is still missing.
+ *
+ * Sixty-eight items: A 30, B 8, C 14, D 8, I 8. Parts E, F, G, H and J are missing
  * on purpose: each is an audio part, and a script with no recording behind it is
  * not an item a candidate can sit. They arrive with the voice work.
  *

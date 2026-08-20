@@ -1238,6 +1238,11 @@ hỏng không làm mất gì.
 Cơ cấu và cách chấm điểm của 6 kỳ thi, cùng thiết kế engine chấm, nằm trong
 [`docs/SCORING.md`](docs/SCORING.md).
 
+Riêng VPET - kỳ thi duy nhất đang mở - có blueprint chi tiết cho **cả 10 phần
+A→J** trong [`docs/VPET-BLUEPRINT.md`](docs/VPET-BLUEPRINT.md): mỗi phần đo cái
+gì, soạn câu hỏi thế nào, bẫy cần tránh, cùng luật độ sâu ngân hàng và hiện
+trạng còn thiếu. **Đọc file đó trước khi thêm bất kỳ học liệu luyện thi nào.**
+
 ## Bản sao nội dung trên Supabase
 
 Ứng dụng **vẫn chạy SQLite nhúng** như cũ. Supabase không thay CSDL chạy — nó là bản sao
