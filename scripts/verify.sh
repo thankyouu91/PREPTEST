@@ -157,6 +157,12 @@ node scripts/test-exam.mjs || fail=1
 step "VPET item bank (blueprint match, per-item quality)"
 node scripts/test-items.mjs || fail=1
 
+# After the exam engine, because that suite publishes a fixture paper and
+# archives it again on the way out — this one checks every paper still
+# published, and a fixture left behind is one of the things it is here to catch.
+step "The paper a candidate sits (parts, counts, no part sharing another's items)"
+node scripts/test-paper.mjs || fail=1
+
 step "Payments (gateway signatures, settlement rules, one code per order)"
 node scripts/test-payments.mjs || fail=1
 

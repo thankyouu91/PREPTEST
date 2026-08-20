@@ -12,6 +12,9 @@ const { DatabaseSync } = require('node:sqlite');
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+/* The published part tables. A paper's shape is read from here and never
+   written down a second time — see buildPaperFromBlueprint(). */
+const EXAM_FORMATS = require('./data/exam-formats');
 
 const DATA_DIR = path.join(__dirname, '..', 'data');
 const DB_FILE = process.env.PREP_DB || path.join(DATA_DIR, 'prep.sqlite');
@@ -791,27 +794,9 @@ const FAMILIES = [
   ['pte',   'PTE',   'Pearson Test of English',   'Computer based, AI scored, 10-90 scale', ['listening','reading','writing','speaking'], 6, 'coming_soon']
 ];
 
-const SEED_TESTS = [
-  /* The demo paper follows the real VPET shape: ten lettered parts, A to J, 58
-     items, 60 minutes. It used to be four generic skill blocks over 112 minutes,
-     which described no exam that exists — see server/data/exam-formats.js for the
-     published part table this mirrors. */
-  { id:'vpet-b1-01', family:'vpet', title:'VPET four skills B1', level:'B1', dur:60, status:'published',
-    scoring:'On the CEFR A1-C2 scale, converted per skill',
-    guide:['Have headphones and a microphone ready before the Listening / Speaking parts.',
-           'Each part has its own clock; when it runs out the system moves on.',
-           'Writing and Speaking are marked automatically and come back with comments.'],
-    sections:[['Part A - Sentence Completion','writing','Type the missing word',8],
-              ['Part B - Passage Reconstruction','writing','Read, then rewrite from memory',8],
-              ['Part C - Reading Comprehension','reading','Multiple choice',7],
-              ['Part D - E-Mail Writing','writing','Two emails',18],
-              ['Part E - Dictation','listening','Type what you hear',4],
-              ['Part F - Response Selection','listening','Multiple choice',3],
-              ['Part G - Passage Comprehension','listening','Multiple choice',4],
-              ['Part H - Repeat','speaking','Say the sentence back',3],
-              ['Part I - Speaking Situations','speaking','Respond to a situation',2],
-              ['Part J - Story Retellings','speaking','Retell what you heard',3]] }
-];
+/* Metadata only — the parts come from the blueprint. See the header of
+   server/data/seed-tests.js for why the list lives in its own file. */
+const { SEED_TESTS } = require('./data/seed-tests');
 
 const PACKAGES = [
   ['pk-single','One mock test',49000,null,'Unlocks any one mock test currently in the library.',
@@ -917,6 +902,160 @@ function seedQuestions() {
   return n;
 }
 
+/* ------------------------------------------------------------------ *
+ * Building a paper from the published blueprint
+ * ------------------------------------------------------------------ */
+
+/** The one full-length format a family publishes, or null. */
+function fullFormatOf(familyId) {
+  return EXAM_FORMATS.FORMATS.find(f => f.familyId === familyId && f.kind === 'full') || null;
+}
+
+/**
+ * The parts a paper *should* have, and the exact questions each should hold.
+ *
+ * Two rules decide the items, and both exist because breaking either is what
+ * broke the demo paper:
+ *
+ *   · A part draws only from questions tagged with its own letter. Drawing by
+ *     skill instead looks reasonable until you notice three parts share a skill
+ *     — A, B and D are all `writing` — and each then receives the same rows.
+ *   · A question used by one part is off the table for the rest of the paper.
+ *     Nothing else stops the same item appearing twice, and a duplicate is
+ *     worse than it sounds: `attempt_answers` is keyed (attempt, question), so
+ *     answering it in the later part overwrites the answer given in the earlier
+ *     one.
+ *
+ * Where the bank cannot fill a part, the part is left short rather than padded
+ * from somewhere else. A short part is visible and countable; a padded one asks
+ * the wrong questions while looking complete.
+ */
+function plannedPaper(familyId, level) {
+  const fmt = fullFormatOf(familyId);
+  if (!fmt) return null;
+
+  const used = new Set();
+  return fmt.sections.map((bp, sort) => {
+    const typeSql = bp.types && bp.types.length
+      ? ` AND type IN (${bp.types.map(() => '?').join(',')})` : '';
+    /* `ext_key IS NOT NULL` restricts this to the authored bank in
+       server/data/vpet-items.js. A shipped paper is built from shipped content,
+       and everything else in the questions table is not that: the exam-engine
+       suite mints a couple of Part F items through the admin API on every run
+       and retires them on the way out, so without this the demo paper's Part F
+       would hold two items called "Engine test listening item 0" for as long as
+       the suite's fixtures happened to be active, and none the rest of the time.
+       A paper whose contents depend on whether a test ran recently is not a
+       paper. Admin-authored papers are built by /admin/tests/generate, which
+       draws from everything and is right to.
+
+       Level is a preference, not a filter: a B1 paper prefers B1 items and falls
+       back rather than leaving a part empty over a level mismatch. */
+    const pool = qs.all(
+      `SELECT id FROM questions
+        WHERE family_id=? AND part=? AND status='active'
+          AND ext_key IS NOT NULL AND ext_key<>''${typeSql}
+        ORDER BY (level=?) DESC, id`,
+      familyId, bp.part, ...(bp.types || []), level);
+
+    const ids = [];
+    for (const row of pool) {
+      if (ids.length >= bp.items) break;
+      if (used.has(row.id)) continue;
+      used.add(row.id);
+      ids.push(row.id);
+    }
+    return { sort, bp, ids };
+  });
+}
+
+/**
+ * Make the stored paper match plannedPaper(), and say so when it could not.
+ *
+ * Runs on every boot, so the production database is repaired rather than only
+ * new installs — but it rewrites nothing that is already right, because a paper
+ * rebuilt underneath a sitting in progress is a paper whose candidate loses
+ * their place.
+ *
+ * Returns a list of parts the bank could not fill, `[]` when the paper is
+ * complete, and null when there is no blueprint or no such test.
+ */
+function buildPaperFromBlueprint(testId, familyId, level) {
+  const plan = plannedPaper(familyId, level);
+  if (!plan) return null;
+  if (!qs.val('SELECT 1 FROM tests WHERE id=?', testId)) return null;
+
+  const at = nowISO();
+  let changed = 0;
+
+  for (const { sort, bp, ids } of plan) {
+    const cur = qs.get(
+      'SELECT id, name, skill, type, minutes, part FROM sections WHERE test_id=? AND sort=?', testId, sort);
+
+    let secId;
+    if (!cur) {
+      qs.run('INSERT INTO sections (test_id,name,skill,type,minutes,sort,part) VALUES (?,?,?,?,?,?,?)',
+        testId, bp.name, bp.skill, bp.type, bp.minutes, sort, bp.part);
+      secId = qs.val('SELECT id FROM sections WHERE test_id=? AND sort=?', testId, sort);
+      changed++;
+    } else {
+      secId = cur.id;
+      /* `minutes` is deliberately not forced back: the blueprint publishes item
+         counts, not timings, and an admin is allowed to retime a part. */
+      if (cur.name !== bp.name || cur.skill !== bp.skill || cur.type !== bp.type || cur.part !== bp.part) {
+        qs.run('UPDATE sections SET name=?, skill=?, type=?, part=? WHERE id=?',
+          bp.name, bp.skill, bp.type, bp.part, secId);
+        changed++;
+      }
+    }
+
+    const have = qs.all('SELECT question_id FROM section_items WHERE section_id=? ORDER BY sort', secId)
+      .map(r => r.question_id);
+    if (have.length === ids.length && have.every((id, i) => id === ids[i])) continue;
+
+    qs.run('DELETE FROM section_items WHERE section_id=?', secId);
+    const insI = db.prepare('INSERT INTO section_items (section_id,question_id,sort) VALUES (?,?,?)');
+    ids.forEach((id, j) => insI.run(secId, id, j));
+    changed++;
+  }
+
+  /* A paper built by the old code can carry parts the blueprint does not have.
+     They go — unless somebody has already sat them, in which case dropping the
+     row would take their answers with it (or, with foreign keys on, simply
+     throw). Loud is the right answer there, not clever. */
+  const extra = qs.all('SELECT id, name FROM sections WHERE test_id=? AND sort>=?', testId, plan.length);
+  for (const s of extra) {
+    const sat = qs.val('SELECT 1 FROM attempt_parts WHERE section_id=? LIMIT 1', s.id)
+      || qs.val('SELECT 1 FROM attempt_answers WHERE section_id=? LIMIT 1', s.id);
+    if (sat) {
+      console.warn(`[paper] ${testId}: "${s.name}" is not in the blueprint but has been sat; left in place.`);
+      continue;
+    }
+    qs.run('DELETE FROM sections WHERE id=?', s.id);
+    changed++;
+  }
+
+  const minutes = qs.val('SELECT COALESCE(SUM(minutes),0) FROM sections WHERE test_id=?', testId);
+  if (qs.val('SELECT duration_min FROM tests WHERE id=?', testId) !== minutes) {
+    qs.run('UPDATE tests SET duration_min=?, updated_at=? WHERE id=?', minutes, at, testId);
+    changed++;
+  }
+
+  const short = plan.filter(p => p.ids.length < p.bp.items)
+    .map(p => `${p.bp.part} ${p.ids.length}/${p.bp.items}`);
+
+  if (changed) {
+    const total = plan.reduce((a, p) => a + p.ids.length, 0);
+    const want = plan.reduce((a, p) => a + p.bp.items, 0);
+    console.warn(`[paper] ${testId} rebuilt from the blueprint: ${plan.length} parts, ${total}/${want} items.`);
+  }
+  if (short.length) {
+    console.warn(`[paper] ${testId}: the bank cannot fill ${short.length} part(s) — ${short.join(', ')}.`
+      + ' Write the missing items (see docs/VPET-BLUEPRINT.md); the paper stays short until then.');
+  }
+  return short;
+}
+
 /** First-run seed (idempotent: it only runs while a table is empty) */
 function seed() {
   const at = nowISO();
@@ -988,20 +1127,32 @@ function seed() {
     const insT = db.prepare(`INSERT INTO tests
       (id,family_id,title,level,duration_min,scoring,guide_json,status,build_mode,created_at,updated_at)
       VALUES (?,?,?,?,?,?,?,?,'manual',?,?)`);
-    const insS = db.prepare('INSERT INTO sections (test_id,name,skill,type,minutes,sort) VALUES (?,?,?,?,?,?)');
     for (const t of SEED_TESTS) {
-      insT.run(t.id, t.family, t.title, t.level, t.dur, t.scoring, JSON.stringify(t.guide), t.status, at, at);
-      t.sections.forEach(([name, skill, type, minutes], i) => {
-        insS.run(t.id, name, skill, type, minutes, i);
-        // Attach bank questions to each part so the paper has content immediately
-        const secId = qs.val('SELECT id FROM sections WHERE test_id=? ORDER BY id DESC LIMIT 1', t.id);
-        const want = skill === 'writing' ? 2 : skill === 'speaking' ? 3 : 20;
-        const pool = qs.all(
-          `SELECT id FROM questions WHERE family_id=? AND skill=? AND status='active' ORDER BY level=? DESC, id LIMIT ?`,
-          t.family, skill, t.level, want);
-        const insI = db.prepare('INSERT OR IGNORE INTO section_items (section_id,question_id,sort) VALUES (?,?,?)');
-        pool.forEach((r, j) => insI.run(secId, r.id, j));
-      });
+      const fmt = fullFormatOf(t.family);
+      insT.run(t.id, t.family, t.title, t.level,
+        fmt ? EXAM_FORMATS.totalMinutes(fmt) : 0,
+        fmt ? fmt.scoring : '', JSON.stringify(fmt ? fmt.guide : []), t.status, at, at);
+    }
+  }
+
+  /* The parts themselves are built from the blueprint, on every boot rather than
+     only on a fresh database — the paper this repairs is already sitting on the
+     production box, and a fix that only runs on an empty database would never
+     reach it.
+
+     Guarded, because this is the seed's only write that happens on EVERY boot
+     rather than on an empty database. That difference matters: another process
+     holding the file (a deploy where the old server has not exited yet, a script
+     mid-run) turns a write into `SQLITE_BUSY`, and an unguarded one takes the
+     new server down with it. A repair that cannot run right now must not stop
+     the server from starting; the paper keeps whatever shape it had and the next
+     clean boot fixes it. */
+  for (const t of SEED_TESTS) {
+    try {
+      buildPaperFromBlueprint(t.id, t.family, t.level);
+    } catch (e) {
+      console.warn(`[paper] ${t.id}: could not be rebuilt from the blueprint this boot`
+        + ` (${e && e.message}). Serving it as stored; scripts/test-paper.mjs will say if it is wrong.`);
     }
   }
 
@@ -1384,4 +1535,7 @@ function seedGrammar() {
 seed();
 
 module.exports = { db, q, tx, nowISO, jparse, makeCode, audit, DB_FILE, seedVocab,
-  SCHEMA_SQL, ADDED_COLUMNS, ADDED_INDEXES };
+  SCHEMA_SQL, ADDED_COLUMNS, ADDED_INDEXES,
+  /* Exported for scripts/test-paper.mjs, which checks a stored paper against
+     the same plan the builder works from. */
+  fullFormatOf, plannedPaper, buildPaperFromBlueprint };

@@ -81,6 +81,12 @@ function fakeWebm() {
 const admin = client();
 const student = client();
 
+/* Hoisted so the `finally` at the bottom can clean them up even when an
+   assertion throws halfway down. */
+let made = [];
+let speakQ = null;
+let testId = null;
+
 try {
   /* ---------- Build a real paper to sit ---------- */
   head('Preparing the test paper');
@@ -89,7 +95,6 @@ try {
   ok(r.status === 200, 'Administrator sign-in', 'status ' + r.status);
 
   /* Two Listening items with audio + one Writing item: enough for the clock, replays and recording */
-  const made = [];
   for (let i = 0; i < 2; i++) {
     r = await admin.req('POST', '/api/admin/questions', {
       familyId: 'vpet', skill: 'listening', level: 'B1', type: 'mcq', part: 'F',
@@ -108,12 +113,12 @@ try {
     prompt: 'Engine test speaking item — respond to the situation.'
   });
   ok(r.status === 201, 'Creates the speaking item', 'status ' + r.status);
-  const speakQ = r.data.id;
+  speakQ = r.data.id;
 
   r = await admin.req('POST', '/api/admin/tests', {
     familyId: 'vpet', title: 'Engine test paper', level: 'B1', durationMin: 10
   });
-  const testId = r.data.id;
+  testId = r.data.id;
   ok(!!testId, 'Creates the test paper', String(testId));
 
   /* The Listening part has a 1-minute clock; the Speaking part is 0 minutes = untimed */
@@ -535,14 +540,26 @@ try {
     await browser.close();
   }
 
-  /* ---------- Cleaning up ---------- */
-  await admin.req('DELETE', '/api/admin/tests/' + testId);
-  for (const id of made.concat([speakQ])) {
-    await admin.req('POST', '/api/admin/questions/' + id + '/status', { status: 'retired' });
-  }
 } catch (e) {
   fail++;
   console.log('✗ Unexpected error: ' + (e && e.stack ? e.stack : e));
+} finally {
+  /* ---------- Cleaning up ----------
+     In `finally`, because it used to sit at the end of the `try`: one failed
+     assertion anywhere above and the fixture stayed behind. And archived rather
+     than deleted, because by now the paper has attempts against it — DELETE
+     trips the foreign key and leaves a published "Engine test paper" sitting in
+     the student catalogue next to the real one, which is exactly what was found
+     there. Archiving takes it out of the catalogue and keeps the sittings it
+     already owns. */
+  if (testId) {
+    const r = await admin.req('POST', '/api/admin/tests/' + testId + '/status', { status: 'archived' });
+    ok(r.status === 200, 'The fixture paper leaves the catalogue when the suite ends', 'status ' + r.status);
+    await admin.req('DELETE', '/api/admin/tests/' + testId);   // succeeds only if nothing sat it
+  }
+  for (const id of made.concat(speakQ ? [speakQ] : [])) {
+    await admin.req('POST', '/api/admin/questions/' + id + '/status', { status: 'retired' });
+  }
 }
 
 console.log('\n' + (pass + fail ? pass + '/' + (pass + fail) + ' checks passed' : 'no checks ran'));

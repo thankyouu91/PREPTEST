@@ -157,6 +157,25 @@ const PrepRunner = {
     const started = !!p.startedAt;
     const closed = !!p.closedAt || (p.secondsLeft === 0 && p.endsAt);
 
+    /* A part with nothing in it. The blueprint keeps all ten parts on the paper
+       even when the bank cannot fill one yet, because a paper missing Part E is
+       a different exam from one whose Part E is still being written — and the
+       honest version of the second is to say so here. Offering "Start this
+       part" would start an unpausable clock over an empty screen. */
+    if (!p.items.length) {
+      box.innerHTML =
+        '<div class="card p-8 text-center">' +
+          '<h3 class="font-extrabold text-xl tracking-tight">' + PREP.esc(p.name) + '</h3>' +
+          '<p class="text-muted text-[15px] mt-2 max-w-[46ch] mx-auto">' +
+            'This part has no questions yet, so there is nothing to sit. It is on the paper ' +
+            'because the exam has it - your result will not count it.' +
+          '</p>' +
+        '</div>';
+      this.stopClock();
+      PREP.qs('#ex-clock').setAttribute('hidden', '');
+      return;
+    }
+
     /* Not in the part yet: show a waiting screen with a start button. Pressing it
     starts a clock that cannot be paused, so say so first rather than
     letting someone trip into it. */

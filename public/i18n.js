@@ -547,6 +547,9 @@
       'Đội soạn đề đang hoàn thiện. Khi phát hành, đề sẽ tự mở trong tài khoản của bạn.',
 
     /* ---- Phòng thi ---- */
+    'Sitting the test': 'Đang làm bài',
+    'This part has no questions yet, so there is nothing to sit. It is on the paper because the exam has it - your result will not count it.':
+      'Phần này chưa có câu hỏi nào nên chưa làm được. Nó vẫn nằm trên đề vì kỳ thi thật có phần này - kết quả của bạn sẽ không tính phần này.',
     'Hand in': 'Nộp bài',
     'Hand in now?': 'Nộp bài ngay?',
     'Handed in': 'Đã nộp bài',
