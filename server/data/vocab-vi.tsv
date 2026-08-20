@@ -23,7 +23,7 @@ B1	artist	noun	A person who creates art.	nghệ sĩ
 B1	artist	noun	A person who creates visual art (in contrast to literature, music etc.)	họa sĩ, nghệ sĩ tạo hình
 B1	artist	noun	A recording artist.	ca sĩ, nghệ sĩ thu âm
 B1	ashamed	adj	(chiefly of someone in trouble and undergoing punishment for doing something wrong) Feeling shame or guilt.	xấu hổ, hổ thẹn
-B1	ashamed	verb	simple past and past participle of ashame	
+B1	ashamed	verb	simple past and past participle of ashame	xấu hổ, hổ thẹn
 B1	assistant	adj	Having a subordinate or auxiliary position.	phụ, trợ lý
 B1	assistant	adj	Helping; lending aid or support; auxiliary.	hỗ trợ, phụ trợ
 B1	assistant	noun	(British) Sales assistant.	(Anh) nhân viên bán hàng
@@ -83,10 +83,10 @@ B1	block	verb	(transitive) To prevent (something or someone) from passing.	chặ
 B1	bread	noun	(countable) Any variety of bread.	loại bánh mì
 B1	bread	noun	(slang, US or Cockney) Money.	(tiếng lóng) tiền, xèng
 B1	bread	noun	A foodstuff made by baking dough made from cereals.	bánh mì
-B1	bread	noun	A piece of embroidery; a braid.	
+B1	bread	noun	A piece of embroidery; a braid.	dải bện, đường viền thêu
 B1	bread	noun	Food; sustenance; support of life, in general.	cái ăn, miếng cơm manh áo
 B1	bread	verb	(transitive) To coat with breadcrumbs.	bột
-B1	bread	verb	(transitive) To form in meshes; net.	
+B1	bread	verb	(transitive) To form in meshes; net.	bện, đan
 B1	cancer	noun	(figuratively) Something damaging that spreads throughout something else.	(nghĩa bóng) ung nhọt, tệ nạn lan tràn
 B1	cancer	noun	(medicine, oncology, pathology) A disease in which the cells of a tissue undergo uncontrolled (and often rapid) proliferation.	(y học) ung thư
 B1	castle	noun	(chess, informal) A rook; a chess piece shaped like a castle tower.	(cờ vua, thông tục) quân xe
@@ -103,8 +103,8 @@ B1	celebrate	verb	(transitive) To honour by rites, by ceremonies of joy and resp
 B1	celebrate	verb	(transitive) To perform or participate in, as a sacrament or solemn rite; to perform with appropriate rites.	(tôn giáo) cử hành (lễ)
 B1	century	noun	A hundred things of the same kind; a hundred.	một trăm
 B1	century	noun	A period of one hundred consecutive years; often specifically a numbered period with conventional start and end dates, e.g., the twentieth century, which stretches from (strictly) 1901 through 2000, or (informally) 1900 through 1999. The first century AD was from 1 to 100.	thế kỷ
-B1	century	noun	A political division of ancient Rome, meeting in the Centuriate Assembly.	
-B1	century	noun	A unit in ancient Roman army, originally of one hundred army soldiers as part of a cohort, later of more varied sizes (but typically containing sixty to seventy or eighty) soldiers or other men (guards, police, firemen), commanded by a centurion.	
+B1	century	noun	A political division of ancient Rome, meeting in the Centuriate Assembly.	(lịch sử La Mã) đơn vị chính trị (bách nhân)
+B1	century	noun	A unit in ancient Roman army, originally of one hundred army soldiers as part of a cohort, later of more varied sizes (but typically containing sixty to seventy or eighty) soldiers or other men (guards, police, firemen), commanded by a centurion.	(lịch sử La Mã, quân sự) đội bách nhân
 B1	chase	noun	(British) A large country estate where game may be shot or hunted.	(Anh) khu đất săn bắn tư nhân
 B1	chase	noun	(printing) A rectangular steel or iron frame into which pages or columns of type are locked for printing or plate-making.	(in ấn) khung kẹp bản in
 B1	chase	noun	(shipbuilding) A kind of joint by which an overlap joint is changed to a flush joint by means of a gradually deepening rabbet, as at the ends of clinker-built boats.	
@@ -113,77 +113,77 @@ B1	chase	noun	A groove cut in an object; a slot: the chase for the quarrel on a 
 B1	chase	noun	A hunt; the act of hunting; the pursuit of game.	cuộc săn, sự săn đuổi
 B1	chase	noun	The act of one who chases another; a pursuit.	cuộc rượt đuổi, sự truy đuổi
 B1	chase	noun	The cavity of a mold.	(kỹ thuật đúc) lòng khuôn
-B1	chase	noun	The part of a gun in front of the trunnions.	
-B1	chase	verb	(transitive, baseball) To swing at a pitch outside of the strike zone, typically an outside pitch.	
-B1	chase	verb	(transitive, cricket) To attempt to win by scoring the required number of runs in the final innings.	
-B1	chase	verb	(transitive) To consume another beverage immediately after drinking hard liquor, typically something better tasting or less harsh such as soda or beer; to use a drink as a chaser.	
-B1	chase	verb	(transitive) To cut (the thread of a screw).	
-B1	chase	verb	(transitive) To decorate (metal) by engraving or embossing.	
-B1	chase	verb	(transitive) To groove; indent.	
-B1	chase	verb	(transitive) To place piping or wiring in a groove encased within a wall or floor, or in a hidden space encased by a wall.	
-B1	chase	verb	(transitive) To pursue.	
-B1	cheap	adj	(slang, of an action or tactic in a game of skill) Underhanded or unfair.	
-B1	cheap	adj	Low or reduced in price.	
-B1	cheap	adj	Of little worth.	
-B1	cheap	adj	Of poor quality.	
-B1	cheese	noun	(countable) A piece of cheese, especially one moulded into a large round shape during manufacture.	
-B1	cheese	noun	(countable) Any particular variety of cheese.	
-B1	cheese	noun	(gaming) The exploitation, or opportunity for exploitation, of an unintentional video game mechanic.	
-B1	cheese	noun	(slang) Wealth, fame, excellence, importance.	
-B1	cheese	noun	(uncountable, UK) A thick variety of jam (fruit preserve), as distinguished from a thinner variety (sometimes called jelly)	
+B1	chase	noun	The part of a gun in front of the trunnions.	(quân sự) phần nòng súng phía trước trục quay
+B1	chase	verb	(transitive, baseball) To swing at a pitch outside of the strike zone, typically an outside pitch.	(bóng chày) vung gậy đánh bóng ngoài vùng đánh hợp lệ
+B1	chase	verb	(transitive, cricket) To attempt to win by scoring the required number of runs in the final innings.	(cricket) đuổi theo số điểm cần để thắng
+B1	chase	verb	(transitive) To consume another beverage immediately after drinking hard liquor, typically something better tasting or less harsh such as soda or beer; to use a drink as a chaser.	uống (đồ uống) ngay sau khi uống rượu mạnh
+B1	chase	verb	(transitive) To cut (the thread of a screw).	(kỹ thuật) tiện ren, cắt ren
+B1	chase	verb	(transitive) To decorate (metal) by engraving or embossing.	(kỹ thuật) chạm khắc, chạm nổi (kim loại)
+B1	chase	verb	(transitive) To groove; indent.	khoét rãnh, đục rãnh
+B1	chase	verb	(transitive) To place piping or wiring in a groove encased within a wall or floor, or in a hidden space encased by a wall.	(xây dựng) đục rãnh âm tường (để đi ống, dây điện)
+B1	chase	verb	(transitive) To pursue.	đuổi theo, truy đuổi, rượt đuổi
+B1	cheap	adj	(slang, of an action or tactic in a game of skill) Underhanded or unfair.	(thông tục) chơi bẩn, ăn gian
+B1	cheap	adj	Low or reduced in price.	rẻ
+B1	cheap	adj	Of little worth.	rẻ tiền, không đáng giá
+B1	cheap	adj	Of poor quality.	kém chất lượng, rẻ tiền
+B1	cheese	noun	(countable) A piece of cheese, especially one moulded into a large round shape during manufacture.	khối phô mai, bánh phô mai
+B1	cheese	noun	(countable) Any particular variety of cheese.	loại phô mai
+B1	cheese	noun	(gaming) The exploitation, or opportunity for exploitation, of an unintentional video game mechanic.	(trò chơi điện tử, thông tục) mẹo lợi dụng lỗi game
+B1	cheese	noun	(slang) Wealth, fame, excellence, importance.	(tiếng lóng) tiền, danh tiếng, quyền lực
+B1	cheese	noun	(uncountable, UK) A thick variety of jam (fruit preserve), as distinguished from a thinner variety (sometimes called jelly)	(Anh) mứt quả đặc
 B1	cheese	noun	(uncountable) A dairy product made from curdled or cultured milk.	pho mát
 B1	cheese	phrase	(photography) Said while being photographed, to give the impression of smiling.	hai
-B1	cheese	verb	(Internet slang, gaming, ambitransitive) To use a controversial or unsporting tactic to gain an advantage (especially in a game.)	
-B1	cheese	verb	(slang) To anger or irritate someone, usually in combination with "off".	
-B1	cheese	verb	(slang) To smile excessively, as for a camera.	
-B1	cheese	verb	(slang) To stop; to refrain from.	
+B1	cheese	verb	(Internet slang, gaming, ambitransitive) To use a controversial or unsporting tactic to gain an advantage (especially in a game.)	(trò chơi điện tử, thông tục) chơi bẩn, lợi dụng lỗi game để thắng
+B1	cheese	verb	(slang) To anger or irritate someone, usually in combination with "off".	(thông tục, Anh) làm bực mình, chọc tức
+B1	cheese	verb	(slang) To smile excessively, as for a camera.	(thông tục) cười toe toét (khi chụp ảnh)
+B1	cheese	verb	(slang) To stop; to refrain from.	(tiếng lóng, cổ) dừng lại, thôi
 B1	cheese	verb	(technology) To make holes in a pattern of circuitry to decrease pattern density.	
-B1	cheese	verb	(video games, slang) To use an unconventional, all-in strategy to take one's opponent by surprise early in the game (especially for real-time strategy games).	
-B1	cheese	verb	To prepare curds for making cheese.	
-B1	chef	noun	(historical) A reliquary in the shape of a head.	
-B1	chef	noun	Any cook.	
-B1	chef	noun	The head cook of a restaurant or other establishment.	
-B1	chef	noun	The presiding cook in the kitchen of a large household.	
-B1	chef	verb	(Internet slang) To impress others.	
-B1	chef	verb	(MLE, transitive) To stab with a knife, to shank.	
-B1	chef	verb	(stative, informal) To work as a chef; to prepare and cook food professionally.	
+B1	cheese	verb	(video games, slang) To use an unconventional, all-in strategy to take one's opponent by surprise early in the game (especially for real-time strategy games).	(trò chơi điện tử, thông tục) dùng chiến thuật liều lĩnh, bất ngờ
+B1	cheese	verb	To prepare curds for making cheese.	làm phô mai
+B1	chef	noun	(historical) A reliquary in the shape of a head.	(tôn giáo, cổ) hộp thánh tích hình đầu người
+B1	chef	noun	Any cook.	đầu bếp, người nấu ăn
+B1	chef	noun	The head cook of a restaurant or other establishment.	đầu bếp trưởng, bếp trưởng
+B1	chef	noun	The presiding cook in the kitchen of a large household.	bếp trưởng (gia đình)
+B1	chef	verb	(Internet slang) To impress others.	(tiếng lóng mạng) gây ấn tượng, làm mê mẩn
+B1	chef	verb	(MLE, transitive) To stab with a knife, to shank.	(tiếng lóng, Anh) đâm dao
+B1	chef	verb	(stative, informal) To work as a chef; to prepare and cook food professionally.	(thông tục) làm đầu bếp
 B1	china	noun	(countable) Synonym of China rose, in its various senses.	
-B1	china	noun	(uncountable) Chinaware: porcelain tableware.	
+B1	china	noun	(uncountable) Chinaware: porcelain tableware.	đồ sứ
 B1	china	noun	(uncountable) Synonym of China root, the root of Smilax china (particularly) as a medicine.	
-B1	china	noun	(uncountable) Synonym of porcelain, a hard white translucent ceramic made from kaolin, now (chiefly US) sometimes distinguished in reference to tableware as fine or good china.	
-B1	clock	noun	(attributive) A common noun relating to an instrument that measures or keeps track of time.	
-B1	clock	noun	(British) The odometer of a motor vehicle.	
-B1	clock	noun	A chronometer, an instrument that measures time, particularly the time of day.	
-B1	clock	noun	A large beetle, especially the European dung beetle (Geotrupes stercorarius).	
+B1	china	noun	(uncountable) Synonym of porcelain, a hard white translucent ceramic made from kaolin, now (chiefly US) sometimes distinguished in reference to tableware as fine or good china.	sứ, đồ sứ
+B1	clock	noun	(attributive) A common noun relating to an instrument that measures or keeps track of time.	đồng hồ
+B1	clock	noun	(British) The odometer of a motor vehicle.	(Anh) công tơ mét, đồng hồ đo quãng đường
+B1	clock	noun	A chronometer, an instrument that measures time, particularly the time of day.	đồng hồ
+B1	clock	noun	A large beetle, especially the European dung beetle (Geotrupes stercorarius).	bọ hung
 B1	clock	noun	A pattern near the heel of a sock or stocking.	
-B1	clock	noun	The seed head of a dandelion.	
-B1	clock	verb	(transitive, informal) To notice; to take notice of (someone or something).	
-B1	clock	verb	(transitive, slang) To hit (someone) heavily.	
-B1	clock	verb	(transitive) To measure the duration of.	
-B1	clock	verb	(transitive) To measure the speed of.	
+B1	clock	noun	The seed head of a dandelion.	cụm hạt bồ công anh
+B1	clock	verb	(transitive, informal) To notice; to take notice of (someone or something).	để ý, nhận ra
+B1	clock	verb	(transitive, slang) To hit (someone) heavily.	(thông tục) đấm, nện
+B1	clock	verb	(transitive) To measure the duration of.	bấm giờ, đo thời gian
+B1	clock	verb	(transitive) To measure the speed of.	đo tốc độ, bắn tốc độ
 B1	clock	verb	(transitive) To ornament (e.g. the side of a stocking) with figured work.	
 B1	coat	noun	(countable, clothing) An outer garment covering the upper torso and arms.	áo bành tô
-B1	coat	noun	(countable) A covering of material, such as paint.	
-B1	coat	noun	(countable) The fur or feathers covering an animal's skin.	
+B1	coat	noun	(countable) A covering of material, such as paint.	lớp phủ
+B1	coat	noun	(countable) The fur or feathers covering an animal's skin.	bộ lông
 B1	coat	noun	The habit or vesture of an order of men, indicating the order or office; cloth.	
-B1	coat	verb	(transitive) To cover like a coat.	
-B1	coat	verb	(transitive) To cover with a coating of some material.	
+B1	coat	verb	(transitive) To cover like a coat.	phủ lên, bao phủ
+B1	coat	verb	(transitive) To cover with a coating of some material.	phủ, tráng
 B1	competition	noun	(countable) A contest for a prize or award.	cuộc thi
-B1	competition	noun	(uncountable, collectively) The competitors in such a contest.	
+B1	competition	noun	(uncountable, collectively) The competitors in such a contest.	các đối thủ cạnh tranh
 B1	competition	noun	(uncountable) The action of competing.	sự cạnh tranh
-B1	connection	noun	(uncountable) The act of connecting.	
-B1	connection	noun	A physical link between two things or places.	
-B1	connection	noun	A relationship or association.	
-B1	connection	noun	The point at which two or more things are connected.	
-B1	contract	noun	(bridge) The declarer's undertaking to win the number of tricks bid with a stated suit as trump.	
-B1	contract	noun	(law) An agreement which the law will enforce in some way. A legally binding contract must contain at least one promise, i.e., a commitment or offer, by an offeror to and accepted by an offeree to do something in the future. A contract is thus executory rather than executed.	
-B1	contract	noun	(law) The document containing such an agreement.	
-B1	contract	noun	An agreement between two or more parties, to perform a specific job or work order, often temporary or of fixed duration and usually governed by a written agreement.	
-B1	contract	verb	(ambitransitive) To draw together or nearer; to shorten, narrow, or lessen.	
-B1	contract	verb	(intransitive) To make an agreement or contract; to covenant.	
-B1	contract	verb	(transitive) To bring on; to incur; to acquire.	
-B1	contract	verb	(transitive) To enter into a contract with (someone or something).	
-B1	crash	adj	Quick, fast, intensive, impromptu.	
+B1	connection	noun	(uncountable) The act of connecting.	sự kết nối
+B1	connection	noun	A physical link between two things or places.	đường nối, mối nối
+B1	connection	noun	A relationship or association.	mối quan hệ, mối liên hệ
+B1	connection	noun	The point at which two or more things are connected.	điểm nối, chỗ nối
+B1	contract	noun	(bridge) The declarer's undertaking to win the number of tricks bid with a stated suit as trump.	(bài bridge) hợp đồng
+B1	contract	noun	(law) An agreement which the law will enforce in some way. A legally binding contract must contain at least one promise, i.e., a commitment or offer, by an offeror to and accepted by an offeree to do something in the future. A contract is thus executory rather than executed.	(luật) hợp đồng
+B1	contract	noun	(law) The document containing such an agreement.	(luật) văn bản hợp đồng
+B1	contract	noun	An agreement between two or more parties, to perform a specific job or work order, often temporary or of fixed duration and usually governed by a written agreement.	hợp đồng, hợp đồng làm việc
+B1	contract	verb	(ambitransitive) To draw together or nearer; to shorten, narrow, or lessen.	co lại, thu nhỏ lại
+B1	contract	verb	(intransitive) To make an agreement or contract; to covenant.	ký hợp đồng, giao kết hợp đồng
+B1	contract	verb	(transitive) To bring on; to incur; to acquire.	mắc phải, nhiễm phải
+B1	contract	verb	(transitive) To enter into a contract with (someone or something).	ký hợp đồng với, thuê
+B1	crash	adj	Quick, fast, intensive, impromptu.	cấp tốc, khẩn cấp
 B1	crash	noun	(collective) A group of rhinoceroses.	
 B1	crash	noun	(computing) A malfunction of computer software or hardware which causes it to shut down or become partially or totally inoperable.	
 B1	crash	noun	(textiles) A type of rough linen.	
