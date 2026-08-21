@@ -352,6 +352,7 @@ guard đăng nhập, 8 route còn lại là danh sách ở mục 3.
 | GET | `/api/learn/vocab/:headword` | — | n/a (read) |
 | GET | `/api/me` | — | n/a (read) |
 | PATCH | `/api/me` | `requireUser` + `csrfGuard` | yes |
+| GET | `/api/me/ability` | `requireUser` | n/a (read) |
 | POST | `/api/me/password` | `requireUser` + `csrfGuard` | yes |
 | POST | `/api/redeem` | `requireUser` + `csrfGuard` | yes |
 | GET | `/auth/google` | — | n/a (read) |
