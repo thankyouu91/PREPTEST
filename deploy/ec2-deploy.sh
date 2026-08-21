@@ -32,6 +32,21 @@ PM2_APP="${PM2_APP:-}"
 
 say() { printf '\n\033[1m== %s ==\033[0m\n' "$1"; }
 
+# EVERY git call, reads included, runs as the user that owns the checkout.
+#
+# Git refuses to work on a repository owned by somebody else — "detected
+# dubious ownership" — and that is a real protection rather than a nuisance: a
+# root process reading a repo that another user can write is a root process
+# about to run whatever that user put in .git/config.
+#
+# The mutations were wrapped in sudo from the start. Three `git rev-parse`
+# calls were not, and on a checkout owned by `ubuntu` that is exactly where the
+# first real deploy stopped: the fetch succeeded, the next line ran as root,
+# and set -e ended the run with the new code already on disk and nothing
+# restarted. A helper rather than three more sudo prefixes, so the next git
+# call added here cannot quietly be the fourth.
+git_as() { sudo -u "$APP_USER" -H git "$@"; }
+
 # Whichever of the two is in charge here. Kept as one function because the
 # rollback path has to restart exactly the same way the deploy did — two copies
 # of this decision is how a rollback silently restarts nothing.
@@ -53,15 +68,15 @@ restart_app() {
 # with "Permission denied (publickey)" on a machine where the key is fine.
 say "Fetching $BRANCH"
 cd "$APP_DIR"
-sudo -u "$APP_USER" -H git fetch --prune origin "$BRANCH"
-PREVIOUS="$(git rev-parse HEAD)"
+git_as fetch --prune origin "$BRANCH"
+PREVIOUS="$(git_as rev-parse HEAD)"
 echo "current: $PREVIOUS"
 
 # Hard reset rather than merge: this checkout is a deployment artefact, not
 # somebody's working copy, and a merge conflict at 3am on a box nobody is
 # looking at is not a state worth being able to reach.
-sudo -u "$APP_USER" -H git reset --hard "origin/$BRANCH"
-echo "now:     $(git rev-parse HEAD)"
+git_as reset --hard "origin/$BRANCH"
+echo "now:     $(git_as rev-parse HEAD)"
 
 say "Installing"
 # --omit=dev: the runtime needs express and nothing else. Tailwind and
@@ -85,7 +100,7 @@ say "Health"
 for i in $(seq 1 20); do
   if curl -fsS -o /dev/null "$HEALTH_URL"; then
     echo "healthy after $i attempt(s)"
-    say "Deployed $(git rev-parse --short HEAD)"
+    say "Deployed $(git_as rev-parse --short HEAD)"
     exit 0
   fi
   sleep 0.5
@@ -95,7 +110,7 @@ done
 # commit that was running, restart, and fail loudly — an automated rollback is
 # only worth having if the failure is still reported.
 say "UNHEALTHY — rolling back to $PREVIOUS"
-sudo -u "$APP_USER" -H git reset --hard "$PREVIOUS"
+git_as reset --hard "$PREVIOUS"
 sudo -u "$APP_USER" -H npm ci --omit=dev --no-audit --no-fund || true
 restart_app
 # Where the reason lives depends on who is running it. Asking journalctl about
