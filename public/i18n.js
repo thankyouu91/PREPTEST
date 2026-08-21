@@ -58,7 +58,6 @@
     'walk in calm': 'tự tin thi thật',
     'Practice papers for the VPET exam - the real structure, marked automatically, with each skill scored on its own.':
       'Đề luyện VPET bám sát cấu trúc đề thật, chấm tự động, có điểm riêng cho từng kỹ năng.',
-    'See the exam': 'Tìm hiểu kỳ thi',
     'The real VPET format': 'Đúng cấu trúc VPET',
     'Marked automatically': 'Chấm điểm tự động',
     'See the weak spot': 'Biết ngay mình yếu ở đâu',
@@ -75,7 +74,6 @@
     'Interface mock-up': 'Ảnh minh họa giao diện',
 
     /* ---- The exam section ---- */
-    'The exam': 'Kỳ thi',
 
     /* ---- Bộ tài liệu (PDF) ----
        Ruột hai bản PDF vốn đã là tiếng Việt cho cả hai ngôn ngữ giao diện: đó là

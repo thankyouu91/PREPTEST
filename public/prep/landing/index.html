@@ -36,7 +36,6 @@
       <b data-brand-name class="font-extrabold tracking-tight text-[17px]">VPET Prep</b>
     </a>
     <nav class="hidden md:flex items-center gap-1 mx-auto" aria-label="Main navigation">
-      <a href="#ky-thi" class="px-3.5 py-2 rounded-full text-sm font-semibold text-muted hover:text-ink transition">The exam</a>
       <a href="#tai-lieu" class="px-3.5 py-2 rounded-full text-sm font-semibold text-muted hover:text-ink transition">Study pack</a>
       <a href="#cach-hoat-dong" class="px-3.5 py-2 rounded-full text-sm font-semibold text-muted hover:text-ink transition">How it works</a>
       <a href="#bang-gia" class="px-3.5 py-2 rounded-full text-sm font-semibold text-muted hover:text-ink transition">Pricing</a>
@@ -72,7 +71,6 @@
         </p>
         <div class="flex flex-wrap items-center gap-3 mt-8 rise rise-2">
           <a href="/prep/dang-ky/" class="btn btn-primary btn-lg">Start free</a>
-          <a href="#ky-thi" class="btn btn-ghost btn-lg">See the exam</a>
         </div>
         <ul class="flex flex-wrap gap-x-6 gap-y-2.5 mt-9 rise rise-3" aria-label="Highlights">
           <li class="inline-flex items-center gap-2 text-sm font-semibold text-muted">
@@ -143,27 +141,6 @@
         </div>
         <p class="text-center lg:text-right text-[11.5px] font-medium text-muted/70 mt-12 lg:me-4">Interface mock-up</p>
       </div>
-    </div>
-  </section>
-
-  <!-- ===================== THE EXAM ===================== -->
-  <section id="ky-thi" class="scroll-mt-20">
-    <div class="max-w-shell mx-auto px-4 sm:px-6 py-16 lg:py-24">
-      <div class="max-w-[60ch]">
-        <h2 class="text-3xl sm:text-4xl font-extrabold tracking-tight">The exam</h2>
-        <p class="text-muted text-[16px] leading-relaxed mt-3">
-          VPET has its own structure and scale. The practice papers follow the real format, so nothing on the day is a surprise.
-        </p>
-      </div>
-
-      <!-- Skeleton while the catalogue loads -->
-      <div id="family-skeleton" class="grid sm:grid-cols-2 lg:grid-cols-3 gap-5 mt-10">
-        <div class="card p-6"><div class="skeleton h-6 w-16 mb-4"></div><div class="skeleton h-4 w-4/5 mb-2"></div><div class="skeleton h-4 w-3/5 mb-6"></div><div class="skeleton h-9 w-28 rounded-full"></div></div>
-        <div class="card p-6"><div class="skeleton h-6 w-16 mb-4"></div><div class="skeleton h-4 w-4/5 mb-2"></div><div class="skeleton h-4 w-3/5 mb-6"></div><div class="skeleton h-9 w-28 rounded-full"></div></div>
-        <div class="card p-6 hidden lg:block"><div class="skeleton h-6 w-16 mb-4"></div><div class="skeleton h-4 w-4/5 mb-2"></div><div class="skeleton h-4 w-3/5 mb-6"></div><div class="skeleton h-9 w-28 rounded-full"></div></div>
-      </div>
-
-      <div id="family-cards" class="grid sm:grid-cols-2 lg:grid-cols-3 gap-5 mt-10 hidden"></div>
     </div>
   </section>
 
@@ -510,7 +487,6 @@ Sign up for <span id="plan-cta-name">Plus</span></a>
     <nav aria-label="Platform">
       <h3 class="text-sm font-extrabold tracking-tight mb-3.5">Platform</h3>
       <ul class="grid gap-2.5 text-[14.5px] font-medium text-muted">
-        <li><a class="hover:text-ink transition" href="#ky-thi">The exam</a></li>
         <li><a class="hover:text-ink transition" href="#tai-lieu">Study pack</a></li>
         <li><a class="hover:text-ink transition" href="#bang-gia">Pricing</a></li>
         <li><a class="hover:text-ink transition" href="/prep/dang-nhap/">Sign in</a></li>
@@ -541,36 +517,17 @@ Sign up for <span id="plan-cta-name">Plus</span></a>
     document.title = t.name + ' · Mock tests for the VPET exam';
   })();
 
-  /* Public page: boot() does not require a session, it just loads the catalogue and any session there is */
-  const grid = PREP.qs('#family-cards');
-  PREP.boot().then(res => {
+  /* Public page: boot() needs no session. It is still called with the exam
+     section gone, because it is what reads /api/me — the header has to know
+     whether to offer "Sign in" or "Keep studying", and that is the whole job
+     it has left here. The catalogue it also loads is now unused on this page
+     and is left to the library, which is where somebody choosing a paper goes. */
+  PREP.boot().then(() => {
     /* The nav follows the sign-in state (real session from /api/me) */
     if (PrepState.user()) {
       PREP.qsa('[data-when-guest]').forEach(el => el.setAttribute('hidden', ''));
       PREP.qsa('[data-when-user]').forEach(el => el.removeAttribute('hidden'));
     }
-
-    PREP.qs('#family-skeleton').classList.add('hidden');
-    /* The landing is a public page and stays VPET-only: it never lists the parked
-       families, even when an administrator viewing it holds a session that makes
-       the catalogue return them. Filter by status here so the marketing page does
-       not depend on who is looking at it. */
-    grid.innerHTML = PREP.families.filter(f => (f.status || 'ready') !== 'coming_soon').map(f => {
-      const n = PREP.testsOf(f.id).length;
-      return '<article class="card card-hover p-6 flex flex-col">' +
-        '<div class="flex items-center gap-2.5">' +
-          '<span class="exam-chip" data-family="' + f.id + '">' + f.name + '</span>' +
-          (n ? '<span class="text-[12.5px] font-bold text-muted">' + n + ' mock tests</span>'
-             : '<span class="badge badge-hl">Coming soon</span>') +
-        '</div>' +
-        '<h3 class="font-extrabold text-[17px] tracking-tight mt-4">' + PREP.esc(f.sub) + '</h3>' +
-        '<p class="text-muted text-[14.5px] leading-relaxed mt-1.5 mb-6">' + PREP.esc(f.format) + '.</p>' +
-        '<a href="/prep/thu-vien/?family=' + f.id + '" class="btn btn-soft btn-md mt-auto w-full">See details' +
-          '<svg viewBox="0 0 24 24" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg>' +
-        '</a>' +
-      '</article>';
-    }).join('');
-    grid.classList.remove('hidden');
   });
 
   /* Illustrative meters in the hero and bento tiles */
