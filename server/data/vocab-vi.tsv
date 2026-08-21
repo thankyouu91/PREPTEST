@@ -1515,7 +1515,7 @@ B2	photograph	verb	(transitive, intransitive) To take a photograph (of).	chụp 
 B2	pipe	noun	Meanings relating to a container.		
 B2	pipe	noun	Meanings relating to a hollow conduit.	ống, ống dẫn	ok
 B2	pipe	noun	Meanings relating to a wind instrument.	sáo, kèn ống	ok
-B2	pipe	noun	Meanings relating to something resembling a tube.	ống	
+B2	pipe	noun	Meanings relating to something resembling a tube.	ống	ok
 B2	pipe	verb	(ambitransitive) To play (music) on a pipe instrument, such as a bagpipe or a flute.	thổi (sáo, kèn túi)	ok
 B2	pipe	verb	(intransitive) Of a queen bee: to make a high-pitched sound during certain stages of development.	(sinh học) kêu rít (ong chúa)	ok
 B2	pipe	verb	(intransitive) To emit or have a shrill sound like that of a pipe; to whistle.	rít lên, kêu the thé	ok
@@ -1806,7 +1806,7 @@ B2	tragedy	noun	A drama or similar work, in which the main character is brought 
 B2	tragedy	noun	The genre of such works, and the art of producing them.	bi kịch	ok
 B2	trunk	noun	(in the plural) Ellipsis of swimming trunks.	quần bơi	ok
 B2	trunk	noun	(software engineering) In software projects under source control: the most current source tree, from which the latest unstable builds (so-called "trunk builds") are compiled.	(tin học) nhánh mã nguồn chính	ok
-B2	trunk	noun	A large pipe forming the piston rod of a steam engine, of sufficient diameter to allow one end of the connecting rod to be attached to the crank, and the other end to pass within the pipe directly to the piston, thus making the engine more compact.		
+B2	trunk	noun	A large pipe forming the piston rod of a steam engine, of sufficient diameter to allow one end of the connecting rod to be attached to the crank, and the other end to pass within the pipe directly to the piston, thus making the engine more compact.	ống piston lớn của động cơ hơi nước	
 B2	trunk	noun	The main line or body of anything.	thân chính, phần chính	ok
 B2	trunk	verb	(telecommunications) To provide simultaneous network access to multiple clients by sharing a set of circuits, carriers, channels, or frequencies.	(viễn thông) trung kế hóa, ghép kênh dùng chung	ok
 B2	trunk	verb	(transitive, mining) To extract (ores) from the slimes in which they are contained, by means of a trunk.	(khai khoáng) đãi quặng bằng máng	ok
@@ -2504,7 +2504,7 @@ C1	til	noun	Sesame (plant: Sesamum indicum)	cây vừng, cây mè	ok
 C1	til	prep	(colloquial) until, till	(khẩu ngữ) đến, cho đến	ok
 C1	translate	noun	(mathematical analysis) In Euclidean spaces: a set of points obtained by adding a given fixed vector to each point of a given set.	(toán học) ảnh tịnh tiến	ok
 C1	translate	verb	Senses relating to a change of position.		
-C1	translate	verb	Senses relating to the change of information, etc., from one form to another.	dịch, chuyển đổi	
+C1	translate	verb	Senses relating to the change of information, etc., from one form to another.	dịch, chuyển đổi	ok
 C1	treaty	noun	(countable, international law) A formal binding agreement concluded by subjects of international law, namely, states and international organizations; a convention, a pact.	điều ước	ok
 C1	treaty	verb	(intransitive) To enter into a treaty.	đàm phán, thương lượng	ok
 C1	treaty	verb	(transitive) To get into (a specific situation) through a treaty.	đạt được bằng hiệp ước	ok
