@@ -45,7 +45,7 @@ rather than a separate no-go queue.
 > Đã khóa thì **không sửa tệp của block đó ở block sau**; cần sửa thì ghi một
 > dòng "mở lại" vào `docs/BLOCKS.md` và chạy lại đủ sáu điều kiện.
 >
-> - [ ] **Block 0 — Sao lưu và phục hồi.** Chặn mọi việc còn lại. CSDL đang là
+> - [ ] **Block 0 — Sao lưu và phục hồi.** 🟡 mã xong, chờ việc AWS (xem `docs/BLOCKS.md`). Chặn mọi việc còn lại. CSDL đang là
 >   một tệp trên một máy **không có bản sao lưu nào**: ổ hỏng hay một lần deploy
 >   sai đường dẫn là mất sạch tài khoản, code đã bán và toàn bộ bài làm.
 >   `deploy/backup.sh` dùng `VACUUM INTO` (không phải `cp` — chép một tệp SQLite
@@ -54,13 +54,13 @@ rather than a separate no-go queue.
 >   trước **mỗi** lần deploy; `deploy/restore.sh`; cảnh báo khi bản gần nhất quá
 >   12 giờ. Khóa khi đã **phục hồi thật** vào một máy trắng và server lên xanh từ
 >   bản đó — một bản sao lưu chưa từng phục hồi thử là một tệp, không phải bản sao lưu
-> - [ ] **Block 1 — Nới trần rẻ tiền.** `PRAGMA synchronous = NORMAL` (an toàn
+> - [x] **Block 1 — Nới trần rẻ tiền.** 🔒 khóa `87b05ce`, 2026-08-21. `PRAGMA synchronous = NORMAL` (an toàn
 >   trong WAL: chỉ mất giao dịch cuối khi mất điện cả máy, không mất khi tiến
 >   trình chết) — đo được **9× đường ghi**, 0,246 ms → 0,026 ms mỗi lần ghi;
 >   `PRAGMA busy_timeout = 5000`, điều kiện cần của block 7; **cắt trang sẵn
 >   thay vì chạy hai regex mỗi request** — đo được **+65%** đường dựng trang.
 >   Nén đã bỏ khỏi block: kiểm bằng `curl` thấy nginx trên production nén rồi
-> - [ ] **Block 2 — Mô hình năng lực.** `skill_events` (một bảng sự kiện cho mọi
+> - [x] **Block 2 — Mô hình năng lực.** 🔒 khóa `87b05ce`, 2026-08-21. `skill_events` (một bảng sự kiện cho mọi
 >   thứ được chấm ở mọi nơi) + `server/ability.js` (Beta–Binomial, nửa đời 30
 >   ngày, prior 2/2, và `sd` làm hạn ngạch nói — dưới ngưỡng thì **không hiện
 >   band**, hiện "chưa đủ dữ liệu"). `markAttempt` tự ghi sự kiện nên không ai

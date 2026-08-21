@@ -16,9 +16,9 @@ Sáu điều kiện khóa (chi tiết ở `docs/KE-HOACH-XAY.md` §1.2), rút g�
 
 | Block | Nội dung | Trạng thái | Commit khóa | Ngày |
 |---|---|---|---|---|
-| 0 | Sao lưu và phục hồi CSDL | 🟡 đang làm — mã và bộ kiểm xong, chưa đặt lịch trên máy thật | — | — |
-| 1 | Nới trần rẻ tiền (pragma, cắt trang sẵn) | 🟡 đang làm — mã, số đo và bộ kiểm xong, chờ cổng xanh | — | — |
-| 2 | Mô hình năng lực (`skill_events` + `server/ability.js`) | 🟡 đang làm — mã và 64 phép kiểm xong, chờ cổng xanh | — | — |
+| 0 | Sao lưu và phục hồi CSDL | 🟡 đang làm — mã và 43 phép kiểm xong; **chờ việc trên AWS**, xem mục cuối | — | — |
+| 1 | Nới trần rẻ tiền (pragma, cắt trang sẵn) | 🔒 **đã khóa** | `87b05ce` | 2026-08-21 |
+| 2 | Mô hình năng lực (`skill_events` + `server/ability.js`) | 🔒 **đã khóa** | `87b05ce` | 2026-08-21 |
 | 3 | Rubric và đánh giá sau bài thi | ⬜ chưa bắt đầu | — | — |
 | 4 | Luyện theo từng Part, đề random | ⬜ chưa bắt đầu | — | — |
 | 5 | Từ vựng B1–C2 qua viết câu và áp dụng từ | ⬜ chưa bắt đầu | — | — |
@@ -41,6 +41,7 @@ không qua HTTP — vì đó mới là trần thật của đường ghi.
 | 2026-08-21 | `9366f3b` | 4 nhân, đĩa cục bộ | 3.955 req/s | 1.915 req/s | — | 1.150 req/s | 4.060/s (`FULL`) |
 | 2026-08-21 | `cdbfb3f` | 4 nhân, đĩa cục bộ | — | — | **1.007 req/s** | 1.152 req/s | 4.060/s (`FULL`) |
 | 2026-08-21 | block 1 | 4 nhân, đĩa cục bộ | — | — | **1.664 req/s** | 1.142 req/s | **37.990/s** (`NORMAL`) |
+| 2026-08-21 | `87b05ce` khóa 1+2 | 4 nhân, đĩa cục bộ | 3.741 req/s | 1.718 req/s | **1.597 req/s** | 1.146 req/s | 37.990/s (`NORMAL`) |
 
 Hàng thứ hai là đường cơ sở đúng cho trang HTML: hàng đầu đo nhầm một route
 sau đăng nhập nên chỉ đo được tốc độ trả về 302, không phải tốc độ dựng trang.
@@ -55,6 +56,24 @@ trở lên — ở `docs/KE-HOACH-XAY.md` §0.
 
 Máy đo không phải máy production: ổ ở đây nhanh hơn EBS gp3, nên cột ghi trên
 production sẽ thấp hơn. Phải đo lại trên chính máy đó trong block 0.
+
+**Hàng khóa 1+2 so với đường cơ sở** — điều kiện khóa số 3 là không route nào
+tụt quá 15%:
+
+| Đường | cơ sở | khi khóa | |
+|---|---|---|---|
+| `/prep/landing/` | 1.007 | 1.597 | **+59%** ✓ |
+| `/api/catalog` | 1.152 | 1.146 | −0,5%, trong sai số ✓ |
+| `/healthz` | 3.955 | 3.741 | −5,4% ✓ |
+| tệp tĩnh | 1.915 | 1.718 | **−10,3%** ✓ nhưng sát |
+
+Hàng cuối cần nói cho rõ chứ không lờ đi: −10,3% nằm trong ngưỡng nhưng là mức
+tụt lớn nhất của lần đo này. Ba lý do đều khả dĩ và chưa tách được: máy vừa chạy
+xong cổng 441 giây nên còn nóng; lần đo này chỉ tới 100 luồng chứ không phải
+200; và sai số giữa các lần chạy của một tiến trình đơn luồng vốn ở mức vài phần
+trăm. **Không có thay đổi nào trong block 1 hay 2 chạm vào đường tệp tĩnh** —
+`express.static` không bị sửa. Nếu lần đo của block sau vẫn thấy nó ở mức này
+thì lúc đó mới là xu hướng, và phải truy.
 
 ## Việc cần quyền trên AWS mới xong được
 
