@@ -52,7 +52,24 @@ git_as() { sudo -u "$APP_USER" -H git "$@"; }
 # of this decision is how a rollback silently restarts nothing.
 restart_app() {
   if [ -n "$PM2_APP" ]; then
-    sudo -u "$APP_USER" -H pm2 restart "$PM2_APP" --update-env
+    # Deliberately WITHOUT --update-env.
+    #
+    # PM2 keeps each app's environment in its own process list, and a plain
+    # restart reuses it. `--update-env` means "throw that away and take the
+    # calling shell's instead" — and the calling shell here is Systems Manager
+    # running as root with almost no environment at all.
+    #
+    # So the flag that looks like housekeeping is the one that would silently
+    # wipe TOKEN_ENCRYPTION_KEY on the next deploy, and with it the ability to
+    # read back the stored API key. Everything would still start; marking would
+    # simply stop, and the first anyone would know is a candidate with no band.
+    #
+    # To CHANGE the environment, do it once by hand — that is the moment you
+    # actually mean it — and `pm2 save` writes it into the dump that survives
+    # both deploys and reboots:
+    #     sudo -u ubuntu TOKEN_ENCRYPTION_KEY=... pm2 restart preptest --update-env
+    #     sudo -u ubuntu pm2 save
+    sudo -u "$APP_USER" -H pm2 restart "$PM2_APP"
     # The saved process list is what `pm2 resurrect` reads after a reboot. A
     # deploy that does not re-save leaves the boot-time list describing an
     # older state of the world, which nobody discovers until the machine
