@@ -37,9 +37,10 @@
  * whitespace, lowercasing and stripping punctuation from the ENDS only - an
  * internal comma would have to be typed. So no dictation sentence here contains
  * one, and no contraction either, since "do not" and "don't" both sound right and
- * only one can be the key. Parts H and J are `speaking` and carry no answer at
- * all: they are rubric-marked, and marking leaves them pending rather than
- * scoring them zero.
+ * only one can be the key. Parts G, H and J are `speaking` and carry no answer
+ * at all: they are rubric-marked, and marking leaves them pending rather than
+ * scoring them zero. Part G's model answers travel as `modelAnswer`, read only
+ * by the marker - see scriptFor() in server/ai-marking-run.js.
  *
  * PROVENANCE. Written for this platform. Nothing is transcribed from a published
  * test. See docs/VPET-BLUEPRINT.md for what each part measures and how to write
@@ -160,100 +161,219 @@ const PART_F = [
  *   [key, level, say, question, options, answer, explanation]
  * The question is on screen; the passage is only heard.
  * ---------------------------------------------------------------- */
+/* ---------------------------------------------------------------- *
+ * Part G - Passage Comprehension.
+ *   [key, level, group, say, question, answer, explanation]
+ *
+ *   "You will hear a passage about an everyday or workplace situation. There
+ *    will be THREE questions about the passage. You answer the questions by
+ *    SPEAKING OUT LOUD."
+ *   Tips: "Answer using a short phrase or a very short sentence."
+ *
+ * Three items share a `group` and therefore share one passage, heard once for
+ * all three. Every item in a group carries the same `say`: the recording is
+ * played once, at the top of the group, but the marker is given the passage
+ * for each question and cannot judge an answer without it.
+ *
+ * `answer` is the model answer, not something the candidate ever sees. It is
+ * what a short correct reply looks like - three or four words, usually - and
+ * exists so the rubric has something to compare a transcript against.
+ *
+ * The questions are deliberately not all "what happened": one asks for a fact
+ * carried in a number, one for a reason, one for something the speaker implies
+ * without saying. A passage answered entirely by remembering nouns is testing
+ * memory rather than comprehension.
+ * ---------------------------------------------------------------- */
 const PART_G = [
-  ['vpet-g-01', 'B1',
-    'The library will change its opening hours from the first of next month. It will open '
-    + 'at eight in the morning instead of nine, and close at six in the evening instead of '
-    + 'eight. Staff say the earlier start suits students who come in before class, and that '
-    + 'very few people used the building after six.',
-    'Why is the library changing its hours?',
-    ['Because the building needs repairs',
-      'Because few people came in the evening',
-      'Because there are not enough staff',
-      'Because students asked for a later closing time'],
-    'Because few people came in the evening',
-    'The reason is given in the last sentence, after two sentences of detail about times. Candidates who stop listening once they have the numbers miss it.'],
-  ['vpet-g-02', 'B1',
-    'A supermarket in the town centre has started giving away bread and vegetables that are '
-    + 'close to their sell-by date. Anyone can collect them between five and six in the '
-    + 'evening. The manager said the shop used to throw away about thirty bags of food a '
-    + 'week, and now throws away almost none.',
-    'What has changed at the supermarket?',
-    ['It sells food more cheaply after five',
-      'It has stopped selling bread and vegetables',
-      'It gives away food that is nearly out of date',
-      'It opens for an extra hour every evening'],
-    'It gives away food that is nearly out of date',
-    'Gives away rather than sells cheaply is the distinction. The five-to-six window is there to pull attention towards the wrong option.'],
-  ['vpet-g-03', 'B1',
-    'Our train to Danang leaves at ten past seven, not twenty past, so we should be at the '
-    + 'station by half past six. I will bring the tickets. Could you bring something to eat? '
-    + 'There is a buffet car, but it does not open until the train has been going an hour.',
-    'What is the speaker asking the listener to do?',
-    ['Buy the tickets', 'Bring some food',
-      'Arrive at the station at seven', 'Book a seat in the buffet car'],
-    'Bring some food',
-    'Four numbers and a correction pass before the request arrives. Holding the request while the times go by is the skill being measured.'],
-  ['vpet-g-04', 'B1',
-    'The company will move to the new office in March. It is two stops further out on the '
-    + 'metro, but the building has a canteen and a bicycle store, which the current one does '
-    + 'not. Everyone will keep the same desk arrangement, so nobody needs to pack anything '
-    + 'except personal belongings.',
-    'What will be different in the new office?',
-    ['People will sit in new teams', 'There will be somewhere to eat',
-      'It will be closer to the metro', 'Everyone will pack their own desk'],
-    'There will be somewhere to eat',
-    'Three of the four options are contradicted by the passage. The trap is "closer to the metro", which reverses "two stops further out".'],
+  /* ---- B1, passage 1: a delivery going wrong ---- */
+  ['vpet-g-01', 'B1', 'g-b1-1',
+    'Thanh works in a small warehouse. On Monday a delivery of forty boxes arrived, but '
+    + 'eight of them were damaged. She called the supplier, who offered to send replacements '
+    + 'on Thursday. Thanh asked for Wednesday instead, because the shop they supply opens on '
+    + 'Thursday morning and needs the stock the day before.',
+    'How many boxes were damaged?', 'Eight.',
+    'A number carried in the middle of the passage, with another number - forty - in front of it to be confused with.'],
+  ['vpet-g-02', 'B1', 'g-b1-1',
+    'Thanh works in a small warehouse. On Monday a delivery of forty boxes arrived, but '
+    + 'eight of them were damaged. She called the supplier, who offered to send replacements '
+    + 'on Thursday. Thanh asked for Wednesday instead, because the shop they supply opens on '
+    + 'Thursday morning and needs the stock the day before.',
+    'Why did Thanh ask for Wednesday?', 'The shop opens on Thursday.',
+    'The reason is in the last clause. Answering "because she wanted it sooner" is true and does not answer the question.'],
+  ['vpet-g-03', 'B1', 'g-b1-1',
+    'Thanh works in a small warehouse. On Monday a delivery of forty boxes arrived, but '
+    + 'eight of them were damaged. She called the supplier, who offered to send replacements '
+    + 'on Thursday. Thanh asked for Wednesday instead, because the shop they supply opens on '
+    + 'Thursday morning and needs the stock the day before.',
+    'Who did Thanh telephone?', 'The supplier.',
+    'Said once, in passing. The passage never uses the word "phone" again.'],
 
-  ['vpet-g-05', 'B2',
-    'The council put in twenty new cycle racks outside the market last spring, and by the '
-    + 'autumn they were rarely more than half full. Rather than conclude that people do not '
-    + 'cycle, the transport officer looked at where bicycles actually were being left, and '
-    + 'found most of them chained to railings on the far side, nearer the entrance people '
-    + 'actually use. The racks were not unwanted. They were in the wrong place.',
-    'What did the transport officer conclude?',
-    ['That the racks were badly located',
-      'That fewer people cycle than expected',
-      'That the racks should be removed',
-      'That cyclists prefer to use railings'],
-    'That the racks were badly located',
-    'The passage sets up the obvious inference and then rejects it. The last two short sentences carry the conclusion, and both are easy to miss after a long opening.'],
-  ['vpet-g-06', 'B2',
-    'Two years ago the firm began letting staff choose their own hours, provided the work was '
-    + 'covered. Productivity did not rise, which disappointed the managers who had argued for '
-    + 'it, but the number of people leaving fell by nearly half. The finance director now '
-    + 'points out that replacing someone costs more than any productivity gain would have '
-    + 'been worth, so the policy has more than paid for itself.',
-    'What is the finance director\'s point?',
-    ['The policy saves money by keeping staff',
-      'The policy has raised productivity',
-      'The policy costs more than it saves',
-      'Managers were right to expect a gain'],
-    'The policy saves money by keeping staff',
-    'The passage concedes a failure before making its point. A candidate listening for whether the policy worked hears "productivity did not rise" and stops.'],
-  ['vpet-g-07', 'B2',
-    'The exhibition was supposed to run for six weeks. It closed after three, not because '
-    + 'nobody came, but because so many did that the floor of the upper gallery was judged '
-    + 'unsafe. The organisers have promised to reopen in a larger building next year, and '
-    + 'anyone holding a ticket for the cancelled weeks will be admitted free.',
-    'Why did the exhibition close early?',
-    ['Too few visitors came', 'The building could not take the crowds',
-      'It was moved to a larger venue', 'Tickets had sold out'],
-    'The building could not take the crowds',
-    'The cause is given inside a "not because X, but because Y" frame, and X is the answer most candidates expect.'],
-  ['vpet-g-08', 'B2',
-    'When the bus route was extended to the hospital, journey times for existing passengers '
-    + 'went up by about seven minutes. Complaints followed immediately. What the complaints '
-    + 'did not mention, and what the survey a year later showed, was that a quarter of the '
-    + 'people now on that bus had previously had no way of getting to an appointment without '
-    + 'paying for a taxi.',
-    'What does the speaker suggest about the complaints?',
-    ['They were about the wrong thing',
-      'They came from taxi drivers',
-      'They led to the route being changed back',
-      'They were mostly from hospital staff'],
-    'They were about the wrong thing',
-    'Nothing in the passage says this outright. It has to be inferred from the contrast between what the complaints mentioned and what the survey found.']
+  /* ---- B1, passage 2: a change to a bus route ---- */
+  ['vpet-g-04', 'B1', 'g-b1-2',
+    'From the first of June the number twelve bus will no longer stop outside the hospital. '
+    + 'It will stop at the corner of Le Loi street instead, about four minutes further to walk. '
+    + 'The company says the hospital stop was holding up traffic every morning. Passengers who '
+    + 'cannot walk that far can ask the driver to use the old stop.',
+    'Where will the bus stop from June?', 'The corner of Le Loi street.',
+    'The new stop is named immediately after the old one is ruled out; the two are easy to swap.'],
+  ['vpet-g-05', 'B1', 'g-b1-2',
+    'From the first of June the number twelve bus will no longer stop outside the hospital. '
+    + 'It will stop at the corner of Le Loi street instead, about four minutes further to walk. '
+    + 'The company says the hospital stop was holding up traffic every morning. Passengers who '
+    + 'cannot walk that far can ask the driver to use the old stop.',
+    'Why is the stop being moved?', 'It was holding up traffic.',
+    'The reason is attributed to the company rather than stated flatly, which is how a real announcement gives one.'],
+  ['vpet-g-06', 'B1', 'g-b1-2',
+    'From the first of June the number twelve bus will no longer stop outside the hospital. '
+    + 'It will stop at the corner of Le Loi street instead, about four minutes further to walk. '
+    + 'The company says the hospital stop was holding up traffic every morning. Passengers who '
+    + 'cannot walk that far can ask the driver to use the old stop.',
+    'What can a passenger who cannot walk far do?', 'Ask the driver to stop at the old stop.',
+    'The exception arrives last, after the listener has already accepted the rule.'],
+
+  /* ---- B1, passage 3: a shift swap ---- */
+  ['vpet-g-07', 'B1', 'g-b1-3',
+    'Minh was down to work on Saturday, but his sister is getting married that day. He asked '
+    + 'Hoa to swap, and she agreed to take Saturday if he takes her Tuesday evening shift. '
+    + 'Their manager said that is fine as long as one of them writes it on the board before '
+    + 'Friday, because the pay is worked out from the board and not from what people remember.',
+    'What does Minh want to do on Saturday?', 'Go to his sister’s wedding.',
+    'The reason for the swap, not the swap itself. A candidate who answers "swap his shift" has heard the mechanism and missed the cause.'],
+  ['vpet-g-08', 'B1', 'g-b1-3',
+    'Minh was down to work on Saturday, but his sister is getting married that day. He asked '
+    + 'Hoa to swap, and she agreed to take Saturday if he takes her Tuesday evening shift. '
+    + 'Their manager said that is fine as long as one of them writes it on the board before '
+    + 'Friday, because the pay is worked out from the board and not from what people remember.',
+    'What must they do before Friday?', 'Write the swap on the board.',
+    'A condition attached to permission. The deadline and the action are in the same clause and both are needed.'],
+  ['vpet-g-09', 'B1', 'g-b1-3',
+    'Minh was down to work on Saturday, but his sister is getting married that day. He asked '
+    + 'Hoa to swap, and she agreed to take Saturday if he takes her Tuesday evening shift. '
+    + 'Their manager said that is fine as long as one of them writes it on the board before '
+    + 'Friday, because the pay is worked out from the board and not from what people remember.',
+    'Why does the board matter?', 'The pay is worked out from it.',
+    'Stated as a subordinate reason at the very end, when attention has usually gone.'],
+
+  /* ---- B1, passage 4: a lost card ---- */
+  ['vpet-g-10', 'B1', 'g-b1-4',
+    'Lan could not find her bank card on Sunday evening. She used the app to freeze it, which '
+    + 'stops anyone spending on it but does not cancel it. On Monday morning she found the card '
+    + 'in a coat pocket, so she unfroze it in the app rather than ordering a new one. The bank '
+    + 'charges nothing to freeze a card, but a replacement takes about a week.',
+    'What did Lan do on Sunday evening?', 'She froze her card.',
+    'Froze, not cancelled - the passage draws the distinction in the next clause, and it is the whole point of the story.'],
+  ['vpet-g-11', 'B1', 'g-b1-4',
+    'Lan could not find her bank card on Sunday evening. She used the app to freeze it, which '
+    + 'stops anyone spending on it but does not cancel it. On Monday morning she found the card '
+    + 'in a coat pocket, so she unfroze it in the app rather than ordering a new one. The bank '
+    + 'charges nothing to freeze a card, but a replacement takes about a week.',
+    'Where did Lan find the card?', 'In a coat pocket.',
+    'A small concrete detail in a passage otherwise made of procedure.'],
+  ['vpet-g-12', 'B1', 'g-b1-4',
+    'Lan could not find her bank card on Sunday evening. She used the app to freeze it, which '
+    + 'stops anyone spending on it but does not cancel it. On Monday morning she found the card '
+    + 'in a coat pocket, so she unfroze it in the app rather than ordering a new one. The bank '
+    + 'charges nothing to freeze a card, but a replacement takes about a week.',
+    'How long does a replacement card take?', 'About a week.',
+    'The last fact, and one that is never acted on - it explains why freezing was the better move.'],
+
+  /* ---- B2, passage 1: a project slipping ---- */
+  ['vpet-g-13', 'B2', 'g-b2-1',
+    'The team had promised the client a working version by the end of March. Two of the four '
+    + 'developers were pulled onto an urgent security fix in February, and the work has slipped '
+    + 'by roughly three weeks. Rather than announce a new date straight away, the project lead '
+    + 'wants to show the client what is already finished, on the grounds that a date given twice '
+    + 'and missed twice costs more trust than a delay explained once.',
+    'Why has the project slipped?', 'Two developers were moved to a security fix.',
+    'The cause is a reassignment, not a technical difficulty - a distinction candidates routinely flatten.'],
+  ['vpet-g-14', 'B2', 'g-b2-1',
+    'The team had promised the client a working version by the end of March. Two of the four '
+    + 'developers were pulled onto an urgent security fix in February, and the work has slipped '
+    + 'by roughly three weeks. Rather than announce a new date straight away, the project lead '
+    + 'wants to show the client what is already finished, on the grounds that a date given twice '
+    + 'and missed twice costs more trust than a delay explained once.',
+    'What does the project lead want to do first?', 'Show the client the finished work.',
+    'Ordering matters: the passage names what he will NOT do first, then what he will.'],
+  ['vpet-g-15', 'B2', 'g-b2-1',
+    'The team had promised the client a working version by the end of March. Two of the four '
+    + 'developers were pulled onto an urgent security fix in February, and the work has slipped '
+    + 'by roughly three weeks. Rather than announce a new date straight away, the project lead '
+    + 'wants to show the client what is already finished, on the grounds that a date given twice '
+    + 'and missed twice costs more trust than a delay explained once.',
+    'What is he trying to avoid?', 'Giving a second date and missing it.',
+    'Inference. The passage gives the principle rather than the risk, and the answer is the risk it implies.'],
+
+  /* ---- B2, passage 2: a hiring decision ---- */
+  ['vpet-g-16', 'B2', 'g-b2-2',
+    'Two candidates reached the final round. The first has six years in the industry but has '
+    + 'only ever worked at one company. The second has three years across four employers and '
+    + 'much stronger references from the people who managed her. The panel is split, and the '
+    + 'head of department has asked both to spend a morning with the team before anyone decides, '
+    + 'which nobody has done here before.',
+    'How many years has the second candidate worked?', 'Three years.',
+    'Four numbers pass in two sentences. The one asked for is attached to the second candidate, not the first.'],
+  ['vpet-g-17', 'B2', 'g-b2-2',
+    'Two candidates reached the final round. The first has six years in the industry but has '
+    + 'only ever worked at one company. The second has three years across four employers and '
+    + 'much stronger references from the people who managed her. The panel is split, and the '
+    + 'head of department has asked both to spend a morning with the team before anyone decides, '
+    + 'which nobody has done here before.',
+    'What has the head of department asked for?', 'A morning with the team.',
+    'The action is buried behind the reason for it.'],
+  ['vpet-g-18', 'B2', 'g-b2-2',
+    'Two candidates reached the final round. The first has six years in the industry but has '
+    + 'only ever worked at one company. The second has three years across four employers and '
+    + 'much stronger references from the people who managed her. The panel is split, and the '
+    + 'head of department has asked both to spend a morning with the team before anyone decides, '
+    + 'which nobody has done here before.',
+    'What is unusual about this decision?', 'They have never done the team morning before.',
+    'The final clause qualifies the whole sentence rather than the noun beside it.'],
+
+  /* ---- B2, passage 3: a policy that backfired ---- */
+  ['vpet-g-19', 'B2', 'g-b2-3',
+    'To cut printing costs the office asked everyone to print double-sided by default. Costs fell '
+    + 'in the first month and then rose above where they started, because staff found the '
+    + 'double-sided setting slow and began sending jobs to the colour printer instead, which is '
+    + 'far more expensive per page. The rule was not withdrawn; the slow printer was replaced.',
+    'What was the rule meant to do?', 'Cut printing costs.',
+    'The purpose is in the opening clause, before the subject of the sentence arrives.'],
+  ['vpet-g-20', 'B2', 'g-b2-3',
+    'To cut printing costs the office asked everyone to print double-sided by default. Costs fell '
+    + 'in the first month and then rose above where they started, because staff found the '
+    + 'double-sided setting slow and began sending jobs to the colour printer instead, which is '
+    + 'far more expensive per page. The rule was not withdrawn; the slow printer was replaced.',
+    'Why did the printing costs rise?', 'Staff used the colour printer instead.',
+    'A two-step cause: the setting was slow, so people moved to a dearer machine. Naming only "it was slow" stops halfway.'],
+  ['vpet-g-21', 'B2', 'g-b2-3',
+    'To cut printing costs the office asked everyone to print double-sided by default. Costs fell '
+    + 'in the first month and then rose above where they started, because staff found the '
+    + 'double-sided setting slow and began sending jobs to the colour printer instead, which is '
+    + 'far more expensive per page. The rule was not withdrawn; the slow printer was replaced.',
+    'What did the office do in the end?', 'They replaced the slow printer.',
+    'The last clause contrasts with what was NOT done, and the contrast is where candidates pick the wrong half.'],
+
+  /* ---- B2, passage 4: a complaint handled well ---- */
+  ['vpet-g-22', 'B2', 'g-b2-4',
+    'A customer wrote to say her order had arrived opened. The support agent refunded the postage '
+    + 'the same day and sent a replacement without asking for the damaged one back, which is not '
+    + 'what the policy says. Her manager backed the decision afterwards: the item was worth less '
+    + 'than the cost of collecting it, and the customer had been with them for nine years.',
+    'What was wrong with the order?', 'It arrived opened.',
+    'The opening fact, before any of the response. Short passages still reward listening from the first word.'],
+  ['vpet-g-23', 'B2', 'g-b2-4',
+    'A customer wrote to say her order had arrived opened. The support agent refunded the postage '
+    + 'the same day and sent a replacement without asking for the damaged one back, which is not '
+    + 'what the policy says. Her manager backed the decision afterwards: the item was worth less '
+    + 'than the cost of collecting it, and the customer had been with them for nine years.',
+    'What did the agent do that the policy does not allow?', 'She did not ask for the item back.',
+    'The breach is named in a relative clause, not as the main verb.'],
+  ['vpet-g-24', 'B2', 'g-b2-4',
+    'A customer wrote to say her order had arrived opened. The support agent refunded the postage '
+    + 'the same day and sent a replacement without asking for the damaged one back, which is not '
+    + 'what the policy says. Her manager backed the decision afterwards: the item was worth less '
+    + 'than the cost of collecting it, and the customer had been with them for nine years.',
+    'Why did the manager agree?', 'Collecting it cost more than the item.',
+    'Two reasons are given; either alone is a correct short answer, which is the point of a short-phrase reply.']
 ];
 
 /* ---------------------------------------------------------------- *
@@ -329,17 +449,24 @@ const PART_J = [
 /** Flattened into the shape the seed inserts, with `say` carried through. */
 function rows() {
   const out = [];
-  const push = (key, part, skill, type, level, prompt, options, answer, explanation, say) =>
-    out.push({
+  const push = (key, part, skill, type, level, prompt, options, answer, explanation, say, group) => {
+    const row = {
       key, part, skill, type, level, prompt,
       options: options || [],
       answer: answer || '',
       explanation,
       say,
+      /* Null for every part answered item by item, which is all of them but G.
+         Carried through to questions.group_key, and it is what lets the runner
+         play one recording for three questions instead of three. */
+      group: group || null,
       tags: ['vpet', 'part-' + part.toLowerCase(), 'audio'],
       source: SOURCE,
       licence: LICENCE
-    });
+    };
+    out.push(row);
+    return row;
+  };
 
   /* The instruction, not the sentence: printing the words next to a dictation
      question would answer it. Same for Part H. */
@@ -351,8 +478,20 @@ function rows() {
     push(key, 'F', 'listening', 'mcq', level,
       'Listen, then choose the best reply.', options, answer, explanation, say);
 
-  for (const [key, level, say, question, options, answer, explanation] of PART_G)
-    push(key, 'G', 'listening', 'mcq', level, question, options, answer, explanation, say);
+  /* Scored as Listening, answered by speaking. The type decides how the answer
+     is collected and who marks it; the skill decides which band it counts
+     towards. For Part G those are genuinely different questions, and the guide
+     answers both: the part is Listening, and "you answer the questions by
+     speaking out loud". */
+  for (const [key, level, group, say, question, answer, explanation] of PART_G) {
+    /* The model answer does NOT go into the item's `answer`. That column is
+       empty on every rubric-marked item and stays that way: it is what a string
+       comparison would reach for, and a spoken answer marked by exact match is
+       a candidate failed for saying the right thing differently.
+       It travels as `modelAnswer` instead, which only the marker reads. */
+    const it = push(key, 'G', 'listening', 'speaking', level, question, [], '', explanation, say, group);
+    it.modelAnswer = answer;
+  }
 
   for (const [key, level, say, explanation] of PART_H)
     push(key, 'H', 'speaking', 'speaking', level,

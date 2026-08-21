@@ -88,7 +88,25 @@ need('espeak-ng');
 need('lame');
 
 const { rows } = await import('../server/data/vpet-items-audio.js').then(m => m.default || m);
-const items = rows().filter(r => r.say);
+
+/* One recording per GROUP, not per item.
+ *
+ * Part G's three questions share a passage, and each carries a copy of it so
+ * the marker can see what the candidate was answering about. Rendering all
+ * three would put three byte-identical MP3s in the repository per group -
+ * about 2.4 MB of duplication across eight groups - and only the first is ever
+ * fetched, because the runner plays the passage once at the top of the group.
+ *
+ * The items that get no file also get no audio_key, which is what stops the
+ * browser offering a second and third play of something the exam plays once. */
+const seenGroup = new Set();
+const items = rows().filter(r => {
+  if (!r.say) return false;
+  if (!r.group) return true;
+  if (seenGroup.has(r.group)) return false;
+  seenGroup.add(r.group);
+  return true;
+});
 
 fs.mkdirSync(OUT_DIR, { recursive: true });
 fs.mkdirSync(path.dirname(TMP), { recursive: true });

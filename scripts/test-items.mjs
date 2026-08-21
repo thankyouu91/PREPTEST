@@ -81,7 +81,7 @@ try {
      part A good for two sittings at B2 while part C is only good at B1 means every
      B2 paper repeats part C. At least one level must be deep in EVERY part.
 
-     The five audio parts are not there yet, and that is declared rather than
+     Four audio parts are not there yet, and that is declared rather than
      tolerated. Each needs twice its blueprint count at one level - E 16, F 16,
      G 12, H 20, J 6 - and each item needs a recording, so the shortfall is voice
      work as much as writing. Until then a retake repeats some of what was heard.
@@ -90,7 +90,6 @@ try {
   const NOT_YET_DEEP = {
     E: 'needs 16 at one level; recordings as well as scripts',
     F: 'needs 16 at one level; recordings as well as scripts',
-    G: 'needs 12 at one level; recordings as well as scripts',
     H: 'needs 20 at one level; recordings as well as scripts',
     J: 'needs 6 at one level; recordings as well as scripts'
   };
@@ -125,7 +124,21 @@ try {
     'No silent part carries a recording script it cannot play');
 
   const audioDir = new URL('../server/data/audio/', import.meta.url);
-  const missingFile = audioItems.filter(i => !existsSync(new URL(i.key + '.mp3', audioDir)));
+  /* One recording per GROUP, not per item.
+     Part G's three questions each carry the passage - the marker needs to see
+     what the candidate was answering about - but the exam plays it once, so
+     only the first of the three is rendered and only the first is played.
+     Asserting a file per item would demand three byte-identical MP3s and call
+     their absence a fault. What IS a fault is a group whose first item has no
+     recording, and that is checked below. */
+  const seenGroup = new Set();
+  const needsFile = audioItems.filter(i => {
+    if (!i.group) return true;
+    if (seenGroup.has(i.group)) return false;
+    seenGroup.add(i.group);
+    return true;
+  });
+  const missingFile = needsFile.filter(i => !existsSync(new URL(i.key + '.mp3', audioDir)));
   ok(missingFile.length === 0,
     'Every audio item has its recording committed',
     missingFile.map(i => i.key).join(', ') + ' — run `npm run audio:vpet`');
@@ -134,13 +147,34 @@ try {
      without re-running the generator leaves the old recording in place, and the
      candidate hears one sentence while being marked against another. */
   const manifest = JSON.parse(readFileSync(new URL('manifest.json', audioDir), 'utf8'));
-  const stale = audioItems.filter(i => {
+  const stale = needsFile.filter(i => {
     const m = manifest[i.key];
     return !m || m.hash !== createHash('sha256').update(i.say, 'utf8').digest('hex').slice(0, 16);
   });
   ok(stale.length === 0,
     'No recording is out of date with the words it should say',
     stale.map(i => i.key).join(', ') + ' — run `npm run audio:vpet`');
+
+  /* What grouping has to guarantee, and what nothing else checks.
+     A group is a passage plus the questions about it. If the item carrying the
+     recording is not the FIRST of its group, the runner - which plays audio in
+     the listening phase of whichever item has it - would ask a question before
+     playing the passage. If a group has no recording at all, three questions
+     are asked about something nobody heard. Both look like content faults for
+     weeks and neither shows up in a count of files. */
+  const byGroup = {};
+  for (const i of audioItems) if (i.group) (byGroup[i.group] = byGroup[i.group] || []).push(i);
+  const groupKeys = Object.keys(byGroup);
+  ok(groupKeys.length > 0, 'Some items are grouped around one passage', String(groupKeys.length));
+  const headless = groupKeys.filter(g => !existsSync(new URL(byGroup[g][0].key + '.mp3', audioDir)));
+  ok(headless.length === 0,
+    'Every group has its passage recorded, on the FIRST item of the group',
+    headless.join(', '));
+  const tailAudio = groupKeys.filter(g =>
+    byGroup[g].slice(1).some(i => existsSync(new URL(i.key + '.mp3', audioDir))));
+  ok(tailAudio.length === 0,
+    'And on no other item, so a passage cannot be played twice',
+    tailAudio.join(', '));
 
   head('Per-item quality');
 

@@ -182,7 +182,7 @@ try {
       checkedParts++;
 
       const items = sql(
-        `SELECT qu.id, qu.part, qu.type, qu.skill, qu.status, qu.audio_key
+        `SELECT qu.id, qu.part, qu.type, qu.skill, qu.status, qu.audio_key, qu.group_key
            FROM section_items si JOIN questions qu ON qu.id=si.question_id
           WHERE si.section_id=? ORDER BY si.sort`, sec.id);
 
@@ -210,11 +210,33 @@ try {
 
       /* Audio is not decoration on these parts: without it the candidate is
          answering a question they were never asked. An empty part is exempt —
-         it has nothing to play — and is caught by the shortfall check instead. */
+         it has nothing to play — and is caught by the shortfall check instead.
+
+         Counted per GROUP where a part has them. Part G is one passage and
+         three questions about it: the passage is played once, at the top of the
+         group, so exactly one of the three carries a recording. Demanding one
+         per item would demand the passage be played three times, which is the
+         opposite of what the guide describes.
+
+         What must hold either way: every group can be heard, and the item that
+         plays it comes first. A group whose recording sits on its second
+         question asks about a passage before playing it. */
       if (bp.needsAudio && items.length) {
-        const mute = items.filter(i => !i.audio_key);
+        const grouped = items.filter(i => i.group_key);
+        const byGroup = {};
+        for (const i of grouped) (byGroup[i.group_key] = byGroup[i.group_key] || []).push(i);
+        for (const [gk, members] of Object.entries(byGroup)) {
+          const withAudio = members.filter(i => i.audio_key);
+          ok(withAudio.length === 1,
+            `Part ${bp.part} group ${gk} plays its passage exactly once`,
+            `${withAudio.length} of ${members.length} items carry a recording`);
+          ok(!!members[0].audio_key,
+            `Part ${bp.part} group ${gk} plays the passage before the first question`,
+            'the recording is on item ' + (members.findIndex(i => i.audio_key) + 1));
+        }
+        const mute = items.filter(i => !i.audio_key && !i.group_key);
         ok(mute.length === 0,
-          `Part ${bp.part} plays audio on every item`,
+          `Part ${bp.part} plays audio on every ungrouped item`,
           `${mute.length} of ${items.length} items have no recording`);
       }
 

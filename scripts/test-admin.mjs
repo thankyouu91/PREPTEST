@@ -920,9 +920,25 @@ const run = async () => {
       !!vpet && vpet.audioShortBy === 0 && vpet.shortBy === 0 && vpet.ready === true,
       vpet ? JSON.stringify({ shortBy: vpet.shortBy, audioShortBy: vpet.audioShortBy, ready: vpet.ready }) : '-');
 
-    const mute = (r2.data.items || []).filter(x => !x.hasAudio);
-    check('And the question list agrees: every item of an audio part has sound',
+    /* Counted per GROUP where there is one. Part G is a passage and three
+       questions about it: the passage plays once, so exactly one of the three
+       carries a recording and the other two are correctly silent. Asserting
+       sound on every item would demand the passage be played three times.
+       Ungrouped items still each need their own. */
+    const audioItems = r2.data.items || [];
+    const mute = audioItems.filter(x => !x.hasAudio && !x.groupKey);
+    check('And the question list agrees: every ungrouped audio item has sound',
       mute.length === 0, mute.map(x => x.id).join(', '));
+
+    const groups = {};
+    for (const x of audioItems) if (x.groupKey) (groups[x.groupKey] = groups[x.groupKey] || []).push(x);
+    const groupKeys = Object.keys(groups);
+    check('Grouped items exist and are reported with their group',
+      groupKeys.length > 0, groupKeys.length + ' group(s)');
+    const wrongCount = groupKeys.filter(g => groups[g].filter(x => x.hasAudio).length !== 1);
+    check('And each group carries exactly one recording, not three',
+      wrongCount.length === 0,
+      wrongCount.map(g => g + ' has ' + groups[g].filter(x => x.hasAudio).length).join(', '));
   }
 
   r = await call('DELETE', '/api/admin/questions/' + audioQid + '/audio');

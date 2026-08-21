@@ -361,7 +361,7 @@ router.get('/admin/questions', async (req, res) => {
   const sql = 'FROM questions WHERE ' + where.join(' AND ');
   const total = await q.val('SELECT COUNT(*) c ' + sql, ...args);
   const rows = await q.all(
-    `SELECT id, family_id, skill, level, type, part, prompt, options_json, answer, explanation, tags_json, status, created_at,
+    `SELECT id, family_id, skill, level, type, part, group_key, prompt, options_json, answer, explanation, tags_json, status, created_at,
             audio_key, audio_bytes, audio_at
        ${sql} ORDER BY id DESC LIMIT ? OFFSET ?`, ...args, limit, offset);
 
@@ -370,6 +370,12 @@ router.get('/admin/questions', async (req, res) => {
     items: rows.map(r => ({
       id: r.id, familyId: r.family_id, skill: r.skill, level: r.level, type: r.type,
       part: r.part || null,
+      /* Which questions share one stimulus. Null for everything answered item by
+         item. An admin looking at Part G needs to see that three questions hang
+         off one passage - and that only the first of them carries the
+         recording - or the other two look like items somebody forgot to
+         attach audio to. */
+      groupKey: r.group_key || null,
       prompt: r.prompt, options: jparse(r.options_json, []), answer: r.answer,
       explanation: r.explanation, tags: jparse(r.tags_json, []), status: r.status, createdAt: r.created_at,
       /* The key itself never leaves the server - the browser only needs to know

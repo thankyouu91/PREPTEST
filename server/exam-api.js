@@ -58,7 +58,15 @@ function playsFor(familyId, part) {
 /* Parts whose answer is spoken. They are paced for a different reason from
    Part B: not to take a stimulus away, but because a spoken answer has a
    beginning and an end that somebody has to be told about. */
-const SPOKEN_PARTS = ['H', 'I', 'J'];
+/* G is here for the same reason as the rest: the answer is a recording, so the
+   item needs a clock of its own and a microphone that opens by itself.
+   It reaches the right shape without any group-aware code in the runner, and
+   that is worth saying out loud because it looks like luck. Only the FIRST
+   question of a Part G group carries audio - the passage is played once for all
+   three - so the paced flow gives that item a listening phase and gives the
+   other two nothing to listen to and a speaking window straight away. Which is
+   exactly what the guide describes: one passage, then three answers. */
+const SPOKEN_PARTS = ['G', 'H', 'I', 'J'];
 
 /**
  * How this part paces the items inside it, or null when it does not.

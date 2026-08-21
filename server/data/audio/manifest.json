@@ -120,52 +120,52 @@
     "words": 9
   },
   "vpet-g-01": {
-    "hash": "58a9ef0835066ffc",
-    "bytes": 87667,
-    "part": "G",
-    "words": 56
-  },
-  "vpet-g-02": {
-    "hash": "065a7663500e50e7",
-    "bytes": 84950,
-    "part": "G",
-    "words": 53
-  },
-  "vpet-g-03": {
-    "hash": "5b2aa47c0f3e3cbe",
-    "bytes": 77427,
+    "hash": "065bd43475a356aa",
+    "bytes": 91115,
     "part": "G",
     "words": 52
   },
   "vpet-g-04": {
-    "hash": "2268b910c3fdaa14",
-    "bytes": 83174,
+    "hash": "07839b72877c2d53",
+    "bytes": 96235,
     "part": "G",
-    "words": 51
+    "words": 60
   },
-  "vpet-g-05": {
-    "hash": "24fa6e8c055935ae",
-    "bytes": 115879,
+  "vpet-g-07": {
+    "hash": "727c9afe026283ea",
+    "bytes": 99265,
     "part": "G",
-    "words": 72
+    "words": 67
   },
-  "vpet-g-06": {
-    "hash": "bd628d3975e6a96f",
-    "bytes": 115984,
+  "vpet-g-10": {
+    "hash": "d9d0787f8e4b1a3e",
+    "bytes": 101878,
+    "part": "G",
+    "words": 67
+  },
+  "vpet-g-13": {
+    "hash": "ab3db1170605f64a",
+    "bytes": 116715,
+    "part": "G",
+    "words": 76
+  },
+  "vpet-g-16": {
+    "hash": "6a0bf8aef00d0cd2",
+    "bytes": 112118,
     "part": "G",
     "words": 68
   },
-  "vpet-g-07": {
-    "hash": "a8169e126b0d07ac",
-    "bytes": 93518,
+  "vpet-g-19": {
+    "hash": "8cf3bfdbab5728c5",
+    "bytes": 104385,
     "part": "G",
-    "words": 57
+    "words": 59
   },
-  "vpet-g-08": {
-    "hash": "c9fbcd0bf617f64d",
-    "bytes": 101042,
+  "vpet-g-22": {
+    "hash": "64e76c1c276575d1",
+    "bytes": 99788,
     "part": "G",
-    "words": 63
+    "words": 64
   },
   "vpet-h-01": {
     "hash": "aafbffd790e948c9",

@@ -660,6 +660,15 @@ addIndex('CREATE INDEX IF NOT EXISTS idx_q_part ON questions (family_id, part, s
    Existing rows keep NULL here; SQLite treats NULLs as distinct, so the unique
    index does not collide across them. */
 addColumnIfMissing('questions', 'ext_key', 'TEXT');
+/* Questions that share one stimulus.
+   Part G is the reason: "You will hear a passage ... There will be three
+   questions about the passage." One recording, heard once, three answers. The
+   blueprint has said `group: 3` since the timing was corrected - the arithmetic
+   already treats it as two groups of three rather than six items - but nothing
+   in the database could express which three, so the paper was six unrelated
+   passages wearing the part's name.
+   Null for every part that is genuinely item-by-item, which is most of them. */
+addColumnIfMissing('questions', 'group_key', 'TEXT');
 addColumnIfMissing('questions', 'source', 'TEXT');
 addColumnIfMissing('questions', 'licence', 'TEXT');
 addIndex('CREATE UNIQUE INDEX IF NOT EXISTS idx_q_ext_key ON questions (ext_key)');
@@ -986,18 +995,32 @@ function plannedPaper(familyId, level) {
        Level is a preference, not a filter: a B1 paper prefers B1 items and falls
        back rather than leaving a part empty over a level mismatch. */
     const pool = qs.all(
-      `SELECT id FROM questions
+      `SELECT id, group_key FROM questions
         WHERE family_id=? AND part=? AND status='active'
           AND ext_key IS NOT NULL AND ext_key<>''${typeSql}
         ORDER BY (level=?) DESC, id`,
       familyId, bp.part, ...(bp.types || []), level);
 
+    /* Whole groups or none of them.
+       Part G is three questions about ONE passage, and only the first of the
+       three carries the recording. Taking them one at a time works only as long
+       as they happen to be adjacent in id order - and the day a question is
+       retired, or the bank is reordered, the draw splits a group and a
+       candidate is asked about a passage they were never played. It would look
+       like a content bug for weeks.
+       A group that will not fit in what is left of the part is skipped rather
+       than truncated, and the next one is tried. */
     const ids = [];
+    const takenGroups = new Set();
     for (const row of pool) {
       if (ids.length >= bp.items) break;
       if (used.has(row.id)) continue;
-      used.add(row.id);
-      ids.push(row.id);
+      if (!row.group_key) { used.add(row.id); ids.push(row.id); continue; }
+      if (takenGroups.has(row.group_key)) continue;
+      const members = pool.filter(r => r.group_key === row.group_key && !used.has(r.id));
+      if (ids.length + members.length > bp.items) continue;
+      takenGroups.add(row.group_key);
+      for (const m of members) { used.add(m.id); ids.push(m.id); }
     }
     return { sort, bp, ids };
   });
@@ -1124,7 +1147,20 @@ async function attachBankAudio() {
   const dir = path.join(__dirname, 'data', 'audio');
   if (!fs.existsSync(dir)) return { attached: 0, missing: 0, failed: 0 };
 
-  const items = require('./data/vpet-items').rows().filter(r => r.say);
+  /* One recording per GROUP, matching scripts/make-vpet-audio.mjs.
+     Part G's three questions each carry the passage so the marker can see it,
+     but only the first is rendered and only the first is played - the exam
+     plays a passage once. Counting the other two as "missing" would print a
+     warning telling an operator to run `npm run audio:vpet`, which will not
+     produce them, about a state that is correct. */
+  const seenGroup = new Set();
+  const items = require('./data/vpet-items').rows().filter(r => {
+    if (!r.say) return false;
+    if (!r.group) return true;
+    if (seenGroup.has(r.group)) return false;
+    seenGroup.add(r.group);
+    return true;
+  });
   let attached = 0, missing = 0, failed = 0;
 
   for (const it of items) {
@@ -1433,12 +1469,13 @@ function seedVpetItems() {
   const rows = require('./data/vpet-items').rows();
   const at = nowISO();
   const ins = db.prepare(`INSERT INTO questions
-      (ext_key, family_id, skill, level, type, part, prompt, options_json, answer,
+      (ext_key, family_id, skill, level, type, part, group_key, prompt, options_json, answer,
        explanation, tags_json, source, licence, status, created_at)
-    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?, 'active', ?)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?, 'active', ?)
     ON CONFLICT(ext_key) DO UPDATE SET
       skill=excluded.skill, level=excluded.level, type=excluded.type,
-      part=excluded.part, prompt=excluded.prompt, options_json=excluded.options_json,
+      part=excluded.part, group_key=excluded.group_key, prompt=excluded.prompt,
+      options_json=excluded.options_json,
       answer=excluded.answer, explanation=excluded.explanation,
       tags_json=excluded.tags_json, source=excluded.source, licence=excluded.licence`);
 
@@ -1446,12 +1483,31 @@ function seedVpetItems() {
   txSync(() => {
     for (const r of rows) {
       const before = qs.val('SELECT 1 FROM questions WHERE ext_key=?', r.key);
-      ins.run(r.key, 'vpet', r.skill, r.level, r.type, r.part, r.prompt,
+      ins.run(r.key, 'vpet', r.skill, r.level, r.type, r.part, r.group || null, r.prompt,
         JSON.stringify(r.options), r.answer, r.explanation,
         JSON.stringify(r.tags), r.source, r.licence, at);
       if (!before) n++;
     }
   });
+  /* Anything authored that is no longer in the bank gets retired.
+     The upsert above keys on ext_key, so RENAMING an item does not replace the
+     old row - it inserts a second one and leaves the first behind, active, in
+     the pool the paper draws from. That is not hypothetical: renaming Part G's
+     keys to the bank convention left twenty-four orphans, and the next paper
+     built from the blueprint drew six questions from a group of what looked
+     like six because two generations were sitting in the same group.
+     Retired rather than deleted: a sitting already taken points at these rows
+     and its result would lose its questions. */
+  const live = new Set(rows.map(r => r.key));
+  const orphans = qs.all(
+    "SELECT id, ext_key FROM questions WHERE ext_key IS NOT NULL AND ext_key<>'' AND status='active'")
+    .filter(r => !live.has(r.ext_key));
+  if (orphans.length) {
+    txSync(() => {
+      for (const o of orphans) db.prepare("UPDATE questions SET status='retired' WHERE id=?").run(o.id);
+    });
+    console.warn(`[seed] ${orphans.length} bank item(s) retired: no longer in the authored bank.`);
+  }
   if (n) console.warn(`[seed] ${n} VPET bank item(s) added.`);
 }
 

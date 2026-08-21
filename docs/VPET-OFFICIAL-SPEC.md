@@ -128,8 +128,8 @@ Ký hiệu: ✅ đúng · ⚠️ đúng một phần · ❌ chưa làm
 | Thuộc tính | Trạng thái |
 |---|---|
 | 6 câu, có bản ghi | ✅ |
-| **Trả lời bằng miệng** | ❌ đang là trắc nghiệm 4 lựa chọn |
-| **2 đoạn × 3 câu hỏi**, đoạn nghe một lần cho cả ba | ❌ đang là 6 đoạn rời |
+| **Trả lời bằng miệng** | ✅ đã sửa 2026-08-21 — ghi âm, chấm bằng rubric |
+| **2 đoạn × 3 câu hỏi**, đoạn nghe một lần cho cả ba | ✅ đã sửa 2026-08-21 — rút theo nguyên nhóm, audio chỉ ở câu đầu |
 | Nghe một lần | ✅ |
 
 ---
@@ -188,7 +188,7 @@ Ký hiệu: ✅ đúng · ⚠️ đúng một phần · ❌ chưa làm
 | 4 | ~~Đoạn văn tự ẩn sau 30 giây~~ | B | ✅ xong |
 | 5 | ~~Đồng hồ và tiếng bíp cho từng câu nói~~ | H, I, J | ✅ xong |
 | 6 | Gom 3 màn × 2 câu hỏi | C | Vừa |
-| 7 | Trả lời bằng miệng, 2 đoạn × 3 câu | G | Lớn |
+| 7 | ~~Trả lời bằng miệng, 2 đoạn × 3 câu~~ | G | ✅ xong |
 | 8 | Câu mẫu ở đầu mỗi phần | tất cả | Vừa |
 
 Số câu và thời gian - hai thứ dễ sai nhất và khó thấy nhất - đã đúng và có

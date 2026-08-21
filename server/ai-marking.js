@@ -321,6 +321,14 @@ const RUBRIC = {
     + 'whether every task in the situation is addressed, whether the tone suits the recipient '
     + 'and a workplace, organisation, grammar and spelling. An email under 100 words has not '
     + 'met the task. Being polite is not enough if a requested point is missing.',
+  G: 'Part G, Passage Comprehension. The candidate heard a passage ONCE and was asked a question '
+    + 'about it, which they answered out loud. You are given a TRANSCRIPT of that answer and the '
+    + 'question. Mark on ONE thing: whether the answer is right. The guide tells candidates to '
+    + 'answer "using a short phrase or a very short sentence", so a correct three-word answer is '
+    + 'a full mark and must not be marked down for being short, for lacking a verb, or for not '
+    + 'being a sentence. Grammar matters only where it changes the meaning. A confident wrong '
+    + 'answer scores nothing. You cannot hear the recording, so say nothing about pronunciation, '
+    + 'accent or fluency.',
   H: 'Part H, Repeat. The candidate heard one sentence and had to say it back exactly. You are '
     + 'given a TRANSCRIPT of what they said and the sentence they heard. Mark on how much of '
     + 'the sentence is reproduced and whether its structure survives. You cannot hear the '

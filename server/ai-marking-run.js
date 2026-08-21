@@ -139,6 +139,11 @@ function withDeadline(p, ms, what) {
 const RUBRIC_PARTS = {
   B: { spoken: false },
   D: { spoken: false },
+  /* G is here because the guide says the answers are spoken - "You answer the
+     questions by speaking out loud" - even though the part is scored as
+     Listening. What is measured is whether the passage was understood; the
+     mouth is only how the answer comes out. */
+  G: { spoken: true },
   H: { spoken: true },
   I: { spoken: true },
   J: { spoken: true }
@@ -353,13 +358,30 @@ async function markRow(attemptId, row, tries) {
   return 'marked';
 }
 
-/** The words a Part H/J recording spoke, from the bank. Null for parts without one. */
+/**
+ * What the marker is shown besides the candidate's words: the recording's
+ * script, and for Part G a model answer as well.
+ *
+ * The model answer is here rather than on the question row because
+ * `questions.answer` is empty on every rubric-marked item and has to stay that
+ * way — it is what a string comparison would reach for, and a spoken answer
+ * marked by exact match fails a candidate for saying the right thing in
+ * different words. scripts/test-items.mjs holds that line.
+ *
+ * Part G needs one anyway. "How many boxes were damaged?" has a right answer,
+ * and a marker judging it from sixty words of passage alone is doing avoidable
+ * work with avoidable variance. Given as a reference, not as a key: the rubric
+ * asks whether the candidate's answer means the same, not whether it matches.
+ */
 async function scriptFor(extKey) {
   if (!extKey) return null;
   try {
     const rows = require('./data/vpet-items').rows();
     const hit = rows.find(r => r.key === extKey);
-    return hit && hit.say ? hit.say : null;
+    if (!hit || !hit.say) return null;
+    return hit.modelAnswer
+      ? hit.say + '\n\nA correct short answer would be: ' + hit.modelAnswer
+      : hit.say;
   } catch (e) { return null; }
 }
 
