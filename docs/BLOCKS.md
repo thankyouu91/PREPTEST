@@ -16,7 +16,7 @@ Sáu điều kiện khóa (chi tiết ở `docs/KE-HOACH-XAY.md` §1.2), rút g�
 
 | Block | Nội dung | Trạng thái | Commit khóa | Ngày |
 |---|---|---|---|---|
-| 0 | Sao lưu và phục hồi CSDL | ⬜ chưa bắt đầu | — | — |
+| 0 | Sao lưu và phục hồi CSDL | 🟡 đang làm — mã và bộ kiểm xong, chưa đặt lịch trên máy thật | — | — |
 | 1 | Nới trần rẻ tiền (pragma, cache, nén) | ⬜ chưa bắt đầu | — | — |
 | 2 | Mô hình năng lực (`skill_events` + `server/ability.js`) | ⬜ chưa bắt đầu | — | — |
 | 3 | Rubric và đánh giá sau bài thi | ⬜ chưa bắt đầu | — | — |
@@ -46,6 +46,23 @@ không qua HTTP — vì đó mới là trần thật của đường ghi.
 
 Máy đo không phải máy production: ổ ở đây nhanh hơn EBS gp3, nên cột ghi trên
 production sẽ thấp hơn. Phải đo lại trên chính máy đó trong block 0.
+
+## Việc cần quyền trên AWS mới xong được
+
+Ba việc dưới đây là phần còn thiếu của **block 0**, và không phiên nào làm được
+nếu không có quyền tương ứng. Ghi ra đây để không ai tưởng block 0 đã xong.
+
+1. **Một bucket S3 riêng cho bản sao lưu, bật versioning + object lock.**
+   Object lock là điểm mấu chốt, không phải trang trí: một bản sao lưu mà kẻ
+   chiếm được quyền của server xoá đi được thì không tính là bản sao lưu.
+2. **Quyền cho instance role** — `s3:PutObject`, `s3:GetObject`,
+   `s3:ListBucket`, `s3:DeleteObject`, giới hạn trong đúng prefix đó, và
+   `/etc/vpet-prep.env` có `BACKUP_DRIVER=s3`, `BACKUP_BUCKET`, `AWS_REGION`.
+   Không dùng khoá tĩnh: EC2 instance metadata (IMDSv2) đã được
+   `server/aws-sigv4.js` hỗ trợ và tự xoay vòng.
+3. **Chạy `sudo … bash deploy/install-backup-cron.sh`, rồi phục hồi thử thật.**
+   Điều kiện khóa của block 0 là *đã phục hồi được*, không phải *đã chạy được
+   lệnh sao lưu*.
 
 ## Mở lại
 

@@ -85,6 +85,9 @@ if [ -z "${PG_URL:-}" ]; then
 fi
 node scripts/test-pg-schema.mjs || fail=1
 
+step "Backup and restore (live snapshot, corrupt archive refused, pruning cannot empty the store)"
+node scripts/test-backup.mjs || fail=1
+
 step "Account rescue"
 node scripts/test-accounts.js || fail=1
 

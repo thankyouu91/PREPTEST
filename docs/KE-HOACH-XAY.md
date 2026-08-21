@@ -157,14 +157,26 @@ block 2, và ba tuần sau mới phát hiện — lúc đó có 40 commit nằm 
 
 Không có gì trong tài liệu này đáng làm nếu một ổ đĩa hỏng xoá sạch được tất cả.
 
-- `deploy/backup.sh`: `VACUUM INTO` một bản sao nhất quán (an toàn khi đang chạy,
-  khác hẳn `cp`), nén, đẩy lên S3 với versioning + object-lock, giữ 30 ngày.
-- Cron 6 giờ một lần, cộng một bản trước **mỗi** lần deploy.
-- `deploy/restore.sh`, **và một lần phục hồi thật đã chạy được** — một bản sao
-  lưu chưa từng phục hồi thử là một tệp, không phải một bản sao lưu.
-- Cảnh báo khi bản sao lưu gần nhất quá 12 giờ.
+- `server/backup.js`: `VACUUM INTO` một bản sao nhất quán (an toàn khi server
+  đang ghi, khác hẳn `cp` — chép một tệp SQLite đang được ghi thì được một tệp
+  rách), kiểm trước khi tính là bản sao lưu, nén, đẩy lên S3 ký bằng
+  `server/aws-sigv4.js` (không SDK, không thêm dependency).
+- `scripts/backup.mjs`: `run` · `list` · `check` · `verify` · `restore`.
+  `restore` **từ chối ghi đè nếu không có `--yes`**, và CSDL đang có được đổi
+  tên giữ lại chứ không xoá.
+- `deploy/install-backup-cron.sh`: 6 giờ một lần chụp, mỗi giờ một lần `check`
+  thoát khác 0 nếu bản mới nhất quá 12 giờ — cron chỉ gửi mail khi có output,
+  nên im lặng nghĩa là khoẻ.
+- Một bản chụp trước **mỗi** lần deploy, ngay trong `deploy/ec2-deploy.sh`.
+- `scripts/test-backup.mjs`, 43 phép kiểm, đã cắm vào `npm run verify`.
+- **Và một lần phục hồi thật đã chạy được trên chính máy production** — một bản
+  sao lưu chưa từng phục hồi thử là một tệp, không phải một bản sao lưu.
 
 **Khóa khi:** phục hồi được một bản sao lưu vào máy trắng và server lên xanh từ nó.
+
+**Còn thiếu để khóa** (2026-08-21): mới xong phần mã và bộ kiểm; chưa đặt lịch
+trên máy thật, chưa trỏ vào bucket S3 có versioning + object-lock, và chưa chạy
+lần phục hồi thật. Ba việc đó cần quyền trên AWS, xem mục 7.
 
 ### Block 1 — Nới trần rẻ tiền (nửa ngày, không đổi kiến trúc)
 

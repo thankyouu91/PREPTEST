@@ -97,8 +97,28 @@ restart_app() {
 # -H on every sudo: without it HOME stays root's, ssh looks in /root/.ssh for a
 # key that is in the app user's home, and a private repository fails to fetch
 # with "Permission denied (publickey)" on a machine where the key is fine.
-say "Fetching $BRANCH"
 cd "$APP_DIR"
+
+# A copy of the database BEFORE anything moves.
+#
+# A deploy is the one kind of data loss whose moment is known in advance: a
+# migration that goes wrong, a path that changed, a reset that catches something
+# it should not. Every other backup is a guess about when; this one is certain,
+# and it costs a couple of seconds.
+#
+# Deliberately allowed to fail without failing the deploy. Refusing to ship
+# because a backup destination is misconfigured would mean an unrelated
+# misconfiguration blocks every release; the line printed here is loud enough
+# that nobody can say they were not told.
+say "Backing up the database first"
+if sudo -u "$APP_USER" -H node scripts/backup.mjs run; then
+  :
+else
+  echo "!! The pre-deploy backup did NOT run. Continuing, but this deploy has no"
+  echo "!! rollback for the data — only for the code. Fix scripts/backup.mjs run."
+fi
+
+say "Fetching $BRANCH"
 git_as fetch --prune origin "$BRANCH"
 PREVIOUS="$(git_as rev-parse HEAD)"
 echo "current: $PREVIOUS"
