@@ -71,10 +71,28 @@ jobs:
           node-version: '22'
           cache: npm
       - run: npm ci --no-audit --no-fund
+
+      # The browser is ~150 MB and identical between runs; the apt packages
+      # install-deps pulls are fast and already baked into the runner image, so
+      # the download is the only part worth keeping. Now that this is the ONLY
+      # full run per push, it is also the one whose minutes are worth saving.
+      - name: Cache Chromium
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+          restore-keys: playwright-${{ runner.os }}-
+
       # This container has Chromium pre-installed and pins
       # PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD; a GitHub runner does not, so the
       # browser half of the suite needs one fetched here.
       - run: npx playwright install --with-deps chromium
+
+      # No SKIP_SHOTS here, unlike verify.yml. This is the run that stands
+      # between a commit and production, and the screenshot step is the only
+      # thing that loads every page end to end as a signed-in candidate — it is
+      # what caught a server that had died mid-suite earlier today, while every
+      # assertion before it still passed.
       - run: npm run verify
 
   deploy:

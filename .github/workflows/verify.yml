@@ -9,7 +9,15 @@ name: verify
 
 on:
   push:
-    branches: ['**']
+    # Every branch EXCEPT the deploy branch, where .github/workflows/deploy.yml
+    # already runs the same suite as the gate in front of production — and runs
+    # more of it, since it does not set SKIP_SHOTS. Both firing there meant
+    # about fourteen minutes of CI per commit to answer one question twice.
+    #
+    # Ignoring rather than deleting this workflow: it is the only thing that
+    # checks any OTHER branch, and a pull request still runs it whatever the
+    # target, so nothing arrives at the deploy branch unchecked.
+    branches-ignore: ['claude/prep-test-platform-design-fpiuqn']
   pull_request:
   workflow_dispatch:
 
