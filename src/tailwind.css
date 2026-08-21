@@ -641,6 +641,13 @@
     fill: none; stroke: currentColor;
     stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round;
   }
+  /* Kéo bằng chuột: con trỏ nói cho người dùng biết hàng này nắm được, và
+     trong lúc kéo thì tắt chọn chữ - nếu không, kéo ngang sẽ bôi đen nhãn chip
+     thay vì cuộn. touch-action giữ nguyên vuốt dọc để trang vẫn cuộn được. */
+  .navscroll-track { cursor: grab; touch-action: pan-y; }
+  .navscroll-dragging { cursor: grabbing; user-select: none; scroll-behavior: auto; }
+  .navscroll-dragging a { pointer-events: none; }
+
   .navscroll-prev { left: 0; }
   .navscroll-next { right: 0; }
 }

@@ -2,7 +2,7 @@
   "name": "vpet-prep",
   "version": "0.1.0",
   "private": true,
-  "description": "Nền tảng luyện thi thử (mock test) cho 6 nhóm chứng chỉ: VEPT, VPET, OTE, TOEIC, IELTS, PTE. Giai đoạn 1: frontend tĩnh + Express, CSP nonce.",
+  "description": "N\u1ec1n t\u1ea3ng luy\u1ec7n thi th\u1eed (mock test) cho 6 nh\u00f3m ch\u1ee9ng ch\u1ec9: VEPT, VPET, OTE, TOEIC, IELTS, PTE. Giai \u0111o\u1ea1n 1: frontend t\u0129nh + Express, CSP nonce.",
   "scripts": {
     "start": "node server.js",
     "dev": "node --watch server.js",
@@ -10,7 +10,7 @@
     "docs:vpet": "node scripts/make-vpet-docs.mjs",
     "screenshot": "node scripts/screenshot.mjs",
     "screenshot:admin": "node scripts/shot-admin.mjs",
-    "test": "node scripts/test-accounts.js && node scripts/test-admin.mjs && node scripts/test-auth.mjs && node scripts/test-catalog.mjs && node scripts/test-user-api.mjs && node scripts/test-exam.mjs && node scripts/test-paper.mjs && node scripts/test-exam-ui.mjs && node scripts/test-ai-marking.mjs && node scripts/test-learn.mjs && node scripts/audit.mjs",
+    "test": "node scripts/test-accounts.js && node scripts/test-admin.mjs && node scripts/test-auth.mjs && node scripts/test-catalog.mjs && node scripts/test-user-api.mjs && node scripts/test-exam.mjs && node scripts/test-paper.mjs && node scripts/test-exam-ui.mjs && node scripts/test-navscroll.mjs && node scripts/test-ai-marking.mjs && node scripts/test-learn.mjs && node scripts/audit.mjs",
     "verify": "bash scripts/verify.sh",
     "icons": "node scripts/make-icons.mjs",
     "audio:vpet": "node scripts/make-vpet-audio.mjs"

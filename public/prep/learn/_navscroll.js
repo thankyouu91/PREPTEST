@@ -84,6 +84,66 @@
     window.addEventListener('resize', capNhat);
     if (window.ResizeObserver) new ResizeObserver(capNhat).observe(nav);
 
+    /* ---- Drag the rail itself ----
+     *
+     * The arrows and the thin scrollbar were already here, and on a touch screen
+     * a finger has always worked. What was missing is the thing a mouse user
+     * reaches for first: grab the rail and pull it. Two buttons 28 pixels wide
+     * at either end are easy to miss on a wide screen, and somebody who does not
+     * see them concludes the rest of the list is unreachable.
+     *
+     * The whole difficulty is that these are LINKS. A drag must not open the
+     * chip it started on, and a click must still work. So nothing counts as a
+     * drag until the pointer has travelled past a threshold; below it the
+     * gesture stays a click and the browser does what it always did.
+     */
+    var keoTay = null;
+
+    nav.addEventListener('pointerdown', function (e) {
+      /* Left button only, and never on the arrows - they have their own job. */
+      if (e.button !== 0 || e.target.closest('.navscroll-btn')) return;
+      keoTay = { x: e.clientX, batDau: nav.scrollLeft, that: false, id: e.pointerId };
+    });
+
+    nav.addEventListener('pointermove', function (e) {
+      if (!keoTay || e.pointerId !== keoTay.id) return;
+      var dx = e.clientX - keoTay.x;
+      /* Six pixels: below it a shaky hand on a link is still a click. */
+      if (!keoTay.that && Math.abs(dx) < 6) return;
+      if (!keoTay.that) {
+        keoTay.that = true;
+        nav.classList.add('navscroll-dragging');
+        /* Capture so the drag survives the pointer leaving the rail, which it
+           does constantly - the rail is one chip high. */
+        try { nav.setPointerCapture(e.pointerId); } catch (err) { /* not fatal */ }
+      }
+      nav.scrollLeft = keoTay.batDau - dx;
+      /* Only once it IS a drag: preventing default earlier would swallow the
+         click that a short movement should still produce. */
+      e.preventDefault();
+    });
+
+    function thoi(e) {
+      if (!keoTay) return;
+      var that = keoTay.that;
+      keoTay = null;
+      nav.classList.remove('navscroll-dragging');
+      try { nav.releasePointerCapture(e.pointerId); } catch (err) { /* already gone */ }
+      /* Swallow exactly one click, the one this drag is about to produce.
+         Without it, letting go over a chip navigates - so every drag that
+         happened to end on a link would leave the page. */
+      if (that) {
+        nav.addEventListener('click', function chan(ev) {
+          ev.preventDefault();
+          ev.stopPropagation();
+          nav.removeEventListener('click', chan, true);
+        }, true);
+      }
+    }
+
+    nav.addEventListener('pointerup', thoi);
+    nav.addEventListener('pointercancel', thoi);
+
     /* Bring the current page's own chip into the middle; no smooth scrolling,
        because this runs while the page is still being built. */
     var dangXem = nav.querySelector('[aria-current="page"]');

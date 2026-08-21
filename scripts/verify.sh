@@ -168,6 +168,11 @@ node scripts/test-exam.mjs || fail=1
 step "The exam screen (Part B hides its passage)"
 node scripts/test-exam-ui.mjs || fail=1
 
+# Also a browser, and for the same reason: whether the chip rail can be dragged
+# is invisible to every request the server sees.
+step "The self-study chip rail (arrows, dragging, and not opening a lesson by accident)"
+node scripts/test-navscroll.mjs || fail=1
+
 step "VPET item bank (blueprint match, per-item quality)"
 node scripts/test-items.mjs || fail=1
 
