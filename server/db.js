@@ -25,6 +25,46 @@ const db = new DatabaseSync(DB_FILE);
 db.exec('PRAGMA journal_mode = WAL');
 db.exec('PRAGMA foreign_keys = ON');
 
+/* ---------------------- Two pragmas that are worth measuring ----------------------
+ *
+ * `synchronous` decides how often SQLite waits for the disk to confirm a write.
+ * Measured on this project's own storage layer, one autocommit write at a time,
+ * which is what a single autosave request does:
+ *
+ *     synchronous = FULL     0.246 ms per write    ~4,060 writes/s
+ *     synchronous = NORMAL   0.026 ms per write   ~37,990 writes/s
+ *
+ * Nine times, for one line — and NORMAL is not a corner cut. Under WAL, SQLite
+ * documents NORMAL as safe against corruption; what it gives up is durability
+ * of the most recent transactions if the *operating system* dies or the machine
+ * loses power. A crash of this process alone loses nothing, because the WAL is
+ * already written — it is only the fsync that is deferred. FULL is the right
+ * default for a rollback journal and an over-payment under WAL.
+ *
+ * The trade is worth naming plainly: in exchange for the throughput, a power
+ * cut can cost the last few seconds of answers. That is recoverable — a learner
+ * re-answers a question — and it is now backed by an actual backup, which it
+ * was not before Block 0. Set PREP_SYNCHRONOUS=FULL to buy the durability back.
+ *
+ * `busy_timeout` is not an optimisation, it is a precondition. It is zero by
+ * default, which means the instant two connections want the write lock the
+ * loser gets SQLITE_BUSY immediately and the query throws. With one process
+ * that almost never happens; with the cluster of Block 7 it happens constantly.
+ * Five seconds is a ceiling to survive contention, not a target to sit at:
+ * node:sqlite is synchronous, so a connection waiting on this lock blocks its
+ * whole event loop for the duration. If waits ever get near it, that is the
+ * signal to move to Postgres rather than to raise the number. */
+const SYNCHRONOUS = (process.env.PREP_SYNCHRONOUS || 'NORMAL').toUpperCase();
+/* OFF is deliberately not on this list. It is the setting where an OS crash can
+   leave a *corrupt* database rather than merely a stale one, and no gain it
+   offers over NORMAL is worth that on a system holding people's accounts. An
+   env var that accepts it is an env var somebody eventually sets. */
+if (!['NORMAL', 'FULL', 'EXTRA'].includes(SYNCHRONOUS)) {
+  throw new Error('PREP_SYNCHRONOUS must be NORMAL, FULL or EXTRA — got ' + SYNCHRONOUS);
+}
+db.exec('PRAGMA synchronous = ' + SYNCHRONOUS);
+db.exec('PRAGMA busy_timeout = ' + Number(process.env.PREP_BUSY_TIMEOUT_MS || 5000));
+
 /* ============================== SCHEMA ==============================
    Held in a named constant rather than passed straight to db.exec(), because
    there is now a second reader: server/schema.js translates this same text into

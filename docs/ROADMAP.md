@@ -57,8 +57,9 @@ rather than a separate no-go queue.
 > - [ ] **Block 1 — Nới trần rẻ tiền.** `PRAGMA synchronous = NORMAL` (an toàn
 >   trong WAL: chỉ mất giao dịch cuối khi mất điện cả máy, không mất khi tiến
 >   trình chết) — đo được **9× đường ghi**, 0,246 ms → 0,026 ms mỗi lần ghi;
->   `PRAGMA busy_timeout = 5000`, điều kiện cần của block 7; `Cache-Control` dài
->   + `ETag` cho tài nguyên tĩnh có vân tay; nén. Đo lại bằng `scripts/loadprobe.mjs`
+>   `PRAGMA busy_timeout = 5000`, điều kiện cần của block 7; **cắt trang sẵn
+>   thay vì chạy hai regex mỗi request** — đo được **+65%** đường dựng trang.
+>   Nén đã bỏ khỏi block: kiểm bằng `curl` thấy nginx trên production nén rồi
 > - [ ] **Block 2 — Mô hình năng lực.** `skill_events` (một bảng sự kiện cho mọi
 >   thứ được chấm ở mọi nơi) + `server/ability.js` (Beta–Binomial, nửa đời 30
 >   ngày, prior 2/2, và `sd` làm hạn ngạch nói — dưới ngưỡng thì **không hiện

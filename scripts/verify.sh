@@ -151,6 +151,9 @@ note "server ready on port $PORT"
 step "Lifecycle and health (crash exits non-zero, SIGTERM drains, /healthz)"
 node scripts/test-health.mjs || fail=1
 
+step "Serving and tuning (a cached page still mints a fresh nonce; SQLite pragmas)"
+node scripts/test-serving.mjs || fail=1
+
 step "Admin API"
 node scripts/test-admin.mjs || fail=1
 

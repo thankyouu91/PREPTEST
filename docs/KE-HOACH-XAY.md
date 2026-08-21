@@ -182,11 +182,31 @@ lần phục hồi thật. Ba việc đó cần quyền trên AWS, xem mục 7.
 
 - `PRAGMA synchronous = NORMAL` (an toàn trong WAL: chỉ mất giao dịch cuối khi
   **mất điện cả máy**, không mất khi tiến trình chết) → đo được **9× ghi**.
+  `OFF` cố tình không được chấp nhận: đó là mức mà một cú sập hệ điều hành để
+  lại CSDL **hỏng** chứ không phải cũ.
 - `PRAGMA busy_timeout = 5000` — bắt buộc phải có trước khi chạy nhiều tiến trình.
-- `Cache-Control` dài + `ETag` cho tài nguyên tĩnh có vân tay nội dung; nén.
+- **Cắt trang một lần thay vì viết lại mỗi request.** Trước đây mỗi lượt xem
+  trang đều đọc tệp từ đĩa rồi chạy hai regex toàn cục để gắn nonce. Tệp không
+  đổi giữa các request, chỉ nonce đổi. Nay cắt sẵn, mỗi request chỉ còn một
+  `join`. Đo được **+65%** (1.007 → 1.664 req/s), p95 ở 100 luồng giảm 38%.
 - Đo lại bằng `loadprobe`, ghi số vào `docs/BLOCKS.md`.
 
+**Đã bỏ khỏi block này sau khi kiểm chứng:**
+
+- **Nén trong Node.** Đã kiểm bằng lệnh thật:
+  `curl -H "Accept-Encoding: gzip" http://<production>/prep/landing/` trả về
+  `content-encoding: gzip` từ `nginx/1.28.3`. **nginx đã nén rồi.** Thêm nén ở
+  Node là tiêu CPU — thứ đang khan hiếm, vì tiến trình Node là một luồng và đã
+  bão hoà — để làm lại việc mà tầng đang có chỗ trống đã làm xong. Đổi tài
+  nguyên hiếm lấy tài nguyên thừa là đi lùi.
+- **`Cache-Control` dài cho tài nguyên tĩnh.** Các tệp chưa có vân tay nội dung
+  (`tailwind-built.css` là tên cố định), nên `max-age` dài nghĩa là sau mỗi lần
+  deploy người dùng còn giữ CSS cũ trong đúng ngần ấy thời gian. `express.static`
+  đang trả `ETag` và trình duyệt nhận 304 — đã rẻ. Việc đúng là **đánh vân tay
+  tên tệp trước**, và đó là một mục riêng, không phải một dòng trong block này.
+
 **Khóa khi:** loadprobe cho thấy trần đọc lên ≥1,5× và không route nào tụt.
+**Đã đạt:** +65% ở đường dựng trang, `/api/catalog` không đổi trong sai số.
 
 ### Block 2 — Mô hình năng lực (trái tim của phần ôn tập)
 

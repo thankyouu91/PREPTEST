@@ -93,6 +93,72 @@ function cspFor(nonce) {
   ].join('; ');
 }
 
+/* ---------------- Pages, cut once instead of rewritten per request ----------------
+ *
+ * Every page view used to do the same three things from scratch: read the file
+ * off disk, then run two global regular expressions across the whole document
+ * to put a nonce on each <script and <style. The file does not change between
+ * requests; only the nonce does. So the cutting is done once and the result
+ * kept.
+ *
+ * A document is stored as the list of fragments BETWEEN the injection points,
+ * each ending exactly where the attribute has to go. Rendering is then a single
+ * join — no scanning, no allocation per match:
+ *
+ *     ['…<script', '…<style', '…'].join(' nonce="abc"')
+ *
+ * which is byte-for-byte what the two replaces produced.
+ *
+ * Freshness is handled by NOT being clever. In production the process is
+ * restarted by every deploy, so a cached page can never be stale and the cache
+ * is permanent. Outside production the file's mtime is checked per request —
+ * a `stat` instead of a full read and two regex passes — because a page you
+ * edited must appear on reload, and a caching layer you have to remember to
+ * flush during development is a caching layer that will waste an afternoon.
+ */
+const IMMUTABLE_PAGES = process.env.NODE_ENV === 'production';
+const pageCache = new Map();
+
+/** The fragments between nonce injection points, ready to be joined. */
+function cutForNonce(html) {
+  const out = [];
+  const re = /<(?:script|style)\b/g;
+  let last = 0, m;
+  while ((m = re.exec(html)) !== null) {
+    const end = m.index + m[0].length;
+    out.push(html.slice(last, end));
+    last = end;
+  }
+  out.push(html.slice(last));
+  return out;
+}
+
+/** The cut page, from memory when it is safe to trust what is there. */
+function loadPage(absFile, done) {
+  const hit = pageCache.get(absFile);
+  if (hit && IMMUTABLE_PAGES) return done(null, hit.parts);
+  if (!hit) {
+    return fs.readFile(absFile, 'utf8', (err, html) => {
+      if (err) return done(err);
+      const parts = cutForNonce(html);
+      fs.stat(absFile, (e, st) => {
+        pageCache.set(absFile, { parts, mtime: e ? 0 : st.mtimeMs });
+        done(null, parts);
+      });
+    });
+  }
+  fs.stat(absFile, (err, st) => {
+    if (err) return done(null, hit.parts);          // gone missing: serve what we have
+    if (st.mtimeMs === hit.mtime) return done(null, hit.parts);
+    fs.readFile(absFile, 'utf8', (e, html) => {
+      if (e) return done(null, hit.parts);
+      const parts = cutForNonce(html);
+      pageCache.set(absFile, { parts, mtime: st.mtimeMs });
+      done(null, parts);
+    });
+  });
+}
+
 /** Phục vụ 1 file HTML với nonce mới cho mỗi request. */
 function serveHtmlWithNonce(relFile) {
   const absFile = path.join(PUB, relFile);
@@ -103,12 +169,10 @@ function serveHtmlWithNonce(relFile) {
       const qs = req.originalUrl.slice(req.path.length);
       return res.redirect(301, req.path + '/' + qs);
     }
-    fs.readFile(absFile, 'utf8', (err, html) => {
+    loadPage(absFile, (err, parts) => {
       if (err) return res.status(500).send('Internal error');
       const nonce = crypto.randomBytes(16).toString('base64');
-      const out = html
-        .replace(/<script\b/g, `<script nonce="${nonce}"`)
-        .replace(/<style\b/g, `<style nonce="${nonce}"`);
+      const out = parts.join(` nonce="${nonce}"`);
       /* Anyone holding a page can submit a form from it, so anyone holding a
          page needs a CSRF token — signed in or not. Minted here rather than at
          sign-in, which is what lets csrfGuard cover the sign-in itself. */
