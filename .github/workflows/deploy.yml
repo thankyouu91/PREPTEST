@@ -173,7 +173,7 @@ jobs:
             --instance-ids "${{ vars.EC2_INSTANCE_ID }}" \
             --document-name AWS-RunShellScript \
             --comment "deploy ${GITHUB_SHA::7} by ${GITHUB_ACTOR}" \
-            --parameters commands='["APP_DIR=/home/ubuntu/PREPTEST APP_USER=ubuntu PM2_APP=preptest bash /home/ubuntu/PREPTEST/deploy/ec2-deploy.sh"]' \
+            --parameters commands="[\"APP_DIR=/home/ubuntu/PREPTEST APP_USER=ubuntu PM2_APP=preptest DEPLOY_SHA=${GITHUB_SHA} bash /home/ubuntu/PREPTEST/deploy/ec2-deploy.sh\"]" \
             --query 'Command.CommandId' --output text)
           echo "SSM command: $COMMAND_ID"
 

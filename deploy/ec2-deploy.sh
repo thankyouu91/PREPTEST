@@ -30,6 +30,20 @@ HEALTH_URL="${HEALTH_URL:-http://127.0.0.1:3000/healthz}"
 # existing account in a database nothing pointed at any more.
 PM2_APP="${PM2_APP:-}"
 
+# The exact commit the gate tested. Set by the workflow to its own GITHUB_SHA.
+#
+# Without it this script resets to the branch TIP, which is not the same thing.
+# The gate takes about seven minutes; anything pushed inside that window
+# becomes the tip, and the instance takes it. That is precisely what happened
+# on the first successful deploy: the gate ran on 29084b3 and the log ended
+# "Deployed 1fc578c" — a commit no gate had ever seen reaching production and
+# reporting success.
+#
+# The whole premise of the pipeline is that only a green gate reaches the
+# server. A tip-following deploy does not enforce that; it only usually
+# happens to.
+DEPLOY_SHA="${DEPLOY_SHA:-}"
+
 say() { printf '\n\033[1m== %s ==\033[0m\n' "$1"; }
 
 # EVERY git call, reads included, runs as the user that owns the checkout.
@@ -92,7 +106,27 @@ echo "current: $PREVIOUS"
 # Hard reset rather than merge: this checkout is a deployment artefact, not
 # somebody's working copy, and a merge conflict at 3am on a box nobody is
 # looking at is not a state worth being able to reach.
-git_as reset --hard "origin/$BRANCH"
+#
+# To the SHA the gate tested when the caller names one, and to the branch tip
+# only when nobody does — a hand-run deploy from the instance itself, which has
+# no gate behind it to disagree with.
+TARGET="origin/$BRANCH"
+if [ -n "$DEPLOY_SHA" ]; then
+  # Refused rather than silently falling back. A deploy that cannot find the
+  # commit it was told to ship, and ships a different one instead while
+  # reporting success, is the failure this whole variable exists to prevent.
+  # (Reachable here because the fetch above brought the branch; a force-push
+  # that orphaned the SHA is the case that lands in the else.)
+  if git_as cat-file -e "$DEPLOY_SHA^{commit}" 2>/dev/null; then
+    TARGET="$DEPLOY_SHA"
+  else
+    echo "The commit this deploy was told to ship is not in the repository:"
+    echo "  $DEPLOY_SHA"
+    echo "Refusing to ship the branch tip in its place."
+    exit 1
+  fi
+fi
+git_as reset --hard "$TARGET"
 echo "now:     $(git_as rev-parse HEAD)"
 
 say "Installing"
