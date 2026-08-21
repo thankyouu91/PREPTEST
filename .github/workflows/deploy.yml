@@ -99,6 +99,40 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: The subject claim AWS is about to be shown
+        # Printed BEFORE the assume, and read out of the REAL token rather than
+        # composed from context the way the step below it does.
+        #
+        # "Not authorized to perform sts:AssumeRoleWithWebIdentity" never says
+        # which claim disagreed. The trust policy pins one string; this is that
+        # string as GitHub actually mints it. Comparing the two takes seconds;
+        # guessing at it has now cost two separate debugging sessions.
+        #
+        # It matters because the value is not stable. A repository opted in to
+        # immutable subject claims starts carrying numeric ids —
+        # repo:owner@123/name@456:environment:production — and a trust policy
+        # that worked last week stops matching with nothing on either side
+        # having been edited.
+        #
+        # Only `sub` and `aud` are printed. The token itself is a credential
+        # and is passed to node on stdin, never as an argument and never echoed.
+        run: |
+          set -euo pipefail
+          curl -sS -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=sts.amazonaws.com" \
+          | node -e '
+              let raw = "";
+              process.stdin.on("data", d => { raw += d; });
+              process.stdin.on("end", () => {
+                const token = JSON.parse(raw).value;
+                const claims = JSON.parse(Buffer.from(token.split(".")[1], "base64url"));
+                console.log("sub: " + claims.sub);
+                console.log("aud: " + claims.aud);
+                console.log("");
+                console.log("The trust policy condition must equal the sub above, exactly.");
+              });
+            '
+
       - name: Assume the deploy role
         # AWS's own action. Pin it to a commit SHA rather than a tag if you
         # want the supply chain nailed down; a tag can be moved.
