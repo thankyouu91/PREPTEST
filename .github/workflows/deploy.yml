@@ -123,13 +123,23 @@ jobs:
       - name: Run the deploy on the instance
         # The command itself is deploy/ec2-deploy.sh, in this repository, so
         # what runs on the server is reviewable in a diff like everything else.
+        #
+        # The three variables describe the instance as it ACTUALLY is, which is
+        # not how the script's defaults assume. It was installed by hand long
+        # before this pipeline existed: a checkout in the ubuntu user's home,
+        # run by PM2 rather than systemd, with the database beside it in
+        # data/prep.sqlite. The first deploy through here failed with exit 127
+        # looking for /opt/vpet-prep, and the honest fix is to deploy to where
+        # the application and its accounts already live rather than to install
+        # a second copy beside them. deploy/survey.sh is what established all
+        # three; re-run it if the box is ever rebuilt.
         run: |
           set -euo pipefail
           COMMAND_ID=$(aws ssm send-command \
             --instance-ids "${{ vars.EC2_INSTANCE_ID }}" \
             --document-name AWS-RunShellScript \
             --comment "deploy ${GITHUB_SHA::7} by ${GITHUB_ACTOR}" \
-            --parameters commands='["bash /opt/vpet-prep/deploy/ec2-deploy.sh"]' \
+            --parameters commands='["APP_DIR=/home/ubuntu/PREPTEST APP_USER=ubuntu PM2_APP=preptest bash /home/ubuntu/PREPTEST/deploy/ec2-deploy.sh"]' \
             --query 'Command.CommandId' --output text)
           echo "SSM command: $COMMAND_ID"
 

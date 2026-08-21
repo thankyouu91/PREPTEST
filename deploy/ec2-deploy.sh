@@ -21,7 +21,32 @@ SERVICE="${SERVICE:-vpet-prep}"
 BRANCH="${BRANCH:-claude/prep-test-platform-design-fpiuqn}"
 HEALTH_URL="${HEALTH_URL:-http://127.0.0.1:3000/healthz}"
 
+# Set PM2_APP when the application is run by PM2 rather than by systemd, and it
+# is restarted through PM2 instead. This is not a hypothetical: the instance
+# this deploys to today runs `preptest` under PM2 as the `ubuntu` user, from
+# that user's home directory — put there by hand long before any of this
+# existed. deploy/survey.sh is what established that, and the alternative was
+# to install a second copy of the application beside the first and leave every
+# existing account in a database nothing pointed at any more.
+PM2_APP="${PM2_APP:-}"
+
 say() { printf '\n\033[1m== %s ==\033[0m\n' "$1"; }
+
+# Whichever of the two is in charge here. Kept as one function because the
+# rollback path has to restart exactly the same way the deploy did — two copies
+# of this decision is how a rollback silently restarts nothing.
+restart_app() {
+  if [ -n "$PM2_APP" ]; then
+    sudo -u "$APP_USER" -H pm2 restart "$PM2_APP" --update-env
+    # The saved process list is what `pm2 resurrect` reads after a reboot. A
+    # deploy that does not re-save leaves the boot-time list describing an
+    # older state of the world, which nobody discovers until the machine
+    # restarts and comes back running something else.
+    sudo -u "$APP_USER" -H pm2 save
+  else
+    systemctl restart "$SERVICE"
+  fi
+}
 
 # -H on every sudo: without it HOME stays root's, ssh looks in /root/.ssh for a
 # key that is in the app user's home, and a private repository fails to fetch
@@ -50,8 +75,8 @@ say "Building CSS"
 sudo -u "$APP_USER" -H npx --no-install tailwindcss -i ./src/tailwind.css -o ./public/tailwind-built.css --minify \
   || echo "(tailwind not installed here; using the committed stylesheet)"
 
-say "Restarting $SERVICE"
-systemctl restart "$SERVICE"
+say "Restarting ${PM2_APP:-$SERVICE}"
+restart_app
 
 say "Health"
 # The health check does a real database round trip, so this is not merely
@@ -72,6 +97,13 @@ done
 say "UNHEALTHY — rolling back to $PREVIOUS"
 sudo -u "$APP_USER" -H git reset --hard "$PREVIOUS"
 sudo -u "$APP_USER" -H npm ci --omit=dev --no-audit --no-fund || true
-systemctl restart "$SERVICE"
-journalctl -u "$SERVICE" -n 40 --no-pager || true
+restart_app
+# Where the reason lives depends on who is running it. Asking journalctl about
+# a systemd unit that does not exist prints nothing at all, which reads as "no
+# errors" at the exact moment there certainly are some.
+if [ -n "$PM2_APP" ]; then
+  sudo -u "$APP_USER" -H pm2 logs "$PM2_APP" --lines 40 --nostream || true
+else
+  journalctl -u "$SERVICE" -n 40 --no-pager || true
+fi
 exit 1
