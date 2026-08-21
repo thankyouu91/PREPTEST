@@ -15,6 +15,20 @@
  *   BASE_URL=https://... node scripts/loadprobe.mjs  # against a real deploy
  *   PROBE_LEVELS=1,25,100 node scripts/loadprobe.mjs # pick the ramp
  *
+ * ## Compare like with like, or do not compare
+ *
+ * The headline of a run is the BEST throughput across the levels it sampled, so
+ * shortening the ramp changes what the number means. This cost an investigation:
+ * the static-file route peaks around 50 concurrent, a run with PROBE_LEVELS
+ * `1,25,100` never samples 50, and the resulting figure read as an 18% regression
+ * against a baseline taken on the full ramp. Nothing had regressed. Re-measured
+ * on the same ramp it was 7% — inside the run-to-run variance plus a warm machine.
+ *
+ * So: a measurement taken to compare against an earlier one must use the SAME
+ * levels. A different ramp measures a different quantity, and comparing two
+ * different quantities invents regressions that are not there — or, worse, hides
+ * one that is.
+ *
  * ## What it measures, and why these four routes
  *
  * A single average request/second number hides the thing that decides whether a

@@ -67,7 +67,7 @@ rather than a separate no-go queue.
 >   phải nhớ gọi; `GET /api/me/ability`; bảng tiến độ trên `/prep/` đọc từ đó.
 >   Đây là chỗ năm tính năng quy về một nguồn sự thật, và là câu trả lời cho
 >   "tiến độ phải đúng năng lực"
-> - [ ] **Block 3 — Rubric và đánh giá sau bài thi.** `server/rubric.js` + bảng
+> - [x] **Block 3 — Rubric và đánh giá sau bài thi.** 🔒 khóa `5113a11`, 2026-08-21. `server/rubric.js` + bảng
 >   `rubric_scores`; bộ chấm AI trả về từng tiêu chí kèm câu trích, và câu trích
 >   **bị kiểm lại trong bài thật** trước khi được lưu — một câu trích bịa còn tệ
 >   hơn không có, vì nó trông y hệt bằng chứng. Bốn luật ở `docs/SCORING.md`

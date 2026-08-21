@@ -113,7 +113,7 @@ kiểm được bằng lệnh** — điều kiện nào chỉ kiểm bằng mắ
 |---|---|---|
 | 1 | Toàn bộ cổng xanh | `npm run verify` → EXIT 0 |
 | 2 | Block có bộ test riêng, và bộ test đó **đã từng bị nhìn thấy đỏ** | Bỏ lỗi trở lại → đỏ; sửa lại → xanh. Ghi vào commit message |
-| 3 | Hiệu năng không tụt | `node scripts/loadprobe.mjs`, không route nào tệ hơn lần đo trước quá 15% |
+| 3 | Hiệu năng không tụt | `node scripts/loadprobe.mjs` **với đúng thang của lần đo trước**, không route nào tệ hơn quá 15%. Thang khác đo ra đại lượng khác — xem `docs/BLOCKS.md` |
 | 4 | Ảnh chụp mới cho mọi màn block đụng tới | `npm run verify` bước screenshot |
 | 5 | Không thêm dependency runtime | `node -e "…dependencies"` vẫn chỉ có `express` |
 | 6 | Đã ghi vào `docs/BLOCKS.md`: khóa ngày nào, commit nào, ai kiểm | Bảng trong tệp đó |
