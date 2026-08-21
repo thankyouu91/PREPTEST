@@ -24,7 +24,11 @@
  *   /healthz          one indexed SELECT. The floor: pure process overhead.
  *   the built CSS     a static file. Should be nearly free, and if it is not,
  *                     the fault is the event loop, not the database.
- *   a self-study page a real HTML render off disk.
+ *   the landing page  a real HTML render: read from disk, nonce injected, CSRF
+ *                     cookie minted. Public, so it renders rather than
+ *                     redirecting — the first version of this file probed a
+ *                     page behind the sign-in and spent a whole run measuring
+ *                     how fast the server can answer 302.
  *   /api/catalog      the read every signed-in learner does on arrival, and the
  *                     one that touches the most rows.
  *
@@ -48,7 +52,7 @@ const SECONDS = Number(process.env.PROBE_SECONDS || 5);
 const ROUTES = [
   { name: '/healthz            (1 indexed SELECT)', path: '/healthz' },
   { name: 'tailwind-built.css   (static file)', path: '/tailwind-built.css' },
-  { name: '/prep/hoc/…          (HTML page)', path: '/prep/hoc/dong-tu-bat-quy-tac/' },
+  { name: '/prep/landing/       (HTML render + nonce)', path: '/prep/landing/' },
   { name: '/api/catalog         (the arrival read)', path: '/api/catalog' }
 ];
 
@@ -77,6 +81,9 @@ async function level(path, conc) {
       if (performance.now() >= deadline) return;
       const t0 = performance.now();
       try {
+        /* redirect:'manual' so a route that answers 302 is measured as the 302
+           it is, rather than being quietly followed to somewhere cheaper. The
+           status column below is how you notice you probed the wrong thing. */
         const r = await fetch(BASE + path, { redirect: 'manual' });
         /* The body must be drained or the socket is not free for the next
            request, and the run measures connection starvation instead of the
