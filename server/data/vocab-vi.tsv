@@ -2616,7 +2616,7 @@ C2	blizzard	noun	A large snowstorm accompanied by strong winds and greatly reduc
 C2	blizzard	verb	(impersonal, of snow) To fall in windy conditions.	(tuyết) rơi dữ dội trong gió	ok
 C2	bossy	adj	Ornamented with bosses; studded.	có gắn núm/đinh tán trang trí	ok
 C2	bossy	adj	Tending to give orders to others, especially when unwarranted; domineering.	hay ra lệnh, hống hách	ok
-C2	caterpillar	noun	(mathematics) A set of subtrees of a tree.	(toán học) cây dạng sâu bướm	
+C2	caterpillar	noun	(mathematics) A set of subtrees of a tree.	(toán học) cây dạng sâu bướm	nghi ngờ phần tiếng Anh: "a set of subtrees of a tree" không khớp nghĩa toán học chuẩn của "caterpillar" (một loại cây có đường trung tâm, không phải "một tập hợp cây con"); "cây dạng sâu bướm" mô tả đúng khái niệm caterpillar tree nhưng không khớp câu tiếng Anh này — nghi dữ liệu tiếng Anh sai/thiếu, không phải lỗi bản dịch
 C2	caterpillar	noun	A vehicle with a caterpillar track; a crawler.	xe bánh xích	ok
 C2	caterpillar	noun	The larva of a butterfly or moth; leafworm.	sâu	ok
 C2	caterpillar	verb	(intransitive) To move along slowly, drawing one's body up, in the manner of a caterpillar.	di chuyển từ từ, nhích từng đoạn (như sâu bướm)	ok
@@ -2783,7 +2783,7 @@ C2	hypocrisy	noun	The practice of engaging in the same behaviour or activity for
 C2	hysteria	noun	(informal, psychopathology) Synonym of conversion disorder.	(thông tục) chứng cuồng loạn (rối loạn phân ly)	ok
 C2	hysteria	noun	(medicine, nosologically dated) A mental disorder characterized by emotional excitability etc. without an organic cause.	(y học, cách dùng cũ) chứng cuồng loạn	ok
 C2	hysteria	noun	Behavior exhibiting excessive or uncontrollable emotions, in a wide range from joy to panic but usually including anxiety or fear.	ittêri	"ittêri" không phải từ tiếng Việt chuẩn, khó nhận diện — nên là "chứng cuồng loạn"
-C2	ideology	noun	(uncountable) The study of the origin and nature of ideas.		
+C2	ideology	noun	(uncountable) The study of the origin and nature of ideas.	(triết học) ý niệm học, khoa học về ý niệm	
 C2	ideology	noun	Doctrine, philosophy, body of beliefs or principles belonging to an individual or group.	hệ tư tưởng, ý thức hệ	ok
 C2	illegitimate	adj	Not conforming to known principles, or established or accepted rules or standards.	không chính đáng, không hợp thức	ok
 C2	illegitimate	adj	Not correctly deduced.	(suy luận) không hợp lệ, sai lệch	ok
@@ -2915,7 +2915,7 @@ C2	pant	noun	A quick breathing; a catching of the breath; a gasp: the panting of
 C2	pant	verb	(ambitransitive) To breathe quickly or in a labored manner, as after exertion or from eagerness or excitement; to respire with heaving of the breast; to gasp.	thở hổn hển, thở gấp	ok
 C2	pant	verb	(intransitive) Of the heart, to beat with unnatural violence or rapidity; to palpitate.	đập nhanh, đập dồn dập	ok
 C2	pant	verb	(intransitive) To long eagerly; to desire earnestly.	khao khát, mong mỏi	ok
-C2	pant	verb	(intransitive) To sigh; to flutter; to languish.	thổn thức, khao khát	
+C2	pant	verb	(intransitive) To sigh; to flutter; to languish.	thổn thức, khao khát	ok
 C2	partridge	noun	(ornithology) Any bird of a number of genera in the family Phasianidae, notably in the genera Perdix and Alectoris.	chim gà gô	ok
 C2	partridge	noun	(uncountable) The flesh or meat of this bird eaten as food.	thịt gà gô	ok
 C2	pelvis	noun	(anatomy) A funnel-shaped cavity, especially such a cavity in the kidney into which urine passes towards the ureter.	(giải phẫu) bể thận	ok
@@ -2993,7 +2993,7 @@ C2	serenity	noun	The state of being serene; calmness; peacefulness.	sự yên b�
 C2	silicon	noun	(chemistry, countable) A single atom of this element.	(hóa học) nguyên tử silic	ok
 C2	silicon	noun	(chemistry, uncountable) A nonmetallic element (symbol Si) with an atomic number of 14 and atomic weight of 28.0855.	silic	ok
 C2	silicon	noun	(slang) A computer processor.	(lóng) bộ vi xử lý, chip máy tính	ok
-C2	silicon	noun	(slang) Computing.		
+C2	silicon	noun	(slang) Computing.	(thông tục) chip máy tính, phần cứng máy tính	
 C2	silicon	noun	Abbreviation of silicon chip.	chip silic, chip máy tính	ok
 C2	skeptical	adj	Having, or expressing doubt; questioning.	hoài nghi, nghi ngờ	ok
 C2	skeptical	adj	Of or relating to philosophical skepticism or the skeptics.	(triết học) thuộc chủ nghĩa hoài nghi	ok
@@ -3012,12 +3012,12 @@ C2	sled	noun	A small, light vehicle with runners, used recreationally, mostly by
 C2	sled	verb	(intransitive) To ride a sled.	trượt xe trượt tuyết, đi xe trượt tuyết	ok
 C2	sled	verb	(transitive) To convey on a sled.	chở bằng xe trượt tuyết	ok
 C2	snowman	noun	(baseball, golf) A score of eight, especially within one inning (in baseball) or on one hole (in golf, where it is also known as dogballs).	(golf, bóng chày) điểm số 8	ok
-C2	snowman	noun	(slang) A playing card with the rank of eight.	(lóng) quân bài số 8	
+C2	snowman	noun	(slang) A playing card with the rank of eight.	(lóng) quân bài số 8	ok
 C2	snowman	noun	A humanoid figure made with large snowballs stacked on each other. Human traits like a face and arms may be fashioned with sticks (arms), a carrot (nose), and stones or coal (eyes, mouth).	người tuyết	ok
 C2	snowy	adj	Covered with snow; snow-covered; besnowed.	phủ đầy tuyết	ok
 C2	snowy	adj	Marked by snow; characterized by snow.	nhiều tuyết	ok
 C2	snowy	adj	Snow-white in color, white as snow.	trắng như tuyết	ok
-C2	snowy	noun	(informal) Synonym of snowy egret.		
+C2	snowy	noun	(informal) Synonym of snowy egret.	(thân mật) cò tuyết	
 C2	snowy	noun	(informal) Synonym of snowy owl.	(thông tục) cú tuyết	ok
 C2	soften	verb	(intransitive) To become soft or softer.	mềm ra, trở nên mềm hơn	ok
 C2	soften	verb	(transitive) To make less harsh.	làm dịu, làm bớt gay gắt	ok
@@ -3041,7 +3041,7 @@ C2	submission	noun	A subset or component of a mission.	nhiệm vụ con, nhiệm
 C2	submission	noun	The act of submitting or giving e.g. a completed piece of work.	sự nộp (bài), việc nộp	ok
 C2	submission	noun	The act of submitting or yielding; surrender.	sự phục tùng, sự đầu hàng	ok
 C2	submission	noun	The thing which has been submitted.	bài nộp, hồ sơ đã nộp	ok
-C2	succession	noun	An act, process, or instance of succeeding:	sự kế tiếp, sự nối tiếp	
+C2	succession	noun	An act, process, or instance of succeeding:	sự kế tiếp, sự nối tiếp	ok
 C2	swain	noun	(poetic) A rural lover; a male sweetheart in a pastoral setting.	(văn chương) chàng trai đồng quê, người tình thôn dã	ok
 C2	syphilis	noun	(pathology) A disease spread via sexual activity, caused by the bacterium Treponema pallidum.	giang mai	ok
 C2	toot	noun	(Australia, slang) A toilet.	(Úc, lóng) nhà cầu, toilet	ok
