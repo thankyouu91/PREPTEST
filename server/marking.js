@@ -30,6 +30,24 @@
 
 const { q, tx, nowISO } = require('./db');
 const ability = require('./ability');
+const rubric = require('./rubric');
+
+/**
+ * The 123 linking words the platform already teaches, for the tier-1 diagnostic
+ * that counts them.
+ *
+ * Read once and kept: a report is built per request and this list changes only
+ * when somebody edits the self-study content, which restarts the process.
+ * Copying the words into rubric.js instead would have made a second list to keep
+ * in step with the one learners are actually taught from.
+ */
+let LINKING = null;
+async function linkingWords() {
+  if (LINKING) return LINKING;
+  const rows = await q.all('SELECT word FROM linking_words').catch(() => []);
+  LINKING = rows.map(r => r.word).filter(Boolean);
+  return LINKING;
+}
 
 /** Item types a machine can mark outright. The rest wait for a rubric (AI or human). */
 const AUTO_TYPES = ['mcq', 'gap'];
@@ -289,6 +307,19 @@ async function resultOf(attemptId, detailed) {
   }));
   /* Promise.all rather than a bare map: the callback reads each part's items,
      so mapping it alone would leave an array of promises on the response. */
+  /* The working behind every rubric mark on this paper, in one query rather than
+     one per item: a Writing paper has two items and a Speaking paper has fifteen,
+     and fifteen round trips to draw one screen is how a report gets slow. */
+  const rubricRows = await q.all(
+    `SELECT question_id, criterion, score, evidence, comment, version, marked_by
+       FROM rubric_scores WHERE attempt_id=? ORDER BY id`, attemptId);
+  const rubricBy = new Map();
+  for (const r of rubricRows) {
+    if (!rubricBy.has(r.question_id)) rubricBy.set(r.question_id, []);
+    rubricBy.get(r.question_id).push(r);
+  }
+  const linking = await linkingWords();
+
   out.parts = await Promise.all((await q.all(
     `SELECT ap.section_id, ap.part, s.name, s.skill
        FROM attempt_parts ap JOIN sections s ON s.id = ap.section_id
@@ -311,7 +342,11 @@ async function resultOf(attemptId, detailed) {
            item TYPE alone, so an essay the marker had already scored still came
            back as `earned: null` with "Awaiting marking" under it - the mark
            existed in the skill total and was invisible on the item. */
-        const rubric = !auto && i.earned != null && i.max_score;
+        const byRubric = !auto && i.earned != null && i.max_score;
+        const crit = rubricBy.get(i.question_id) || [];
+        const defs = rubric.criteriaFor(p.part);
+        const nameOf = k => defs.find(d => d.key === k) || { en: k, vi: k, about: '' };
+
         return {
           questionId: i.question_id,
           type: i.type,
@@ -320,9 +355,27 @@ async function resultOf(attemptId, detailed) {
           the paper is reused for later sittings and for other people. */
           given: i.given || '',
           hasRecording: !!i.audio_key,
-          earned: auto ? (i.earned == null ? 0 : i.earned) : (rubric ? i.earned : null),
-          max: auto ? 1 : (rubric ? i.max_score : null),
-          note: i.mark_note || (auto ? 'Left blank' : 'Awaiting marking')
+          earned: auto ? (i.earned == null ? 0 : i.earned) : (byRubric ? i.earned : null),
+          max: auto ? 1 : (byRubric ? i.max_score : null),
+          note: i.mark_note || (auto ? 'Left blank' : 'Awaiting marking'),
+          /* The working, so a mark can be argued with. Empty for machine-marked
+             items, which have nothing to argue about. */
+          criteria: crit.map(c => {
+            const d = nameOf(c.criterion);
+            return {
+              key: c.criterion, en: d.en, vi: d.vi, about: d.about,
+              score: c.score, evidence: c.evidence, comment: c.comment,
+              version: c.version, markedBy: c.marked_by
+            };
+          }),
+          /* Measured, not judged, and labelled as such wherever it is shown.
+             Only for the written parts: the spoken ones are marked from a
+             transcript, and counting a transcript's sentence length would be
+             measuring the transcriber. */
+          diagnostics: (!auto && !!i.given && ['B', 'D'].includes(p.part))
+            ? rubric.diagnostics(i.given, { linking })
+            : null,
+          requiredWords: rubric.MIN_WORDS[p.part] || null
         };
       });
       return {

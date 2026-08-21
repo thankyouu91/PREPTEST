@@ -218,6 +218,19 @@ Chi tiết ở mục 3.1. Đây là block mà cả bốn yêu cầu về "đồn
 
 Mục 3.2. Nối vào block 2: điểm rubric ghi vào cùng một dòng sự kiện.
 
+Đã dựng: `server/rubric.js` (tiêu chí từng phần, hai trần, bộ đo tầng 1, bộ kiểm
+câu trích), bảng `rubric_scores` có `version`, bộ chấm AI trả về từng tiêu chí
+kèm câu trích, màn kết quả mở ra được phần "Điểm này được chấm thế nào" và dòng
+"Số đo, không phải điểm". Bốn luật đầy đủ ở `docs/SCORING.md` §2.3.
+
+**Điểm đáng chú ý nhất:** câu trích của mô hình **không được tin ngay**.
+`verifyEvidence` tìm nó trong bài thật (bỏ qua khác biệt hoa thường, dấu câu,
+khoảng trắng; đòi tối thiểu 3 từ) và bỏ nếu không thấy. Diễn giải lại một câu
+*có thật* cũng bị bỏ — bằng chứng nghĩa là đúng chữ đó. Đặt lỗi trở lại (tin
+thẳng câu trích) làm 4 phép kiểm đỏ, trong đó phép quyết định cho thấy câu bịa
+"I look forward to your kind consideration" đi thẳng vào CSDL và ra tới trình
+duyệt, đứng đó như bằng chứng.
+
 ### Block 4 — Luyện theo từng Part, đề random
 
 Mục 3.3.

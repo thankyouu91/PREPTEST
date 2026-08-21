@@ -52,6 +52,7 @@
 
 const { q, nowISO } = require('./db');
 const sealed = require('./sealed');
+const rubric = require('./rubric');
 
 /* ------------------------------------------------------------------ *
  * Configuration, in the settings table
@@ -280,10 +281,30 @@ function readVerdict(text) {
   if (!Number.isFinite(score) || score < 0 || score > 10) return null;
   const note = String(v.note == null ? '' : v.note).trim();
   if (!note) return null;
+
+  /* Criteria are optional in this layer on purpose. A model that answers with
+     the old two-field shape still produces a usable mark, which is what keeps a
+     rubric change from turning every marker into a broken one. What the criteria
+     mean, whether the evidence is real and how they combine is server/rubric.js's
+     job — this function only has to get them out of the reply intact. */
+  const criteria = {};
+  const bag = v.criteria && typeof v.criteria === 'object' ? v.criteria : {};
+  for (const [key, val] of Object.entries(bag)) {
+    if (!val || typeof val !== 'object') continue;
+    const n = Number(val.score);
+    if (!Number.isFinite(n) || n < 0 || n > 10) continue;
+    criteria[String(key).slice(0, 40)] = {
+      score: Math.round(n * 2) / 2,
+      evidence: String(val.evidence == null ? '' : val.evidence).trim().slice(0, 400) || null,
+      comment: String(val.comment == null ? '' : val.comment).trim().slice(0, 300) || null
+    };
+  }
+
   return {
     /* To the nearest half, which is the step the rest of the platform uses. */
     score: Math.round(score * 2) / 2,
-    note: note.slice(0, 600)
+    note: note.slice(0, 600),
+    criteria: Object.keys(criteria).length ? criteria : null
   };
 }
 
@@ -297,7 +318,19 @@ const SYSTEM = [
   'learner sitting a practice test, so the note you write is read by them.',
   '',
   'Answer with ONE JSON object and nothing else:',
-  '  {"score": <number 0-10, halves allowed>, "note": "<at most 60 words>"}',
+  '  {"score": <number 0-10, halves allowed>, "note": "<at most 60 words>",',
+  '   "criteria": {"<key>": {"score": <0-10>, "evidence": "<a phrase copied EXACTLY',
+  '   from the candidate\'s own words>", "comment": "<at most 25 words>"}, ...}}',
+  '',
+  '"criteria" is required when the task below lists criterion keys, and one entry',
+  'is expected for each key it lists. Use those exact keys and no others.',
+  '',
+  'EVIDENCE MUST BE COPIED, NOT WRITTEN. Every "evidence" value has to be a run of',
+  'at least three words that appears VERBATIM in the candidate\'s answer. Do not',
+  'paraphrase it, do not correct its spelling, do not compose an example of what',
+  'they should have written. A quotation is checked against their text and thrown',
+  'away if it is not found there, so an invented one simply loses the evidence.',
+  'If a criterion has no quotable moment, leave "evidence" out entirely.',
   '',
   'The note names the single most useful thing to change next, in plain English,',
   'addressed to the candidate. No preamble, no praise that says nothing, no score',
@@ -347,12 +380,38 @@ const RUBRIC = {
 function userPrompt({ part, level, prompt, answer, heard, source }) {
   const lines = [
     RUBRIC[part] || 'Mark this answer for meaning, task completion and accuracy.',
-    '',
+    ''
+  ];
+
+  /* The criteria this part is actually marked on, named to the model in the same
+     words the candidate will read them in. Taken from server/rubric.js rather
+     than written again here: two lists of criteria is two lists to keep in step,
+     and the one that goes stale is the one nobody is looking at. */
+  const defs = rubric.criteriaFor(part);
+  if (defs.length) {
+    lines.push('Score these criteria, using exactly these keys:');
+    for (const d of defs) lines.push('  "' + d.key + '" (' + d.en + ') — ' + d.about);
+    lines.push('',
+      'Score each one on its own. Do not let a strong criterion lift a weak one or the',
+      'other way round: a piece can be well organised and still be full of grammar',
+      'mistakes, and saying so is the useful part.',
+      '');
+  }
+
+  const floor = rubric.MIN_WORDS[part];
+  if (floor) {
+    lines.push('The task requires at least ' + floor + ' words. Length is checked separately'
+      + ' and enforced without you, so mark the criteria on their own merits and do not'
+      + ' also deduct for shortness.', '');
+  }
+
+  lines.push(
     'Candidate level for this paper: ' + (level || 'B1') + ' on the CEFR scale.',
-    '',
+    '');
+  lines.push(
     'WHAT THE CANDIDATE WAS ASKED:',
     String(prompt || '').slice(0, 4000)
-  ];
+  );
   if (source) lines.push('', 'WHAT THEY HEARD (the recording said this):', String(source).slice(0, 4000));
 
   /* The candidate's own words go inside a tag, and the system prompt says what a
@@ -467,6 +526,6 @@ async function testConnection() {
 
 module.exports = {
   settings, setKey, setProvider, ready, canTranscribe, testConnection,
-  markOne, transcribe, readVerdict, scrub, userPrompt,
+  markOne, transcribe, readVerdict, scrub, userPrompt, SYSTEM,
   KEYS, DEFAULTS
 };

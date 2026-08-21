@@ -620,6 +620,32 @@ CREATE TABLE IF NOT EXISTS skill_events (
 CREATE INDEX IF NOT EXISTS idx_se_user ON skill_events (user_id, at DESC);
 CREATE INDEX IF NOT EXISTS idx_se_part ON skill_events (user_id, part, at DESC);
 
+/* One row per criterion per marked item — the working behind a Writing or
+   Speaking mark, kept so a learner can see WHY, and so a disputed score can be
+   traced (docs/SCORING.md §2.1, principle 4).
+
+   evidence is a span quoted from the candidate's OWN answer, and it is stored
+   only after server/rubric.js has found it there: a marking service is a
+   language model, and a quotation it invented looks exactly like proof.
+
+   rubric_version is not decoration. Criteria will change, and rescoring old
+   marks when they do would erase the learner's record of getting better; each
+   score keeps the version it was made under. */
+CREATE TABLE IF NOT EXISTS rubric_scores (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  attempt_id  INTEGER NOT NULL REFERENCES attempts(id) ON DELETE CASCADE,
+  question_id INTEGER NOT NULL REFERENCES questions(id),
+  criterion   TEXT NOT NULL,
+  score       REAL NOT NULL,
+  evidence    TEXT,
+  comment     TEXT,
+  version     TEXT NOT NULL,
+  marked_by   TEXT NOT NULL DEFAULT 'ai',
+  at          TEXT NOT NULL,
+  UNIQUE (attempt_id, question_id, criterion)
+);
+CREATE INDEX IF NOT EXISTS idx_rs_attempt ON rubric_scores (attempt_id);
+
 /* One administrator's standing permission to act on their Google account —
    today only Classroom. The refresh token is stored ENCRYPTED (AES-256-GCM,
    see server/classroom.js): unlike a TOTP secret, which is useless without the

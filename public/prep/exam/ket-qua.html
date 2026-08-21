@@ -207,6 +207,8 @@
                   (it.hasRecording ? 'Recorded' : (it.given ? 'You answered: ' + PREP.esc(it.given) : 'Left blank')) +
                 '</span>' +
                 feedback(it) +
+                breakdown(it) +
+                diagnostics(it) +
               '</span>' +
               markChip(it) +
             '</li>').join('') + '</ul>' +
@@ -233,6 +235,76 @@
       if (!n || n === 'Left blank' || n === 'Awaiting marking') return '';
       return '<span class="block text-[12.5px] leading-relaxed mt-1.5 ps-3 border-s-2 border-line">' +
         PREP.esc(n) + '</span>';
+    }
+
+    /**
+     * The working behind a Writing or Speaking mark: each criterion, its score,
+     * and a phrase from the candidate's own answer that shows why.
+     *
+     * A single number tells somebody where they are and nothing about what to
+     * do. Four numbers with a quotation under each tell them which one to work
+     * on and where to look. That is the whole reason this exists, and it is why
+     * the evidence is quoted from THEIR text rather than described: "your
+     * grammar is weak" is unarguable and therefore unusable; seeing the actual
+     * clause is not.
+     *
+     * Evidence is verified server-side before it is stored — see
+     * server/rubric.js — so anything rendered here really does appear in what
+     * they wrote.
+     */
+    function breakdown(it) {
+      const cs = it.criteria || [];
+      if (!cs.length) return '';
+      const rows = cs.map(c =>
+        '<li class="py-1.5 border-b border-line last:border-0">' +
+          '<span class="flex items-baseline gap-2">' +
+            '<b class="text-[12.5px]">' + PREP.esc(PREP.t(c.en, c.vi)) + '</b>' +
+            '<span class="ms-auto text-[12.5px] font-bold tabular-nums">' + c.score.toFixed(1) + '</span>' +
+          '</span>' +
+          (c.comment
+            ? '<span class="block text-[12px] text-muted leading-snug mt-0.5">' + PREP.esc(c.comment) + '</span>'
+            : '') +
+          (c.evidence
+            ? '<q class="block text-[12px] leading-snug mt-1 ps-2.5 border-s-2 border-line italic">'
+              + PREP.esc(c.evidence) + '</q>'
+            : '') +
+        '</li>').join('');
+      return '<details class="mt-2">' +
+        '<summary class="text-[12.5px] font-semibold cursor-pointer">' +
+          PREP.t('How this mark was made', 'Điểm này được chấm thế nào') + '</summary>' +
+        '<ul class="mt-1.5">' + rows + '</ul>' +
+      '</details>';
+    }
+
+    /**
+     * Measured facts about a written answer — and never a score.
+     *
+     * docs/SCORING.md §2.3 calls this tier one, and calls it diagnostic rather
+     * than a mark, for a good reason: a high type-token ratio can mean a rich
+     * vocabulary or a candidate who kept reaching for a synonym they did not
+     * need. These numbers are a prompt to look at the text, so the heading says
+     * exactly that and no bar or grade is drawn beside them.
+     */
+    function diagnostics(it) {
+      const d = it.diagnostics;
+      if (!d || !d.words) return '';
+      const bits = [
+        PREP.t(d.words + ' words', d.words + ' từ')
+          + (it.requiredWords ? PREP.t(' of ' + it.requiredWords + ' required', ' / yêu cầu ' + it.requiredWords) : ''),
+        PREP.t(d.sentences + ' sentences', d.sentences + ' câu'),
+        PREP.t('average ' + d.meanSentenceWords + ' words a sentence', 'trung bình ' + d.meanSentenceWords + ' từ/câu'),
+        PREP.t(d.linkingPer100 + ' linking words per 100', d.linkingPer100 + ' từ nối / 100 từ')
+      ];
+      if (d.typeTokenRatio !== null) {
+        bits.push(PREP.t('word variety ' + d.typeTokenRatio, 'độ đa dạng từ ' + d.typeTokenRatio));
+      }
+      if (d.mostRepeatedWord) {
+        bits.push(PREP.t('"' + d.mostRepeatedWord + '" used ' + d.mostRepeatedCount + ' times',
+          '"' + d.mostRepeatedWord + '" dùng ' + d.mostRepeatedCount + ' lần'));
+      }
+      return '<span class="block text-[12px] text-muted leading-relaxed mt-1.5">' +
+        '<b>' + PREP.t('Measured, not marked:', 'Số đo, không phải điểm:') + '</b> ' +
+        PREP.esc(bits.join(' · ')) + '</span>';
     }
 
     /** The right / wrong / awaiting-marking chip for one item */

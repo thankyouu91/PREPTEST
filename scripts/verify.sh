@@ -196,6 +196,12 @@ node scripts/test-paper.mjs || fail=1
 step "Marking writing and speaking (the key, the rubric pass, what a candidate sees)"
 node scripts/test-ai-marking.mjs || fail=1
 
+# Straight after the marking suite on purpose: both install a stub model as the
+# marker, and the one that runs last leaves its own stub configured. Adjacent,
+# neither can be surprised by the other's leftovers.
+step "The rubric (caps that fire for the right reason, a quotation that must be real)"
+node scripts/test-rubric.mjs || fail=1
+
 step "Payments (gateway signatures, settlement rules, one code per order)"
 node scripts/test-payments.mjs || fail=1
 

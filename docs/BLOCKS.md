@@ -19,7 +19,7 @@ Sáu điều kiện khóa (chi tiết ở `docs/KE-HOACH-XAY.md` §1.2), rút g�
 | 0 | Sao lưu và phục hồi CSDL | 🟡 đang làm — mã và 43 phép kiểm xong; **chờ việc trên AWS**, xem mục cuối | — | — |
 | 1 | Nới trần rẻ tiền (pragma, cắt trang sẵn) | 🔒 **đã khóa** | `87b05ce` | 2026-08-21 |
 | 2 | Mô hình năng lực (`skill_events` + `server/ability.js`) | 🔒 **đã khóa** | `87b05ce` | 2026-08-21 |
-| 3 | Rubric và đánh giá sau bài thi | ⬜ chưa bắt đầu | — | — |
+| 3 | Rubric và đánh giá sau bài thi | 🟡 đang làm — mã và 71 phép kiểm xong, chờ cổng xanh | — | — |
 | 4 | Luyện theo từng Part, đề random | ⬜ chưa bắt đầu | — | — |
 | 5 | Từ vựng B1–C2 qua viết câu và áp dụng từ | ⬜ chưa bắt đầu | — | — |
 | 6 | Lộ trình ôn tập sinh tự động | ⬜ chưa bắt đầu | — | — |

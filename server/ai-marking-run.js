@@ -54,6 +54,7 @@ const { q, nowISO } = require('./db');
 const ai = require('./ai-marking');
 const storage = require('./storage');
 const { markAttempt } = require('./marking');
+const rubric = require('./rubric');
 
 /**
  * Attempts being marked right now: id -> the promise of that pass.
@@ -335,6 +336,21 @@ async function markRow(attemptId, row, tries) {
     return 'failed';
   }
 
+  /* The criteria decide the mark, not the model's own headline number.
+     `combine` averages what it was given, then applies the two caps in
+     server/rubric.js: nothing sits more than half a band above its weakest
+     criterion, and something well under the required length is capped whatever
+     its sentences look like. Evidence is checked against the candidate's real
+     words on the way through, and a quotation that is not there is dropped.
+
+     A model that answered in the old two-field shape has no criteria, so the
+     fallback is its own score with the length cap still applied — the gate that
+     is measured rather than judged keeps working with no marker at all. */
+  const graded = rubric.combine(row.part, verdict.criteria, {
+    answer: heard || row.answer,
+    fallbackScore: verdict.score
+  }) || { score: verdict.score, criteria: [], caps: [], version: rubric.RUBRIC_VERSION };
+
   /* Every item on this paper is worth one, so a rubric score out of ten is
      stored as a fraction of one. Keeping the model's ten-point note in the text
      would be a second scale for a reader to reconcile; the note says what to
@@ -343,10 +359,25 @@ async function markRow(attemptId, row, tries) {
      commenting on pronunciation - it cannot hear any - but a candidate reading
      a speaking mark is entitled to know that nobody listened to their voice.
      Stating it once, on the item, beats leaving it to a footnote nobody reads. */
-  const note = cfg.spoken
+  let note = cfg.spoken
     ? verdict.note + ' (Marked from a transcript of your answer: the words and the grammar, '
       + 'not pronunciation or fluency.)'
     : verdict.note;
+  /* A cap that fires silently is a mark the candidate cannot account for. */
+  for (const c of graded.caps) note += ' ' + c.en;
+
+  /* The working, kept. Replaced rather than appended, because marking is
+     re-runnable and a second pass must correct the record, not grow it. */
+  await q.run('DELETE FROM rubric_scores WHERE attempt_id=? AND question_id=?',
+    attemptId, row.question_id);
+  for (const c of graded.criteria) {
+    await q.run(
+      `INSERT INTO rubric_scores
+         (attempt_id, question_id, criterion, score, evidence, comment, version, marked_by, at)
+       VALUES (?,?,?,?,?,?,?,'ai',?)`,
+      attemptId, row.question_id, c.key, c.score, c.evidence, c.comment,
+      graded.version, nowISO());
+  }
 
   /* One point per item, the same as every other item on the paper. An 18-minute
      e-mail therefore weighs the same as one sentence-completion gap, which is
@@ -354,7 +385,7 @@ async function markRow(attemptId, row, tries) {
      living beside markItem's, and VPET publishes no per-item weights to copy. */
   await q.run(
     'UPDATE attempt_answers SET earned=?, max_score=1, mark_note=?, marked_at=? WHERE id=?',
-    verdict.score / 10, note, nowISO(), rowId);
+    graded.score / 10, note, nowISO(), rowId);
   return 'marked';
 }
 

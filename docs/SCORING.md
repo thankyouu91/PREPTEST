@@ -224,6 +224,43 @@ Phần Nói còn cần đo **phát âm và độ trôi chảy**. Miễn phí tr�
 (chỉ hợp cho dạng *Read Aloud* / *Repeat Sentence*), cộng thêm đo tốc độ nói và
 số lần ngập ngừng từ chính file ghi âm.
 
+#### Bốn luật giữ cho điểm rubric trung thực — `server/rubric.js`
+
+Chủ đầu tư yêu cầu rubric "thật sát và khắt khe" để người học nhận ra đúng trình
+độ mình. **Khắt khe ở đây nghĩa là *đúng*, không phải *cho điểm thấp*.** Một
+rubric trừ đều một bậc của tất cả mọi người thì cũng vô ích y như một rubric
+nới tay, mà còn tệ hơn vì nó làm người ta bỏ cuộc. Bốn luật dưới đây làm việc
+đó, và luật nào cũng là về chuyện *chấm cho đúng*:
+
+| # | Luật | Vì sao |
+|---|---|---|
+| 1 | **Tiêu chí yếu nhất chặn trần cả bài.** Điểm chung cao nhất chỉ được hơn tiêu chí thấp nhất **0,5** | Bài có từ vựng C1 nhưng ngữ pháp A2 không phải bài B2 — ở chỗ làm thật, ngữ pháp mới là chỗ người đọc vấp |
+| 2 | **Độ dài là cửa, không phải tiêu chí.** Dưới **60%** số từ yêu cầu → trần **4,0** | Part D yêu cầu tối thiểu 100 từ. Quá ngắn thì chưa tính là đã làm bài, dù câu cú có tốt đến đâu. Đo được, nên áp cả khi chưa có ai chấm |
+| 3 | **Mỗi tiêu chí phải chỉ vào bằng chứng, và bằng chứng bị KIỂM** | Điểm mà người học không truy được về chữ của chính mình thì không dạy được gì. Và vì tầng 3 là một mô hình ngôn ngữ, câu trích nó đưa ra **không được tin ngay**: `verifyEvidence` tìm câu đó trong bài thật, không thấy thì bỏ. **Một câu trích bịa còn tệ hơn không có câu trích nào, vì nó trông y hệt bằng chứng** |
+| 4 | **Mỗi điểm ghi kèm phiên bản rubric** | Tiêu chí rồi sẽ đổi. Chấm lại lịch sử khi đổi là xoá mất bản ghi tiến bộ của người học, nên điểm cũ giữ nguyên phiên bản đã chấm nó |
+
+> **Luật 1 là luật của nền tảng này, không phải luật của VPET.** Pearson không
+> công bố quy tắc nào như thế. Ghi rõ ra đây để không ai đọc mã rồi tưởng đó là
+> quy định chính thức của kỳ thi.
+
+**Cố tình KHÔNG có: phát âm và độ trôi chảy trong rubric các phần Nói.** Bài nói
+được chấm từ transcript, tức là chưa ai nghe giọng thí sinh; thêm tiêu chí về
+cách họ phát âm là bịa ra một con số không có gì đứng sau. Điều này đã được nói
+với mô hình chấm và nói với thí sinh, và `server/rubric.js` không lặng lẽ thêm
+lại.
+
+**Tiêu chí theo từng phần.** Chỉ những phần thật sự có nhiều chiều mới có nhiều
+tiêu chí. Part H là "nhắc lại câu vừa nghe" — có đúng một thứ để đo, tách thành
+bốn cho ra vẻ đầy đủ thì bốn con số sẽ luôn nhích cùng nhau và chẳng nói thêm gì.
+
+| Phần | Tiêu chí |
+|---|---|
+| B — Dựng lại đoạn văn | giữ được ý · ngữ pháp và chính tả · sắp xếp |
+| D — Viết email | hoàn thành yêu cầu · giọng văn · bố cục · ngữ pháp và chính tả |
+| I — Tình huống nói | xử lý tình huống · vốn ngôn ngữ · độ chính xác · mức trang trọng |
+| J — Kể lại chuyện | giữ được sự việc · trình tự · ý chính |
+| G, H | một chiều duy nhất, không tách tiêu chí |
+
 ### 2.4 Lược đồ dữ liệu cần thêm
 
 ```
