@@ -2616,7 +2616,7 @@ C2	blizzard	noun	A large snowstorm accompanied by strong winds and greatly reduc
 C2	blizzard	verb	(impersonal, of snow) To fall in windy conditions.	(tuyết) rơi dữ dội trong gió	ok
 C2	bossy	adj	Ornamented with bosses; studded.	có gắn núm/đinh tán trang trí	ok
 C2	bossy	adj	Tending to give orders to others, especially when unwarranted; domineering.	hay ra lệnh, hống hách	ok
-C2	caterpillar	noun	(mathematics) A set of subtrees of a tree.		
+C2	caterpillar	noun	(mathematics) A set of subtrees of a tree.	(toán học) cây dạng sâu bướm	
 C2	caterpillar	noun	A vehicle with a caterpillar track; a crawler.	xe bánh xích	ok
 C2	caterpillar	noun	The larva of a butterfly or moth; leafworm.	sâu	ok
 C2	caterpillar	verb	(intransitive) To move along slowly, drawing one's body up, in the manner of a caterpillar.	di chuyển từ từ, nhích từng đoạn (như sâu bướm)	ok
@@ -2915,7 +2915,7 @@ C2	pant	noun	A quick breathing; a catching of the breath; a gasp: the panting of
 C2	pant	verb	(ambitransitive) To breathe quickly or in a labored manner, as after exertion or from eagerness or excitement; to respire with heaving of the breast; to gasp.	thở hổn hển, thở gấp	ok
 C2	pant	verb	(intransitive) Of the heart, to beat with unnatural violence or rapidity; to palpitate.	đập nhanh, đập dồn dập	ok
 C2	pant	verb	(intransitive) To long eagerly; to desire earnestly.	khao khát, mong mỏi	ok
-C2	pant	verb	(intransitive) To sigh; to flutter; to languish.		
+C2	pant	verb	(intransitive) To sigh; to flutter; to languish.	thổn thức, khao khát	
 C2	partridge	noun	(ornithology) Any bird of a number of genera in the family Phasianidae, notably in the genera Perdix and Alectoris.	chim gà gô	ok
 C2	partridge	noun	(uncountable) The flesh or meat of this bird eaten as food.	thịt gà gô	ok
 C2	pelvis	noun	(anatomy) A funnel-shaped cavity, especially such a cavity in the kidney into which urine passes towards the ureter.	(giải phẫu) bể thận	ok
@@ -2945,7 +2945,7 @@ C2	poodle	verb	(furry fandom) To wear a partial fursuit, typically the head and 
 C2	predicament	noun	(logic) That which is predicated; a category.	(logic) phạm trù	ok
 C2	predicament	noun	A definite class, state or condition.	tình trạng, trạng thái	ok
 C2	predicament	noun	An unfortunate or trying position or condition.	tình thế khó khăn, hoàn cảnh khó xử	ok
-C2	prostate	adj	Alternative spelling of pro-state.	ủng hộ nhà nước, thân nhà nước	
+C2	prostate	adj	Alternative spelling of pro-state.	ủng hộ nhà nước, thân nhà nước	ok
 C2	prostate	adj	Of or relating to the prostate gland.	(giải phẫu) thuộc tuyến tiền liệt	ok
 C2	prostate	noun	The prostate gland.	tuyến tiền liệt	ok
 C2	prudent	adj	Frugal; economical; not extravagant.	tiết kiệm, cẩn trọng trong chi tiêu	ok
@@ -3012,84 +3012,84 @@ C2	sled	noun	A small, light vehicle with runners, used recreationally, mostly by
 C2	sled	verb	(intransitive) To ride a sled.	trượt xe trượt tuyết, đi xe trượt tuyết	ok
 C2	sled	verb	(transitive) To convey on a sled.	chở bằng xe trượt tuyết	ok
 C2	snowman	noun	(baseball, golf) A score of eight, especially within one inning (in baseball) or on one hole (in golf, where it is also known as dogballs).	(golf, bóng chày) điểm số 8	ok
-C2	snowman	noun	(slang) A playing card with the rank of eight.		
-C2	snowman	noun	A humanoid figure made with large snowballs stacked on each other. Human traits like a face and arms may be fashioned with sticks (arms), a carrot (nose), and stones or coal (eyes, mouth).	người tuyết	
-C2	snowy	adj	Covered with snow; snow-covered; besnowed.	phủ đầy tuyết	
-C2	snowy	adj	Marked by snow; characterized by snow.	nhiều tuyết	
-C2	snowy	adj	Snow-white in color, white as snow.	trắng như tuyết	
+C2	snowman	noun	(slang) A playing card with the rank of eight.	(lóng) quân bài số 8	
+C2	snowman	noun	A humanoid figure made with large snowballs stacked on each other. Human traits like a face and arms may be fashioned with sticks (arms), a carrot (nose), and stones or coal (eyes, mouth).	người tuyết	ok
+C2	snowy	adj	Covered with snow; snow-covered; besnowed.	phủ đầy tuyết	ok
+C2	snowy	adj	Marked by snow; characterized by snow.	nhiều tuyết	ok
+C2	snowy	adj	Snow-white in color, white as snow.	trắng như tuyết	ok
 C2	snowy	noun	(informal) Synonym of snowy egret.		
-C2	snowy	noun	(informal) Synonym of snowy owl.	(thông tục) cú tuyết	
-C2	soften	verb	(intransitive) To become soft or softer.	mềm ra, trở nên mềm hơn	
-C2	soften	verb	(transitive) To make less harsh.	làm dịu, làm bớt gay gắt	
-C2	soften	verb	(transitive) To make something soft or softer.	làm mềm	
-C2	soften	verb	(transitive) To undermine the morale of someone (often soften up).	làm nhụt chí, làm suy yếu tinh thần	
-C2	stairwell	noun	A shaft in a multi-story building enclosing a stairway or staircase.	lồng cầu thang	
-C2	stakeout	noun	The act of watching a location or people, generally covertly.	cuộc mai phục theo dõi	
-C2	stride	noun	(countable, computing) The number of memory locations between successive elements in an array, pixels in a bitmap, etc.	(tin học) bước nhảy bộ nhớ	
-C2	stride	noun	(countable) A long step in walking.	bước dài, sải chân	
-C2	stride	noun	(countable) The distance covered by a long step.	độ dài sải chân	
-C2	stride	noun	(uncountable, music) A jazz piano style of the 1920s and 1930s. The left hand characteristically plays a four-beat pulse with a single bass note, octave, seventh or tenth interval on the first and third beats, and a chord on the second and fourth beats.	(âm nhạc) phong cách stride piano	
-C2	stride	verb	(intransitive) To walk with long steps.	sải bước, bước dài	
-C2	stride	verb	To pass over at a step; to step over.	bước qua	
-C2	stride	verb	To stand with the legs wide apart; to straddle.	đứng dạng chân	
-C2	stride	verb	To straddle.	cưỡi, dạng chân qua	
-C2	structural	adj	Involving the mechanics of construction.	thuộc kết cấu xây dựng	
-C2	structural	adj	Of, relating to, or having structure.	thuộc cấu trúc, có tính cấu trúc	
-C2	structural	noun	Structural steel, used in construction.	thép kết cấu, thép xây dựng	
-C2	submission	noun	A submission hold in wrestling, mixed martial arts, or other combat sports.	(thể thao) đòn khóa (buộc đối thủ chịu thua)	
-C2	submission	noun	A subset or component of a mission.	nhiệm vụ con, nhiệm vụ thành phần	
-C2	submission	noun	The act of submitting or giving e.g. a completed piece of work.	sự nộp (bài), việc nộp	
-C2	submission	noun	The act of submitting or yielding; surrender.	sự phục tùng, sự đầu hàng	
-C2	submission	noun	The thing which has been submitted.	bài nộp, hồ sơ đã nộp	
-C2	succession	noun	An act, process, or instance of succeeding:		
-C2	swain	noun	(poetic) A rural lover; a male sweetheart in a pastoral setting.	(văn chương) chàng trai đồng quê, người tình thôn dã	
+C2	snowy	noun	(informal) Synonym of snowy owl.	(thông tục) cú tuyết	ok
+C2	soften	verb	(intransitive) To become soft or softer.	mềm ra, trở nên mềm hơn	ok
+C2	soften	verb	(transitive) To make less harsh.	làm dịu, làm bớt gay gắt	ok
+C2	soften	verb	(transitive) To make something soft or softer.	làm mềm	ok
+C2	soften	verb	(transitive) To undermine the morale of someone (often soften up).	làm nhụt chí, làm suy yếu tinh thần	ok
+C2	stairwell	noun	A shaft in a multi-story building enclosing a stairway or staircase.	lồng cầu thang	ok
+C2	stakeout	noun	The act of watching a location or people, generally covertly.	cuộc mai phục theo dõi	ok
+C2	stride	noun	(countable, computing) The number of memory locations between successive elements in an array, pixels in a bitmap, etc.	(tin học) bước nhảy bộ nhớ	ok
+C2	stride	noun	(countable) A long step in walking.	bước dài, sải chân	ok
+C2	stride	noun	(countable) The distance covered by a long step.	độ dài sải chân	ok
+C2	stride	noun	(uncountable, music) A jazz piano style of the 1920s and 1930s. The left hand characteristically plays a four-beat pulse with a single bass note, octave, seventh or tenth interval on the first and third beats, and a chord on the second and fourth beats.	(âm nhạc) phong cách stride piano	ok
+C2	stride	verb	(intransitive) To walk with long steps.	sải bước, bước dài	ok
+C2	stride	verb	To pass over at a step; to step over.	bước qua	ok
+C2	stride	verb	To stand with the legs wide apart; to straddle.	đứng dạng chân	ok
+C2	stride	verb	To straddle.	cưỡi, dạng chân qua	ok
+C2	structural	adj	Involving the mechanics of construction.	thuộc kết cấu xây dựng	ok
+C2	structural	adj	Of, relating to, or having structure.	thuộc cấu trúc, có tính cấu trúc	ok
+C2	structural	noun	Structural steel, used in construction.	thép kết cấu, thép xây dựng	ok
+C2	submission	noun	A submission hold in wrestling, mixed martial arts, or other combat sports.	(thể thao) đòn khóa (buộc đối thủ chịu thua)	ok
+C2	submission	noun	A subset or component of a mission.	nhiệm vụ con, nhiệm vụ thành phần	ok
+C2	submission	noun	The act of submitting or giving e.g. a completed piece of work.	sự nộp (bài), việc nộp	ok
+C2	submission	noun	The act of submitting or yielding; surrender.	sự phục tùng, sự đầu hàng	ok
+C2	submission	noun	The thing which has been submitted.	bài nộp, hồ sơ đã nộp	ok
+C2	succession	noun	An act, process, or instance of succeeding:	sự kế tiếp, sự nối tiếp	
+C2	swain	noun	(poetic) A rural lover; a male sweetheart in a pastoral setting.	(văn chương) chàng trai đồng quê, người tình thôn dã	ok
 C2	syphilis	noun	(pathology) A disease spread via sexual activity, caused by the bacterium Treponema pallidum.	giang mai	ok
-C2	toot	noun	(Australia, slang) A toilet.	(Úc, lóng) nhà cầu, toilet	
-C2	toot	noun	(by extension, countable, informal) A fart; flatus.	(thông tục) cái rắm	
-C2	toot	noun	(countable, slang) A portion of cocaine that a person snorts.	(lóng) một liều cocaine (để hít)	
+C2	toot	noun	(Australia, slang) A toilet.	(Úc, lóng) nhà cầu, toilet	ok
+C2	toot	noun	(by extension, countable, informal) A fart; flatus.	(thông tục) cái rắm	ok
+C2	toot	noun	(countable, slang) A portion of cocaine that a person snorts.	(lóng) một liều cocaine (để hít)	ok
 C2	toot	noun	(countable) The noise of a horn or whistle.	tiếng còi	ok
-C2	toot	noun	(uncountable, slang) Cocaine.	(lóng) cocaine	
-C2	toot	verb	To peep; to look narrowly.	nhìn trộm, ngó trộm	
-C2	toot	verb	To produce the noise of a horn or whistle.	bóp còi, thổi còi	
-C2	toot	verb	To see; to spy.	nhìn thấy, dòm ngó	
-C2	toot	verb	To stand out, or be prominent.	nhô ra, nổi bật	
-C2	tourism	noun	(figurative) The act of visiting another region or jurisdiction for a particular purpose.	(nghĩa bóng) việc đi nơi khác để né tránh luật hoặc trục lợi	
+C2	toot	noun	(uncountable, slang) Cocaine.	(lóng) cocaine	ok
+C2	toot	verb	To peep; to look narrowly.	nhìn trộm, ngó trộm	ok
+C2	toot	verb	To produce the noise of a horn or whistle.	bóp còi, thổi còi	ok
+C2	toot	verb	To see; to spy.	nhìn thấy, dòm ngó	ok
+C2	toot	verb	To stand out, or be prominent.	nhô ra, nổi bật	ok
+C2	tourism	noun	(figurative) The act of visiting another region or jurisdiction for a particular purpose.	(nghĩa bóng) việc đi nơi khác để né tránh luật hoặc trục lợi	ok
 C2	tourism	noun	The act of travelling or sightseeing, particularly away from one's home.	sự du lịch	ok
-C2	tourism	noun	The industry in which such travels and sightseeing are organized.	ngành du lịch	
-C2	trainee	noun	A juvenile inmate being trained and (re)educated in a reformatory school.	học viên trường giáo dưỡng	
-C2	trainee	noun	Someone who is still in the process of being formally trained in a workplace.	người học việc, thực tập sinh	
+C2	tourism	noun	The industry in which such travels and sightseeing are organized.	ngành du lịch	ok
+C2	trainee	noun	A juvenile inmate being trained and (re)educated in a reformatory school.	học viên trường giáo dưỡng	ok
+C2	trainee	noun	Someone who is still in the process of being formally trained in a workplace.	người học việc, thực tập sinh	ok
 C2	ulcer	noun	(figurative) Anything that festers and corrupts like an open sore; a vice in character.	loét	thiếu nhãn nghĩa bóng — đây là nghĩa ẩn dụ (cái xấu ăn sâu, thói hư), "loét" trùng với nghĩa y học ở dòng khác; nên là "ung nhọt (nghĩa bóng)"
 C2	ulcer	noun	(pathology) An open sore of the skin, eyes or mucous membrane, often caused by an initial abrasion and generally maintained by an inflammation and/or an infection.	loét	ok
-C2	ulcer	noun	(pathology) Peptic ulcer.	(y học) loét dạ dày	
-C2	ulcer	verb	To ulcerate.	làm loét, bị loét	
-C2	undergo	verb	(transitive) To experience; to pass through a phase.	trải qua	
-C2	undergo	verb	(transitive) To suffer or endure; bear with.	chịu đựng, trải qua	
-C2	unfamiliar	adj	Strange, not familiar.	lạ, xa lạ, không quen thuộc	
-C2	unfamiliar	noun	An unfamiliar person; a stranger.	người lạ	
-C2	unprofessional	adj	Lacking a profession.	không có nghề nghiệp chuyên môn	
-C2	unprofessional	adj	Not relating to professional occupation or employment; nonprofessional.	phi chuyên môn, nghiệp dư	
-C2	unprofessional	adj	Unbecoming of a professional; hence inappropriate in the workplace.	thiếu chuyên nghiệp, không đúng mực	
-C2	unprofessional	noun	One who is not a professional.	người nghiệp dư, người không chuyên	
+C2	ulcer	noun	(pathology) Peptic ulcer.	(y học) loét dạ dày	sai nghĩa/chưa chính xác: "peptic ulcer" là loét dạ dày - tá tràng nói chung (gồm cả loét tá tràng), không chỉ riêng dạ dày — nên là "loét dạ dày - tá tràng"
+C2	ulcer	verb	To ulcerate.	làm loét, bị loét	ok
+C2	undergo	verb	(transitive) To experience; to pass through a phase.	trải qua	ok
+C2	undergo	verb	(transitive) To suffer or endure; bear with.	chịu đựng, trải qua	ok
+C2	unfamiliar	adj	Strange, not familiar.	lạ, xa lạ, không quen thuộc	ok
+C2	unfamiliar	noun	An unfamiliar person; a stranger.	người lạ	ok
+C2	unprofessional	adj	Lacking a profession.	không có nghề nghiệp chuyên môn	ok
+C2	unprofessional	adj	Not relating to professional occupation or employment; nonprofessional.	phi chuyên môn, nghiệp dư	ok
+C2	unprofessional	adj	Unbecoming of a professional; hence inappropriate in the workplace.	thiếu chuyên nghiệp, không đúng mực	ok
+C2	unprofessional	noun	One who is not a professional.	người nghiệp dư, người không chuyên	ok
 C2	vendor	noun	A person or a company that vends or sells.	ngưởi bán hàng rong	lỗi chính tả "ngưởi" → "người"; đồng thời nghĩa quá hẹp — vendor là người/công ty bán hàng nói chung, không riêng "bán hàng rong"
-C2	vendor	noun	A vending machine.	máy bán hàng tự động	
-C2	vendor	verb	(transitive, software engineering) As the software vendor, to bundle one's own, possibly modified version of dependencies with a standard program.	đóng gói kèm (bản sao) thư viện phụ thuộc	
-C2	vendor	verb	(transitive, software engineering) To bundle third-party dependencies with the source code for one's own program.	tích hợp thư viện của bên thứ ba vào mã nguồn	
-C2	volatile	adj	Fickle.	hay thay đổi, thất thường	
-C2	volatile	adj	Of a person, quick to become angry or violent.	dễ nổi nóng, nóng tính	
-C2	volatile	adj	Of a situation potentially violent.	căng thẳng, dễ bùng nổ	
-C2	volatile	adj	Temporary or ephemeral.	tạm thời, chóng qua	
-C2	volatile	noun	(programming) A variable that is volatile, i.e. has its associated memory immediately updated with any change in value.	(tin học) biến volatile	
-C2	volatile	noun	A chemical or compound that changes into a gas easily.	(hoá học) chất dễ bay hơi	
-C2	waffle	noun	(British, dialectal) The high-pitched sound made by a young dog; also, a muffled bark.	(phương ngữ Anh) tiếng sủa ăng ẳng của chó con	
-C2	waffle	noun	(colloquial) (Often lengthy) speech or writing that is evasive or vague, or pretentious.	(khẩu ngữ) lời nói/bài viết vòng vo, lan man	
-C2	waffle	noun	(construction, also attributively) A concrete slab used in flooring with a gridlike structure of ribs running at right angles to each other on its underside.	(xây dựng) tấm bê tông sàn dạng lưới ô vuông	
-C2	waffle	noun	(countable, British) In full potato waffle: a savoury flat potato cake with the same kind of grid pattern.	(Anh) bánh khoai tây dạng vỉ ô vuông	
-C2	waffle	noun	(countable) A flat pastry pressed with a grid pattern, often eaten hot with butter and/or honey or syrup.	bánh waffle	
-C2	waffle	noun	(textiles, chiefly attributively) A type of fabric woven with a honeycomb texture.	(dệt may) vải dệt tổ ong	
-C2	waffle	verb	(ambitransitive) Often followed by on: to speak or write (something) at length without any clear aim or point; to ramble.	nói/viết lan man, dài dòng	
-C2	waffle	verb	(intransitive, British, dialectal) Of a dog: to bark with a high pitch like a puppy, or in muffled manner.	(phương ngữ Anh, chó) sủa ăng ẳng	
-C2	waffle	verb	(intransitive) Of a bird: to move in a side-to-side motion while descending before landing.	(chim) lượn lắc qua lại khi hạ cánh	
-C2	waffle	verb	(intransitive) To speak or write evasively or vaguely.	nói/viết vòng vo, né tránh	
-C2	waffle	verb	(transitive, slang) To smash (something).	(tiếng lóng) đập nát, đập vỡ	
-C2	waffle	verb	(transitive) To hold horizontally and rotate (one's hand) back and forth in a gesture of ambivalence or vacillation.	xoay bàn tay qua lại (tỏ ý lưỡng lự)	
-C2	waldo	noun	Synonym of telefactor.	cánh tay máy điều khiển từ xa	
+C2	vendor	noun	A vending machine.	máy bán hàng tự động	ok
+C2	vendor	verb	(transitive, software engineering) As the software vendor, to bundle one's own, possibly modified version of dependencies with a standard program.	đóng gói kèm (bản sao) thư viện phụ thuộc	thiếu nhãn lĩnh vực: tiếng Anh có nhãn "(software engineering)" nhưng bản dịch không mang nhãn — nên có "(công nghệ phần mềm)"
+C2	vendor	verb	(transitive, software engineering) To bundle third-party dependencies with the source code for one's own program.	tích hợp thư viện của bên thứ ba vào mã nguồn	thiếu nhãn lĩnh vực: tiếng Anh có nhãn "(software engineering)" nhưng bản dịch không mang nhãn — nên có "(công nghệ phần mềm)"
+C2	volatile	adj	Fickle.	hay thay đổi, thất thường	ok
+C2	volatile	adj	Of a person, quick to become angry or violent.	dễ nổi nóng, nóng tính	ok
+C2	volatile	adj	Of a situation potentially violent.	căng thẳng, dễ bùng nổ	ok
+C2	volatile	adj	Temporary or ephemeral.	tạm thời, chóng qua	ok
+C2	volatile	noun	(programming) A variable that is volatile, i.e. has its associated memory immediately updated with any change in value.	(tin học) biến volatile	ok
+C2	volatile	noun	A chemical or compound that changes into a gas easily.	(hoá học) chất dễ bay hơi	ok
+C2	waffle	noun	(British, dialectal) The high-pitched sound made by a young dog; also, a muffled bark.	(phương ngữ Anh) tiếng sủa ăng ẳng của chó con	ok
+C2	waffle	noun	(colloquial) (Often lengthy) speech or writing that is evasive or vague, or pretentious.	(khẩu ngữ) lời nói/bài viết vòng vo, lan man	ok
+C2	waffle	noun	(construction, also attributively) A concrete slab used in flooring with a gridlike structure of ribs running at right angles to each other on its underside.	(xây dựng) tấm bê tông sàn dạng lưới ô vuông	ok
+C2	waffle	noun	(countable, British) In full potato waffle: a savoury flat potato cake with the same kind of grid pattern.	(Anh) bánh khoai tây dạng vỉ ô vuông	ok
+C2	waffle	noun	(countable) A flat pastry pressed with a grid pattern, often eaten hot with butter and/or honey or syrup.	bánh waffle	ok
+C2	waffle	noun	(textiles, chiefly attributively) A type of fabric woven with a honeycomb texture.	(dệt may) vải dệt tổ ong	ok
+C2	waffle	verb	(ambitransitive) Often followed by on: to speak or write (something) at length without any clear aim or point; to ramble.	nói/viết lan man, dài dòng	ok
+C2	waffle	verb	(intransitive, British, dialectal) Of a dog: to bark with a high pitch like a puppy, or in muffled manner.	(phương ngữ Anh, chó) sủa ăng ẳng	ok
+C2	waffle	verb	(intransitive) Of a bird: to move in a side-to-side motion while descending before landing.	(chim) lượn lắc qua lại khi hạ cánh	ok
+C2	waffle	verb	(intransitive) To speak or write evasively or vaguely.	nói/viết vòng vo, né tránh	ok
+C2	waffle	verb	(transitive, slang) To smash (something).	(tiếng lóng) đập nát, đập vỡ	ok
+C2	waffle	verb	(transitive) To hold horizontally and rotate (one's hand) back and forth in a gesture of ambivalence or vacillation.	xoay bàn tay qua lại (tỏ ý lưỡng lự)	ok
+C2	waldo	noun	Synonym of telefactor.	cánh tay máy điều khiển từ xa	ok
