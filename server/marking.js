@@ -29,6 +29,7 @@
 'use strict';
 
 const { q, tx, nowISO } = require('./db');
+const ability = require('./ability');
 
 /** Item types a machine can mark outright. The rest wait for a rubric (AI or human). */
 const AUTO_TYPES = ['mcq', 'gap'];
@@ -141,7 +142,7 @@ async function markAttempt(attemptId) {
      raise the mark. */
   const rows = await q.all(
     `SELECT si.question_id, ap.section_id, s.skill,
-            qs.type, qs.answer,
+            qs.type, qs.answer, qs.part, qs.level,
             aa.id answer_id, aa.answer given, aa.audio_key, aa.earned, aa.max_score
        FROM attempt_parts ap
        JOIN sections s ON s.id = ap.section_id
@@ -151,6 +152,9 @@ async function markAttempt(attemptId) {
       WHERE ap.attempt_id = ?`, attemptId);
 
   const bySkill = new Map();
+  /* Collected as the items are marked and written once at the end, so the
+     ability model sees the same marks the report does. See server/ability.js. */
+  const events = [];
   const at = nowISO();
 
   await tx(async () => {
@@ -179,6 +183,28 @@ async function markAttempt(attemptId) {
       bucket.earned += mark.earned;
       bucket.max += mark.max;
       bucket.marked += 1;
+
+      /* One event per marked item. Only marked ones: a pending essay has no
+         result yet, and recording it as 0 out of 1 would tell the ability model
+         the learner cannot write — which is exactly the lie this file refuses
+         to tell in attempt_scores two paragraphs down.
+
+         weight 1 because this is exam conditions. Drills will file the same
+         shape at 0.6: answering under a clock is not the same evidence as
+         answering at leisure, and the model should know which it saw. */
+      events.push({
+        user_id: att.user_id,
+        source: 'exam',
+        ref_id: attemptId,
+        item_key: r.question_id,
+        skill: r.skill,
+        part: r.part || null,
+        level: r.level || null,
+        earned: mark.earned,
+        max_score: mark.max,
+        weight: 1,
+        at
+      });
 
       /* Only leave a trail for items that already have an answer row. A wholly blank
          item has no row at all; it still counts in the denominator above, and there
@@ -212,6 +238,12 @@ async function markAttempt(attemptId) {
        ON CONFLICT(attempt_id,skill) DO UPDATE SET
          scaled=excluded.scaled, method=excluded.method, pending=excluded.pending, at=excluded.at`,
       attemptId, complete ? meanHalf(scaled) : null, 'mean_round_half', complete ? 0 : 1, at);
+
+    /* Inside the same transaction as the scores it is derived from. An ability
+       panel that can disagree with the report sitting next to it is worse than
+       no ability panel, and a crash between two separate writes is exactly how
+       they come to disagree. */
+    if (events.length) await ability.record(events);
   });
 
   return await resultOf(attemptId);

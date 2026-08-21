@@ -63,8 +63,10 @@ rather than a separate no-go queue.
 > - [ ] **Block 2 — Mô hình năng lực.** `skill_events` (một bảng sự kiện cho mọi
 >   thứ được chấm ở mọi nơi) + `server/ability.js` (Beta–Binomial, nửa đời 30
 >   ngày, prior 2/2, và `sd` làm hạn ngạch nói — dưới ngưỡng thì **không hiện
->   band**, hiện "chưa đủ dữ liệu"). Đây là chỗ năm tính năng quy về một nguồn
->   sự thật, và là câu trả lời cho "tiến độ phải đúng năng lực"
+>   band**, hiện "chưa đủ dữ liệu"). `markAttempt` tự ghi sự kiện nên không ai
+>   phải nhớ gọi; `GET /api/me/ability`; bảng tiến độ trên `/prep/` đọc từ đó.
+>   Đây là chỗ năm tính năng quy về một nguồn sự thật, và là câu trả lời cho
+>   "tiến độ phải đúng năng lực"
 > - [ ] **Block 3 — Rubric và đánh giá sau bài thi.** Trần theo tiêu chí thấp
 >   nhất chứ không theo trung bình; bài thiếu chữ bị chặn trần; mỗi điểm phải chỉ
 >   được vào bằng chứng trong bài; rubric có phiên bản

@@ -163,6 +163,9 @@ node scripts/test-auth.mjs || fail=1
 step "Student catalogue (/api/catalog)"
 node scripts/test-catalog.mjs || fail=1
 
+step "Ability model (the maths by hand, a re-mark that must not double, the dashboard)"
+node scripts/test-ability.mjs || fail=1
+
 step "Student account API"
 node scripts/test-user-api.mjs || fail=1
 

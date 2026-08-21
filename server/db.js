@@ -585,6 +585,41 @@ CREATE TABLE IF NOT EXISTS ai_marking_backlog (
   updated_at TEXT NOT NULL
 );
 
+/* Every graded thing this learner has done, wherever it was graded.
+
+   One table on purpose. The alternative arrives by itself if nobody decides
+   against it: the exam keeps attempt_scores, drills keep a table, vocabulary
+   keeps SRS counters, writing keeps rubric marks — five numbers for one person,
+   none of which agree, and a progress panel that has to pick one to believe.
+   Everything that marks anything writes a row here, and server/ability.js is
+   the only thing that turns rows into a claim about what somebody can do.
+
+   Deliberately one row per ITEM rather than per sitting. The estimator decays
+   each event by its own age, and a pre-aggregated SUM has already thrown away
+   the when; per-part ability could never be recovered from it either.
+
+   UNIQUE (source, ref_id, item_key) because marking is idempotent — markAttempt
+   says so in as many words — and a re-mark that appended rather than replaced
+   would double every score it touched. */
+CREATE TABLE IF NOT EXISTS skill_events (
+  id        INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id   INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  source    TEXT NOT NULL,                 -- exam | drill | vocab | writing | speaking
+  ref_id    TEXT NOT NULL,                 -- attempt id, drill id: what to trace back to
+  item_key  TEXT NOT NULL,                 -- question id, word id: unique within that ref
+  skill     TEXT NOT NULL,                 -- listening reading writing speaking grammar vocabulary
+  part      TEXT,                          -- 'A'..'J', null when it belongs to no part
+  topic     TEXT,                          -- grammar point or vocabulary group slug
+  level     TEXT,                          -- B1 | B2 | C1 | C2
+  earned    REAL NOT NULL,
+  max_score REAL NOT NULL,
+  weight    REAL NOT NULL DEFAULT 1,       -- an item under exam conditions counts for more
+  at        TEXT NOT NULL,
+  UNIQUE (source, ref_id, item_key)
+);
+CREATE INDEX IF NOT EXISTS idx_se_user ON skill_events (user_id, at DESC);
+CREATE INDEX IF NOT EXISTS idx_se_part ON skill_events (user_id, part, at DESC);
+
 /* One administrator's standing permission to act on their Google account —
    today only Classroom. The refresh token is stored ENCRYPTED (AES-256-GCM,
    see server/classroom.js): unlike a TOTP secret, which is useless without the

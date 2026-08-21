@@ -18,7 +18,7 @@ Sáu điều kiện khóa (chi tiết ở `docs/KE-HOACH-XAY.md` §1.2), rút g�
 |---|---|---|---|---|
 | 0 | Sao lưu và phục hồi CSDL | 🟡 đang làm — mã và bộ kiểm xong, chưa đặt lịch trên máy thật | — | — |
 | 1 | Nới trần rẻ tiền (pragma, cắt trang sẵn) | 🟡 đang làm — mã, số đo và bộ kiểm xong, chờ cổng xanh | — | — |
-| 2 | Mô hình năng lực (`skill_events` + `server/ability.js`) | ⬜ chưa bắt đầu | — | — |
+| 2 | Mô hình năng lực (`skill_events` + `server/ability.js`) | 🟡 đang làm — mã và 64 phép kiểm xong, chờ cổng xanh | — | — |
 | 3 | Rubric và đánh giá sau bài thi | ⬜ chưa bắt đầu | — | — |
 | 4 | Luyện theo từng Part, đề random | ⬜ chưa bắt đầu | — | — |
 | 5 | Từ vựng B1–C2 qua viết câu và áp dụng từ | ⬜ chưa bắt đầu | — | — |
@@ -45,13 +45,13 @@ không qua HTTP — vì đó mới là trần thật của đường ghi.
 Hàng thứ hai là đường cơ sở đúng cho trang HTML: hàng đầu đo nhầm một route
 sau đăng nhập nên chỉ đo được tốc độ trả về 302, không phải tốc độ dựng trang.
 
+Hai hàng đầu là **đường cơ sở**, đo trước khi bắt đầu block 0. Diễn giải đầy đủ
+— gồm cả đuôi p99 4,1 giây ở 200 luồng, và vì sao thông lượng phẳng từ 25 luồng
+trở lên — ở `docs/KE-HOACH-XAY.md` §0.
+
 **Block 1 đo được: `/prep/landing/` 1.007 → 1.664 req/s (+65%), p95 ở 100 luồng
 141 ms → 88 ms (−38%).** `/api/catalog` không đổi (1.152 → 1.142, trong sai số) —
 đúng như dự đoán, đường đó không dựng HTML. Đường ghi 9× theo số đo ở §0.
-
-Đây là **đường cơ sở**, đo trước khi bắt đầu block 0. Diễn giải đầy đủ — gồm cả
-đuôi p99 4,1 giây ở 200 luồng, và vì sao thông lượng phẳng từ 25 luồng trở lên —
-ở `docs/KE-HOACH-XAY.md` §0.
 
 Máy đo không phải máy production: ổ ở đây nhanh hơn EBS gp3, nên cột ghi trên
 production sẽ thấp hơn. Phải đo lại trên chính máy đó trong block 0.

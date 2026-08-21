@@ -186,17 +186,18 @@
                           class="ring-val" stroke-dasharray="282.7" stroke-dashoffset="282.7"/>
                 </svg>
                 <span class="absolute inset-0 flex flex-col items-center justify-center">
-                  <b id="ring-num" class="text-xl font-extrabold leading-none">0/0</b>
-                  <span class="text-[10.5px] font-semibold text-muted mt-1">tests unlocked</span>
+                  <b id="ring-num" class="text-xl font-extrabold leading-none">—</b>
+                  <span id="ring-cap" class="text-[10.5px] font-semibold text-muted mt-1">not measured yet</span>
                 </span>
               </div>
               <p class="text-sm text-muted leading-relaxed" id="progress-note">
-                Unlock a test to start tracking how your practice is going.
+                Sit a paper and this becomes an estimate of what you can actually do.
               </p>
             </div>
             <div class="border-t border-line mt-5 pt-5">
-              <p class="text-[12.5px] font-bold uppercase tracking-wide text-muted mb-3.5">Skills with practice available</p>
+              <p class="text-[12.5px] font-bold uppercase tracking-wide text-muted mb-3.5">Ability by skill</p>
               <div class="grid gap-3.5" id="skill-meters"></div>
+              <p class="text-[12px] text-muted leading-relaxed mt-4" id="ability-basis" hidden></p>
             </div>
           </section>
 
@@ -357,31 +358,90 @@
         PREP.qs('#mytests-empty').removeAttribute('hidden');
       }
 
-      /* ---------- Progress ring ---------- */
-      const total = PREP.tests.length;
-      PREP.qs('#ring-num').textContent = mine.length + '/' + total;
+      /* ---------- Progress: what they can do, not what they have bought ----------
+         This panel used to read "5/8 tests unlocked" under the heading "Your
+         progress", with four bars counting how many unlocked papers happened to
+         contain each skill. Both are facts about a shopping basket: somebody who
+         bought five papers and sat none of them saw a healthy dashboard.
+
+         It now reads GET /api/me/ability, which is one estimate over every
+         graded thing the learner has done anywhere on the platform — exam
+         items, drills, vocabulary, writing, speaking. See server/ability.js.
+
+         The band is deliberately absent until the estimate is confident enough
+         to state one. A platform that calls somebody B2 after five questions is
+         going to be contradicted on exam day, and the learner will remember
+         which of the two was lying. */
       const C = 282.7;
-      requestAnimationFrame(() => {
-        PREP.qs('#ring-main').setAttribute('stroke-dashoffset', String(C * (1 - (total ? mine.length / total : 0))));
-      });
-      if (mine.length) {
-        PREP.qs('#progress-note').textContent =
-          PREP.t('You are set up with ' + mine.length + ' of the ' + total + ' tests available. Each paper opens the moment it is released.', 'Bạn đang có ' + mine.length + ' trong ' + total + ' bài thi hiện có. Mỗi đề mở ngay khi được phát hành.');
+      const SKILLS = [['listening','Listening','Nghe','headphones'],['reading','Reading','Đọc','book'],
+                      ['writing','Writing','Viết','pen'],['speaking','Speaking','Nói','mic']];
+
+      function paintAbility(ab) {
+        const o = (ab && ab.overall) || null;
+        const ring = PREP.qs('#ring-num'), cap = PREP.qs('#ring-cap'), note = PREP.qs('#progress-note');
+
+        if (!o || !o.n) {
+          ring.textContent = '—';
+          cap.textContent = PREP.t('not measured yet', 'chưa đo');
+          note.textContent = PREP.t(
+            'Sit a paper and this becomes an estimate of what you can actually do — not a count of what you have unlocked.',
+            'Làm một đề đi rồi chỗ này sẽ là ước lượng năng lực thật của bạn, không phải đếm số bài đã mở.');
+        } else if (!o.confident) {
+          /* A number with no band, and a straight answer about why. "needed" is
+             the model's own estimate of how much more evidence it wants. */
+          ring.textContent = o.score.toFixed(1);
+          cap.textContent = PREP.t('provisional', 'tạm tính');
+          note.textContent = PREP.t(
+            'Around ' + o.score.toFixed(1) + '/10 so far, but on too little evidence to put a band on it. About ' + o.needed + ' more marked items would settle it.',
+            'Khoảng ' + o.score.toFixed(1) + '/10, nhưng chưa đủ dữ liệu để xếp bậc. Cần thêm khoảng ' + o.needed + ' câu đã chấm nữa.');
+        } else {
+          ring.textContent = o.score.toFixed(1);
+          cap.textContent = o.band || PREP.t('below B1', 'dưới B1');
+          note.textContent = PREP.t(
+            (o.band || 'Below B1') + ', around ' + o.score.toFixed(1) + '/10 (likely between ' + o.low.toFixed(1) + ' and ' + o.high.toFixed(1) + '). Recent work counts for more than old work.',
+            (o.band || 'Dưới B1') + ', khoảng ' + o.score.toFixed(1) + '/10 (nhiều khả năng trong khoảng ' + o.low.toFixed(1) + '–' + o.high.toFixed(1) + '). Bài làm gần đây được tính nặng hơn bài cũ.');
+        }
+        requestAnimationFrame(() => {
+          const frac = o && o.n ? Math.max(0, Math.min(1, o.score / 10)) : 0;
+          PREP.qs('#ring-main').setAttribute('stroke-dashoffset', String(C * (1 - frac)));
+        });
+
+        const skills = (ab && ab.skills) || {};
+        PREP.qs('#skill-meters').innerHTML = SKILLS.map(([k, en, vi, ic]) => {
+          const s = skills[k];
+          /* No events for a skill is not zero ability — it is no information,
+             and an empty bar reading 0 says the opposite of what is true. */
+          const label = !s || !s.n
+            ? PREP.t('no data', 'chưa có')
+            : s.confident ? s.score.toFixed(1) + '/10'
+              : s.score.toFixed(1) + PREP.t(' (provisional)', ' (tạm tính)');
+          return '<div>' +
+            '<div class="flex items-center justify-between text-[13px] font-semibold mb-1.5">' +
+              '<span class="inline-flex items-center gap-2 text-muted">' + PREP.icon(ic, 'w-4 h-4') + PREP.t(en, vi) + '</span>' +
+              '<span>' + label + '</span>' +
+            '</div>' +
+            '<div class="meter"><i data-w="' + (!s || !s.n ? 0 : Math.round(s.score * 10)) + '"></i></div>' +
+          '</div>';
+        }).join('');
+
+        const basis = PREP.qs('#ability-basis');
+        if (ab && ab.events) {
+          basis.textContent = PREP.t(
+            'Based on ' + ab.events + ' marked items. Each one counts half as much every ' + ab.halfLifeDays + ' days.',
+            'Dựa trên ' + ab.events + ' câu đã chấm. Mỗi câu giảm một nửa trọng số sau mỗi ' + ab.halfLifeDays + ' ngày.');
+          basis.removeAttribute('hidden');
+        }
+        PREP.qsa('.meter > i[data-w]').forEach(el => {
+          requestAnimationFrame(() => el.style.setProperty('--w', el.getAttribute('data-w') + '%'));
+        });
       }
 
-      /* ---------- Skill coverage ---------- */
-      const SKILLS = [['listening','Listening','headphones'],['reading','Reading','book'],['writing','Writing','pen'],['speaking','Speaking','mic']];
-      PREP.qs('#skill-meters').innerHTML = SKILLS.map(([k, vi, ic]) => {
-        const n = mine.filter(t => t.skills.includes(k)).length;
-        const max = PREP.tests.filter(t => t.skills.includes(k)).length || 1;
-        return '<div>' +
-          '<div class="flex items-center justify-between text-[13px] font-semibold mb-1.5">' +
-            '<span class="inline-flex items-center gap-2 text-muted">' + PREP.icon(ic, 'w-4 h-4') + vi + '</span>' +
-            '<span>' + PREP.t(n + ' tests', n + ' bài') + '</span>' +
-          '</div>' +
-          '<div class="meter"><i data-w="' + Math.round(n / max * 100) + '"></i></div>' +
-        '</div>';
-      }).join('');
+      /* Its own request, and its own failure. A dashboard that goes blank
+         because one panel's endpoint is down is worse than a dashboard with one
+         panel reading "not measured yet". PrepApi.get never rejects — it
+         resolves with ok:false — so the empty state is reached by the same path
+         whether the server said no or the network did. */
+      PrepApi.get('/api/me/ability').then(res => paintAbility(res.ok ? res.data : null));
 
       /* ---------- Next steps (checklist) ---------- */
       const steps = [

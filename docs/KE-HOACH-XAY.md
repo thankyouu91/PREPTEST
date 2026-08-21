@@ -292,9 +292,9 @@ Ba tính chất, mỗi cái giải một vấn đề thật:
 
 - **Suy giảm 30 ngày** — một người giỏi Part C hồi tháng 3 rồi bỏ ba tháng thì
   không còn giỏi Part C. Bảng tiến độ nói thật chứ không nói lịch sử.
-- **Prior 2/2** — làm đúng 3/3 câu **không** thành 100%. Nó thành 5/6 ≈ 71%, kèm
-  `sd` lớn. Đây chính là chỗ "khắt khe" bắt đầu.
-- **`sd` là hạn ngạch nói.** Khi `sd > 0,06` (khoảng dưới 60 câu có trọng số),
+- **Prior 2/2** — làm đúng 3/3 câu **không** thành 100%. Nó thành 5/7 ≈ 71%, kèm
+  `sd` lớn (0,16). Đây chính là chỗ "khắt khe" bắt đầu.
+- **`sd` là hạn ngạch nói.** Khi `sd > 0,06` (khoảng dưới 70 câu có trọng số),
   giao diện **không hiện band**. Nó hiện: *"Chưa đủ dữ liệu để xếp bậc — cần
   thêm khoảng N câu ở phần này."* Một nền tảng luyện thi mà xếp bậc C1 cho người
   làm 5 câu là một nền tảng nói dối, và người học sẽ phát hiện ra vào đúng ngày

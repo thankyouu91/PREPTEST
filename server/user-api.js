@@ -26,6 +26,19 @@ const googleAuth = require('./google-auth');
 const mail = require('./mail');
 const PLANS = require('./data/plans');
 const { entitlementOf } = require('./entitlements');
+const abilityModel = require('./ability');
+const EXAM_FORMATS = require('./data/exam-formats');
+
+/* How much each lettered part is worth in a real VPET paper, read from the
+   published blueprint rather than written down again. A second copy of these
+   numbers is a second thing to update when the exam changes, and the copy that
+   goes stale is always the one nobody is looking at. */
+const PART_WEIGHTS = (() => {
+  const fmt = EXAM_FORMATS.FORMATS.find(f => f.id === 'vpet-full');
+  const out = {};
+  for (const s of (fmt ? fmt.sections : [])) if (s.part) out[s.part] = s.items;
+  return out;
+})();
 
 const router = asyncRoutes(express.Router());
 router.use(express.json({ limit: '256kb' }));
@@ -430,6 +443,32 @@ router.get('/me', async (req, res) => {
     unlockedFamilyIds: access.unlockedFamilyIds,
     myCodes: access.myCodes,
     orders: await ordersOf(user.id)
+  });
+});
+
+/* ---------------------------- What they can do ----------------------------
+ *
+ * The dashboard ring used to read "5 of 8 tests unlocked" under the heading
+ * "Your progress", and the four skill bars counted how many unlocked papers
+ * happened to contain each skill. Both are facts about a shopping basket. This
+ * is the endpoint that replaces them with a fact about the learner.
+ *
+ * Behind the sign-in, and scoped to the caller — an ability estimate is a
+ * judgement about a person, and there is no reason for anyone else to read it.
+ *
+ * `parts` is keyed 'A'..'J' and each entry may carry `band: null`, which is not
+ * an error: it is the model declining to name a band it cannot support yet.
+ * The page renders `needed` in that case. See server/ability.js. */
+router.get('/me/ability', A.requireUser, async (req, res) => {
+  const ability = await abilityModel.abilityOf(req.user.id);
+  res.set('Cache-Control', 'no-store').json({
+    ...ability,
+    /* Weighted by how many marks the part is worth in the real paper, straight
+       from the published blueprint rather than typed in here — being weak at a
+       2-item part and a 10-item part are not the same problem. */
+    roadmap: abilityModel.roadmap(ability, PART_WEIGHTS),
+    confidentAt: abilityModel.CONFIDENT_SD,
+    halfLifeDays: abilityModel.HALF_LIFE_DAYS
   });
 });
 
