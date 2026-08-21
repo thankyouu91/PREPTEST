@@ -45,6 +45,7 @@
   var VI = {
     /* ---- Nav / chrome / shared ---- */
     'How it works': 'Cách hoạt động',
+    'Practise': 'Luyện thi',
     'Pricing': 'Bảng giá',
     'Sign in': 'Đăng nhập',
     'Sign up': 'Đăng ký',

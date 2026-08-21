@@ -38,6 +38,9 @@
     <nav class="hidden md:flex items-center gap-1 mx-auto" aria-label="Main navigation">
       <a href="#tai-lieu" class="px-3.5 py-2 rounded-full text-sm font-semibold text-muted hover:text-ink transition">Study pack</a>
       <a href="#cach-hoat-dong" class="px-3.5 py-2 rounded-full text-sm font-semibold text-muted hover:text-ink transition">How it works</a>
+      <!-- Third, because the section it points at is third. A scroll nav whose
+           order disagrees with the page sends people backwards. -->
+      <a href="#luyen-thi" class="px-3.5 py-2 rounded-full text-sm font-semibold text-muted hover:text-ink transition">Practise</a>
       <a href="#bang-gia" class="px-3.5 py-2 rounded-full text-sm font-semibold text-muted hover:text-ink transition">Pricing</a>
     </nav>
     <div class="flex items-center gap-2 ms-auto md:ms-0">
@@ -262,8 +265,12 @@
     </div>
   </section>
 
-  <!-- ===================== WHY THIS ONE (asymmetric bento) ===================== -->
-  <section>
+  <!-- ===================== WHY THIS ONE (asymmetric bento) =====================
+       Carries the "Practise" anchor. This section was always the one about
+       practising and had no id, so nothing could link to it; the nav pointed
+       instead at a catalogue of one exam family, which is the part that was
+       removed. Same tab, a destination that says something. -->
+  <section id="luyen-thi" class="scroll-mt-20">
     <div class="max-w-shell mx-auto px-4 sm:px-6 py-16 lg:py-24">
       <h2 class="text-3xl sm:text-4xl font-extrabold tracking-tight max-w-[24ch]">Practise the weak spot, not everything at random</h2>
 
@@ -488,6 +495,7 @@ Sign up for <span id="plan-cta-name">Plus</span></a>
       <h3 class="text-sm font-extrabold tracking-tight mb-3.5">Platform</h3>
       <ul class="grid gap-2.5 text-[14.5px] font-medium text-muted">
         <li><a class="hover:text-ink transition" href="#tai-lieu">Study pack</a></li>
+        <li><a class="hover:text-ink transition" href="#luyen-thi">Practise</a></li>
         <li><a class="hover:text-ink transition" href="#bang-gia">Pricing</a></li>
         <li><a class="hover:text-ink transition" href="/prep/dang-nhap/">Sign in</a></li>
         <li><a class="hover:text-ink transition" href="/prep/dang-ky/">Start free</a></li>
