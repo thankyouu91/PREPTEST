@@ -30,6 +30,65 @@ writes what goes through it. Detail and the reasoning behind the Google items
 are further down under "Việc kiến trúc", which is now a reference section
 rather than a separate no-go queue.
 
+> ## ▶ Ưu tiên hiện hành — chín block, theo thứ tự, 2026-08-21
+>
+> **Chủ đầu tư đã đặt lại thứ tự ưu tiên: dựng phần ôn tập và cái nền đỡ nó,
+> trước mọi việc khác trong hàng đợi này.** Thiết kế đầy đủ ở
+> `docs/KE-HOACH-XAY.md`; tình trạng khóa từng block ở `docs/BLOCKS.md`.
+>
+> **Luật cho phiên Routine, khác với luật cũ ở hai chỗ:** lấy block chưa khóa
+> **đầu tiên** trong bảng dưới (không phải mục `- [ ]` đầu tiên của tệp), và
+> trước khi tick phải qua đủ **sáu điều kiện khóa** ở `docs/KE-HOACH-XAY.md`
+> §1.2 — trong đó điều kiện 2 (bộ test của block đã từng bị **nhìn thấy đỏ**)
+> là điều kiện hay bị bỏ nhất, nên ghi bằng chứng vào commit message.
+>
+> Đã khóa thì **không sửa tệp của block đó ở block sau**; cần sửa thì ghi một
+> dòng "mở lại" vào `docs/BLOCKS.md` và chạy lại đủ sáu điều kiện.
+>
+> - [ ] **Block 0 — Sao lưu và phục hồi.** Chặn mọi việc còn lại. CSDL đang là
+>   một tệp trên một máy **không có bản sao lưu nào**: ổ hỏng hay một lần deploy
+>   sai đường dẫn là mất sạch tài khoản, code đã bán và toàn bộ bài làm.
+>   `deploy/backup.sh` dùng `VACUUM INTO` (không phải `cp` — chép một tệp SQLite
+>   đang được ghi thì được một tệp hỏng, và chỉ biết vào hôm cần phục hồi), nén,
+>   đẩy S3 có versioning + object-lock, giữ 30 ngày; cron 6 giờ/lần cộng một bản
+>   trước **mỗi** lần deploy; `deploy/restore.sh`; cảnh báo khi bản gần nhất quá
+>   12 giờ. Khóa khi đã **phục hồi thật** vào một máy trắng và server lên xanh từ
+>   bản đó — một bản sao lưu chưa từng phục hồi thử là một tệp, không phải bản sao lưu
+> - [ ] **Block 1 — Nới trần rẻ tiền.** `PRAGMA synchronous = NORMAL` (an toàn
+>   trong WAL: chỉ mất giao dịch cuối khi mất điện cả máy, không mất khi tiến
+>   trình chết) — đo được **9× đường ghi**, 0,246 ms → 0,026 ms mỗi lần ghi;
+>   `PRAGMA busy_timeout = 5000`, điều kiện cần của block 7; `Cache-Control` dài
+>   + `ETag` cho tài nguyên tĩnh có vân tay; nén. Đo lại bằng `scripts/loadprobe.mjs`
+> - [ ] **Block 2 — Mô hình năng lực.** `skill_events` (một bảng sự kiện cho mọi
+>   thứ được chấm ở mọi nơi) + `server/ability.js` (Beta–Binomial, nửa đời 30
+>   ngày, prior 2/2, và `sd` làm hạn ngạch nói — dưới ngưỡng thì **không hiện
+>   band**, hiện "chưa đủ dữ liệu"). Đây là chỗ năm tính năng quy về một nguồn
+>   sự thật, và là câu trả lời cho "tiến độ phải đúng năng lực"
+> - [ ] **Block 3 — Rubric và đánh giá sau bài thi.** Trần theo tiêu chí thấp
+>   nhất chứ không theo trung bình; bài thiếu chữ bị chặn trần; mỗi điểm phải chỉ
+>   được vào bằng chứng trong bài; rubric có phiên bản
+> - [ ] **Block 4 — Luyện theo từng Part, đề random.** `POST /api/drills`, không
+>   lặp câu trong 30 ngày, đồng hồ theo từng câu. Cần ngân hàng E/F/H/J đạt gấp
+>   đôi blueprint trước
+> - [ ] **Block 5 — Từ vựng B1–C2 qua viết câu và áp dụng từ.** Hai dạng:
+>   `gap-apply` (chia đúng dạng, máy chấm tuyệt đối, ghi điểm cho **cả** từ vựng
+>   lẫn ngữ pháp) và `sentence-build` (tự viết câu, tầng 1 + tầng 3). Không có
+>   trắc nghiệm A/B/C/D
+> - [ ] **Block 6 — Lộ trình ôn tập sinh tự động.** Ba mục một tuần, xếp theo
+>   `(mục tiêu − p̂) × trọng số phần × (1 + sd)`. Chỉ làm sau khi 2–5 đã khóa
+> - [ ] **Block 7 — Nhiều tiến trình.** `cluster`. Đường đã dọn sẵn (khóa và
+>   phiên đều đã nằm trong CSDL), nhưng có bẫy: `node:sqlite` đồng bộ nên writer
+>   chờ khóa sẽ chặn cả event loop của worker đó
+> - [ ] **Block 8 — Chống lạm dụng và DDoS.** CloudFront/WAF ở biên; token bucket
+>   cho `/api/*`; trần chi AI theo ngày và theo tài khoản; trần xem đề/giờ
+>
+> **Đo trước, hứa sau.** Đường cơ sở đã đo bằng traffic thật, không phải ước
+> lượng: `/api/catalog` chạm trần **~1.150 req/s** và giữ nguyên con số đó từ 25
+> tới 200 luồng — chữ ký của bão hoà một luồng — trong khi p99 leo lên **4,1
+> giây** ở 200 luồng. Ba trong bốn nhân đang ngồi không. Nghĩa là trần hôm nay
+> khoảng **200–300 người học đồng thời**, và mục tiêu 1000 người cần hết block 1
+> và block 7. Số đầy đủ ở `docs/KE-HOACH-XAY.md` §0 và `docs/BLOCKS.md`.
+
 > **Go-live review, 2026-08-12.** The owner asked whether the platform is
 > coherent and what it needs before running online. Findings below, in order,
 > ahead of the rest of the queue: the first two were fixed on the spot, the
@@ -451,9 +510,16 @@ Quy trình một lượt:
 3. Lấy mục chưa tick đầu tiên ở **"Nền tảng & engine"** (đầu tệp này). Làm đúng một mục đó.
    Từ 2026-08-12, Routine làm nền tảng và engine; nội dung học thuật do phiên khác làm,
    nên **không** lấy việc ở "Hàng đợi" hay ở các mục nội dung trong phần VPET nữa.
+   **Từ 2026-08-21, mục đầu tiên là block chưa khóa đầu tiên trong "▶ Ưu tiên hiện hành"**
+   — chín block đó đứng trước mọi mục khác trong mục này, không lấy vượt.
 4. Chạy `npm run verify`. Đỏ thì sửa; không sửa được thì `git checkout -- .`, ghi lý do vào
    "Vướng mắc" bên dưới, commit riêng ghi chú đó rồi thoát. Không push code hỏng.
-5. Tick ô đã xong, cập nhật README nếu có tính năng mới, commit và push.
+5. Với một block: qua đủ **sáu điều kiện khóa** (`docs/KE-HOACH-XAY.md` §1.2) rồi mới tick —
+   cổng xanh, có test riêng **đã từng bị nhìn thấy đỏ** (ghi bằng chứng vào commit message),
+   `node scripts/loadprobe.mjs` không tụt quá 15%, ảnh chụp mới, vẫn chỉ một dependency
+   runtime, và một dòng trong `docs/BLOCKS.md`. Thiếu một điều kiện thì để nguyên 🟡
+   "đang làm" và ghi lại còn thiếu gì — nửa block ghi là xong tệ hơn nửa block ghi là dở.
+6. Tick ô đã xong, cập nhật README nếu có tính năng mới, commit và push.
 
 Giới hạn: không đụng `data/` (dữ liệu chạy), không commit mật khẩu hay khoá bí mật, không
 force-push, không tạo pull request, không đổi nhánh.
