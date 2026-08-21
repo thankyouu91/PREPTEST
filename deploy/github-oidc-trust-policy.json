@@ -11,7 +11,11 @@
 
   "_comment_8": "IMPORTANT: this pins the environment, not the branch. Any branch in this repository can declare `environment: production`. The branch restriction therefore lives in GitHub, where it is actually enforced: repo Settings -> Environments -> production -> Deployment branches and tags -> Selected branches -> claude/prep-test-platform-design-fpiuqn. Without that setting this role is assumable from any branch here.",
 
-  "_comment_9": "Repositories created after 2026-07-15, or opted in to immutable subject claims, carry numeric ids: repo:owner@123456/name@456789:environment:production. If the assume fails with the value below, read the real sub out of the failed run rather than guessing at it.",
+  "_comment_9": "BOTH forms are listed below, and an array in StringEquals is an OR. This is not belt-and-braces: GitHub turned immutable subject claims on for this repository some time between 2026-08-13 and 2026-08-21, and the sub changed from the first form to the second with nothing on either side having been edited. A policy pinned to one form alone breaks the day that setting is toggled, in either direction, and the failure reads 'Not authorized to perform sts:AssumeRoleWithWebIdentity' with no hint that a claim format moved underneath it.",
+
+  "_comment_10": "Neither value is a wildcard. Both name this repository exactly, so listing both widens nothing - there is no third repository that can mint either string. The numeric ids are stable: 177206603 is the owner, 1328757020 is the repository.",
+
+  "_comment_11": "The workflow prints the real sub before it assumes (see .github/workflows/deploy.yml). If this ever fails again, read that line rather than guessing - it is why the values below are known rather than assumed.",
 
   "Version": "2012-10-17",
   "Statement": [
@@ -25,7 +29,10 @@
       "Condition": {
         "StringEquals": {
           "token.actions.githubusercontent.com:aud": "sts.amazonaws.com",
-          "token.actions.githubusercontent.com:sub": "repo:thankyouu91/PREPTEST:environment:production"
+          "token.actions.githubusercontent.com:sub": [
+            "repo:thankyouu91@177206603/PREPTEST@1328757020:environment:production",
+            "repo:thankyouu91/PREPTEST:environment:production"
+          ]
         }
       }
     }
