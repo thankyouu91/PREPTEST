@@ -265,6 +265,8 @@ guard đăng nhập, 8 route còn lại là danh sách ở mục 3.
 | POST | `/api/admin/ai/test` | `requireAdmin` + `csrfGuard` + `requireOwner` | yes |
 | POST | `/api/admin/attempts/:id/mark` | `requireAdmin` + `csrfGuard` + `requireOwner` | yes |
 | GET | `/api/admin/audit` | `requireAdmin` + `csrfGuard` | n/a (read) |
+| GET | `/api/admin/backup` | `requireAdmin` + `csrfGuard` + `requireOwner` | n/a (read) |
+| POST | `/api/admin/backup` | `requireAdmin` + `csrfGuard` + `requireOwner` | yes |
 | GET | `/api/admin/batches` | `requireAdmin` + `csrfGuard` | n/a (read) |
 | GET | `/api/admin/classroom` | `requireAdmin` + `csrfGuard` | n/a (read) |
 | GET | `/api/admin/classroom/courses` | `requireAdmin` + `csrfGuard` | n/a (read) |

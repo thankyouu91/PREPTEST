@@ -101,20 +101,36 @@ thì lúc đó mới là xu hướng, và phải truy.
 
 ## Việc cần quyền trên AWS mới xong được
 
-Ba việc dưới đây là phần còn thiếu của **block 0**, và không phiên nào làm được
-nếu không có quyền tương ứng. Ghi ra đây để không ai tưởng block 0 đã xong.
+Phần còn thiếu của **block 0**. Ghi ra đây để không ai tưởng block 0 đã xong.
 
-1. **Một bucket S3 riêng cho bản sao lưu, bật versioning + object lock.**
-   Object lock là điểm mấu chốt, không phải trang trí: một bản sao lưu mà kẻ
-   chiếm được quyền của server xoá đi được thì không tính là bản sao lưu.
-2. **Quyền cho instance role** — `s3:PutObject`, `s3:GetObject`,
-   `s3:ListBucket`, `s3:DeleteObject`, giới hạn trong đúng prefix đó, và
-   `/etc/vpet-prep.env` có `BACKUP_DRIVER=s3`, `BACKUP_BUCKET`, `AWS_REGION`.
-   Không dùng khoá tĩnh: EC2 instance metadata (IMDSv2) đã được
-   `server/aws-sigv4.js` hỗ trợ và tự xoay vòng.
-3. **Chạy `sudo … bash deploy/install-backup-cron.sh`, rồi phục hồi thử thật.**
-   Điều kiện khóa của block 0 là *đã phục hồi được*, không phải *đã chạy được
-   lệnh sao lưu*.
+**Đã thử tự làm và không được** (2026-08-21). Ba đường đều tắc, và tắc vì lý do
+đúng đắn chứ không phải vì hỏng:
+
+| Đường | Kết quả |
+|---|---|
+| AWS MCP | `requires re-authorization (token expired)`. Phiên này không tương tác nên không chạy được luồng OAuth, và không được nhận token qua chat |
+| Credential trong container | Có `AWS_ACCESS_KEY_ID`/`AWS_SECRET_ACCESS_KEY` nhưng STS trả `InvalidClientTokenId` — không phải credential thật |
+| Vai trò GitHub Actions | **Cố ý** chỉ có `ssm:SendCommand` tới đúng một instance với đúng một document. Không tạo được S3, không sửa được IAM — và `deploy/github-oidc-permissions.json` giải thích rõ vì sao không nên nới |
+
+**Còn đúng hai việc cần chủ đầu tư**, đã rút từ bốn xuống hai (bước cài cron giờ
+do chính `deploy/ec2-deploy.sh` làm mỗi lần deploy, idempotent):
+
+1. **Một bucket S3 riêng cho bản sao lưu, bật versioning + object lock**, và cấp
+   cho instance role `s3:PutObject`, `s3:GetObject`, `s3:ListBucket`,
+   `s3:DeleteObject` giới hạn trong đúng prefix đó. Object lock là điểm mấu
+   chốt, không phải trang trí: một bản sao lưu mà kẻ chiếm được quyền của server
+   xoá đi được thì không tính là bản sao lưu. Không dùng khoá tĩnh — IMDSv2 đã
+   được `server/aws-sigv4.js` hỗ trợ và tự xoay vòng.
+2. **Thêm vào `/etc/vpet-prep.env`**: `BACKUP_DRIVER=s3`, `BACKUP_BUCKET=…`,
+   `AWS_REGION=ap-southeast-1`.
+
+Sau đó **phục hồi thử thật** — đó mới là điều kiện khóa của block 0, không phải
+*đã chạy được lệnh sao lưu*.
+
+Trong lúc chờ, `BACKUP_DRIVER` mặc định là `disk`, nên máy production **vẫn đang
+chụp** trước mỗi lần deploy và 6 giờ một lần — chỉ là chụp vào chính ổ đó, tức
+là đỡ được xoá nhầm chứ không đỡ được hỏng ổ. Trang **Quản trị → Cài đặt** nói
+thẳng điều đó bằng banner đỏ chứ không báo xanh.
 
 ## Mở lại
 

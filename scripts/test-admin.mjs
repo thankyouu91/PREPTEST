@@ -1015,6 +1015,38 @@ const run = async () => {
   r = await call('GET', '/api/admin/reports');
   check('The admin session survives the preview — both cookies coexist', r.status === 200, 'status ' + r.status);
 
+  /* 16b. The backup panel.
+     Read-only checks plus one real backup, because the point of putting this on
+     a screen is that somebody can confirm the copy exists without a shell — and
+     a panel that reports health it never verified is worse than no panel. */
+  r = await call('GET', '/api/admin/backup');
+  check('The backup state can be read', r.status === 200, 'status ' + r.status);
+  check('It says which destination is in use',
+    r.data && r.data.health && typeof r.data.health.driver === 'string',
+    JSON.stringify(r.data && r.data.health));
+  check('And never claims to be healthy without saying why not',
+    r.data.health.ok === (r.data.health.problems.length === 0),
+    JSON.stringify(r.data.health.problems));
+  const before = r.data.count;
+
+  r = await call('POST', '/api/admin/backup');
+  check('A backup can be taken from the screen', r.status === 200 && r.data.ok,
+    JSON.stringify(r.data).slice(0, 200));
+  check('And it carries a real count of what it copied', r.data.users > 0,
+    'users=' + (r.data && r.data.users));
+
+  r = await call('GET', '/api/admin/backup');
+  check('Which then shows up in the list', r.data.count === before + 1,
+    before + ' → ' + r.data.count);
+  check('Newest first, so the top row is the one just taken',
+    r.data.recent.length > 0 && r.data.recent[0].at >= (r.data.recent[1] ? r.data.recent[1].at : 0),
+    JSON.stringify(r.data.recent.slice(0, 2).map(b => b.name)));
+  /* An unauthenticated caller must not learn the bucket name or the file names,
+     which together are a map of where the data lives. */
+  const anon = await fetch(BASE + '/api/admin/backup', { redirect: 'manual' });
+  check('An unauthenticated request is refused', anon.status === 401 || anon.status === 403,
+    'status ' + anon.status);
+
   /* 17. Signing out kills the session */
   r = await call('POST', '/api/admin/logout');
   check('Signs out', r.status === 200);

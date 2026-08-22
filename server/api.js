@@ -1765,6 +1765,58 @@ router.post('/admin/attempts/:id/mark', requireOwner, async (req, res) => {
   res.json({ ok: true, ...out });
 });
 
+/* ======================= BACKUPS =======================
+   Whether the database is actually being copied anywhere, answerable from a
+   screen instead of from a shell on the box.
+
+   The reason this route exists rather than "the operator can check with ssh":
+   the commonest way a backup system fails is not by breaking loudly on the day
+   it is needed. It stops quietly months earlier, and everybody keeps believing
+   it runs. Something a person sees every time they open Settings is the cheapest
+   possible defence against that.
+
+   Read-only, and owner-only. It names buckets and file names, which is a map of
+   where the data lives — not something every admin role needs. */
+
+const backup = require('./backup');
+
+router.get('/admin/backup', requireOwner, async (req, res) => {
+  const health = await backup.backupHealth();
+  const list = await backup.list().catch(() => []);
+  res.set('Cache-Control', 'no-store').json({
+    health,
+    /* Ten is enough to see a schedule running and to spot a gap in it. The full
+       list is a bucket listing and belongs in a bucket listing. */
+    recent: list.slice(0, 10).map(b => ({ name: b.name, bytes: b.bytes, at: b.at })),
+    count: list.length,
+    keepDays: backup.config().keepDays,
+    minKeep: backup.MIN_KEEP,
+    staleHours: Math.round(backup.STALE_MS / 3.6e6)
+  });
+});
+
+/**
+ * Take one now.
+ *
+ * Not a substitute for the schedule — a backup somebody has to remember is not a
+ * backup. It is here for the moment before a risky change, which is exactly when
+ * a person wants one and exactly when waiting six hours for the next cron is the
+ * wrong answer.
+ */
+router.post('/admin/backup', requireOwner, async (req, res) => {
+  try {
+    const out = await backup.backup();
+    await audit(req, 'backup.run', 'database', { name: out.name, driver: out.driver, bytes: out.bytes });
+    res.json({ ok: true, ...out });
+  } catch (e) {
+    /* The reason goes back to the owner because the owner is the only one who
+       can fix it — a missing bucket, a permission, an unset variable. It is the
+       same class of message as the marking connection test. */
+    await audit(req, 'backup.failed', 'database', { error: String(e && e.message).slice(0, 200) });
+    res.status(502).json({ ok: false, error: String(e && e.message || e).slice(0, 300) });
+  }
+});
+
 router.put('/admin/packages/:id', async (req, res) => {
   const id = str(req.params.id, 40);
   const p = await q.get('SELECT * FROM packages WHERE id=?', id);

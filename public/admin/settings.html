@@ -266,6 +266,96 @@
   }
   aiLoad();
 
+  /* ---------------- Backups ----------------
+     The database is one file. Until there is a copy of it somewhere else, every
+     other feature on this platform is one failed disk away from nothing.
+
+     This card exists because of how a backup system actually fails. It does not
+     usually break loudly on the day it is needed; it stops quietly months
+     earlier while everybody carries on believing it runs. A cron job checks that
+     too, but a cron job's warning goes to a log nobody opens. Something on a
+     screen the owner already visits is the cheaper defence. */
+  AD.qs('#p-general').insertAdjacentHTML('beforeend',
+    '<div class="card p-6 sm:p-7 mt-6 grid gap-4 content-start" id="bk-card">' +
+      '<div class="grid gap-1">' +
+        '<h2 class="text-lg font-extrabold tracking-tight">Database backups</h2>' +
+        '<p class="text-[13.5px] text-muted">Accounts, codes sold and every paper anybody has sat live in one ' +
+          'file. This says whether a copy of it exists anywhere else.</p>' +
+      '</div>' +
+      '<div id="bk-body"><div class="skeleton h-20 w-full rounded-2xl"></div></div>' +
+    '</div>');
+
+  const mb = n => (n / 1048576).toFixed(1) + ' MB';
+  const ago = ms => {
+    const h = ms / 3.6e6;
+    if (h < 1) return Math.max(1, Math.round(ms / 6e4)) + ' min ago';
+    if (h < 48) return h.toFixed(1) + ' h ago';
+    return Math.round(h / 24) + ' days ago';
+  };
+
+  async function bkLoad(flash) {
+    const box = AD.qs('#bk-body');
+    let d;
+    try { d = await AD.get('/admin/backup'); }
+    catch (e) {
+      box.innerHTML = e.status === 403
+        ? '<p class="text-[13.5px] text-muted">Only the owner account can see the backup state.</p>'
+        : AD.errorBox(e.message);
+      return;
+    }
+    const h = d.health;
+
+    /* Green only when there is genuinely nothing to say. A fresh backup written
+       to the same disk as the database is NOT green: it protects against a
+       mistake, not against the disk failing, and calling that "backed up" is
+       the reassurance that costs somebody their data. */
+    const banner = h.ok
+      ? '<div class="banner banner-success show"><span>' + d.count + ' backup(s), newest ' +
+          AD.esc(ago(h.ageMs)) + ', going to <b>' + AD.esc(h.driver) + '</b>.</span></div>'
+      : '<div class="banner banner-error show"><span><b>Backups are not healthy.</b> ' +
+          AD.esc(h.problems.join(' · ')) + '</span></div>';
+
+    const rows = d.recent.length
+      ? '<ul class="mt-1">' + d.recent.map(b =>
+          '<li class="flex items-baseline gap-3 py-1.5 border-b border-line last:border-0 text-[13px]">' +
+            '<span class="font-mono">' + AD.esc(b.name) + '</span>' +
+            '<span class="ms-auto text-muted tabular-nums">' + AD.esc(mb(b.bytes)) + '</span>' +
+            '<span class="text-muted w-24 text-end">' + AD.esc(ago(Date.now() - b.at)) + '</span>' +
+          '</li>').join('') + '</ul>'
+      : '<p class="text-[13.5px] text-muted">Nothing has been backed up yet.</p>';
+
+    box.innerHTML = banner +
+      '<p class="text-[13px] text-muted">Kept ' + d.keepDays + ' days, and never fewer than ' + d.minKeep +
+        '. Flagged when the newest is over ' + d.staleHours + ' hours old.</p>' +
+      rows +
+      '<div class="flex flex-wrap gap-2.5 mt-3">' +
+        '<button type="button" class="btn btn-soft btn-md" id="bk-run">Back up now</button>' +
+      '</div>' +
+      '<div id="bk-out"></div>';
+
+    const out = AD.qs('#bk-out');
+    if (flash) {
+      out.innerHTML = '<div class="banner banner-' + (flash.bad ? 'error' : 'success') + ' show"><span>' +
+        AD.esc(flash.text) + '</span></div>';
+    }
+
+    /* Not a substitute for the schedule — a backup somebody has to remember is
+       not a backup. This is for the minute before a risky change. */
+    AD.qs('#bk-run').addEventListener('click', async (ev) => {
+      const btn = ev.currentTarget;
+      btn.disabled = true;
+      out.innerHTML = '<p class="text-[13.5px] text-muted">Taking a consistent copy…</p>';
+      try {
+        const r = await AD.post('/admin/backup', {});
+        await bkLoad({ text: 'Backed up ' + r.name + ' — ' + mb(r.bytes) + ', ' + r.users + ' accounts.' });
+      } catch (e) {
+        out.innerHTML = '<div class="banner banner-error show"><span>' + AD.esc(e.message) + '</span></div>';
+        btn.disabled = false;
+      }
+    });
+  }
+  bkLoad();
+
   /* ---------------- Google Classroom ----------------
      Read-only for now: connect a teacher's account, list their courses, pull a
      roster and show which students already have an account here. Publishing

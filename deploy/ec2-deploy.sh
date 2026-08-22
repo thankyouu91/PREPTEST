@@ -161,6 +161,22 @@ say "Building CSS"
 sudo -u "$APP_USER" -H npx --no-install tailwindcss -i ./src/tailwind.css -o ./public/tailwind-built.css --minify \
   || echo "(tailwind not installed here; using the committed stylesheet)"
 
+# Keep the backup schedule installed and current, every deploy.
+#
+# It used to be a manual step in a document, which is the same as saying it
+# happens once on a good day and never again. The installer is idempotent —
+# it rewrites its own cron file rather than appending — so running it on every
+# deploy costs nothing and means the schedule cannot drift away from what is in
+# the repository, or quietly vanish when a box is rebuilt.
+#
+# Allowed to fail without failing the deploy, for the same reason as the backup
+# above: a cron problem must not stop a release. It is loud when it does.
+if [ -x /usr/bin/crontab ] || command -v crontab >/dev/null 2>&1; then
+  say "Backup schedule"
+  APP_DIR="$APP_DIR" APP_USER="$APP_USER" bash "$APP_DIR/deploy/install-backup-cron.sh" \
+    || echo "!! The backup schedule could not be installed. Backups will not run by themselves."
+fi
+
 say "Restarting ${PM2_APP:-$SERVICE}"
 restart_app
 
