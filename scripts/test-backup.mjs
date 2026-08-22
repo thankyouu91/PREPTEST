@@ -24,6 +24,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 import zlib from 'node:zlib';
+import { createHash } from 'node:crypto';
 
 const require = createRequire(import.meta.url);
 const B = require('../server/backup.js');
@@ -327,6 +328,97 @@ try {
   /* The whole point of `check`: cron watches the exit code. A health check that
      reports a problem and exits 0 is a health check nobody hears. */
   ok(checkBad.status === 1, 'And exits 1 when there are no backups', String(checkBad.status));
+
+  head('Talking to a real S3, without one');
+
+  /* Both of these were found on the live bucket, in this order, one causing the
+     other. They are checked here against a stubbed fetch rather than against
+     AWS, because the failures are in what this code SENDS and how it reads what
+     comes back — neither needs a network to be wrong, and a test that needs a
+     bucket is a test nobody runs. */
+  const realFetch = global.fetch;
+  const sent = [];
+  const S3_XML = name => '<?xml version="1.0" encoding="UTF-8"?>'
+    + '<ListBucketResult><Name>b</Name><KeyCount>1</KeyCount><IsTruncated>false</IsTruncated>'
+    + '<Contents>'
+    +   '<Key>db-backups/' + name + '</Key>'
+    +   '<LastModified>2026-08-22T07:04:32.000Z</LastModified>'
+    +   '<ETag>&quot;abc123&quot;</ETag>'
+    /* The two elements that broke it. S3 only emits these once an object has a
+       checksum — which is to say, only after the fix above started sending one. */
+    +   '<ChecksumAlgorithm>SHA256</ChecksumAlgorithm>'
+    +   '<ChecksumType>FULL_OBJECT</ChecksumType>'
+    +   '<Size>524288</Size><StorageClass>STANDARD</StorageClass>'
+    + '</Contents></ListBucketResult>';
+
+  const s3Name = B.snapshotName(new Date(now - 60e3));
+  process.env.BACKUP_DRIVER = 's3';
+  process.env.BACKUP_BUCKET = 'vpet-prep-backups-test';
+  process.env.BACKUP_PREFIX = 'db-backups';
+  process.env.AWS_REGION = 'ap-southeast-1';
+  /* Dummies, so the signer takes the static path and never reaches for IMDS. */
+  process.env.AWS_ACCESS_KEY_ID = 'AKIAIOSFODNN7EXAMPLE';
+  process.env.AWS_SECRET_ACCESS_KEY = 'wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY';
+  delete process.env.AWS_SESSION_TOKEN;
+  const aws = require('../server/aws-sigv4.js');
+  aws.resetCache();
+
+  global.fetch = async (url, opts) => {
+    sent.push({ url: String(url), method: (opts && opts.method) || 'GET',
+      headers: (opts && opts.headers) || {}, body: opts && opts.body });
+    if (((opts && opts.method) || 'GET') === 'GET' && String(url).includes('list-type=2')) {
+      return new Response(S3_XML(s3Name), { status: 200 });
+    }
+    return new Response('', { status: 200 });
+  };
+
+  try {
+    const src = freshDb('s3src.sqlite');
+    const made = await B.backup({ db: src });
+    const put = sent.find(r => r.method === 'PUT');
+    ok(!!put, 'A backup to s3 issues a PUT', String(sent.length) + ' request(s)');
+    ok(/x-amz-checksum-sha256/i.test(Object.keys(put.headers).join(' ')),
+      'Which carries a checksum header — without it S3 REFUSES the PUT on an object-locked bucket',
+      Object.keys(put.headers).join(', '));
+    /* Guarded, not indexed straight into. When the header is missing this used
+       to throw on `[1]`, which aborts the whole suite and takes every later
+       check with it — a failing assertion must stay one failing assertion. */
+    const hdrPair = Object.entries(put.headers).find(([k]) => /^x-amz-checksum-sha256$/i.test(k));
+    const hdr = hdrPair ? hdrPair[1] : null;
+    ok(hdr === createHash('sha256').update(put.body).digest('base64'),
+      'And the checksum is of the bytes actually sent, not of something else',
+      hdr === null ? 'no such header' : String(hdr).slice(0, 20));
+    /* A signature that does not cover the checksum is a 403, so the header has
+       to be inside SignedHeaders and not merely on the wire. */
+    const auth = Object.entries(put.headers).find(([k]) => /^authorization$/i.test(k));
+    ok(auth && /SignedHeaders=[^,]*x-amz-checksum-sha256/.test(auth[1]),
+      'And it is covered by the SigV4 signature rather than sitting outside it',
+      auth ? String(auth[1]).replace(/Signature=[0-9a-f]+/, 'Signature=…').slice(0, 160) : 'no header');
+    ok(made.name.endsWith('.sqlite.gz'), 'The upload is reported by name', made.name);
+
+    const listed = await B.list();
+    ok(listed.length === 1 && listed[0].name === s3Name,
+      'A listing that contains ChecksumAlgorithm and ChecksumType is still parsed',
+      JSON.stringify(listed.map(b => b.name)));
+    ok(listed.length === 1 && listed[0].bytes === 524288,
+      'With the size read from the right element',
+      listed.length ? String(listed[0].bytes) : 'nothing was parsed');
+
+    /* The bug, kept as a check rather than only as a commit message. The old
+       pattern named LastModified, ETag and Size in order, so the two new
+       elements between ETag and Size made it match nothing — and list()
+       returning [] reads to every caller as "there are no backups", which is
+       the most dangerous way for a backup system to be wrong. */
+    const OLD = /<Key>([^<]+)<\/Key>\s*<LastModified>[^<]*<\/LastModified>\s*<ETag>[^<]*<\/ETag>\s*<Size>(\d+)<\/Size>/g;
+    ok([...S3_XML(s3Name).matchAll(OLD)].length === 0,
+      'And the pattern this replaced would have found nothing in it — silently, as an empty list');
+  } finally {
+    global.fetch = realFetch;
+    delete process.env.BACKUP_DRIVER; delete process.env.BACKUP_BUCKET;
+    delete process.env.BACKUP_PREFIX; delete process.env.AWS_REGION;
+    delete process.env.AWS_ACCESS_KEY_ID; delete process.env.AWS_SECRET_ACCESS_KEY;
+    aws.resetCache();
+  }
 
   head('Nothing sensitive in what it prints');
 

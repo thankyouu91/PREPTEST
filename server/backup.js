@@ -55,6 +55,7 @@ const path = require('node:path');
 const zlib = require('node:zlib');
 const os = require('node:os');
 const { DatabaseSync } = require('node:sqlite');
+const crypto = require('node:crypto');
 const aws = require('./aws-sigv4');
 
 /* Snapshots are named so that a plain lexical sort is also a chronological one,
@@ -220,8 +221,16 @@ async function s3Fetch(method, url, body, headers) {
 const s3Dest = {
   name: 's3',
   async put(name, buf) {
+    /* The checksum header is not belt and braces — S3 REFUSES a PUT into a
+       bucket with Object Lock unless the request carries Content-MD5 or one of
+       the x-amz-checksum-* headers. Found on the real bucket: every upload came
+       back 400 while the same code worked against a bucket without the lock.
+       SHA-256 rather than MD5 because it is the modern one and there is no
+       reason to reach for MD5 in new code. It goes through the signer with the
+       other headers, so it is covered by the signature. */
     const res = await s3Fetch('PUT', s3Url(config().prefix + '/' + name), buf,
-      { 'content-type': 'application/gzip' });
+      { 'content-type': 'application/gzip',
+        'x-amz-checksum-sha256': crypto.createHash('sha256').update(buf).digest('base64') });
     if (!res.ok) throw new Error('backup upload failed: ' + await reason(res));
   },
   async list() {
@@ -240,7 +249,20 @@ const s3Dest = {
       const res = await s3Fetch('GET', url);
       if (!res.ok) throw new Error('backup list failed: ' + await reason(res));
       const xml = await res.text();
-      for (const m of xml.matchAll(/<Key>([^<]+)<\/Key>\s*<LastModified>[^<]*<\/LastModified>\s*<ETag>[^<]*<\/ETag>\s*<Size>(\d+)<\/Size>/g)) {
+      /* Key, then anything, then Size — rather than naming every element in
+         between.
+         The first version spelled out LastModified, ETag and Size in order and
+         broke the moment the uploads above started carrying a checksum: S3 then
+         adds <ChecksumAlgorithm> and <ChecksumType> between ETag and Size, and
+         the pattern stopped matching anything at all. `list()` returned an empty
+         array, which every caller reads as "there are no backups" — the most
+         dangerous possible way for a backup system to be wrong, and it would
+         have taken `prune()`'s floor with it.
+         It was a latent bug, not a new one; it only surfaced because no object
+         had a checksum before. The lazy quantifier is safe here because every
+         <Contents> block carries exactly one Key before its own Size, so the
+         match cannot run past the end of its own block. */
+      for (const m of xml.matchAll(/<Key>([^<]+)<\/Key>[\s\S]*?<Size>(\d+)<\/Size>/g)) {
         const name = m[1].slice(prefix.length + 1);
         if (nameTime(name) !== null) out.push({ name, bytes: Number(m[2]), at: nameTime(name) });
       }
