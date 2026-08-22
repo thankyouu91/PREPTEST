@@ -172,13 +172,24 @@ function rowOf(userId) {
 /**
  * Does this account still owe a placement?
  *
- * Used by the page guard, so it has to be cheap and it has to be certain. A row
- * with status 'done' is finished for ever; anything else, including no row at
- * all, means not yet.
+ * Used by the page guard, so it has to be cheap and it has to be certain.
+ *
+ * The second half is not an optimisation, it is the migration. This test arrived
+ * long after the platform had real accounts on it, and a learner who has already
+ * sat a full paper has been measured by fifty-eight items under a clock —
+ * strictly more evidence than eighteen. Sending them back to a placement would
+ * be the platform asking a question it already knows the answer to, on the day
+ * the feature shipped, to everybody at once.
+ *
+ * So: a finished placement means done for ever, and so does a submitted paper.
+ * Only somebody the platform genuinely knows nothing about is stopped.
  */
 async function needed(userId) {
   const row = await rowOf(userId);
-  return !row || row.status !== 'done';
+  if (row) return row.status !== 'done';
+  const sat = await q.val(
+    "SELECT COUNT(*) c FROM attempts WHERE user_id = ? AND status = 'submitted'", userId);
+  return !sat;
 }
 
 /**

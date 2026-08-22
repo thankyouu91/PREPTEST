@@ -272,7 +272,19 @@ app.get('/prep/dat-lai-mat-khau/', serveHtmlWithNonce('prep/auth/dat-lai-mat-kha
  * platform is. Trapping them would turn a first bad five minutes into a support
  * ticket and a refund.
  */
-const OPEN_BEFORE_PLACEMENT = ['/prep/xep-lop/', '/prep/tai-khoan/', '/prep/offline/'];
+const OPEN_BEFORE_PLACEMENT = [
+  /* The gate cannot gate itself, or it redirects for ever. */
+  '/prep/xep-lop/',
+  /* Somewhere to go: change a detail, sign out, ask for help. */
+  '/prep/tai-khoan/',
+  '/prep/offline/',
+  /* And buying. This one is a product decision rather than a technicality: the
+     gate exists to make teaching effective, not to stand between somebody and
+     paying. A new learner who has just registered and wants a plan must be able
+     to buy one; making them sit a test first is a self-inflicted wound at
+     exactly the moment they were most willing. */
+  '/prep/mua-code/', '/prep/nhap-code/', '/prep/code-cua-toi/'
+];
 
 function studentPage(file) {
   const serve = serveHtmlWithNonce(file);

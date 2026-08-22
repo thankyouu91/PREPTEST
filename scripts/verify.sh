@@ -115,6 +115,25 @@ node -e "
     const locks = await q.val('SELECT COUNT(*) c FROM throttle_locks');
     await q.run('DELETE FROM throttle_locks'); await q.run('DELETE FROM throttle_hits');
     if (locks) console.log('   cleared ' + locks + ' carried-over sign-in lockout(s)');
+    /* The demo student is placed before the browser suites run.
+       Since 2026-08-22 an unplaced learner is redirected off every learner page
+       to /prep/xep-lop/ — deliberately, it is what makes the placement
+       compulsory — and the suites that drive the library, the runner and the
+       self-study area are not testing that. Left unplaced they all fail on the
+       same redirect, which reads as ten broken features instead of one guard
+       doing its job. scripts/test-placement.mjs clears this row itself and
+       proves the guard from the state a new account is really in.
+       Test database only, same as the throttle rows above. */
+    const uid = await q.val("SELECT id FROM users WHERE username='student'");
+    if (uid) {
+      await q.run(
+        `INSERT INTO placements (user_id, status, rung, level, asked_json, right_json,
+                                 started_at, done_at, placed_level, placed_score)
+         VALUES (?, 'done', 3, 'B1', '[]', '[6,4,4]', ?, ?, 'B1', 7)
+         ON CONFLICT(user_id) DO UPDATE SET status='done'`,
+        uid, new Date().toISOString(), new Date().toISOString());
+      console.log('   demo student marked as placed');
+    }
   })();
 " 2>/dev/null || true
 # Both the suite and the screenshot step register accounts from 127.0.0.1, so

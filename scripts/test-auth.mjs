@@ -239,7 +239,13 @@ await logout();
 await login(TMP_EMAIL, TMP_PASS);
 check('The old password stops working', page.url().includes('/dang-nhap/'), page.url());
 await login(TMP_EMAIL, 'Matkhaumoi456');
-check('The new password signs in', page.url().endsWith('/prep/'), page.url());
+/* A throwaway account created by this suite has never been placed, so signing
+     in lands on the placement test rather than the dashboard — deliberately, and
+     server.js carries the reasoning. What is being checked here is that the new
+     password WORKS, so the assertion is "signed in and inside /prep/", not
+     "arrived at one exact page". */
+  const signedIn = u => /\/prep\//.test(u) && !/\/dang-nhap\//.test(u);
+  check('The new password signs in', signedIn(page.url()), page.url());
 
 /* ---------- 9. Forgotten and reset password ---------- */
 await logout();
@@ -274,7 +280,7 @@ await settle('#step-done', '#form-banner.show');
 check('The password reset succeeds', await page.locator('#step-done').isVisible());
 
 await login(TMP_EMAIL, 'Datlai789');
-check('Signing in with the freshly reset password', page.url().endsWith('/prep/'), page.url());
+check('Signing in with the freshly reset password', signedIn(page.url()), page.url());
 
 /* With no token, report an invalid link rather than showing the form */
 await page.goto(BASE + '/prep/dat-lai-mat-khau/', { waitUntil: 'networkidle' });

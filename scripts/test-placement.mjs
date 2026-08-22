@@ -19,7 +19,7 @@
  * on the ROW COUNT in the database, never on what the API said it did.
  */
 import { createRequire } from 'node:module';
-import { DEMO_PASSWORD } from './_demo.mjs';
+
 
 const require = createRequire(import.meta.url);
 const P = require('../server/placement.js');
@@ -100,17 +100,40 @@ try {
   ok(P.settle([3, 3, 3], 'B1').score === 5,
     'Nine of eighteen is 5.0 out of ten', String(P.settle([3, 3, 3], 'B1').score));
 
-  head('Signing in, and the gate');
+  head('A brand-new account, which is the only state this can be tested from');
 
-  ok((await me.req('POST', '/api/auth/login', { username: 'student', password: DEMO_PASSWORD })).status === 200,
-    'Student sign-in');
+  /* NOT the demo student. That account is deliberately full of history — the
+     gate's own setup marks it placed, and it carries hundreds of skill_events
+     from every other suite — so both things this file checks would be masked:
+     the guard exempts anyone who has already sat a paper, and the ability model
+     would be confident off other people's work rather than off these eighteen
+     answers.
+     Registering a throwaway account is the only way to observe what a real new
+     learner meets. verify.sh raises REGISTER_PER_HOUR for exactly this kind of
+     thing. */
+  const who = 'place' + Date.now().toString(36).slice(-7);
+  const PW = 'Placement-' + Math.random().toString(36).slice(2, 10) + 'A1';
+  const reg = await me.req('POST', '/api/auth/register',
+    { username: who, email: who + '@example.test', name: 'Placement probe',
+      phone: '09' + String(Date.now()).slice(-8), password: PW });
+  ok(reg.status === 200 || reg.status === 201, 'A new account is registered',
+    reg.status + ' ' + JSON.stringify(reg.data).slice(0, 160));
 
-  /* The suite runs against the shared gate database, where the demo student may
-     already have been placed by an earlier run. Cleared so the gate can be
-     observed from the state a new account is really in. */
-  const uid = await q.val("SELECT id FROM users WHERE username='student'");
-  await q.run('DELETE FROM placements WHERE user_id=?', uid);
-  await q.run("DELETE FROM skill_events WHERE user_id=? AND source='placement'", uid);
+/* By EMAIL, not by the username sent. Registration derives a free username
+     rather than taking the one offered — see freeUsername in server/auth.js —
+     so looking it up by what was sent finds nothing. */
+  const uid = await q.val('SELECT id FROM users WHERE lower(email)=?', who + '@example.test');
+  ok(!!uid, 'And it exists', String(uid));
+  if (!uid) throw new Error('registration did not create an account; nothing below can be checked');
+
+  /* Registration may or may not sign the browser in depending on verification
+     rules, so sign in explicitly rather than assuming. */
+  if ((await me.req('GET', '/api/me')).status !== 200) {
+    ok((await me.req('POST', '/api/auth/login', { username: who, password: PW })).status === 200,
+      'The new account signs in');
+  } else {
+    ok(true, 'Registration signed the new account in');
+  }
 
   const blocked = await me.req('GET', '/prep/');
   ok(blocked.status === 302 && /\/prep\/xep-lop\//.test(blocked.location || ''),
@@ -133,6 +156,11 @@ try {
   ok(account.status === 200,
     'And the account page stays open, so nobody is trapped behind a test they cannot finish',
     String(account.status));
+
+  const buy = await me.req('GET', '/prep/mua-code/');
+  ok(buy.status === 200,
+    'And so does the price list — the gate must not stand between somebody and paying',
+    String(buy.status));
 
   head('Sitting it');
 
@@ -247,10 +275,8 @@ try {
     'An answer to a question that does not exist scores nothing rather than erroring',
     JSON.stringify(junk.data).slice(0, 120));
 
-  const notStarted = client();
-  await notStarted.req('POST', '/api/auth/login', { username: 'student', password: DEMO_PASSWORD });
   await q.run('DELETE FROM placements WHERE user_id=?', uid);
-  const early = await notStarted.req('POST', '/api/placement/answers',
+  const early = await me.req('POST', '/api/placement/answers',
     { answers: [{ questionId: 1, answer: 'x' }] });
   ok(early.status === 400, 'Answering before starting is refused', String(early.status));
 
