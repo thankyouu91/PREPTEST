@@ -16,7 +16,7 @@ Sáu điều kiện khóa (chi tiết ở `docs/KE-HOACH-XAY.md` §1.2), rút g�
 
 | Block | Nội dung | Trạng thái | Commit khóa | Ngày |
 |---|---|---|---|---|
-| 0 | Sao lưu và phục hồi CSDL | 🟡 đang làm — mã và 43 phép kiểm xong; **chờ việc trên AWS**, xem mục cuối | — | — |
+| 0 | Sao lưu và phục hồi CSDL | 🟡 gần xong — S3 đã dựng và chạy thật; chờ chạy lại 3 lệnh nghiệm thu trên mã đã commit | — | — |
 | 1 | Nới trần rẻ tiền (pragma, cắt trang sẵn) | 🔒 **đã khóa** | `87b05ce` | 2026-08-21 |
 | 2 | Mô hình năng lực (`skill_events` + `server/ability.js`) | 🔒 **đã khóa** | `87b05ce` | 2026-08-21 |
 | 3 | Rubric và đánh giá sau bài thi | 🔒 **đã khóa** | `5113a11` | 2026-08-21 |
@@ -99,38 +99,93 @@ thì lúc đó mới là xu hướng, và phải truy.
 > hai đại lượng khác nhau ra so là tự tạo ra hồi quy không có thật — hoặc tệ
 > hơn, che mất một hồi quy có thật.
 
-## Việc cần quyền trên AWS mới xong được
+## Phần AWS của block 0 — đã dựng xong trên máy thật, 2026-08-22
 
-Phần còn thiếu của **block 0**. Ghi ra đây để không ai tưởng block 0 đã xong.
+Chủ đầu tư dựng qua AWS CloudShell (connector AWS hết token, ba đường tự động
+đều tắc — xem cuối mục này). Đọc lại từ AWS, không phải chép lại từ ý định:
 
-**Đã thử tự làm và không được** (2026-08-21). Ba đường đều tắc, và tắc vì lý do
-đúng đắn chứ không phải vì hỏng:
+| Thứ | Trạng thái đã kiểm |
+|---|---|
+| Bucket | `vpet-prep-backups-659161125499` @ ap-southeast-1 |
+| Object Lock | `Enabled`, `GOVERNANCE`, 30 ngày — **bật lúc `create-bucket`**, không tạo lại được |
+| Versioning | `Enabled` |
+| Public access | cả bốn cờ `true` |
+| Mã hoá | `AES256`, bucket key bật |
+| Lifecycle | noncurrent version hết hạn sau 45 ngày, prefix `db-backups/` |
+| IAM role | `EC2-SSM-Role`, dò qua instance profile chứ không đoán |
+| Inline policy | `VpetPrepBackupWrite` — `ListBucket` có Condition `s3:prefix`; `PutObject`/`GetObject`/`DeleteObject` trong đúng prefix |
+| **Không** cấp | `s3:DeleteObjectVersion`, `s3:BypassGovernanceRetention` — giữ nguyên như vậy |
+
+Object thật trong bucket đã bị khoá thật, không chỉ là cấu hình:
+`ObjectLockMode: GOVERNANCE`, `RetainUntil: 2026-09-21T07:04:32Z`.
+
+### Một chi tiết bắt buộc, không phải thừa
+
+`/etc/vpet-prep.env` có bốn dòng, dòng thứ tư là:
+
+```
+AWS_EC2_METADATA_SERVICE_ENDPOINT=http://169.254.169.254
+```
+
+`credentialSource()` trong `server/aws-sigv4.js` chỉ chọn IMDS khi thấy biến này
+hoặc `AWS_EXECUTION_ENV` — cố ý, để không phải chờ timeout trên máy không phải
+EC2. Thiếu nó thì app báo `BACKUP_DRIVER=s3 needs an AWS credential`. Đây **vẫn
+là instance role qua IMDSv2**, không phải khoá tĩnh.
+
+### Hai lỗi lộ ra khi chạy thật, đã vá ở `59b8485`
+
+1. **S3 từ chối PUT vào bucket có Object Lock** nếu request không mang
+   `Content-MD5` hoặc một header `x-amz-checksum-*`. `s3Dest.put` chỉ gửi
+   `content-type`. Mọi upload trả 400.
+2. Vá xong lỗi 1 thì S3 bắt đầu chèn `<ChecksumAlgorithm>` và `<ChecksumType>`
+   vào giữa `<ETag>` và `<Size>`, làm vỡ regex trong `list()`. **Đây mới là lỗi
+   nguy hiểm**: `list()` trả `[]`, mà mọi nơi gọi nó đều đọc là "không có bản
+   sao lưu nào" — kể cả sàn `MIN_KEEP` của `prune()`. Lỗi có sẵn từ đầu, chỉ
+   chưa lộ vì chưa object nào có checksum.
+
+Tám phép kiểm mới trong `scripts/test-backup.mjs` chặn `fetch` để kiểm cả hai
+mà không cần bucket thật. Regex cũ được **giữ lại trong test** và khẳng định là
+nó tìm thấy **không gì cả** trong cùng đoạn XML đó.
+
+### Còn đúng một việc trước khi khóa block 0
+
+Ba lệnh nghiệm thu đã qua trên máy thật — nhưng **với bản vá chưa commit**. Sau
+khi `59b8485` được self-update kéo về, phải chạy lại đúng ba lệnh đó để xác nhận
+mã đã commit hành xử y hệt:
+
+```
+cd /home/ubuntu/PREPTEST
+set -a; . /etc/vpet-prep.env; set +a
+node scripts/backup.mjs run
+node scripts/backup.mjs list
+node scripts/backup.mjs restore latest --into /tmp/thu.sqlite --yes
+```
+
+Điều kiện khóa của block 0 là **đã phục hồi được từ mã đã commit**, không phải
+*đã phục hồi được một lần nào đó*.
+
+### Một rủi ro còn treo
+
+`/home/ubuntu/vpet-selfupdate.sh` chạy `pm2 restart preptest --update-env` mà
+**không** source `/etc/vpet-prep.env`. Lần này biến vẫn sống vì PM2 gộp env chứ
+không thay, và `pm2 save` đã ghi xuống dump — nhưng đó là may, không phải thiết
+kế. `deploy/ec2-deploy.sh` có một đoạn chú thích dài giải thích đúng cái bẫy
+`--update-env` này. Script kia không nằm trong repo nên phiên này không sửa
+được. Chốt chặn hiện có: cron chạy `backup.mjs check` mỗi giờ và thoát khác 0,
+và banner ở Quản trị → Cài đặt chuyển đỏ.
+
+**Cùng lỗi đó có trong chính `deploy/ec2-deploy.sh` và đã sửa**: nó chạy
+`node scripts/backup.mjs run` mà không đọc env file, nên bản chụp trước mỗi lần
+deploy âm thầm ghi vào `disk` trong khi mọi bản khác đi S3 — tức là chụp vào
+đúng cái ổ sắp bị thay đổi, thời điểm bản sao đó ít hữu dụng nhất.
+
+### Ba đường tự động đều tắc, và tắc đúng
 
 | Đường | Kết quả |
 |---|---|
-| AWS MCP | `requires re-authorization (token expired)`. Phiên này không tương tác nên không chạy được luồng OAuth, và không được nhận token qua chat |
-| Credential trong container | Có `AWS_ACCESS_KEY_ID`/`AWS_SECRET_ACCESS_KEY` nhưng STS trả `InvalidClientTokenId` — không phải credential thật |
-| Vai trò GitHub Actions | **Cố ý** chỉ có `ssm:SendCommand` tới đúng một instance với đúng một document. Không tạo được S3, không sửa được IAM — và `deploy/github-oidc-permissions.json` giải thích rõ vì sao không nên nới |
-
-**Còn đúng hai việc cần chủ đầu tư**, đã rút từ bốn xuống hai (bước cài cron giờ
-do chính `deploy/ec2-deploy.sh` làm mỗi lần deploy, idempotent):
-
-1. **Một bucket S3 riêng cho bản sao lưu, bật versioning + object lock**, và cấp
-   cho instance role `s3:PutObject`, `s3:GetObject`, `s3:ListBucket`,
-   `s3:DeleteObject` giới hạn trong đúng prefix đó. Object lock là điểm mấu
-   chốt, không phải trang trí: một bản sao lưu mà kẻ chiếm được quyền của server
-   xoá đi được thì không tính là bản sao lưu. Không dùng khoá tĩnh — IMDSv2 đã
-   được `server/aws-sigv4.js` hỗ trợ và tự xoay vòng.
-2. **Thêm vào `/etc/vpet-prep.env`**: `BACKUP_DRIVER=s3`, `BACKUP_BUCKET=…`,
-   `AWS_REGION=ap-southeast-1`.
-
-Sau đó **phục hồi thử thật** — đó mới là điều kiện khóa của block 0, không phải
-*đã chạy được lệnh sao lưu*.
-
-Trong lúc chờ, `BACKUP_DRIVER` mặc định là `disk`, nên máy production **vẫn đang
-chụp** trước mỗi lần deploy và 6 giờ một lần — chỉ là chụp vào chính ổ đó, tức
-là đỡ được xoá nhầm chứ không đỡ được hỏng ổ. Trang **Quản trị → Cài đặt** nói
-thẳng điều đó bằng banner đỏ chứ không báo xanh.
+| AWS MCP | `requires re-authorization (token expired)`, phiên không tương tác nên không chạy được OAuth |
+| Credential trong container | STS trả `InvalidClientTokenId` — không phải credential của tài khoản này |
+| Vai trò GitHub Actions | **Cố ý** chỉ có `ssm:SendCommand` tới một instance với một document |
 
 ## Mở lại
 

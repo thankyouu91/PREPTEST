@@ -110,8 +110,36 @@ cd "$APP_DIR"
 # because a backup destination is misconfigured would mean an unrelated
 # misconfiguration blocks every release; the line printed here is loud enough
 # that nobody can say they were not told.
+# The application's own configuration, for the commands this script runs.
+#
+# This was missing and it mattered. PM2 keeps the app's environment in its
+# process list, so the SERVER has BACKUP_DRIVER=s3 while a `node scripts/…`
+# started from this script does not — it inherits Systems Manager's environment,
+# which is root's and nearly empty. So the pre-deploy backup below was quietly
+# writing to `disk` while every other backup on the box went to S3: a copy on
+# the disk that is about to be changed, which is the one moment it is least use.
+#
+# `set -a` exports what is read so child processes see it. This does NOT reach
+# the running app — restart_app deliberately avoids `--update-env` — so nothing
+# here can overwrite what PM2 already holds.
+ENV_FILE="${ENV_FILE:-/etc/vpet-prep.env}"
+if [ -f "$ENV_FILE" ]; then
+  set -a
+  # shellcheck disable=SC1090
+  . "$ENV_FILE"
+  set +a
+  # Names only, never values. An operator needs to know the file was read; the
+  # contents are the one thing a deploy log must not carry.
+  echo "read $ENV_FILE: $(grep -oE '^[A-Za-z_][A-Za-z0-9_]*' "$ENV_FILE" | tr '\n' ' ')"
+else
+  echo "no $ENV_FILE — backups will use their default destination (disk)"
+fi
+
 say "Backing up the database first"
-if sudo -u "$APP_USER" -H node scripts/backup.mjs run; then
+# -H keeps HOME right; the env above is already exported into this shell, so the
+# child sees BACKUP_DRIVER and friends without them being spelled out here.
+if sudo -u "$APP_USER" -H --preserve-env=BACKUP_DRIVER,BACKUP_BUCKET,BACKUP_PREFIX,BACKUP_KEEP_DAYS,AWS_REGION,AWS_EC2_METADATA_SERVICE_ENDPOINT,PREP_DB \
+     node scripts/backup.mjs run; then
   :
 else
   echo "!! The pre-deploy backup did NOT run. Continuing, but this deploy has no"
