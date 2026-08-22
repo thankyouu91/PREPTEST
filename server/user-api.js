@@ -27,6 +27,7 @@ const mail = require('./mail');
 const PLANS = require('./data/plans');
 const { entitlementOf } = require('./entitlements');
 const abilityModel = require('./ability');
+const placement = require('./placement');
 const EXAM_FORMATS = require('./data/exam-formats');
 
 /* How much each lettered part is worth in a real VPET paper, read from the
@@ -470,6 +471,45 @@ router.get('/me/ability', A.requireUser, async (req, res) => {
     confidentAt: abilityModel.CONFIDENT_SD,
     halfLifeDays: abilityModel.HALF_LIFE_DAYS
   });
+});
+
+/* ======================= PLACEMENT =======================
+   Fifteen minutes, once, before anything else — so the platform stops guessing
+   what to teach. Everything about how it works and why is in server/placement.js.
+
+   Marking happens on the server and nowhere else. The browser is handed prompts
+   and options and never an answer key, and it is not told which answers were
+   right until the rung is over. */
+
+router.get('/placement', A.requireUser, async (req, res) => {
+  res.set('Cache-Control', 'no-store').json(await placement.stateOf(req.user.id));
+});
+
+/* POST rather than GET even though it reads like one: it CREATES the sitting on
+   first call, and a GET that creates a row is a GET a browser prefetch can
+   start. Resuming is the same call — see start(). */
+router.post('/placement/start', A.requireUser, A.csrfGuard, async (req, res) => {
+  const out = await placement.start(req.user.id);
+  if (out.error === 'no-items') {
+    /* A content problem, not the learner's. Saying which level is empty is what
+       lets somebody fix it; handing back an unfinishable test is not. */
+    return res.status(503).json({
+      error: 'There are no placement items at this level yet. Please tell your centre.',
+      level: out.level
+    });
+  }
+  res.json(out);
+});
+
+router.post('/placement/answers', A.requireUser, A.csrfGuard, async (req, res) => {
+  const out = await placement.answer(req.user.id, (req.body || {}).answers);
+  if (out.error === 'not-started') return bad(res, 'Start the placement test first.');
+  if (out.error === 'no-answers') return bad(res, 'No answers were sent.');
+  if (out.done) {
+    await audit(req, 'placement.done', 'users/' + req.user.id,
+      { level: out.result.level, score: out.result.score });
+  }
+  res.json(out);
 });
 
 router.patch('/me', A.requireUser, A.csrfGuard, async (req, res) => {

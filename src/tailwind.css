@@ -325,6 +325,29 @@
      HTML — CSP chỉ chặn cái sau. */
   .funnel-bar { width: var(--w, 0%); transition: width .45s ease; }
 
+  /* ---- Xếp lớp: thanh tiến độ và các nút chọn đáp án ----
+     Cùng thủ thuật --w như .funnel-bar, cùng lý do. */
+  .quiz-bar { width: var(--w, 0%); transition: width .3s ease; }
+
+  /* Nút chọn đáp án. Cả hàng là vùng bấm, không phải một vòng tròn 16px:
+     trên điện thoại đó là khác biệt giữa chọn đúng đáp án và chọn nhầm. */
+  .pick {
+    @apply w-full flex items-center gap-3 text-start rounded-2xl border px-4 py-3.5
+           text-[15px] leading-snug transition;
+    border-color: var(--color-line);
+    background: var(--color-card);
+  }
+  .pick + .pick { @apply mt-2.5; }
+  .pick:hover { border-color: color-mix(in srgb, var(--color-brand) 45%, var(--color-line)); }
+  .pick:focus-visible { @apply outline-none ring-2; --tw-ring-color: var(--color-brand); }
+  .pick-key {
+    @apply w-7 h-7 shrink-0 rounded-lg inline-flex items-center justify-center text-[12.5px] font-extrabold;
+    background: var(--color-brand-soft);
+    color: var(--color-brand-strong);
+  }
+  .pick-on { border-color: var(--color-brand); background: var(--color-brand-soft); }
+  .pick-on .pick-key { background: var(--color-brand); color: #fff; }
+
   /* Mức thay đổi so với kỳ trước */
   .delta { @apply inline-flex items-center gap-1 text-[12.5px] font-extrabold; }
   .delta-tang { color: color-mix(in srgb, var(--color-success) 78%, black); }

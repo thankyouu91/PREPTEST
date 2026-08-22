@@ -163,6 +163,9 @@ node scripts/test-auth.mjs || fail=1
 step "Student catalogue (/api/catalog)"
 node scripts/test-catalog.mjs || fail=1
 
+step "Placement (the gate is a URL rule, and eighteen answers must reach skill_events)"
+node scripts/test-placement.mjs || fail=1
+
 step "Ability model (the maths by hand, a re-mark that must not double, the dashboard)"
 node scripts/test-ability.mjs || fail=1
 

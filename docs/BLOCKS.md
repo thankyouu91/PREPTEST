@@ -20,6 +20,7 @@ Sáu điều kiện khóa (chi tiết ở `docs/KE-HOACH-XAY.md` §1.2), rút g�
 | 1 | Nới trần rẻ tiền (pragma, cắt trang sẵn) | 🔒 **đã khóa** | `87b05ce` | 2026-08-21 |
 | 2 | Mô hình năng lực (`skill_events` + `server/ability.js`) | 🔒 **đã khóa** | `87b05ce` | 2026-08-21 |
 | 3 | Rubric và đánh giá sau bài thi | 🔒 **đã khóa** | `5113a11` | 2026-08-21 |
+| 3.5 | Xếp lớp bắt buộc khi đăng ký | 🟡 đang làm — mã và 44 phép kiểm xong, chờ cổng xanh | — | — |
 | 4 | Luyện theo từng Part, đề random | ⬜ chưa bắt đầu | — | — |
 | 5 | Từ vựng B1–C2 qua viết câu và áp dụng từ | ⬜ chưa bắt đầu | — | — |
 | 6 | Lộ trình ôn tập sinh tự động | ⬜ chưa bắt đầu | — | — |
@@ -188,6 +189,24 @@ deploy âm thầm ghi vào `disk` trong khi mọi bản khác đi S3 — tức l
 | Vai trò GitHub Actions | **Cố ý** chỉ có `ssm:SendCommand` tới một instance với một document |
 
 ## Mở lại
+
+**Block 2, 2026-08-22 — `record()` báo thành công cho việc nó đã bỏ qua.**
+
+`server/ability.js` `record()` trả về `events.length`, tức là số sự kiện được
+*đưa vào*, không phải số được *ghi xuống*. Nó bỏ qua mọi sự kiện không có
+`max_score > 0` — đúng, một sự kiện 0 trên 0 chẳng dịch chuyển ước lượng nào —
+nhưng rồi vẫn báo đủ số.
+
+Lỗi lộ ra khi dựng bài xếp lớp: bên gọi dựng sự kiện bằng tên trường camelCase
+(`max` thay vì `max_score`), nên **cả 18 bị bỏ qua và hàm báo đã ghi 18**. Mô
+hình năng lực rỗng trong khi đoạn mã nạp nó nói là đã xong. Mất một buổi để
+tìm ra, và chỉ tìm ra bằng cách đếm dòng trong CSDL.
+
+Sửa: trả về số **đã ghi**. Một con số không thể mâu thuẫn với thực tế thì không
+phải là một con số.
+
+Đã chạy lại đủ sáu điều kiện cho block 2 cùng lượt với block 3.5. Đóng lại ở
+commit khóa của block 3.5.
 
 _(ghi vào đây mỗi lần một block đã khóa bị mở ra sửa: block nào, vì sao, commit
 nào đóng lại)_

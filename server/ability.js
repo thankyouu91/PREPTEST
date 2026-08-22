@@ -179,8 +179,12 @@ const SKILLS = ['listening', 'reading', 'writing', 'speaking', 'grammar', 'vocab
  */
 async function record(events) {
   const at = nowISO();
+  let written = 0;
   for (const e of events) {
+    /* Skipped rather than stored: an event worth nothing out of nothing moves no
+       estimate and would only dilute the count. */
     if (!(Number(e.max_score) > 0)) continue;
+    written++;
     await q.run(
       `INSERT INTO skill_events
          (user_id, source, ref_id, item_key, skill, part, topic, level, earned, max_score, weight, at)
@@ -194,7 +198,15 @@ async function record(events) {
       Number(e.earned) || 0, Number(e.max_score), Number(e.weight) || 1,
       e.at || at);
   }
-  return events.length;
+  /* What was WRITTEN, not what was offered.
+     This returned `events.length` and that made a real bug silent. A caller
+     building events with the wrong field names — `max` instead of `max_score`,
+     say — has every one of them skipped by the guard above, and was then told
+     the full number had been recorded. It cost an afternoon on the placement
+     test, whose whole purpose is to put events here; the ability model stayed
+     empty while the code that filled it reported eighteen. A count that cannot
+     disagree with reality is not a count. */
+  return written;
 }
 
 /**

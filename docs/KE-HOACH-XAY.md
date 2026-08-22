@@ -231,6 +231,57 @@ thẳng câu trích) làm 4 phép kiểm đỏ, trong đó phép quyết định
 "I look forward to your kind consideration" đi thẳng vào CSDL và ra tới trình
 duyệt, đứng đó như bằng chứng.
 
+### Block 3.5 — Xếp lớp bắt buộc khi đăng ký
+
+Chủ đầu tư yêu cầu 2026-08-22: **vào nền tảng là phải làm một bài kiểm tra năng
+lực, rồi mới đánh giá và xếp bài tập**. Chèn vào đây chứ không xếp cuối, vì mọi
+thứ "cá nhân hoá" ở block 4–6 đều đọc từ mô hình năng lực, mà mô hình đó với một
+tài khoản mới thì rỗng.
+
+**Nó là dụng cụ đo, không phải một bài thi nhỏ.** Bài VPET thật 58 câu, một
+tiếng. Không ai làm một bài như thế chỉ để biết nên bắt đầu từ đâu, và một bài
+người ta bỏ dở thì không đo được gì. Nên nó khác ở ba chỗ:
+
+- **Ngắn, và nói rõ là ngắn.** 3 nấc × 6 câu, khoảng 12 phút.
+- **Nó di chuyển.** Nấc 1 luôn ở B1 — giữa dải VPET đánh giá. Nấc 2 chọn theo
+  kết quả nấc 1, nấc 3 theo nấc 2. Sáu câu đúng tầm nói được nhiều hơn mười tám
+  câu sai tầm: một người B2 làm câu A2 thì được sáu dấu tích và ta chẳng biết gì
+  ngoài "trên A2". Đây là **thang bậc, không phải IRT** — trung thực với chính
+  nó, và không cần bảng hiệu chuẩn độ khó mà ngân hàng chưa có.
+- **Chỉ câu máy chấm được** (`mcq`, `gap`), nên kết quả hiện ra ngay khi bấm câu
+  cuối. **Cố ý không lấy mẫu Viết và Nói**: chấm hai phần đó cần gọi mô hình, và
+  một tài khoản mới ngồi nhìn spinner — hoặc tệ hơn, nhìn một band thiếu hai kỹ
+  năng — là năm phút đầu tiên rất tệ. Cái xảy ra thay vào đó còn tốt hơn: hai kỹ
+  năng ấy không có dữ liệu, `ability.js` cho chúng khoảng tin cậy rộng, và
+  `roadmap()` tự đẩy chúng lên đầu kế hoạch. **Việc đầu tiên nền tảng bảo người
+  học làm chính là việc nó biết ít nhất về họ** — đúng như phải thế.
+
+**Bắt buộc nghĩa là một luật về URL.** Cổng chặn nằm ở `studentPage()` trong
+`server.js`, không phải ở JavaScript của trình duyệt — "bắt buộc" mà cưỡng chế
+bằng JS thì chỉ là một lời đề nghị, ai gõ URL cũng đi vòng qua được. Ba trang
+được miễn, và cả ba đều là **đường ra** chứ không phải đường vào: chính trang
+xếp lớp (không thì cổng chuyển hướng về cổng), trang tài khoản, và trang
+offline. **Một cái cổng không có lối ra là một cái bẫy**, và người bị kẹt là
+người đòi hoàn tiền.
+
+**Ngân hàng lệch, và mã phải sống chung với điều đó.** Hiện có 18 câu máy chấm
+được ở B1, 42 ở B2, 4 ở A2 và **không có câu nào ở C1**. Một nấc khăng khăng đòi
+C1 sẽ trả về rỗng và bài kiểm tra đứng lại với đúng nhóm giỏi nhất. Nên
+`drawRung()` coi mức được hỏi là **ưu tiên, không phải cam kết**: lấy ở mức đó
+trước, thiếu thì loang ra hai bên, gần trước, và **báo lại mức đã thực dùng**
+qua `usedLevels`. Nấc bù bằng câu dễ hơn thì hơi rộng tay, bù bằng câu khó hơn
+thì hơi khắt khe; cả hai đều tốt hơn không có nấc nào, và cả hai teo dần khi
+ngân hàng đầy lên.
+
+**Xếp ở mức khó nhất họ trụ được, không phải nấc cuối cùng họ đứng.** Hai cái
+này khác nhau đúng lúc một người bị đẩy lên, thấy khó, rồi tụt lại: nấc cuối khi
+đó là nấc dễ hơn, và báo nó nghĩa là xếp một người B2 xuống B1 **vì họ đã dám
+thử C1**. Thử một thứ khó không bao giờ được làm tụt kết quả xuống.
+
+**Kết quả nói rõ là tạm.** 18 câu là điểm xuất phát, không phải kết luận.
+`ability.js` vẫn từ chối gọi tên band cho tới khi đủ dữ liệu, và màn kết quả nói
+đúng như vậy thay vì bịa ra một con số chắc nịch trong ngày đầu tiên.
+
 ### Block 4 — Luyện theo từng Part, đề random
 
 Mục 3.3.

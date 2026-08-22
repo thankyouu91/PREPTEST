@@ -1,0 +1,316 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Xếp lớp · VPET Prep</title>
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#1c3d8f">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="preload" href="/fonts/pjs-700-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/fonts/pjs-400-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/tailwind-built.css">
+  <style>body{font-family:'Plus Jakarta Sans',system-ui,sans-serif}</style>
+  <script>
+    (function(){try{
+      var t=localStorage.getItem('prep.theme');
+      if(t==='dark'||(!t&&matchMedia('(prefers-color-scheme: dark)').matches))document.documentElement.classList.add('dark');
+      var tn=localStorage.getItem('prep.tenant');
+      if(tn&&tn!=='default')document.documentElement.setAttribute('data-tenant',tn);
+    }catch(e){}})();
+  </script>
+  <script src="/i18n.js"></script>
+</head>
+<body class="bg-surface text-ink">
+<div id="app" data-active="progress" class="min-h-[100dvh]">
+  <main id="main">
+    <div class="max-w-[760px] mx-auto px-4 sm:px-6 pb-10">
+
+      <div id="loading" class="grid gap-4 mt-8" aria-hidden="true">
+        <div class="card p-8"><div class="skeleton h-8 w-2/3 mb-4"></div><div class="skeleton h-4 w-full mb-2"></div><div class="skeleton h-4 w-4/5"></div></div>
+      </div>
+
+      <!-- 1. Before it starts. One screen, one button, no forms. -->
+      <section id="intro" hidden class="card p-7 sm:p-9 mt-8">
+        <span class="w-14 h-14 rounded-2xl bg-brand-soft text-brand-strong inline-flex items-center justify-center">
+          <svg viewBox="0 0 24 24" class="w-7 h-7" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l3 8 4-16 3 8h4"/></svg>
+        </span>
+        <h2 class="text-2xl font-extrabold tracking-tight mt-5" data-en="Let's find your starting point" data-vi="Tìm điểm xuất phát của bạn">Tìm điểm xuất phát của bạn</h2>
+        <p class="text-muted text-[15px] leading-relaxed mt-2 max-w-[52ch]"
+           data-en="About 12 minutes, 18 questions. This is not a grade and nobody else sees it — it is how the platform works out what to give you first."
+           data-vi="Khoảng 12 phút, 18 câu. Đây không phải bài chấm điểm và không ai khác nhìn thấy — nó chỉ để nền tảng biết nên đưa bạn học từ đâu.">
+        </p>
+
+        <ul class="grid gap-3 mt-6">
+          <li class="flex items-start gap-3">
+            <span class="w-6 h-6 rounded-full bg-brand-soft text-brand-strong shrink-0 inline-flex items-center justify-center text-[12px] font-extrabold">1</span>
+            <span class="text-[14.5px] leading-snug" data-en="The questions get harder or easier as you go, so it finds your level quickly." data-vi="Câu hỏi sẽ khó lên hoặc dễ đi theo bạn làm, nên nó tìm ra trình độ của bạn rất nhanh."></span>
+          </li>
+          <li class="flex items-start gap-3">
+            <span class="w-6 h-6 rounded-full bg-brand-soft text-brand-strong shrink-0 inline-flex items-center justify-center text-[12px] font-extrabold">2</span>
+            <span class="text-[14.5px] leading-snug" data-en="Answer what you can and guess the rest — a wrong answer costs nothing here." data-vi="Câu nào không chắc cứ đoán — ở đây trả lời sai không mất gì cả."></span>
+          </li>
+          <li class="flex items-start gap-3">
+            <span class="w-6 h-6 rounded-full bg-brand-soft text-brand-strong shrink-0 inline-flex items-center justify-center text-[12px] font-extrabold">3</span>
+            <span class="text-[14.5px] leading-snug" data-en="Close the tab any time. You come back to the question you were on." data-vi="Đóng tab lúc nào cũng được. Quay lại là vào đúng câu đang dở."></span>
+          </li>
+        </ul>
+
+        <button type="button" id="go" class="btn btn-primary btn-lg mt-7 w-full sm:w-auto"
+                data-en="Start — 12 minutes" data-vi="Bắt đầu — 12 phút">Bắt đầu — 12 phút</button>
+        <p class="text-[13px] text-muted mt-3" data-en="Writing and Speaking are placed later, from your first real paper." data-vi="Phần Viết và Nói sẽ được xếp sau, từ bài thi đầy đủ đầu tiên của bạn."></p>
+      </section>
+
+      <!-- 2. The test. One question on screen at a time. -->
+      <section id="quiz" hidden class="mt-8">
+        <div class="flex items-center gap-4">
+          <span class="text-[13px] font-bold uppercase tracking-wide text-muted" id="q-count"></span>
+          <span class="ms-auto badge badge-muted" id="q-part"></span>
+        </div>
+        <div class="h-1.5 rounded-full bg-line mt-2.5 overflow-hidden">
+          <div id="q-bar" class="quiz-bar h-full bg-brand rounded-full"></div>
+        </div>
+
+        <div class="card p-6 sm:p-8 mt-5">
+          <p id="q-prompt" class="text-[17px] sm:text-[18px] font-semibold leading-relaxed"></p>
+          <div id="q-answer" class="mt-6"></div>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-3 mt-5">
+          <button type="button" id="next" class="btn btn-primary btn-md" disabled data-en="Next" data-vi="Tiếp">Tiếp</button>
+          <button type="button" id="skip" class="btn btn-ghost btn-md" data-en="I don't know" data-vi="Chưa biết">Chưa biết</button>
+          <span class="text-[12.5px] text-muted ms-auto" data-en="Tip: press 1–4 to choose, Enter for next" data-vi="Mẹo: bấm 1–4 để chọn, Enter để sang câu"></span>
+        </div>
+      </section>
+
+      <!-- 3. The result. Encouraging, honest, and it points at one next thing. -->
+      <section id="done" hidden class="mt-8">
+        <div class="card p-7 sm:p-9 text-center">
+          <span class="w-16 h-16 rounded-full bg-brand-soft text-brand-strong inline-flex items-center justify-center mx-auto">
+            <svg viewBox="0 0 24 24" class="w-8 h-8" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+          </span>
+          <p class="text-[13px] font-bold uppercase tracking-wide text-muted mt-5" data-en="Your starting point" data-vi="Điểm xuất phát của bạn"></p>
+          <b id="d-level" class="block text-5xl font-extrabold tracking-tight mt-2">–</b>
+          <p id="d-score" class="text-[14.5px] font-medium text-muted mt-2"></p>
+          <p id="d-note" class="text-[14px] leading-relaxed mt-5 max-w-[46ch] mx-auto"></p>
+        </div>
+
+        <div class="card p-6 sm:p-7 mt-5">
+          <h3 class="font-extrabold text-lg tracking-tight" data-en="What to do first" data-vi="Việc nên làm trước"></h3>
+          <p class="text-[13.5px] text-muted mt-1" data-en="Three things, chosen from how you just answered. This list changes as you practise." data-vi="Ba việc, chọn theo đúng cách bạn vừa làm. Danh sách này đổi theo tiến độ của bạn."></p>
+          <ul id="d-plan" class="grid gap-2.5 mt-4"></ul>
+          <a href="/prep/" class="btn btn-primary btn-md mt-6" data-en="Go to my dashboard" data-vi="Vào trang học của tôi">Vào trang học của tôi</a>
+        </div>
+      </section>
+
+      <div id="oops" hidden class="card p-8 mt-8 text-center">
+        <h2 class="font-extrabold text-lg tracking-tight" data-en="This cannot start right now" data-vi="Chưa bắt đầu được"></h2>
+        <p id="oops-why" class="text-muted text-[15px] mt-2"></p>
+        <a href="/prep/tai-khoan/" class="btn btn-soft btn-md mt-5" data-en="Go to my account" data-vi="Về trang tài khoản"></a>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<script src="/prep/_mock.js"></script>
+<script src="/prep/_chrome.js"></script>
+<script>
+PREP.boot({ auth: true }).then(async () => {
+  PrepChrome.mount({ title: PREP.t('Placement', 'Xếp lớp') });
+
+  const show = id => {
+    ['loading', 'intro', 'quiz', 'done', 'oops'].forEach(s =>
+      PREP.qs('#' + s).toggleAttribute('hidden', s !== id));
+  };
+  const oops = why => { PREP.qs('#oops-why').textContent = why; show('oops'); };
+
+  /* Where to go afterwards. Taken from ?next= so somebody who was reaching for
+     the library lands back in the library, but only when it points inside this
+     app — an open redirect is an open redirect even on a friendly screen. */
+  const wanted = new URLSearchParams(location.search).get('next');
+  const backTo = wanted && /^\/prep\//.test(wanted) && !wanted.startsWith('//')
+    ? wanted : '/prep/';
+
+  /* ---- State for the rung on screen ---- */
+  let items = [];        // the six of this rung
+  let at = 0;            // which one is showing
+  let picked = null;     // the answer to the current one
+  let answers = [];      // what to send when the rung ends
+  let rung = 1, rungs = 3, perRung = 6;
+
+  const state = await PrepApi.get('/api/placement');
+  if (!state.ok) return oops(PrepApi.err(state));
+
+  if (state.data.status === 'done') return finish(state.data.result, true);
+  rungs = state.data.rungs || 3;
+  perRung = state.data.perRung || 6;
+  show('intro');
+  /* Somebody part-way through does not need the "here is what this is" screen
+     again; the button just says carry on. */
+  if (state.data.status === 'open') {
+    const b = PREP.qs('#go');
+    b.textContent = PREP.t('Carry on', 'Làm tiếp');
+    b.removeAttribute('data-en'); b.removeAttribute('data-vi');
+  }
+
+  PREP.qs('#go').addEventListener('click', begin);
+
+  async function begin() {
+    const btn = PREP.qs('#go');
+    btn.disabled = true;
+    const r = await PrepApi.post('/api/placement/start');
+    btn.disabled = false;
+    if (!r.ok) return oops(PrepApi.err(r));
+    if (r.data.done) return finish(r.data.result, true);
+    loadRung(r.data);
+  }
+
+  function loadRung(d) {
+    items = d.items || [];
+    rung = d.rung || 1;
+    at = 0; answers = [];
+    if (!items.length) return oops(PREP.t(
+      'There are no questions at this level yet.',
+      'Chưa có câu hỏi nào ở mức này.'));
+    show('quiz');
+    render();
+  }
+
+  function render() {
+    const it = items[at];
+    picked = null;
+    /* Counted across the WHOLE test rather than within the rung. "Câu 3/6" three
+       times over reads as three separate tests and makes the end feel further
+       away than it is. */
+    const doneBefore = (rung - 1) * perRung;
+    PREP.qs('#q-count').textContent =
+      PREP.t('Question ', 'Câu ') + (doneBefore + at + 1) + ' / ' + (rungs * perRung);
+    PREP.qs('#q-part').textContent = it.part ? 'Part ' + it.part : '';
+    /* Through a custom property, not a style attribute — the house pattern,
+       see .funnel-bar in src/tailwind.css and the note beside it. */
+    PREP.qs('#q-bar').style.setProperty('--w',
+      Math.round((doneBefore + at) / (rungs * perRung) * 100) + '%');
+    PREP.qs('#q-prompt').textContent = it.prompt;
+
+    const box = PREP.qs('#q-answer');
+    box.innerHTML = '';
+    if (Array.isArray(it.options) && it.options.length) {
+      /* Real buttons, not a radio group dressed up. They are the whole target,
+         so the hit area is the row rather than a 16px circle — which on a phone
+         is the difference between choosing an answer and choosing the wrong one. */
+      it.options.forEach((opt, i) => {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'pick';
+        b.setAttribute('aria-pressed', 'false');
+        const key = document.createElement('span');
+        key.className = 'pick-key';
+        key.textContent = String(i + 1);
+        const txt = document.createElement('span');
+        txt.textContent = opt;
+        b.append(key, txt);
+        b.addEventListener('click', () => choose(b, opt));
+        box.appendChild(b);
+      });
+    } else {
+      const inp = document.createElement('input');
+      inp.className = 'input';
+      inp.id = 'q-text';
+      inp.autocomplete = 'off';
+      inp.setAttribute('aria-label', PREP.t('Your answer', 'Câu trả lời của bạn'));
+      inp.placeholder = PREP.t('Type your answer', 'Nhập câu trả lời');
+      inp.addEventListener('input', () => {
+        picked = inp.value.trim() || null;
+        PREP.qs('#next').disabled = !picked;
+      });
+      box.appendChild(inp);
+      inp.focus();
+    }
+    PREP.qs('#next').disabled = true;
+  }
+
+  function choose(btn, value) {
+    PREP.qsa('#q-answer .pick').forEach(b => {
+      b.classList.remove('pick-on');
+      b.setAttribute('aria-pressed', 'false');
+    });
+    btn.classList.add('pick-on');
+    btn.setAttribute('aria-pressed', 'true');
+    picked = value;
+    PREP.qs('#next').disabled = false;
+  }
+
+  PREP.qs('#next').addEventListener('click', advance);
+  PREP.qs('#skip').addEventListener('click', () => { picked = ''; advance(); });
+
+  /* 1–4 to choose and Enter to move on. Not decoration: eighteen questions with
+     a mouse is eighteen round trips to the same three inches of screen. */
+  document.addEventListener('keydown', ev => {
+    if (PREP.qs('#quiz').hasAttribute('hidden')) return;
+    if (ev.target && /^(INPUT|TEXTAREA)$/.test(ev.target.tagName) && ev.key !== 'Enter') return;
+    if (/^[1-9]$/.test(ev.key)) {
+      const btns = PREP.qsa('#q-answer .pick');
+      const b = btns[Number(ev.key) - 1];
+      if (b) { b.click(); ev.preventDefault(); }
+    } else if (ev.key === 'Enter' && !PREP.qs('#next').disabled) {
+      advance(); ev.preventDefault();
+    }
+  });
+
+  async function advance() {
+    answers.push({ questionId: items[at].questionId, answer: picked == null ? '' : picked });
+    at++;
+    if (at < items.length) return render();
+
+    /* The rung is over. Say something is happening — marking is a server round
+       trip and a frozen button is how people press it twice. */
+    const btn = PREP.qs('#next');
+    btn.disabled = true;
+    btn.textContent = PREP.t('Checking…', 'Đang chấm…');
+    const r = await PrepApi.post('/api/placement/answers', { answers });
+    btn.textContent = PREP.t('Next', 'Tiếp');
+    if (!r.ok) { btn.disabled = false; return oops(PrepApi.err(r)); }
+    if (r.data.done) return finish(r.data.result, false);
+    loadRung(r.data);
+  }
+
+  /* ---- The end ---- */
+  async function finish(result, already) {
+    PREP.qs('#d-level').textContent = result.level || '–';
+    PREP.qs('#d-score').textContent =
+      PREP.t('Provisional · ', 'Tạm tính · ') + (result.right ?? '?') + '/' + (result.of ?? '?') +
+      PREP.t(' right', ' câu đúng');
+    PREP.qs('#d-note').textContent = already
+      ? PREP.t('You have already been placed. This settles as you practise.',
+               'Bạn đã được xếp lớp rồi. Mức này sẽ chỉnh dần khi bạn luyện thêm.')
+      : PREP.t('This is a starting point, not a verdict. It moves as the platform sees more of your work.',
+               'Đây là điểm xuất phát, không phải kết luận. Nó sẽ đổi khi nền tảng thấy thêm bài bạn làm.');
+
+    const plan = PREP.qs('#d-plan');
+    plan.innerHTML = '<li class="skeleton h-10 w-full rounded-xl"></li>';
+    const a = await PrepApi.get('/api/me/ability');
+    const rows = (a.ok && a.data.roadmap) || [];
+    plan.innerHTML = rows.length
+      ? rows.map(r =>
+          '<li class="flex items-center gap-3 py-2.5 border-b border-line last:border-0">' +
+            '<span class="badge badge-muted shrink-0">Part ' + PREP.esc(r.part) + '</span>' +
+            '<span class="text-[14px]">' +
+              (r.confident
+                ? PREP.t('now at ', 'đang ở mức ') + r.score + '/10'
+                : PREP.t('not measured yet — worth a look first', 'chưa đo được — nên làm trước')) +
+            '</span>' +
+          '</li>').join('')
+      : '<li class="text-[13.5px] text-muted">' +
+          PREP.t('Sit a full paper and a plan appears here.',
+                 'Làm một bài đầy đủ là kế hoạch sẽ hiện ở đây.') + '</li>';
+
+    const cta = PREP.qs('#done a');
+    if (backTo !== '/prep/') { cta.href = backTo; }
+    show('done');
+  }
+});
+</script>
+</body>
+</html>

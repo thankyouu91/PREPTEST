@@ -25,6 +25,7 @@ const examApi = require('./server/exam-api');
 const googleAuth = require('./server/google-auth');
 const paymentApi = require('./server/payment-api');
 const A = require('./server/auth');
+const placement = require('./server/placement');
 const security = require('./server/security');
 const lifecycle = require('./server/lifecycle');
 const analytics = require('./server/analytics');
@@ -256,12 +257,39 @@ app.get('/prep/dat-lai-mat-khau/', serveHtmlWithNonce('prep/auth/dat-lai-mat-kha
 /* ------------- Trang cần đăng nhập -------------
    Guard ở server: chưa có phiên thì đá về màn đăng nhập ngay từ HTTP, không
    để lộ khung trang rồi mới kiểm ở client. */
+/**
+ * Pages a learner may reach before they have been placed.
+ *
+ * The placement test is compulsory, and "compulsory" enforced in browser
+ * JavaScript is a suggestion — anybody who types a URL walks past it. So the
+ * guard is here, on the server, in the one function every learner page goes
+ * through.
+ *
+ * These three are the exceptions, and each is a way OUT rather than a way in.
+ * A gate with no exits is a trap: somebody who cannot finish the test — a
+ * broken microphone, a bank with no items at their level, simply changing their
+ * mind — must still be able to reach their account, sign out, or read what the
+ * platform is. Trapping them would turn a first bad five minutes into a support
+ * ticket and a refund.
+ */
+const OPEN_BEFORE_PLACEMENT = ['/prep/xep-lop/', '/prep/tai-khoan/', '/prep/offline/'];
+
 function studentPage(file) {
   const serve = serveHtmlWithNonce(file);
   return async (req, res) => {
-    if (!await A.currentUser(req)) {
+    const user = await A.currentUser(req);
+    if (!user) {
       if (!req.path.endsWith('/')) return res.redirect(301, req.path + '/');
       return res.redirect(302, '/prep/dang-nhap/?next=' + encodeURIComponent(req.originalUrl));
+    }
+    /* One indexed read on a table with one row per learner. It runs on every
+       learner page view, so if it ever stops being cheap it belongs in the
+       session rather than here. */
+    if (!OPEN_BEFORE_PLACEMENT.includes(req.path) && await placement.needed(user.id)) {
+      if (!req.path.endsWith('/')) return res.redirect(301, req.path + '/');
+      /* Carrying `next` so the test hands them back to whatever they were
+         actually trying to open, rather than dumping everyone on the dashboard. */
+      return res.redirect(302, '/prep/xep-lop/?next=' + encodeURIComponent(req.originalUrl));
     }
     serve(req, res);
   };
@@ -280,6 +308,10 @@ app.get('/prep/lam-bai/', studentPage('prep/exam/index.html'));
    /api/attempts/:id/result quyết định — lượt của người khác trả 404. */
 app.get('/prep/ket-qua/:id/', studentPage('prep/exam/ket-qua.html'));
 app.get('/prep/tai-khoan/', studentPage('prep/account/index.html'));
+/* The placement screen itself. studentPage still requires a session — it is
+   only the placement CHECK that this path is exempt from, or the gate would
+   redirect the gate. */
+app.get('/prep/xep-lop/', studentPage('prep/placement/index.html'));
 
 /* ------------- Khu tự học: cần gói có quyền -------------
    Từ vựng, ngữ pháp và phát âm chỉ mở từ gói Plus trở lên. Chặn ngay ở HTTP

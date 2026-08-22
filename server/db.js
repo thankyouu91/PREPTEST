@@ -646,6 +646,33 @@ CREATE TABLE IF NOT EXISTS rubric_scores (
 );
 CREATE INDEX IF NOT EXISTS idx_rs_attempt ON rubric_scores (attempt_id);
 
+/* One placement per learner, sat once, before anything else.
+
+   UNIQUE on user_id rather than a history of attempts: a placement is a
+   starting point, and letting somebody re-sit it until they like the answer
+   would make it a score to farm rather than a measurement. Re-placing is a
+   deliberate act (delete the row) and belongs to whoever supports the learner.
+
+   asked_json is written BEFORE the items are answered, so a reload cannot draw
+   a different six and silently drop the ones already being thought about.
+   right_json holds one count per rung, which is what settle() reads to work out
+   the hardest level the learner actually held up at — different from the level
+   they finished on whenever somebody is pushed up, struggles, and comes back
+   down. */
+CREATE TABLE IF NOT EXISTS placements (
+  id           INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id      INTEGER NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
+  status       TEXT NOT NULL DEFAULT 'open',
+  rung         INTEGER NOT NULL DEFAULT 1,
+  level        TEXT NOT NULL DEFAULT 'B1',
+  asked_json   TEXT NOT NULL DEFAULT '[]',
+  right_json   TEXT NOT NULL DEFAULT '[]',
+  started_at   TEXT NOT NULL,
+  done_at      TEXT,
+  placed_level TEXT,
+  placed_score REAL
+);
+
 /* One administrator's standing permission to act on their Google account —
    today only Classroom. The refresh token is stored ENCRYPTED (AES-256-GCM,
    see server/classroom.js): unlike a TOTP secret, which is useless without the
