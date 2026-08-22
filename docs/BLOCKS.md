@@ -20,7 +20,7 @@ Sáu điều kiện khóa (chi tiết ở `docs/KE-HOACH-XAY.md` §1.2), rút g�
 | 1 | Nới trần rẻ tiền (pragma, cắt trang sẵn) | 🔒 **đã khóa** | `87b05ce` | 2026-08-21 |
 | 2 | Mô hình năng lực (`skill_events` + `server/ability.js`) | 🔒 **đã khóa** | `87b05ce` | 2026-08-21 |
 | 3 | Rubric và đánh giá sau bài thi | 🔒 **đã khóa** | `5113a11` | 2026-08-21 |
-| 3.5 | Xếp lớp bắt buộc khi đăng ký | 🟡 đang làm — mã và 44 phép kiểm xong, chờ cổng xanh | — | — |
+| 3.5 | Xếp lớp bắt buộc khi đăng ký | 🔒 **đã khóa** | `1512e15` | 2026-08-22 |
 | 4 | Luyện theo từng Part, đề random | ⬜ chưa bắt đầu | — | — |
 | 5 | Từ vựng B1–C2 qua viết câu và áp dụng từ | ⬜ chưa bắt đầu | — | — |
 | 6 | Lộ trình ôn tập sinh tự động | ⬜ chưa bắt đầu | — | — |
@@ -44,6 +44,7 @@ không qua HTTP — vì đó mới là trần thật của đường ghi.
 | 2026-08-21 | block 1 | 4 nhân, đĩa cục bộ | — | — | **1.664 req/s** | 1.142 req/s | **37.990/s** (`NORMAL`) |
 | 2026-08-21 | `87b05ce` khóa 1+2 | 4 nhân, đĩa cục bộ | 3.741 req/s | 1.718 req/s | **1.597 req/s** | 1.146 req/s | 37.990/s (`NORMAL`) |
 | 2026-08-21 | `5113a11` khóa 3 | 4 nhân, đĩa cục bộ | 3.455 req/s | **1.780 req/s** | 1.708 req/s | 1.118 req/s | 37.990/s (`NORMAL`) |
+| 2026-08-22 | `1512e15` khóa 3.5 | 4 nhân, đĩa cục bộ | 7.871 req/s | 2.794 req/s | 2.797 req/s | 1.363 req/s | 37.990/s (`NORMAL`) |
 
 Hàng khóa 3 đo bằng **đúng thang của đường cơ sở** (`1,10,25,50,100,200`) — xem
 ghi chú về phương pháp bên dưới. So với cơ sở: tệp tĩnh −7,1%, `/api/catalog`
@@ -205,8 +206,8 @@ tìm ra, và chỉ tìm ra bằng cách đếm dòng trong CSDL.
 Sửa: trả về số **đã ghi**. Một con số không thể mâu thuẫn với thực tế thì không
 phải là một con số.
 
-Đã chạy lại đủ sáu điều kiện cho block 2 cùng lượt với block 3.5. Đóng lại ở
-commit khóa của block 3.5.
+Đã chạy lại đủ sáu điều kiện cho block 2 cùng lượt với block 3.5. **Đóng lại ở
+`1512e15`.**
 
 _(ghi vào đây mỗi lần một block đã khóa bị mở ra sửa: block nào, vì sao, commit
 nào đóng lại)_

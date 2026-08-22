@@ -74,6 +74,12 @@ rather than a separate no-go queue.
 >   §2.3. Trần theo tiêu chí thấp
 >   nhất chứ không theo trung bình; bài thiếu chữ bị chặn trần; mỗi điểm phải chỉ
 >   được vào bằng chứng trong bài; rubric có phiên bản
+> - [x] **Block 3.5 — Xếp lớp bắt buộc khi đăng ký.** 🔒 khóa `1512e15`, 2026-08-22.
+>   3 nấc × 6 câu, thang bậc chứ không phải IRT, chỉ câu máy chấm được nên có kết
+>   quả ngay. Cổng chặn nằm ở `studentPage()` chứ không ở JS trình duyệt. Miễn
+>   trừ: trang xếp lớp, tài khoản, offline và **các trang mua code** — cổng không
+>   được đứng giữa người dùng và việc trả tiền. Ai đã nộp một bài đầy đủ thì
+>   không phải xếp lớp lại.
 > - [ ] **Block 4 — Luyện theo từng Part, đề random.** `POST /api/drills`, không
 >   lặp câu trong 30 ngày, đồng hồ theo từng câu. Cần ngân hàng E/F/H/J đạt gấp
 >   đôi blueprint trước
