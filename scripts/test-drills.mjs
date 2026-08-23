@@ -260,9 +260,65 @@ try {
     'And a size beyond the ceiling is clamped rather than obeyed',
     huge.status + ' ' + ((huge.data && huge.data.items) || []).length);
 
+  head('All ten parts, and honest about the six that cannot be drilled');
+
+  /* The practise screen used to be built from /suggest, which caps at three,
+     so seven parts of a ten-part exam were behind a disclosure triangle. What
+     is checked here is not the endpoint's shape but the promise the screen
+     makes: the whole paper is present, in order, and nothing on it is a lie. */
+  const ov = await me.req('GET', '/api/drills/parts');
+  ok(ov.status === 200, 'The overview answers', String(ov.status));
+  const all = ov.data.parts || [];
+  ok(all.length === 10, 'With all ten parts, not the top three', String(all.length));
+  ok(all.map(x => x.part).join('') === 'ABCDEFGHIJ',
+    'In blueprint order, which is the order a candidate sits them in',
+    all.map(x => x.part).join(''));
+
+  /* Read from the blueprint rather than typed into the page, so that a change
+     to the paper reaches the screen without anybody remembering to edit it. */
+  ok(all.every(x => x.name && x.skill && x.items > 0 && x.minutes > 0),
+    'Each carries its name, skill, item count and minutes from the blueprint',
+    JSON.stringify(all.filter(x => !(x.name && x.skill && x.items && x.minutes)).map(x => x.part)));
+  const a = all.find(x => x.part === 'A');
+  ok(a.name === 'Sentence Completion' && !/^Part/.test(a.name),
+    'With the "Part A - " prefix stripped, because the letter is already the headline',
+    JSON.stringify(a.name));
+
+  /* The load-bearing one. A card that offers a drill where the bank holds
+     nothing machine-markable is a button that fails when pressed, and the six
+     spoken and written parts are exactly that case. */
+  for (const x of all) {
+    if (!x.drillable) continue;
+    const real = await q.val(
+      "SELECT COUNT(*) c FROM questions WHERE status='active' AND part=? AND type IN ('mcq','gap')",
+      x.part);
+    ok(real > 0, 'Part ' + x.part + ' says it is drillable and the bank agrees', String(real));
+  }
+  const quiet = all.filter(x => !x.drillable);
+  ok(quiet.length > 0 && quiet.every(x => x.needs === 'writing' || x.needs === 'speaking'),
+    'And every part that is not drillable says what it needs instead',
+    JSON.stringify(quiet.map(x => x.part + ':' + x.needs)));
+  ok(quiet.every(x => x.available === 0),
+    'None of them is hiding usable material behind that claim',
+    JSON.stringify(quiet.map(x => x.part + ':' + x.available)));
+
+  /* Same ranking as everything else on the platform, so the badge on this
+     screen cannot disagree with the roadmap on the progress panel. */
+  const ranks = all.filter(x => x.rank).map(x => x.rank).sort();
+  ok(ranks.length <= 3 && ranks.join(',') === ranks.slice(0, ranks.length).join(','),
+    'At most three parts are ranked, and the numbers do not repeat',
+    JSON.stringify(ranks));
+  const road = (await me.req('GET', '/api/me/ability')).data.roadmap || [];
+  const mineRanked = all.filter(x => x.rank).sort((x, y) => x.rank - y.rank).map(x => x.part);
+  ok(JSON.stringify(mineRanked) === JSON.stringify(road.map(r => r.part)),
+    'And they are the same three, in the same order, as the ability report gives',
+    JSON.stringify(mineRanked) + ' vs ' + JSON.stringify(road.map(r => r.part)));
+
   const anon = client();
   ok((await anon.req('GET', '/api/drills/suggest')).status === 401,
     'No session, no suggestions');
+  ok((await anon.req('GET', '/api/drills/parts')).status === 401,
+    'Nor the overview');
   ok((await anon.req('POST', '/api/drills', { part: 'A' })).status === 401,
     'And no drills');
 

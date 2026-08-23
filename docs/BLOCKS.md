@@ -262,5 +262,46 @@ phải là một con số.
 Đã chạy lại đủ sáu điều kiện cho block 2 cùng lượt với block 3.5. **Đóng lại ở
 `1512e15`.**
 
+**Block 4 (và 3.5, 5, 6), 2026-08-23 — bốn trang chưa từng có gì mở ra xem.**
+
+Chủ đầu tư gửi ảnh màn hình tab Luyện thi kèm hai nhận xét: **rất xấu**, và
+**chỉ có 3 phần trong 10 phần**. Cả hai đều đúng, và cái thứ hai kéo ra một lỗi
+lớn hơn cái đang được phàn nàn.
+
+**1. Ba phần thay vì mười.** Màn hình dựng từ `/api/drills/suggest`, vốn chốt ở
+ba gợi ý; bảy phần còn lại nằm sau một thẻ `<details>`. Một đề mười phần hiện
+ra như một danh sách ba việc. Đã thêm `drills.overview()` và
+`GET /api/drills/parts`: đủ mười phần, đọc thẳng từ `server/data/exam-formats.js`
+nên đề đổi thì trang đổi theo. Sáu phần **không** luyện lẻ được (B, D là email;
+G, H, I, J là nói) vẫn hiện đủ và nói rõ vì sao, thay vì bị giấu đi hoặc tệ hơn
+là được gắn một cái nút bấm không ra gì.
+
+**2. Lỗi thật: 45 nhãn rỗng trên bốn trang.** Chúng được viết bằng thuộc tính
+`data-en` / `data-vi`, mà **không có dòng mã nào trên nền tảng này đọc hai
+thuộc tính đó**. Quy ước là viết tiếng Anh thẳng trong HTML rồi thêm một dòng
+vào từ điển `public/i18n.js`. Toàn bộ 45 phần tử đó **hiện ra trống**: trang xếp
+lớp — thứ đầu tiên một học viên mới nhìn thấy — không có tiêu đề và không có
+chữ trên nút bắt đầu. Năm chỗ nữa để tiếng Việt cứng giữa hai thẻ, tức là không
+bao giờ rỗng mà cũng không bao giờ ra tiếng Anh.
+
+**Vì sao cổng xanh mà vẫn lọt.** `/prep/luyen/`, `/prep/xep-lop/` và
+`/prep/on-tap/` **không nằm trong danh sách của `audit.mjs`, cũng không nằm
+trong danh sách của `screenshot.mjs`**. Điều kiện khóa số 4 — "ảnh chụp mới" —
+đã được tính là đạt cho các block 3.5 tới 6 trong khi chưa có gì từng mở bốn
+trang đó ra. Đây là lỗi của người viết điều kiện khóa, không phải của điều kiện.
+
+Đã sửa cả ba việc: thêm bốn trang vào cả hai danh sách, và thêm một phép kiểm
+mới vào `audit.mjs` — **bất kỳ tiêu đề, nút hay nhãn nào nằm trên trang mà
+không hiện chữ nào**. Bỏ qua nút biểu tượng và mọi thứ có `aria-label`. Cố tình
+làm rỗng lại một thẻ `<h3>` thì nó đỏ ở cả năm bề ngang và cả hai chế độ màu,
+không báo nhầm ở 25 trang còn lại.
+
+> Đáng ghi lại vì sao bản đầu của phép kiểm đó **không** bắt được gì: nó đòi
+> phần tử phải có chiều cao khác 0, mà một tiêu đề rỗng co lại đúng bằng 0.
+> Chính tính chất đó là lý do lỗi sống sót lâu đến vậy — một thẻ `<h2>` trống
+> không để lại khoảng hở đáng ngờ nào, nó không để lại dấu vết gì cả.
+
+Đã chạy lại đủ sáu điều kiện. **Đóng lại ở `d0f5e7b`.**
+
 _(ghi vào đây mỗi lần một block đã khóa bị mở ra sửa: block nào, vì sao, commit
 nào đóng lại)_

@@ -381,7 +381,7 @@ try {
   const marker = doc.indexOf('| Method | Endpoint | Guards | Write limit |');
   ok(marker > 0, 'The file has the generated table');
   ok(doc.slice(marker).trim() === map.markdownTable(rows).trim(),
-    'The table in docs/SECURITY.md matches the current stack — re-run the script to update it');
+    'The table in docs/SECURITY.md matches the current stack — run `node scripts/security-doc.mjs` to update it');
 } catch (e) {
   fail++;
   console.log('✗ Failed while running: ' + (e && e.stack ? e.stack : e));

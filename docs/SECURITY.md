@@ -348,6 +348,7 @@ guard đăng nhập, 8 route còn lại là danh sách ở mục 3.
 | POST | `/api/drills` | `requireUser` + `csrfGuard` | yes |
 | GET | `/api/drills/:id` | `requireUser` | n/a (read) |
 | POST | `/api/drills/:id/submit` | `requireUser` + `csrfGuard` | yes |
+| GET | `/api/drills/parts` | `requireUser` | n/a (read) |
 | GET | `/api/drills/suggest` | `requireUser` | n/a (read) |
 | GET | `/api/learn/grammar` | — | n/a (read) |
 | GET | `/api/learn/grammar/:slug` | — | n/a (read) |
