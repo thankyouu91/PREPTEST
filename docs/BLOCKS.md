@@ -22,8 +22,8 @@ Sáu điều kiện khóa (chi tiết ở `docs/KE-HOACH-XAY.md` §1.2), rút g�
 | 3 | Rubric và đánh giá sau bài thi | 🔒 **đã khóa** | `5113a11` | 2026-08-21 |
 | 3.5 | Xếp lớp bắt buộc khi đăng ký | 🔒 **đã khóa** | `1512e15` | 2026-08-22 |
 | 4 | Luyện theo từng Part, đề random | 🔒 **đã khóa** | `4b9fdd1`+ | 2026-08-23 |
-| 5 | Từ vựng B1–C2 qua viết câu và áp dụng từ | ⬜ chưa bắt đầu | — | — |
-| 6 | Lộ trình ôn tập sinh tự động | ⬜ chưa bắt đầu | — | — |
+| 5 | Ngữ pháp và từ vựng luyện bằng cách dùng chúng | 🔒 **đã khóa** | `716cd46`+ | 2026-08-23 |
+| 6 | Lộ trình tuần sinh tự động, có mẹo làm bài | 🔒 **đã khóa** | `ed1901e`+ | 2026-08-23 |
 | 7 | Nhiều tiến trình (`cluster`) | ⬜ chưa bắt đầu | — | — |
 | 8 | Chống lạm dụng và DDoS | ⬜ chưa bắt đầu | — | — |
 
@@ -46,6 +46,27 @@ không qua HTTP — vì đó mới là trần thật của đường ghi.
 | 2026-08-21 | `5113a11` khóa 3 | 4 nhân, đĩa cục bộ | 3.455 req/s | **1.780 req/s** | 1.708 req/s | 1.118 req/s | 37.990/s (`NORMAL`) |
 | 2026-08-22 | `1512e15` khóa 3.5 | 4 nhân, đĩa cục bộ | 7.871 req/s | 2.794 req/s | 2.797 req/s | 1.363 req/s | 37.990/s (`NORMAL`) |
 | 2026-08-23 | khóa 4 | 4 nhân, đĩa cục bộ | 4.294 req/s | 1.956 req/s | 1.935 req/s | 1.226 req/s | 37.990/s (`NORMAL`) |
+| 2026-08-23 | `def8c7a` khóa 5+6 | 4 nhân, đĩa cục bộ | 4.286 req/s | 2.043 req/s | 1.934 req/s | 1.238 req/s | 37.990/s (`NORMAL`) |
+
+**Hàng khóa 5+6 so với đường cơ sở** — không route nào tụt, ba trong bốn nhích lên:
+
+| Đường | cơ sở | khi khóa | |
+|---|---|---|---|
+| `/prep/landing/` | 1.007 | 1.934 | **+92%** ✓ |
+| `/api/catalog` | 1.152 | 1.238 | +7,5% ✓ |
+| `/healthz` | 3.955 | 4.286 | +8,4% ✓ |
+| tệp tĩnh | 1.915 | 2.043 | +6,7% ✓ |
+
+Đáng nói: **đường tệp tĩnh đã hết là chỗ đáng lo.** Ở block 1+2 nó ở −10,3% và
+tôi đã ghi rằng "nếu lần sau vẫn thấy mức này thì mới là xu hướng". Ba lần đo
+liên tiếp kể từ đó — 1.780, 1.956, 2.043 — cho thấy nó không phải xu hướng mà
+là đúng cái đã truy ra ở block 3: thang đo rút gọn cộng máy vừa chạy xong cổng.
+Đây là lý do quy tắc "đo bằng đúng thang gốc" đáng giữ.
+
+Bốn block gần nhất (3.5, 4, 5, 6) **không thêm gì vào đường nóng**. Xếp lớp,
+luyện Part, ôn tập và lộ trình đều nằm sau đăng nhập và không đường nào trong
+bốn đường trên gọi tới chúng — đó là lý do các số nằm ngang. Khi nào chúng bắt
+đầu tụt thì nghĩa là có thứ đã bò vào phần dựng trang chung, và lúc đó phải truy.
 
 Hàng khóa 3 đo bằng **đúng thang của đường cơ sở** (`1,10,25,50,100,200`) — xem
 ghi chú về phương pháp bên dưới. So với cơ sở: tệp tĩnh −7,1%, `/api/catalog`

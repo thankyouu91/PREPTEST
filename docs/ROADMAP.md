@@ -83,12 +83,25 @@ rather than a separate no-go queue.
 > - [x] **Block 4 — Luyện theo từng Part, đề random.** 🔒 khóa 2026-08-23. `server/drills.js`, `/prep/luyen/`. Gợi ý đọc từ `roadmap()`, mức lấy từ ước lượng từng phần, chấm xong ghi ngược vào `skill_events` với trọng số 0,6. Không lặp câu trong 30 ngày, tính cả câu gặp trong bài thi thật. `POST /api/drills`, không
 >   lặp câu trong 30 ngày, đồng hồ theo từng câu. Cần ngân hàng E/F/H/J đạt gấp
 >   đôi blueprint trước
-> - [ ] **Block 5 — Từ vựng B1–C2 qua viết câu và áp dụng từ.** Hai dạng:
->   `gap-apply` (chia đúng dạng, máy chấm tuyệt đối, ghi điểm cho **cả** từ vựng
->   lẫn ngữ pháp) và `sentence-build` (tự viết câu, tầng 1 + tầng 3). Không có
->   trắc nghiệm A/B/C/D
-> - [ ] **Block 6 — Lộ trình ôn tập sinh tự động.** Ba mục một tuần, xếp theo
->   `(mục tiêu − p̂) × trọng số phần × (1 + sd)`. Chỉ làm sau khi 2–5 đã khóa
+> - [x] **Block 5 — Ngữ pháp và từ vựng luyện bằng cách dùng chúng.** 🔒 khóa
+>   2026-08-23. `server/revision.js`, `/prep/on-tap/`. Hai dạng, không có trắc
+>   nghiệm A/B/C/D: `apply` (điền đúng dạng vào câu thật, chấm tuyệt đối) và
+>   `build` (tự viết câu, chưa chấm). Máy chấm chịu được **cách viết tắt hai
+>   chiều**, nháy cong, `|` cho đáp án thay thế và khoá nhiều mảnh tách bằng `…`
+>   — một người viết `don't` khi đáp án ghi `do not` là đúng, và chấm sai chỗ đó
+>   thì học viên mất niềm tin vào toàn bộ phần chấm. Mỗi câu ghi **hai** sự kiện,
+>   một ngữ pháp một từ vựng, tiền tố `item_key` khác nhau; cả hai là chiều chẩn
+>   đoán và **không** được vào band tổng — `abilityOf()` tính band từ bốn kỹ năng
+>   thi mà thôi
+> - [x] **Block 6 — Lộ trình tuần sinh tự động, có mẹo làm bài.** 🔒 khóa
+>   2026-08-23. `server/plan.js`, thẻ `#ke-hoach` trên `/prep/`. Ba mục một tuần
+>   — ba là trần cố ý, không phải cỡ trang: danh sách mười mục là danh sách người
+>   ta đóng lại. Ứng viên đến từ ba nguồn (Part từ `drills.suggest()`, **một**
+>   chủ điểm ngữ pháp, và **một** mục gộp cho các kỹ năng chưa đo) rồi **xếp
+>   chung một thang** chứ không phải mỗi loại một suất. Không mục nào trỏ vào chỗ
+>   không có gì để làm, và thứ hạng đọc từ đúng `server/ability.js` mà bảng tiến
+>   độ đọc — hai con số khác nhau cho cùng một thứ trên cùng một màn hình là cách
+>   nhanh nhất để mất niềm tin vào cả hai
 > - [ ] **Block 7 — Nhiều tiến trình.** `cluster`. Đường đã dọn sẵn (khóa và
 >   phiên đều đã nằm trong CSDL), nhưng có bẫy: `node:sqlite` đồng bộ nên writer
 >   chờ khóa sẽ chặn cả event loop của worker đó
