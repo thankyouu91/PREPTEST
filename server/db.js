@@ -659,6 +659,41 @@ CREATE INDEX IF NOT EXISTS idx_rs_attempt ON rubric_scores (attempt_id);
    the hardest level the learner actually held up at — different from the level
    they finished on whenever somebody is pushed up, struggles, and comes back
    down. */
+/* One drill: a short paper for one part, sat at the learner's own level.
+
+   item_ids_json is fixed when the drill is created, and submit() will only mark
+   answers to ids that are in it. Without that, a client can post answers to any
+   question in the bank and farm skill_events for items it chose itself — which
+   would make the ability model a number the learner controls.
+
+   No UNIQUE on user_id here, unlike placements: drilling repeatedly is the whole
+   point. The thing that stops it being a way to grind the estimate up is the
+   30-day cooldown in server/drills.js plus a weight below a real sitting. */
+CREATE TABLE IF NOT EXISTS drills (
+  id            INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id       INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  part          TEXT NOT NULL,
+  level         TEXT NOT NULL,
+  size          INTEGER NOT NULL,
+  item_ids_json TEXT NOT NULL,
+  status        TEXT NOT NULL DEFAULT 'open',
+  started_at    TEXT NOT NULL,
+  done_at       TEXT,
+  earned        REAL,
+  max_score     REAL
+);
+CREATE INDEX IF NOT EXISTS idx_drills_user ON drills (user_id, done_at DESC);
+
+CREATE TABLE IF NOT EXISTS drill_answers (
+  drill_id    INTEGER NOT NULL REFERENCES drills(id) ON DELETE CASCADE,
+  question_id INTEGER NOT NULL REFERENCES questions(id),
+  answer      TEXT,
+  earned      REAL,
+  max_score   REAL,
+  note        TEXT,
+  PRIMARY KEY (drill_id, question_id)
+);
+
 CREATE TABLE IF NOT EXISTS placements (
   id           INTEGER PRIMARY KEY AUTOINCREMENT,
   user_id      INTEGER NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,

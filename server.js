@@ -324,6 +324,7 @@ app.get('/prep/tai-khoan/', studentPage('prep/account/index.html'));
    only the placement CHECK that this path is exempt from, or the gate would
    redirect the gate. */
 app.get('/prep/xep-lop/', studentPage('prep/placement/index.html'));
+app.get('/prep/luyen/', studentPage('prep/practise/index.html'));
 
 /* ------------- Khu tự học: cần gói có quyền -------------
    Từ vựng, ngữ pháp và phát âm chỉ mở từ gói Plus trở lên. Chặn ngay ở HTTP

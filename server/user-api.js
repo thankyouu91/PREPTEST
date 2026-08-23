@@ -28,6 +28,7 @@ const PLANS = require('./data/plans');
 const { entitlementOf } = require('./entitlements');
 const abilityModel = require('./ability');
 const placement = require('./placement');
+const drills = require('./drills');
 const EXAM_FORMATS = require('./data/exam-formats');
 
 /* How much each lettered part is worth in a real VPET paper, read from the
@@ -508,6 +509,56 @@ router.post('/placement/answers', A.requireUser, A.csrfGuard, async (req, res) =
   if (out.done) {
     await audit(req, 'placement.done', 'users/' + req.user.id,
       { level: out.result.level, score: out.result.score });
+  }
+  res.json(out);
+});
+
+/* ======================= DRILLS =======================
+   Block 4. Short papers for one part, chosen from the ability report and fed
+   straight back into it. server/drills.js carries the reasoning.
+
+   Everything here needs a session, and the answer key never leaves the server
+   until a drill has been submitted — before that it would be the answers, after
+   it is the feedback. */
+
+router.get('/drills/suggest', A.requireUser, async (req, res) => {
+  res.set('Cache-Control', 'no-store')
+     .json({ suggestions: await drills.suggest(req.user.id, PART_WEIGHTS) });
+});
+
+router.get('/drills', A.requireUser, async (req, res) => {
+  res.set('Cache-Control', 'no-store')
+     .json({ drills: await drills.history(req.user.id, req.query.limit) });
+});
+
+router.get('/drills/:id', A.requireUser, async (req, res) => {
+  const d = await drills.get(req.user.id, parseInt(req.params.id, 10) || 0);
+  if (!d) return res.status(404).json({ error: 'No such drill.' });
+  res.set('Cache-Control', 'no-store').json(d);
+});
+
+router.post('/drills', A.requireUser, A.csrfGuard, async (req, res) => {
+  const out = await drills.start(req.user.id, req.body || {});
+  if (out.error === 'bad-part') return bad(res, 'Choose a part from A to J.');
+  if (out.error === 'no-items') {
+    /* A content problem, and naming the part and level is what lets somebody
+       fix it. Handing back an empty drill would look like a broken button. */
+    return res.status(503).json({
+      error: 'There is nothing to practise in this part yet. Please tell your centre.',
+      part: out.part, level: out.level
+    });
+  }
+  res.status(201).json(out);
+});
+
+router.post('/drills/:id/submit', A.requireUser, A.csrfGuard, async (req, res) => {
+  const out = await drills.submit(req.user.id, parseInt(req.params.id, 10) || 0,
+    (req.body || {}).answers);
+  if (out.error === 'not-found') return res.status(404).json({ error: 'No such drill.' });
+  /* 409, not 400: the request is well formed and the drill is real — it is the
+     state that refuses. Marking twice would write a second set of events. */
+  if (out.error === 'already-done') {
+    return res.status(409).json({ error: 'This drill has already been marked.' });
   }
   res.json(out);
 });

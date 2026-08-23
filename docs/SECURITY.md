@@ -344,6 +344,11 @@ guard đăng nhập, 8 route còn lại là danh sách ở mục 3.
 | GET | `/api/catalog` | — | n/a (read) |
 | POST | `/api/checkout` | `requireUser` + `csrfGuard` | yes |
 | GET | `/api/checkout/providers` | — | n/a (read) |
+| GET | `/api/drills` | `requireUser` | n/a (read) |
+| POST | `/api/drills` | `requireUser` + `csrfGuard` | yes |
+| GET | `/api/drills/:id` | `requireUser` | n/a (read) |
+| POST | `/api/drills/:id/submit` | `requireUser` + `csrfGuard` | yes |
+| GET | `/api/drills/suggest` | `requireUser` | n/a (read) |
 | GET | `/api/learn/grammar` | — | n/a (read) |
 | GET | `/api/learn/grammar/:slug` | — | n/a (read) |
 | GET | `/api/learn/irregular-verbs` | — | n/a (read) |

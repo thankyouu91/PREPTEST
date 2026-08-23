@@ -18,6 +18,11 @@ const PrepChrome = {
   NAV: [
     { key: 'home',     label: 'Home',        icon: 'home',    href: '/prep/' },
     { key: 'library',  label: 'Library',     icon: 'library', href: '/prep/thu-vien/' },
+    /* Second, right after the library and ahead of self-study. A drill is the
+       shortest useful thing on the platform and the one the progress panel
+       sends people to, so burying it under a disclosure would be hiding the
+       button the rest of the product points at. */
+    { key: 'practise', label: 'Practise',    icon: 'target',  href: '/prep/luyen/' },
     { key: 'learn',    label: 'Self-study',  icon: 'book',    href: '/prep/hoc/dong-tu-bat-quy-tac/',
       feature: 'selfStudy', lockedHref: '/prep/mua-code/?locked=self-study',
       lockedHint: 'Self-study opens from the Plus plan' },

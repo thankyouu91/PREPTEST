@@ -1,0 +1,327 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Luyện theo phần · VPET Prep</title>
+  <meta name="description" content="Luyện từng phần VPET với đề rút ngẫu nhiên, đúng mức của bạn, chấm ngay.">
+  <meta name="theme-color" content="#1c3d8f">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="preload" href="/fonts/pjs-700-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/fonts/pjs-400-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/tailwind-built.css">
+  <style>body{font-family:'Plus Jakarta Sans',system-ui,sans-serif}</style>
+  <script>
+    (function(){try{
+      var t=localStorage.getItem('prep.theme');
+      if(t==='dark'||(!t&&matchMedia('(prefers-color-scheme: dark)').matches))document.documentElement.classList.add('dark');
+      var tn=localStorage.getItem('prep.tenant');
+      if(tn&&tn!=='default')document.documentElement.setAttribute('data-tenant',tn);
+    }catch(e){}})();
+  </script>
+  <script src="/i18n.js"></script>
+</head>
+<body class="bg-surface text-ink">
+<div id="app" data-active="practise" class="min-h-[100dvh]">
+  <main id="main">
+    <div class="max-w-[820px] mx-auto px-4 sm:px-6 pb-10">
+
+      <div id="loading" class="grid gap-4 mt-8" aria-hidden="true">
+        <div class="card p-8"><div class="skeleton h-7 w-1/2 mb-4"></div><div class="skeleton h-16 w-full"></div></div>
+      </div>
+
+      <!-- 1. What to practise, straight off the ability report -->
+      <section id="pick" hidden class="mt-8">
+        <h2 class="text-2xl font-extrabold tracking-tight" data-en="Practise one part" data-vi="Luyện một phần"></h2>
+        <p class="text-muted text-[15px] leading-relaxed mt-2 max-w-[56ch]"
+           data-en="Six questions, about ten minutes, marked as soon as you finish. Chosen from what your progress says you need — and it counts towards it."
+           data-vi="Sáu câu, khoảng mười phút, làm xong chấm ngay. Chọn theo đúng cái tiến độ của bạn đang thiếu — và làm xong thì tiến độ đổi theo."></p>
+
+        <ul id="p-list" class="grid gap-3 mt-6"></ul>
+
+        <details class="mt-6">
+          <summary class="text-[13.5px] font-semibold cursor-pointer" data-en="Practise a different part" data-vi="Luyện một phần khác"></summary>
+          <div id="p-all" class="flex flex-wrap gap-2 mt-3"></div>
+        </details>
+
+        <div id="p-recent" hidden class="card p-6 mt-6">
+          <h3 class="font-extrabold text-[15px] tracking-tight" data-en="Recently practised" data-vi="Vừa luyện gần đây"></h3>
+          <ul id="p-hist" class="mt-3"></ul>
+        </div>
+      </section>
+
+      <!-- 2. The drill -->
+      <section id="run" hidden class="mt-8">
+        <div class="flex items-center gap-3">
+          <span class="badge badge-muted" id="r-part"></span>
+          <span class="text-[13px] font-bold uppercase tracking-wide text-muted" id="r-count"></span>
+          <button type="button" id="r-quit" class="btn btn-ghost btn-sm ms-auto" data-en="Leave" data-vi="Thoát"></button>
+        </div>
+        <div class="h-1.5 rounded-full bg-line mt-2.5 overflow-hidden">
+          <div id="r-bar" class="quiz-bar h-full bg-brand rounded-full"></div>
+        </div>
+
+        <div class="card p-6 sm:p-8 mt-5">
+          <p id="r-prompt" class="text-[17px] sm:text-[18px] font-semibold leading-relaxed"></p>
+          <div id="r-answer" class="mt-6"></div>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-3 mt-5">
+          <button type="button" id="r-next" class="btn btn-primary btn-md" disabled data-en="Next" data-vi="Tiếp"></button>
+          <button type="button" id="r-skip" class="btn btn-ghost btn-md" data-en="Skip" data-vi="Bỏ qua"></button>
+          <span class="text-[12.5px] text-muted ms-auto" data-en="1–4 to choose · Enter for next" data-vi="1–4 để chọn · Enter để sang câu"></span>
+        </div>
+      </section>
+
+      <!-- 3. What you got, and why -->
+      <section id="marked" hidden class="mt-8">
+        <div class="card p-7">
+          <div class="flex flex-wrap items-end gap-x-8 gap-y-3">
+            <span>
+              <span class="block text-[13px] font-bold uppercase tracking-wide text-muted" data-en="This drill" data-vi="Lượt này"></span>
+              <b id="m-score" class="block text-4xl font-extrabold tracking-tight leading-none mt-1.5">–</b>
+            </span>
+            <span id="m-moved" class="text-[14px] leading-snug max-w-[34ch]"></span>
+          </div>
+        </div>
+
+        <ul id="m-detail" class="grid gap-3 mt-5"></ul>
+
+        <div class="flex flex-wrap gap-2.5 mt-6">
+          <button type="button" id="m-again" class="btn btn-primary btn-md" data-en="Another one" data-vi="Làm tiếp lượt nữa"></button>
+          <button type="button" id="m-back" class="btn btn-soft btn-md" data-en="Choose a part" data-vi="Chọn phần khác"></button>
+          <a href="/prep/" class="btn btn-ghost btn-md" data-en="My progress" data-vi="Tiến độ của tôi"></a>
+        </div>
+      </section>
+
+      <div id="oops" hidden class="card p-8 mt-8 text-center">
+        <h2 class="font-extrabold text-lg tracking-tight" data-en="Not right now" data-vi="Chưa luyện được"></h2>
+        <p id="oops-why" class="text-muted text-[15px] mt-2"></p>
+        <button type="button" id="oops-back" class="btn btn-soft btn-md mt-5" data-en="Back" data-vi="Quay lại"></button>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<script src="/prep/_mock.js"></script>
+<script src="/prep/_chrome.js"></script>
+<script>
+PREP.boot({ auth: true }).then(async () => {
+  PrepChrome.mount({ title: PREP.t('Practise', 'Luyện tập') });
+
+  const PARTS = ['A','B','C','D','E','F','G','H','I','J'];
+  const show = id => ['loading','pick','run','marked','oops']
+    .forEach(s => PREP.qs('#' + s).toggleAttribute('hidden', s !== id));
+  const oops = why => { PREP.qs('#oops-why').textContent = why; show('oops'); };
+  PREP.qs('#oops-back').addEventListener('click', () => loadPick());
+
+  const WHY = {
+    notMeasured: [ 'Not measured yet — worth doing first', 'Chưa đo được — nên làm trước' ],
+    weakest:     [ 'Your weakest part right now',          'Phần bạn đang yếu nhất' ],
+    belowTarget: [ 'Below where you are aiming',           'Còn dưới mục tiêu của bạn' ]
+  };
+
+  let drill = null, items = [], at = 0, picked = null, answers = [], lastPart = null;
+
+  /* ---------------- 1. Choosing ---------------- */
+  async function loadPick() {
+    show('loading');
+    const s = await PrepApi.get('/api/drills/suggest');
+    if (!s.ok) return oops(PrepApi.err(s));
+
+    const list = PREP.qs('#p-list');
+    const rows = (s.data.suggestions || []).filter(x => x.available > 0);
+    list.innerHTML = '';
+    if (!rows.length) {
+      list.innerHTML = '<li class="card p-6 text-[14px] text-muted">' +
+        PREP.esc(PREP.t('There is nothing to practise yet. Ask your centre to add items.',
+                        'Chưa có nội dung để luyện. Hãy báo trung tâm bổ sung câu hỏi.')) + '</li>';
+    }
+    for (const x of rows) {
+      const li = document.createElement('li');
+      li.className = 'card p-5 flex flex-wrap items-center gap-x-4 gap-y-3';
+      const left = document.createElement('span');
+      left.className = 'min-w-0';
+      const h = document.createElement('b');
+      h.className = 'block text-[16px] tracking-tight';
+      h.textContent = 'Part ' + x.part;
+      const why = document.createElement('span');
+      why.className = 'block text-[13px] text-muted mt-0.5';
+      why.textContent = PREP.t(WHY[x.reason][0], WHY[x.reason][1])
+        + (x.confident ? ' · ' + x.score + '/10' : '');
+      left.append(h, why);
+      const lv = document.createElement('span');
+      lv.className = 'badge badge-muted shrink-0';
+      lv.textContent = x.level;
+      const go = document.createElement('button');
+      go.type = 'button';
+      go.className = 'btn btn-primary btn-md ms-auto shrink-0';
+      go.textContent = PREP.t('Practise', 'Luyện');
+      go.addEventListener('click', () => begin(x.part));
+      li.append(left, lv, go);
+      list.appendChild(li);
+    }
+
+    /* Every part, for somebody who knows what they want. Kept behind a
+       disclosure so the three recommendations stay the obvious thing to do. */
+    const all = PREP.qs('#p-all');
+    all.innerHTML = '';
+    for (const p of PARTS) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'btn btn-ghost btn-sm';
+      b.textContent = 'Part ' + p;
+      b.addEventListener('click', () => begin(p));
+      all.appendChild(b);
+    }
+
+    const h = await PrepApi.get('/api/drills?limit=5');
+    const hist = (h.ok && h.data.drills) || [];
+    PREP.qs('#p-recent').toggleAttribute('hidden', !hist.length);
+    PREP.qs('#p-hist').innerHTML = hist.map(d =>
+      '<li class="flex items-center gap-3 py-2 border-b border-line last:border-0 text-[13.5px]">' +
+        '<span class="badge badge-muted">Part ' + PREP.esc(d.part) + '</span>' +
+        '<span class="text-muted">' + PREP.esc(d.level) + '</span>' +
+        '<b class="ms-auto tabular-nums">' + d.earned + '/' + d.max + '</b>' +
+      '</li>').join('');
+    show('pick');
+  }
+
+  /* ---------------- 2. Sitting ---------------- */
+  async function begin(part) {
+    show('loading');
+    lastPart = part;
+    const r = await PrepApi.post('/api/drills', { part: part, size: 6 });
+    if (!r.ok) return oops(PrepApi.err(r));
+    drill = r.data; items = r.data.items; at = 0; answers = [];
+    PREP.qs('#r-part').textContent = 'Part ' + r.data.part + ' · ' + r.data.level;
+    show('run');
+    render();
+  }
+
+  function render() {
+    const it = items[at];
+    picked = null;
+    PREP.qs('#r-count').textContent = PREP.t('Question ', 'Câu ') + (at + 1) + ' / ' + items.length;
+    PREP.qs('#r-bar').style.setProperty('--w', Math.round(at / items.length * 100) + '%');
+    PREP.qs('#r-prompt').textContent = it.prompt;
+
+    const box = PREP.qs('#r-answer');
+    box.innerHTML = '';
+    if (Array.isArray(it.options) && it.options.length) {
+      it.options.forEach((opt, i) => {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'pick';
+        b.setAttribute('aria-pressed', 'false');
+        const k = document.createElement('span');
+        k.className = 'pick-key';
+        k.textContent = String(i + 1);
+        const t = document.createElement('span');
+        t.textContent = opt;
+        b.append(k, t);
+        b.addEventListener('click', () => {
+          PREP.qsa('#r-answer .pick').forEach(o => {
+            o.classList.remove('pick-on'); o.setAttribute('aria-pressed', 'false');
+          });
+          b.classList.add('pick-on'); b.setAttribute('aria-pressed', 'true');
+          picked = opt; PREP.qs('#r-next').disabled = false;
+        });
+        box.appendChild(b);
+      });
+    } else {
+      const inp = document.createElement('input');
+      inp.className = 'input';
+      inp.autocomplete = 'off';
+      inp.setAttribute('aria-label', PREP.t('Your answer', 'Câu trả lời của bạn'));
+      inp.placeholder = PREP.t('Type your answer', 'Nhập câu trả lời');
+      inp.addEventListener('input', () => {
+        picked = inp.value.trim() || null;
+        PREP.qs('#r-next').disabled = !picked;
+      });
+      box.appendChild(inp);
+      inp.focus();
+    }
+    PREP.qs('#r-next').disabled = true;
+    PREP.qs('#r-next').textContent = at === items.length - 1
+      ? PREP.t('Finish and mark', 'Nộp và chấm') : PREP.t('Next', 'Tiếp');
+  }
+
+  async function advance() {
+    answers.push({ questionId: items[at].questionId, answer: picked == null ? '' : picked });
+    at++;
+    if (at < items.length) return render();
+
+    const btn = PREP.qs('#r-next');
+    btn.disabled = true;
+    btn.textContent = PREP.t('Marking…', 'Đang chấm…');
+    const r = await PrepApi.post('/api/drills/' + drill.drillId + '/submit', { answers: answers });
+    if (!r.ok) { btn.disabled = false; return oops(PrepApi.err(r)); }
+    await showMarks(r.data);
+  }
+
+  PREP.qs('#r-next').addEventListener('click', advance);
+  PREP.qs('#r-skip').addEventListener('click', () => { picked = ''; advance(); });
+  PREP.qs('#r-quit').addEventListener('click', () => loadPick());
+
+  document.addEventListener('keydown', ev => {
+    if (PREP.qs('#run').hasAttribute('hidden')) return;
+    if (ev.target && /^(INPUT|TEXTAREA)$/.test(ev.target.tagName) && ev.key !== 'Enter') return;
+    if (/^[1-9]$/.test(ev.key)) {
+      const b = PREP.qsa('#r-answer .pick')[Number(ev.key) - 1];
+      if (b) { b.click(); ev.preventDefault(); }
+    } else if (ev.key === 'Enter' && !PREP.qs('#r-next').disabled) {
+      advance(); ev.preventDefault();
+    }
+  });
+
+  /* ---------------- 3. Marks, with the answer and the reason ---------------- */
+  async function showMarks(d) {
+    PREP.qs('#m-score').textContent = d.earned + '/' + d.max;
+
+    /* The sentence that closes the loop. The learner was sent here BY the
+       progress panel; telling them it has moved is the difference between a
+       quiz and a course. Read back from the ability model rather than assumed —
+       a drill of six items may genuinely not shift a part much, and saying it
+       did when it did not is the kind of small lie people notice. */
+    const ab = await PrepApi.get('/api/me/ability');
+    const est = ab.ok && ab.data.parts ? ab.data.parts[d.part] : null;
+    PREP.qs('#m-moved').textContent = est
+      ? PREP.t('Part ' + d.part + ' is now ' + est.score + '/10 in your progress'
+                 + (est.confident ? '.' : ' — still an estimate, keep going.'),
+               'Part ' + d.part + ' giờ là ' + est.score + '/10 trong tiến độ của bạn'
+                 + (est.confident ? '.' : ' — vẫn là ước lượng, luyện thêm nhé.'))
+      : '';
+
+    PREP.qs('#m-detail').innerHTML = (d.detail || []).map(x =>
+      '<li class="card p-5">' +
+        '<span class="flex items-start gap-3">' +
+          '<span class="badge shrink-0 ' + (x.right ? 'badge-ok' : 'badge-danger') + '">' +
+            PREP.esc(x.right ? PREP.t('Correct', 'Đúng') : PREP.t('Wrong', 'Sai')) + '</span>' +
+          '<span class="text-[14.5px] leading-snug">' + PREP.esc(x.prompt) + '</span>' +
+        '</span>' +
+        (x.right ? '' :
+          '<span class="block text-[13.5px] mt-3 ps-1">' +
+            '<span class="text-muted">' + PREP.esc(PREP.t('You put: ', 'Bạn điền: ')) + '</span>' +
+            PREP.esc(x.given || PREP.t('(nothing)', '(bỏ trống)')) + '<br>' +
+            '<span class="text-muted">' + PREP.esc(PREP.t('Answer: ', 'Đáp án: ')) + '</span>' +
+            '<b>' + PREP.esc(x.answer || '') + '</b>' +
+          '</span>') +
+        (x.explanation
+          ? '<span class="block text-[13px] leading-relaxed mt-2.5 ps-3 border-s-2 border-line">' +
+              PREP.esc(x.explanation) + '</span>'
+          : '') +
+      '</li>').join('');
+    show('marked');
+  }
+
+  PREP.qs('#m-again').addEventListener('click', () => begin(lastPart));
+  PREP.qs('#m-back').addEventListener('click', () => loadPick());
+
+  loadPick();
+});
+</script>
+</body>
+</html>
