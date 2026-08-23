@@ -155,7 +155,20 @@
   }
 
   function chay() {
-    var ds = document.querySelectorAll('nav[aria-label="Self-study topics"]');
+    /* Selected on data-rail, NOT on the aria-label.
+       This used to read nav[aria-label="Self-study topics"], and public/i18n.js
+       translates aria-label along with the visible text. In Vietnamese, which
+       is the DEFAULT and therefore what every real learner sees, the label is
+       "Chủ đề tự học", the selector matched nothing, and this whole file
+       silently did nothing: no arrows, no fade, no draggable scrollbar, on a
+       rail that genuinely overflows. It worked in English, which is why it
+       survived, and the suite that covers it also selected on the English
+       label so it agreed.
+
+       Anything a script hangs off has to be something i18n cannot rewrite.
+       i18n touches text nodes plus placeholder, title and aria-label; a
+       data- attribute is none of those. */
+    var ds = document.querySelectorAll('nav[data-rail="self-study"]');
     for (var i = 0; i < ds.length; i++) gan(ds[i]);
   }
 

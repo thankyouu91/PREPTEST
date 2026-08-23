@@ -1364,22 +1364,34 @@ try {
     'The very last item of the grammar area opens with all 10 practice sentences too');
 
   /* --- The scroller on the navigation chip row ---
-     The chip row is now longer than the screen, so the last items get cut off. Narrow the
+     The chip row is longer than the screen, so the last items get cut off. Narrow the
      viewport to force the overflow, then check all three things: the wrapper is right, the
-     current item scrolls into view, and the arrow button really scrolls. */
-  await page.setViewportSize({ width: 700, height: 900 });
-  await page.goto(BASE + '/prep/hoc/sac-thai/', { waitUntil: 'networkidle' });
-  await page.waitForSelector('nav[aria-label="Self-study topics"]', { timeout: 10000 });
+     current item scrolls into view, and the arrow button really scrolls.
 
-  ok(await page.locator('.navscroll nav[aria-label="Self-study topics"]').count() === 1,
+     Loaded in VIETNAMESE on purpose, and every selector below hangs off
+     data-rail rather than the aria-label. Both of those are the same lesson:
+     this block used to select nav[data-rail="self-study"], the label
+     i18n.js rewrites, so the suite and the code agreed on a selector that
+     matched nothing in the default language. Every check here passed while the
+     feature was dead for every real user. A test that shares the bug with the
+     code it is testing is worse than no test, because it certifies it. */
+  await page.setViewportSize({ width: 700, height: 900 });
+  await page.goto(BASE + '/prep/hoc/sac-thai/?lang=vi', { waitUntil: 'networkidle' });
+  await page.waitForSelector('nav[data-rail="self-study"]', { timeout: 10000 });
+
+  ok(await page.locator('nav[data-rail="self-study"]').getAttribute('aria-label') !== 'Self-study topics',
+    'The page really is in Vietnamese, which is the state the scroller used to break in',
+    await page.locator('nav[data-rail="self-study"]').getAttribute('aria-label'));
+
+  ok(await page.locator('.navscroll nav[data-rail="self-study"]').count() === 1,
     'The chip row is wrapped in a container with a scroller');
-  ok(await page.locator('nav[aria-label="Self-study topics"].navscroll-track').count() === 1,
+  ok(await page.locator('nav[data-rail="self-study"].navscroll-track').count() === 1,
     'The chip row switches to a visible scrollbar');
 
   const chipScrollLeft = () => page.evaluate(
-    () => document.querySelector('nav[aria-label="Self-study topics"]').scrollLeft);
+    () => document.querySelector('nav[data-rail="self-study"]').scrollLeft);
   const overflowPx = await page.evaluate(() => {
-    const n = document.querySelector('nav[aria-label="Self-study topics"]');
+    const n = document.querySelector('nav[data-rail="self-study"]');
     return n.scrollWidth - n.clientWidth;
   });
   ok(overflowPx > 0, 'In a narrow viewport the chip row really does overflow (' + overflowPx + 'px)');
@@ -1392,7 +1404,7 @@ try {
      scroll sits — and the page carries a second [aria-current] in the main navigation,
      which collapses in a narrow viewport and answers the wrong question entirely. */
   const chipFullyVisible = await page.evaluate(() => {
-    const nav = document.querySelector('nav[aria-label="Self-study topics"]');
+    const nav = document.querySelector('nav[data-rail="self-study"]');
     const chip = nav.querySelector('[aria-current="page"]');
     if (!chip) return false;
     const n = nav.getBoundingClientRect(), c = chip.getBoundingClientRect();
@@ -1408,7 +1420,7 @@ try {
   ok(await chipScrollLeft() < beforeScrollBack, 'Pressing back really scrolls the chip row left');
 
   /* Back at the start, the back button hides itself and the forward button appears */
-  await page.evaluate(() => { document.querySelector('nav[aria-label="Self-study topics"]').scrollLeft = 0; });
+  await page.evaluate(() => { document.querySelector('nav[data-rail="self-study"]').scrollLeft = 0; });
   await page.waitForTimeout(300);
   ok(await page.locator('.navscroll-prev').isHidden(), 'Back at the start the back button hides itself');
   ok(await page.locator('.navscroll-next').isVisible(), 'The forward button shows while items are hidden to the right');
