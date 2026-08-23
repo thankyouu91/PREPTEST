@@ -21,7 +21,7 @@ Sáu điều kiện khóa (chi tiết ở `docs/KE-HOACH-XAY.md` §1.2), rút g�
 | 2 | Mô hình năng lực (`skill_events` + `server/ability.js`) | 🔒 **đã khóa** | `87b05ce` | 2026-08-21 |
 | 3 | Rubric và đánh giá sau bài thi | 🔒 **đã khóa** | `5113a11` | 2026-08-21 |
 | 3.5 | Xếp lớp bắt buộc khi đăng ký | 🔒 **đã khóa** | `1512e15` | 2026-08-22 |
-| 4 | Luyện theo từng Part, đề random | 🔒 **đã khóa** | `4b9fdd1`+ | 2026-08-23 |
+| 4 | Luyện theo từng Part, đề random (mười phần A-J) | 🔒 **đã khóa**, mở lại rồi đóng | `804e825` | 2026-08-23 |
 | 5 | Ngữ pháp và từ vựng luyện bằng cách dùng chúng | 🔒 **đã khóa** | `716cd46`+ | 2026-08-23 |
 | 6 | Lộ trình tuần sinh tự động, có mẹo làm bài | 🔒 **đã khóa** | `ed1901e`+ | 2026-08-23 |
 | 7 | Nhiều tiến trình (`cluster`) | ⬜ chưa bắt đầu | — | — |
@@ -78,6 +78,17 @@ không qua HTTP — vì đó mới là trần thật của đường ghi.
 | 2026-08-22 | `1512e15` khóa 3.5 | 4 nhân, đĩa cục bộ | 7.871 req/s | 2.794 req/s | 2.797 req/s | 1.363 req/s | 37.990/s (`NORMAL`) |
 | 2026-08-23 | khóa 4 | 4 nhân, đĩa cục bộ | 4.294 req/s | 1.956 req/s | 1.935 req/s | 1.226 req/s | 37.990/s (`NORMAL`) |
 | 2026-08-23 | `def8c7a` khóa 5+6 | 4 nhân, đĩa cục bộ | 4.286 req/s | 2.043 req/s | 1.934 req/s | 1.238 req/s | 37.990/s (`NORMAL`) |
+| 2026-08-23 | mở lại block 4 | 4 nhân, đĩa cục bộ | 4.107 req/s | 1.844 req/s | 1.857 req/s | 1.220 req/s | 37.990/s (`NORMAL`) |
+
+Hàng mở lại block 4, so với **đường cơ sở**: `/healthz` +3,8%, tệp tĩnh −3,7%,
+`/prep/landing/` +84%, `/api/catalog` +5,9%. Không route nào quá ngưỡng 15%.
+
+So với **hàng liền trước** thì tệp tĩnh −9,7%, và lần này có một phần nguyên
+nhân đo được chứ không phải suy đoán: CSS tăng từ 71.814 lên 73.795 byte
+(**+2,76%**) vì mấy lớp `.part-*` mới của thẻ phần thi. 2,76% không giải thích
+hết 9,7%, phần còn lại nằm trong sai số ±4,5% đã đo ở block 3. Ghi ra đây để
+lần khóa sau còn có cái mà so: nếu đường tệp tĩnh tiếp tục tụt trong khi CSS
+không to thêm nữa thì lúc đó mới là chuyện khác.
 
 **Hàng khóa 5+6 so với đường cơ sở** — không route nào tụt, ba trong bốn nhích lên:
 
@@ -301,7 +312,7 @@ không báo nhầm ở 25 trang còn lại.
 > Chính tính chất đó là lý do lỗi sống sót lâu đến vậy — một thẻ `<h2>` trống
 > không để lại khoảng hở đáng ngờ nào, nó không để lại dấu vết gì cả.
 
-Đã chạy lại đủ sáu điều kiện. **Đóng lại ở `d0f5e7b`.**
+Đã chạy lại đủ sáu điều kiện. **Đóng lại ở `804e825`.**
 
 _(ghi vào đây mỗi lần một block đã khóa bị mở ra sửa: block nào, vì sao, commit
 nào đóng lại)_
