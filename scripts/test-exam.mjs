@@ -78,6 +78,10 @@ function fakeWebm() {
   return new Uint8Array(buf);
 }
 
+/* The blank-paper check below reads the marks straight out of the tables the
+   result screen reads them from, rather than trusting the submit response. */
+const { q } = await import('../server/db.js').then(m => m.default || m);
+
 const admin = client();
 const student = client();
 
@@ -288,6 +292,46 @@ try {
 
   r = await student.req('GET', '/api/attempts/current');
   ok(r.data.attempt === null, 'Once handed in there is no paper in progress');
+
+  /* ---------- A paper handed in with nothing on it ----------
+     Reported from the product: a blank answer came back as 4 out of 10. That
+     particular one was server/rubric.js applying its under-length rule as a
+     cap of 4 where a floor of zero belonged. It is fixed there and covered by
+     scripts/test-rubric.mjs, but a unit test on the rubric is not the promise
+     a learner cares about. The promise is END TO END: hand in nothing, get
+     nothing. So this sits a whole paper, answers not one item, and reads the
+     marks back out of the database the result screen reads them from. */
+  head('A paper with nothing written on it scores nothing');
+
+  const blankSit = await student.req('POST', '/api/attempts', { testId });
+  if (blankSit.status === 201 || blankSit.status === 200) {
+    const blankId = blankSit.data.attempt.id;
+    const handed = await student.req('POST', '/api/attempts/' + blankId + '/submit');
+    ok(handed.status === 200, 'An untouched paper can still be handed in', String(handed.status));
+    ok(handed.data.answered === 0, 'With nothing answered', String(handed.data.answered));
+
+    const marks = await q.all(
+      'SELECT question_id, earned, max_score, mark_note FROM attempt_answers WHERE attempt_id = ?', blankId);
+    const scored = marks.filter(m => m.earned !== null);
+    ok(scored.every(m => m.earned === 0),
+      'Every item that was marked at all scored zero, not a cap and not a prior',
+      JSON.stringify(scored.map(m => m.earned)));
+
+    const skills = await q.all(
+      'SELECT skill, raw_earned, scaled, pending FROM attempt_scores WHERE attempt_id = ?', blankId);
+    const settled = skills.filter(s => !s.pending);
+    ok(settled.length > 0, 'At least one skill came back settled rather than pending',
+      JSON.stringify(skills.map(s => s.skill + ':' + (s.pending ? 'pending' : s.scaled))));
+    ok(settled.every(s => s.raw_earned === 0),
+      'And nothing was earned on any of them', JSON.stringify(settled.map(s => s.raw_earned)));
+    /* The number the learner actually sees. 4.0 here would be the reported bug
+       arriving by a different road. */
+    ok(settled.every(s => s.scaled === 0),
+      'So every settled skill reads 0.0 out of ten on the result screen',
+      JSON.stringify(settled.map(s => s.skill + '=' + s.scaled)));
+  } else {
+    ok(false, 'A second sitting can be started for the blank-paper check', String(blankSit.status));
+  }
 
   /* ---------- Somebody else's sitting ---------- */
   head('Sitting permissions');
