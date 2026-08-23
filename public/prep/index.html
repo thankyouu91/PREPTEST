@@ -201,6 +201,18 @@
             </div>
           </section>
 
+          <!-- The plan: three things to do next, ranked by the ability model.
+               Sits directly under the progress card on purpose — the numbers
+               above are only worth showing if the next line says what to do
+               about them. -->
+          <section id="ke-hoach" class="card p-6 scroll-mt-24" aria-labelledby="h-plan">
+            <h3 id="h-plan" class="font-extrabold tracking-tight" data-en="What to do next" data-vi="Việc nên làm tiếp"></h3>
+            <p class="text-[12.5px] text-muted mt-1" data-en="Three things, chosen from your progress above." data-vi="Ba việc, chọn theo đúng tiến độ ở trên."></p>
+            <ul class="grid gap-3 mt-4" id="plan-list">
+              <li class="skeleton h-12 w-full rounded-xl"></li>
+            </ul>
+          </section>
+
           <!-- Next steps (a checklist built from the account's real state) -->
           <section class="card p-6" aria-labelledby="h-steps">
             <div class="flex items-baseline gap-3">
@@ -442,6 +454,47 @@
          resolves with ok:false — so the empty state is reached by the same path
          whether the server said no or the network did. */
       PrepApi.get('/api/me/ability').then(res => paintAbility(res.ok ? res.data : null));
+
+      /* The plan. Loaded separately from the ability call rather than derived
+         from it in the browser: the ranking mixes parts, grammar topics and
+         whole skills, and a second implementation of that in JavaScript is a
+         second thing to disagree with server/plan.js. */
+      PrepApi.get('/api/plan').then(res => {
+        const box = PREP.qs('#plan-list');
+        if (!box) return;
+        const rows = (res.ok && res.data.plan) || [];
+        if (!rows.length) {
+          box.innerHTML = '<li class="text-[13.5px] text-muted">' +
+            PREP.esc(PREP.t('Sit a paper and a plan appears here.',
+                            'Làm một bài là kế hoạch sẽ hiện ở đây.')) + '</li>';
+          return;
+        }
+        box.innerHTML = rows.map((x, i) =>
+          '<li class="border-b border-line last:border-0 pb-3 last:pb-0">' +
+            '<a href="' + PREP.esc(x.href) + '" class="flex items-start gap-3 group">' +
+              '<span class="w-6 h-6 rounded-full bg-brand-soft text-brand-strong shrink-0 ' +
+                'inline-flex items-center justify-center text-[12px] font-extrabold mt-0.5">' + (i + 1) + '</span>' +
+              '<span class="min-w-0">' +
+                '<b class="block text-[14px] leading-snug group-hover:underline">' +
+                  PREP.esc(PREP.t(x.titleEn, x.titleVi)) + '</b>' +
+                '<span class="block text-[12.5px] text-muted mt-0.5">' +
+                  PREP.esc(PREP.t(x.whyEn, x.whyVi)) +
+                  (x.score === null ? '' : ' · ' + x.score + '/10') + '</span>' +
+              '</span>' +
+            '</a>' +
+            /* The tip goes behind a disclosure, and under the item it belongs
+               to. A tip shown before somebody has met the problem is a tip they
+               scroll past. */
+            (x.tips && x.tips.length
+              ? '<details class="mt-2 ps-9">' +
+                  '<summary class="text-[12.5px] font-semibold cursor-pointer">' +
+                    PREP.esc(PREP.t('How to do this faster', 'Mẹo làm nhanh hơn')) + '</summary>' +
+                  x.tips.map(t => '<p class="text-[12.5px] leading-relaxed mt-2 text-muted">' +
+                    PREP.esc(PREP.t(t.en, t.vi)) + '</p>').join('') +
+                '</details>'
+              : '') +
+          '</li>').join('');
+      });
 
       /* ---------- Next steps (checklist) ---------- */
       const steps = [

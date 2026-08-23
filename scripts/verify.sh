@@ -170,6 +170,9 @@ node scripts/test-drills.mjs || fail=1
 step "Revision (a fair gap marker, and grammar that must not reach the band)"
 node scripts/test-revision.mjs || fail=1
 
+step "The weekly plan (three things, all real, ranked by the same model)"
+node scripts/test-plan.mjs || fail=1
+
 step "Ability model (the maths by hand, a re-mark that must not double, the dashboard)"
 node scripts/test-ability.mjs || fail=1
 

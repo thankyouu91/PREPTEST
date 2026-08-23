@@ -30,6 +30,7 @@ const abilityModel = require('./ability');
 const placement = require('./placement');
 const drills = require('./drills');
 const revision = require('./revision');
+const plan = require('./plan');
 const EXAM_FORMATS = require('./data/exam-formats');
 
 /* How much each lettered part is worth in a real VPET paper, read from the
@@ -599,6 +600,16 @@ router.post('/revision/:id/submit', A.requireUser, A.csrfGuard, async (req, res)
     return res.status(409).json({ error: 'This set has already been marked.' });
   }
   res.json(out);
+});
+
+/* ======================= THE WEEKLY PLAN =======================
+   Block 6. Three things to do next, each a link to a feature that exists and
+   has material behind it, ranked by the one ability model this platform has.
+   server/plan.js carries the reasoning, including why it is three. */
+
+router.get('/plan', A.requireUser, async (req, res) => {
+  res.set('Cache-Control', 'no-store')
+     .json(await plan.weekly(req.user.id, PART_WEIGHTS));
 });
 
 router.patch('/me', A.requireUser, A.csrfGuard, async (req, res) => {
