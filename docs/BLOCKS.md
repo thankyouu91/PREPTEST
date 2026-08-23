@@ -29,6 +29,37 @@ Sáu điều kiện khóa (chi tiết ở `docs/KE-HOACH-XAY.md` §1.2), rút g�
 
 Ký hiệu: ⬜ chưa bắt đầu · 🟡 đang làm · 🔒 đã khóa · 🔓 đã mở lại
 
+## Các block nối vào báo cáo năng lực như thế nào
+
+Đây là thứ giữ cả thiết kế lại với nhau, nên nó có một bộ test riêng —
+`scripts/test-chain.mjs`, chạy trong cổng sau cả năm bộ kia.
+
+**Mọi thứ được chấm đều đi về MỘT báo cáo**, và báo cáo đó là thứ duy nhất trên
+nền tảng này có ý kiến về việc ai giỏi đến đâu:
+
+| Nguồn | `source` | Trọng số | Vào band tổng? |
+|---|---|---|---|
+| Bài thi thật | `exam` | 1 | ✅ |
+| Xếp lớp (block 3.5) | `placement` | 1 | ✅ |
+| Luyện Part (block 4) | `drill` | 0,6 | ✅ |
+| Ôn tập (block 5) | `revision` | 0,6 | ❌ **không** |
+
+Hàng cuối là chỗ dễ hỏng nhất và là bất biến quan trọng nhất: ngữ pháp và từ
+vựng là **chiều chẩn đoán**, VPET không chấm chúng, nên gộp vào band sẽ đẻ ra
+một con số không ứng với bài thi nào cả. Nó chỉ là **một dòng lọc** trong
+`abilityOf()`. Xoá thử dòng đó thì hai dòng test canh nó đỏ ngay, và số liệu nói
+rõ thiệt hại: `n` nhảy 24 → 40, và `confident` lật từ `false` sang **`true`** —
+nền tảng sẽ tuyên bố một band chắc chắn dựa trên mấy câu điền ngữ pháp.
+
+Block 6 không sinh ra số mới. Nó **xếp hạng** chính báo cáo đó, nên nếu lộ trình
+và bảng tiến độ có lúc nào nói khác nhau thì đó là lỗi ở `server/plan.js`, không
+phải mô hình thứ hai. Test kiểm đúng điều này bằng cách đọc cả hai và so.
+
+Năm bộ test của từng block chỉ chứng minh được nửa của nó. `test-chain.mjs` là
+bộ duy nhất hỏi **chúng có cộng lại thành một không** — và đường nối mới là chỗ
+mà năm bộ test xanh vẫn cứ xanh trong khi sản phẩm nói với học viên hai điều
+khác nhau.
+
 ## Số đo hiệu năng
 
 Điều kiện khóa số 3 so với **lần đo gần nhất**, nên mỗi lần khóa phải thêm một
