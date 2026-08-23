@@ -31,6 +31,7 @@ const placement = require('./placement');
 const drills = require('./drills');
 const revision = require('./revision');
 const plan = require('./plan');
+const report = require('./report');
 const EXAM_FORMATS = require('./data/exam-formats');
 
 /* How much each lettered part is worth in a real VPET paper, read from the
@@ -463,6 +464,14 @@ router.get('/me', async (req, res) => {
  * `parts` is keyed 'A'..'J' and each entry may carry `band: null`, which is not
  * an error: it is the model declining to name a band it cannot support yet.
  * The page renders `needed` in that case. See server/ability.js. */
+/* The work, as opposed to the ability: how much study, when, what kind, and
+   how accurate. server/report.js carries the reasoning, including why it is
+   careful never to produce a second opinion about how good somebody is. */
+router.get('/me/report', A.requireUser, async (req, res) => {
+  const days = Math.min(180, Math.max(7, parseInt(req.query.days, 10) || report.WINDOW_DAYS));
+  res.set('Cache-Control', 'no-store').json(await report.reportOf(req.user.id, days));
+});
+
 router.get('/me/ability', A.requireUser, async (req, res) => {
   const ability = await abilityModel.abilityOf(req.user.id);
   res.set('Cache-Control', 'no-store').json({

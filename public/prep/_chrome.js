@@ -27,7 +27,10 @@ const PrepChrome = {
       feature: 'selfStudy', lockedHref: '/prep/mua-code/?locked=self-study',
       lockedHint: 'Self-study opens from the Plus plan' },
     { key: 'codes',    label: 'My codes',    icon: 'ticket', href: '/prep/code-cua-toi/' },
-    { key: 'progress', label: 'Progress',    icon: 'chart',   href: '/prep/#tien-do' },
+    /* "Progress" used to sit here, pointing at /prep/#tien-do. It was never a
+       page: it scrolled to a card partway down the home page, so two menu
+       entries took you to the same screen and the second one looked broken.
+       The home page IS the progress report now, so there is one entry. */
     { key: 'account',  label: 'Profile',     icon: 'user',    href: '/prep/tai-khoan/' }
   ],
 

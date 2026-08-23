@@ -815,6 +815,42 @@
     'I don\'t know': 'Chưa biết',
     'Go to my dashboard': 'Vào trang học của tôi',
 
+    /* ---- Trang chủ, sau khi gộp tab Tiến độ vào ---- */
+    'Practise a part': 'Luyện một phần',
+    'Sit a full paper': 'Làm một bài đầy đủ',
+    'Where you stand': 'Bạn đang ở đâu',
+    'not measured': 'chưa đo',
+    'Studied': 'Đã học',
+    'Day streak': 'Ngày liên tiếp',
+    'Accuracy': 'Độ chính xác',
+    'Time on task': 'Thời gian học',
+    'Full papers': 'Bài đầy đủ',
+    'Part practice': 'Luyện theo phần',
+    'Revision': 'Ôn tập',
+    'Marks, paper by paper': 'Điểm từng bài đã làm',
+    'No paper has been handed in yet. Once one is, every sitting appears here in order, so you can see whether the line is going up.':
+      'Chưa nộp bài nào. Nộp rồi thì mỗi lần làm sẽ hiện ở đây theo thứ tự, để bạn thấy đường điểm có đi lên không.',
+    'Every part of the paper': 'Từng phần của đề',
+    'Practise one': 'Luyện một phần',
+    'What to do next': 'Việc nên làm tiếp',
+    'Three things, chosen from the numbers above.': 'Ba việc, chọn theo đúng các con số ở trên.',
+    'Ability by skill': 'Năng lực theo kỹ năng',
+    'How accurate you are': 'Bạn làm đúng bao nhiêu',
+    'Kept apart, because a drill is retryable and a paper is not.':
+      'Tách riêng, vì luyện lẻ thì làm lại được còn bài thi thì không.',
+    'Nothing has been marked yet.': 'Chưa có gì được chấm.',
+    'Need more practice?': 'Cần luyện thêm?',
+    'Three time-limited plans: 1, 3 or 6 months.': 'Ba gói có thời hạn: 1, 3 hoặc 6 tháng.',
+    'Buy more codes': 'Mua thêm mã',
+    'Your tests': 'Bài của bạn',
+    'See all': 'Xem tất cả',
+    'You have not unlocked any tests yet': 'Bạn chưa mở bài nào',
+    'Enter an unlock code': 'Nhập mã mở khóa',
+    'Browse the library': 'Xem thư viện',
+    'Verify your email to protect your account': 'Xác thực email để bảo vệ tài khoản',
+    'Open the email and follow the verification link, or have it sent again.':
+      'Mở email rồi bấm vào liên kết xác thực, hoặc yêu cầu gửi lại.',
+
     /* ---- Luyện thi theo phần (block 4) ---- */
     'Practise one part at a time': 'Luyện từng phần một',
     'Six questions, about ten minutes, marked the moment you finish. What you score here moves your progress.':

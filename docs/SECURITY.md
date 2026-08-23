@@ -362,6 +362,7 @@ guard đăng nhập, 8 route còn lại là danh sách ở mục 3.
 | PATCH | `/api/me` | `requireUser` + `csrfGuard` | yes |
 | GET | `/api/me/ability` | `requireUser` | n/a (read) |
 | POST | `/api/me/password` | `requireUser` + `csrfGuard` | yes |
+| GET | `/api/me/report` | `requireUser` | n/a (read) |
 | GET | `/api/placement` | `requireUser` | n/a (read) |
 | POST | `/api/placement/answers` | `requireUser` + `csrfGuard` | yes |
 | POST | `/api/placement/start` | `requireUser` + `csrfGuard` | yes |

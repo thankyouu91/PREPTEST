@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Home · VPET Prep</title>
-  <meta name="description" content="The student dashboard: unlocked tests, how ready you are, your codes and recent activity.">
+  <title>Trang chủ · VPET Prep</title>
+  <meta name="description" content="Tiến độ, thời gian học và việc nên làm tiếp, trên một màn hình.">
   <meta name="theme-color" content="#1c3d8f">
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <link rel="manifest" href="/manifest.webmanifest">
@@ -13,7 +13,6 @@
   <link rel="stylesheet" href="/tailwind-built.css">
   <style>body{font-family:'Plus Jakarta Sans',system-ui,sans-serif}</style>
   <script>
-    /* Boot: dark mode + tenant before paint (avoids a colour flash) */
     (function(){try{
       var t=localStorage.getItem('prep.theme');
       if(t==='dark'||(!t&&matchMedia('(prefers-color-scheme: dark)').matches))document.documentElement.classList.add('dark');
@@ -27,17 +26,17 @@
 <body class="bg-surface text-ink">
 <div id="app" data-active="home" class="min-h-[100dvh]">
   <main id="main">
-    <div class="max-w-shell mx-auto px-4 sm:px-6 lg:px-10">
+    <div class="max-w-shell mx-auto px-4 sm:px-6 lg:px-10 pb-16">
 
-      <!-- ===== Greeting + quick actions ===== -->
+      <!-- ===== Greeting ===== -->
       <section class="mt-8 lg:mt-10 flex flex-wrap items-end gap-4 rise">
         <div class="min-w-0">
           <p class="text-sm font-semibold text-muted" id="greet-time">Hello,</p>
           <h2 class="text-2xl sm:text-[28px] font-extrabold tracking-tight mt-0.5" id="greet-name">Student</h2>
         </div>
         <div class="ms-auto flex flex-wrap gap-2.5">
-          <a href="/prep/nhap-code/" class="btn btn-ghost btn-md">Enter code</a>
-          <a href="/prep/thu-vien/" class="btn btn-primary btn-md">Go to the library</a>
+          <a href="/prep/luyen/" class="btn btn-ghost btn-md">Practise a part</a>
+          <a href="/prep/thu-vien/" class="btn btn-primary btn-md">Sit a full paper</a>
         </div>
       </section>
 
@@ -56,28 +55,92 @@
         </span>
       </a>
 
+      <!-- ===== WHERE YOU STAND =====================================
+           The band, and the three facts about the work behind it. This is the
+           whole of what the separate "Progress" tab used to be: it was never a
+           page, only an anchor that scrolled to a card halfway down this one,
+           so the two menu entries went to the same place. -->
+      <section id="tien-do" class="card p-5 sm:p-6 mt-6 scroll-mt-24" aria-labelledby="h-stand">
+        <h3 id="h-stand" class="sr-only">Where you stand</h3>
+        <div class="grid gap-6 sm:grid-cols-[auto_minmax(0,1fr)] items-center">
+
+          <div class="flex items-center gap-5">
+            <div class="relative w-[92px] h-[92px] shrink-0">
+              <svg viewBox="0 0 104 104" class="w-full h-full -rotate-90" aria-hidden="true">
+                <circle cx="52" cy="52" r="45" fill="none" stroke-width="9" class="ring-track"/>
+                <circle id="ring-main" cx="52" cy="52" r="45" fill="none" stroke-width="9" stroke-linecap="round"
+                        class="ring-val" stroke-dasharray="282.7" stroke-dashoffset="282.7"/>
+              </svg>
+              <span class="absolute inset-0 flex flex-col items-center justify-center">
+                <b id="ring-num" class="text-xl font-extrabold leading-none">-</b>
+                <span id="ring-cap" class="text-[10.5px] font-semibold text-muted mt-1">not measured</span>
+              </span>
+            </div>
+            <p class="text-[13.5px] text-muted leading-relaxed max-w-[30ch]" id="progress-note">
+              Sit a paper and this becomes an estimate of what you can actually do.
+            </p>
+          </div>
+
+          <dl class="grid grid-cols-3 gap-4 sm:border-s sm:border-line sm:ps-6">
+            <div>
+              <dd class="text-2xl font-extrabold tracking-tight leading-none tabular-nums" id="kpi-time">-</dd>
+              <dt class="text-[11.5px] font-bold uppercase tracking-wider text-muted mt-1.5">Studied</dt>
+            </div>
+            <div>
+              <dd class="text-2xl font-extrabold tracking-tight leading-none tabular-nums" id="kpi-streak">-</dd>
+              <dt class="text-[11.5px] font-bold uppercase tracking-wider text-muted mt-1.5">Day streak</dt>
+            </div>
+            <div>
+              <dd class="text-2xl font-extrabold tracking-tight leading-none tabular-nums" id="kpi-acc">-</dd>
+              <dt class="text-[11.5px] font-bold uppercase tracking-wider text-muted mt-1.5">Accuracy</dt>
+            </div>
+          </dl>
+        </div>
+      </section>
+
       <div class="grid lg:grid-cols-12 gap-6 mt-6">
 
         <!-- =================== LEFT COLUMN =================== -->
         <div class="lg:col-span-8 grid gap-6 content-start">
 
-          <!-- Today's focus -->
-          <section aria-labelledby="h-focus">
-            <h3 id="h-focus" class="sr-only">Today's focus</h3>
-
-            <!-- loading -->
-            <div id="focus-loading" class="card p-6 sm:p-7" aria-hidden="true">
-              <div class="skeleton h-5 w-32 mb-5"></div>
-              <div class="skeleton h-6 w-16 mb-3.5"></div>
-              <div class="skeleton h-6 w-2/3 mb-3"></div>
-              <div class="skeleton h-4 w-1/2 mb-6"></div>
-              <div class="skeleton h-11 w-44 rounded-full"></div>
+          <!-- ---- Study time ---- -->
+          <section class="card p-5 sm:p-6" aria-labelledby="h-time">
+            <div class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+              <h3 id="h-time" class="font-extrabold tracking-tight">Time on task</h3>
+              <span id="time-sub" class="text-[13px] text-muted"></span>
             </div>
-
-            <div id="focus" hidden></div>
+            <div id="chart-time" class="mt-4 min-h-[132px]"></div>
+            <div class="flex flex-wrap items-center gap-x-4 gap-y-1.5 mt-3">
+              <span class="ch-key"><svg viewBox="0 0 10 10" aria-hidden="true"><rect width="10" height="10" rx="2.5" class="ch-exam"/></svg>Full papers</span>
+              <span class="ch-key"><svg viewBox="0 0 10 10" aria-hidden="true"><rect width="10" height="10" rx="2.5" class="ch-drill"/></svg>Part practice</span>
+              <span class="ch-key"><svg viewBox="0 0 10 10" aria-hidden="true"><rect width="10" height="10" rx="2.5" class="ch-revision"/></svg>Revision</span>
+              <span id="time-axis" class="ms-auto text-[11.5px] text-muted tabular-nums"></span>
+            </div>
           </section>
 
-          <!-- Your tests -->
+          <!-- ---- Marks over time ---- -->
+          <section class="card p-5 sm:p-6" aria-labelledby="h-marks">
+            <div class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+              <h3 id="h-marks" class="font-extrabold tracking-tight">Marks, paper by paper</h3>
+              <span id="marks-sub" class="text-[13px] text-muted"></span>
+            </div>
+            <div id="chart-marks" class="mt-4"></div>
+            <p id="marks-empty" hidden class="text-[13.5px] text-muted leading-relaxed mt-3 max-w-[56ch]">
+              No paper has been handed in yet. Once one is, every sitting appears here in order, so you can see whether the line is going up.
+            </p>
+            <div id="marks-axis" class="flex items-center justify-between text-[11.5px] text-muted tabular-nums mt-2"></div>
+          </section>
+
+          <!-- ---- The paper, part by part ---- -->
+          <section class="card p-5 sm:p-6" aria-labelledby="h-parts">
+            <div class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+              <h3 id="h-parts" class="font-extrabold tracking-tight">Every part of the paper</h3>
+              <a href="/prep/luyen/" class="ms-auto text-[13px] font-bold text-brand-strong hover:underline shrink-0">Practise one</a>
+            </div>
+            <div id="parts-meters" class="mt-4"></div>
+          </section>
+
+          <!-- ---- Your tests ---- -->
           <section aria-labelledby="h-mytests">
             <div class="flex items-baseline gap-3 mb-4">
               <h3 id="h-mytests" class="text-lg font-extrabold tracking-tight">Your tests</h3>
@@ -129,140 +192,67 @@
               </div>
             </div>
           </section>
-
-          <!-- Practice results (engine not wired in here yet → an honest empty state) -->
-          <section class="card p-6 sm:p-7" aria-labelledby="h-results">
-            <div class="flex items-baseline gap-3">
-              <h3 id="h-results" class="text-lg font-extrabold tracking-tight">Practice results</h3>
-              <span class="badge badge-hl ms-auto">Coming soon</span>
-            </div>
-            <div class="flex flex-col sm:flex-row items-center gap-6 mt-6">
-              <svg viewBox="0 0 150 96" class="w-36 shrink-0" aria-hidden="true" fill="none">
-                <path d="M8 88h134" stroke="var(--color-border)" stroke-width="2.5" stroke-linecap="round"/>
-                <rect x="22" y="56" width="20" height="28" rx="5" fill="color-mix(in srgb, var(--color-primary) 16%, transparent)"/>
-                <rect x="52" y="40" width="20" height="44" rx="5" fill="color-mix(in srgb, var(--color-primary) 24%, transparent)"/>
-                <rect x="82" y="26" width="20" height="58" rx="5" fill="color-mix(in srgb, var(--color-accent) 30%, transparent)"/>
-                <rect x="112" y="48" width="20" height="36" rx="5" fill="color-mix(in srgb, var(--color-text) 10%, transparent)"/>
-                <path d="M26 34c14-12 30 6 46-10s34 2 48-8" stroke="var(--color-accent)" stroke-width="3" stroke-linecap="round" stroke-dasharray="5 8" opacity=".65"/>
-              </svg>
-              <div class="text-center sm:text-left">
-                <h4 class="font-bold text-[16px]">No sittings yet</h4>
-                <p class="text-muted text-[14.5px] leading-relaxed mt-1.5 max-w-[52ch]">
-                  Part-by-part marks and the four-skill breakdown appear here after your first hand-in.
-                  The papers are still being written; we will tell you when one opens.
-                </p>
-              </div>
-            </div>
-          </section>
-
-          <!-- Codes + activity (kept in the left column so the two columns balance) -->
-          <div class="grid sm:grid-cols-2 gap-6">
-            <section class="card p-6" aria-labelledby="h-codes">
-              <div class="flex items-baseline gap-3">
-                <h3 id="h-codes" class="font-extrabold tracking-tight">Active codes</h3>
-                <a href="/prep/code-cua-toi/" class="ms-auto text-[13px] font-bold text-brand-strong hover:underline shrink-0">Manage</a>
-              </div>
-              <div id="codes-box" class="mt-4"></div>
-            </section>
-
-            <section class="card p-6" aria-labelledby="h-activity">
-              <h3 id="h-activity" class="font-extrabold tracking-tight">Recent activity</h3>
-              <div id="activity-box" class="mt-4"></div>
-            </section>
-          </div>
         </div>
 
         <!-- =================== RIGHT COLUMN =================== -->
         <div class="lg:col-span-4 grid gap-6 content-start">
 
-          <!-- Progress -->
-          <section id="tien-do" class="card p-6 scroll-mt-24" aria-labelledby="h-progress">
-            <h3 id="h-progress" class="font-extrabold tracking-tight">Your progress</h3>
-            <div class="flex items-center gap-6 mt-5">
-              <div class="relative w-[104px] h-[104px] shrink-0">
-                <svg viewBox="0 0 104 104" class="w-full h-full -rotate-90">
-                  <circle cx="52" cy="52" r="45" fill="none" stroke-width="9" class="ring-track"/>
-                  <circle id="ring-main" cx="52" cy="52" r="45" fill="none" stroke-width="9" stroke-linecap="round"
-                          class="ring-val" stroke-dasharray="282.7" stroke-dashoffset="282.7"/>
-                </svg>
-                <span class="absolute inset-0 flex flex-col items-center justify-center">
-                  <b id="ring-num" class="text-xl font-extrabold leading-none">—</b>
-                  <span id="ring-cap" class="text-[10.5px] font-semibold text-muted mt-1">not measured yet</span>
-                </span>
-              </div>
-              <p class="text-sm text-muted leading-relaxed" id="progress-note">
-                Sit a paper and this becomes an estimate of what you can actually do.
-              </p>
-            </div>
-            <div class="border-t border-line mt-5 pt-5">
-              <p class="text-[12.5px] font-bold uppercase tracking-wide text-muted mb-3.5">Ability by skill</p>
-              <div class="grid gap-3.5" id="skill-meters"></div>
-              <p class="text-[12px] text-muted leading-relaxed mt-4" id="ability-basis" hidden></p>
-            </div>
-          </section>
-
-          <!-- The plan: three things to do next, ranked by the ability model.
-               Sits directly under the progress card on purpose — the numbers
-               above are only worth showing if the next line says what to do
-               about them. -->
-          <section id="ke-hoach" class="card p-6 scroll-mt-24" aria-labelledby="h-plan">
+          <!-- The plan. Directly under the numbers on purpose: an estimate is
+               only worth showing if the next line says what to do about it. -->
+          <section id="ke-hoach" class="card p-5 sm:p-6 scroll-mt-24" aria-labelledby="h-plan">
             <h3 id="h-plan" class="font-extrabold tracking-tight">What to do next</h3>
-            <p class="text-[12.5px] text-muted mt-1">Three things, chosen from your progress above.</p>
+            <p class="text-[12.5px] text-muted mt-1">Three things, chosen from the numbers above.</p>
             <ul class="grid gap-3 mt-4" id="plan-list">
               <li class="skeleton h-12 w-full rounded-xl"></li>
             </ul>
           </section>
 
-          <!-- Next steps (a checklist built from the account's real state) -->
-          <section class="card p-6" aria-labelledby="h-steps">
-            <div class="flex items-baseline gap-3">
-              <h3 id="h-steps" class="font-extrabold tracking-tight">Next steps</h3>
-              <span id="steps-count" class="ms-auto text-[13px] font-bold text-muted"></span>
-            </div>
-            <div class="meter mt-3.5"><i id="steps-bar"></i></div>
-            <ul class="grid gap-1 mt-4" id="steps-list"></ul>
+          <!-- ---- Four skills ---- -->
+          <section class="card p-5 sm:p-6" aria-labelledby="h-skills">
+            <h3 id="h-skills" class="font-extrabold tracking-tight">Ability by skill</h3>
+            <div id="skill-meters" class="mt-4"></div>
+            <p class="text-[12px] text-muted leading-relaxed mt-4" id="ability-basis" hidden></p>
+          </section>
+
+          <!-- ---- Accuracy by kind of work ---- -->
+          <section class="card p-5 sm:p-6" aria-labelledby="h-quality">
+            <h3 id="h-quality" class="font-extrabold tracking-tight">How accurate you are</h3>
+            <p class="text-[12.5px] text-muted mt-1">Kept apart, because a drill is retryable and a paper is not.</p>
+            <div id="quality-meters" class="mt-4"></div>
+            <p id="quality-empty" hidden class="text-[13.5px] text-muted leading-relaxed mt-2">Nothing has been marked yet.</p>
           </section>
 
           <!-- Buy-more-codes call to action -->
-          <section class="panel-brand rounded-2xl p-6 text-white shadow-soft-lg relative overflow-hidden" aria-labelledby="h-buy">
+          <section class="panel-brand rounded-2xl p-5 text-white shadow-soft-lg relative overflow-hidden" aria-labelledby="h-buy">
             <span class="absolute -right-7 -bottom-8 opacity-15 pointer-events-none" aria-hidden="true">
-              <svg viewBox="0 0 24 24" class="w-40 h-40" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M2 9.5a2.5 2.5 0 0 1 0 5V17a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2.5a2.5 2.5 0 0 1 0-5V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z"/></svg>
+              <svg viewBox="0 0 24 24" class="w-32 h-32" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M2 9.5a2.5 2.5 0 0 1 0 5V17a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2.5a2.5 2.5 0 0 1 0-5V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z"/></svg>
             </span>
-            <h3 id="h-buy" class="font-extrabold tracking-tight text-lg">Need more practice?</h3>
-            <p class="text-sm leading-relaxed mt-1.5 text-white/85 max-w-[34ch]">Three time-limited plans: 1, 3 or 6 months. Activate a code and you are practising straight away.</p>
-            <a href="/prep/mua-code/" class="btn btn-on-brand btn-md mt-5">Buy more codes</a>
+            <h3 id="h-buy" class="font-extrabold tracking-tight">Need more practice?</h3>
+            <p class="text-[13.5px] leading-relaxed mt-1.5 text-white/85 max-w-[32ch]">Three time-limited plans: 1, 3 or 6 months.</p>
+            <a href="/prep/mua-code/" class="btn btn-on-brand btn-sm mt-4">Buy more codes</a>
           </section>
         </div>
       </div>
-
-      <!-- ===== Explore by exam ===== -->
-      <section class="mt-12 mb-4" aria-labelledby="h-explore">
-        <div class="flex items-baseline gap-3 mb-4">
-          <h3 id="h-explore" class="text-lg font-extrabold tracking-tight">Explore by exam</h3>
-          <span id="explore-note" class="text-sm font-semibold text-muted"></span>
-        </div>
-        <div id="family-grid" class="grid grid-cols-2 md:grid-cols-3 gap-4"></div>
-      </section>
     </div>
   </main>
 </div>
 
 <script src="/prep/_mock.js"></script>
 <script src="/prep/_chrome.js"></script>
+<script src="/prep/_charts.js"></script>
 <script>
   /* The real guard is on the server (studentPage); boot() is the second layer */
   PREP.boot({ auth: true }).then(() => {
-    PrepChrome.mount({ title: 'Home' });
+    PrepChrome.mount({ title: PREP.t('Home', 'Trang chủ') });
 
     const s = PrepState.load();
     const user = s.user;
-    const codes = (s.myCodes || []).slice();
-    const seen = s.seenTestIds || [];
     let mine = [];                  // unlocked tests - not computable until the catalogue is in
 
     /* ---------- Greeting ---------- */
     const h = new Date().getHours();
-    PREP.qs('#greet-time').textContent = h < 11 ? 'Good morning,' : h < 18 ? 'Good afternoon,' : 'Good evening,';
+    PREP.qs('#greet-time').textContent = h < 11 ? PREP.t('Good morning,', 'Chào buổi sáng,')
+      : h < 18 ? PREP.t('Good afternoon,', 'Chào buổi chiều,') : PREP.t('Good evening,', 'Chào buổi tối,');
     PREP.qs('#greet-name').textContent = user.name;
     if (!user.verified) PREP.qs('#verify-nudge').removeAttribute('hidden');
 
@@ -281,86 +271,260 @@
           '<span class="inline-flex items-center gap-1.5">' + PREP.icon('clock', 'w-4 h-4') + PREP.t(t.durationMin + ' min', t.durationMin + ' phút') + '</span>' +
         '</p>' +
         '<a href="/prep/bai-thi/' + t.id + '/" class="btn btn-soft btn-md mt-auto w-full">' +
-          PREP.icon('play', 'w-4 h-4') + 'Start preparing</a>' +
+          PREP.icon('play', 'w-4 h-4') + PREP.t('Start preparing', 'Bắt đầu ôn') + '</a>' +
       '</article>';
     }
 
-    /* ---------- Today's focus ----------
-       Prefer an unlocked test whose structure you have NOT looked at yet; once you
-       have seen them all, fall back to the first. */
-    function renderFocus() {
-      const box = PREP.qs('#focus');
-      if (!mine.length) {
-        // Nothing unlocked → send them straight to the code form
-        box.innerHTML =
-          '<div class="panel-brand rounded-2xl p-6 sm:p-8 text-white shadow-soft-lg relative overflow-hidden">' +
-            '<span class="absolute -right-10 -top-12 opacity-10 pointer-events-none" aria-hidden="true">' +
-              '<svg viewBox="0 0 24 24" class="w-56 h-56" fill="none" stroke="currentColor" stroke-width="1"><rect width="18" height="11" x="3" y="11" rx="2.5"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>' +
-            '</span>' +
-            '<p class="text-[12.5px] font-bold uppercase tracking-wide text-white/70">Start here</p>' +
-            '<h3 class="text-2xl font-extrabold tracking-tight mt-2 max-w-[24ch]">Unlock your first test</h3>' +
-            '<p class="text-white/85 text-[15px] leading-relaxed mt-2 max-w-[46ch]">Got a code from your school or centre? Enter it and it works immediately. If not, have a look at the price list.</p>' +
-            '<div class="flex flex-wrap gap-2.5 mt-6">' +
-              '<a href="/prep/nhap-code/" class="btn btn-on-brand btn-lg">Enter code</a>' +
-              '<a href="/prep/mua-code/" class="btn btn-outline-brand btn-lg">See the price list</a>' +
-            '</div>' +
-          '</div>';
-        return;
-      }
-      const t = mine.find(x => !seen.includes(x.id)) || mine[0];
-      const fam = PREP.family(t.familyId);
-      const totalQ = PREP.itemCount(t);
-      const isNew = !seen.includes(t.id);
-      box.innerHTML =
-        '<div class="card p-6 sm:p-7 relative overflow-hidden">' +
-          '<span class="absolute inset-y-0 left-0 w-1.5 bg-accent" aria-hidden="true"></span>' +
-          '<div class="flex items-baseline gap-3">' +
-            '<p class="text-[12.5px] font-bold uppercase tracking-wide text-muted">Today\'s focus</p>' +
-            '<span class="badge badge-ok ms-auto">Unlocked</span>' +
-          '</div>' +
-          '<div class="flex items-center gap-2 mt-4">' +
-            '<span class="exam-chip" data-family="' + fam.id + '">' + fam.name + '</span>' +
-            '<span class="badge badge-muted">' + t.level + '</span>' +
-            (t.comingSoon ? '<span class="badge badge-hl">Paper coming soon</span>' : '') +
-          '</div>' +
-          '<h3 class="text-xl sm:text-2xl font-extrabold tracking-tight mt-3">' + PREP.esc(t.title) + '</h3>' +
-          '<p class="text-muted text-[15px] leading-relaxed mt-2 max-w-[52ch]">' +
-            (isNew
-              ? 'You have not looked at this test\'s structure yet. Knowing the parts, the timing and the question types in advance is what stops the real room feeling strange.'
-              : 'Go back over the structure and the instructions before the paper opens.') +
-          '</p>' +
-          '<p class="flex flex-wrap items-center gap-x-5 gap-y-2 text-[13.5px] font-semibold text-muted mt-4">' +
-            '<span class="inline-flex items-center gap-1.5">' + PREP.icon('layers', 'w-4 h-4') + PREP.t(t.sections.length + ' parts', t.sections.length + ' phần') + '</span>' +
-            '<span class="inline-flex items-center gap-1.5">' + PREP.icon('clock', 'w-4 h-4') + PREP.t(t.durationMin + ' min', t.durationMin + ' phút') + '</span>' +
-            (totalQ ? '<span class="inline-flex items-center gap-1.5">' + PREP.icon('list', 'w-4 h-4') + PREP.t(totalQ + ' items', totalQ + ' câu') + '</span>' : '') +
-          '</p>' +
-          '<div class="flex flex-wrap gap-2.5 mt-6">' +
-            '<a href="/prep/bai-thi/' + t.id + '/" class="btn btn-primary btn-lg">' + PREP.icon('play', 'w-5 h-5') + 'See the structure</a>' +
-            '<a href="/prep/thu-vien/?family=' + fam.id + '" class="btn btn-ghost btn-lg">' + PREP.t('Other ' + fam.name + ' tests', 'Bài ' + fam.name + ' khác') + '</a>' +
-          '</div>' +
-        '</div>';
+    /* ================= THE REPORT =================
+       One request for everything about the WORK, one for the estimate, one for
+       the plan. Three rather than one on purpose: each paints its own panel and
+       fails on its own, and a dashboard that goes blank because a single
+       endpoint is down is worse than one panel reading "not measured yet". */
+
+    const SKILLS = [['listening', 'Listening', 'Nghe'], ['reading', 'Reading', 'Đọc'],
+                    ['writing', 'Writing', 'Viết'], ['speaking', 'Speaking', 'Nói']];
+    const PARTS = ['A','B','C','D','E','F','G','H','I','J'];
+    const SOURCE = {
+      exam:      ['Full papers',   'Bài đầy đủ'],
+      drill:     ['Part practice', 'Luyện theo phần'],
+      revision:  ['Revision',      'Ôn tập'],
+      placement: ['Placement',     'Xếp lớp']
+    };
+
+    /** '23/8' - short enough for an axis, unambiguous for a Vietnamese reader. */
+    function shortDay(iso) {
+      const p = String(iso).split('-');
+      return p.length === 3 ? Number(p[2]) + '/' + Number(p[1]) : iso;
     }
 
-    /* ---------- Load the real catalogue, then build everything that hangs off it ----------
-       Catalogue: GET /api/catalog. Personal progress still lives in localStorage.
-       // TODO(backend): fold into GET /api/me/dashboard once the student API has it */
+    /* ---------- Time on task ---------- */
+    function paintTime(rep) {
+      const days = rep.days || [];
+      PrepChart.bars(PREP.qs('#chart-time'), days, ['exam', 'drill', 'revision', 'placement'], {
+        floor: 30,
+        label: PREP.t(
+          'Minutes studied each day over the last ' + rep.windowDays + ' days',
+          'Số phút học mỗi ngày trong ' + rep.windowDays + ' ngày qua')
+      });
+
+      const w = rep.window || {};
+      const hrs = w.hours >= 1
+        ? PREP.t(w.hours + ' hours', w.hours + ' giờ')
+        : PREP.t(w.minutes + ' minutes', w.minutes + ' phút');
+      PREP.qs('#time-sub').textContent = PREP.t(
+        hrs + ' across ' + w.activeDays + ' days',
+        hrs + ' trong ' + w.activeDays + ' ngày');
+
+      if (days.length) {
+        PREP.qs('#time-axis').textContent =
+          shortDay(days[0].day) + '  ' + String.fromCharCode(8594) + '  ' + shortDay(days[days.length - 1].day);
+      }
+
+      /* The two header numbers that come from the work rather than the model. */
+      PREP.qs('#kpi-time').textContent = w.hours >= 1 ? w.hours + 'h' : (w.minutes || 0) + 'm';
+      PREP.qs('#kpi-streak').textContent = rep.streak || 0;
+      PREP.qs('#kpi-acc').textContent = rep.totals && rep.totals.accuracy !== null
+        ? rep.totals.accuracy + '%' : '-';
+    }
+
+    /* ---------- Marks, paper by paper ---------- */
+    function paintMarks(rep) {
+      const sits = (rep.sittings || []).filter(x => x.overall !== null);
+      const host = PREP.qs('#chart-marks');
+      const empty = PREP.qs('#marks-empty');
+      const axis = PREP.qs('#marks-axis');
+
+      if (!sits.length) {
+        host.innerHTML = '';
+        empty.removeAttribute('hidden');
+        axis.innerHTML = '';
+        PREP.qs('#marks-sub').textContent = '';
+        return;
+      }
+      empty.setAttribute('hidden', '');
+      PrepChart.line(host, sits.map(x => ({ v: x.overall, pending: x.pending })), {
+        max: 10, target: 8,
+        label: PREP.t('Score out of ten for each paper handed in, oldest first',
+                      'Điểm trên thang 10 của từng bài đã nộp, cũ trước')
+      });
+
+      const first = sits[0], last = sits[sits.length - 1];
+      /* One date when every sitting fell on the same day, which is what a
+         first afternoon of practice looks like. "23/8 ... 23/8" reads as a
+         rendering fault rather than as a fact about the data. */
+      axis.innerHTML = first.day === last.day
+        ? '<span>' + PREP.esc(shortDay(first.day)) + '</span>'
+        : '<span>' + PREP.esc(shortDay(first.day)) + '</span>' +
+          '<span>' + PREP.esc(shortDay(last.day)) + '</span>';
+
+      /* The one sentence somebody actually wants off this chart. Only claimed
+         with at least two points, because "up 2.5" from a single sitting is a
+         comparison with nothing. */
+      let sub = PREP.t(last.overall + '/10 most recently', 'Gần nhất ' + last.overall + '/10');
+      if (sits.length > 1) {
+        const d = Math.round((last.overall - first.overall) * 10) / 10;
+        sub += d === 0
+          ? PREP.t(', level with your first', ', bằng với bài đầu')
+          : (d > 0 ? PREP.t(', up ' + d + ' from your first', ', hơn bài đầu ' + d)
+                   : PREP.t(', down ' + Math.abs(d) + ' from your first', ', kém bài đầu ' + Math.abs(d)));
+      }
+      if (rep.sittingsTotal > rep.sittingsShown) {
+        sub += PREP.t(' (last ' + rep.sittingsShown + ' of ' + rep.sittingsTotal + ')',
+                      ' (' + rep.sittingsShown + ' bài gần nhất trong ' + rep.sittingsTotal + ')');
+      }
+      PREP.qs('#marks-sub').textContent = sub;
+    }
+
+    /* ---------- Accuracy by kind of work ---------- */
+    function paintQuality(rep) {
+      const rows = (rep.quality || []).filter(r => SOURCE[r.source]);
+      const box = PREP.qs('#quality-meters');
+      PREP.qs('#quality-empty').toggleAttribute('hidden', rows.length > 0);
+      PrepChart.meters(box, rows.map(r => ({
+        label: PREP.t(SOURCE[r.source][0], SOURCE[r.source][1]),
+        value: r.pct, max: 100,
+        text: r.pct === null ? '-' : r.pct + '%',
+        dim: r.source !== 'exam',
+        note: PREP.t(
+          r.items + ' items' + (r.trend === null ? ''
+            : ', ' + (r.trend >= 0 ? '+' : '') + r.trend + ' in the last four weeks'),
+          r.items + ' câu' + (r.trend === null ? ''
+            : ', ' + (r.trend >= 0 ? '+' : '') + r.trend + ' trong bốn tuần qua'))
+      })), { max: 100 });
+    }
+
+    /* ---------- The estimate: ring, skills, parts ---------- */
+    const C = 282.7;
+    function paintAbility(ab) {
+      const o = (ab && ab.overall) || null;
+      const ring = PREP.qs('#ring-num'), cap = PREP.qs('#ring-cap'), note = PREP.qs('#progress-note');
+
+      if (!o || !o.n) {
+        ring.textContent = '-';
+        cap.textContent = PREP.t('not measured', 'chưa đo');
+        note.textContent = PREP.t(
+          'Sit a paper and this becomes an estimate of what you can actually do, not a count of what you have unlocked.',
+          'Làm một đề đi rồi chỗ này sẽ là ước lượng năng lực thật của bạn, không phải đếm số bài đã mở.');
+      } else if (!o.confident) {
+        /* A number with no band, and a straight answer about why. "needed" is
+           the model's own estimate of how much more evidence it wants. */
+        ring.textContent = o.score.toFixed(1);
+        cap.textContent = PREP.t('provisional', 'tạm tính');
+        note.textContent = PREP.t(
+          'Around ' + o.score.toFixed(1) + '/10 so far, on too little evidence to put a band on it. About ' + o.needed + ' more marked items would settle it.',
+          'Khoảng ' + o.score.toFixed(1) + '/10, nhưng chưa đủ dữ liệu để xếp bậc. Cần thêm khoảng ' + o.needed + ' câu đã chấm nữa.');
+      } else {
+        ring.textContent = o.score.toFixed(1);
+        cap.textContent = o.band || PREP.t('below B1', 'dưới B1');
+        note.textContent = PREP.t(
+          (o.band || 'Below B1') + ', around ' + o.score.toFixed(1) + '/10 (likely between ' + o.low.toFixed(1) + ' and ' + o.high.toFixed(1) + '). Recent work counts for more than old work.',
+          (o.band || 'Dưới B1') + ', khoảng ' + o.score.toFixed(1) + '/10 (nhiều khả năng trong khoảng ' + o.low.toFixed(1) + '-' + o.high.toFixed(1) + '). Bài làm gần đây được tính nặng hơn bài cũ.');
+      }
+      requestAnimationFrame(() => {
+        const frac = o && o.n ? Math.max(0, Math.min(1, o.score / 10)) : 0;
+        PREP.qs('#ring-main').setAttribute('stroke-dashoffset', String(C * (1 - frac)));
+      });
+
+      /* No events for a skill is not zero ability, it is no information, and an
+         empty bar reading 0 says the opposite of what is true. */
+      const skills = (ab && ab.skills) || {};
+      PrepChart.meters(PREP.qs('#skill-meters'), SKILLS.map(([k, en, vi]) => {
+        const x = skills[k];
+        return {
+          label: PREP.t(en, vi),
+          value: !x || !x.n ? null : x.score,
+          dim: !!x && !x.confident,
+          text: !x || !x.n ? PREP.t('no data', 'chưa có')
+            : x.score.toFixed(1) + (x.confident ? '' : '*')
+        };
+      }), { max: 10 });
+
+      const parts = (ab && ab.parts) || {};
+      PrepChart.meters(PREP.qs('#parts-meters'), PARTS.map(p => {
+        const x = parts[p];
+        return {
+          label: 'Part ' + p,
+          value: !x || !x.n ? null : x.score,
+          dim: !!x && !x.confident,
+          text: !x || !x.n ? PREP.t('no data', 'chưa có')
+            : x.score.toFixed(1) + (x.confident ? '' : '*')
+        };
+      }), { max: 10 });
+
+      const basis = PREP.qs('#ability-basis');
+      if (ab && ab.events) {
+        basis.textContent = PREP.t(
+          'From ' + ab.events + ' marked items. Each counts half as much every ' + ab.halfLifeDays + ' days. * means provisional.',
+          'Dựa trên ' + ab.events + ' câu đã chấm. Mỗi câu giảm một nửa trọng số sau mỗi ' + ab.halfLifeDays + ' ngày. Dấu * là tạm tính.');
+        basis.removeAttribute('hidden');
+      }
+    }
+
+    PrepApi.get('/api/me/report').then(res => {
+      if (!res.ok) return;
+      paintTime(res.data); paintMarks(res.data); paintQuality(res.data);
+    });
+    PrepApi.get('/api/me/ability').then(res => paintAbility(res.ok ? res.data : null));
+
+    /* The plan. Loaded separately rather than derived in the browser: the
+       ranking mixes parts, grammar topics and whole skills, and a second
+       implementation of that in JavaScript is a second thing to disagree with
+       server/plan.js. */
+    PrepApi.get('/api/plan').then(res => {
+      const box = PREP.qs('#plan-list');
+      if (!box) return;
+      const rows = (res.ok && res.data.plan) || [];
+      if (!rows.length) {
+        box.innerHTML = '<li class="text-[13.5px] text-muted">' +
+          PREP.esc(PREP.t('Sit a paper and a plan appears here.',
+                          'Làm một bài là kế hoạch sẽ hiện ở đây.')) + '</li>';
+        return;
+      }
+      box.innerHTML = rows.map((x, i) =>
+        '<li class="border-b border-line last:border-0 pb-3 last:pb-0">' +
+          '<a href="' + PREP.esc(x.href) + '" class="flex items-start gap-3 group">' +
+            '<span class="w-6 h-6 rounded-full bg-brand-soft text-brand-strong shrink-0 ' +
+              'inline-flex items-center justify-center text-[12px] font-extrabold mt-0.5">' + (i + 1) + '</span>' +
+            '<span class="min-w-0">' +
+              '<b class="block text-[14px] leading-snug group-hover:underline">' +
+                PREP.esc(PREP.t(x.titleEn, x.titleVi)) + '</b>' +
+              '<span class="block text-[12.5px] text-muted mt-0.5">' +
+                PREP.esc(PREP.t(x.whyEn, x.whyVi)) +
+                (x.score === null ? '' : ' · ' + x.score + '/10') + '</span>' +
+            '</span>' +
+          '</a>' +
+          /* The tip goes behind a disclosure, under the item it belongs to. A
+             tip shown before somebody has met the problem is a tip they scroll
+             past. */
+          (x.tips && x.tips.length
+            ? '<details class="mt-2 ps-9">' +
+                '<summary class="text-[12.5px] font-semibold cursor-pointer">' +
+                  PREP.esc(PREP.t('How to do this faster', 'Mẹo làm nhanh hơn')) + '</summary>' +
+                x.tips.map(t => '<p class="text-[12.5px] leading-relaxed mt-2 text-muted">' +
+                  PREP.esc(PREP.t(t.en, t.vi)) + '</p>').join('') +
+              '</details>'
+            : '') +
+        '</li>').join('');
+    });
+
+    /* ---------- The catalogue, and the papers this account can open ---------- */
     PREP.loadCatalog().then(res => {
       PREP.catalogWarning(res);
       mine = PrepState.unlockedTests();
 
-      PREP.qs('#focus-loading').classList.add('hidden');
-      PREP.qs('#focus').removeAttribute('hidden');
-      renderFocus();
-
       PREP.qs('#mytests-loading').classList.add('hidden');
       if (mine.length) {
         const shown = mine.slice(0, 4);
-        // Two-column grid: an odd count is filled with an unlock-more card, not a hole
-        const filler = shown.length % 2 === 1
+        const locked = PREP.tests.length - mine.length;
+        /* Two-column grid: an odd count is filled with an unlock-more card
+           rather than a hole. Only when there IS something more to unlock:
+           this card used to appear regardless and invite the learner to open
+           "0 more tests", which is an advert for nothing. */
+        const filler = shown.length % 2 === 1 && locked > 0
           ? '<a href="/prep/thu-vien/" class="card card-locked card-hover p-5 flex flex-col items-center justify-center text-center gap-2.5 min-h-[168px]">' +
               '<span class="w-11 h-11 rounded-full bg-brand-soft text-brand-strong inline-flex items-center justify-center">' + PREP.icon('plus', 'w-5 h-5') + '</span>' +
-              '<b class="font-bold text-[15px]">Unlock more tests</b>' +
-              '<span class="text-[13px] text-muted font-medium max-w-[24ch]">' + PREP.t((PREP.tests.length - mine.length) + ' more tests in the library are waiting for you', 'còn ' + (PREP.tests.length - mine.length) + ' bài nữa trong thư viện đang chờ bạn') + '</span>' +
+              '<b class="font-bold text-[15px]">' + PREP.t('Unlock more tests', 'Mở thêm bài') + '</b>' +
+              '<span class="text-[13px] text-muted font-medium max-w-[24ch]">' + PREP.t(locked + ' more tests in the library are waiting for you', 'còn ' + locked + ' bài nữa trong thư viện đang chờ bạn') + '</span>' +
             '</a>'
           : '';
         PREP.qs('#mytests-grid').innerHTML = shown.map(testCard).join('') + filler;
@@ -369,224 +533,6 @@
       } else {
         PREP.qs('#mytests-empty').removeAttribute('hidden');
       }
-
-      /* ---------- Progress: what they can do, not what they have bought ----------
-         This panel used to read "5/8 tests unlocked" under the heading "Your
-         progress", with four bars counting how many unlocked papers happened to
-         contain each skill. Both are facts about a shopping basket: somebody who
-         bought five papers and sat none of them saw a healthy dashboard.
-
-         It now reads GET /api/me/ability, which is one estimate over every
-         graded thing the learner has done anywhere on the platform — exam
-         items, drills, vocabulary, writing, speaking. See server/ability.js.
-
-         The band is deliberately absent until the estimate is confident enough
-         to state one. A platform that calls somebody B2 after five questions is
-         going to be contradicted on exam day, and the learner will remember
-         which of the two was lying. */
-      const C = 282.7;
-      const SKILLS = [['listening','Listening','Nghe','headphones'],['reading','Reading','Đọc','book'],
-                      ['writing','Writing','Viết','pen'],['speaking','Speaking','Nói','mic']];
-
-      function paintAbility(ab) {
-        const o = (ab && ab.overall) || null;
-        const ring = PREP.qs('#ring-num'), cap = PREP.qs('#ring-cap'), note = PREP.qs('#progress-note');
-
-        if (!o || !o.n) {
-          ring.textContent = '—';
-          cap.textContent = PREP.t('not measured yet', 'chưa đo');
-          note.textContent = PREP.t(
-            'Sit a paper and this becomes an estimate of what you can actually do — not a count of what you have unlocked.',
-            'Làm một đề đi rồi chỗ này sẽ là ước lượng năng lực thật của bạn, không phải đếm số bài đã mở.');
-        } else if (!o.confident) {
-          /* A number with no band, and a straight answer about why. "needed" is
-             the model's own estimate of how much more evidence it wants. */
-          ring.textContent = o.score.toFixed(1);
-          cap.textContent = PREP.t('provisional', 'tạm tính');
-          note.textContent = PREP.t(
-            'Around ' + o.score.toFixed(1) + '/10 so far, but on too little evidence to put a band on it. About ' + o.needed + ' more marked items would settle it.',
-            'Khoảng ' + o.score.toFixed(1) + '/10, nhưng chưa đủ dữ liệu để xếp bậc. Cần thêm khoảng ' + o.needed + ' câu đã chấm nữa.');
-        } else {
-          ring.textContent = o.score.toFixed(1);
-          cap.textContent = o.band || PREP.t('below B1', 'dưới B1');
-          note.textContent = PREP.t(
-            (o.band || 'Below B1') + ', around ' + o.score.toFixed(1) + '/10 (likely between ' + o.low.toFixed(1) + ' and ' + o.high.toFixed(1) + '). Recent work counts for more than old work.',
-            (o.band || 'Dưới B1') + ', khoảng ' + o.score.toFixed(1) + '/10 (nhiều khả năng trong khoảng ' + o.low.toFixed(1) + '–' + o.high.toFixed(1) + '). Bài làm gần đây được tính nặng hơn bài cũ.');
-        }
-        requestAnimationFrame(() => {
-          const frac = o && o.n ? Math.max(0, Math.min(1, o.score / 10)) : 0;
-          PREP.qs('#ring-main').setAttribute('stroke-dashoffset', String(C * (1 - frac)));
-        });
-
-        const skills = (ab && ab.skills) || {};
-        PREP.qs('#skill-meters').innerHTML = SKILLS.map(([k, en, vi, ic]) => {
-          const s = skills[k];
-          /* No events for a skill is not zero ability — it is no information,
-             and an empty bar reading 0 says the opposite of what is true. */
-          const label = !s || !s.n
-            ? PREP.t('no data', 'chưa có')
-            : s.confident ? s.score.toFixed(1) + '/10'
-              : s.score.toFixed(1) + PREP.t(' (provisional)', ' (tạm tính)');
-          return '<div>' +
-            '<div class="flex items-center justify-between text-[13px] font-semibold mb-1.5">' +
-              '<span class="inline-flex items-center gap-2 text-muted">' + PREP.icon(ic, 'w-4 h-4') + PREP.t(en, vi) + '</span>' +
-              '<span>' + label + '</span>' +
-            '</div>' +
-            '<div class="meter"><i data-w="' + (!s || !s.n ? 0 : Math.round(s.score * 10)) + '"></i></div>' +
-          '</div>';
-        }).join('');
-
-        const basis = PREP.qs('#ability-basis');
-        if (ab && ab.events) {
-          basis.textContent = PREP.t(
-            'Based on ' + ab.events + ' marked items. Each one counts half as much every ' + ab.halfLifeDays + ' days.',
-            'Dựa trên ' + ab.events + ' câu đã chấm. Mỗi câu giảm một nửa trọng số sau mỗi ' + ab.halfLifeDays + ' ngày.');
-          basis.removeAttribute('hidden');
-        }
-        PREP.qsa('.meter > i[data-w]').forEach(el => {
-          requestAnimationFrame(() => el.style.setProperty('--w', el.getAttribute('data-w') + '%'));
-        });
-      }
-
-      /* Its own request, and its own failure. A dashboard that goes blank
-         because one panel's endpoint is down is worse than a dashboard with one
-         panel reading "not measured yet". PrepApi.get never rejects — it
-         resolves with ok:false — so the empty state is reached by the same path
-         whether the server said no or the network did. */
-      PrepApi.get('/api/me/ability').then(res => paintAbility(res.ok ? res.data : null));
-
-      /* The plan. Loaded separately from the ability call rather than derived
-         from it in the browser: the ranking mixes parts, grammar topics and
-         whole skills, and a second implementation of that in JavaScript is a
-         second thing to disagree with server/plan.js. */
-      PrepApi.get('/api/plan').then(res => {
-        const box = PREP.qs('#plan-list');
-        if (!box) return;
-        const rows = (res.ok && res.data.plan) || [];
-        if (!rows.length) {
-          box.innerHTML = '<li class="text-[13.5px] text-muted">' +
-            PREP.esc(PREP.t('Sit a paper and a plan appears here.',
-                            'Làm một bài là kế hoạch sẽ hiện ở đây.')) + '</li>';
-          return;
-        }
-        box.innerHTML = rows.map((x, i) =>
-          '<li class="border-b border-line last:border-0 pb-3 last:pb-0">' +
-            '<a href="' + PREP.esc(x.href) + '" class="flex items-start gap-3 group">' +
-              '<span class="w-6 h-6 rounded-full bg-brand-soft text-brand-strong shrink-0 ' +
-                'inline-flex items-center justify-center text-[12px] font-extrabold mt-0.5">' + (i + 1) + '</span>' +
-              '<span class="min-w-0">' +
-                '<b class="block text-[14px] leading-snug group-hover:underline">' +
-                  PREP.esc(PREP.t(x.titleEn, x.titleVi)) + '</b>' +
-                '<span class="block text-[12.5px] text-muted mt-0.5">' +
-                  PREP.esc(PREP.t(x.whyEn, x.whyVi)) +
-                  (x.score === null ? '' : ' · ' + x.score + '/10') + '</span>' +
-              '</span>' +
-            '</a>' +
-            /* The tip goes behind a disclosure, and under the item it belongs
-               to. A tip shown before somebody has met the problem is a tip they
-               scroll past. */
-            (x.tips && x.tips.length
-              ? '<details class="mt-2 ps-9">' +
-                  '<summary class="text-[12.5px] font-semibold cursor-pointer">' +
-                    PREP.esc(PREP.t('How to do this faster', 'Mẹo làm nhanh hơn')) + '</summary>' +
-                  x.tips.map(t => '<p class="text-[12.5px] leading-relaxed mt-2 text-muted">' +
-                    PREP.esc(PREP.t(t.en, t.vi)) + '</p>').join('') +
-                '</details>'
-              : '') +
-          '</li>').join('');
-      });
-
-      /* ---------- Next steps (checklist) ---------- */
-      const steps = [
-        { done: true, label: 'Create an account', href: null },
-        { done: !!user.verified, label: 'Verify your email', href: '/prep/xac-thuc-email/' },
-        { done: (user.interests || []).length > 0, label: 'Choose the exams you care about', href: '/prep/tai-khoan/' },
-        { done: codes.length > 0, label: 'Activate your first code', href: '/prep/nhap-code/' },
-        { done: seen.length > 0, label: 'Look at one test\'s structure', href: '/prep/thu-vien/' }
-      ];
-      const doneN = steps.filter(x => x.done).length;
-      PREP.qs('#steps-count').textContent = doneN + '/' + steps.length;
-      PREP.qs('#steps-bar').setAttribute('data-w', Math.round(doneN / steps.length * 100));
-      PREP.qs('#steps-list').innerHTML = steps.map(x => {
-        const icon = x.done
-          ? '<span class="w-6 h-6 rounded-full shrink-0 inline-flex items-center justify-center badge-ok">' + PREP.icon('check', 'w-[14px] h-[14px]') + '</span>'
-          : '<span class="w-6 h-6 rounded-full border-2 border-line shrink-0"></span>';
-        const text = '<span class="text-[14.5px] font-semibold ' + (x.done ? 'text-muted line-through' : '') + '">' + x.label + '</span>';
-        const row = icon + text + (x.done || !x.href ? '' :
-          '<span class="ms-auto text-brand-strong shrink-0">' + PREP.icon('arrowRight', 'w-[18px] h-[18px]') + '</span>');
-        return x.done || !x.href
-          ? '<li class="flex items-center gap-3 py-2">' + row + '</li>'
-          : '<li><a href="' + x.href + '" class="flex items-center gap-3 py-2 rounded-lg transition hover:bg-brand-soft px-1.5 -mx-1.5">' + row + '</a></li>';
-      }).join('');
-
-      /* ---------- Active codes ---------- */
-      const activeCodes = codes
-        .filter(c => PREP.daysUntil(c.expiresAt) >= 0)
-        .sort((a, b) => PREP.daysUntil(a.expiresAt) - PREP.daysUntil(b.expiresAt));
-      PREP.qs('#codes-box').innerHTML = activeCodes.length
-        ? activeCodes.slice(0, 3).map(c => {
-            const left = PREP.daysUntil(c.expiresAt);
-            const warn = left <= 30;
-            return '<div class="flex items-center gap-3 py-2.5 border-b border-line last:border-0">' +
-              '<span class="w-9 h-9 rounded-xl bg-brand-soft text-brand-strong shrink-0 inline-flex items-center justify-center">' + PREP.icon('ticket', 'w-[18px] h-[18px]') + '</span>' +
-              '<span class="min-w-0 flex-1">' +
-                '<b class="block text-[14px] font-bold truncate">' + PREP.esc(PrepState.codeLabel(c)) + '</b>' +
-                '<span class="block text-[12.5px] text-muted font-medium">' + PREP.maskCode(c.code) + '</span>' +
-              '</span>' +
-              '<span class="badge shrink-0 ' + (warn ? 'badge-hl' : 'badge-muted') + '">' + PREP.t(left + ' days left', 'còn ' + left + ' ngày') + '</span>' +
-            '</div>';
-          }).join('')
-        : '<p class="text-[14px] text-muted leading-relaxed">No codes are active.</p>' +
-          '<a href="/prep/nhap-code/" class="btn btn-soft btn-md w-full mt-4">Enter code</a>';
-
-      /* ---------- Recent activity (from real codes and orders) ---------- */
-      const events = []
-        .concat(codes.map(c => ({
-          at: c.redeemedAt, icon: 'unlock',
-          text: 'Activated a code, unlocking ' + PrepState.codeLabel(c)
-        })))
-        .concat((s.orders || []).map(o => ({
-          at: o.at, icon: 'receipt', text: 'Mua ' + o.name + ' · ' + PREP.vnd(o.amount)
-        })))
-        .sort((a, b) => new Date(b.at) - new Date(a.at))
-        .slice(0, 4);
-      PREP.qs('#activity-box').innerHTML = events.length
-        ? '<ul class="grid gap-3.5">' + events.map(e =>
-            '<li class="flex gap-3">' +
-              '<span class="w-8 h-8 rounded-full bg-accent-soft text-accent-strong shrink-0 inline-flex items-center justify-center">' + PREP.icon(e.icon, 'w-4 h-4') + '</span>' +
-              '<span class="min-w-0">' +
-                '<span class="block text-[14px] font-semibold leading-snug">' + PREP.esc(e.text) + '</span>' +
-                '<span class="block text-[12.5px] text-muted font-medium mt-0.5">' + PREP.timeAgo(e.at) + '</span>' +
-              '</span>' +
-            '</li>').join('') + '</ul>'
-        : '<p class="text-[14px] text-muted leading-relaxed">Nothing has happened yet. Activating a code is your first milestone.</p>';
-
-      /* ---------- Explore by exam (the ones you follow come first) ---------- */
-      const interests = user.interests || [];
-      const fams = PREP.families.slice().sort((a, b) =>
-        (interests.includes(b.id) ? 1 : 0) - (interests.includes(a.id) ? 1 : 0));
-      PREP.qs('#explore-note').textContent = interests.length ? 'The exams you follow are listed first' : '';
-      PREP.qs('#family-grid').innerHTML = fams.map(f => {
-        const n = PREP.testsOf(f.id).length;
-        const openN = PREP.testsOf(f.id).filter(t => PrepState.isUnlocked(t)).length;
-        return '<a href="/prep/thu-vien/?family=' + f.id + '" class="card card-hover p-5 group">' +
-          '<div class="flex items-center gap-2">' +
-            '<span class="exam-chip" data-family="' + f.id + '">' + f.name + '</span>' +
-            (interests.includes(f.id) ? '<span class="badge badge-ok">Following</span>' : '') +
-          '</div>' +
-          '<p class="text-[13.5px] text-muted leading-relaxed mt-3 min-h-[40px]">' + PREP.esc(f.format) + '</p>' +
-          '<p class="flex items-center justify-between text-sm font-bold mt-3">' +
-            (n ? '<span>' + (openN ? PREP.t(openN + '/' + n + ' unlocked', 'đã mở ' + openN + '/' + n) : PREP.t(n + ' mock tests', n + ' đề thi thử')) + '</span>'
-               : '<span class="badge badge-hl">Coming soon</span>') +
-            '<span class="text-accent-strong opacity-0 group-hover:opacity-100 transition">' + PREP.icon('arrowRight', 'w-5 h-5') + '</span>' +
-          '</p>' +
-        '</a>';
-      }).join('');
-
-      /* Animate every meter bar once rendering is done */
-      PREP.qsa('.meter > i[data-w]').forEach(el => {
-        requestAnimationFrame(() => el.style.setProperty('--w', el.getAttribute('data-w') + '%'));
-      });
     });
   });
 </script>

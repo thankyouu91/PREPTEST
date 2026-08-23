@@ -348,6 +348,44 @@
   .pick-on { border-color: var(--color-brand); background: var(--color-brand-soft); }
   .pick-on .pick-key { background: var(--color-brand); color: #fff; }
 
+  /* ---- Biểu đồ trên trang chủ ----
+     Màu nằm ở đây chứ không nằm trong public/prep/_charts.js, nên biểu đồ tự
+     đi theo chế độ tối và theo bảng màu của từng tenant mà không cần biết hai
+     thứ đó tồn tại. Vẫn **một màu nhấn** cho cả trang: ba chuỗi dữ liệu là ba
+     độ đậm của cùng màu thương hiệu, không phải ba màu khác nhau. */
+  .chart { @apply block w-full h-auto; }
+  .ch-exam     { fill: var(--color-primary); }
+  .ch-drill    { fill: color-mix(in srgb, var(--color-primary) 58%, transparent); }
+  .ch-revision { fill: color-mix(in srgb, var(--color-primary) 30%, transparent); }
+  .ch-placement{ fill: color-mix(in srgb, var(--color-accent) 55%, transparent); }
+  /* Ngày không học: một vạch mảnh, không phải khoảng trống. Trống và không có
+     dữ liệu trông giống hệt nhau, mà nghĩa thì ngược nhau. */
+  .ch-empty    { fill: color-mix(in srgb, var(--color-text) 12%, transparent); }
+
+  .ch-line   { stroke: var(--color-primary); stroke-width: 2.2; stroke-linejoin: round; stroke-linecap: round; }
+  .ch-area   { fill: color-mix(in srgb, var(--color-primary) 12%, transparent); }
+  .ch-target { stroke: color-mix(in srgb, var(--color-text) 28%, transparent); stroke-width: 1.4; }
+  .ch-dot    { fill: var(--color-primary); }
+  /* Bài còn chờ chấm: rỗng ruột, để không đọc nhầm thành điểm đã chốt. */
+  .ch-dot-pending {
+    fill: var(--color-card);
+    stroke: var(--color-primary); stroke-width: 2;
+  }
+
+  /* Thanh ngang có nhãn: kỹ năng, từng phần, độ chính xác theo nguồn. */
+  .mtr { @apply grid items-center gap-x-3; grid-template-columns: minmax(0,1fr) 1fr auto; }
+  .mtr + .mtr { @apply mt-2.5; }
+  .mtr-name  { @apply text-[13px] font-semibold truncate; }
+  .mtr-track { @apply h-2 rounded-full overflow-hidden; background: color-mix(in srgb, var(--color-text) 9%, transparent); }
+  .mtr-fill  { @apply block h-full rounded-full; width: var(--w, 0%); background: var(--color-primary); transition: width .5s cubic-bezier(.16,1,.3,1); }
+  .mtr-dim   { background: color-mix(in srgb, var(--color-primary) 45%, transparent); }
+  .mtr-val   { @apply text-[13px] font-extrabold tabular-nums text-end; min-width: 3.2rem; }
+  .mtr-note  { @apply text-[11.5px] text-muted; grid-column: 2 / -1; }
+
+  /* Chú giải của biểu đồ: chấm vuông nhỏ, dùng chung ba lớp màu ở trên. */
+  .ch-key { @apply inline-flex items-center gap-1.5 text-[11.5px] font-semibold text-muted; }
+  .ch-key svg { @apply w-2.5 h-2.5 shrink-0; }
+
   /* ---- Luyện thi: mười phần của đề, A tới J ----
      Mười thẻ giống hệt nhau thì mắt không bám vào đâu được, nên chỉ có ĐÚNG
      hai thứ được phép khác: phần đang được gợi ý (viền trái màu thương hiệu)

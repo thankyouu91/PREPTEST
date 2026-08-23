@@ -70,6 +70,20 @@ const clampInt = (v, lo, hi, dflt) => {
   return Number.isFinite(n) ? Math.min(hi, Math.max(lo, n)) : dflt;
 };
 
+/**
+ * Why this part is on the list, in one word the interface can label.
+ *
+ * Four cases, not three. "Not measured" used to cover both "there is no data"
+ * and "there is data but not enough to be sure", which put the words
+ * `Not measured yet - 6.5/10` on one line: a claim and its own contradiction,
+ * side by side. Anybody reading that stops trusting both halves.
+ */
+function reasonFor(est) {
+  if (!est || !est.n) return 'notMeasured';     // nothing at all
+  if (!est.confident) return 'provisional';     // something, but not enough
+  return est.score < 5 ? 'weakest' : 'belowTarget';
+}
+
 /* ------------------------------ Choosing what ------------------------------ */
 
 /**
@@ -185,7 +199,7 @@ async function suggest(userId, weights, limit) {
     needed: est ? est.needed : null,
     /* Why this one, in the words the learner will read. A ranked list with no
        reason beside it is a list people ignore. */
-    reason: !est || !est.confident ? 'notMeasured' : (est.score < 5 ? 'weakest' : 'belowTarget'),
+    reason: reasonFor(est),
     /* Said out loud rather than discovered by pressing a button that fails. */
     available: have.get(part) || 0
   });
@@ -278,7 +292,7 @@ async function overview(userId, weights) {
       score: est ? est.score : null,
       confident: est ? est.confident : false,
       n: est ? est.n : 0,
-      reason: !est || !est.confident ? 'notMeasured' : (est.score < 5 ? 'weakest' : 'belowTarget'),
+      reason: reasonFor(est),
       /* 1-based so the screen can print it, null when not recommended. */
       rank: ranked.indexOf(part) >= 0 ? ranked.indexOf(part) + 1 : null
     };

@@ -116,6 +116,9 @@ function tipsFor(key) {
 
 const label = {
   notMeasured: ['Not measured yet', 'Chưa đo được'],
+  /* Distinct from notMeasured on purpose: this one has a score beside it, and
+     "Not measured yet - 6.5/10" is a sentence that argues with itself. */
+  provisional: ['Still an estimate', 'Vẫn là ước lượng'],
   weakest: ['Your weakest area', 'Chỗ bạn yếu nhất'],
   belowTarget: ['Below where you are aiming', 'Còn dưới mục tiêu']
 };
@@ -171,7 +174,8 @@ async function weekly(userId, partWeights) {
       titleVi: 'Ôn ' + t.nameVi,
       score: t.score,
       confident: t.confident,
-      reason: t.score === null ? 'notMeasured' : (t.score < 5 ? 'weakest' : 'belowTarget'),
+      reason: t.score === null ? 'notMeasured'
+        : (!t.confident ? 'provisional' : (t.score < 5 ? 'weakest' : 'belowTarget')),
       href: '/prep/on-tap/',
       /* Ranked as if it were a part of average weight. Grammar competes on the
          same scale rather than being bolted on at the end, but it cannot
