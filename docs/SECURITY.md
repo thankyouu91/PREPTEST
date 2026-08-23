@@ -356,6 +356,8 @@ guard đăng nhập, 8 route còn lại là danh sách ở mục 3.
 | GET | `/api/learn/grammar/:slug` | — | n/a (read) |
 | GET | `/api/learn/irregular-verbs` | — | n/a (read) |
 | GET | `/api/learn/linking-words` | — | n/a (read) |
+| GET | `/api/learn/practice` | `requireUser` | n/a (read) |
+| POST | `/api/learn/practice` | `requireUser` + `csrfGuard` | yes |
 | GET | `/api/learn/review` | `requireUser` | n/a (read) |
 | POST | `/api/learn/review` | `requireUser` + `csrfGuard` | yes |
 | GET | `/api/learn/vocab` | — | n/a (read) |

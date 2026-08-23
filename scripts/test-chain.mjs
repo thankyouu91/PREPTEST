@@ -296,10 +296,11 @@ try {
   /* Across every learner in the database, not just this one — the question is
      what writes into the report at all, and this account only visited three of
      the four places. The list below is `grep -n "source: '" server/*.js`:
-     marking.js, placement.js, drills.js, revision.js. It was wrong the first
-     time this ran — I had written `attempt` where the code says `exam` — which
-     is the check earning its place on its first execution. */
-  const known = ['exam', 'placement', 'drill', 'revision'];
+     marking.js, placement.js, drills.js, revision.js, learn-practice.js. It
+     was wrong the first time this ran — I had written `attempt` where the code
+     says `exam` — which is the check earning its place on its first execution,
+     and it earned it again when self-study practice added `learn`. */
+  const known = ['exam', 'placement', 'drill', 'revision', 'learn'];
   const all = await q.all('SELECT DISTINCT source FROM skill_events');
   const unknown = all.map(r => r.source).filter(s => !known.includes(s));
   ok(unknown.length === 0,

@@ -104,15 +104,21 @@
         <button type="button" id="clear" class="btn btn-ghost btn-md mt-6">Clear filter</button>
       </div>
     </div>
+
+      <!-- Active recall. The table above is a reference; this is the part that
+           actually moves anything. server/learn-practice.js marks it. -->
+      <section id="practice" class="card p-5 sm:p-6 mt-8"></section>
   </main>
 </div>
 
 <script src="/prep/_mock.js"></script>
 <script src="/prep/_chrome.js"></script>
 <script src="/prep/learn/_navscroll.js"></script>
+<script src="/prep/learn/_practice.js"></script>
 <script src="/prep/learn/_tts.js"></script>
 <script>
   PREP.boot({ auth: true }).then(() => {
+    PrepLearnPractice.mount(PREP.qs('#practice'), 'link');
     PrepChrome.mount({ title: 'Linking words' });
 
     const REG_LABEL = { spoken: 'Spoken', neutral: 'Neutral writing', academic: 'Academic' };

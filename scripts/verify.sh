@@ -246,6 +246,9 @@ node scripts/test-vocab.mjs || fail=1
 step "Self-study area (verbs, linking words, nine grammar groups, eleven pages)"
 node scripts/test-learn.mjs || fail=1
 
+step "Self-study practice (the browser does not decide whether it was right)"
+node scripts/test-learn-practice.mjs || fail=1
+
 step "Spaced repetition (SM-2 schedule, review queue)"
 node scripts/test-srs.mjs || fail=1
 

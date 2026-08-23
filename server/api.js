@@ -12,6 +12,7 @@ const { asyncRoutes } = require('./async-route');
 const { q, tx, nowISO, jparse, makeCode, audit } = require('./db');
 const A = require('./auth');
 const totp = require('./totp');
+const learnPractice = require('./learn-practice');
 const EXAM_FORMATS = require('./data/exam-formats');
 const storage = require('./storage');
 const PLANS = require('./data/plans');
@@ -2024,6 +2025,29 @@ router.get('/catalog', async (req, res) => {
 /* ==================== Self-study (public) ==================== */
 
 /** The irregular verb table. Searchable by V1, V2, V3 or the Vietnamese gloss. */
+/* ------------------------------------------------------------------ *
+ * Practice on the two reference pages
+ *
+ * The verb table and the linking-word table were lookup tables with nothing to
+ * do. server/learn-practice.js carries the reasoning, including why the
+ * browser posts the ANSWER rather than a verdict about it.
+ * ------------------------------------------------------------------ */
+router.get('/learn/practice', A.requireUser, async (req, res) => {
+  const kind = str(req.query.kind, 8);
+  if (!learnPractice.KINDS[kind]) return res.status(400).json({ error: 'Unknown kind of practice.' });
+  const level = LEVELS.includes(str(req.query.level, 2)) ? str(req.query.level, 2) : '';
+  res.set('Cache-Control', 'no-store')
+     .json({ items: await learnPractice.draw(kind, level, req.query.size) });
+});
+
+router.post('/learn/practice', A.requireUser, A.csrfGuard, async (req, res) => {
+  const b = req.body || {};
+  const out = await learnPractice.submit(req.user.id, str(b.kind, 8), b.roundId, b.answers);
+  if (out.error === 'bad-kind') return res.status(400).json({ error: 'Unknown kind of practice.' });
+  if (out.error === 'no-answers') return res.status(400).json({ error: 'No answers were sent.' });
+  res.json(out);
+});
+
 router.get('/learn/irregular-verbs', async (req, res) => {
   const level = LEVELS.includes(str(req.query.level, 2)) ? str(req.query.level, 2) : '';
   const grp = ['aaa', 'aba', 'abb', 'abc'].includes(str(req.query.group, 3)) ? str(req.query.group, 3) : '';
