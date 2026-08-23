@@ -80,7 +80,7 @@ rather than a separate no-go queue.
 >   trừ: trang xếp lớp, tài khoản, offline và **các trang mua code** — cổng không
 >   được đứng giữa người dùng và việc trả tiền. Ai đã nộp một bài đầy đủ thì
 >   không phải xếp lớp lại.
-> - [ ] **Block 4 — Luyện theo từng Part, đề random.** `POST /api/drills`, không
+> - [x] **Block 4 — Luyện theo từng Part, đề random.** 🔒 khóa 2026-08-23. `server/drills.js`, `/prep/luyen/`. Gợi ý đọc từ `roadmap()`, mức lấy từ ước lượng từng phần, chấm xong ghi ngược vào `skill_events` với trọng số 0,6. Không lặp câu trong 30 ngày, tính cả câu gặp trong bài thi thật. `POST /api/drills`, không
 >   lặp câu trong 30 ngày, đồng hồ theo từng câu. Cần ngân hàng E/F/H/J đạt gấp
 >   đôi blueprint trước
 > - [ ] **Block 5 — Từ vựng B1–C2 qua viết câu và áp dụng từ.** Hai dạng:

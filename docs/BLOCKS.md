@@ -21,7 +21,7 @@ Sáu điều kiện khóa (chi tiết ở `docs/KE-HOACH-XAY.md` §1.2), rút g�
 | 2 | Mô hình năng lực (`skill_events` + `server/ability.js`) | 🔒 **đã khóa** | `87b05ce` | 2026-08-21 |
 | 3 | Rubric và đánh giá sau bài thi | 🔒 **đã khóa** | `5113a11` | 2026-08-21 |
 | 3.5 | Xếp lớp bắt buộc khi đăng ký | 🔒 **đã khóa** | `1512e15` | 2026-08-22 |
-| 4 | Luyện theo từng Part, đề random | ⬜ chưa bắt đầu | — | — |
+| 4 | Luyện theo từng Part, đề random | 🔒 **đã khóa** | `4b9fdd1`+ | 2026-08-23 |
 | 5 | Từ vựng B1–C2 qua viết câu và áp dụng từ | ⬜ chưa bắt đầu | — | — |
 | 6 | Lộ trình ôn tập sinh tự động | ⬜ chưa bắt đầu | — | — |
 | 7 | Nhiều tiến trình (`cluster`) | ⬜ chưa bắt đầu | — | — |
@@ -45,6 +45,7 @@ không qua HTTP — vì đó mới là trần thật của đường ghi.
 | 2026-08-21 | `87b05ce` khóa 1+2 | 4 nhân, đĩa cục bộ | 3.741 req/s | 1.718 req/s | **1.597 req/s** | 1.146 req/s | 37.990/s (`NORMAL`) |
 | 2026-08-21 | `5113a11` khóa 3 | 4 nhân, đĩa cục bộ | 3.455 req/s | **1.780 req/s** | 1.708 req/s | 1.118 req/s | 37.990/s (`NORMAL`) |
 | 2026-08-22 | `1512e15` khóa 3.5 | 4 nhân, đĩa cục bộ | 7.871 req/s | 2.794 req/s | 2.797 req/s | 1.363 req/s | 37.990/s (`NORMAL`) |
+| 2026-08-23 | khóa 4 | 4 nhân, đĩa cục bộ | 4.294 req/s | 1.956 req/s | 1.935 req/s | 1.226 req/s | 37.990/s (`NORMAL`) |
 
 Hàng khóa 3 đo bằng **đúng thang của đường cơ sở** (`1,10,25,50,100,200`) — xem
 ghi chú về phương pháp bên dưới. So với cơ sở: tệp tĩnh −7,1%, `/api/catalog`

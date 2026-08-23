@@ -109,33 +109,12 @@ sleep 0.5
 # do with the code. Same family as the three env ceilings raised below; the fix
 # is the same shape — start each run from a known throttle state, in this test
 # database only. Nothing in the product clears these.
-node -e "
-  (async () => {
-    const { q } = require('./server/db');
-    const locks = await q.val('SELECT COUNT(*) c FROM throttle_locks');
-    await q.run('DELETE FROM throttle_locks'); await q.run('DELETE FROM throttle_hits');
-    if (locks) console.log('   cleared ' + locks + ' carried-over sign-in lockout(s)');
-    /* The demo student is placed before the browser suites run.
-       Since 2026-08-22 an unplaced learner is redirected off every learner page
-       to /prep/xep-lop/ — deliberately, it is what makes the placement
-       compulsory — and the suites that drive the library, the runner and the
-       self-study area are not testing that. Left unplaced they all fail on the
-       same redirect, which reads as ten broken features instead of one guard
-       doing its job. scripts/test-placement.mjs clears this row itself and
-       proves the guard from the state a new account is really in.
-       Test database only, same as the throttle rows above. */
-    const uid = await q.val("SELECT id FROM users WHERE username='student'");
-    if (uid) {
-      await q.run(
-        `INSERT INTO placements (user_id, status, rung, level, asked_json, right_json,
-                                 started_at, done_at, placed_level, placed_score)
-         VALUES (?, 'done', 3, 'B1', '[]', '[6,4,4]', ?, ?, 'B1', 7)
-         ON CONFLICT(user_id) DO UPDATE SET status='done'`,
-        uid, new Date().toISOString(), new Date().toISOString());
-      console.log('   demo student marked as placed');
-    }
-  })();
-" 2>/dev/null || true
+# Everything the test database needs before the server starts. In a FILE, not
+# a `node -e "…"`: the shell ate the quotes and the backticks of the version
+# that lived here, and `2>/dev/null || true` meant it failed in silence.
+# Allowed to fail without stopping the run — a fresh database has no demo
+# student yet — but it says so now instead of pretending.
+node scripts/gate-setup.mjs || note "gate setup did not complete; later steps may fail"
 # Both the suite and the screenshot step register accounts from 127.0.0.1, so
 # production's 5-per-hour ceiling would have a later step blocked by an earlier
 # one — red because of ordering, not because of a real fault. Same for the

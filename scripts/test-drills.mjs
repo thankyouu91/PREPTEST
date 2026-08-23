@@ -212,11 +212,16 @@ try {
        AND id NOT IN (SELECT CAST(substr(item_key,2) AS INTEGER) FROM skill_events WHERE user_id=?)
      LIMIT 1`, part, uid);
   if (planted) {
+    /* A ref_id unique to this run. A fixed one passed against a fresh database
+       and hit the UNIQUE (source, ref_id, item_key) index the second time the
+       gate ran against the same file — which is exactly the state the gate is
+       always in, and never the state a standalone run is in. */
     await q.run(
       `INSERT INTO skill_events (user_id, source, ref_id, item_key, skill, part, level,
                                  earned, max_score, weight, at)
-       VALUES (?, 'exam', 'exam:probe', ?, 'reading', ?, 'B1', 1, 1, 1, ?)`,
-      uid, 'q' + planted, part, new Date().toISOString());
+       VALUES (?, 'exam', ?, ?, 'reading', ?, 'B1', 1, 1, 1, ?)`,
+      uid, 'exam:probe:' + uid + ':' + Date.now(), 'q' + planted, part,
+      new Date().toISOString());
     const seen = await D.recentlySeen(uid);
     ok(seen.has(planted),
       'An item met in a real paper counts as recently seen too, not just a drilled one',
