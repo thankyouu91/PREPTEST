@@ -229,7 +229,7 @@ số lần ngập ngừng từ chính file ghi âm.
 Chủ đầu tư yêu cầu rubric "thật sát và khắt khe" để người học nhận ra đúng trình
 độ mình. **Khắt khe ở đây nghĩa là *đúng*, không phải *cho điểm thấp*.** Một
 rubric trừ đều một bậc của tất cả mọi người thì cũng vô ích y như một rubric
-nới tay, mà còn tệ hơn vì nó làm người ta bỏ cuộc. Bốn luật dưới đây làm việc
+nới tay, mà còn tệ hơn vì nó làm người ta bỏ cuộc. Năm luật dưới đây làm việc
 đó, và luật nào cũng là về chuyện *chấm cho đúng*:
 
 | # | Luật | Vì sao |

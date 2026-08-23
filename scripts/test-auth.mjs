@@ -89,7 +89,15 @@ check('The error message does not reveal whether the account exists', msgWrongUs
 
 /* ---------- 2. The server-side guard ---------- */
 await logout();
-const guarded = await page.goto(BASE + '/prep/luyen/', { waitUntil: 'networkidle' });
+/* A page that needs a session but is NOT behind the placement gate.
+   /prep/thu-vien/ used to stand here; when the library was removed I put
+   /prep/luyen/ in its place and it is the wrong shape: the practise screen is
+   placement-gated, so a signed-out visit redirects twice, sign-in then
+   placement, and the second hop was still in flight when a later step
+   navigated away. The account page is guarded and placement-exempt
+   (OPEN_BEFORE_PLACEMENT in server.js), which is the single hop this check
+   is about. */
+const guarded = await page.goto(BASE + '/prep/tai-khoan/', { waitUntil: 'networkidle' });
 check('A page needing sign-in bounces to the sign-in screen', page.url().includes('/prep/dang-nhap/'), page.url());
 check('The destination is kept in the next parameter', page.url().includes('next='), page.url());
 check('A blocked page never answers 200', guarded.status() === 200 && page.url().includes('dang-nhap'), String(guarded.status()));

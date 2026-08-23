@@ -144,7 +144,7 @@ try {
 
   const lib = await me.req('GET', '/prep/luyen/');
   ok(lib.status === 302 && /xep-lop/.test(lib.location || ''),
-    'The library too — the gate is on every learner page, not just the dashboard',
+    'The practise screen too — the gate is on every learner page, not just the dashboard',
     lib.status + ' ' + lib.location);
 
   const onTest = await me.req('GET', '/prep/xep-lop/');
