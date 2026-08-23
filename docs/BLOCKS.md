@@ -21,7 +21,7 @@ Sáu điều kiện khóa (chi tiết ở `docs/KE-HOACH-XAY.md` §1.2), rút g�
 | 2 | Mô hình năng lực (`skill_events` + `server/ability.js`) | 🔒 **đã khóa** | `87b05ce` | 2026-08-21 |
 | 3 | Rubric và đánh giá sau bài thi | 🔒 **đã khóa** | `5113a11` | 2026-08-21 |
 | 3.5 | Xếp lớp bắt buộc khi đăng ký | 🔒 **đã khóa** | `1512e15` | 2026-08-22 |
-| 4 | Luyện theo từng Part, đề random (mười phần A-J) | 🔒 **đã khóa**, mở lại rồi đóng | `804e825` | 2026-08-23 |
+| 4 | Luyện theo từng Part, đề random (mười phần A-J) | 🔒 **đã khóa**, mở lại rồi đóng | `208848d` | 2026-08-23 |
 | 5 | Ngữ pháp và từ vựng luyện bằng cách dùng chúng | 🔒 **đã khóa** | `716cd46`+ | 2026-08-23 |
 | 6 | Lộ trình tuần sinh tự động, có mẹo làm bài | 🔒 **đã khóa** | `ed1901e`+ | 2026-08-23 |
 | 7 | Nhiều tiến trình (`cluster`) | ⬜ chưa bắt đầu | — | — |
@@ -312,7 +312,7 @@ không báo nhầm ở 25 trang còn lại.
 > Chính tính chất đó là lý do lỗi sống sót lâu đến vậy — một thẻ `<h2>` trống
 > không để lại khoảng hở đáng ngờ nào, nó không để lại dấu vết gì cả.
 
-Đã chạy lại đủ sáu điều kiện. **Đóng lại ở `804e825`.**
+Đã chạy lại đủ sáu điều kiện. **Đóng lại ở `208848d`.**
 
 _(ghi vào đây mỗi lần một block đã khóa bị mở ra sửa: block nào, vì sao, commit
 nào đóng lại)_
