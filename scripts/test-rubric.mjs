@@ -377,5 +377,53 @@ try {
   stub.close();
 }
 
+
+head('Nothing handed in is nothing, not four out of ten');
+
+/* Reported from the product: a blank answer came back as 4/10.
+   The under-length rule caps a short answer at UNDER_LENGTH_CAP and its own
+   wording says "well under the length is not an attempt at the task" — and
+   then awarded 4 for it. A cap was standing where a floor of zero belongs. */
+{
+  const blank = R.combine('D', null, { answer: '', fallbackScore: 8 });
+  ok(blank.score === 0, 'A blank e-mail with a generous model score is 0, not 4',
+    JSON.stringify(blank.score));
+  ok(blank.caps.some(c => c.rule === 'no-answer'),
+    'And it says why, in its own words rather than the length rule\'s',
+    JSON.stringify(blank.caps.map(c => c.rule)));
+
+  ok(R.combine('D', null, { answer: '   \n\t  ', fallbackScore: 10 }).score === 0,
+    'Whitespace is not an answer either');
+
+  /* Every part, not just the ones with a word floor. No words is no words
+     whether or not a minimum was ever set for that part. */
+  for (const part of ['B', 'D', 'G', 'H', 'I', 'J']) {
+    ok(R.combine(part, null, { answer: '', fallbackScore: 9 }).score === 0,
+      'Part ' + part + ': a blank scores zero even with no word floor to fail');
+  }
+
+  /* Full criteria, all excellent, but nothing written: still zero. A model
+     that hallucinates criteria for an empty answer must not be able to pay
+     out on them. */
+  const invented = R.combine('D',
+    { task: { score: 10 }, tone: { score: 10 }, accuracy: { score: 10 }, range: { score: 10 } },
+    { answer: '' });
+  ok(invented.score === 0,
+    'Even ten out of ten on every criterion cannot mark an empty answer',
+    JSON.stringify(invented.score));
+
+  /* And the rule it replaced still works: a REAL but short attempt is capped,
+     not zeroed. The difference between "did not try" and "tried briefly" is
+     the whole point of having two rules. */
+  const short = R.combine('D', null, { answer: 'word '.repeat(20), fallbackScore: 8 });
+  ok(short.score === 4, 'A genuine 20-word attempt is still capped at 4, not zeroed',
+    JSON.stringify(short.score));
+  ok(short.caps.some(c => c.rule === 'under-length'),
+    'And that one is the length rule, which is a different thing',
+    JSON.stringify(short.caps.map(c => c.rule)));
+  ok(R.combine('D', null, { answer: 'word '.repeat(120), fallbackScore: 8 }).score === 8,
+    'A full-length answer keeps its mark');
+}
+
 console.log(`\n${fail ? '\x1b[31m' : '\x1b[32m'}${pass} passed, ${fail} failed\x1b[0m`);
 process.exit(fail ? 1 : 0);

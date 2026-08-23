@@ -36,7 +36,7 @@
         </div>
         <div class="ms-auto flex flex-wrap gap-2.5">
           <a href="/prep/luyen/" class="btn btn-ghost btn-md">Practise a part</a>
-          <a href="/prep/thu-vien/" class="btn btn-primary btn-md">Sit a full paper</a>
+          <a href="#h-mytests" class="btn btn-primary btn-md">Sit a full paper</a>
         </div>
       </section>
 
@@ -143,9 +143,8 @@
           <!-- ---- Your tests ---- -->
           <section aria-labelledby="h-mytests">
             <div class="flex items-baseline gap-3 mb-4">
-              <h3 id="h-mytests" class="text-lg font-extrabold tracking-tight">Your tests</h3>
+              <h3 id="h-mytests" class="text-lg font-extrabold tracking-tight">Papers you can sit</h3>
               <span id="mytests-count" class="text-sm font-semibold text-muted"></span>
-              <a href="/prep/thu-vien/" class="ms-auto text-[13.5px] font-bold text-brand-strong hover:underline shrink-0">See all</a>
             </div>
 
             <div id="mytests-loading" class="grid sm:grid-cols-2 gap-4" aria-hidden="true">
@@ -186,7 +185,7 @@
                   </p>
                   <div class="flex flex-wrap justify-center sm:justify-start gap-2.5 mt-5">
                     <a href="/prep/nhap-code/" class="btn btn-primary btn-md">Enter an unlock code</a>
-                    <a href="/prep/thu-vien/" class="btn btn-ghost btn-md">Browse the library</a>
+                    <a href="/prep/mua-code/" class="btn btn-ghost btn-md">See the price list</a>
                   </div>
                 </div>
               </div>
@@ -256,22 +255,46 @@
     PREP.qs('#greet-name').textContent = user.name;
     if (!user.verified) PREP.qs('#verify-nudge').removeAttribute('hidden');
 
-    /* ---------- Shared test card ---------- */
+    /* ---------- One paper, unlocked or not ----------
+       This card used to show only papers the account had opened, with a "see
+       all" link to /prep/thu-vien/. The library was a filtered catalogue built
+       for six exam families and it now lists one paper, so it has gone and
+       this is the whole list. A locked paper is SHOWN rather than hidden: the
+       lock is about sitting it, not about keeping its existence a secret, and
+       somebody deciding whether to buy a code needs to see what a code buys. */
     function testCard(t) {
       const fam = PREP.family(t.familyId);
-      return '<article class="card card-hover p-5 flex flex-col">' +
+      const unlocked = PrepState.isUnlocked(t);
+      const n = PREP.itemCount(t);
+      const meta =
+        '<p class="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[13px] font-semibold text-muted mt-2 mb-5">' +
+          '<span class="inline-flex items-center gap-1.5">' + PREP.icon('layers', 'w-4 h-4') + PREP.t(t.sections.length + ' parts', t.sections.length + ' phần') + '</span>' +
+          '<span class="inline-flex items-center gap-1.5">' + PREP.icon('clock', 'w-4 h-4') + PREP.t(t.durationMin + ' min', t.durationMin + ' phút') + '</span>' +
+          (n ? '<span class="inline-flex items-center gap-1.5">' + PREP.icon('list', 'w-4 h-4') + PREP.t(n + ' items', n + ' câu') + '</span>' : '') +
+        '</p>';
+
+      if (unlocked) {
+        return '<article class="card card-hover p-5 flex flex-col">' +
+          '<div class="flex items-center gap-2 mb-3.5">' +
+            '<span class="exam-chip" data-family="' + fam.id + '">' + fam.name + '</span>' +
+            '<span class="badge badge-muted">' + t.level + '</span>' +
+            (t.comingSoon ? '<span class="badge badge-hl ms-auto">Coming soon</span>' : '') +
+          '</div>' +
+          '<h4 class="font-bold text-[16px] leading-snug">' + PREP.esc(t.title) + '</h4>' + meta +
+          '<a href="/prep/bai-thi/' + t.id + '/" class="btn btn-primary btn-md mt-auto w-full">' +
+            PREP.icon('play', 'w-4 h-4') + PREP.t('Start preparing', 'Bắt đầu ôn') + '</a>' +
+        '</article>';
+      }
+      return '<article class="card card-locked card-hover p-5 flex flex-col">' +
         '<div class="flex items-center gap-2 mb-3.5">' +
           '<span class="exam-chip" data-family="' + fam.id + '">' + fam.name + '</span>' +
           '<span class="badge badge-muted">' + t.level + '</span>' +
-          (t.comingSoon ? '<span class="badge badge-hl ms-auto">Coming soon</span>' : '') +
+          '<span class="w-7 h-7 rounded-full bg-[color:var(--color-card)] border border-line text-muted inline-flex items-center justify-center ms-auto" title="Locked" aria-label="Locked">' +
+            PREP.icon('lock', 'w-[15px] h-[15px]') + '</span>' +
         '</div>' +
-        '<h4 class="font-bold text-[16px] leading-snug">' + PREP.esc(t.title) + '</h4>' +
-        '<p class="flex items-center gap-4 text-[13px] font-semibold text-muted mt-2 mb-5">' +
-          '<span class="inline-flex items-center gap-1.5">' + PREP.icon('layers', 'w-4 h-4') + PREP.t(t.sections.length + ' parts', t.sections.length + ' phần') + '</span>' +
-          '<span class="inline-flex items-center gap-1.5">' + PREP.icon('clock', 'w-4 h-4') + PREP.t(t.durationMin + ' min', t.durationMin + ' phút') + '</span>' +
-        '</p>' +
-        '<a href="/prep/bai-thi/' + t.id + '/" class="btn btn-soft btn-md mt-auto w-full">' +
-          PREP.icon('play', 'w-4 h-4') + PREP.t('Start preparing', 'Bắt đầu ôn') + '</a>' +
+        '<h4 class="font-bold text-[16px] leading-snug text-muted">' + PREP.esc(t.title) + '</h4>' + meta +
+        '<a href="/prep/nhap-code/?test=' + t.id + '" class="btn btn-accent btn-md mt-auto w-full">' +
+          PREP.icon('unlock', 'w-4 h-4') + PREP.t('Unlock with a code', 'Mở bằng mã') + '</a>' +
       '</article>';
     }
 
@@ -513,23 +536,17 @@
       mine = PrepState.unlockedTests();
 
       PREP.qs('#mytests-loading').classList.add('hidden');
-      if (mine.length) {
-        const shown = mine.slice(0, 4);
-        const locked = PREP.tests.length - mine.length;
-        /* Two-column grid: an odd count is filled with an unlock-more card
-           rather than a hole. Only when there IS something more to unlock:
-           this card used to appear regardless and invite the learner to open
-           "0 more tests", which is an advert for nothing. */
-        const filler = shown.length % 2 === 1 && locked > 0
-          ? '<a href="/prep/thu-vien/" class="card card-locked card-hover p-5 flex flex-col items-center justify-center text-center gap-2.5 min-h-[168px]">' +
-              '<span class="w-11 h-11 rounded-full bg-brand-soft text-brand-strong inline-flex items-center justify-center">' + PREP.icon('plus', 'w-5 h-5') + '</span>' +
-              '<b class="font-bold text-[15px]">' + PREP.t('Unlock more tests', 'Mở thêm bài') + '</b>' +
-              '<span class="text-[13px] text-muted font-medium max-w-[24ch]">' + PREP.t(locked + ' more tests in the library are waiting for you', 'còn ' + locked + ' bài nữa trong thư viện đang chờ bạn') + '</span>' +
-            '</a>'
-          : '';
-        PREP.qs('#mytests-grid').innerHTML = shown.map(testCard).join('') + filler;
+      /* Unlocked first, then the rest. Everything is listed: the "see all" link
+         used to lead to the library, and the library is gone. */
+      const all = PREP.tests.slice().sort((a, b) =>
+        (PrepState.isUnlocked(b) ? 1 : 0) - (PrepState.isUnlocked(a) ? 1 : 0));
+      if (all.length) {
+        PREP.qs('#mytests-grid').innerHTML = all.map(testCard).join('');
         PREP.qs('#mytests-grid').removeAttribute('hidden');
-        PREP.qs('#mytests-count').textContent = PREP.t(mine.length + ' tests unlocked', mine.length + ' bài đã mở');
+        PREP.qs('#mytests-count').textContent = mine.length
+          ? PREP.t(mine.length + ' of ' + all.length + ' unlocked',
+                   'đã mở ' + mine.length + '/' + all.length)
+          : PREP.t('none unlocked yet', 'chưa mở bài nào');
       } else {
         PREP.qs('#mytests-empty').removeAttribute('hidden');
       }

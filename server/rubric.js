@@ -288,8 +288,36 @@ function applyCaps(part, base, used, o) {
     }
   }
 
-  /* Rule 2: length. Measured, not judged — so it applies whether or not a
-     marker ever ran. */
+  /* Rule 2: nothing was handed in.
+     This has to come BEFORE the length rule and it has to be a floor of zero,
+     not a cap. Rule 3 below caps a short answer at 4 and its own wording says
+     "well under the length is not an attempt at the task" — and then awarded 4
+     for it. An empty answer went in and 4 out of 10 came out.
+
+     The two callers that mark real work both happen to short-circuit a blank
+     to zero before reaching here, so this was not scoring live papers. That is
+     not a defence: combine() is the function that DECIDES a mark, and it will
+     hand out 4 for nothing the first time a caller forgets. The rule belongs
+     where the decision is.
+
+     Applied to every part, including those with no word floor: no words is no
+     words whether or not a minimum was set. */
+  if (!words(o.answer).length) {
+    if (score > 0) {
+      caps.push({
+        rule: 'no-answer', from: half(score), to: 0,
+        en: 'Nothing was handed in for this item, so there is nothing to mark.',
+        vi: 'Không có bài nộp cho câu này nên không có gì để chấm.'
+      });
+    }
+    return {
+      score: 0, beforeCaps: half(base), criteria: used, caps,
+      version: RUBRIC_VERSION
+    };
+  }
+
+  /* Rule 3: length. Measured, not judged — so it applies whether or not a
+     marker ever ran. A genuine but short attempt, unlike the case above. */
   const floor = o.minWords || MIN_WORDS[part];
   if (floor) {
     const n = words(o.answer).length;

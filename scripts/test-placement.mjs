@@ -142,7 +142,7 @@ try {
   ok(/next=/.test(blocked.location || ''),
     'And where they were going is carried, so the test hands them back there');
 
-  const lib = await me.req('GET', '/prep/thu-vien/');
+  const lib = await me.req('GET', '/prep/luyen/');
   ok(lib.status === 302 && /xep-lop/.test(lib.location || ''),
     'The library too — the gate is on every learner page, not just the dashboard',
     lib.status + ' ' + lib.location);

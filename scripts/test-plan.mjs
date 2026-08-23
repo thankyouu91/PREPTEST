@@ -106,12 +106,19 @@ try {
      plan that says Practise Part H when the bank holds no Part H items is worse
      than a shorter plan, because the learner presses it, nothing happens, and
      the next plan does not get read. */
+  /* Asked of the part's OWN types. This used to ask every recommended part for
+     mcq or gap items, which was right while a drill meant an answer key and
+     wrong the moment e-mails and spoken answers became practisable: it failed
+     Part H, which works. The authority is drills.overview(), which is what the
+     practise screen itself is built from, so the plan cannot recommend
+     something that screen would refuse to open. */
+  const practisable = new Map(
+    ((await me.req('GET', '/api/drills/parts')).data.parts || []).map(x => [x.part, x]));
   for (const item of p1.data.plan.filter(x => x.kind === 'drill')) {
-    const have = await q.val(
-      "SELECT COUNT(*) c FROM questions WHERE status='active' AND part=? AND type IN ('mcq','gap')",
-      item.part);
-    ok(have > 0, 'Part ' + item.part + ' has material behind it, so the button does something',
-      have + ' item(s)');
+    const p = practisable.get(item.part);
+    ok(p && p.drillable && p.available > 0,
+      'Part ' + item.part + ' has material behind it, so the button does something',
+      JSON.stringify(p && { mode: p.mode, available: p.available, blocked: p.blocked }));
   }
   for (const item of p1.data.plan.filter(x => x.kind === 'revision')) {
     const have = await q.val(

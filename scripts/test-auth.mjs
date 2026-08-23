@@ -89,7 +89,7 @@ check('The error message does not reveal whether the account exists', msgWrongUs
 
 /* ---------- 2. The server-side guard ---------- */
 await logout();
-const guarded = await page.goto(BASE + '/prep/thu-vien/', { waitUntil: 'networkidle' });
+const guarded = await page.goto(BASE + '/prep/luyen/', { waitUntil: 'networkidle' });
 check('A page needing sign-in bounces to the sign-in screen', page.url().includes('/prep/dang-nhap/'), page.url());
 check('The destination is kept in the next parameter', page.url().includes('next='), page.url());
 check('A blocked page never answers 200', guarded.status() === 200 && page.url().includes('dang-nhap'), String(guarded.status()));

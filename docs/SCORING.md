@@ -224,7 +224,7 @@ Phần Nói còn cần đo **phát âm và độ trôi chảy**. Miễn phí tr�
 (chỉ hợp cho dạng *Read Aloud* / *Repeat Sentence*), cộng thêm đo tốc độ nói và
 số lần ngập ngừng từ chính file ghi âm.
 
-#### Bốn luật giữ cho điểm rubric trung thực — `server/rubric.js`
+#### Năm luật giữ cho điểm rubric trung thực — `server/rubric.js`
 
 Chủ đầu tư yêu cầu rubric "thật sát và khắt khe" để người học nhận ra đúng trình
 độ mình. **Khắt khe ở đây nghĩa là *đúng*, không phải *cho điểm thấp*.** Một
@@ -235,9 +235,10 @@ nới tay, mà còn tệ hơn vì nó làm người ta bỏ cuộc. Bốn luật
 | # | Luật | Vì sao |
 |---|---|---|
 | 1 | **Tiêu chí yếu nhất chặn trần cả bài.** Điểm chung cao nhất chỉ được hơn tiêu chí thấp nhất **0,5** | Bài có từ vựng C1 nhưng ngữ pháp A2 không phải bài B2 — ở chỗ làm thật, ngữ pháp mới là chỗ người đọc vấp |
-| 2 | **Độ dài là cửa, không phải tiêu chí.** Dưới **60%** số từ yêu cầu → trần **4,0** | Part D yêu cầu tối thiểu 100 từ. Quá ngắn thì chưa tính là đã làm bài, dù câu cú có tốt đến đâu. Đo được, nên áp cả khi chưa có ai chấm |
-| 3 | **Mỗi tiêu chí phải chỉ vào bằng chứng, và bằng chứng bị KIỂM** | Điểm mà người học không truy được về chữ của chính mình thì không dạy được gì. Và vì tầng 3 là một mô hình ngôn ngữ, câu trích nó đưa ra **không được tin ngay**: `verifyEvidence` tìm câu đó trong bài thật, không thấy thì bỏ. **Một câu trích bịa còn tệ hơn không có câu trích nào, vì nó trông y hệt bằng chứng** |
-| 4 | **Mỗi điểm ghi kèm phiên bản rubric** | Tiêu chí rồi sẽ đổi. Chấm lại lịch sử khi đổi là xoá mất bản ghi tiến bộ của người học, nên điểm cũ giữ nguyên phiên bản đã chấm nó |
+| 2 | **Không nộp gì thì 0 điểm.** Không có chữ nào → **0**, chặn trước mọi luật khác | Luật này thêm sau, vì thiếu nó thì bài **bỏ trống** ra **4,0**: luật 3 chặn TRẦN ở 4 và chính lời của nó nói "quá ngắn thì chưa tính là đã làm bài" — rồi vẫn cho 4 điểm. Một cái trần đứng ở chỗ đáng lẽ phải là một cái sàn. Không viết gì khác với viết ngắn, và hai việc đó phải ra hai con số khác nhau |
+| 3 | **Độ dài là cửa, không phải tiêu chí.** Dưới **60%** số từ yêu cầu → trần **4,0** | Part D yêu cầu tối thiểu 100 từ. Quá ngắn thì chưa tính là đã làm bài, dù câu cú có tốt đến đâu. Đo được, nên áp cả khi chưa có ai chấm |
+| 4 | **Mỗi tiêu chí phải chỉ vào bằng chứng, và bằng chứng bị KIỂM** | Điểm mà người học không truy được về chữ của chính mình thì không dạy được gì. Và vì tầng 3 là một mô hình ngôn ngữ, câu trích nó đưa ra **không được tin ngay**: `verifyEvidence` tìm câu đó trong bài thật, không thấy thì bỏ. **Một câu trích bịa còn tệ hơn không có câu trích nào, vì nó trông y hệt bằng chứng** |
+| 5 | **Mỗi điểm ghi kèm phiên bản rubric** | Tiêu chí rồi sẽ đổi. Chấm lại lịch sử khi đổi là xoá mất bản ghi tiến bộ của người học, nên điểm cũ giữ nguyên phiên bản đã chấm nó |
 
 > **Luật 1 là luật của nền tảng này, không phải luật của VPET.** Pearson không
 > công bố quy tắc nào như thế. Ghi rõ ra đây để không ai đọc mã rồi tưởng đó là

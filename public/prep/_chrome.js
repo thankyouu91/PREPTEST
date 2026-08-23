@@ -4,7 +4,7 @@
     tenant switcher white-label · toast)
 
    A page using the shell declares:
-     <div id="app" data-active="home|library|learn|codes|progress|account">
+     <div id="app" data-active="home|practise|learn|codes|account">
        <main id="main"> ...content... </main>
      </div>
    then calls PrepChrome.mount({ title: 'Page title' }).
@@ -17,11 +17,12 @@ const PrepChrome = {
      the server will bounce them out of. */
   NAV: [
     { key: 'home',     label: 'Home',        icon: 'home',    href: '/prep/' },
-    { key: 'library',  label: 'Library',     icon: 'library', href: '/prep/thu-vien/' },
-    /* Second, right after the library and ahead of self-study. A drill is the
-       shortest useful thing on the platform and the one the progress panel
-       sends people to, so burying it under a disclosure would be hiding the
-       button the rest of the product points at. */
+    /* "Library" used to sit here. It was a filtered catalogue built for six
+       exam families - search, skill filter, unlocked/locked filter - and the
+       platform now ships one paper. The papers are listed on the home page,
+       locked ones included, so a whole page of filters for a list of one has
+       gone. /prep/thu-vien/ still redirects there, because old links and
+       bookmarks are not the learner's fault. */
     { key: 'practise', label: 'Practise',    icon: 'target',  href: '/prep/luyen/' },
     { key: 'learn',    label: 'Self-study',  icon: 'book',    href: '/prep/hoc/dong-tu-bat-quy-tac/',
       feature: 'selfStudy', lockedHref: '/prep/mua-code/?locked=self-study',

@@ -221,7 +221,7 @@ Mục 3.2. Nối vào block 2: điểm rubric ghi vào cùng một dòng sự ki
 Đã dựng: `server/rubric.js` (tiêu chí từng phần, hai trần, bộ đo tầng 1, bộ kiểm
 câu trích), bảng `rubric_scores` có `version`, bộ chấm AI trả về từng tiêu chí
 kèm câu trích, màn kết quả mở ra được phần "Điểm này được chấm thế nào" và dòng
-"Số đo, không phải điểm". Bốn luật đầy đủ ở `docs/SCORING.md` §2.3.
+"Số đo, không phải điểm". Năm luật đầy đủ ở `docs/SCORING.md` §2.3.
 
 **Điểm đáng chú ý nhất:** câu trích của mô hình **không được tin ngay**.
 `verifyEvidence` tìm nó trong bài thật (bỏ qua khác biệt hoa thường, dấu câu,

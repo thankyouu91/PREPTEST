@@ -335,13 +335,13 @@ try {
     const c = await collector();
     await withEnv(Object.assign({}, KEYS, { GA4_ENDPOINT: c.url }), async () => {
       const res = resOf();
-      analytics.pageView(reqOf({ path: '/prep/thu-vien/' }), res);
+      analytics.pageView(reqOf({ path: '/prep/luyen/' }), res);
       ok(c.seen.length === 0, 'Nothing is sent while the response is still being written');
       res.emit('finish');
       await new Promise(r => setTimeout(r, 60));
       ok(c.seen.length === 1, 'It goes out once the page has really been delivered', String(c.seen.length));
       ok(c.seen[0].body.events[0].name === 'page_view', 'as a page_view');
-      ok(c.seen[0].body.events[0].params.page_path === '/prep/thu-vien/', 'carrying the path');
+      ok(c.seen[0].body.events[0].params.page_path === '/prep/luyen/', 'carrying the path');
 
       const admin = resOf();
       analytics.pageView(reqOf({ path: '/admin/quan-tri/' }), admin);

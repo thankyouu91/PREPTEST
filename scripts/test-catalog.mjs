@@ -53,19 +53,19 @@ try {
   ctx.on('weberror', e => errs.push(String(e.error())));
 
   let page = await login(ctx);
-  await page.goto(BASE + '/prep/thu-vien/', { waitUntil: 'networkidle' });
+  await page.goto(BASE + '/prep/', { waitUntil: 'networkidle' });
   await page.waitForTimeout(600);
 
-  const cards = await page.locator('#lib-grid article').count();
-  ok(cards === published, 'The library shows exactly ' + published + ' published tests (saw ' + cards + ')');
-  ok(await page.locator('#lib-skeleton.hidden').count() === 1, 'The skeleton has given way to content');
+  const cards = await page.locator('#mytests-grid article').count();
+  ok(cards === published, 'The home page shows exactly ' + published + ' published tests (saw ' + cards + ')');
+  ok(await page.locator('#mytests-loading.hidden').count() === 1, 'The skeleton has given way to content');
   ok(await page.locator('#catalog-warning').count() === 0, 'No warning while the API is healthy');
 
   const src = await page.evaluate(() => PREP.catalogSource);
   ok(src === 'api', 'PREP.catalogSource = "api"');
 
   /* A test with no questions yet must not show "0 items" */
-  const zeroText = await page.locator('#lib-grid').innerText();
+  const zeroText = await page.locator('#mytests-grid').innerText();
   ok(!/\b0 items\b/.test(zeroText), 'No "0 items" line for a test with no questions');
 
   /* A draft test (pte-ac-01) must not reach students */
@@ -166,11 +166,11 @@ try {
 
   page = await login(ctx2);
   await ctx2.route('**/api/catalog', r => r.abort());   // block it only after signing in
-  await page.goto(BASE + '/prep/thu-vien/', { waitUntil: 'networkidle' });
+  await page.goto(BASE + '/prep/', { waitUntil: 'networkidle' });
   await page.waitForTimeout(700);
 
   ok(await page.locator('#catalog-warning').count() === 1, 'A warning strip appears when the API cannot be reached');
-  ok(await page.locator('#lib-grid article').count() > 0, 'Tests still render from the bundled data');
+  ok(await page.locator('#mytests-grid article').count() > 0, 'Tests still render from the bundled data');
   ok(await page.evaluate(() => PREP.catalogSource) === 'fallback', 'PREP.catalogSource = "fallback"');
   ok(errs2.length === 0, 'A network failure does not break the page (no JS errors)');
 

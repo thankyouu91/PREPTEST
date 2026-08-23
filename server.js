@@ -308,7 +308,11 @@ function studentPage(file) {
 }
 
 app.get('/prep/', studentPage('prep/index.html'));
-app.get('/prep/thu-vien/', studentPage('prep/library/index.html'));
+/* The library page is gone: it was a filtered catalogue for six exam
+   families and the platform ships one paper, so the papers are listed on
+   the home page instead. Redirected rather than removed, because a dead
+   bookmark is not the learner's fault. */
+app.get('/prep/thu-vien/', (req, res) => res.redirect(301, '/prep/'));
 app.get('/prep/mua-code/', studentPage('prep/codes/mua-code.html'));
 app.get('/prep/nhap-code/', studentPage('prep/codes/nhap-code.html'));
 app.get('/prep/code-cua-toi/', studentPage('prep/codes/code-cua-toi.html'));

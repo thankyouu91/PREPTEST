@@ -252,7 +252,7 @@ ok(!/accounts\.google\.com\/gsi/.test(loginPage),
 process.env.PREP_DB = ':memory:';
 const { safeNext, freeUsername } = await import('../server/google-auth.js');
 const REDIRECT_CASES = [
-  ['/prep/thu-vien/', '/prep/thu-vien/', 'keeps an internal path as it is'],
+  ['/prep/luyen/', '/prep/luyen/', 'keeps an internal path as it is'],
   ['//evil.example/x', '/prep/', 'blocks a protocol-relative //evil URL'],
   ['/\\evil.example', '/prep/', 'blocks a backslash'],
   ['https://evil.example', '/prep/', 'blocks an absolute URL'],

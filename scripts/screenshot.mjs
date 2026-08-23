@@ -51,8 +51,6 @@ const PAGES = [
   { slug: 'dashboard-student', url: '/prep/', login: { id: 'student', pw: DEMO_PASSWORD }, full: true },
   { slug: 'dashboard',       url: '/prep/',                      auth: true, full: true },
   { slug: 'dashboard-empty', url: '/prep/',                      auth: 'fresh' },
-  { slug: 'thu-vien',        url: '/prep/thu-vien/',             auth: true, full: true },
-  { slug: 'thu-vien-empty',  url: '/prep/thu-vien/?family=vept', auth: true },
   { slug: 'mua-code',        url: '/prep/mua-code/',             auth: true, full: true },
   { slug: 'nhap-code',       url: '/prep/nhap-code/',            auth: true },
   { slug: 'code-cua-toi',    url: '/prep/code-cua-toi/',         auth: true },

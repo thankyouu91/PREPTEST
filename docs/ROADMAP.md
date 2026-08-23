@@ -70,7 +70,7 @@ rather than a separate no-go queue.
 > - [x] **Block 3 — Rubric và đánh giá sau bài thi.** 🔒 khóa `5113a11`, 2026-08-21. `server/rubric.js` + bảng
 >   `rubric_scores`; bộ chấm AI trả về từng tiêu chí kèm câu trích, và câu trích
 >   **bị kiểm lại trong bài thật** trước khi được lưu — một câu trích bịa còn tệ
->   hơn không có, vì nó trông y hệt bằng chứng. Bốn luật ở `docs/SCORING.md`
+>   hơn không có, vì nó trông y hệt bằng chứng. Năm luật ở `docs/SCORING.md`
 >   §2.3. Trần theo tiêu chí thấp
 >   nhất chứ không theo trung bình; bài thiếu chữ bị chặn trần; mỗi điểm phải chỉ
 >   được vào bằng chứng trong bài; rubric có phiên bản

@@ -27,7 +27,7 @@ const GUEST_URLS = ['/prep/landing/', '/prep/tai-lieu/', '/prep/tai-lieu/?level=
   '/prep/xac-thuc-email/', '/prep/dat-lai-mat-khau/'];
 
 const URLS = GUEST_URLS.concat([
-  '/prep/', '/prep/thu-vien/', '/prep/thu-vien/?family=vept', '/prep/mua-code/', '/prep/nhap-code/',
+  '/prep/', '/prep/mua-code/', '/prep/nhap-code/',
   '/prep/code-cua-toi/', '/prep/bai-thi/vpet-b1-01/', '/prep/bai-thi/khong-co-that/', '/prep/tai-khoan/',
   '/prep/lam-bai/', '/prep/ket-qua/:done/',
   /* Blocks 3.5 to 6. These were in neither this list nor the screenshot list,
