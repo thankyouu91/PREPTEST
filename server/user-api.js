@@ -571,6 +571,45 @@ router.post('/drills', A.requireUser, A.csrfGuard, async (req, res) => {
   res.status(201).json(out);
 });
 
+/* The recording a listening or repeat-after-me item plays. No replay limit:
+   see drills.itemAudio() for why a drill must not inherit the exam's. */
+router.get('/drills/:id/items/:questionId/audio', A.requireUser, async (req, res) => {
+  const out = await drills.itemAudio(req.user.id,
+    parseInt(req.params.id, 10) || 0, parseInt(req.params.questionId, 10) || 0);
+  if (out.error === 'not-found') return res.status(404).json({ error: 'No such drill.' });
+  if (out.error === 'not-in-drill') {
+    return res.status(404).json({ error: 'That question is not part of this drill.' });
+  }
+  if (out.error === 'no-audio') return res.status(404).json({ error: 'This item has no audio file.' });
+  if (out.error) return res.status(502).json({ error: 'The audio file could not be read.' });
+  res.set('Content-Type', 'audio/mpeg')
+     .set('Content-Length', String(out.body.length))
+     .set('Cache-Control', 'private, max-age=300')
+     .send(out.body);
+});
+
+/* One spoken answer, uploaded before the drill is handed in. The same shape as
+   the exam runner's recording route (server/exam-api.js) and for the same
+   reason: MediaRecorder produces a blob, and a blob posted as JSON would be
+   base64 and a third bigger. */
+const drillAudioBody = express.raw({ type: ['audio/*', 'application/octet-stream'], limit: '10mb' });
+router.post('/drills/:id/items/:questionId/recording',
+  A.requireUser, A.csrfGuard, drillAudioBody, async (req, res) => {
+    const out = await drills.saveRecording(
+      req.user.id, parseInt(req.params.id, 10) || 0,
+      parseInt(req.params.questionId, 10) || 0,
+      req.body, req.headers['content-type']);
+    if (out.error === 'not-found') return res.status(404).json({ error: 'No such drill.' });
+    if (out.error === 'already-done') return res.status(409).json({ error: 'This drill has been handed in.' });
+    if (out.error === 'not-in-drill') {
+      return res.status(404).json({ error: 'That question is not part of this drill.' });
+    }
+    if (out.error === 'no-audio') return bad(res, 'No recording data was received.');
+    if (out.error === 'bad-audio') return bad(res, out.message || 'That recording could not be read.');
+    if (out.error) return res.status(502).json({ error: 'The recording could not be saved.' });
+    res.status(201).json(out);
+  });
+
 router.post('/drills/:id/submit', A.requireUser, A.csrfGuard, async (req, res) => {
   const out = await drills.submit(req.user.id, parseInt(req.params.id, 10) || 0,
     (req.body || {}).answers);

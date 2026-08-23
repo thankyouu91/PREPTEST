@@ -853,16 +853,18 @@
 
     /* ---- Luyện thi theo phần (block 4) ---- */
     'Practise one part at a time': 'Luyện từng phần một',
-    'Six questions, about ten minutes, marked the moment you finish. What you score here moves your progress.':
-      'Sáu câu, khoảng mười phút, làm xong chấm ngay. Điểm ở đây sẽ đổi tiến độ của bạn.',
+    'Ten minutes on one part of the paper, marked as soon as you finish. What you score here moves your progress.':
+      'Mười phút cho một phần của đề, làm xong chấm ngay. Điểm ở đây sẽ đổi tiến độ của bạn.',
     'Your level': 'Mức của bạn',
     'Parts measured': 'Phần đã đo',
     'The paper, A to J': 'Toàn bộ đề, A tới J',
-    'Four you can drill': 'Bốn phần luyện lẻ được',
-    'Parts A, C, E and F are typed answers, so six of them can be marked on the spot.':
-      'Part A, C, E và F là các câu gõ đáp án, nên sáu câu một lượt là chấm được ngay.',
-    'The other six are e-mails and spoken answers. They need a marker rather than an answer key, so they are scored when you sit a full paper.':
-      'Sáu phần còn lại là viết email và trả lời bằng lời. Những phần đó cần người chấm chứ không phải đáp án có sẵn, nên chỉ tính điểm khi bạn làm một bài đầy đủ.',
+    'Three kinds of practice': 'Ba kiểu luyện',
+    'Parts A, C, E and F are typed answers. Six at a time, marked the moment you finish.':
+      'Part A, C, E và F là các câu gõ đáp án. Sáu câu một lượt, làm xong chấm ngay.',
+    'Parts B and D are e-mails. One at a time, and it goes to the marker with the same rubric a real paper gets.':
+      'Part B và D là viết email. Mỗi lượt một bài, và bài đó được chấm bằng đúng thang điểm của đề thi thật.',
+    'Parts G, H, I and J are spoken. You record your answer, it is written down, then marked the same way.':
+      'Part G, H, I và J là nói. Bạn ghi âm câu trả lời, hệ thống gỡ thành chữ rồi chấm theo cùng thang đó.',
     'Sit a full paper': 'Làm một bài đầy đủ',
     'Recently practised': 'Vừa luyện gần đây',
     'Nothing yet. Your last five drills will sit here, with what you scored on each.':

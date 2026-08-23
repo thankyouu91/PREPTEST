@@ -49,6 +49,9 @@ function client() {
     }
   };
   return {
+    /* For the couple of checks that need a raw fetch rather than the JSON
+       helper: an audio response is bytes, not an object. */
+    cookie() { return [...jar].map(([k, v]) => k + '=' + encodeURIComponent(v)).join('; '); },
     async req(method, path, body) {
       if (method !== 'GET' && !jar.has('prep_csrf')) await this.req('GET', '/prep/landing/');
       const headers = { Accept: 'application/json' };
@@ -287,17 +290,34 @@ try {
   /* The load-bearing one. A card that offers a drill where the bank holds
      nothing machine-markable is a button that fails when pressed, and the six
      spoken and written parts are exactly that case. */
+  /* Checked against the bank, per part, in the part's OWN types. This block
+     used to ask every drillable part for mcq or gap items, which was right
+     while a drill meant an answer key and wrong the moment e-mails and spoken
+     answers became practisable: it failed four parts that were working. */
+  const TYPES = { instant: ['mcq', 'gap'], written: ['essay'], spoken: ['speaking'] };
   for (const x of all) {
     if (!x.drillable) continue;
+    const kinds = TYPES[x.mode] || [];
+    const holes = kinds.map(() => '?').join(',');
     const real = await q.val(
-      "SELECT COUNT(*) c FROM questions WHERE status='active' AND part=? AND type IN ('mcq','gap')",
-      x.part);
-    ok(real > 0, 'Part ' + x.part + ' says it is drillable and the bank agrees', String(real));
+      `SELECT COUNT(*) c FROM questions WHERE status='active' AND part=? AND type IN (${holes})`,
+      x.part, ...kinds);
+    ok(real > 0, 'Part ' + x.part + ' says it is drillable and the bank agrees (' + x.mode + ')',
+      String(real));
+    /* And a part the blueprint says needs audio really has some, or the drill
+       would open on "Listen, then..." with nothing to hear. */
+    if (x.needs !== 'writing') {
+      const audio = await q.val(
+        "SELECT COUNT(*) c FROM questions WHERE status='active' AND part=? AND audio_key IS NOT NULL",
+        x.part);
+      ok(audio > 0 || x.mode === 'spoken' || x.mode === 'instant',
+        'Part ' + x.part + ' can be heard if it has to be', String(audio));
+    }
   }
   const quiet = all.filter(x => !x.drillable);
-  ok(quiet.length > 0 && quiet.every(x => x.needs === 'writing' || x.needs === 'speaking'),
-    'And every part that is not drillable says what it needs instead',
-    JSON.stringify(quiet.map(x => x.part + ':' + x.needs)));
+  ok(quiet.every(x => x.blocked === 'needsAudio' || x.blocked === 'noItems'),
+    'Any part that is not drillable says which kind of missing it is',
+    JSON.stringify(quiet.map(x => x.part + ':' + x.blocked)));
   ok(quiet.every(x => x.available === 0),
     'None of them is hiding usable material behind that claim',
     JSON.stringify(quiet.map(x => x.part + ':' + x.available)));
@@ -314,9 +334,114 @@ try {
     'And they are the same three, in the same order, as the ability report gives',
     JSON.stringify(mineRanked) + ' vs ' + JSON.stringify(road.map(r => r.part)));
 
+  head('The parts that have no answer key: e-mails and spoken answers');
+
+  /* Parts B and D are e-mails and I is spoken. They have material in the bank
+     and were shut out of this screen for years by the marking path rather than
+     by a lack of content. What is checked is the shape of the practice and,
+     above all, that it never invents a mark. */
+  const modes = new Map(all.map(x => [x.part, x.mode]));
+  ok(modes.get('A') === 'instant' && modes.get('B') === 'written' && modes.get('I') === 'spoken',
+    'Each part knows how it is marked, from the blueprint rather than a list of letters',
+    JSON.stringify([...modes]));
+
+  const written = all.find(x => x.mode === 'written' && x.drillable);
+  if (written) {
+    ok(written.drillSize === 1,
+      'A written drill is ONE e-mail. Six would be forty minutes sold as ten',
+      String(written.drillSize));
+    const w = await me.req('POST', '/api/drills', { part: written.part });
+    ok(w.status === 201 && w.data.items.length === 1,
+      'It opens with a single prompt', w.status + ' / ' + (w.data.items || []).length);
+    ok(w.data.mode === 'written', 'And says which kind of drill it is', w.data.mode);
+    /* Part D is capped below 100 words by the rubric; the screen needs the
+       floor to show a word count against something. */
+    ok(written.part !== 'D' || w.data.items[0].minWords === 100,
+      'Part D carries its word floor to the browser', String(w.data.items[0].minWords));
+
+    /* A request for six e-mails is clamped to the part's own size, not obeyed. */
+    const greedy = await me.req('POST', '/api/drills', { part: written.part, size: 6 });
+    ok(greedy.status !== 201 || greedy.data.items.length === 1,
+      'And asking for six of them is clamped to one',
+      String((greedy.data && greedy.data.items || []).length));
+
+    const marked = await me.req('POST', '/api/drills/' + w.data.drillId + '/submit', {
+      answers: [{ questionId: w.data.items[0].questionId,
+                  answer: 'Dear Sir or Madam, I am writing about the course. '.repeat(5) }]
+    });
+    ok(marked.status === 200, 'It can be handed in', String(marked.status));
+
+    /* THE check. With no marker configured — which is this environment, and
+       every environment until somebody sets a key — the honest outcome is to
+       say so. A zero would be a lie about the answer, and a made-up number
+       would reach the ability model, which is the one thing here that must
+       never be fed a guess. */
+    const before = (await me.req('GET', '/api/me/ability')).data.events;
+    if (marked.data.pending) {
+      ok(marked.data.recorded === 0,
+        'With no marker configured NOTHING is recorded: no invented score reaches the ability model',
+        JSON.stringify({ pending: marked.data.pending, recorded: marked.data.recorded }));
+      ok(marked.data.detail.every(x => x.pending && /marked/i.test(x.note || '')),
+        'And every item says it is waiting, and why',
+        JSON.stringify(marked.data.detail.map(x => x.note)));
+      const st = await q.val('SELECT status FROM drills WHERE id = ?', w.data.drillId);
+      ok(st === 'marking', 'The drill stays open for marking rather than closing as done', st);
+    } else {
+      ok(marked.data.recorded > 0, 'A marker is configured, so the answer was scored',
+        String(marked.data.recorded));
+      ok(marked.data.detail.every(x => typeof x.score === 'number' && x.score >= 0 && x.score <= 10),
+        'And every item carries a rubric score out of ten',
+        JSON.stringify(marked.data.detail.map(x => x.score)));
+    }
+    const after = (await me.req('GET', '/api/me/ability')).data.events;
+    ok(after >= before, 'The ability report never goes backwards over a hand-in',
+      before + ' -> ' + after);
+  } else {
+    ok(false, 'There is a written part to practise', JSON.stringify(all.map(x => x.part + ':' + x.mode)));
+  }
+
+  head('A listening part plays its recording');
+
+  /* A drill of "Listen, then type the sentence exactly as you hear it" that
+     never plays anything is the prompt with its subject missing. */
+  const heard = all.find(x => x.drillable && x.needs !== 'writing' && x.mode !== 'instant');
+  const listening = all.find(x => x.drillable && x.part === 'E') || heard;
+  if (listening) {
+    const l = await me.req('POST', '/api/drills', { part: listening.part });
+    if (l.status === 201) {
+      const withAudio = l.data.items.filter(i => i.hasAudio);
+      ok(withAudio.length > 0,
+        'Part ' + listening.part + ' hands its items over with audio attached',
+        withAudio.length + '/' + l.data.items.length);
+      const a = await fetch(BASE + '/api/drills/' + l.data.drillId
+        + '/items/' + withAudio[0].questionId + '/audio', { headers: { Cookie: me.cookie() } });
+      ok(a.status === 200 && /audio/.test(a.headers.get('content-type') || ''),
+        'And the recording really comes back', a.status + ' ' + a.headers.get('content-type'));
+      /* No replay cap, unlike the exam: practice IS repetition. */
+      const again = await fetch(BASE + '/api/drills/' + l.data.drillId
+        + '/items/' + withAudio[0].questionId + '/audio', { headers: { Cookie: me.cookie() } });
+      ok(again.status === 200,
+        'Twice, and a third time. A drill does not ration replays the way a paper does',
+        String(again.status));
+    } else {
+      ok(false, 'A listening drill opens', String(l.status));
+    }
+  }
+
+  /* Any part that IS blocked has to be blocked for a true reason. */
+  for (const x of all.filter(v => v.blocked === 'needsAudio')) {
+    const withAudio = await q.val(
+      "SELECT COUNT(*) c FROM questions WHERE status='active' AND part=? AND audio_key IS NOT NULL", x.part);
+    ok(withAudio === 0,
+      'Part ' + x.part + ' really has no recording behind it, so the claim is true',
+      String(withAudio));
+  }
+
   const anon = client();
   ok((await anon.req('GET', '/api/drills/suggest')).status === 401,
     'No session, no suggestions');
+  ok((await anon.req('POST', '/api/drills/1/items/1/recording')).status === 401,
+    'Nor may a stranger upload a recording');
   ok((await anon.req('GET', '/api/drills/parts')).status === 401,
     'Nor the overview');
   ok((await anon.req('POST', '/api/drills', { part: 'A' })).status === 401,

@@ -391,9 +391,15 @@ async function overview(userId, weights) {
 /* -------------------------------- Sitting one -------------------------------- */
 
 function forClient(row) {
+  const sec = formats.sectionOfPart('vpet', row.part) || {};
   return {
     questionId: row.id, part: row.part, type: row.type,
-    prompt: row.prompt, options: jparse(row.options_json, null)
+    prompt: row.prompt, options: jparse(row.options_json, null),
+    /* Part D is capped below 100 words by server/rubric.js. A candidate who
+       cannot see how far off they are learns about the cap from their mark,
+       which is the wrong moment. */
+    minWords: sec.minWords || null,
+    hasAudio: !!row.audio_key
   };
 }
 
@@ -437,6 +443,67 @@ async function start(userId, opts) {
  * to item three before item four is answered turns it into a quiz where the
  * later items are informed by the earlier ones.
  */
+/**
+ * The recording behind one drill item.
+ *
+ * Deliberately unlike the exam's version in one respect: there is no replay
+ * limit. A paper caps replays because hearing a passage twice is part of what
+ * it measures; a drill exists so somebody can listen to the same sentence six
+ * times until they catch it. Carrying the exam's cap over would make the
+ * practice worse than useless at exactly the thing it is for.
+ */
+async function itemAudio(userId, drillId, questionId) {
+  const d = await q.get('SELECT * FROM drills WHERE id = ? AND user_id = ?', drillId, userId);
+  if (!d) return { error: 'not-found' };
+  const ids = jparse(d.item_ids_json, []);
+  if (!ids.includes(Number(questionId))) return { error: 'not-in-drill' };
+  const row = await q.get('SELECT audio_key FROM questions WHERE id = ?', questionId);
+  if (!row || !row.audio_key) return { error: 'no-audio' };
+  try {
+    const file = await storage.get(row.audio_key);
+    return { body: file.body };
+  } catch (e) {
+    console.error('[drill] audio read failed', e);
+    return { error: 'read-failed' };
+  }
+}
+
+/**
+ * Store one spoken answer's recording against a drill item.
+ *
+ * Mirrors the exam runner's route (server/exam-api.js): the same validation in
+ * server/storage.js, and the same courtesy of deleting the previous file when
+ * somebody re-records rather than leaving the store to fill with orphans.
+ */
+async function saveRecording(userId, drillId, questionId, bytes, mime) {
+  const d = await q.get('SELECT * FROM drills WHERE id = ? AND user_id = ?', drillId, userId);
+  if (!d) return { error: 'not-found' };
+  if (d.status === 'done') return { error: 'already-done' };
+  const ids = jparse(d.item_ids_json, []);
+  if (!ids.includes(Number(questionId))) return { error: 'not-in-drill' };
+  if (!bytes || !bytes.length) return { error: 'no-audio' };
+
+  let stored;
+  try {
+    stored = await storage.putRecording(bytes, mime);
+  } catch (e) {
+    if (e && e.code === 'INVALID_AUDIO') return { error: 'bad-audio', message: e.message };
+    console.error('[drill] recording save failed', e);
+    return { error: 'store-failed' };
+  }
+
+  const prev = await q.get(
+    'SELECT audio_key FROM drill_answers WHERE drill_id=? AND question_id=?', drillId, questionId);
+  await q.run(
+    `INSERT INTO drill_answers (drill_id, question_id, audio_key)
+     VALUES (?,?,?)
+     ON CONFLICT(drill_id, question_id) DO UPDATE SET audio_key=excluded.audio_key`,
+    drillId, questionId, stored.key);
+  if (prev && prev.audio_key) await storage.remove(prev.audio_key).catch(() => {});
+
+  return { ok: true, bytes: bytes.length, savedAt: nowISO() };
+}
+
 /**
  * Hand in a drill of a part that has no answer key: parts B and D (e-mails)
  * and G, H, I and J (spoken).
@@ -693,7 +760,7 @@ function history(userId, limit) {
 }
 
 module.exports = {
-  suggest, overview, modeOf, typesFor, submitMarked, availableByPart, start, submit, get, history,
+  suggest, overview, modeOf, typesFor, submitMarked, saveRecording, itemAudio, availableByPart, start, submit, get, history,
   levelFor, recentlySeen, drawItems,
   DEFAULT_SIZE, MAX_SIZE, COOLDOWN_DAYS, DRILL_WEIGHT, INSTANT_TYPES
 };
