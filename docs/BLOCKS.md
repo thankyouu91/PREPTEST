@@ -82,6 +82,7 @@ không qua HTTP — vì đó mới là trần thật của đường ghi.
 | 2026-08-23 | gộp Tiến độ vào Trang chủ | 4 nhân, đĩa cục bộ | 4.409 req/s | 1.888 req/s | 1.771 req/s | 1.156 req/s | 37.990/s (`NORMAL`) |
 | 2026-08-23 | block 7 · **1 tiến trình** (mặc định) | 4 nhân, đĩa cục bộ | 7.661 req/s | 3.158 req/s | 2.945 req/s | 1.555 req/s | 37.990/s (`NORMAL`) |
 | 2026-08-23 | block 7 · **4 worker** (`WEB_CONCURRENCY=auto`) | 4 nhân, đĩa cục bộ | **10.346 req/s** | **4.183 req/s** | **4.724 req/s** | **4.729 req/s** | 37.990/s (`NORMAL`) |
+| 2026-08-23 | block 8 · 1 tiến trình | 4 nhân, đĩa cục bộ | 7.859 req/s | 3.102 req/s | 2.917 req/s | 1.501 req/s | 37.990/s (`NORMAL`) |
 
 Hàng mở lại block 4, so với **đường cơ sở**: `/healthz` +3,8%, tệp tĩnh −3,7%,
 `/prep/landing/` +84%, `/api/catalog` +5,9%. Không route nào quá ngưỡng 15%.
@@ -129,6 +130,16 @@ hơn — nó chỉ làm cho một truy vấn chậm chặn **một phần tư** 
 của tiến trình chính. Nghĩa là: cụm lấy tiền của bạn khi không có ai và trả lại
 gấp bội khi đông. Một máy phục vụ vài người thì `WEB_CONCURRENCY` để trống là
 đúng, và đó cũng là mặc định.
+
+Hàng block 8 so với hàng block 7 một tiến trình (cùng máy, cùng CSDL, cùng
+thang): `/healthz` +2,6%, tệp tĩnh −1,8%, `/prep/landing/` −1,0%,
+`/api/catalog` −3,5%. Cả bốn nằm trong sai số ±4,5% đã đo ở block 3, không đường
+nào gần ngưỡng 15%.
+
+Điều đó **đúng như thiết kế chứ không phải may**: `loadprobe` gọi ẩn danh, mà
+`readLimit` cố ý không đếm request ẩn danh — nên bốn tuyến này đi qua đúng hai
+phép so sánh rẻ tiền rồi thoát. Chi phí thật của trần đọc nằm ở đường **đã đăng
+nhập**, và nó được đo riêng ở bảng dưới vì `loadprobe` không với tới đó.
 
 Chưa đo được, ghi ra để lần sau đo: **đường ghi**. Bốn tiến trình cùng giành một
 khoá ghi SQLite là kịch bản mà `busy_timeout` của block 1 dựng ra để chịu, và
@@ -465,6 +476,91 @@ giống hệt — với một block hạ tầng thì "không có gì đổi" m�
 một khác biệt trong ảnh sẽ là dấu hiệu có gì đó rò ra tầng giao diện.
 
 Đã chạy lại đủ sáu điều kiện. **Mã đóng lại ở `d19490d`.**
+
+**Block 8, 2026-08-23 — trần chi phí và trần đọc.**
+
+Mọi giới hạn khác trên nền tảng này bảo vệ cái máy hoặc dữ liệu. Block 8 có một
+giới hạn bảo vệ **tài khoản ngân hàng**, và nó là giới hạn duy nhất mà sự vắng
+mặt của nó **vô hình cho tới lúc hoá đơn về**.
+
+Rủi ro là cấu trúc, không phải giả định. Chấm bài là tự động: nộp bài → bộ quét
+tìm thấy → 26 câu đi tới mô hình mà không ai quyết định gì cả. Nghĩa là chi phí
+của nền tảng là hàm của số bài, là hàm của số tài khoản — **một con số kẻ tấn
+công được chọn**. Đăng ký, nộp, lặp lại. Trước file này, không có một dòng nào
+trên đường chấm bài hỏi một câu về tiền.
+
+**Hai trần, vì một là không đủ.**
+
+- *Mỗi tài khoản mỗi ngày* chặn một người trở thành cả cái hoá đơn.
+- *Toàn nền tảng mỗi ngày* chặn một nghìn tài khoản mỗi cái đều lịch sự nằm dưới
+  trần riêng của nó. Đây là trường hợp mà một trần đơn lẻ **bỏ sót hoàn toàn**,
+  và bộ test dựng đúng nó: mười tài khoản, mỗi cái một lần gọi.
+
+**Đếm, không ước lượng** — cùng nguyên tắc với `server/report.js`. Một dòng vào
+`ai_calls` **trước khi** request rời máy, và trần đếm dòng. Đếm số bài chấm
+thành công thì dễ hơn và sai theo hướng tốn tiền: một cuộc gọi timeout **sau
+khi** mô hình đã sinh xong câu trả lời vẫn tính đủ tiền và không để lại dấu vết
+nào. Nhà cung cấp có một buổi chiều tồi tệ sẽ tính tiền không giới hạn trong khi
+màn hình báo còn rất nhiều chỗ — đúng cái khoảnh khắc mà trần sinh ra để chặn.
+
+**Cửa sổ 24 giờ trượt, không phải ngày dương lịch.** Ngày dương lịch trả lại
+toàn bộ hạn mức tại một thời điểm mà một script biết trước và ngồi đợi được.
+
+**Chạm trần thì câu đó ở lại `pending`, không phải 0 điểm.** Ngân sách của nền
+tảng không phải lỗi của thí sinh, và `server/rubric.js` đã có sẵn quy tắc: điểm
+0 phải nghĩa là "không nộp gì", không bao giờ nghĩa là "không ai làm gì". Và lượt
+chấm **dừng lại ở lần từ chối đầu tiên** thay vì hỏi thêm hai mươi lăm lần nữa
+để nhận cùng một câu trả lời.
+
+**Trần đọc.** Trước đây chỉ đếm ghi, và lý do nghe rất hợp lý: một GET không đổi
+gì cả. Nhưng một GET vẫn tốn một vòng tới CSDL và một chỗ trên vòng lặp sự kiện
+đồng bộ, nên **một script đã đăng nhập kéo cùng một bài trong vòng lặp là một
+cuộc từ chối dịch vụ để lại nhật ký sạch bong** và không chạm vào bất kỳ giới
+hạn ghi nào.
+
+Ba chỗ thu hẹp, mỗi chỗ là khác biệt giữa một giới hạn có ích và một giới hạn
+gây vướng: chỉ `/api/`, chỉ khi đã đăng nhập, và rộng rãi (1200/phút). Cái thứ
+hai đáng nói: ẩn danh thì khoá duy nhất còn lại là địa chỉ IP, mà **một trường
+học sau một NAT sẽ thành một hạn mức chung cho bốn mươi học viên**. Lụt ẩn danh
+là việc của rìa mạng, và `docs/VAN-HANH.md` §4 nói rõ nó **vẫn còn nợ**, không
+phải một chỗ trống ai đó tưởng đã có.
+
+**Trần đọc tốn bao nhiêu, đo chứ không đoán.** Nó thêm một `COUNT` và một
+`INSERT` vào mỗi lần đọc `/api/` đã đăng nhập:
+
+| | ms/request |
+|---|---|
+| trang, tệp tĩnh (thoát sớm theo đường dẫn) | 0,0008 |
+| `/api/` ẩn danh (không có phiên) | 0,0008 |
+| `/api/` đã đăng nhập (bị đếm) | **0,078** |
+| như trên, với 145.200 dòng trong xô | **0,065** |
+
+Dòng cuối là dòng đáng kể, và nó suýt làm tôi sửa nhầm một chỗ. Tôi đã viết một
+bản `COUNT` có `LIMIT` để chặn quét, vì lo rằng phép kiểm sẽ **đắt lên đúng lúc
+người gọi bận hơn** — một cái van mà chi phí tăng theo tải nó sinh ra để chịu thì
+là bộ khuếch đại, không phải cái van.
+
+Phép đo đầu tiên có vẻ xác nhận điều đó: 0,09 ms → 2,57 ms với 60.000 dòng. **Phép
+đo đó sai.** Nó đặt trần lên 100 triệu để khỏi bị chặn, nên trạng thái "60.000
+dòng trong cửa sổ 60 giây" mà nó dựng ra **không thể xảy ra** với trần thật:
+chạm trần thì `rateLimit()` ngừng gọi `rateLimitNote()`, nên số dòng trong cửa
+sổ không bao giờ vượt `max`. Đo lại với trần thật 1200/phút: 145.200 dòng trong
+xô, 1.200 dòng trong cửa sổ, **0,065 ms** — vì `idx_throttle_hits (bucket, at)`
+không bao giờ chạm tới những dòng đã hết hạn.
+
+Bản `LIMIT` đã bị **gỡ bỏ**, và còn chậm hơn bản gốc. Ghi lại trong
+`server/auth.js` để lần sau không ai đi lại đúng con đường đó.
+
+Đã thấy đỏ bốn lần trước khi tin: đếm thành công thay vì đếm ý định; bỏ trần
+toàn nền tảng; `parseInt(raw,10) || 0` biến một lỗi đánh máy thành không giới
+hạn; và bỏ chỗ thu hẹp `/api/`.
+
+> Lần thứ tư đó lộ ra một phép kiểm **rỗng của chính tôi**. Nó khẳng định request
+> đi qua được — mà đi qua thì lúc nào cũng đi qua khi còn dưới trần. Xoá chỗ thu
+> hẹp `/api/` nó vẫn xanh. Nay nó đếm dòng trong `throttle_hits` và khẳng định
+> **hạn mức không bị tiêu**, và với sửa đó thì nó đỏ đúng chỗ.
+
+Đã chạy lại đủ sáu điều kiện. **Mã đóng lại ở `e8732cc`.**
 
 _(ghi vào đây mỗi lần một block đã khóa bị mở ra sửa: block nào, vì sao, commit
 nào đóng lại)_
