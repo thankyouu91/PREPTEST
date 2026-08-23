@@ -53,6 +53,7 @@
 const { q, nowISO } = require('./db');
 const sealed = require('./sealed');
 const rubric = require('./rubric');
+const budget = require('./ai-budget');
 
 /* ------------------------------------------------------------------ *
  * Configuration, in the settings table
@@ -200,7 +201,20 @@ const TIMEOUT_MS = 45000;
  * read for content only. On any failure the message is scrubbed before it
  * travels any further.
  */
-async function ask(cfg, key, system, user, maxTokens) {
+async function ask(cfg, key, system, user, maxTokens, ctx) {
+  /* The ceiling, checked here because this is the last line before the money
+     leaves. Putting it in the sweeper instead would leave the "Test connection"
+     button and anything added later outside it — a spending limit with a door
+     next to it is not a spending limit. See server/ai-budget.js. */
+  const permit = await budget.take({
+    kind: 'mark', userId: ctx && ctx.userId, attemptId: ctx && ctx.attemptId
+  });
+  if (!permit.ok) {
+    const e = new Error(permit.en);
+    e.budget = permit;
+    throw e;
+  }
+
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
   try {
@@ -238,8 +252,14 @@ async function ask(cfg, key, system, user, maxTokens) {
     try { body = JSON.parse(text); } catch (e) { throw new Error('The model returned something that is not JSON'); }
     const out = (body.content || []).filter(c => c.type === 'text').map(c => c.text).join('');
     if (!out) throw new Error('The model returned an empty answer');
+    await budget.settle(permit.id, 'ok');
     return out;
   } catch (e) {
+    /* The row stays either way — it was written before the request left, and it
+       is counted whatever happened, because a call that failed after the model
+       had already answered cost the same as one that worked. The outcome is
+       only so an administrator can tell a bad afternoon from a busy one. */
+    await budget.settle(permit.id, e.name === 'AbortError' ? 'timeout' : 'failed');
     if (e.name === 'AbortError') throw new Error('The model did not answer within ' + (TIMEOUT_MS / 1000) + ' seconds');
     throw new Error(scrub(e.message));
   } finally {
@@ -437,7 +457,8 @@ async function markOne(item) {
   const cfg = await settings();
   const key = await apiKey('model');
   if (!key) return null;
-  const text = await ask(cfg, key, SYSTEM, userPrompt(item), 500);
+  const text = await ask(cfg, key, SYSTEM, userPrompt(item), 500,
+    { userId: item.userId, attemptId: item.attemptId });
   return readVerdict(text);
 }
 
@@ -455,11 +476,24 @@ async function markOne(item) {
  * Returns null when no transcription provider is configured, which is a
  * supported state - Speaking then stays pending and the result screen says so.
  */
-async function transcribe(bytes, mime) {
+async function transcribe(bytes, mime, ctx) {
   const cfg = await settings();
   if (!cfg.sttBaseUrl) return null;
   const key = await apiKey('stt');
   if (!key) return null;
+
+  /* Counted in the same ledger as a marking call, because it is the same money
+     and a spoken answer needs both. See the arithmetic in server/ai-budget.js:
+     a full paper is 26 marks and 21 transcriptions, and a ceiling that counted
+     only half of that would be half a ceiling. */
+  const permit = await budget.take({
+    kind: 'transcribe', userId: ctx && ctx.userId, attemptId: ctx && ctx.attemptId
+  });
+  if (!permit.ok) {
+    const e = new Error(permit.en);
+    e.budget = permit;
+    throw e;
+  }
 
   const boundary = '----prep' + require('crypto').randomBytes(12).toString('hex');
   const ext = /webm/.test(mime) ? 'webm' : /ogg/.test(mime) ? 'ogg' : /mp4|m4a/.test(mime) ? 'm4a' : 'mp3';
@@ -484,11 +518,13 @@ async function transcribe(bytes, mime) {
     });
     const text = await res.text();
     if (!res.ok) throw new Error('Transcription failed (HTTP ' + res.status + '): ' + scrub(text).slice(0, 200));
+    await budget.settle(permit.id, 'ok');
     try {
       const body = JSON.parse(text);
       return String(body.text || '').trim() || null;
     } catch (e) { return null; }
   } catch (e) {
+    await budget.settle(permit.id, e.name === 'AbortError' ? 'timeout' : 'failed');
     if (e.name === 'AbortError') throw new Error('The transcription service did not answer in time');
     throw new Error(scrub(e.message));
   } finally {

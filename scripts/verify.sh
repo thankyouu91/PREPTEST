@@ -97,6 +97,11 @@ node scripts/test-mail.mjs || fail=1
 step "Admin second factor (RFC 6238 vectors, enrolment, sign-in)"
 node scripts/test-totp.mjs || fail=1
 
+# Its own scratch database: it writes rows until a spending ceiling is reached,
+# and leaving those in data/prep.sqlite would start the NEXT run halfway there.
+step "The spending ceiling (counted before the call, two limits, rolling window)"
+node scripts/test-ai-budget.mjs || fail=1
+
 # Boots its own three-worker cluster on its own database and its own free port,
 # so it belongs here rather than after "Start the server": it must not share a
 # database with a suite that is counting rows.

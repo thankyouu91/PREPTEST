@@ -747,6 +747,23 @@ CREATE TABLE IF NOT EXISTS google_grants (
   updated_at TEXT NOT NULL
 );
 
+/* One row per outgoing call to a model provider. A LEDGER, not a cache: it is
+   what the daily spend ceilings in server/ai-budget.js are counted from, and
+   the reason it is its own table rather than a count of rubric_scores is that
+   a mark is a call that SUCCEEDED. A call that timed out after the model had
+   already generated its answer costs exactly the same and leaves no mark, so
+   counting results would let a failing provider bill without limit while the
+   ceiling reported plenty of room. The row is written BEFORE the request goes
+   out, for the same reason. */
+CREATE TABLE IF NOT EXISTS ai_calls (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  at         TEXT NOT NULL,
+  kind       TEXT NOT NULL,            -- 'mark' | 'transcribe'
+  user_id    INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  attempt_id TEXT,
+  outcome    TEXT NOT NULL DEFAULT 'started'
+);
+
 CREATE INDEX IF NOT EXISTS idx_q_filter  ON questions (family_id, skill, level, status);
 CREATE INDEX IF NOT EXISTS idx_codes_st  ON codes (status, expires_at);
 CREATE INDEX IF NOT EXISTS idx_sec_test  ON sections (test_id, sort);
@@ -755,6 +772,8 @@ CREATE INDEX IF NOT EXISTS idx_att_user  ON attempts (user_id, status);
 CREATE INDEX IF NOT EXISTS idx_att_ans   ON attempt_answers (attempt_id);
 CREATE INDEX IF NOT EXISTS idx_att_score ON attempt_scores (attempt_id);
 CREATE INDEX IF NOT EXISTS idx_ai_due    ON ai_marking_backlog (next_try);
+CREATE INDEX IF NOT EXISTS idx_ai_calls   ON ai_calls (at DESC);
+CREATE INDEX IF NOT EXISTS idx_ai_calls_u ON ai_calls (user_id, at DESC);
 `;
 db.exec(SCHEMA_SQL);
 

@@ -206,7 +206,7 @@ async function rowFor(attemptId, row) {
  * is a setting somebody has not filled in, and telling the candidate their
  * speaking "scored nothing" for that reason would be a lie.
  */
-async function words(row, tries) {
+async function words(row, tries, ctx) {
   /* Nothing recorded is a zero, not a skip. A skip leaves the item pending, one
      pending item leaves Speaking pending, and Speaking pending leaves the whole
      band withheld - so a candidate who simply did not answer one speaking
@@ -238,8 +238,12 @@ async function words(row, tries) {
   }
   let text;
   try {
-    text = await ai.transcribe(bytes, sniffMime(bytes));
+    text = await ai.transcribe(bytes, sniffMime(bytes), ctx);
   } catch (e) {
+    /* The ceiling again. Rethrown rather than turned into a retry note, so the
+       pass stops here instead of spending the remaining twenty answers finding
+       out the same thing twenty more times. */
+    if (e.budget) throw e;
     console.warn('[ai] transcription failed: ' + ai.scrub(e && e.message));
     return { retry: 'The recording could not be transcribed. It will be tried again.' };
   }
@@ -273,7 +277,7 @@ function sniffMime(buf) {
 }
 
 /** Mark one item and write the result down. Returns 'marked' | 'skipped' | 'failed'. */
-async function markRow(attemptId, row, tries) {
+async function markRow(attemptId, row, tries, userId) {
   const cfg = RUBRIC_PARTS[row.part];
   if (!cfg) return 'skipped';
   const rowId = await rowFor(attemptId, row);
@@ -283,7 +287,7 @@ async function markRow(attemptId, row, tries) {
   let source = null;
 
   if (cfg.spoken) {
-    const w = await words(row, tries || 0);
+    const w = await words(row, tries || 0, { userId, attemptId });
     if (w.blank) {
       /* A real zero: the item was sat and nothing usable came back. */
       await q.run('UPDATE attempt_answers SET earned=0, max_score=1, mark_note=?, marked_at=? WHERE id=?',
@@ -320,9 +324,19 @@ async function markRow(attemptId, row, tries) {
       level: row.level || row.paper_level,
       prompt: row.prompt,
       answer: row.answer,
-      heard, source
+      heard, source,
+      userId, attemptId
     });
   } catch (e) {
+    /* A spending ceiling is not a marking failure, and it must not be recorded
+       as one: the item is untouched, the note says the paper is waiting rather
+       than broken, and the error carries `budget` so run() can stop the pass
+       instead of asking twenty-five more times for the same refusal. */
+    if (e.budget) {
+      await q.run('UPDATE attempt_answers SET mark_note=?, marked_at=? WHERE id=?',
+        e.budget.en, nowISO(), rowId);
+      throw e;
+    }
     console.warn('[ai] item ' + row.question_id + ' could not be marked: ' + ai.scrub(e.message));
     await q.run('UPDATE attempt_answers SET mark_note=?, marked_at=? WHERE id=?',
       'Not marked yet - the marker could not be reached. It will be tried again.', nowISO(), rowId);
@@ -557,15 +571,26 @@ async function run(attemptId, opts) {
     ? 0
     : ((await q.val('SELECT tries FROM ai_marking_backlog WHERE attempt_id=?', attemptId)) || 0);
 
-  let marked = 0, failed = 0, skipped = 0;
+  /* Whose account this work is billed against. Read once per paper rather than
+     per item: it is the same answer twenty-six times, and it is what lets the
+     per-account ceiling in server/ai-budget.js mean anything. */
+  const userId = await q.val('SELECT user_id FROM attempts WHERE id=?', attemptId);
+
+  let marked = 0, failed = 0, skipped = 0, stopped = null;
   for (const row of rows) {
     /* markRow's own try covers the model call only. Transcription, storage and
        the writes throw too, and an uncaught one used to end the pass - so a
        single unreadable recording left every later item unmarked for ever. */
     let r;
     try {
-      r = await markRow(attemptId, row, tries);
+      r = await markRow(attemptId, row, tries, userId);
     } catch (e) {
+      /* The one exception to "one item failing does not fail the paper". A
+         spending ceiling is not about this item, so the next item would meet
+         exactly the same refusal - twenty-five more counts against the database
+         to learn nothing. Stop, leave the rest owed, and let the backlog bring
+         the paper back when the rolling window has moved. */
+      if (e.budget) { stopped = e.budget; break; }
       console.warn('[ai] item ' + row.question_id + ' threw: ' + ai.scrub(e && e.message));
       r = 'failed';
     }
@@ -587,8 +612,9 @@ async function run(attemptId, opts) {
   try { left = await noteOutcome(attemptId); }
   catch (e) { console.warn('[ai] attempt ' + attemptId + ': backlog not recorded: ' + ai.scrub(e && e.message)); }
   console.warn(`[ai] attempt ${attemptId}: ${marked} marked, ${skipped} skipped, ${failed} failed`
-    + (left ? `, ${left} still owed.` : '.'));
-  return { marked, failed, skipped, left };
+    + (left ? `, ${left} still owed.` : '.')
+    + (stopped ? ` Stopped at the ${stopped.reason} spending ceiling (${stopped.count}/${stopped.cap}).` : ''));
+  return { marked, failed, skipped, left, stopped: stopped ? stopped.reason : null };
 }
 
 async function drain() {
