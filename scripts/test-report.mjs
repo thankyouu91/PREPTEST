@@ -73,6 +73,20 @@ try {
   ok(R.TZ_MINUTES === 420, 'The offset is +07:00', String(R.TZ_MINUTES));
   ok(R.localDay('not a date') === null, 'A junk timestamp is null, not "NaN-NaN-NaN"');
 
+  /* There are now TWO implementations of "which Vietnamese day is this": the
+     JavaScript above builds the day grid, and SQLite's date() groups the marks
+     into it, because grouping thousands of events in JavaScript blocked the
+     event loop on the busiest page. Two implementations can drift, and if they
+     did the bars and the accuracy would sit a day apart with nothing on screen
+     to say so. Checked against real rows rather than by reading both. */
+  ok(R.sqlTzShift() === '+7 hours', 'The SQL shift is derived from the same constant', R.sqlTzShift());
+  const sample = await q.all(
+    'SELECT at, date(at, ?) AS sqlDay FROM skill_events ORDER BY id DESC LIMIT 400', R.sqlTzShift());
+  const drift = sample.filter(r => r.sqlDay !== R.localDay(r.at));
+  ok(sample.length > 0 && drift.length === 0,
+    'And SQLite and JavaScript agree on the day for every one of ' + sample.length + ' real rows',
+    drift.length ? JSON.stringify(drift[0]) : '');
+
   head('A session that ran overnight is not a study session');
 
   const t0 = '2026-08-23T08:00:00.000Z';

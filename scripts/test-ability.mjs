@@ -332,18 +332,31 @@ try {
     await page.goto(BASE + '/prep/', { waitUntil: 'networkidle' });
     await page.waitForTimeout(1200);
 
+    /* The two "this is not a shopping basket" checks stay pinned to #tien-do,
+       because that panel specifically must never go back to counting what has
+       been bought. */
     const panel = await page.locator('#tien-do').innerText();
     ok(!/tests unlocked|bài đã mở/i.test(panel),
       'The ring no longer counts tests bought', panel.slice(0, 160).replace(/\n/g, ' | '));
     ok(!/Skills with practice available|kỹ năng có bài/i.test(panel),
       'Nor do the bars count which papers happen to contain a skill');
-    ok(/Ability by skill|Năng lực từng kỹ năng/i.test(panel),
-      'The bars are about ability now', panel.slice(0, 160).replace(/\n/g, ' | '));
+
+    /* The skill bars are asked of the whole page rather than of #tien-do.
+       They used to live inside that card; when the Progress tab was folded
+       into the home page they moved to a panel of their own, and this check
+       went red for a change of address rather than a change of behaviour. The
+       property it is defending is that the bars are about ABILITY, and where
+       on the page they sit is not part of that. */
+    const whole = await page.locator('#main').innerText();
+    ok(/Ability by skill|Năng lực theo kỹ năng|Năng lực từng kỹ năng/i.test(whole),
+      'The bars are about ability now', whole.slice(0, 200).replace(/\n/g, ' | '));
 
     const cap = (await page.locator('#ring-cap').innerText()).trim();
     const num = (await page.locator('#ring-num').innerText()).trim();
-    /* Either an honest refusal or a real number — never "5/8". */
-    ok(/^(—|\d+(\.\d)?)$/.test(num), 'The ring shows a score or a dash, never a fraction', num);
+    /* Either an honest refusal or a real number — never "5/8". Both dash
+       characters are allowed: the placeholder was an em dash and is now a
+       hyphen, since the em dash is gone from the interface copy. */
+    ok(/^([-—]|\d+(\.\d)?)$/.test(num), 'The ring shows a score or a dash, never a fraction', num);
     ok(/not measured|chưa đo|provisional|tạm tính|B1|B2|C1|below B1|dưới B1/i.test(cap),
       'And the caption says what that number is', cap);
 

@@ -79,6 +79,7 @@ không qua HTTP — vì đó mới là trần thật của đường ghi.
 | 2026-08-23 | khóa 4 | 4 nhân, đĩa cục bộ | 4.294 req/s | 1.956 req/s | 1.935 req/s | 1.226 req/s | 37.990/s (`NORMAL`) |
 | 2026-08-23 | `def8c7a` khóa 5+6 | 4 nhân, đĩa cục bộ | 4.286 req/s | 2.043 req/s | 1.934 req/s | 1.238 req/s | 37.990/s (`NORMAL`) |
 | 2026-08-23 | mở lại block 4 | 4 nhân, đĩa cục bộ | 4.107 req/s | 1.844 req/s | 1.857 req/s | 1.220 req/s | 37.990/s (`NORMAL`) |
+| 2026-08-23 | gộp Tiến độ vào Trang chủ | 4 nhân, đĩa cục bộ | 4.409 req/s | 1.888 req/s | 1.771 req/s | 1.156 req/s | 37.990/s (`NORMAL`) |
 
 Hàng mở lại block 4, so với **đường cơ sở**: `/healthz` +3,8%, tệp tĩnh −3,7%,
 `/prep/landing/` +84%, `/api/catalog` +5,9%. Không route nào quá ngưỡng 15%.
@@ -89,6 +90,26 @@ nhân đo được chứ không phải suy đoán: CSS tăng từ 71.814 lên 73
 hết 9,7%, phần còn lại nằm trong sai số ±4,5% đã đo ở block 3. Ghi ra đây để
 lần khóa sau còn có cái mà so: nếu đường tệp tĩnh tiếp tục tụt trong khi CSS
 không to thêm nữa thì lúc đó mới là chuyện khác.
+
+Hàng gộp Tiến độ so với **đường cơ sở**: `/healthz` +11,5%, tệp tĩnh −1,4%,
+`/prep/landing/` +76%, `/api/catalog` +0,3%. Không route nào quá ngưỡng.
+
+**Nhưng bốn đường đó không chạm tới thứ vừa thêm.** `/api/me/report` nằm sau
+đăng nhập nên `loadprobe` không đo được, mà nó lại chạy ở **trang mọi người vào
+đầu tiên**. Đo thẳng thì rõ hơn: với một tài khoản có **5.863 sự kiện**, một lần
+gọi mất **23,6 ms** — và `node:sqlite` là **đồng bộ**, nên 23,6 ms đó là event
+loop bị chặn cho mọi request khác trên tiến trình, không phải chỉ chậm cho một
+người.
+
+Đã sửa: gom sự kiện theo ngày bằng `date(at, '+7 hours')` trong chính SQLite
+thay vì kéo mấy nghìn dòng sang JavaScript để đếm ra 56 con số.
+**23,6 ms → 11,4 ms.** Bóc từng phần: `activity()` 4,95 ms · `quality()` 3,82 ms
+· `sittings()` 1,72 ms.
+
+Còn 11,4 ms vẫn là ~14 lần `/api/catalog`, tức khoảng **88 lượt/giây trên một
+tiến trình**. Chấp nhận được vì trang chủ mỗi phiên chỉ tải một lần, nhưng phải
+ghi ra đây thay vì lờ đi: đây chính là một lý do cụ thể cho **block 7**
+(`cluster`), và là đường đầu tiên cần đo lại sau khi block 7 xong.
 
 **Hàng khóa 5+6 so với đường cơ sở** — không route nào tụt, ba trong bốn nhích lên:
 
@@ -313,6 +334,50 @@ không báo nhầm ở 25 trang còn lại.
 > không để lại khoảng hở đáng ngờ nào, nó không để lại dấu vết gì cả.
 
 Đã chạy lại đủ sáu điều kiện. **Đóng lại ở `208848d`.**
+
+**Block 2 và 6, 2026-08-23 — tab Tiến độ và Trang chủ là cùng một trang.**
+
+Chủ đầu tư chỉ ra hai mục menu dẫn tới cùng một chỗ. Đúng, và còn tệ hơn thế:
+"Tiến độ" chưa bao giờ là một trang — nó trỏ vào `/prep/#tien-do`, một cái neo
+giữa trang chủ. Bấm vào nó thì trang không đổi, chỉ cuộn.
+
+Đã gộp thành một mục, và nhân đó **bỏ sáu trong mười hai khối** của trang chủ:
+"Practice results" (một biểu đồ vẽ tay kèm nhãn *Coming soon*, tức là biểu đồ
+giả của dữ liệu không có), "Next steps" (danh sách năm việc nằm ngay dưới "Việc
+nên làm tiếp" — hai danh sách việc cần làm trên một màn hình), "Explore by exam"
+(lưới các kỳ thi, mà nền tảng chỉ còn một kỳ), "Active codes" và "Recent
+activity" (cả hai là toàn bộ nội dung của trang `/prep/code-cua-toi/`), và
+"Today's focus" (gợi ý một đề, việc mà lộ trình đã làm từ mô hình năng lực chứ
+không phải từ những gì tình cờ đang mở).
+
+Thay vào đó là `server/report.js` + bốn biểu đồ SVG tự vẽ (không thêm thư viện):
+thời gian học theo ngày, điểm từng bài, độ chính xác theo từng loại việc, và
+mười phần của đề. Nguyên tắc của tệp đó: **nó đếm, nó không ước lượng.**
+`server/ability.js` vẫn là thứ duy nhất có ý kiến về năng lực; nếu report bắt
+đầu suy ra năng lực thì bảng điều khiển sẽ có hai mô hình cãi nhau ở hai thẻ
+cạnh nhau.
+
+Ba quyết định phải nói rõ:
+
+- **Thời gian là đo, không phải đoán.** Mọi bảng hoạt động đều đã có
+  `started_at` và `done_at`, nên chỉ là phép trừ.
+- **Một phiên bị chặn ở 90 phút.** Tab để quên qua đêm mà tính tám tiếng thì
+  biểu đồ đó mất uy tín vĩnh viễn. Chặn chứ không bỏ: phiên đó có thật.
+- **Ngày cắt theo giờ Việt Nam, không phải UTC.** Gom theo UTC thì bảy tiếng
+  đầu của mỗi ngày Việt Nam rơi vào cột hôm trước; ai học lúc 9 giờ tối sẽ thấy
+  nó nhảy sang "hôm qua". `+07:00` cố định là **chính xác** chứ không phải xấp
+  xỉ: Việt Nam bỏ giờ mùa hè từ 1975.
+
+Và một lỗi thật lòi ra khi nhìn màn hình: thẻ lộ trình ghi
+**"Chưa đo được · 6.5/10"** — một khẳng định nằm cạnh chính thứ phủ định nó.
+`drills.js` gộp "chưa có dữ liệu" và "có dữ liệu nhưng chưa đủ chắc" vào cùng
+một mã lý do. Nay tách thành `notMeasured` và `provisional`.
+
+`scripts/test-report.mjs`, 42 phép kiểm. Cố tình đổi múi giờ về UTC thì ba phép
+đỏ. Có một phép canh riêng chỗ **hai cách tính "hôm nay"** (JavaScript dựng lưới
+ngày, SQLite gom điểm) không được lệch nhau, đối chiếu trên 400 dòng thật.
+
+Đã chạy lại đủ sáu điều kiện. **Đóng lại ở `HASH`.**
 
 _(ghi vào đây mỗi lần một block đã khóa bị mở ra sửa: block nào, vì sao, commit
 nào đóng lại)_
