@@ -80,6 +80,8 @@ không qua HTTP — vì đó mới là trần thật của đường ghi.
 | 2026-08-23 | `def8c7a` khóa 5+6 | 4 nhân, đĩa cục bộ | 4.286 req/s | 2.043 req/s | 1.934 req/s | 1.238 req/s | 37.990/s (`NORMAL`) |
 | 2026-08-23 | mở lại block 4 | 4 nhân, đĩa cục bộ | 4.107 req/s | 1.844 req/s | 1.857 req/s | 1.220 req/s | 37.990/s (`NORMAL`) |
 | 2026-08-23 | gộp Tiến độ vào Trang chủ | 4 nhân, đĩa cục bộ | 4.409 req/s | 1.888 req/s | 1.771 req/s | 1.156 req/s | 37.990/s (`NORMAL`) |
+| 2026-08-23 | block 7 · **1 tiến trình** (mặc định) | 4 nhân, đĩa cục bộ | 7.661 req/s | 3.158 req/s | 2.945 req/s | 1.555 req/s | 37.990/s (`NORMAL`) |
+| 2026-08-23 | block 7 · **4 worker** (`WEB_CONCURRENCY=auto`) | 4 nhân, đĩa cục bộ | **10.346 req/s** | **4.183 req/s** | **4.724 req/s** | **4.729 req/s** | 37.990/s (`NORMAL`) |
 
 Hàng mở lại block 4, so với **đường cơ sở**: `/healthz` +3,8%, tệp tĩnh −3,7%,
 `/prep/landing/` +84%, `/api/catalog` +5,9%. Không route nào quá ngưỡng 15%.
@@ -93,6 +95,45 @@ không to thêm nữa thì lúc đó mới là chuyện khác.
 
 Hàng gộp Tiến độ so với **đường cơ sở**: `/healthz` +11,5%, tệp tĩnh −1,4%,
 `/prep/landing/` +76%, `/api/catalog` +0,3%. Không route nào quá ngưỡng.
+
+**Hai hàng block 7 phải đọc theo cặp, không đọc theo cột dọc.** Số tuyệt đối của
+cả hai cao hơn hẳn mọi hàng phía trên vì container lần này nhanh hơn cái đã đo
+những hàng cũ — so hàng block 7 với hàng 2026-08-22 là so hai cái máy. Cái so
+được là **hai hàng với nhau**: cùng một `data/prep.sqlite`, cùng một máy, cách
+nhau mười phút, chỉ khác đúng một biến môi trường.
+
+Đọc theo cặp thì: `/healthz` +35%, tệp tĩnh +32%, `/prep/landing/` +60%,
+`/api/catalog` **+204%**.
+
+`/api/catalog` gấp ba, và đó không phải may mắn — nó là tuyến nặng CSDL nhất
+trong bốn tuyến, tức là tuyến bị **một luồng** bóp nghẹt nhiều nhất. Ba tuyến
+kia phần lớn là việc của nhân hệ điều hành nên tăng vừa phải.
+
+**Nhưng đuôi mới là chỗ đáng nhìn.** Ở 200 luồng:
+
+| | 1 tiến trình | 4 worker |
+|---|---|---|
+| `/api/catalog` p99 | **2.320 ms** | 119 ms |
+| `/api/catalog` chậm nhất | **5.121 ms** | 630 ms |
+| `/prep/landing/` chậm nhất | **2.383 ms** | 111 ms |
+| tệp tĩnh chậm nhất | 976 ms | 126 ms |
+
+Năm giây. Một tiến trình, 200 yêu cầu cùng lúc, và người xui nhất đợi **năm
+giây** cho một trang danh mục. Đó chính là cái mà `docs/KE-HOACH-XAY.md` §4 nói
+trước: `node:sqlite` chạy đồng bộ, nên một truy vấn chậm chặn cả vòng lặp sự
+kiện và mọi người xếp hàng sau nó. Bốn tiến trình không làm truy vấn đó nhanh
+hơn — nó chỉ làm cho một truy vấn chậm chặn **một phần tư** lưu lượng.
+
+**Và cái giá, nói thẳng:** ở 1 luồng cụm **chậm hơn** — `/healthz` 2.899 →
+1.411 req/s, tệp tĩnh 1.056 → 824 req/s. Đó là chặng đi thêm qua bộ điều phối
+của tiến trình chính. Nghĩa là: cụm lấy tiền của bạn khi không có ai và trả lại
+gấp bội khi đông. Một máy phục vụ vài người thì `WEB_CONCURRENCY` để trống là
+đúng, và đó cũng là mặc định.
+
+Chưa đo được, ghi ra để lần sau đo: **đường ghi**. Bốn tiến trình cùng giành một
+khoá ghi SQLite là kịch bản mà `busy_timeout` của block 1 dựng ra để chịu, và
+loadprobe hiện chỉ đọc. Nếu chờ khoá bao giờ chạm 5 giây thì câu trả lời là bậc
+3 (PostgreSQL), không phải thêm worker.
 
 **Nhưng bốn đường đó không chạm tới thứ vừa thêm.** `/api/me/report` nằm sau
 đăng nhập nên `loadprobe` không đo được, mà nó lại chạy ở **trang mọi người vào
@@ -378,6 +419,52 @@ một mã lý do. Nay tách thành `notMeasured` và `provisional`.
 ngày, SQLite gom điểm) không được lệch nhau, đối chiếu trên 400 dòng thật.
 
 Đã chạy lại đủ sáu điều kiện. **Đóng lại ở `2f3d5b9`.**
+
+**Block 7, 2026-08-23 — chạy trên nhiều tiến trình.**
+
+Bậc 2 của thang mở rộng. Máy có 4 nhân, nền tảng dùng 1 — Node chạy một luồng
+và server này là một tiến trình. `server/cluster.js` chẻ ra một worker mỗi nhân
+và trông chúng.
+
+Một cụm hỏng theo hai kiểu mà không kiểu nào tự báo, nên cả hai đều được rào:
+
+**Việc chỉ được làm một lần.** Tiến trình chính chạy `secrets.load()`,
+`attachBankAudio()` và cả hai seed **một mình**, xong xuôi mới chẻ. Worker thừa
+hưởng một CSDL người khác đã dựng sẵn, và một `process.env` người khác đã điền
+sẵn — `cluster.fork()` sao chép môi trường của tiến trình chính **tại thời điểm
+chẻ**, nên `secrets.load()` gọi Secrets Manager một lần chứ không phải bốn.
+Đó là hành vi có tài liệu của Node, và test chứng minh nó chứ không tin nó:
+một fixture mười dòng đặt biến *sau khi khởi động* rồi đọc lại trong worker.
+
+**Việc nền chỉ được chạy một chỗ.** Bộ quét chấm AI giữ hàng đợi trong bộ nhớ,
+nên bốn bản sao sẽ cùng tìm thấy một bài chưa chấm, cùng chấm nó, và gửi **bốn
+hoá đơn**. `startBackgroundJobs()` chạy trong tiến trình giám sát, không chạy ở
+worker. Test đếm dòng log nó in ra và đỏ ở con số hai.
+
+> Đây là dòng quan trọng nhất của cả block. Bỏ nó thì mọi thứ vẫn xanh, vẫn
+> phục vụ đúng, và hoá đơn mô hình nhân bốn mà không ai thấy trong log.
+
+**Mặc định là một tiến trình.** Đó mới là hình dạng thật của thay đổi này:
+`WEB_CONCURRENCY` để trống thì hành xử **y hệt hôm nay**, `auto` thì tự co theo
+số nhân, một con số thì lấy đúng con số đó. Một máy đang chạy nền tảng không
+được phép nhân tư bộ nhớ chỉ vì nó thấy bốn nhân trong một bản cài cho việc
+khác. **Con số bật nó lên, không phải đoạn mã.**
+
+Đã thấy đỏ theo cả hai hướng trước khi tin: bỏ rào việc nền thì bộ test báo bốn
+bộ quét thay vì một; đổi mặc định thành "theo số nhân" thì nó báo 4 ở chỗ phải
+là 1.
+
+Một chi tiết nhỏ đã sửa nhân đây: biểu ngữ khởi động và bản kê tài khoản quản
+trị nằm trong callback của `listen()`, mà bốn worker thì `listen()` bốn lần —
+tức bốn lần quét bảng admin để in cùng một cảnh báo. Chúng thuộc về lần khởi
+động, không thuộc về cái socket, nên đã chuyển ra ngoài.
+
+Điều kiện số 4 (ảnh chụp mới) không áp dụng theo nghĩa thông thường: block này
+**không đổi một pixel nào**. Bộ ảnh vẫn được chụp lại trong cổng và vẫn phải
+giống hệt — với một block hạ tầng thì "không có gì đổi" mới là kết quả đúng, và
+một khác biệt trong ảnh sẽ là dấu hiệu có gì đó rò ra tầng giao diện.
+
+Đã chạy lại đủ sáu điều kiện. **Mã đóng lại ở `d19490d`.**
 
 _(ghi vào đây mỗi lần một block đã khóa bị mở ra sửa: block nào, vì sao, commit
 nào đóng lại)_
