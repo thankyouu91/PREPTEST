@@ -1632,6 +1632,7 @@ router.put('/admin/settings', async (req, res) => {
 
 const aiMarking = require('./ai-marking');
 const aiRun = require('./ai-marking-run');
+const aiBudget = require('./ai-budget');
 
 /* server/auth.js already exports requireOwner and other routes use it; a second
    role test here would be a second thing to keep in step. Everything on this
@@ -1664,7 +1665,11 @@ router.get('/admin/ai', requireOwner, async (req, res) => {
      ones. `due` is what the next sweep would actually pick up. */
   const backlog = await q.val('SELECT COUNT(*) c FROM ai_marking_backlog');
   const dueNow = (await aiRun.due(1000)).length;
-  res.set('Cache-Control', 'no-store').json({ ai: s, waiting, backlog, due: dueNow });
+  /* Where the spending ceilings stand. On the screen because a limit nobody can
+     see is a limit that arrives as a mystery: without this, the first anybody
+     knows of it is a paper that stopped marking for no visible reason. */
+  const budget = await aiBudget.status();
+  res.set('Cache-Control', 'no-store').json({ ai: s, waiting, backlog, due: dueNow, budget });
 });
 
 router.put('/admin/ai', requireOwner, async (req, res) => {

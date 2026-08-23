@@ -154,7 +154,27 @@
           'a paper that has just failed waits before it is tried again.</span>') + '</p>'
       : '<p class="text-[13.5px] text-muted">Nothing is waiting to be marked.</p>';
 
-    box.innerHTML = status + err +
+    /* Today's spend against the ceiling. On the screen because a limit nobody
+       can see is a limit that arrives as a mystery — the first anybody would
+       otherwise know of it is a paper that stopped marking for no visible
+       reason. Turns amber near the top rather than only at it, so the warning
+       arrives while there is still time to raise the number. */
+    const b = d.budget;
+    let spend = '';
+    if (b && !b.platform.off) {
+      const pct = b.platform.cap ? Math.round((b.platform.used / b.platform.cap) * 100) : 0;
+      const tone = pct >= 100 ? 'banner-error' : pct >= 80 ? 'banner-warn' : '';
+      const line = b.platform.used + ' of ' + b.platform.cap + ' model call(s) in the last '
+        + b.windowHours + ' hours' + (b.perAccount.off ? '' : ', and ' + b.perAccount.cap + ' per account')
+        + '.';
+      spend = tone
+        ? '<div class="banner ' + tone + ' show"><span>' + AD.esc(line)
+          + (pct >= 100 ? ' Marking is paused until the window moves; papers stay in the queue.' : '')
+          + '</span></div>'
+        : '<p class="text-[13px] text-muted mt-1">' + AD.esc(line) + '</p>';
+    }
+
+    box.innerHTML = status + err + spend +
       '<div class="grid gap-4 mt-4">' +
         '<div class="grid sm:grid-cols-2 gap-4">' +
           '<label class="grid gap-1.5"><span class="label">Model endpoint</span>' +

@@ -242,6 +242,54 @@ chặng điều phối. Máy phục vụ vài người thì để trống là đ
 
 ---
 
+## 4. Ba trần chi phí — biết chúng ở đâu, và nới thế nào
+
+Block 8 thêm ba cái trần. Cả ba đều **đã bật sẵn** với mặc định an toàn, nên mục
+này không phải việc phải làm — nó là chỗ tra khi có gì đó bị chặn.
+
+| Biến | Mặc định | Chặn cái gì |
+|---|---|---|
+| `AI_CALLS_PER_DAY` | 6000 | tổng số lần gọi mô hình trong 24 giờ trượt |
+| `AI_CALLS_PER_ACCOUNT_PER_DAY` | 240 | một tài khoản trong 24 giờ trượt |
+| `READ_PER_MIN` | 1200 | số lần đọc `/api/` mỗi phút, tính theo phiên đăng nhập |
+
+Một bài VPET đầy đủ = **26 lần chấm + 21 lần gỡ băng**. Nên 240 ≈ năm bài trọn
+vẹn một ngày cho một người, và 6000 ≈ 127 bài cho cả nền tảng.
+
+Đặt `0` là **tắt hẳn** cái trần đó. Gõ sai (`none`, `-5`, để trống) thì rơi về
+**mặc định**, không rơi về "không giới hạn" — một lỗi đánh máy không được phép
+là thứ gỡ mất giới hạn chi tiêu.
+
+Xem đang dùng bao nhiêu: **Quản trị → Cài đặt**, ngay dưới ô trạng thái khoá.
+Quá 80% thì banner chuyển vàng, chạm trần thì chuyển đỏ.
+
+Chạm trần **không** làm bài bị điểm 0. Câu đó ở lại `pending`, bộ quét quay lại
+sau mười phút, và khi cửa sổ 24 giờ trượt qua thì nó được chấm. Ngân sách của
+nền tảng không phải lỗi của thí sinh.
+
+### Còn một tầng nữa, và nó không nằm trong repo
+
+Ba cái trần trên đều đếm **sau khi request đã vào tới Node**. Chúng chặn được
+một tài khoản tiêu quá tay; chúng **không** chặn được một trận lụt request ẩn
+danh, vì lúc đó tiến trình đã phải nhận kết nối, phân tích header và trả lời rồi.
+
+Việc đó thuộc về **rìa mạng**, và với deployment này là CloudFront + AWS WAF
+đứng trước EC2:
+
+- một **rate-based rule** theo IP (ví dụ 2000 request/5 phút) — chặn kẻ quét
+- **AWS managed rules**: `AWSManagedRulesCommonRuleSet` và
+  `AWSManagedRulesKnownBadInputsRuleSet`
+- CloudFront cache cho `/tailwind-built.css`, `/fonts/*` và ảnh — mấy thứ này
+  không bao giờ nên chạm tới Node
+
+Chưa làm. Ghi ra đây để nó là một việc còn nợ, không phải một chỗ trống ai đó
+tưởng đã có. Trong lúc chưa có, `readLimit` cố tình **không** đếm request ẩn
+danh: khoá duy nhất còn lại lúc đó là địa chỉ IP, mà một trường học sau một
+NAT sẽ thành **một hạn mức chung cho bốn mươi học viên**. Thà để rìa mạng làm
+đúng việc của nó còn hơn làm sai việc đó ở đây.
+
+---
+
 ## Còn treo, không sửa được từ repo
 
 `/home/ubuntu/vpet-selfupdate.sh` chạy `pm2 restart preptest --update-env` mà

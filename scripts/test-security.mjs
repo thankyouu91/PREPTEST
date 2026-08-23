@@ -134,6 +134,77 @@ try {
   ok(Number(last.headers['retry-after']) > 0, 'With Retry-After in seconds',
     String(last.headers['retry-after']));
 
+  /* ---------------------------- The read ceiling ----------------------------
+     Block 8. A GET changes nothing, which is why reads went uncounted for so
+     long — but one signed-in script pulling the same paper in a loop is a
+     denial of service that leaves the audit log clean and every write limit
+     untouched. Three narrowings make it a limit rather than an obstacle, and
+     each one is checked here because getting any of them wrong is worse than
+     not having the limit at all. */
+  const readReq = (method, cookie, path) => ({
+    method, ip: '203.0.113.30', path: path || '/api/me',
+    headers: cookie ? { cookie } : {}
+  });
+
+  /* A page, the stylesheet, a font: through express's static handler and nearly
+     free. Metering them would put a database write in front of every image.
+
+     Counted from `throttle_hits` rather than from whether next() ran, and that
+     correction matters: the first version of this check asserted only that the
+     request passed, which it does either way while the count is under the
+     ceiling. Deleting the `/api/` narrowing left it green. What has to be
+     asserted is that NO ALLOWANCE WAS SPENT. */
+  const { q: sq } = createRequire(import.meta.url)('../server/db.js');
+  const probeCookie = 'prep_user=' + 'q'.repeat(20);
+  const probeKey = security.readKey(readReq('GET', probeCookie));
+  await sq.run('DELETE FROM throttle_hits WHERE bucket=?', probeKey);
+  for (const p of ['/prep/landing/', '/tailwind-built.css', '/prep/hoc/', '/fonts/x.woff2', '/']) {
+    await security.readLimit(readReq('GET', probeCookie, p), fakeRes(), () => {});
+  }
+  const spentOnPages = await sq.val('SELECT COUNT(*) c FROM throttle_hits WHERE bucket=?', probeKey);
+  ok(spentOnPages === 0, 'Five page and asset reads spend NO read allowance at all', String(spentOnPages));
+
+  await security.readLimit(readReq('GET', probeCookie, '/api/me'), fakeRes(), () => {});
+  const spentOnApi = await sq.val('SELECT COUNT(*) c FROM throttle_hits WHERE bucket=?', probeKey);
+  ok(spentOnApi === 1, 'and one /api/ read spends exactly one', String(spentOnApi));
+
+  /* Signed out, the only key available is the IP — and one school behind one
+     NAT would then be one shared allowance for forty learners. */
+  ok(security.readKey(readReq('GET', '')) === null,
+    'An anonymous read has no key at all, so a shared address is never one bucket');
+  let anon = 0;
+  for (let i = 0; i < 5; i++) await security.readLimit(readReq('GET', ''), fakeRes(), () => anon++);
+  ok(anon === 5, 'and anonymous reads are not metered here — that is the edge\'s job', String(anon));
+
+  /* A write must not spend the read allowance as well: it is already counted by
+     writeLimit, and counting it twice halves both limits. */
+  let asWrite = 0;
+  await security.readLimit(readReq('POST', 'prep_user=rrrr'), fakeRes(), () => asWrite++);
+  ok(asWrite === 1, 'A write passes through readLimit; writeLimit already counted it', String(asWrite));
+
+  const rk1 = security.readKey(readReq('GET', 'prep_user=rrrr'));
+  ok(rk1 && !rk1.includes('rrrr'), 'The session is hashed into the read key too', rk1);
+  ok(rk1 !== security.writeKey(readReq('POST', 'prep_user=rrrr')),
+    'Reads and writes are separate buckets, so a busy reader still gets to save');
+
+  /* And it does eventually say no. */
+  const rcookie = 'prep_user=' + 'y'.repeat(20);
+  let rlast = null, rok = 0;
+  for (let i = 0; i < security.READ_PER_MIN + 2; i++) {
+    const res = fakeRes();
+    await security.readLimit(readReq('GET', rcookie), res, () => rok++);
+    rlast = res;
+  }
+  ok(rok === security.READ_PER_MIN,
+    'Exactly ' + security.READ_PER_MIN + ' API reads pass before the block', String(rok));
+  ok(rlast.code === 429 && Number(rlast.headers['retry-after']) > 0,
+    'then 429 with Retry-After', rlast.code + '/' + rlast.headers['retry-after']);
+
+  /* The number itself is a judgement, and a wrong one is a 429 mid-exam. */
+  ok(security.READ_PER_MIN >= 600,
+    'The ceiling is far above honest use: a paper is a handful of calls, not hundreds',
+    String(security.READ_PER_MIN));
+
   head('The throttle is shared, not per-process');
 
   /* The lockout and the sliding window used to be two Maps in one process's

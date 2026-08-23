@@ -50,6 +50,7 @@ app.set('trust proxy', security.TRUST_PROXY);
    See server/security.js and docs/SECURITY.md. */
 app.use(security.baseHeaders);
 app.use(security.writeLimit);
+app.use(security.readLimit);
 
 /* One line, once, the first time a worker is given anything to do.
    It answers the question that decides whether a cluster is worth its memory:

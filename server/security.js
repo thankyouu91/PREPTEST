@@ -171,9 +171,60 @@ async function writeLimit(req, res, next) {
   next();
 }
 
+/* ---------------------------- Read throttle -----------------------------
+ *
+ * Block 8. Until now only writes were counted, and `SAFE` above says why that
+ * looked reasonable: a GET changes nothing. But a GET still costs a database
+ * round trip and a slot on a synchronous event loop, and one signed-in script
+ * pulling the same paper in a loop is a denial of service that leaves the audit
+ * log clean and every write limit untouched.
+ *
+ * Three deliberate narrowings, and each one is the difference between a limit
+ * that helps and a limit that gets in the way:
+ *
+ * **Only `/api/`.** Pages, the stylesheet and the fonts go through express's
+ * static handler and cost almost nothing; counting them would put a database
+ * write in front of every image on the site.
+ *
+ * **Only when signed in.** An anonymous caller can reach `/api/catalog` and
+ * little else — public catalogue data, the same for everyone. Metering it would
+ * key the limit on the IP address, and one school behind one NAT is then one
+ * shared allowance for forty learners. Anonymous flooding is a job for the edge
+ * (see docs/VAN-HANH.md); this is about what an ACCOUNT can do.
+ *
+ * **Generous.** Loading a paper is a handful of calls, the dashboard about six.
+ * A learner cannot reach this in a day of honest work. What it stops is the
+ * loop — and unlike the write limit, it has to be high enough that the exam
+ * runner polling for its marks never sees it, because a 429 mid-exam is worse
+ * than the traffic it prevents.
+ */
+const READ_PER_MIN = Math.max(1, parseInt(process.env.READ_PER_MIN, 10) || 1200);
+
+function readKey(req) {
+  const c = A.parseCookies(req);
+  const session = c.prep_admin || c.prep_user || '';
+  if (!session) return null;
+  return 'read|' + crypto.createHash('sha256').update(session).digest('hex').slice(0, 16);
+}
+
+async function readLimit(req, res, next) {
+  if (!SAFE.includes(req.method)) return next();          // writeLimit's business
+  if (!req.path.startsWith('/api/')) return next();
+  const key = readKey(req);
+  if (!key) return next();
+  const wait = await A.rateLimit(key, READ_PER_MIN, WINDOW_MS);
+  if (wait) {
+    res.setHeader('Retry-After', String(wait));
+    return res.status(429).json({
+      error: 'Too many requests. Wait ' + wait + ' second' + (wait === 1 ? '' : 's') + ' and try again.'
+    });
+  }
+  next();
+}
+
 module.exports = {
-  baseHeaders, writeLimit, writeKey,
+  baseHeaders, writeLimit, writeKey, readLimit, readKey,
   checkDeployment, resetWarnings,
   resolveTrustProxy, TRUST_PROXY,
-  PERMISSIONS_POLICY, API_CSP, HSTS, WRITE_PER_MIN, WINDOW_MS
+  PERMISSIONS_POLICY, API_CSP, HSTS, WRITE_PER_MIN, READ_PER_MIN, WINDOW_MS
 };
