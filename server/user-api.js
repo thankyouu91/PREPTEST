@@ -29,6 +29,7 @@ const { entitlementOf } = require('./entitlements');
 const abilityModel = require('./ability');
 const placement = require('./placement');
 const drills = require('./drills');
+const revision = require('./revision');
 const EXAM_FORMATS = require('./data/exam-formats');
 
 /* How much each lettered part is worth in a real VPET paper, read from the
@@ -559,6 +560,43 @@ router.post('/drills/:id/submit', A.requireUser, A.csrfGuard, async (req, res) =
      state that refuses. Marking twice would write a second set of events. */
   if (out.error === 'already-done') {
     return res.status(409).json({ error: 'This drill has already been marked.' });
+  }
+  res.json(out);
+});
+
+/* ======================= REVISION =======================
+   Block 5. Grammar and vocabulary practised by USING them — filling the right
+   form into a real sentence, then writing one of your own. No multiple choice
+   anywhere: recognising a form and producing it are different skills and the
+   exam tests the second. server/revision.js carries the reasoning. */
+
+router.get('/revision/topics', A.requireUser, async (req, res) => {
+  res.set('Cache-Control', 'no-store')
+     .json(await revision.topics(req.user.id, req.query.level));
+});
+
+router.get('/revision', A.requireUser, async (req, res) => {
+  res.set('Cache-Control', 'no-store')
+     .json({ sets: await revision.history(req.user.id, req.query.limit) });
+});
+
+router.post('/revision', A.requireUser, A.csrfGuard, async (req, res) => {
+  const out = await revision.start(req.user.id, req.body || {});
+  if (out.error === 'no-topic' || out.error === 'no-items') {
+    return res.status(503).json({
+      error: 'There is nothing to revise at this level yet. Please tell your centre.',
+      level: out.level
+    });
+  }
+  res.status(201).json(out);
+});
+
+router.post('/revision/:id/submit', A.requireUser, A.csrfGuard, async (req, res) => {
+  const out = await revision.submit(req.user.id, parseInt(req.params.id, 10) || 0,
+    (req.body || {}).answers);
+  if (out.error === 'not-found') return res.status(404).json({ error: 'No such revision set.' });
+  if (out.error === 'already-done') {
+    return res.status(409).json({ error: 'This set has already been marked.' });
   }
   res.json(out);
 });

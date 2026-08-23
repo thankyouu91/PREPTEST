@@ -325,6 +325,7 @@ app.get('/prep/tai-khoan/', studentPage('prep/account/index.html'));
    redirect the gate. */
 app.get('/prep/xep-lop/', studentPage('prep/placement/index.html'));
 app.get('/prep/luyen/', studentPage('prep/practise/index.html'));
+app.get('/prep/on-tap/', studentPage('prep/revision/index.html'));
 
 /* ------------- Khu tự học: cần gói có quyền -------------
    Từ vựng, ngữ pháp và phát âm chỉ mở từ gói Plus trở lên. Chặn ngay ở HTTP

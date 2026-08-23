@@ -1,0 +1,313 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ôn ngữ pháp · VPET Prep</title>
+  <meta name="description" content="Ôn ngữ pháp và từ vựng bằng cách dùng: điền đúng dạng vào câu thật, rồi tự viết một câu.">
+  <meta name="theme-color" content="#1c3d8f">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="preload" href="/fonts/pjs-700-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/fonts/pjs-400-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/tailwind-built.css">
+  <style>body{font-family:'Plus Jakarta Sans',system-ui,sans-serif}</style>
+  <script>
+    (function(){try{
+      var t=localStorage.getItem('prep.theme');
+      if(t==='dark'||(!t&&matchMedia('(prefers-color-scheme: dark)').matches))document.documentElement.classList.add('dark');
+      var tn=localStorage.getItem('prep.tenant');
+      if(tn&&tn!=='default')document.documentElement.setAttribute('data-tenant',tn);
+    }catch(e){}})();
+  </script>
+  <script src="/i18n.js"></script>
+</head>
+<body class="bg-surface text-ink">
+<div id="app" data-active="learn" class="min-h-[100dvh]">
+  <main id="main">
+    <div class="max-w-[820px] mx-auto px-4 sm:px-6 pb-10">
+
+      <div id="loading" class="grid gap-4 mt-8" aria-hidden="true">
+        <div class="card p-8"><div class="skeleton h-7 w-1/2 mb-4"></div><div class="skeleton h-16 w-full"></div></div>
+      </div>
+
+      <!-- 1. Pick a topic -->
+      <section id="pick" hidden class="mt-8">
+        <h2 class="text-2xl font-extrabold tracking-tight" data-en="Revise by using it" data-vi="Ôn bằng cách dùng"></h2>
+        <p class="text-muted text-[15px] leading-relaxed mt-2 max-w-[58ch]"
+           data-en="Fill the right form into real sentences, then write one of your own. No multiple choice — picking the right answer from a list is a different skill from producing it, and the exam tests the second."
+           data-vi="Điền đúng dạng vào câu thật, rồi tự viết một câu. Không có trắc nghiệm — chọn đúng trong bốn đáp án là một kỹ năng khác với tự viết ra, và bài thi kiểm tra cái thứ hai."></p>
+
+        <div class="flex flex-wrap items-center gap-2 mt-5">
+          <span class="text-[13px] font-bold uppercase tracking-wide text-muted" data-en="Level" data-vi="Cấp độ"></span>
+          <div id="k-levels" class="flex flex-wrap gap-2"></div>
+        </div>
+
+        <ul id="k-list" class="grid gap-3 mt-5"></ul>
+      </section>
+
+      <!-- 2. The set -->
+      <section id="run" hidden class="mt-8">
+        <div class="flex items-center gap-3">
+          <span class="badge badge-muted" id="k-topic"></span>
+          <span class="text-[13px] font-bold uppercase tracking-wide text-muted" id="k-count"></span>
+          <button type="button" id="k-quit" class="btn btn-ghost btn-sm ms-auto" data-en="Leave" data-vi="Thoát"></button>
+        </div>
+        <div class="h-1.5 rounded-full bg-line mt-2.5 overflow-hidden">
+          <div id="k-bar" class="quiz-bar h-full bg-brand rounded-full"></div>
+        </div>
+
+        <div class="card p-6 sm:p-8 mt-5">
+          <p id="k-kind" class="text-[12.5px] font-bold uppercase tracking-wide text-muted"></p>
+          <p id="k-prompt" class="text-[17px] sm:text-[18px] font-semibold leading-relaxed mt-2"></p>
+          <p id="k-hint" class="text-[13.5px] text-muted mt-2"></p>
+          <div id="k-answer" class="mt-5"></div>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-3 mt-5">
+          <button type="button" id="k-next" class="btn btn-primary btn-md" data-en="Next" data-vi="Tiếp"></button>
+          <button type="button" id="k-skip" class="btn btn-ghost btn-md" data-en="Skip" data-vi="Bỏ qua"></button>
+          <span class="text-[12.5px] text-muted ms-auto" data-en="Enter for next" data-vi="Enter để sang câu"></span>
+        </div>
+      </section>
+
+      <!-- 3. Marked -->
+      <section id="marked" hidden class="mt-8">
+        <div class="card p-7">
+          <span class="block text-[13px] font-bold uppercase tracking-wide text-muted" data-en="This set" data-vi="Lượt này"></span>
+          <b id="m-score" class="block text-4xl font-extrabold tracking-tight leading-none mt-1.5">–</b>
+          <p id="m-moved" class="text-[14px] leading-snug mt-3 max-w-[46ch]"></p>
+        </div>
+
+        <div id="m-build" hidden class="card p-6 mt-5">
+          <h3 class="font-extrabold text-[15px] tracking-tight" data-en="The sentence you wrote" data-vi="Câu bạn tự viết"></h3>
+          <q id="m-built" class="block text-[15px] leading-relaxed mt-2 ps-3 border-s-2 border-line italic"></q>
+          <p id="m-measured" class="text-[12.5px] text-muted leading-relaxed mt-3"></p>
+        </div>
+
+        <ul id="m-detail" class="grid gap-3 mt-5"></ul>
+
+        <div class="flex flex-wrap gap-2.5 mt-6">
+          <button type="button" id="m-again" class="btn btn-primary btn-md" data-en="Another set" data-vi="Lượt nữa"></button>
+          <button type="button" id="m-back" class="btn btn-soft btn-md" data-en="Choose a topic" data-vi="Chọn chủ điểm khác"></button>
+        </div>
+      </section>
+
+      <div id="oops" hidden class="card p-8 mt-8 text-center">
+        <h2 class="font-extrabold text-lg tracking-tight" data-en="Not right now" data-vi="Chưa ôn được"></h2>
+        <p id="oops-why" class="text-muted text-[15px] mt-2"></p>
+        <button type="button" id="oops-back" class="btn btn-soft btn-md mt-5" data-en="Back" data-vi="Quay lại"></button>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<script src="/prep/_mock.js"></script>
+<script src="/prep/_chrome.js"></script>
+<script>
+PREP.boot({ auth: true }).then(async () => {
+  PrepChrome.mount({ title: PREP.t('Revision', 'Ôn tập') });
+
+  const show = id => ['loading','pick','run','marked','oops']
+    .forEach(s => PREP.qs('#' + s).toggleAttribute('hidden', s !== id));
+  const oops = why => { PREP.qs('#oops-why').textContent = why; show('oops'); };
+  PREP.qs('#oops-back').addEventListener('click', () => loadPick());
+
+  let level = null, set = null, items = [], at = 0, answers = [], lastTopic = null;
+
+  async function loadPick(lv) {
+    show('loading');
+    const t = await PrepApi.get('/api/revision/topics' + (lv ? '?level=' + encodeURIComponent(lv) : ''));
+    if (!t.ok) return oops(PrepApi.err(t));
+    level = t.data.level;
+
+    const box = PREP.qs('#k-levels');
+    box.innerHTML = '';
+    for (const L of t.data.levels) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'btn btn-sm ' + (L === level ? 'btn-primary' : 'btn-ghost');
+      b.textContent = L;
+      b.setAttribute('aria-pressed', String(L === level));
+      b.addEventListener('click', () => loadPick(L));
+      box.appendChild(b);
+    }
+
+    const list = PREP.qs('#k-list');
+    list.innerHTML = '';
+    if (!t.data.topics.length) {
+      list.innerHTML = '<li class="card p-6 text-[14px] text-muted">' +
+        PREP.esc(PREP.t('Nothing at this level yet.', 'Chưa có nội dung ở cấp độ này.')) + '</li>';
+    }
+    for (const x of t.data.topics) {
+      const li = document.createElement('li');
+      li.className = 'card p-5 flex flex-wrap items-center gap-x-4 gap-y-2';
+      const left = document.createElement('span');
+      left.className = 'min-w-0';
+      const h = document.createElement('b');
+      h.className = 'block text-[15.5px] tracking-tight';
+      h.textContent = PREP.t(x.nameEn, x.nameVi);
+      const sub = document.createElement('span');
+      sub.className = 'block text-[13px] text-muted mt-0.5';
+      sub.textContent = x.score === null
+        ? PREP.t('Not measured yet', 'Chưa đo')
+        : PREP.t('Now ' + x.score + '/10', 'Hiện ' + x.score + '/10')
+          + (x.confident ? '' : PREP.t(' (estimate)', ' (ước lượng)'));
+      left.append(h, sub);
+      const go = document.createElement('button');
+      go.type = 'button';
+      go.className = 'btn btn-primary btn-md ms-auto shrink-0';
+      go.textContent = PREP.t('Revise', 'Ôn');
+      go.addEventListener('click', () => begin(x.slug));
+      li.append(left, go);
+      list.appendChild(li);
+    }
+    show('pick');
+  }
+
+  async function begin(topic) {
+    show('loading');
+    lastTopic = topic;
+    const r = await PrepApi.post('/api/revision', { topic: topic, level: level });
+    if (!r.ok) return oops(PrepApi.err(r));
+    set = r.data; items = r.data.items; at = 0; answers = [];
+    PREP.qs('#k-topic').textContent = PREP.t(r.data.topicEn, r.data.topicVi) + ' · ' + r.data.level;
+    show('run');
+    render();
+  }
+
+  function render() {
+    const it = items[at];
+    PREP.qs('#k-count').textContent = (at + 1) + ' / ' + items.length;
+    PREP.qs('#k-bar').style.setProperty('--w', Math.round(at / items.length * 100) + '%');
+
+    const box = PREP.qs('#k-answer');
+    box.innerHTML = '';
+
+    if (it.type === 'apply') {
+      PREP.qs('#k-kind').textContent = PREP.t('Put it in the right form', 'Điền đúng dạng');
+      PREP.qs('#k-prompt').textContent = it.sentence;
+      PREP.qs('#k-hint').textContent = it.vi || '';
+      const inp = document.createElement('input');
+      inp.className = 'input';
+      inp.id = 'k-in';
+      inp.autocomplete = 'off';
+      inp.setAttribute('aria-label', PREP.t('What goes in the gap', 'Điền vào chỗ trống'));
+      inp.placeholder = it.cue
+        ? PREP.t('the right form of "' + it.cue + '"', 'dạng đúng của "' + it.cue + '"')
+        : PREP.t('What goes in the gap', 'Điền vào chỗ trống');
+      box.appendChild(inp);
+      inp.focus();
+    } else {
+      PREP.qs('#k-kind').textContent = PREP.t('Now write one of your own', 'Giờ tự viết một câu');
+      PREP.qs('#k-prompt').textContent = PREP.t(
+        'Write one sentence using ' + it.topicEn + '.',
+        'Viết một câu dùng ' + it.topicVi + '.');
+      /* The summary, not an example sentence. An example on screen is a
+         sentence to copy, and copying is not producing. */
+      PREP.qs('#k-hint').textContent = it.summary || '';
+      const ta = document.createElement('textarea');
+      ta.className = 'input';
+      ta.id = 'k-in';
+      ta.rows = 3;
+      ta.setAttribute('aria-label', PREP.t('Your sentence', 'Câu của bạn'));
+      ta.placeholder = PREP.t('Your own sentence', 'Câu của riêng bạn');
+      box.appendChild(ta);
+      ta.focus();
+    }
+    PREP.qs('#k-next').textContent = at === items.length - 1
+      ? PREP.t('Finish and mark', 'Nộp và chấm') : PREP.t('Next', 'Tiếp');
+  }
+
+  async function advance() {
+    const el = PREP.qs('#k-in');
+    const val = el ? el.value.trim() : '';
+    const it = items[at];
+    answers.push(it.type === 'build'
+      ? { type: 'build', answer: val }
+      : { exampleId: it.exampleId, answer: val });
+    at++;
+    if (at < items.length) return render();
+
+    const btn = PREP.qs('#k-next');
+    btn.disabled = true;
+    btn.textContent = PREP.t('Marking…', 'Đang chấm…');
+    const r = await PrepApi.post('/api/revision/' + set.setId + '/submit', { answers: answers });
+    btn.disabled = false;
+    if (!r.ok) return oops(PrepApi.err(r));
+    await showMarks(r.data);
+  }
+
+  PREP.qs('#k-next').addEventListener('click', advance);
+  PREP.qs('#k-skip').addEventListener('click', () => { const el = PREP.qs('#k-in'); if (el) el.value = ''; advance(); });
+  PREP.qs('#k-quit').addEventListener('click', () => loadPick(level));
+  document.addEventListener('keydown', ev => {
+    if (PREP.qs('#run').hasAttribute('hidden')) return;
+    /* Enter submits on the single-line input; in the textarea it should make a
+       new line, so only Ctrl/Cmd+Enter moves on there. */
+    const inTextarea = ev.target && ev.target.tagName === 'TEXTAREA';
+    if (ev.key === 'Enter' && (!inTextarea || ev.metaKey || ev.ctrlKey)) {
+      advance(); ev.preventDefault();
+    }
+  });
+
+  async function showMarks(d) {
+    PREP.qs('#m-score').textContent = d.earned + '/' + d.max;
+
+    const ab = await PrepApi.get('/api/me/ability');
+    const g = ab.ok && ab.data.skills ? ab.data.skills.grammar : null;
+    PREP.qs('#m-moved').textContent = g
+      ? PREP.t('Grammar is now ' + g.score + '/10 in your progress'
+                 + (g.confident ? '.' : ' — still an estimate.'),
+               'Ngữ pháp giờ là ' + g.score + '/10 trong tiến độ của bạn'
+                 + (g.confident ? '.' : ' — vẫn là ước lượng.'))
+      : '';
+
+    const bb = PREP.qs('#m-build');
+    if (d.build) {
+      bb.removeAttribute('hidden');
+      PREP.qs('#m-built').textContent = d.build.given;
+      const x = d.build.diagnostics || {};
+      /* "Measured, not marked" said in the heading, not buried — the same rule
+         docs/SCORING.md §2.3 sets for the result screen. */
+      PREP.qs('#m-measured').textContent =
+        PREP.t('Measured, not marked: ', 'Số đo, không phải điểm: ') +
+        [ d.build.wordCount + PREP.t(' words', ' từ'),
+          x.sentences + PREP.t(' sentences', ' câu'),
+          d.build.isSentence ? PREP.t('reads as a sentence', 'đọc được như một câu')
+                             : PREP.t('too short to judge', 'ngắn quá để nhận xét')
+        ].join(' · ') + '. ' +
+        PREP.t('A marker scores this against the rubric later.',
+               'Người chấm sẽ chấm theo rubric sau.');
+    } else {
+      bb.setAttribute('hidden', '');
+    }
+
+    PREP.qs('#m-detail').innerHTML = (d.detail || []).map(x =>
+      '<li class="card p-5">' +
+        '<span class="flex items-start gap-3">' +
+          '<span class="badge shrink-0 ' + (x.right ? 'badge-ok' : 'badge-danger') + '">' +
+            PREP.esc(x.right ? PREP.t('Correct', 'Đúng') : PREP.t('Wrong', 'Sai')) + '</span>' +
+          '<span class="text-[14.5px] leading-snug">' + PREP.esc(x.sentence) + '</span>' +
+        '</span>' +
+        (x.right ? '' :
+          '<span class="block text-[13.5px] mt-3 ps-1">' +
+            '<span class="text-muted">' + PREP.esc(PREP.t('You put: ', 'Bạn điền: ')) + '</span>' +
+            PREP.esc(x.given || PREP.t('(nothing)', '(bỏ trống)')) + '<br>' +
+            '<span class="text-muted">' + PREP.esc(PREP.t('Answer: ', 'Đáp án: ')) + '</span>' +
+            '<b>' + PREP.esc(x.answer || '') + '</b>' +
+          '</span>') +
+        (x.vi ? '<span class="block text-[13px] text-muted mt-2">' + PREP.esc(x.vi) + '</span>' : '') +
+      '</li>').join('');
+    show('marked');
+  }
+
+  PREP.qs('#m-again').addEventListener('click', () => begin(lastTopic));
+  PREP.qs('#m-back').addEventListener('click', () => loadPick(level));
+
+  loadPick();
+});
+</script>
+</body>
+</html>

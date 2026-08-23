@@ -669,6 +669,29 @@ CREATE INDEX IF NOT EXISTS idx_rs_attempt ON rubric_scores (attempt_id);
    No UNIQUE on user_id here, unlike placements: drilling repeatedly is the whole
    point. The thing that stops it being a way to grind the estimate up is the
    30-day cooldown in server/drills.js plus a weight below a real sitting. */
+/* One revision set: gap sentences from a grammar topic, plus one sentence the
+   learner writes themselves. Same shape and same guards as the drills table —
+   the id list is fixed at creation so submit() cannot be told which questions
+   to mark. The built column keeps what they wrote, because tier-3 marking
+   happens later and the text has to still be there when it does.
+   (No backticks anywhere in this comment: it lives inside the SCHEMA_SQL
+   template literal, where a backtick ends the string.) */
+CREATE TABLE IF NOT EXISTS revision_sets (
+  id            INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id       INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  topic         TEXT NOT NULL,
+  level         TEXT NOT NULL,
+  size          INTEGER NOT NULL,
+  item_ids_json TEXT NOT NULL,
+  status        TEXT NOT NULL DEFAULT 'open',
+  started_at    TEXT NOT NULL,
+  done_at       TEXT,
+  earned        REAL,
+  max_score     REAL,
+  built         TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_revsets_user ON revision_sets (user_id, done_at DESC);
+
 CREATE TABLE IF NOT EXISTS drills (
   id            INTEGER PRIMARY KEY AUTOINCREMENT,
   user_id       INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
