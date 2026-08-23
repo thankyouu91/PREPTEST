@@ -294,13 +294,18 @@ Mục 3.4.
 
 Mục 3.5. Chỉ làm được sau khi 2–5 đã khóa, vì nó đọc dữ liệu của cả bốn.
 
-### Block 7 — Nhiều tiến trình
+### Block 7 — Nhiều tiến trình ✅ `d19490d`
 
 Bậc 2 ở mục 4. Sau block 1 vì `busy_timeout` là điều kiện cần.
 
-### Block 8 — Chống lạm dụng và DDoS
+Đã đóng. Mặc định vẫn là **một tiến trình**: `WEB_CONCURRENCY` bật nó lên, không
+phải đoạn mã. Số đo và lý do ở `docs/BLOCKS.md`.
 
-Mục 5.
+### Block 8 — Chống lạm dụng và DDoS ✅ `e8732cc`
+
+Mục 5. Đã đóng phần làm được trong repo: trần chi phí mô hình và trần đọc.
+Tầng biên (CloudFront/WAF) **không** nằm trong repo và vẫn còn nợ — bảng 5.2
+dưới đây giữ nguyên dòng đó thay vì xoá.
 
 ---
 
@@ -535,14 +540,17 @@ lần rà sau.
 
 ### 5.2 Cái còn thiếu (block 8)
 
-| Mối đe doạ | Hiện trạng | Việc |
+Bảng gốc, đã cập nhật sau khi đóng block 8 ở `e8732cc`. Giữ nguyên các dòng chưa
+làm được thay vì xoá đi: một bảng chỉ còn dòng đã xong là một bảng nói dối.
+
+| Mối đe doạ | Hiện trạng | Còn lại |
 |---|---|---|
-| **DDoS tầng mạng** | Không có gì | CloudFront/WAF trước ALB — chặn ở biên, đừng chặn bằng Node |
-| **Flood tầng ứng dụng** | Có giới hạn ghi, đọc thì không | Giới hạn theo token bucket cho `/api/*` theo IP + tài khoản; đường đọc nặng có hàng đợi riêng |
-| **Bùng chi phí AI** | Hàng đợi chấm chạy tuần tự, không có trần | Trần chi/ngày, trần chi/tài khoản, ngắt cầu dao khi vượt |
-| **Vét dữ liệu** | Không có gì | Trần số lần xem đề/giờ cho mỗi tài khoản |
-| **Sập một máy** | Không có gì | Bậc 4 ở mục 4 |
-| **Mất dữ liệu** | **Không có gì** | **Block 0 — làm đầu tiên** |
+| **DDoS tầng mạng** | ❌ Không có gì | CloudFront/WAF trước EC2 — chặn ở biên, đừng chặn bằng Node. Việc của chủ máy, các bước ở `docs/VAN-HANH.md` §4 |
+| **Flood tầng ứng dụng** | ✅ `readLimit` — 1200 lần đọc `/api/`/phút cho mỗi **phiên đăng nhập** | Cố ý **không** tính theo IP: một trường sau một NAT sẽ thành một hạn mức chung cho bốn mươi học viên. Ẩn danh là việc của biên. "Hàng đợi riêng cho đường đọc nặng" chưa làm và chưa cần — chưa tuyến nào đo được là nặng |
+| **Bùng chi phí AI** | ✅ `server/ai-budget.js` — trần/ngày và trần/tài khoản, cửa sổ 24 giờ trượt, đếm **trước** khi gọi | Chưa có cảnh báo chủ động (email khi chạm 80%); màn hình Cài đặt hiện có hiện số |
+| **Vét dữ liệu** | ✅ Đã được chặn sẵn, **bằng cơ chế khác** | Trần "xem đề/giờ" trong bảng gốc là thừa: một tài khoản chỉ mở được đề nó có quyền, mà quyền đến từ code đã mua. Xem lại đề của chính mình không lấy thêm nội dung nào. Cái chặn thật là `server/entitlements.js`, có từ trước block 8 |
+| **Sập một máy** | ❌ Không có gì | Bậc 4 ở mục 4 |
+| **Mất dữ liệu** | ⚠️ Đã có, chưa nghiệm thu lại | Block 0: ba lệnh phục hồi phải chạy lại **từ mã đã commit** trên máy thật — `docs/VAN-HANH.md` §2 |
 
 ### 5.3 Phương án backup, nói cho hết
 
