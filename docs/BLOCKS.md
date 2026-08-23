@@ -377,7 +377,7 @@ một mã lý do. Nay tách thành `notMeasured` và `provisional`.
 đỏ. Có một phép canh riêng chỗ **hai cách tính "hôm nay"** (JavaScript dựng lưới
 ngày, SQLite gom điểm) không được lệch nhau, đối chiếu trên 400 dòng thật.
 
-Đã chạy lại đủ sáu điều kiện. **Đóng lại ở `HASH`.**
+Đã chạy lại đủ sáu điều kiện. **Đóng lại ở `2f3d5b9`.**
 
 _(ghi vào đây mỗi lần một block đã khóa bị mở ra sửa: block nào, vì sao, commit
 nào đóng lại)_
