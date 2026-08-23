@@ -132,7 +132,17 @@ export TOKEN_ENCRYPTION_KEY="${TOKEN_ENCRYPTION_KEY:-$(node -e "console.log(requ
 # scripts/test-user-api.mjs drives that lockout on purpose and asserts the 429:
 # raising the ceiling for the gate would quietly delete the check that the
 # lockout works at all.
-REGISTER_PER_HOUR=200 FORGOT_PER_HOUR=200 REDEEM_PER_10MIN=200 node server.js > /tmp/prep-verify-server.log 2>&1 &
+# WRITE_PER_MIN is the fourth ceiling raised for the gate, and the newest.
+# It is 300 writes a minute keyed on the session cookie — generous for a person
+# and not for a test suite, which is ONE session doing hundreds of writes back
+# to back. Blocks 3.5 to 6 added four suites' worth of registrations, drills,
+# revision sets and marking, and the admin suite started meeting a 429 on a
+# sign-in POST: the browser simply stayed on the sign-in page, the suite threw
+# "the admin session was not accepted", and — because it threw before its
+# cleanup section — it left a published test paper behind that made test-items
+# fail too. One limit, two red steps, neither of them about the code.
+# Raised here only, never in the source, same as the three above.
+REGISTER_PER_HOUR=200 FORGOT_PER_HOUR=200 REDEEM_PER_10MIN=200 WRITE_PER_MIN=5000 node server.js > /tmp/prep-verify-server.log 2>&1 &
 SERVER_PID=$!
 cleanup() { kill "$SERVER_PID" 2>/dev/null || true; }
 trap cleanup EXIT

@@ -58,3 +58,19 @@ if (!uid) {
   if (status !== 'done') throw new Error('the demo student is still ' + status);
   say('demo student marked as placed');
 }
+
+/* 3. Test papers left behind by a suite that threw before its own cleanup.
+      scripts/test-admin.mjs creates "Automated test paper" and archives it at
+      the end; when it dies in the middle, the row stays PUBLISHED with a
+      section called Reading and no blueprint part letter, and every later run
+      of test-items.mjs fails on it. That is a run failing because of what the
+      PREVIOUS run left behind, which is the whole reason this file exists.
+      Archived rather than deleted: DELETE trips a foreign key once anything has
+      been sat against the paper, and archiving is enough to take it out of the
+      catalogue and out of the blueprint checks. */
+const strays = await q.all(
+  "SELECT id FROM tests WHERE status = 'published' AND id LIKE '%automated-test-paper%'");
+for (const t of strays) {
+  await q.run("UPDATE tests SET status = 'archived' WHERE id = ?", t.id);
+}
+say(strays.length ? 'archived ' + strays.length + ' stray test paper(s)' : 'no stray test papers');
