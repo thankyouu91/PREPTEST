@@ -826,6 +826,16 @@ addColumnIfMissing('questions', 'audio_at', 'TEXT');
    every boot or never notice a change. */
 addColumnIfMissing('questions', 'audio_sha', 'TEXT');
 
+/* Part practice for the written and spoken parts (B, D and I).
+   A drill is no longer always six machine-marked items: parts B and D are
+   e-mails and part I is spoken, and those go to the marker rather than to an
+   answer key. `mode` records which kind a drill is, so the screen and the
+   submit path do not have to re-derive it from the blueprint every time and
+   cannot disagree about a drill already in flight. `audio_key` is where a
+   spoken answer's recording lives, exactly as attempt_answers stores one. */
+addColumnIfMissing('drills', 'mode', "TEXT NOT NULL DEFAULT 'instant'");
+addColumnIfMissing('drill_answers', 'audio_key', 'TEXT');
+
 /* Which lettered VPET part an item belongs to (A-J), or NULL for families that
    have no part table. Skill alone cannot separate them: parts B and D are both
    writing essays, F and G are both listening multiple choice, H and J are both

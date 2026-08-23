@@ -44,6 +44,9 @@ const ability = require('./ability');
 const marking = require('./marking');
 const placement = require('./placement');
 const formats = require('./data/exam-formats');
+const ai = require('./ai-marking');
+const rubric = require('./rubric');
+const storage = require('./storage');
 
 /** How many items a drill holds. Ten minutes' worth, and the ceiling a request may ask for. */
 const DEFAULT_SIZE = 6;
@@ -61,8 +64,44 @@ const COOLDOWN_DAYS = 30;
  */
 const DRILL_WEIGHT = 0.6;
 
-/** Machine-marked only, so a drill gives its feedback on the spot. */
+/** Marked against an answer key, so a drill of these gives feedback on the spot. */
 const INSTANT_TYPES = ['mcq', 'gap'];
+
+/**
+ * How a part gets marked, and therefore what a drill of it looks like.
+ *
+ * A drill used to mean six machine-marked items and nothing else, which shut
+ * six of the ten parts out of the practise screen entirely. Two of those six
+ * are e-mails and one is spoken, and all three have material in the bank: they
+ * were excluded by the marking path, not by a lack of content.
+ *
+ *   instant  mcq / gap. An answer key. Marked on submit, feedback immediately.
+ *   written  essay. Goes to the AI marker with the rubric, like a real paper.
+ *   spoken   speaking. Recorded, transcribed, then marked the same way.
+ *
+ * Read from the blueprint's own type list rather than a table of letters here,
+ * so a change to the paper carries through on its own.
+ */
+function modeOf(part) {
+  const sec = formats.sectionOfPart('vpet', part);
+  const types = (sec && sec.types) || [];
+  if (types.some(t => INSTANT_TYPES.includes(t))) return 'instant';
+  if (types.includes('speaking')) return 'spoken';
+  if (types.includes('essay')) return 'written';
+  return null;
+}
+
+/** The question types a drill of this part may draw. */
+function typesFor(part) {
+  const m = modeOf(part);
+  if (m === 'instant') return INSTANT_TYPES.slice();
+  if (m === 'spoken') return ['speaking'];
+  if (m === 'written') return ['essay'];
+  return [];
+}
+
+/** How many items a drill of this part holds. An e-mail is not six of anything. */
+const SIZE_BY_MODE = { instant: DEFAULT_SIZE, written: 1, spoken: 3 };
 
 const jparse = (s, f) => { try { const v = JSON.parse(s); return v == null ? f : v; } catch { return f; } };
 const clampInt = (v, lo, hi, dflt) => {
@@ -82,6 +121,44 @@ function reasonFor(est) {
   if (!est || !est.n) return 'notMeasured';     // nothing at all
   if (!est.confident) return 'provisional';     // something, but not enough
   return est.score < 5 ? 'weakest' : 'belowTarget';
+}
+
+/** How many items each part has that a drill of that part could actually use. */
+async function availableByPart() {
+  /* Counted per part AND per type, because what makes a part practisable is
+     having items of ITS OWN type. Counting only mcq and gap is what shut parts
+     B, D and I out of the practise screen while their material sat in the bank
+     unused: they were excluded by the marking path, not by a lack of content.
+
+     One function, called from both suggest() and overview(). They had the same
+     query written out twice, which is how a patch meant for one of them landed
+     on the other and neither read as wrong. */
+  const counts = await q.all(
+    `SELECT part, type, COUNT(*) c FROM questions
+      WHERE status = 'active' AND part IS NOT NULL AND type IN ('mcq','gap','essay','speaking')
+      GROUP BY part, type`);
+
+  /* A part the blueprint marks needsAudio is only practisable when its items
+     really carry a recording. Without that check this function reported all ten
+     parts as ready and the screen offered a Dictation drill whose prompt reads
+     "Listen, then type the sentence exactly as you hear it" with nothing to
+     hear: the dead button this whole screen was rebuilt to stop showing.
+     Counted separately rather than folded into the query above, because the
+     rule belongs to the blueprint and the blueprint is not in the database. */
+  const withAudio = new Map(
+    (await q.all(
+      `SELECT part, COUNT(*) c FROM questions
+        WHERE status = 'active' AND part IS NOT NULL AND audio_key IS NOT NULL
+        GROUP BY part`)).map(r => [r.part, r.c]));
+
+  const have = new Map();
+  for (const r of counts) {
+    if (!typesFor(r.part).includes(r.type)) continue;
+    const sec = formats.sectionOfPart('vpet', r.part);
+    const usable = sec && sec.needsAudio ? Math.min(r.c, withAudio.get(r.part) || 0) : r.c;
+    if (usable > 0) have.set(r.part, (have.get(r.part) || 0) + usable);
+  }
+  return have;
 }
 
 /* ------------------------------ Choosing what ------------------------------ */
@@ -137,15 +214,24 @@ async function recentlySeen(userId, days) {
  */
 async function drawItems(part, level, size, skip) {
   const picked = [];
-  const holes = INSTANT_TYPES.map(() => '?').join(',');
+  /* The part's OWN types, not mcq and gap for everybody. An e-mail part draws
+     essays and a spoken part draws speaking prompts; drawing only the
+     machine-marked types is what made six of the ten parts undrawable. */
+  const kinds = typesFor(part);
+  if (!kinds.length) return { items: [], repeated: false };
+  const holes = kinds.map(() => '?').join(',');
+  /* And a part whose blueprint says it needs audio may only draw items that
+     have some, so a drill can never open on a prompt with nothing to hear. */
+  const sec = formats.sectionOfPart('vpet', part);
+  const audioClause = sec && sec.needsAudio ? ' AND audio_key IS NOT NULL' : '';
 
   const take = async (lv, ignoreSkip) => {
     if (picked.length >= size) return;
     const rows = await q.all(
-      `SELECT id, part, type, prompt, options_json, level, explanation
+      `SELECT id, part, type, prompt, options_json, level, explanation, audio_key
          FROM questions
-        WHERE status = 'active' AND part = ? AND level = ? AND type IN (${holes})
-        ORDER BY RANDOM() LIMIT 60`, part, lv, ...INSTANT_TYPES);
+        WHERE status = 'active' AND part = ? AND level = ? AND type IN (${holes})${audioClause}
+        ORDER BY RANDOM() LIMIT 60`, part, lv, ...kinds);
     for (const r of rows) {
       if (picked.length >= size) break;
       if (picked.some(p => p.id === r.id)) continue;
@@ -185,11 +271,7 @@ async function suggest(userId, weights, limit) {
   const cap = limit === undefined ? 3 : limit;
   const ab = await ability.abilityOf(userId);
 
-  const counts = await q.all(
-    `SELECT part, COUNT(*) c FROM questions
-      WHERE status = 'active' AND part IS NOT NULL AND type IN (${INSTANT_TYPES.map(() => '?').join(',')})
-      GROUP BY part`, ...INSTANT_TYPES);
-  const have = new Map(counts.map(r => [r.part, r.c]));
+  const have = await availableByPart();
 
   const row = (part, est) => ({
     part,
@@ -255,11 +337,7 @@ async function suggest(userId, weights, limit) {
 async function overview(userId, weights) {
   const ab = await ability.abilityOf(userId);
 
-  const counts = await q.all(
-    `SELECT part, COUNT(*) c FROM questions
-      WHERE status = 'active' AND part IS NOT NULL AND type IN (${INSTANT_TYPES.map(() => '?').join(',')})
-      GROUP BY part`, ...INSTANT_TYPES);
-  const have = new Map(counts.map(r => [r.part, r.c]));
+  const have = await availableByPart();
 
   /* Position in the recommendation, so the screen can promote two or three
      without inventing a second ranking. Same call the plan and the progress
@@ -271,11 +349,17 @@ async function overview(userId, weights) {
     const sec = formats.sectionOfPart('vpet', part) || {};
     const est = (ab.parts || {})[part];
     const available = have.get(part) || 0;
-    /* What the part is marked by, which is what decides whether a six-item
-       drill is even possible. Taken from the blueprint's own type list. */
-    const types = sec.types || [];
-    const needs = types.includes('speaking') ? 'speaking'
-      : types.includes('essay') ? 'writing' : null;
+    /* How this part is marked, which decides what a drill of it looks like. */
+    const mode = modeOf(part);
+    const needs = mode === 'spoken' ? 'speaking' : mode === 'written' ? 'writing' : null;
+    /* Why it cannot be practised, when it cannot. "Marked in a full paper" was
+       the old catch-all and it is not true of E, F, G, H and J: a full paper
+       cannot test them either, because their items are prompts waiting on a
+       recording that has never been made. Saying which of the two it is turns
+       "this platform is missing a feature" into "this part is waiting on
+       content", which is the truth and is actionable by whoever makes it. */
+    const blocked = available > 0 ? null
+      : (sec.needsAudio ? 'needsAudio' : 'noItems');
     return {
       part,
       /* The blueprint stores "Part A - Sentence Completion"; the letter is
@@ -287,7 +371,12 @@ async function overview(userId, weights) {
       minutes: sec.minutes || null,
       drillable: available > 0,
       available,
+      mode,
       needs,
+      blocked,
+      /* How many items a drill of this part holds, so the card can say
+         "1 e-mail" rather than implying six of them. */
+      drillSize: SIZE_BY_MODE[mode] || DEFAULT_SIZE,
       level: levelFor(ab, part),
       score: est ? est.score : null,
       confident: est ? est.confident : false,
@@ -312,7 +401,13 @@ async function start(userId, opts) {
   const o = opts || {};
   const part = String(o.part || '').trim().toUpperCase();
   if (!/^[A-J]$/.test(part)) return { error: 'bad-part' };
-  const size = clampInt(o.size, 3, MAX_SIZE, DEFAULT_SIZE);
+  const mode = modeOf(part);
+  if (!mode) return { error: 'bad-part' };
+  /* The natural size of THIS part. One e-mail, not six: a request asking for
+     six e-mails would be forty minutes of writing sold as a ten-minute drill.
+     A caller may still ask for fewer or more within the ceiling. */
+  const natural = SIZE_BY_MODE[mode] || DEFAULT_SIZE;
+  const size = clampInt(o.size, 1, mode === 'instant' ? MAX_SIZE : natural, natural);
 
   const ab = await ability.abilityOf(userId);
   const level = /^(A2|B1|B2|C1)$/.test(String(o.level || '')) ? o.level : levelFor(ab, part);
@@ -322,13 +417,13 @@ async function start(userId, opts) {
   if (!items.length) return { error: 'no-items', part, level };
 
   const res = await q.run(
-    `INSERT INTO drills (user_id, part, level, size, item_ids_json, status, started_at)
-     VALUES (?,?,?,?,?, 'open', ?)`,
-    userId, part, level, items.length, JSON.stringify(items.map(i => i.id)), nowISO());
+    `INSERT INTO drills (user_id, part, level, size, item_ids_json, status, started_at, mode)
+     VALUES (?,?,?,?,?, 'open', ?, ?)`,
+    userId, part, level, items.length, JSON.stringify(items.map(i => i.id)), nowISO(), mode);
 
   return {
     drillId: Number(res.lastInsertRowid),
-    part, level, repeated,
+    part, level, repeated, mode,
     usedLevels: [...new Set(items.map(i => i.level))],
     items: items.map(forClient)
   };
@@ -342,10 +437,171 @@ async function start(userId, opts) {
  * to item three before item four is answered turns it into a quiz where the
  * later items are informed by the earlier ones.
  */
+/**
+ * Hand in a drill of a part that has no answer key: parts B and D (e-mails)
+ * and G, H, I and J (spoken).
+ *
+ * The same road a real paper takes, deliberately. `ai.markOne()` returns the
+ * criteria, `rubric.combine()` turns them into a mark and applies the caps, and
+ * the result is recorded as a `skill_event` at the drill weight like any other
+ * practice. Marking a drill with a second, gentler rule would produce a number
+ * that flatters the learner and disagrees with their paper.
+ *
+ * ## It never invents a score
+ *
+ * The marker is optional configuration. When it is absent, or refuses, or a
+ * recording cannot be transcribed, the drill is left at `marking` and says so.
+ * A zero would be a lie about the answer and a fabricated number would be
+ * worse; both would also reach the ability model, which is the one thing on
+ * this platform that must not be fed guesses.
+ */
+async function submitMarked(userId, d, answers) {
+  const drillId = d.id;
+  const ids = jparse(d.item_ids_json, []);
+  const given = new Map();
+  for (const a of Array.isArray(answers) ? answers : []) {
+    const id = Number(a && a.questionId);
+    /* Only the items this drill served, same guard as the answer-key path. */
+    if (ids.includes(id)) given.set(id, String((a && a.answer) || ''));
+  }
+
+  const rows = ids.length
+    ? await q.all(
+        `SELECT id, part, type, level, prompt FROM questions WHERE id IN (${ids.map(() => '?').join(',')})`,
+        ...ids)
+    : [];
+
+  const at = nowISO();
+  const events = [];
+  const detail = [];
+  let earned = 0, max = 0, pending = 0;
+
+  for (const row of rows) {
+    /* A spoken answer is a recording, uploaded before submitting; a written one
+       arrives in this request. */
+    const stored = await q.get(
+      'SELECT answer, audio_key FROM drill_answers WHERE drill_id=? AND question_id=?', drillId, row.id);
+    const text = d.mode === 'written'
+      ? (given.has(row.id) ? given.get(row.id) : String((stored && stored.answer) || ''))
+      : '';
+    const audioKey = d.mode === 'spoken' ? (stored && stored.audio_key) || null : null;
+
+    const save = async (note, mark) => {
+      await q.run(
+        `INSERT INTO drill_answers (drill_id, question_id, answer, audio_key, earned, max_score, note)
+         VALUES (?,?,?,?,?,?,?)
+         ON CONFLICT(drill_id, question_id) DO UPDATE SET
+           answer=excluded.answer, audio_key=excluded.audio_key,
+           earned=excluded.earned, max_score=excluded.max_score, note=excluded.note`,
+        drillId, row.id, text, audioKey,
+        mark ? mark.earned : null, mark ? mark.max : null, note);
+    };
+
+    /* Nothing handed in. Marked zero rather than left pending: a blank answer is
+       a complete and correct thing to know about somebody. */
+    if (d.mode === 'written' ? !text.trim() : !audioKey) {
+      await save('Left blank', { earned: 0, max: 1 });
+      earned += 0; max += 1;
+      events.push({
+        user_id: userId, source: 'drill', ref_id: 'drill:' + drillId, item_key: 'q' + row.id,
+        skill: placement.skillOfPart(row.part), part: row.part, level: row.level,
+        earned: 0, max_score: 1, weight: DRILL_WEIGHT, at
+      });
+      detail.push({ questionId: row.id, prompt: row.prompt, given: text, right: false,
+        pending: false, note: 'Left blank' });
+      continue;
+    }
+
+    /* Speech first has to become words. */
+    let heard = null;
+    if (d.mode === 'spoken') {
+      if (!(await ai.canTranscribe())) {
+        pending++; await save('Waiting to be marked: no transcription service is configured.', null);
+        detail.push({ questionId: row.id, prompt: row.prompt, given: '', pending: true,
+          note: 'Waiting to be marked: no transcription service is configured.' });
+        continue;
+      }
+      try {
+        const file = await storage.get(audioKey);
+        heard = await ai.transcribe(file.body || file, file.mime);
+      } catch (e) {
+        console.warn('[drill] transcription failed: ' + ai.scrub(e && e.message));
+        heard = null;
+      }
+      if (!heard) {
+        pending++; await save('Waiting to be marked: the recording could not be turned into words.', null);
+        detail.push({ questionId: row.id, prompt: row.prompt, given: '', pending: true,
+          note: 'Waiting to be marked: the recording could not be turned into words.' });
+        continue;
+      }
+    }
+
+    let verdict = null;
+    try {
+      verdict = await ai.markOne({
+        part: row.part, level: row.level || d.level, prompt: row.prompt,
+        answer: text, heard, source: d.mode === 'spoken' ? 'transcript' : 'text'
+      });
+    } catch (e) {
+      console.warn('[drill] item ' + row.id + ' could not be marked: ' + ai.scrub(e && e.message));
+    }
+    if (!verdict) {
+      pending++; await save('Waiting to be marked: the marker could not be reached.', null);
+      detail.push({ questionId: row.id, prompt: row.prompt, given: heard || text, pending: true,
+        note: 'Waiting to be marked: the marker could not be reached.' });
+      continue;
+    }
+
+    /* The criteria decide the mark, not the model's headline number, and the
+       caps in server/rubric.js apply here exactly as they do to a paper. */
+    const graded = rubric.combine(row.part, verdict.criteria, {
+      answer: heard || text, fallbackScore: verdict.score
+    }) || { score: verdict.score, criteria: [], caps: [] };
+
+    /* One item is worth one, and the rubric works out of ten, so it is stored
+       as a fraction of one. Two scales in one column is a reader's problem. */
+    const mark = { earned: Math.max(0, Math.min(1, graded.score / 10)), max: 1 };
+    earned += mark.earned; max += mark.max;
+    await save(verdict.note || null, mark);
+    events.push({
+      user_id: userId, source: 'drill', ref_id: 'drill:' + drillId, item_key: 'q' + row.id,
+      skill: placement.skillOfPart(row.part), part: row.part, level: row.level,
+      earned: mark.earned, max_score: mark.max, weight: DRILL_WEIGHT, at
+    });
+    detail.push({
+      questionId: row.id, prompt: row.prompt, given: heard || text, pending: false,
+      score: Math.round(graded.score * 10) / 10,
+      right: graded.score >= 5,
+      note: verdict.note || null,
+      criteria: graded.criteria || [],
+      caps: graded.caps || [],
+      /* A candidate reading a speaking mark is entitled to know that the mark
+         was made from a transcript and nobody listened to their voice. */
+      heard: d.mode === 'spoken' ? heard : null
+    });
+  }
+
+  const wrote = await ability.record(events);
+  const done = pending === 0;
+  await q.run(
+    'UPDATE drills SET status=?, done_at=?, earned=?, max_score=? WHERE id=?',
+    done ? 'done' : 'marking', done ? at : null, earned, max, drillId);
+
+  return {
+    drillId, part: d.part, level: d.level, mode: d.mode,
+    earned: Math.round(earned * 10) / 10, max,
+    pending, recorded: wrote, detail
+  };
+}
+
 async function submit(userId, drillId, answers) {
   const d = await q.get('SELECT * FROM drills WHERE id = ? AND user_id = ?', drillId, userId);
   if (!d) return { error: 'not-found' };
   if (d.status === 'done') return { error: 'already-done' };
+  /* An e-mail or a spoken answer does not have an answer key, so it takes a
+     different road: to the marker and the rubric, exactly the one a real paper
+     takes. Everything after this line is the answer-key path. */
+  if (d.mode === 'written' || d.mode === 'spoken') return submitMarked(userId, d, answers);
 
   const ids = jparse(d.item_ids_json, []);
   const given = new Map();
@@ -437,7 +693,7 @@ function history(userId, limit) {
 }
 
 module.exports = {
-  suggest, overview, start, submit, get, history,
+  suggest, overview, modeOf, typesFor, submitMarked, availableByPart, start, submit, get, history,
   levelFor, recentlySeen, drawItems,
   DEFAULT_SIZE, MAX_SIZE, COOLDOWN_DAYS, DRILL_WEIGHT, INSTANT_TYPES
 };
