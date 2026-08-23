@@ -97,6 +97,12 @@ node scripts/test-mail.mjs || fail=1
 step "Admin second factor (RFC 6238 vectors, enrolment, sign-in)"
 node scripts/test-totp.mjs || fail=1
 
+# Boots its own three-worker cluster on its own database and its own free port,
+# so it belongs here rather than after "Start the server": it must not share a
+# database with a suite that is counting rows.
+step "Running on more than one process (one seed, one sweeper, work spread)"
+node scripts/test-cluster.mjs || fail=1
+
 step "Start the server"
 pkill -f 'node server\.js' 2>/dev/null || true
 sleep 0.5

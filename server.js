@@ -28,6 +28,7 @@ const A = require('./server/auth');
 const placement = require('./server/placement');
 const security = require('./server/security');
 const lifecycle = require('./server/lifecycle');
+const clustering = require('./server/cluster');
 const analytics = require('./server/analytics');
 const { q, attachBankAudio } = require('./server/db');
 const { entitlementOf } = require('./server/entitlements');
@@ -49,6 +50,21 @@ app.set('trust proxy', security.TRUST_PROXY);
    See server/security.js and docs/SECURITY.md. */
 app.use(security.baseHeaders);
 app.use(security.writeLimit);
+
+/* One line, once, the first time a worker is given anything to do.
+   It answers the question that decides whether a cluster is worth its memory:
+   is the work actually spread, or is one process taking all of it while the
+   others sit warm and idle? Nothing else reports that — `ps` shows four
+   processes either way, and the load average shows the total. Registered only
+   in a worker, so a single-process run's log is exactly as it was, and gated on
+   a boolean so the cost after the first request is one `if`. */
+if (!clustering.isPrimary()) {
+  let served = false;
+  app.use((req, res, next) => {
+    if (!served) { served = true; console.log(`[cluster] worker ${process.pid} serving`); }
+    next();
+  });
+}
 
 const PUB = path.join(__dirname, 'public');
 const PORT = process.env.PORT || 3000;
@@ -417,32 +433,23 @@ app.use((err, req, res, next) => {
    Both are database work and both are asynchronous now, so a listen() that did
    not wait for them would answer its first request against a half-seeded
    database — and the first request in a test run is a sign-in. */
-(async () => {
-  /* First, before anything reads a key. With no AWS_SECRETS_ID this does
-     nothing at all; with one it merges the secret into process.env, so every
-     reader downstream keeps working unchanged. See server/secrets.js — and note
-     the rule it depends on: a secret must be read at call time, never captured
-     into a module constant at import, because modules are required above this
-     line. scripts/test-secrets.mjs enforces that by reading the source. */
-  await secrets.load();
-  /* The bank's own recordings, into whatever store this install uses. After
-     secrets, because S3 and GCS need their credentials; before listen(), because
-     an audio item served without its audio is a question nobody was asked.
+/**
+ * Work that must happen in exactly one process, however many are serving.
+ *
+ * Both of these keep state in memory, and that is the whole reason they are
+ * fenced off here. Four copies of the sweeper would each find the same unmarked
+ * paper, each mark it, and produce four sets of scores and four bills from the
+ * model provider. Four copies of the purge would do the same delete four times,
+ * which is merely wasteful — but the sweeper alone is enough to make this the
+ * single most important line in Block 7.
+ */
+function startBackgroundJobs() {
+  /* Which process owns them, said out loud once. An operator staring at four
+     pids needs to know where the marking is happening before they can read
+     anything else in the log, and counting these lines is how
+     scripts/test-cluster.mjs proves there is exactly one of it. */
+  console.log('[jobs] background jobs armed in pid ' + process.pid);
 
-     Its own catch, and this is not decoration. The first version was a bare
-     await in front of the two lines below, so an unreachable bucket did not just
-     leave Part E silent - it stopped ensureSeedAdmin() and ensureDemoStudent()
-     from ever running, and the whole platform came up with nobody able to sign
-     in. Nothing about a recording should be able to do that. */
-  try {
-    await attachBankAudio();
-  } catch (e) {
-    console.error('[audio] the bank recordings could not be stored this boot: ' + (e && e.message));
-    console.error('        Parts E, F, G, H and J may play nothing until this is fixed.');
-  }
-
-  await A.ensureSeedAdmin();
-  await A.ensureDemoStudent();
   /* setInterval does not await, so the sweep has to carry its own catch or a
      failed sweep becomes an unhandled rejection that takes the process down. */
   setInterval(() => {
@@ -456,12 +463,76 @@ app.use((err, req, res, next) => {
      the backlog of sittings finished before anyone pasted a key. Does nothing
      at all when there is no key. */
   require('./server/ai-marking-run').startSweeper();
+}
 
-  const server = app.listen(PORT, async () => {
+(async () => {
+  /* The boot work below runs in the primary and nowhere else. A worker is
+     forked only after all of it has finished, so it inherits a database that is
+     already migrated and seeded rather than racing three siblings to seed it.
+     With WEB_CONCURRENCY unset there are no workers and this process is simply
+     the process; see server/cluster.js. */
+  if (clustering.isPrimary()) {
+    /* First, before anything reads a key. With no AWS_SECRETS_ID this does
+       nothing at all; with one it merges the secret into process.env, so every
+       reader downstream keeps working unchanged. See server/secrets.js — and note
+       the rule it depends on: a secret must be read at call time, never captured
+       into a module constant at import, because modules are required above this
+       line. scripts/test-secrets.mjs enforces that by reading the source.
+
+       Once per boot, not once per process: cluster.fork() copies the primary's
+       environment as it stands at fork time, so a worker starts with whatever
+       this merged in. That is Node's documented behaviour and it is also what
+       scripts/test-cluster.mjs checks, because the alternative — every worker
+       calling out to Secrets Manager on boot — is N times the latency and N
+       times the API calls for an answer that cannot differ. */
+    await secrets.load();
+    /* The bank's own recordings, into whatever store this install uses. After
+       secrets, because S3 and GCS need their credentials; before listen(), because
+       an audio item served without its audio is a question nobody was asked.
+
+       Its own catch, and this is not decoration. The first version was a bare
+       await in front of the two lines below, so an unreachable bucket did not just
+       leave Part E silent - it stopped ensureSeedAdmin() and ensureDemoStudent()
+       from ever running, and the whole platform came up with nobody able to sign
+       in. Nothing about a recording should be able to do that. */
+    try {
+      await attachBankAudio();
+    } catch (e) {
+      console.error('[audio] the bank recordings could not be stored this boot: ' + (e && e.message));
+      console.error('        Parts E, F, G, H and J may play nothing until this is fixed.');
+    }
+
+    await A.ensureSeedAdmin();
+    await A.ensureDemoStudent();
+  }
+
+  /* The banner and the admin report belong to the boot, not to a socket. They
+     used to live in the listen() callback, which was the same thing while there
+     was one process and became four copies of both the moment there were four
+     — including four passes over the admin table to print the same warning. */
+  async function announce() {
     console.log(`VPET Prep chạy tại http://localhost:${PORT}`);
     console.log(`  · Học viên:  http://localhost:${PORT}/prep/landing/`);
     console.log(`  · Quản trị:  http://localhost:${PORT}/admin/`);
     try { await A.reportAdminAccounts(); } catch (e) { console.error(e && e.message); }
+  }
+
+  /* Fork, if asked to. Returns true only in a supervisor, which from here on
+     serves nothing: it holds the listening socket for the workers, restarts one
+     that dies, and runs the jobs that must not be run four times. */
+  if (clustering.start({ log: console.log })) {
+    startBackgroundJobs();
+    await announce();
+    return;
+  }
+
+  /* A worker, or a single-process run. The single process is its own primary,
+     so it keeps the jobs; a worker must not touch them. */
+  if (clustering.isPrimary()) startBackgroundJobs();
+
+  const server = app.listen(PORT, async () => {
+    if (!clustering.isPrimary()) return console.log(`[cluster] worker ${process.pid} listening`);
+    await announce();
   });
 
   /* A crash exits non-zero so a supervisor restarts it; SIGTERM drains and exits 0.
