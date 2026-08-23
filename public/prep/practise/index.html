@@ -25,38 +25,84 @@
 <body class="bg-surface text-ink">
 <div id="app" data-active="practise" class="min-h-[100dvh]">
   <main id="main">
-    <div class="max-w-[820px] mx-auto px-4 sm:px-6 pb-10">
+    <div class="max-w-[1180px] mx-auto px-4 sm:px-6 pb-16">
 
-      <div id="loading" class="grid gap-4 mt-8" aria-hidden="true">
-        <div class="card p-8"><div class="skeleton h-7 w-1/2 mb-4"></div><div class="skeleton h-16 w-full"></div></div>
+      <div id="loading" class="mt-8" aria-hidden="true">
+        <div class="skeleton h-24 w-full rounded-2xl"></div>
+        <div class="grid gap-4 sm:grid-cols-2 mt-6">
+          <div class="skeleton h-28 rounded-2xl"></div><div class="skeleton h-28 rounded-2xl"></div>
+          <div class="skeleton h-28 rounded-2xl"></div><div class="skeleton h-28 rounded-2xl"></div>
+        </div>
       </div>
 
-      <!-- 1. What to practise, straight off the ability report -->
+      <!-- ============================ 1. THE PAPER ============================
+           Ten parts, A to J, always all ten. The previous version of this screen
+           showed three cards and hid the rest behind a disclosure triangle,
+           which made a ten-part exam look like a three-item to-do list. A
+           candidate has to hold the whole paper in their head on the day. -->
       <section id="pick" hidden class="mt-8">
-        <h2 class="text-2xl font-extrabold tracking-tight" data-en="Practise one part" data-vi="Luyện một phần"></h2>
-        <p class="text-muted text-[15px] leading-relaxed mt-2 max-w-[56ch]"
-           data-en="Six questions, about ten minutes, marked as soon as you finish. Chosen from what your progress says you need — and it counts towards it."
-           data-vi="Sáu câu, khoảng mười phút, làm xong chấm ngay. Chọn theo đúng cái tiến độ của bạn đang thiếu — và làm xong thì tiến độ đổi theo."></p>
 
-        <ul id="p-list" class="grid gap-3 mt-6"></ul>
+        <!-- Where you stand, on one line, before any list. -->
+        <div class="card p-5 sm:p-6">
+          <div class="flex flex-wrap items-center gap-x-10 gap-y-5">
+            <span class="min-w-0">
+              <h2 class="text-[22px] sm:text-[26px] font-extrabold tracking-tight leading-tight">Practise one part at a time</h2>
+              <p class="text-muted text-[14.5px] leading-relaxed mt-1 max-w-[52ch]">Six questions, about ten minutes, marked the moment you finish. What you score here moves your progress.</p>
+            </span>
+            <span class="flex items-center gap-8 ms-auto">
+              <span class="text-center">
+                <b id="s-level" class="block text-2xl font-extrabold tracking-tight leading-none">-</b>
+                <span class="block text-[11.5px] font-bold uppercase tracking-wider text-muted mt-1.5">Your level</span>
+              </span>
+              <span class="text-center">
+                <b id="s-measured" class="block text-2xl font-extrabold tracking-tight leading-none tabular-nums">-</b>
+                <span class="block text-[11.5px] font-bold uppercase tracking-wider text-muted mt-1.5">Parts measured</span>
+              </span>
+            </span>
+          </div>
+          <div id="s-next-wrap" hidden class="flex flex-wrap items-center gap-3 mt-5 pt-5 border-t border-line">
+            <button type="button" id="s-next" class="btn btn-primary btn-md"></button>
+            <span id="s-next-why" class="text-[13.5px] text-muted"></span>
+          </div>
+        </div>
 
-        <details class="mt-6">
-          <summary class="text-[13.5px] font-semibold cursor-pointer" data-en="Practise a different part" data-vi="Luyện một phần khác"></summary>
-          <div id="p-all" class="flex flex-wrap gap-2 mt-3"></div>
-        </details>
+        <div class="grid gap-8 lg:grid-cols-[minmax(0,1fr)_300px] mt-8">
 
-        <div id="p-recent" hidden class="card p-6 mt-6">
-          <h3 class="font-extrabold text-[15px] tracking-tight" data-en="Recently practised" data-vi="Vừa luyện gần đây"></h3>
-          <ul id="p-hist" class="mt-3"></ul>
+          <div class="min-w-0">
+            <h3 class="text-[13px] font-bold uppercase tracking-wider text-muted">The paper, A to J</h3>
+            <ul id="p-grid" class="grid gap-3.5 sm:grid-cols-2 mt-3.5"></ul>
+          </div>
+
+          <aside class="min-w-0 grid gap-4 content-start">
+            <!-- The explanation sits beside the grid rather than under it,
+                 because "why can I only press four of these" is a question the
+                 grid raises and the answer should be in view when it does. -->
+            <div class="card p-5">
+              <h3 class="text-[13px] font-bold uppercase tracking-wider text-muted">Four you can drill</h3>
+              <p class="text-[13.5px] text-muted leading-relaxed mt-2.5">Parts A, C, E and F are typed answers, so six of them can be marked on the spot.</p>
+              <p class="text-[13.5px] text-muted leading-relaxed mt-2.5">The other six are e-mails and spoken answers. They need a marker rather than an answer key, so they are scored when you sit a full paper.</p>
+              <a href="/prep/thu-vien/" class="btn btn-soft btn-sm mt-4">Sit a full paper</a>
+            </div>
+
+            <div id="p-recent" hidden class="card p-5">
+              <h3 class="text-[13px] font-bold uppercase tracking-wider text-muted">Recently practised</h3>
+              <ul id="p-hist" class="mt-3"></ul>
+            </div>
+            <div id="p-none" hidden class="card p-5">
+              <h3 class="text-[13px] font-bold uppercase tracking-wider text-muted">Recently practised</h3>
+              <p class="text-[13.5px] text-muted leading-relaxed mt-2.5">Nothing yet. Your last five drills will sit here, with what you scored on each.</p>
+            </div>
+          </aside>
+
         </div>
       </section>
 
-      <!-- 2. The drill -->
-      <section id="run" hidden class="mt-8">
+      <!-- ============================ 2. THE DRILL ============================ -->
+      <section id="run" hidden class="mt-8 max-w-[760px] mx-auto">
         <div class="flex items-center gap-3">
           <span class="badge badge-muted" id="r-part"></span>
           <span class="text-[13px] font-bold uppercase tracking-wide text-muted" id="r-count"></span>
-          <button type="button" id="r-quit" class="btn btn-ghost btn-sm ms-auto" data-en="Leave" data-vi="Thoát"></button>
+          <button type="button" id="r-quit" class="btn btn-ghost btn-sm ms-auto">Leave</button>
         </div>
         <div class="h-1.5 rounded-full bg-line mt-2.5 overflow-hidden">
           <div id="r-bar" class="quiz-bar h-full bg-brand rounded-full"></div>
@@ -68,19 +114,19 @@
         </div>
 
         <div class="flex flex-wrap items-center gap-3 mt-5">
-          <button type="button" id="r-next" class="btn btn-primary btn-md" disabled data-en="Next" data-vi="Tiếp"></button>
-          <button type="button" id="r-skip" class="btn btn-ghost btn-md" data-en="Skip" data-vi="Bỏ qua"></button>
-          <span class="text-[12.5px] text-muted ms-auto" data-en="1–4 to choose · Enter for next" data-vi="1–4 để chọn · Enter để sang câu"></span>
+          <button type="button" id="r-next" class="btn btn-primary btn-md" disabled>Next</button>
+          <button type="button" id="r-skip" class="btn btn-ghost btn-md">Skip</button>
+          <span class="text-[12.5px] text-muted ms-auto">1-4 to choose, Enter for next</span>
         </div>
       </section>
 
-      <!-- 3. What you got, and why -->
-      <section id="marked" hidden class="mt-8">
+      <!-- ========================= 3. WHAT YOU GOT ========================= -->
+      <section id="marked" hidden class="mt-8 max-w-[760px] mx-auto">
         <div class="card p-7">
           <div class="flex flex-wrap items-end gap-x-8 gap-y-3">
             <span>
-              <span class="block text-[13px] font-bold uppercase tracking-wide text-muted" data-en="This drill" data-vi="Lượt này"></span>
-              <b id="m-score" class="block text-4xl font-extrabold tracking-tight leading-none mt-1.5">–</b>
+              <span class="block text-[13px] font-bold uppercase tracking-wide text-muted">This drill</span>
+              <b id="m-score" class="block text-4xl font-extrabold tracking-tight leading-none mt-1.5">-</b>
             </span>
             <span id="m-moved" class="text-[14px] leading-snug max-w-[34ch]"></span>
           </div>
@@ -89,16 +135,16 @@
         <ul id="m-detail" class="grid gap-3 mt-5"></ul>
 
         <div class="flex flex-wrap gap-2.5 mt-6">
-          <button type="button" id="m-again" class="btn btn-primary btn-md" data-en="Another one" data-vi="Làm tiếp lượt nữa"></button>
-          <button type="button" id="m-back" class="btn btn-soft btn-md" data-en="Choose a part" data-vi="Chọn phần khác"></button>
-          <a href="/prep/" class="btn btn-ghost btn-md" data-en="My progress" data-vi="Tiến độ của tôi"></a>
+          <button type="button" id="m-again" class="btn btn-primary btn-md">Another one</button>
+          <button type="button" id="m-back" class="btn btn-soft btn-md">Choose a part</button>
+          <a href="/prep/" class="btn btn-ghost btn-md">My progress</a>
         </div>
       </section>
 
-      <div id="oops" hidden class="card p-8 mt-8 text-center">
-        <h2 class="font-extrabold text-lg tracking-tight" data-en="Not right now" data-vi="Chưa luyện được"></h2>
+      <div id="oops" hidden class="card p-8 mt-8 text-center max-w-[560px] mx-auto">
+        <h2 class="font-extrabold text-lg tracking-tight">Not right now</h2>
         <p id="oops-why" class="text-muted text-[15px] mt-2"></p>
-        <button type="button" id="oops-back" class="btn btn-soft btn-md mt-5" data-en="Back" data-vi="Quay lại"></button>
+        <button type="button" id="oops-back" class="btn btn-soft btn-md mt-5">Back</button>
       </div>
 
     </div>
@@ -111,75 +157,199 @@
 PREP.boot({ auth: true }).then(async () => {
   PrepChrome.mount({ title: PREP.t('Practise', 'Luyện tập') });
 
-  const PARTS = ['A','B','C','D','E','F','G','H','I','J'];
   const show = id => ['loading','pick','run','marked','oops']
     .forEach(s => PREP.qs('#' + s).toggleAttribute('hidden', s !== id));
   const oops = why => { PREP.qs('#oops-why').textContent = why; show('oops'); };
   PREP.qs('#oops-back').addEventListener('click', () => loadPick());
 
   const WHY = {
-    notMeasured: [ 'Not measured yet — worth doing first', 'Chưa đo được — nên làm trước' ],
-    weakest:     [ 'Your weakest part right now',          'Phần bạn đang yếu nhất' ],
-    belowTarget: [ 'Below where you are aiming',           'Còn dưới mục tiêu của bạn' ]
+    notMeasured: [ 'Not measured yet',        'Chưa đo được' ],
+    weakest:     [ 'Your weakest part',       'Phần bạn yếu nhất' ],
+    belowTarget: [ 'Below where you aim',     'Còn dưới mục tiêu' ]
+  };
+  const SKILL = {
+    listening: [ 'Listening', 'Nghe' ], reading: [ 'Reading', 'Đọc' ],
+    writing:   [ 'Writing',   'Viết' ], speaking: [ 'Speaking', 'Nói' ]
+  };
+
+  /* What the part asks you to DO. The blueprint already carries this in English
+     and the API hands it over; only the Vietnamese lives here.
+     The part NAMES above it stay in English on purpose. "Passage
+     Reconstruction" is what the paper itself prints on the day, so translating
+     it would teach a candidate a term they will not meet. Translating what the
+     part asks of them is the half that helps. */
+  const ASKS = {
+    'Type the missing word':          'Điền từ còn thiếu',
+    'Read, then rewrite from memory': 'Đọc rồi viết lại theo trí nhớ',
+    'Multiple choice':                'Chọn đáp án',
+    'Two emails':                     'Viết hai email',
+    'Type what you hear':             'Nghe rồi gõ lại',
+    'Answer out loud':                'Trả lời thành tiếng',
+    'Say the sentence back':          'Nhắc lại nguyên câu',
+    'Respond to a situation':         'Xử lý một tình huống',
+    'Retell what you heard':          'Kể lại chuyện vừa nghe'
   };
 
   let drill = null, items = [], at = 0, picked = null, answers = [], lastPart = null;
 
-  /* ---------------- 1. Choosing ---------------- */
-  async function loadPick() {
-    show('loading');
-    const s = await PrepApi.get('/api/drills/suggest');
-    if (!s.ok) return oops(PrepApi.err(s));
+  /* ---------------- 1. The paper ---------------- */
 
-    const list = PREP.qs('#p-list');
-    const rows = (s.data.suggestions || []).filter(x => x.available > 0);
-    list.innerHTML = '';
-    if (!rows.length) {
-      list.innerHTML = '<li class="card p-6 text-[14px] text-muted">' +
-        PREP.esc(PREP.t('There is nothing to practise yet. Ask your centre to add items.',
-                        'Chưa có nội dung để luyện. Hãy báo trung tâm bổ sung câu hỏi.')) + '</li>';
+  /**
+   * One part of the exam, as a card.
+   *
+   * Every card carries the same four facts in the same places, so the eye can
+   * run down the grid: the letter, what the part asks of you, where you stand,
+   * and what you can do about it. The only thing that varies is that last one,
+   * and it varies because the exam does: four parts can be drilled on the spot,
+   * six are marked from a full sitting.
+   */
+  function partCard(x) {
+    const li = document.createElement('li');
+    li.className = 'part-card card' + (x.rank ? ' part-rec' : '') + (x.drillable ? '' : ' part-quiet');
+
+    /* --- Top zone: who this part is --- */
+    const head = document.createElement('span');
+    head.className = 'flex items-start gap-3.5 p-4 pb-3';
+
+    /* The letter, which is how a candidate refers to the part out loud. */
+    const tile = document.createElement('span');
+    tile.className = 'part-letter';
+    tile.textContent = x.part;
+    tile.setAttribute('aria-hidden', 'true');
+
+    const body = document.createElement('span');
+    body.className = 'min-w-0 flex-1';
+    const name = document.createElement('b');
+    /* Two lines reserved whether or not the name needs both, so ten cards line
+       up in a grid instead of stepping up and down by a row. */
+    name.className = 'block text-[15px] tracking-tight leading-tight part-name';
+    name.textContent = 'Part ' + x.part + '. ' + x.name;
+
+    /* What the part actually asks, from the blueprint. A learner who has not
+       sat a paper yet does not know what "Part G" means, and the letter alone
+       never tells them. */
+    const does = document.createElement('span');
+    does.className = 'block text-[12.5px] leading-snug mt-1';
+    if (x.asks) does.textContent = PREP.t(x.asks, ASKS[x.asks] || x.asks);
+
+    const meta = document.createElement('span');
+    meta.className = 'block text-[12px] text-muted leading-snug mt-1';
+    const bits = [];
+    if (x.skill && SKILL[x.skill]) bits.push(PREP.t(SKILL[x.skill][0], SKILL[x.skill][1]));
+    if (x.items) bits.push(x.items + PREP.t(' questions', ' câu'));
+    if (x.minutes) bits.push(x.minutes + PREP.t(' min', ' phút'));
+    meta.textContent = bits.join(' · ');
+    body.append(name, does, meta);
+    head.append(tile, body);
+
+    /* The rank marker sits in the corner rather than beside the name. In the
+       name line it wrapped, and a badge that changes the height of the card it
+       is on breaks the alignment of every card beside it. */
+    if (x.rank) {
+      const r = document.createElement('span');
+      r.className = 'part-rank';
+      /* Says what it IS, not what to do. "Start here" would be the obvious
+         label and it would be wrong: the ability report's worst part is often
+         a spoken one, which cannot be drilled, so the badge and the button at
+         the top of the page would name different parts. This badge reports the
+         ranking; the button decides where to start. */
+      r.textContent = PREP.t('Weakest #' + x.rank, 'Yếu nhất #' + x.rank);
+      head.appendChild(r);
     }
-    for (const x of rows) {
-      const li = document.createElement('li');
-      li.className = 'card p-5 flex flex-wrap items-center gap-x-4 gap-y-3';
-      const left = document.createElement('span');
-      left.className = 'min-w-0';
-      const h = document.createElement('b');
-      h.className = 'block text-[16px] tracking-tight';
-      h.textContent = 'Part ' + x.part;
-      const why = document.createElement('span');
-      why.className = 'block text-[13px] text-muted mt-0.5';
-      why.textContent = PREP.t(WHY[x.reason][0], WHY[x.reason][1])
-        + (x.confident ? ' · ' + x.score + '/10' : '');
-      left.append(h, why);
-      const lv = document.createElement('span');
-      lv.className = 'badge badge-muted shrink-0';
-      lv.textContent = x.level;
+
+    /* --- Bottom zone: where you stand, and what you can do --- */
+    const foot = document.createElement('span');
+    foot.className = 'flex items-center gap-2.5 px-4 py-2.5 border-t border-line';
+
+    if (x.score !== null && x.n) {
+      const sc = document.createElement('b');
+      sc.className = 'text-[15px] tabular-nums tracking-tight';
+      sc.textContent = x.score + '/10';
+      foot.appendChild(sc);
+      /* How much evidence the number rests on, on every card the same way.
+         This slot first held "your weakest part", which printed on whichever
+         card scored under five: all ten of them. Narrowing it to the ranked
+         three still left the superlative on three cards at once. The ranking
+         belongs on the badge, which says it once per card and in order; this
+         slot says how much the score can be trusted, which differs per part
+         and is the thing a learner cannot work out for themselves. */
+      const note = document.createElement('span');
+      note.className = 'text-[12.5px] text-muted';
+      note.textContent = PREP.t(
+        x.n + (x.n === 1 ? ' answer' : ' answers') + (x.confident ? '' : ', estimate'),
+        x.n + ' câu' + (x.confident ? '' : ', ước lượng'));
+      foot.appendChild(note);
+    } else {
+      const note = document.createElement('span');
+      note.className = 'text-[12.5px] text-muted';
+      note.textContent = PREP.t('Not measured yet', 'Chưa đo được');
+      foot.appendChild(note);
+    }
+
+    /* Only the parts that can actually be drilled get a button. The six that
+       are marked from a full sitting used to carry a "Full paper" link each,
+       which was six buttons with one destination: the same intent repeated
+       until none of them meant anything, and it drowned the four that do
+       something here. They say what they need instead, and the library is one
+       link in the aside. */
+    if (x.drillable) {
       const go = document.createElement('button');
       go.type = 'button';
-      go.className = 'btn btn-primary btn-md ms-auto shrink-0';
+      go.className = 'btn btn-primary btn-sm ms-auto';
       go.textContent = PREP.t('Practise', 'Luyện');
+      go.setAttribute('aria-label', PREP.t('Practise Part ' + x.part, 'Luyện Part ' + x.part));
       go.addEventListener('click', () => begin(x.part));
-      li.append(left, lv, go);
-      list.appendChild(li);
+      foot.appendChild(go);
+    } else {
+      const note = document.createElement('span');
+      note.className = 'text-[12px] text-muted ms-auto text-end';
+      note.textContent = x.needs === 'speaking'
+        ? PREP.t('Spoken, in a full paper', 'Nói, trong bài đầy đủ')
+        : PREP.t('Written, in a full paper', 'Viết, trong bài đầy đủ');
+      foot.appendChild(note);
     }
 
-    /* Every part, for somebody who knows what they want. Kept behind a
-       disclosure so the three recommendations stay the obvious thing to do. */
-    const all = PREP.qs('#p-all');
-    all.innerHTML = '';
-    for (const p of PARTS) {
-      const b = document.createElement('button');
-      b.type = 'button';
-      b.className = 'btn btn-ghost btn-sm';
-      b.textContent = 'Part ' + p;
-      b.addEventListener('click', () => begin(p));
-      all.appendChild(b);
+    li.append(head, foot);
+    return li;
+  }
+
+  async function loadPick() {
+    show('loading');
+    const s = await PrepApi.get('/api/drills/parts');
+    if (!s.ok) return oops(PrepApi.err(s));
+    const parts = s.data.parts || [];
+
+    const grid = PREP.qs('#p-grid');
+    grid.innerHTML = '';
+    for (const x of parts) grid.appendChild(partCard(x));
+
+    /* The summary line. Both numbers are read off the same list the grid is
+       built from, so the header cannot disagree with what is under it. */
+    const measured = parts.filter(x => x.n > 0).length;
+    PREP.qs('#s-measured').textContent = measured + '/' + parts.length;
+    PREP.qs('#s-level').textContent = (parts[0] && parts[0].level) || '-';
+
+    /* One obvious action. The best RANKED part that can actually be drilled,
+       which is not always the worst part: the roadmap may well put a speaking
+       part first, and there is no six-question drill for those. */
+    const next = parts.filter(x => x.drillable && x.rank).sort((a, b) => a.rank - b.rank)[0]
+      || parts.find(x => x.drillable);
+    const wrap = PREP.qs('#s-next-wrap');
+    wrap.toggleAttribute('hidden', !next);
+    if (next) {
+      const btn = PREP.qs('#s-next');
+      btn.textContent = PREP.t('Start with Part ' + next.part, 'Bắt đầu với Part ' + next.part);
+      btn.onclick = () => begin(next.part);
+      PREP.qs('#s-next-why').textContent = next.n
+        ? PREP.t('You are at ' + next.score + '/10 there.',
+                 'Bạn đang ở mức ' + next.score + '/10 ở phần đó.')
+        : PREP.t('Nothing measured there yet.', 'Phần đó chưa có dữ liệu nào.');
     }
 
     const h = await PrepApi.get('/api/drills?limit=5');
     const hist = (h.ok && h.data.drills) || [];
     PREP.qs('#p-recent').toggleAttribute('hidden', !hist.length);
+    PREP.qs('#p-none').toggleAttribute('hidden', !!hist.length);
     PREP.qs('#p-hist').innerHTML = hist.map(d =>
       '<li class="flex items-center gap-3 py-2 border-b border-line last:border-0 text-[13.5px]">' +
         '<span class="badge badge-muted">Part ' + PREP.esc(d.part) + '</span>' +
@@ -283,16 +453,16 @@ PREP.boot({ auth: true }).then(async () => {
 
     /* The sentence that closes the loop. The learner was sent here BY the
        progress panel; telling them it has moved is the difference between a
-       quiz and a course. Read back from the ability model rather than assumed —
+       quiz and a course. Read back from the ability model rather than assumed:
        a drill of six items may genuinely not shift a part much, and saying it
        did when it did not is the kind of small lie people notice. */
     const ab = await PrepApi.get('/api/me/ability');
     const est = ab.ok && ab.data.parts ? ab.data.parts[d.part] : null;
     PREP.qs('#m-moved').textContent = est
       ? PREP.t('Part ' + d.part + ' is now ' + est.score + '/10 in your progress'
-                 + (est.confident ? '.' : ' — still an estimate, keep going.'),
+                 + (est.confident ? '.' : '. Still an estimate, keep going.'),
                'Part ' + d.part + ' giờ là ' + est.score + '/10 trong tiến độ của bạn'
-                 + (est.confident ? '.' : ' — vẫn là ước lượng, luyện thêm nhé.'))
+                 + (est.confident ? '.' : '. Vẫn là ước lượng, luyện thêm nhé.'))
       : '';
 
     PREP.qs('#m-detail').innerHTML = (d.detail || []).map(x =>

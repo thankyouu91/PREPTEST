@@ -778,7 +778,69 @@
     'sends a card back to the start; the rest push it further away.':
       'đưa thẻ về lại từ đầu; các mức còn lại đẩy thẻ ra xa hơn.',
     'This device has no English voice installed, so nothing can be read aloud. The cards are still perfectly readable.':
-      'Thiết bị chưa cài giọng đọc tiếng Anh nên không phát âm được. Các thẻ vẫn đọc được bình thường.'
+      'Thiết bị chưa cài giọng đọc tiếng Anh nên không phát âm được. Các thẻ vẫn đọc được bình thường.',
+
+    /* ---- Xếp lớp, ôn tập, kế hoạch tuần (blocks 3.5, 5, 6) ----
+       Những chuỗi này trước đây nằm trong data-en/data-vi trên chính thẻ HTML,
+       mà không có đoạn mã nào đọc hai thuộc tính đó. Xem ghi chú ở cuối tệp. */
+    'What to do next': 'Việc nên làm tiếp',
+    'Three things, chosen from your progress above.': 'Ba việc, chọn theo đúng tiến độ ở trên.',
+    'About 12 minutes, 18 questions. This is not a grade and nobody else sees it — it is how the platform works out what to give you first.':
+      'Khoảng 12 phút, 18 câu. Đây không phải bài chấm điểm và không ai khác nhìn thấy — nó chỉ để nền tảng biết nên đưa bạn học từ đâu.',
+    'The questions get harder or easier as you go, so it finds your level quickly.':
+      'Câu hỏi sẽ khó lên hoặc dễ đi theo bạn làm, nên nó tìm ra trình độ của bạn rất nhanh.',
+    'Answer what you can and guess the rest — a wrong answer costs nothing here.':
+      'Câu nào không chắc cứ đoán — ở đây trả lời sai không mất gì cả.',
+    'Close the tab any time. You come back to the question you were on.':
+      'Đóng tab lúc nào cũng được. Quay lại là vào đúng câu đang dở.',
+    'Writing and Speaking are placed later, from your first real paper.':
+      'Phần Viết và Nói sẽ được xếp sau, từ bài thi đầy đủ đầu tiên của bạn.',
+    'Tip: press 1–4 to choose, Enter for next': 'Mẹo: bấm 1–4 để chọn, Enter để sang câu',
+    'Your starting point': 'Điểm xuất phát của bạn',
+    'What to do first': 'Việc nên làm trước',
+    'Three things, chosen from how you just answered. This list changes as you practise.':
+      'Ba việc, chọn theo đúng cách bạn vừa làm. Danh sách này đổi theo tiến độ của bạn.',
+    'This cannot start right now': 'Chưa bắt đầu được',
+    'Go to my account': 'Về trang tài khoản',
+    'Revise by using it': 'Ôn bằng cách dùng',
+    'Fill the right form into real sentences, then write one of your own. No multiple choice — picking the right answer from a list is a different skill from producing it, and the exam tests the second.':
+      'Điền đúng dạng vào câu thật, rồi tự viết một câu. Không có trắc nghiệm — chọn đúng trong bốn đáp án là một kỹ năng khác với tự viết ra, và bài thi kiểm tra cái thứ hai.',
+    'Enter for next': 'Enter để sang câu',
+    'This set': 'Lượt này',
+    'The sentence you wrote': 'Câu bạn tự viết',
+    'Another set': 'Lượt nữa',
+    'Choose a topic': 'Chọn chủ điểm khác',
+    'Let\'s find your starting point': 'Tìm điểm xuất phát của bạn',
+    'Start — 12 minutes': 'Bắt đầu — 12 phút',
+    'I don\'t know': 'Chưa biết',
+    'Go to my dashboard': 'Vào trang học của tôi',
+
+    /* ---- Luyện thi theo phần (block 4) ---- */
+    'Practise one part at a time': 'Luyện từng phần một',
+    'Six questions, about ten minutes, marked the moment you finish. What you score here moves your progress.':
+      'Sáu câu, khoảng mười phút, làm xong chấm ngay. Điểm ở đây sẽ đổi tiến độ của bạn.',
+    'Your level': 'Mức của bạn',
+    'Parts measured': 'Phần đã đo',
+    'The paper, A to J': 'Toàn bộ đề, A tới J',
+    'Four you can drill': 'Bốn phần luyện lẻ được',
+    'Parts A, C, E and F are typed answers, so six of them can be marked on the spot.':
+      'Part A, C, E và F là các câu gõ đáp án, nên sáu câu một lượt là chấm được ngay.',
+    'The other six are e-mails and spoken answers. They need a marker rather than an answer key, so they are scored when you sit a full paper.':
+      'Sáu phần còn lại là viết email và trả lời bằng lời. Những phần đó cần người chấm chứ không phải đáp án có sẵn, nên chỉ tính điểm khi bạn làm một bài đầy đủ.',
+    'Sit a full paper': 'Làm một bài đầy đủ',
+    'Recently practised': 'Vừa luyện gần đây',
+    'Nothing yet. Your last five drills will sit here, with what you scored on each.':
+      'Chưa có gì. Năm lượt luyện gần nhất sẽ nằm ở đây, kèm điểm từng lượt.',
+    'Leave': 'Thoát',
+    'Next': 'Tiếp',
+    'Skip': 'Bỏ qua',
+    '1-4 to choose, Enter for next': '1-4 để chọn, Enter để sang câu',
+    'This drill': 'Lượt này',
+    'Another one': 'Làm tiếp lượt nữa',
+    'Choose a part': 'Chọn phần khác',
+    'My progress': 'Tiến độ của tôi',
+    'Not right now': 'Chưa luyện được',
+    'Back': 'Quay lại'
   };
 
   function tr(s) {

@@ -528,6 +528,15 @@ router.get('/drills/suggest', A.requireUser, async (req, res) => {
      .json({ suggestions: await drills.suggest(req.user.id, PART_WEIGHTS) });
 });
 
+/* All ten parts, drillable or not. The practise screen is built from this
+   rather than from /suggest, because a ten-part exam shown as three cards
+   teaches the wrong shape. See drills.overview() for why the six that cannot
+   be drilled are returned rather than filtered out. */
+router.get('/drills/parts', A.requireUser, async (req, res) => {
+  res.set('Cache-Control', 'no-store')
+     .json({ parts: await drills.overview(req.user.id, PART_WEIGHTS) });
+});
+
 router.get('/drills', A.requireUser, async (req, res) => {
   res.set('Cache-Control', 'no-store')
      .json({ drills: await drills.history(req.user.id, req.query.limit) });

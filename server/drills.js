@@ -43,6 +43,7 @@ const { q, nowISO } = require('./db');
 const ability = require('./ability');
 const marking = require('./marking');
 const placement = require('./placement');
+const formats = require('./data/exam-formats');
 
 /** How many items a drill holds. Ten minutes' worth, and the ceiling a request may ask for. */
 const DEFAULT_SIZE = 6;
@@ -214,6 +215,76 @@ async function suggest(userId, weights, limit) {
   return out;
 }
 
+/**
+ * All ten parts of the paper, whether or not any of them can be drilled.
+ *
+ * `suggest()` answers "what next" and caps at three. This answers a different
+ * question: "what IS the exam, and where am I on each of it." The practise
+ * screen showed three cards and hid the other seven parts behind a disclosure
+ * triangle, which made a ten-part exam look like a three-item to-do list. A
+ * candidate has to hold A to J in their head on the day; the screen should be
+ * the same shape as the thing they are sitting.
+ *
+ * ## Honest about the six that cannot be drilled
+ *
+ * Only `INSTANT_TYPES` can be marked on the spot, which today is Parts A, C, E
+ * and F. B and D are e-mails and G, H, I and J are spoken: they need the
+ * writing and speaking markers, which need a full sitting. Rather than hide
+ * them, or worse offer a button that fails, each is returned with
+ * `drillable: false` and the reason, so the screen can say what it actually
+ * takes to get a score there. A part the learner cannot see is a part they will
+ * not prepare for.
+ *
+ * The blueprint is read from `server/data/exam-formats.js` rather than typed
+ * out again here, so a change to the paper reaches this screen on its own.
+ */
+async function overview(userId, weights) {
+  const ab = await ability.abilityOf(userId);
+
+  const counts = await q.all(
+    `SELECT part, COUNT(*) c FROM questions
+      WHERE status = 'active' AND part IS NOT NULL AND type IN (${INSTANT_TYPES.map(() => '?').join(',')})
+      GROUP BY part`, ...INSTANT_TYPES);
+  const have = new Map(counts.map(r => [r.part, r.c]));
+
+  /* Position in the recommendation, so the screen can promote two or three
+     without inventing a second ranking. Same call the plan and the progress
+     panel make, so all three agree about what is worst. */
+  const ranked = ability.roadmap(ab, weights, 0.8, 3).map(r => r.part);
+
+  const letters = formats.partsOf('vpet');
+  return letters.map(part => {
+    const sec = formats.sectionOfPart('vpet', part) || {};
+    const est = (ab.parts || {})[part];
+    const available = have.get(part) || 0;
+    /* What the part is marked by, which is what decides whether a six-item
+       drill is even possible. Taken from the blueprint's own type list. */
+    const types = sec.types || [];
+    const needs = types.includes('speaking') ? 'speaking'
+      : types.includes('essay') ? 'writing' : null;
+    return {
+      part,
+      /* The blueprint stores "Part A - Sentence Completion"; the letter is
+         already the card's headline, so it would read twice. */
+      name: String(sec.name || '').replace(/^Part\s+\w+\s*-\s*/, ''),
+      asks: sec.type || null,
+      skill: sec.skill || null,
+      items: sec.items || null,
+      minutes: sec.minutes || null,
+      drillable: available > 0,
+      available,
+      needs,
+      level: levelFor(ab, part),
+      score: est ? est.score : null,
+      confident: est ? est.confident : false,
+      n: est ? est.n : 0,
+      reason: !est || !est.confident ? 'notMeasured' : (est.score < 5 ? 'weakest' : 'belowTarget'),
+      /* 1-based so the screen can print it, null when not recommended. */
+      rank: ranked.indexOf(part) >= 0 ? ranked.indexOf(part) + 1 : null
+    };
+  });
+}
+
 /* -------------------------------- Sitting one -------------------------------- */
 
 function forClient(row) {
@@ -352,7 +423,7 @@ function history(userId, limit) {
 }
 
 module.exports = {
-  suggest, start, submit, get, history,
+  suggest, overview, start, submit, get, history,
   levelFor, recentlySeen, drawItems,
   DEFAULT_SIZE, MAX_SIZE, COOLDOWN_DAYS, DRILL_WEIGHT, INSTANT_TYPES
 };

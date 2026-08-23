@@ -77,6 +77,15 @@ const PAGES = [
   { slug: 'hoc-menh-de',     url: '/prep/hoc/menh-de/',           auth: true },
   { slug: 'hoc-nhan-manh',   url: '/prep/hoc/nhan-manh/',         auth: true },
   { slug: 'hoc-sac-thai',    url: '/prep/hoc/sac-thai/',          auth: true },
+  /* Blocks 3.5 to 6 shipped four learner pages that were never in this list, so
+     "new screenshots" kept passing as a lock condition without anybody having
+     looked at them. That is how a page can go out with every one of its static
+     headings rendering blank. The practise screen is shot in both modes because
+     it is the one with a colour rule of its own (the recommended-part edge). */
+  { slug: 'luyen',           url: '/prep/luyen/',                auth: true, full: true },
+  { slug: 'luyen-dark',      url: '/prep/luyen/',                auth: true, dark: true, full: true },
+  { slug: 'xep-lop',         url: '/prep/xep-lop/',              auth: 'fresh', full: true },
+  { slug: 'on-tap-luyen',    url: '/prep/on-tap/',               auth: true, full: true },
   { slug: 'dashboard-dark',  url: '/prep/',                      auth: true, dark: true },
   { slug: 'landing-dark',    url: '/prep/landing/',              auth: false, dark: true },
   { slug: 'landing-tenant',  url: '/prep/landing/',              auth: false, tenant: 'evergreen' }

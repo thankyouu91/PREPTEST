@@ -348,6 +348,52 @@
   .pick-on { border-color: var(--color-brand); background: var(--color-brand-soft); }
   .pick-on .pick-key { background: var(--color-brand); color: #fff; }
 
+  /* ---- Luyện thi: mười phần của đề, A tới J ----
+     Mười thẻ giống hệt nhau thì mắt không bám vào đâu được, nên chỉ có ĐÚNG
+     hai thứ được phép khác: phần đang được gợi ý (viền trái màu thương hiệu)
+     và phần không luyện lẻ được (ô chữ cái nhạt đi). Cả hai đều mang nghĩa,
+     không phải trang trí. Một màu nhấn duy nhất cho cả trang. */
+  .part-card { @apply flex flex-col relative overflow-hidden; }
+  .part-card { transition: border-color .2s ease, box-shadow .25s ease, transform .25s ease; }
+  .part-card:hover { @apply -translate-y-0.5 shadow-soft-lg; }
+  /* Hai dòng dành sẵn cho tên phần dù tên ngắn hay dài. Không có nó thì thẻ nào
+     tên xuống dòng sẽ cao hơn thẻ bên cạnh, và cả lưới mười thẻ so le. */
+  .part-name { min-height: 2.4em; }
+  /* Đáy thẻ luôn nằm ở đáy, kể cả khi phần đầu ngắn hơn. */
+  .part-card > :last-child { margin-top: auto; }
+
+  /* Chữ cái là thứ thí sinh gọi tên phần thi ngoài đời, nên nó là mỏ neo của thẻ. */
+  .part-letter {
+    @apply w-11 h-11 shrink-0 rounded-xl inline-flex items-center justify-center
+           text-[19px] font-extrabold tracking-tight;
+    background: var(--color-brand-soft);
+    color: var(--color-brand-strong);
+  }
+  /* Phần chấm từ bài đầy đủ: vẫn hiện đủ, nhưng không giả vờ bấm được. */
+  .part-quiet .part-letter {
+    background: color-mix(in srgb, var(--color-text) 7%, var(--color-card));
+    color: var(--color-muted);
+  }
+
+  /* Được gợi ý. Viền trái 3px thay vì đổi nền: nền đổi thì mười thẻ thành hai
+     nhóm màu, còn viền chỉ nói "bắt đầu từ đây". */
+  .part-rec::before {
+    content: '';
+    @apply absolute inset-y-0 start-0 w-[3px];
+    background: var(--color-brand);
+  }
+  .part-rec { border-color: color-mix(in srgb, var(--color-brand) 30%, var(--color-line)); }
+  /* Góc trên bên phải, tách khỏi dòng chữ. Nằm trong dòng tên thì nó xuống
+     dòng, và một nhãn làm thẻ cao lên sẽ phá lưới của cả hàng bên cạnh. */
+  .part-rank {
+    @apply absolute top-3 end-3 inline-flex items-center rounded-full px-2 py-0.5
+           text-[10.5px] font-extrabold uppercase tracking-wide whitespace-nowrap;
+    background: var(--color-brand-soft);
+    color: var(--color-brand-strong);
+  }
+  /* Chừa chỗ cho nhãn để tên phần không chui xuống dưới nó. */
+  .part-rec .part-name { padding-inline-end: 4.5rem; }
+
   /* Mức thay đổi so với kỳ trước */
   .delta { @apply inline-flex items-center gap-1 text-[12.5px] font-extrabold; }
   .delta-tang { color: color-mix(in srgb, var(--color-success) 78%, black); }

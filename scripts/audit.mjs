@@ -30,6 +30,11 @@ const URLS = GUEST_URLS.concat([
   '/prep/', '/prep/thu-vien/', '/prep/thu-vien/?family=vept', '/prep/mua-code/', '/prep/nhap-code/',
   '/prep/code-cua-toi/', '/prep/bai-thi/vpet-b1-01/', '/prep/bai-thi/khong-co-that/', '/prep/tai-khoan/',
   '/prep/lam-bai/', '/prep/ket-qua/:done/',
+  /* Blocks 3.5 to 6. These were in neither this list nor the screenshot list,
+     which is how four pages shipped with their static headings rendering blank
+     and nothing went red: no audit ever opened them. Note /prep/on-tap/ is the
+     revision area and is a different page from /prep/hoc/on-tap/ below. */
+  '/prep/luyen/', '/prep/xep-lop/', '/prep/on-tap/',
   '/prep/hoc/on-tap/', '/prep/hoc/dong-tu-bat-quy-tac/', '/prep/hoc/tu-noi/', '/prep/hoc/thi/', '/prep/hoc/danh-tu/', '/prep/hoc/tinh-tu/', '/prep/hoc/khuyet-thieu/', '/prep/hoc/dieu-kien/', '/prep/hoc/bi-dong/', '/prep/hoc/menh-de/', '/prep/hoc/nhan-manh/', '/prep/hoc/sac-thai/'
 ]);
 const WIDTHS = [360, 390, 768, 1024, 1440];
@@ -123,6 +128,40 @@ const run = async () => {
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1);
       if (overflow) mine.push(`[overflow] ${tag}`);
 
+      /* A heading or a control that takes up space and says nothing.
+         Four pages went out with every static label blank, because they were
+         authored with data-en / data-vi attributes that no code on this
+         platform reads. Every check in this file passed: an empty <h2> does not
+         overflow, and it has no text to fail a contrast ratio. Nothing was
+         looking for the one symptom a person would have spotted instantly.
+         Hidden and aria-hidden elements are skipped, and so is anything holding
+         an icon, an image or an aria-label, which is a legitimately wordless
+         control. */
+      const blanks = await page.evaluate(() => {
+        const out = [];
+        document.querySelectorAll('h1, h2, h3, button, a.btn, summary, label').forEach(el => {
+          if (el.closest('[hidden]') || el.closest('[aria-hidden="true"]')) return;
+          /* Height is deliberately NOT part of this test. The first version
+             required a non-zero one and found nothing, because an empty
+             heading collapses to exactly zero height. That is the same reason
+             the bug survived in the first place: a blank <h2> does not leave a
+             gap where a reader would notice something missing, it leaves no
+             trace at all. Display and visibility are what "on the page" means
+             here. */
+          const cs = getComputedStyle(el);
+          if (cs.visibility === 'hidden' || cs.display === 'none') return;
+          if ((el.textContent || '').trim()) return;
+          if (el.querySelector('svg, img, canvas')) return;
+          if (el.getAttribute('aria-label') || el.getAttribute('title')) return;
+          out.push(el.tagName.toLowerCase()
+            + (el.id ? '#' + el.id : '')
+            + (el.className && typeof el.className === 'string'
+                ? '.' + el.className.trim().split(/\s+/).slice(0, 2).join('.') : ''));
+        });
+        return out;
+      });
+      for (const b of blanks.slice(0, 3)) mine.push(`[blank] ${tag}: <${b}> renders no text`);
+
       // Buttons and chips: text vs background contrast + labels wrapping on desktop
       const bad = await page.evaluate(() => {
         const out = [];
@@ -194,7 +233,7 @@ const run = async () => {
 
   const uniq = [...new Set(issues)];
   if (uniq.length) { console.log('⚠ ' + uniq.length + ' problem(s):'); uniq.forEach(i => console.log(' - ' + i)); process.exitCode = 1; }
-  else console.log('✔ Audit clean: 0 overflow, 0 contrast failures, 0 console/CSP errors.');
+  else console.log('✔ Audit clean: 0 overflow, 0 contrast failures, 0 blank labels, 0 console/CSP errors.');
 };
 
 run().catch(e => { console.error(e); process.exit(1); });

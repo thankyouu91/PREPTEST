@@ -33,13 +33,12 @@
 
       <!-- 1. Pick a topic -->
       <section id="pick" hidden class="mt-8">
-        <h2 class="text-2xl font-extrabold tracking-tight" data-en="Revise by using it" data-vi="Ôn bằng cách dùng"></h2>
+        <h2 class="text-2xl font-extrabold tracking-tight">Revise by using it</h2>
         <p class="text-muted text-[15px] leading-relaxed mt-2 max-w-[58ch]"
-           data-en="Fill the right form into real sentences, then write one of your own. No multiple choice — picking the right answer from a list is a different skill from producing it, and the exam tests the second."
-           data-vi="Điền đúng dạng vào câu thật, rồi tự viết một câu. Không có trắc nghiệm — chọn đúng trong bốn đáp án là một kỹ năng khác với tự viết ra, và bài thi kiểm tra cái thứ hai."></p>
+          >Fill the right form into real sentences, then write one of your own. No multiple choice — picking the right answer from a list is a different skill from producing it, and the exam tests the second.</p>
 
         <div class="flex flex-wrap items-center gap-2 mt-5">
-          <span class="text-[13px] font-bold uppercase tracking-wide text-muted" data-en="Level" data-vi="Cấp độ"></span>
+          <span class="text-[13px] font-bold uppercase tracking-wide text-muted">Level</span>
           <div id="k-levels" class="flex flex-wrap gap-2"></div>
         </div>
 
@@ -51,7 +50,7 @@
         <div class="flex items-center gap-3">
           <span class="badge badge-muted" id="k-topic"></span>
           <span class="text-[13px] font-bold uppercase tracking-wide text-muted" id="k-count"></span>
-          <button type="button" id="k-quit" class="btn btn-ghost btn-sm ms-auto" data-en="Leave" data-vi="Thoát"></button>
+          <button type="button" id="k-quit" class="btn btn-ghost btn-sm ms-auto">Leave</button>
         </div>
         <div class="h-1.5 rounded-full bg-line mt-2.5 overflow-hidden">
           <div id="k-bar" class="quiz-bar h-full bg-brand rounded-full"></div>
@@ -65,22 +64,22 @@
         </div>
 
         <div class="flex flex-wrap items-center gap-3 mt-5">
-          <button type="button" id="k-next" class="btn btn-primary btn-md" data-en="Next" data-vi="Tiếp"></button>
-          <button type="button" id="k-skip" class="btn btn-ghost btn-md" data-en="Skip" data-vi="Bỏ qua"></button>
-          <span class="text-[12.5px] text-muted ms-auto" data-en="Enter for next" data-vi="Enter để sang câu"></span>
+          <button type="button" id="k-next" class="btn btn-primary btn-md">Next</button>
+          <button type="button" id="k-skip" class="btn btn-ghost btn-md">Skip</button>
+          <span class="text-[12.5px] text-muted ms-auto">Enter for next</span>
         </div>
       </section>
 
       <!-- 3. Marked -->
       <section id="marked" hidden class="mt-8">
         <div class="card p-7">
-          <span class="block text-[13px] font-bold uppercase tracking-wide text-muted" data-en="This set" data-vi="Lượt này"></span>
+          <span class="block text-[13px] font-bold uppercase tracking-wide text-muted">This set</span>
           <b id="m-score" class="block text-4xl font-extrabold tracking-tight leading-none mt-1.5">–</b>
           <p id="m-moved" class="text-[14px] leading-snug mt-3 max-w-[46ch]"></p>
         </div>
 
         <div id="m-build" hidden class="card p-6 mt-5">
-          <h3 class="font-extrabold text-[15px] tracking-tight" data-en="The sentence you wrote" data-vi="Câu bạn tự viết"></h3>
+          <h3 class="font-extrabold text-[15px] tracking-tight">The sentence you wrote</h3>
           <q id="m-built" class="block text-[15px] leading-relaxed mt-2 ps-3 border-s-2 border-line italic"></q>
           <p id="m-measured" class="text-[12.5px] text-muted leading-relaxed mt-3"></p>
         </div>
@@ -88,15 +87,15 @@
         <ul id="m-detail" class="grid gap-3 mt-5"></ul>
 
         <div class="flex flex-wrap gap-2.5 mt-6">
-          <button type="button" id="m-again" class="btn btn-primary btn-md" data-en="Another set" data-vi="Lượt nữa"></button>
-          <button type="button" id="m-back" class="btn btn-soft btn-md" data-en="Choose a topic" data-vi="Chọn chủ điểm khác"></button>
+          <button type="button" id="m-again" class="btn btn-primary btn-md">Another set</button>
+          <button type="button" id="m-back" class="btn btn-soft btn-md">Choose a topic</button>
         </div>
       </section>
 
       <div id="oops" hidden class="card p-8 mt-8 text-center">
-        <h2 class="font-extrabold text-lg tracking-tight" data-en="Not right now" data-vi="Chưa ôn được"></h2>
+        <h2 class="font-extrabold text-lg tracking-tight">Not right now</h2>
         <p id="oops-why" class="text-muted text-[15px] mt-2"></p>
-        <button type="button" id="oops-back" class="btn btn-soft btn-md mt-5" data-en="Back" data-vi="Quay lại"></button>
+        <button type="button" id="oops-back" class="btn btn-soft btn-md mt-5">Back</button>
       </div>
 
     </div>
