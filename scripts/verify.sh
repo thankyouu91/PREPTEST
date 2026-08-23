@@ -186,6 +186,15 @@ node scripts/test-plan.mjs || fail=1
 step "Ability model (the maths by hand, a re-mark that must not double, the dashboard)"
 node scripts/test-ability.mjs || fail=1
 
+# Runs after all five because it is the only step that asks whether they add up.
+# The suites above each prove their own half; this one walks ONE learner from
+# placement through drill and revision to the plan and checks the report agrees
+# at every step — including that grammar and vocabulary never reach the band.
+# That is a claim about the seams, and seams are where five green suites go on
+# being green while the product tells somebody two different things.
+step "The chain (placement → drill → revision → plan, all arriving at one report)"
+node scripts/test-chain.mjs || fail=1
+
 step "Student account API"
 node scripts/test-user-api.mjs || fail=1
 
