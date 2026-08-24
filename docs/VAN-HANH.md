@@ -290,6 +290,47 @@ NAT sẽ thành **một hạn mức chung cho bốn mươi học viên**. Thà �
 
 ---
 
+## 5. Ba cấp quản trị
+
+Không phải việc phải làm — ghi ở đây để tra khi cần.
+
+| Cấp | Trong CSDL | Làm được |
+|---|---|---|
+| **Quản trị** | `owner` | tất cả; **duy nhất** tạo được tài khoản quản trị, giữ khoá mô hình, phục hồi sao lưu |
+| **Quản lý** | `manager` | học viên, mã kích hoạt, đề thi, ngân hàng câu hỏi, nhật ký |
+| **Giáo viên** | `teacher` | xem báo cáo, soạn câu hỏi, chấm lại bài. Không đụng tiền, không sửa tài khoản |
+
+Tạo và đổi cấp: **Quản trị → Cài đặt → Tài khoản quản trị**. Tab đó chỉ hiện với
+cấp Quản trị.
+
+Vài quy tắc do **máy chủ** giữ, không phải giao diện — nghĩa là mở devtools cũng
+không lách được:
+
+- Không tự đổi cấp của chính mình, không tự ngưng chính mình.
+- Không thao tác nào được phép để nền tảng còn **0 tài khoản Quản trị** đang hoạt
+  động.
+- Đổi cấp hoặc ngưng một tài khoản sẽ **đăng xuất tài khoản đó ngay**. Một quyền
+  bị lấy đi mà còn chạy tiếp tám tiếng nữa cho tới lúc cookie hết hạn thì không
+  phải là quyền đã bị lấy đi.
+
+### Nếu không còn ai vào được
+
+Màn hình từ chối tạo ra trạng thái đó, nhưng một bản phục hồi hoặc một lần sửa
+tay vào CSDL vẫn tạo ra được. Khi đó **không ai còn quyền cấp lại quyền cho ai**,
+và đường về là dòng lệnh trên máy chủ:
+
+```
+cd /home/ubuntu/PREPTEST
+node scripts/accounts.js list                  # xem còn những tài khoản nào
+node scripts/accounts.js set-level <tên> owner # nâng một tài khoản lên, và bật lại
+node scripts/accounts.js reset-admin --user=<tên>
+```
+
+`set-level` cũng giữ đúng quy tắc "phải còn một Quản trị": nó không tự tạo ra
+được cái trạng thái nó sinh ra để sửa.
+
+---
+
 ## Còn treo, không sửa được từ repo
 
 `/home/ubuntu/vpet-selfupdate.sh` chạy `pm2 restart preptest --update-env` mà

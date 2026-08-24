@@ -25,6 +25,17 @@
  *       into this file is a login published to everyone who can read the repo.
  *       Add --user=<name> when there is more than one administrator.
  *
+ *   node scripts/accounts.js set-level <username> <owner|manager|teacher>
+ *       Set an administrator's level, and switch the account back on.
+ *
+ *       This is the way back from the one state the admin screens cannot fix
+ *       themselves: no active owner. The screens refuse to create that state —
+ *       an owner cannot demote or deactivate themselves, and a change that
+ *       would leave no owner is rolled back — but a restored backup, a hand
+ *       edit or a bug can still produce it, and once it exists nobody has
+ *       `admins.manage` and nobody can grant it. This command answers to
+ *       whoever holds the server rather than to whoever holds a session.
+ *
  *   node scripts/accounts.js reset-student <new-password>
  *       Set the demo student's password. No default: a password written into
  *       this file would be a login published to everyone who can read the repo.
@@ -177,6 +188,57 @@ async function resetAdmin() {
   console.log('  Password : ' + newPassword);
   console.log('\nEvery previous session for this account has been revoked.');
   console.log('Restart the server, sign in at /admin/ and change the password under Administration.');
+}
+
+/**
+ * Set an administrator's level, and switch the account on.
+ *
+ * Deliberately blunt: it does not ask who is running it, because the answer is
+ * "somebody with a shell on the server", and that is already more authority
+ * than any level in the product. What it does do is refuse to leave the
+ * platform with no owner, the same invariant the API holds — a repair tool that
+ * can produce the state it exists to repair is not a repair tool.
+ */
+async function setLevel() {
+  const roles = require('../server/roles.js');
+  const username = positional[0];
+  const role = positional[1];
+
+  if (!username || !role) {
+    console.error('Usage: node scripts/accounts.js set-level <username> <' + roles.ROLE_NAMES.join('|') + '>');
+    process.exit(1);
+  }
+  if (!roles.isRole(role)) {
+    console.error('Unknown level "' + role + '". Use one of: ' + roles.ROLE_NAMES.join(', '));
+    process.exit(1);
+  }
+  const admin = await q.get('SELECT id, username, role, active FROM admins WHERE username=?', username);
+  if (!admin) {
+    const all = await q.all('SELECT username FROM admins ORDER BY id');
+    console.error('No administrator named "' + username + '". Present: ' + all.map(a => a.username).join(', '));
+    process.exit(1);
+  }
+
+  await q.run('UPDATE admins SET role=?, active=1 WHERE id=?', role, admin.id);
+
+  /* The same post-condition the API enforces. Demoting the only owner from here
+     would leave nobody able to grant the level back through the product. */
+  const owners = await q.val("SELECT COUNT(*) c FROM admins WHERE role='owner' AND active=1");
+  if (!owners) {
+    await q.run('UPDATE admins SET role=?, active=? WHERE id=?', admin.role, admin.active, admin.id);
+    console.error('Refused: that would leave no active administrator at the top level.');
+    console.error('Promote somebody else to owner first, then run this again.');
+    process.exit(1);
+  }
+
+  await q.run('DELETE FROM sessions WHERE admin_id=?', admin.id);
+  await q.run('INSERT INTO audit (admin_id,admin_name,action,target,meta_json,ip,at) VALUES (?,?,?,?,?,?,?)',
+    null, 'cli', 'admin.set_level', 'admins/' + admin.username,
+    JSON.stringify({ source: 'scripts/accounts.js', from: admin.role, to: role }), null, nowISO());
+
+  console.log('@' + admin.username + ' is now ' + roles.roleOf(role).label.en
+    + ' (' + role + ')' + (admin.active ? '' : ', and the account was switched back on') + '.');
+  console.log('Any session it had has been revoked; it signs in again at /admin/.');
 }
 
 /**
@@ -456,6 +518,7 @@ const COMMANDS = {
   'doctor': doctor,
   'list': listAccounts,
   'reset-admin': resetAdmin,
+  'set-level': setLevel,
   'reset-student': resetStudent,
   'unlock': unlockAll,
   'totp-status': totpStatus,

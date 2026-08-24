@@ -562,5 +562,87 @@ hạn; và bỏ chỗ thu hẹp `/api/`.
 
 Đã chạy lại đủ sáu điều kiện. **Mã đóng lại ở `e8732cc`.**
 
+**Phân quyền quản trị, 2026-08-24 — ba cấp thay vì hai.**
+
+Trước đó có hai cấp: `owner`, và tất cả những người còn lại. Phép kiểm là
+`role !== 'owner'` viết tay ở đúng bảy route cần nó; **bốn mươi tám route còn
+lại mở cho bất kỳ ai đã đăng nhập vào khu quản trị.**
+
+Hai cấp thì như vậy còn chạy được. Ba cấp thì không, vì một lý do đáng nói
+thẳng: **một phép kiểm vai trò rải khắp năm mươi route hỏng âm thầm và hỏng về
+phía nguy hiểm.** Thêm một route rồi quên phép kiểm — nó không lỗi, nó *chạy*,
+cho tất cả mọi người, và không có gì báo. Lỗi vô hình chính vì tính năng vẫn
+hoạt động.
+
+Nên `server/roles.js` giữ **một bảng năng lực** và mỗi route khai báo nó cần
+năng lực nào:
+
+| Cấp | Làm được |
+|---|---|
+| `owner` — **Quản trị** | tất cả; là cấp **duy nhất** tạo được tài khoản quản trị, giữ khoá mô hình, phục hồi sao lưu |
+| `manager` — **Quản lý** | vận hành: học viên, mã kích hoạt, đề thi, ngân hàng câu hỏi, nhật ký |
+| `teacher` — **Giáo viên** | giảng dạy: xem báo cáo, soạn câu hỏi, chấm lại bài. Không đụng tiền, không sửa tài khoản |
+
+Hai ranh giới đều gây tranh cãi nên viết rõ vì sao:
+
+- **Giáo viên SOẠN được câu hỏi nhưng không DUYỆT được.** Soạn câu hỏi là công
+  việc; quyết định một câu hỏi đủ chuẩn để vào đề thi thật của một thí sinh là
+  một phán đoán khác. Tách ra thì trường có một bước duyệt, không thì phải tin
+  nhau. Vì thế `bank.write` và `bank.publish` là hai năng lực.
+- **Quản lý không đọc được bí mật.** Không phải vì kém tin cậy — họ phát được
+  mã, tức là tiền — mà vì khoá mô hình và thông tin sao lưu là hai thứ mà rò rỉ
+  rồi thì **thu hồi cái gì cũng không cứu được**. Bán kính thiệt hại quyết định
+  cấp, không phải thâm niên.
+
+`scripts/test-roles.mjs` đọc **stack Express đang chạy** và đỏ nếu bất kỳ route
+`/api/admin` nào không khai báo năng lực; chín route tự-phục-vụ (đăng nhập, đổi
+mật khẩu của chính mình, 2FA) nằm trong một danh sách viết tay, để **thêm vào
+danh sách đó là một quyết định nhìn thấy trong diff** chứ không phải một chỗ bỏ
+sót. Nó kiểm cả chiều ngược: không có ngoại lệ chết, không có năng lực nào route
+đòi mà `roles.js` không định nghĩa, và không có năng lực nào định nghĩa rồi
+không ai dùng.
+
+### Hai lỗi thật lòi ra khi làm
+
+**`GET /admin/settings` trả về danh sách toàn bộ tài khoản quản trị.** Route đó
+mọi cấp đều đọc được — giáo viên cũng mở màn hình đó để đổi mật khẩu của chính
+mình — nên một giáo viên sẽ được đưa tận tay tên đăng nhập và cấp của mọi quản
+trị viên. Đã chuyển sang `GET /admin/admins`, sau `admins.manage`.
+
+**Và cái rào "người owner cuối cùng" đầu tiên tôi viết không bao giờ chạy
+được.** Chỉ owner mới quản lý được tài khoản quản trị, nên người thao tác *luôn
+luôn* là một owner khác, và "đếm số owner khác" không bao giờ bằng 0. Nó trông
+như một tấm lưới an toàn và không bắt được gì.
+
+Cái nó bỏ sót là **hai owner thao tác cùng lúc**: A ngưng B trong khi B ngưng A,
+mỗi bên đều thấy bên kia là người sống sót, cả hai đều được cho qua, cả hai lệnh
+ghi đều xuống, và nền tảng không còn ai đăng nhập được. Nay phép kiểm là **hậu
+điều kiện nằm trong transaction**: ghi xong rồi mới hỏi "còn owner nào đang hoạt
+động không?", không thì rollback. Đã kiểm bằng cách ép nó chạy — transaction lùi
+lại và thao tác bị từ chối 400.
+
+> Nói thẳng một điều bộ test **không** chứng minh: cặp request chạy song song
+> trong test không ép được đúng thứ tự đan xen đó. Node phục vụ hai request trên
+> một luồng nên phần lớn lần chạy ra 200 rồi 401. Khẳng định trong test là về
+> **bất biến** — dù hai lệnh rơi kiểu gì thì vẫn phải còn một owner đăng nhập
+> được — chứ không phải bằng chứng hậu điều kiện đã nổ.
+
+### Giao diện, và ba lỗi nữa chỉ lộ khi chạy thật
+
+Chạy màn hình quản trị bằng trình duyệt thật ở **cả ba cấp** tìm ra ba thứ mà
+unit test không thấy: lệnh gọi `/admin/me` nằm **dưới** thanh sub-tab mà nó phải
+lọc (nên sub-tab dựng từ danh sách năng lực rỗng); ba thẻ chỉ-owner dưới tab
+Platform vẫn được chèn cho mọi cấp rồi mỗi thẻ tự gọi API của nó (ba lần 403 và
+ba cái thẻ trống); và tệ nhất — panel Plans bị **gỡ khỏi DOM** với cấp không có
+`settings.write` mà đoạn mã sau đó vẫn ghi `innerHTML` vào, tức một null
+dereference chặn đứng mọi dòng phía sau, kể cả những dòng cấp đó *cần*.
+
+`scripts/accounts.js set-level` là đường về. Màn hình từ chối tạo ra trạng thái
+"không còn owner", nhưng một bản phục hồi, một lần sửa tay hay một lỗi vẫn tạo
+ra được — và khi đã ở đó thì **không ai còn `admins.manage` để cấp lại cho ai**.
+Lệnh này trả lời người cầm máy chủ, không trả lời người cầm phiên đăng nhập, và
+nó giữ đúng bất biến kia nên không tự tạo ra được cái trạng thái nó sinh ra để
+sửa.
+
 _(ghi vào đây mỗi lần một block đã khóa bị mở ra sửa: block nào, vì sao, commit
 nào đóng lại)_
