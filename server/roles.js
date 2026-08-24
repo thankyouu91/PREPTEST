@@ -73,6 +73,32 @@ const CAPS = [
 ];
 
 /**
+ * What each capability means to somebody who is not reading this file.
+ *
+ * The Administration screen lists these when an owner picks a level, and it
+ * listed the raw identifiers first — `bank.publish` on a card meant to help a
+ * school owner choose between three levels. The identifier is the right thing
+ * for a log and the wrong thing for a decision.
+ */
+const CAP_LABEL = {
+  'reports.read': { en: 'See reports and the dashboard', vi: 'Xem báo cáo và bảng điều khiển' },
+  'users.read': { en: 'See learner accounts', vi: 'Xem tài khoản học viên' },
+  'users.write': { en: 'Create and edit learner accounts', vi: 'Tạo và sửa tài khoản học viên' },
+  'codes.read': { en: 'See activation codes', vi: 'Xem mã kích hoạt' },
+  'codes.write': { en: 'Issue and revoke activation codes', vi: 'Phát và thu hồi mã kích hoạt' },
+  'tests.read': { en: 'See the papers', vi: 'Xem đề thi' },
+  'tests.write': { en: 'Build and publish papers', vi: 'Dựng và phát hành đề thi' },
+  'bank.read': { en: 'See the question bank', vi: 'Xem ngân hàng câu hỏi' },
+  'bank.write': { en: 'Write and edit questions', vi: 'Soạn và sửa câu hỏi' },
+  'bank.publish': { en: 'Approve a question for a live exam', vi: 'Duyệt câu hỏi vào đề thi thật' },
+  'marking.run': { en: 'Ask for a paper to be marked again', vi: 'Yêu cầu chấm lại một bài' },
+  'audit.read': { en: 'Read the audit log', vi: 'Đọc nhật ký thao tác' },
+  'settings.write': { en: 'Change platform settings and the plans on sale', vi: 'Đổi cấu hình nền tảng và gói bán' },
+  'admins.manage': { en: 'Create administrators and set their level', vi: 'Tạo tài khoản quản trị và đặt cấp' },
+  'secrets.manage': { en: 'Hold the model key and the backups', vi: 'Giữ khoá mô hình và bản sao lưu' }
+};
+
+/**
  * Role → capabilities. The whole permission model, in one object.
  *
  * Written out per role rather than as "manager = teacher + extras", and that is
@@ -151,10 +177,17 @@ function capsOf(role) {
   return roleOf(role).caps.slice();
 }
 
-/** The roles, highest first, for a picker. */
+/** The roles, highest first, for a picker — each capability with its meaning. */
 function list() {
   return ROLE_NAMES
-    .map(name => ({ name, ...ROLES[name], caps: ROLES[name].caps.slice() }))
+    .map(name => ({
+      name,
+      ...ROLES[name],
+      caps: ROLES[name].caps.slice(),
+      /* Paired with their labels so the screen can say what a level does
+         without keeping a second copy of this table in the browser. */
+      abilities: ROLES[name].caps.map(c => ({ cap: c, label: CAP_LABEL[c] || { en: c, vi: c } }))
+    }))
     .sort((a, b) => b.rank - a.rank);
 }
 
@@ -191,4 +224,4 @@ function requireCap(capability) {
   return requireCap;
 }
 
-module.exports = { CAPS, ROLES, ROLE_NAMES, FALLBACK, roleOf, isRole, can, capsOf, list, requireCap };
+module.exports = { CAPS, CAP_LABEL, ROLES, ROLE_NAMES, FALLBACK, roleOf, isRole, can, capsOf, list, requireCap };

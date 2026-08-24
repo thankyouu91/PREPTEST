@@ -26,12 +26,14 @@
         <button role="tab" id="tab-general" aria-controls="p-general" aria-selected="true" class="tabbtn">Platform</button>
         <button role="tab" id="tab-packages" aria-controls="p-packages" aria-selected="false" class="tabbtn">Plans</button>
         <button role="tab" id="tab-account" aria-controls="p-account" aria-selected="false" class="tabbtn">Admin account</button>
+        <button role="tab" id="tab-people" aria-controls="p-people" aria-selected="false" class="tabbtn" hidden>Administrators</button>
         <button role="tab" id="tab-audit" aria-controls="p-audit" aria-selected="false" class="tabbtn">Audit log</button>
       </div>
 
       <section role="tabpanel" id="p-general" aria-labelledby="tab-general"><div class="skeleton h-40 w-full rounded-2xl"></div></section>
       <section role="tabpanel" id="p-packages" aria-labelledby="tab-packages" hidden></section>
       <section role="tabpanel" id="p-account" aria-labelledby="tab-account" hidden></section>
+      <section role="tabpanel" id="p-people" aria-labelledby="tab-people" hidden></section>
       <section role="tabpanel" id="p-audit" aria-labelledby="tab-audit" hidden></section>
     </div>
   </main>
@@ -42,7 +44,37 @@
 (async () => {
   const me = await AD.mount({ title: 'Administration', subtitle: 'Platform configuration, the plans on sale, and the audit log' });
 
-  const tabs = [['tab-general','p-general'],['tab-packages','p-packages'],['tab-account','p-account'],['tab-audit','p-audit']];
+  /* One of the two languages out of a {en, vi} pair the server sent. Labels for
+     the levels come from server/roles.js rather than being written out again
+     here: two copies of what the levels are called drift within a month, and
+     the copy on the screen is the one people quote back at you. */
+  const pick = pair => (pair && (AD.isVi() ? pair.vi : pair.en)) || '';
+
+  /* The three cards below the Platform tab — the model key, the backups and the
+     Google Classroom link — are all `secrets.manage`, which is the top level
+     only. They used to be inserted for everybody and then each fetched its own
+     data, so a manager opening this screen got three 403s in the console and a
+     card that said nothing. Not rendering them is both the honest interface and
+     three requests nobody needed to make. */
+  const canSecrets = AD.can('secrets.manage');
+
+  /* Tabs a level cannot use are not rendered. `admins.manage` is the top level
+     only; the Plans tab needs settings.write, which is also the top level. The
+     Administration screen itself stays open to everybody, because it is where
+     every administrator changes their own password and second factor. */
+  const TABS = [
+    ['tab-general', 'p-general', null],
+    ['tab-packages', 'p-packages', 'settings.write'],
+    ['tab-account', 'p-account', null],
+    ['tab-people', 'p-people', 'admins.manage'],
+    ['tab-audit', 'p-audit', 'audit.read']
+  ];
+  const tabs = TABS.filter(([, , cap]) => AD.can(cap)).map(([t, p]) => [t, p]);
+  TABS.forEach(([tid, pid, cap]) => {
+    const on = AD.can(cap);
+    AD.qs('#' + tid).toggleAttribute('hidden', !on);
+    if (!on) AD.qs('#' + pid).remove();
+  });
   tabs.forEach(([tid, pid]) => AD.qs('#' + tid).addEventListener('click', () => {
     tabs.forEach(([t2, p2]) => {
       const on = t2 === tid;
@@ -50,6 +82,7 @@
       AD.qs('#' + p2).toggleAttribute('hidden', !on);
     });
     if (pid === 'p-audit') loadAudit();
+    if (pid === 'p-people') loadPeople();
     history.replaceState(null, '', pid === 'p-audit' ? '#nhat-ky' : location.pathname);
   }));
 
@@ -100,7 +133,7 @@
      band at all, permanently. The key is write-only: it is sealed before it is
      stored and no route ever returns it, so this screen can say WHICH key is in
      use (its last four characters) but never what it is. */
-  AD.qs('#p-general').insertAdjacentHTML('beforeend',
+  if (canSecrets) AD.qs('#p-general').insertAdjacentHTML('beforeend',
     '<div class="card p-6 sm:p-7 mt-6 grid gap-4 content-start" id="ai-card">' +
       '<div class="grid gap-1">' +
         '<h2 class="text-lg font-extrabold tracking-tight">Marking writing and speaking</h2>' +
@@ -284,7 +317,7 @@
       btn.disabled = false;
       });
   }
-  aiLoad();
+  if (canSecrets) aiLoad();
 
   /* ---------------- Backups ----------------
      The database is one file. Until there is a copy of it somewhere else, every
@@ -295,7 +328,7 @@
      earlier while everybody carries on believing it runs. A cron job checks that
      too, but a cron job's warning goes to a log nobody opens. Something on a
      screen the owner already visits is the cheaper defence. */
-  AD.qs('#p-general').insertAdjacentHTML('beforeend',
+  if (canSecrets) AD.qs('#p-general').insertAdjacentHTML('beforeend',
     '<div class="card p-6 sm:p-7 mt-6 grid gap-4 content-start" id="bk-card">' +
       '<div class="grid gap-1">' +
         '<h2 class="text-lg font-extrabold tracking-tight">Database backups</h2>' +
@@ -374,13 +407,13 @@
       }
     });
   }
-  bkLoad();
+  if (canSecrets) bkLoad();
 
   /* ---------------- Google Classroom ----------------
      Read-only for now: connect a teacher's account, list their courses, pull a
      roster and show which students already have an account here. Publishing
      coursework and pushing scores need a scope this does not ask for yet. */
-  AD.qs('#p-general').insertAdjacentHTML('beforeend',
+  if (canSecrets) AD.qs('#p-general').insertAdjacentHTML('beforeend',
     '<div class="card p-6 sm:p-7 mt-6 grid gap-4 content-start" id="cr-card">' +
       '<div class="grid gap-1">' +
         '<h2 class="text-lg font-extrabold tracking-tight">Google Classroom</h2>' +
@@ -493,7 +526,7 @@
        and the reference does not end up in a bookmark. */
     history.replaceState(null, '', location.pathname);
   }
-  renderClassroom();
+  if (canSecrets) renderClassroom();
 
   AD.qs('#g-save').addEventListener('click', async () => {
     AD.qs('#g-ok').classList.remove('show');
@@ -509,7 +542,11 @@
   });
 
   /* ---------------- Plans on sale ---------------- */
-  AD.qs('#p-packages').innerHTML =
+  /* The panel is gone entirely for a level without settings.write, so this
+     whole block has to be skipped rather than merely hidden — writing into
+     a node that was removed is a null dereference that stops every later
+     line on the page, including the ones that level DOES need. */
+  if (AD.qs('#p-packages')) AD.qs('#p-packages').innerHTML =
     '<div class="grid md:grid-cols-2 xl:grid-cols-3 gap-5">' + S.packages.map(p =>
       '<article class="card p-6" data-pkg="' + AD.esc(p.id) + '">' +
         '<div class="flex items-center gap-2">' +
@@ -553,17 +590,18 @@
         '<div class="banner banner-error" id="pw-err"><span id="pw-err-text"></span></div>' +
         '<button type="submit" class="btn btn-primary btn-md justify-self-start">Update password</button>' +
       '</form>' +
-      '<div class="lg:col-span-5 card p-6">' +
-        '<h2 class="text-lg font-extrabold tracking-tight">Administrators</h2>' +
-        '<ul class="grid gap-3 mt-4">' + S.admins.map(a =>
-          '<li class="flex items-center gap-3 py-2 border-b border-line last:border-0">' +
-            '<span class="w-9 h-9 rounded-full bg-brand-soft text-brand-strong text-[12px] font-extrabold inline-flex items-center justify-center shrink-0">' +
-              AD.esc((a.name || a.username).slice(0, 2).toUpperCase()) + '</span>' +
-            '<span class="min-w-0 flex-1"><b class="block text-[14px] truncate">' + AD.esc(a.name) + '</b>' +
-              '<span class="block text-[12.5px] text-muted truncate">@' + AD.esc(a.username) + '</span></span>' +
-            '<span class="badge badge-muted shrink-0">' + (a.role === 'owner' ? 'Owner' : 'Editor') + '</span>' +
-          '</li>').join('') + '</ul>' +
-        '<p class="help mt-4">Adding administrators comes with the detailed permissions work.</p>' +
+      /* Your own level, and what it lets you do. The roster of everybody else
+         used to sit here, and it moved: this screen is open to every level, so
+         a teacher was being handed a list of every administrator and their
+         level. It now lives on the Administrators tab, behind admins.manage. */
+      '<div class="lg:col-span-5 card p-6 grid gap-3 content-start">' +
+        '<h2 class="text-lg font-extrabold tracking-tight">Your level</h2>' +
+        '<div class="flex items-center gap-3">' +
+          '<span class="badge badge-hl">' + AD.esc(pick(me.label)) + '</span>' +
+          '<span class="text-[13px] text-muted">@' + AD.esc(me.username) + '</span>' +
+        '</div>' +
+        '<p class="text-[13.5px] text-muted">' + AD.esc(pick(me.blurb)) + '</p>' +
+        '<p class="help">A level is set by an administrator at the top level, never by the account itself.</p>' +
       '</div>' +
       /* Two-factor. Rendered as its own card rather than folded into the password
          form: they are different decisions, and putting a switch that can lock you
@@ -712,6 +750,193 @@
       err.classList.add('show');
     }
   });
+
+  /* ---------------- Administrators ----------------
+     Making other administrators and setting their level. Rendered only for the
+     top level; every action here is refused again by the server, so what this
+     code decides is what is worth SHOWING, never what is allowed.
+
+     Everything is delegated from the panel rather than bound per row: the list
+     is redrawn after each change, and per-row listeners would either leak or
+     have to be rebound each time. The row carries its id and its username on
+     data attributes, which is also what keeps this inside the platform's CSP —
+     no inline handlers anywhere. */
+  async function loadPeople(flash) {
+    const box = AD.qs('#p-people');
+    if (!box) return;
+    let d;
+    try { d = await AD.get('/admin/admins'); }
+    catch (e) { box.innerHTML = AD.errorBox(e.message); return; }
+
+    const roleOptions = (selected, disabled) => d.roles.map(r =>
+      '<option value="' + r.name + '"' + (r.name === selected ? ' selected' : '') + '>' +
+      AD.esc(pick(r.label)) + '</option>').join('');
+
+    const row = a => {
+      const self = a.id === d.me;
+      return '<tr class="border-b border-line last:border-0" data-id="' + a.id + '" data-user="' + AD.esc(a.username) + '">' +
+        '<td class="py-3 pe-3">' +
+          '<div class="flex items-center gap-3">' +
+            '<span class="w-9 h-9 rounded-full bg-brand-soft text-brand-strong text-[12px] font-extrabold inline-flex items-center justify-center shrink-0">' +
+              AD.esc((a.name || a.username).slice(0, 2).toUpperCase()) + '</span>' +
+            '<span class="min-w-0">' +
+              '<b class="block text-[14px] truncate">' + AD.esc(a.name) + (self ? ' <span class="badge badge-muted">you</span>' : '') + '</b>' +
+              '<span class="block text-[12.5px] text-muted truncate">@' + AD.esc(a.username) + '</span>' +
+            '</span>' +
+          '</div>' +
+        '</td>' +
+        '<td class="py-3 pe-3">' +
+          /* Your own level is shown, not offered. An owner who demotes
+             themselves by mis-clicking leaves nobody able to undo it, so the
+             server refuses it and the interface does not suggest it. */
+          (self
+            ? '<span class="badge badge-hl">' + AD.esc(pick(a.label)) + '</span>'
+            : '<select class="input" data-role aria-label="Level for ' + AD.esc(a.username) + '">' +
+              roleOptions(a.role) + '</select>') +
+        '</td>' +
+        '<td class="py-3 pe-3 text-[13px] text-muted whitespace-nowrap">' +
+          (a.last_login_at ? AD.ago(a.last_login_at) : 'never signed in') +
+          (a.totp ? ' · <span class="badge badge-ok">2FA</span>' : '') +
+        '</td>' +
+        '<td class="py-3 text-end whitespace-nowrap">' +
+          '<button type="button" class="btn btn-ghost btn-sm" data-pw>Set password</button>' +
+          (self ? '' :
+            '<button type="button" class="btn btn-ghost btn-sm ' + (a.active ? 'text-danger' : '') + '" data-active="' +
+            (a.active ? '0' : '1') + '">' + (a.active ? 'Deactivate' : 'Reactivate') + '</button>') +
+        '</td>' +
+      '</tr>';
+    };
+
+    const active = d.admins.filter(a => a.active);
+    const off = d.admins.filter(a => !a.active);
+
+    box.innerHTML =
+      '<div class="grid lg:grid-cols-12 gap-6">' +
+        '<div class="lg:col-span-8 card p-6 sm:p-7 grid gap-4 content-start">' +
+          '<div class="flex items-start gap-3 flex-wrap">' +
+            '<div class="min-w-0 flex-1">' +
+              '<h2 class="text-lg font-extrabold tracking-tight">Administrators</h2>' +
+              '<p class="help mt-1">Changing somebody\'s level, or turning them off, signs them out at once.</p>' +
+            '</div>' +
+          '</div>' +
+          '<div class="banner banner-success" id="ppl-ok"><span id="ppl-ok-text"></span></div>' +
+          '<div class="banner banner-error" id="ppl-err"><span id="ppl-err-text"></span></div>' +
+          '<div class="overflow-x-auto"><table class="w-full text-start">' +
+            '<thead><tr class="text-[12px] uppercase tracking-wide text-muted border-b border-line">' +
+              '<th class="text-start font-bold py-2 pe-3">Account</th>' +
+              '<th class="text-start font-bold py-2 pe-3">Level</th>' +
+              '<th class="text-start font-bold py-2 pe-3">Last seen</th>' +
+              '<th class="text-end font-bold py-2"></th>' +
+            '</tr></thead>' +
+            '<tbody>' + active.map(row).join('') + '</tbody>' +
+          '</table></div>' +
+          (off.length
+            ? '<details class="mt-2"><summary class="text-[13.5px] font-semibold cursor-pointer">' +
+              off.length + ' deactivated</summary>' +
+              '<div class="overflow-x-auto mt-3"><table class="w-full opacity-70"><tbody>' +
+              off.map(row).join('') + '</tbody></table></div></details>'
+            : '') +
+        '</div>' +
+
+        '<form class="lg:col-span-4 card p-6 grid gap-4 content-start" id="ppl-new" novalidate>' +
+          '<h2 class="text-lg font-extrabold tracking-tight">New administrator</h2>' +
+          '<div><label class="label" for="np-user">Username</label>' +
+            '<input class="input" id="np-user" autocomplete="off" placeholder="3-40 characters, no spaces">' +
+            '<p class="help">This is what they sign in with. It cannot be changed later.</p></div>' +
+          '<div><label class="label" for="np-name">Display name</label>' +
+            '<input class="input" id="np-name" autocomplete="off" maxlength="120"></div>' +
+          '<div><label class="label" for="np-role">Level</label>' +
+            '<select class="input" id="np-role">' + roleOptions('teacher') + '</select>' +
+            '<p class="help" id="np-blurb"></p></div>' +
+          '<div><label class="label" for="np-pass">First password</label>' +
+            '<input class="input" id="np-pass" type="password" autocomplete="new-password" placeholder="At least 8 characters, letters and digits">' +
+            '<p class="help">Give it to them over something other than email, and ask them to change it.</p></div>' +
+          '<button type="submit" class="btn btn-primary btn-md justify-self-start">Create the account</button>' +
+        '</form>' +
+
+        /* What each level actually means, from the server's own table. An
+           interface that offers three levels and explains none of them makes
+           the choice a guess. */
+        '<div class="lg:col-span-12 card p-6 grid gap-4">' +
+          '<h2 class="text-lg font-extrabold tracking-tight">What each level may do</h2>' +
+          '<div class="grid md:grid-cols-3 gap-4">' + d.roles.map(r =>
+            '<div class="rounded-xl border border-line p-4 grid gap-2 content-start">' +
+              '<span class="badge badge-hl justify-self-start">' + AD.esc(pick(r.label)) + '</span>' +
+              '<p class="text-[13.5px] text-muted">' + AD.esc(pick(r.blurb)) + '</p>' +
+              '<ul class="grid gap-1.5 mt-1">' + r.abilities.map(a =>
+                '<li class="text-[13px] text-muted flex gap-2"><span aria-hidden="true">·</span>' +
+                '<span>' + AD.esc(pick(a.label)) + '</span></li>').join('') + '</ul>' +
+            '</div>').join('') +
+          '</div>' +
+        '</div>' +
+      '</div>';
+
+    const ok = AD.qs('#ppl-ok'), okText = AD.qs('#ppl-ok-text');
+    const err = AD.qs('#ppl-err'), errText = AD.qs('#ppl-err-text');
+    const say = (msg) => { errText.textContent = ''; err.classList.remove('show'); okText.textContent = msg; ok.classList.add('show'); };
+    const oops = (msg) => { okText.textContent = ''; ok.classList.remove('show'); errText.textContent = msg; err.classList.add('show'); };
+    if (flash) say(flash);
+
+    /* The blurb follows the picker, so the level is chosen with its meaning in
+       view rather than from a word. */
+    const blurbFor = () => {
+      const r = d.roles.find(x => x.name === AD.qs('#np-role').value);
+      AD.qs('#np-blurb').textContent = r ? pick(r.blurb) : '';
+    };
+    AD.qs('#np-role').addEventListener('change', blurbFor);
+    blurbFor();
+
+    box.addEventListener('change', async (ev) => {
+      const sel = ev.target.closest('[data-role]');
+      if (!sel) return;
+      const tr = sel.closest('tr');
+      try {
+        await AD.put('/admin/admins/' + tr.dataset.id, { role: sel.value });
+        loadPeople('@' + tr.dataset.user + ' is now ' + sel.options[sel.selectedIndex].text + '. They have been signed out.');
+      } catch (e) { oops(e.message); loadPeople(); }
+    });
+
+    box.addEventListener('click', async (ev) => {
+      const tr = ev.target.closest('tr');
+      const act = ev.target.closest('[data-active]');
+      if (act && tr) {
+        const on = act.dataset.active === '1';
+        if (!on && !confirm('Deactivate @' + tr.dataset.user + '? They are signed out immediately and cannot sign back in.')) return;
+        try {
+          await AD.put('/admin/admins/' + tr.dataset.id, { active: on });
+          loadPeople('@' + tr.dataset.user + (on ? ' can sign in again.' : ' has been deactivated and signed out.'));
+        } catch (e) { oops(e.message); }
+        return;
+      }
+      const pw = ev.target.closest('[data-pw]');
+      if (pw && tr) {
+        const next = prompt('New password for @' + tr.dataset.user + ' (at least 8 characters, letters and digits):');
+        if (!next) return;
+        try {
+          const r = await AD.post('/admin/admins/' + tr.dataset.id + '/password', { password: next });
+          /* Resetting your OWN password here ends your own session too, so say
+             so and go to the sign-in page rather than leaving the screen to
+             fail its next request with a bare 401. */
+          if (r.reauth) { location.href = '/admin/dang-nhap/'; return; }
+          loadPeople('The password for @' + tr.dataset.user + ' was changed. They have been signed out.');
+        } catch (e) { oops(e.message); }
+      }
+    });
+
+    AD.qs('#ppl-new').addEventListener('submit', async (ev) => {
+      ev.preventDefault();
+      const body = {
+        username: AD.qs('#np-user').value.trim().toLowerCase(),
+        name: AD.qs('#np-name').value.trim(),
+        role: AD.qs('#np-role').value,
+        password: AD.qs('#np-pass').value
+      };
+      try {
+        await AD.post('/admin/admins', body);
+        loadPeople('@' + body.username + ' can now sign in.');
+      } catch (e) { oops(e.message); }
+    });
+  }
 
   /* ---------------- Audit log ---------------- */
   let auditLoaded = false;

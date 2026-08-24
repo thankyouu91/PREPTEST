@@ -267,6 +267,36 @@
     'Following': 'Đang theo dõi',
     'Recent actions': 'Hoạt động gần đây',
     'Audit log': 'Nhật ký',
+    /* Ba cấp quản trị (block: phân quyền). Nhãn của CHÍNH ba cấp đến từ
+       server/roles.js theo cặp {en, vi} — cố ý không lặp lại ở đây, vì hai bản
+       sao của "ba cấp tên là gì" sẽ lệch nhau trong vòng một tháng. Dưới đây chỉ
+       là chữ tĩnh của màn hình. */
+    'Administrators': 'Tài khoản quản trị',
+    'New administrator': 'Thêm tài khoản quản trị',
+    'What each level may do': 'Mỗi cấp làm được gì',
+    'Your level': 'Cấp của bạn',
+    'Username': 'Tên đăng nhập',
+    'Display name': 'Tên hiển thị',
+    'Level': 'Cấp',
+    'First password': 'Mật khẩu ban đầu',
+    'Create the account': 'Tạo tài khoản',
+    'Set password': 'Đặt mật khẩu',
+    'Deactivate': 'Ngưng hoạt động',
+    'Reactivate': 'Bật lại',
+    'Account': 'Tài khoản',
+    'Last seen': 'Lần cuối',
+    "Changing somebody's level, or turning them off, signs them out at once.":
+      'Đổi cấp hoặc ngưng một tài khoản sẽ đăng xuất tài khoản đó ngay lập tức.',
+    'This is what they sign in with. It cannot be changed later.':
+      'Đây là tên dùng để đăng nhập. Sau này không đổi được.',
+    'Give it to them over something other than email, and ask them to change it.':
+      'Đưa mật khẩu này qua kênh khác email, và nhắc họ đổi lại.',
+    'A level is set by an administrator at the top level, never by the account itself.':
+      'Cấp do một tài khoản quản trị cao nhất đặt, không do chính tài khoản tự đặt.',
+    '3-40 characters, no spaces': '3-40 ký tự, không dấu cách',
+    'At least 8 characters, letters and digits': 'Ít nhất 8 ký tự, có chữ và số',
+    'never signed in': 'chưa đăng nhập lần nào',
+    'you': 'bạn',
 
     /* ---- Đề thi / ngân hàng ---- */
     'Tests': 'Đề thi',

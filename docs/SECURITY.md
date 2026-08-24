@@ -259,70 +259,74 @@ guard đăng nhập, 8 route còn lại là danh sách ở mục 3.
 
 | Method | Endpoint | Guards | Write limit |
 |---|---|---|---|
-| GET | `/api/admin/ai` | `requireAdmin` + `csrfGuard` + `requireOwner` | n/a (read) |
-| PUT | `/api/admin/ai` | `requireAdmin` + `csrfGuard` + `requireOwner` | yes |
-| POST | `/api/admin/ai/sweep` | `requireAdmin` + `csrfGuard` + `requireOwner` | yes |
-| POST | `/api/admin/ai/test` | `requireAdmin` + `csrfGuard` + `requireOwner` | yes |
-| POST | `/api/admin/attempts/:id/mark` | `requireAdmin` + `csrfGuard` + `requireOwner` | yes |
-| GET | `/api/admin/audit` | `requireAdmin` + `csrfGuard` | n/a (read) |
-| GET | `/api/admin/backup` | `requireAdmin` + `csrfGuard` + `requireOwner` | n/a (read) |
-| POST | `/api/admin/backup` | `requireAdmin` + `csrfGuard` + `requireOwner` | yes |
-| GET | `/api/admin/batches` | `requireAdmin` + `csrfGuard` | n/a (read) |
-| GET | `/api/admin/classroom` | `requireAdmin` + `csrfGuard` | n/a (read) |
-| GET | `/api/admin/classroom/courses` | `requireAdmin` + `csrfGuard` | n/a (read) |
-| GET | `/api/admin/classroom/courses/:courseId/roster` | `requireAdmin` + `csrfGuard` | n/a (read) |
-| POST | `/api/admin/classroom/unlink` | `requireAdmin` + `csrfGuard` | yes |
-| GET | `/api/admin/codes` | `requireAdmin` + `csrfGuard` | n/a (read) |
-| POST | `/api/admin/codes` | `requireAdmin` + `csrfGuard` | yes |
-| POST | `/api/admin/codes/:id/revoke` | `requireAdmin` + `csrfGuard` | yes |
-| GET | `/api/admin/codes/export` | `requireAdmin` + `csrfGuard` | n/a (read) |
-| GET | `/api/admin/exam-formats` | `requireAdmin` + `csrfGuard` | n/a (read) |
-| DELETE | `/api/admin/items/:itemId` | `requireAdmin` + `csrfGuard` | yes |
+| GET | `/api/admin/admins` | `requireAdmin` + `csrfGuard` + `requireCap(admins.manage)` | n/a (read) |
+| POST | `/api/admin/admins` | `requireAdmin` + `csrfGuard` + `requireCap(admins.manage)` | yes |
+| PUT | `/api/admin/admins/:id` | `requireAdmin` + `csrfGuard` + `requireCap(admins.manage)` | yes |
+| POST | `/api/admin/admins/:id/password` | `requireAdmin` + `csrfGuard` + `requireCap(admins.manage)` | yes |
+| GET | `/api/admin/ai` | `requireAdmin` + `csrfGuard` + `requireCap(secrets.manage)` | n/a (read) |
+| PUT | `/api/admin/ai` | `requireAdmin` + `csrfGuard` + `requireCap(secrets.manage)` | yes |
+| POST | `/api/admin/ai/sweep` | `requireAdmin` + `csrfGuard` + `requireCap(marking.run)` | yes |
+| POST | `/api/admin/ai/test` | `requireAdmin` + `csrfGuard` + `requireCap(secrets.manage)` | yes |
+| POST | `/api/admin/attempts/:id/mark` | `requireAdmin` + `csrfGuard` + `requireCap(marking.run)` | yes |
+| GET | `/api/admin/audit` | `requireAdmin` + `csrfGuard` + `requireCap(audit.read)` | n/a (read) |
+| GET | `/api/admin/backup` | `requireAdmin` + `csrfGuard` + `requireCap(secrets.manage)` | n/a (read) |
+| POST | `/api/admin/backup` | `requireAdmin` + `csrfGuard` + `requireCap(secrets.manage)` | yes |
+| GET | `/api/admin/batches` | `requireAdmin` + `csrfGuard` + `requireCap(codes.read)` | n/a (read) |
+| GET | `/api/admin/classroom` | `requireAdmin` + `csrfGuard` + `requireCap(secrets.manage)` | n/a (read) |
+| GET | `/api/admin/classroom/courses` | `requireAdmin` + `csrfGuard` + `requireCap(secrets.manage)` | n/a (read) |
+| GET | `/api/admin/classroom/courses/:courseId/roster` | `requireAdmin` + `csrfGuard` + `requireCap(secrets.manage)` | n/a (read) |
+| POST | `/api/admin/classroom/unlink` | `requireAdmin` + `csrfGuard` + `requireCap(secrets.manage)` | yes |
+| GET | `/api/admin/codes` | `requireAdmin` + `csrfGuard` + `requireCap(codes.read)` | n/a (read) |
+| POST | `/api/admin/codes` | `requireAdmin` + `csrfGuard` + `requireCap(codes.write)` | yes |
+| POST | `/api/admin/codes/:id/revoke` | `requireAdmin` + `csrfGuard` + `requireCap(codes.write)` | yes |
+| GET | `/api/admin/codes/export` | `requireAdmin` + `csrfGuard` + `requireCap(codes.read)` | n/a (read) |
+| GET | `/api/admin/exam-formats` | `requireAdmin` + `csrfGuard` + `requireCap(tests.read)` | n/a (read) |
+| DELETE | `/api/admin/items/:itemId` | `requireAdmin` + `csrfGuard` + `requireCap(tests.write)` | yes |
 | POST | `/api/admin/login` | `csrfGuard` | yes |
 | POST | `/api/admin/logout` | `csrfGuard` | yes |
 | GET | `/api/admin/me` | — | n/a (read) |
 | POST | `/api/admin/me` | `requireAdmin` + `csrfGuard` | yes |
-| PUT | `/api/admin/packages/:id` | `requireAdmin` + `csrfGuard` | yes |
+| PUT | `/api/admin/packages/:id` | `requireAdmin` + `csrfGuard` + `requireCap(settings.write)` | yes |
 | POST | `/api/admin/password` | `requireAdmin` + `csrfGuard` | yes |
-| POST | `/api/admin/preview-student` | `requireAdmin` + `csrfGuard` | yes |
-| GET | `/api/admin/questions` | `requireAdmin` + `csrfGuard` | n/a (read) |
-| POST | `/api/admin/questions` | `requireAdmin` + `csrfGuard` | yes |
-| PUT | `/api/admin/questions/:id` | `requireAdmin` + `csrfGuard` | yes |
-| DELETE | `/api/admin/questions/:id/audio` | `requireAdmin` + `csrfGuard` | yes |
-| GET | `/api/admin/questions/:id/audio` | `requireAdmin` + `csrfGuard` | n/a (read) |
-| POST | `/api/admin/questions/:id/audio` | `requireAdmin` + `csrfGuard` | yes |
-| POST | `/api/admin/questions/:id/status` | `requireAdmin` + `csrfGuard` | yes |
-| GET | `/api/admin/questions/availability` | `requireAdmin` + `csrfGuard` | n/a (read) |
-| POST | `/api/admin/questions/bulk` | `requireAdmin` + `csrfGuard` | yes |
-| GET | `/api/admin/questions/template.csv` | `requireAdmin` + `csrfGuard` | n/a (read) |
-| GET | `/api/admin/reports` | `requireAdmin` + `csrfGuard` | n/a (read) |
-| DELETE | `/api/admin/sections/:sid` | `requireAdmin` + `csrfGuard` | yes |
-| PUT | `/api/admin/sections/:sid` | `requireAdmin` + `csrfGuard` | yes |
-| POST | `/api/admin/sections/:sid/items` | `requireAdmin` + `csrfGuard` | yes |
-| POST | `/api/admin/sections/:sid/reshuffle` | `requireAdmin` + `csrfGuard` | yes |
-| GET | `/api/admin/settings` | `requireAdmin` + `csrfGuard` | n/a (read) |
-| PUT | `/api/admin/settings` | `requireAdmin` + `csrfGuard` | yes |
-| GET | `/api/admin/tests` | `requireAdmin` + `csrfGuard` | n/a (read) |
-| POST | `/api/admin/tests` | `requireAdmin` + `csrfGuard` | yes |
-| DELETE | `/api/admin/tests/:id` | `requireAdmin` + `csrfGuard` | yes |
-| GET | `/api/admin/tests/:id` | `requireAdmin` + `csrfGuard` | n/a (read) |
-| PUT | `/api/admin/tests/:id` | `requireAdmin` + `csrfGuard` | yes |
-| POST | `/api/admin/tests/:id/sections` | `requireAdmin` + `csrfGuard` | yes |
-| POST | `/api/admin/tests/:id/status` | `requireAdmin` + `csrfGuard` | yes |
-| POST | `/api/admin/tests/generate` | `requireAdmin` + `csrfGuard` | yes |
+| POST | `/api/admin/preview-student` | `requireAdmin` + `csrfGuard` + `requireCap(users.read)` | yes |
+| GET | `/api/admin/questions` | `requireAdmin` + `csrfGuard` + `requireCap(bank.read)` | n/a (read) |
+| POST | `/api/admin/questions` | `requireAdmin` + `csrfGuard` + `requireCap(bank.write)` | yes |
+| PUT | `/api/admin/questions/:id` | `requireAdmin` + `csrfGuard` + `requireCap(bank.write)` | yes |
+| DELETE | `/api/admin/questions/:id/audio` | `requireAdmin` + `csrfGuard` + `requireCap(bank.write)` | yes |
+| GET | `/api/admin/questions/:id/audio` | `requireAdmin` + `csrfGuard` + `requireCap(bank.read)` | n/a (read) |
+| POST | `/api/admin/questions/:id/audio` | `requireAdmin` + `csrfGuard` + `requireCap(bank.write)` | yes |
+| POST | `/api/admin/questions/:id/status` | `requireAdmin` + `csrfGuard` + `requireCap(bank.publish)` | yes |
+| GET | `/api/admin/questions/availability` | `requireAdmin` + `csrfGuard` + `requireCap(bank.read)` | n/a (read) |
+| POST | `/api/admin/questions/bulk` | `requireAdmin` + `csrfGuard` + `requireCap(bank.write)` | yes |
+| GET | `/api/admin/questions/template.csv` | `requireAdmin` + `csrfGuard` + `requireCap(bank.read)` | n/a (read) |
+| GET | `/api/admin/reports` | `requireAdmin` + `csrfGuard` + `requireCap(reports.read)` | n/a (read) |
+| DELETE | `/api/admin/sections/:sid` | `requireAdmin` + `csrfGuard` + `requireCap(tests.write)` | yes |
+| PUT | `/api/admin/sections/:sid` | `requireAdmin` + `csrfGuard` + `requireCap(tests.write)` | yes |
+| POST | `/api/admin/sections/:sid/items` | `requireAdmin` + `csrfGuard` + `requireCap(tests.write)` | yes |
+| POST | `/api/admin/sections/:sid/reshuffle` | `requireAdmin` + `csrfGuard` + `requireCap(tests.write)` | yes |
+| GET | `/api/admin/settings` | `requireAdmin` + `csrfGuard` + `requireCap(reports.read)` | n/a (read) |
+| PUT | `/api/admin/settings` | `requireAdmin` + `csrfGuard` + `requireCap(settings.write)` | yes |
+| GET | `/api/admin/tests` | `requireAdmin` + `csrfGuard` + `requireCap(tests.read)` | n/a (read) |
+| POST | `/api/admin/tests` | `requireAdmin` + `csrfGuard` + `requireCap(tests.write)` | yes |
+| DELETE | `/api/admin/tests/:id` | `requireAdmin` + `csrfGuard` + `requireCap(tests.write)` | yes |
+| GET | `/api/admin/tests/:id` | `requireAdmin` + `csrfGuard` + `requireCap(tests.read)` | n/a (read) |
+| PUT | `/api/admin/tests/:id` | `requireAdmin` + `csrfGuard` + `requireCap(tests.write)` | yes |
+| POST | `/api/admin/tests/:id/sections` | `requireAdmin` + `csrfGuard` + `requireCap(tests.write)` | yes |
+| POST | `/api/admin/tests/:id/status` | `requireAdmin` + `csrfGuard` + `requireCap(tests.write)` | yes |
+| POST | `/api/admin/tests/generate` | `requireAdmin` + `csrfGuard` + `requireCap(tests.write)` | yes |
 | GET | `/api/admin/totp` | `requireAdmin` + `csrfGuard` | n/a (read) |
 | POST | `/api/admin/totp/disable` | `requireAdmin` + `csrfGuard` | yes |
 | POST | `/api/admin/totp/enable` | `requireAdmin` + `csrfGuard` | yes |
 | POST | `/api/admin/totp/start` | `requireAdmin` + `csrfGuard` | yes |
-| GET | `/api/admin/users` | `requireAdmin` + `csrfGuard` | n/a (read) |
-| POST | `/api/admin/users` | `requireAdmin` + `csrfGuard` | yes |
-| GET | `/api/admin/users/:id` | `requireAdmin` + `csrfGuard` | n/a (read) |
-| PUT | `/api/admin/users/:id` | `requireAdmin` + `csrfGuard` | yes |
-| POST | `/api/admin/users/:id/grant` | `requireAdmin` + `csrfGuard` | yes |
-| POST | `/api/admin/users/:id/password` | `requireAdmin` + `csrfGuard` | yes |
-| POST | `/api/admin/users/:id/status` | `requireAdmin` + `csrfGuard` | yes |
-| POST | `/api/admin/users/:id/verify` | `requireAdmin` + `csrfGuard` | yes |
-| POST | `/api/admin/users/bulk` | `requireAdmin` + `csrfGuard` | yes |
+| GET | `/api/admin/users` | `requireAdmin` + `csrfGuard` + `requireCap(users.read)` | n/a (read) |
+| POST | `/api/admin/users` | `requireAdmin` + `csrfGuard` + `requireCap(users.write)` | yes |
+| GET | `/api/admin/users/:id` | `requireAdmin` + `csrfGuard` + `requireCap(users.read)` | n/a (read) |
+| PUT | `/api/admin/users/:id` | `requireAdmin` + `csrfGuard` + `requireCap(users.write)` | yes |
+| POST | `/api/admin/users/:id/grant` | `requireAdmin` + `csrfGuard` + `requireCap(users.write)` | yes |
+| POST | `/api/admin/users/:id/password` | `requireAdmin` + `csrfGuard` + `requireCap(users.write)` | yes |
+| POST | `/api/admin/users/:id/status` | `requireAdmin` + `csrfGuard` + `requireCap(users.write)` | yes |
+| POST | `/api/admin/users/:id/verify` | `requireAdmin` + `csrfGuard` + `requireCap(users.write)` | yes |
+| POST | `/api/admin/users/bulk` | `requireAdmin` + `csrfGuard` + `requireCap(users.write)` | yes |
 | GET | `/api/attempts` | `requireUser` | n/a (read) |
 | POST | `/api/attempts` | `requireUser` + `csrfGuard` | yes |
 | GET | `/api/attempts/:id` | `requireUser` | n/a (read) |

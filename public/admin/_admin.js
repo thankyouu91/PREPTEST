@@ -85,9 +85,13 @@ const AD = {
     if (!iso) return '-';
     const s = (Date.now() - new Date(iso)) / 1000;
     if (s < 60) return 'just now';
-    if (s < 3600) return Math.floor(s / 60) + ' minutes ago';
-    if (s < 86400) return Math.floor(s / 3600) + ' hours ago';
-    if (s < 30 * 86400) return Math.floor(s / 86400) + ' days ago';
+    /* Singular when it is one. "1 minutes ago" is the kind of thing that makes
+       a careful screen look careless, and this helper is on nearly every admin
+       list, so it was saying it in a dozen places. */
+    const plural = (n, word) => n + ' ' + word + (n === 1 ? '' : 's') + ' ago';
+    if (s < 3600) return plural(Math.floor(s / 60), 'minute');
+    if (s < 86400) return plural(Math.floor(s / 3600), 'hour');
+    if (s < 30 * 86400) return plural(Math.floor(s / 86400), 'day');
     return this.date(iso);
   },
   daysUntil(iso) { return iso ? Math.ceil((new Date(iso) - Date.now()) / 86400000) : null; },
@@ -145,22 +149,50 @@ const AD = {
   },
 
   /* ---------- Chrome: sidebar + topbar ---------- */
+  /* `cap` is what this entry needs before it is worth showing. A teacher who
+     cannot open the codes screen should not be given a link to it: six links
+     that answer 403 is not a permission model, it is a maze.
+
+     Hiding is a courtesy and never the control. Every one of these is enforced
+     again by roles.requireCap() on the server, because a menu item that is
+     merely absent is one devtools inspection away from being present. */
   NAV: [
-    { key: 'reports', label: 'Reports', icon: 'gauge', href: '/admin/' },
-    { key: 'testsystem', label: 'Test System', icon: 'fileText', href: '/admin/de-thi/', tabs: [
-      { key: 'tests', label: 'Tests', href: '/admin/de-thi/' },
-      { key: 'formats', label: 'Formats', href: '/admin/format/' },
-      { key: 'bank', label: 'Question Bank', href: '/admin/ngan-hang/' }
+    { key: 'reports', label: 'Reports', icon: 'gauge', href: '/admin/', cap: 'reports.read' },
+    { key: 'testsystem', label: 'Test System', icon: 'fileText', href: '/admin/de-thi/', cap: 'tests.read', tabs: [
+      { key: 'tests', label: 'Tests', href: '/admin/de-thi/', cap: 'tests.read' },
+      { key: 'formats', label: 'Formats', href: '/admin/format/', cap: 'tests.read' },
+      { key: 'bank', label: 'Question Bank', href: '/admin/ngan-hang/', cap: 'bank.read' }
     ] },
-    { key: 'accounts', label: 'Account Management', icon: 'users', href: '/admin/hoc-vien/', activeFor: ['users'] },
-    { key: 'codes', label: 'Codes', icon: 'ticket', href: '/admin/code/' },
+    { key: 'accounts', label: 'Account Management', icon: 'users', href: '/admin/hoc-vien/', cap: 'users.read', activeFor: ['users'] },
+    { key: 'codes', label: 'Codes', icon: 'ticket', href: '/admin/code/', cap: 'codes.read' },
+    /* No capability: every level manages its own password and second factor
+       here, and the screen shows each of them only the tabs they can use. */
     { key: 'settings', label: 'Administration', icon: 'settings', href: '/admin/quan-tri/' }
   ],
+
+  /** Can the signed-in administrator do this? Set by mount(). */
+  caps: [],
+  can(cap) { return !cap || this.caps.indexOf(cap) >= 0; },
 
   async mount(opts) {
     opts = opts || {};
     const app = this.qs('#app'), main = this.qs('#main');
     const active = app.getAttribute('data-active');
+
+    /* Who is signed in, and what they may do — FIRST, because both the sidebar
+       and the sub-tab bar below are filtered by it. This fetch used to sit
+       further down, which was harmless while every administrator saw the same
+       menu and became a bug the moment they did not: the sub-tabs were built
+       from an empty capability list and came out empty for everybody. */
+    let admin = { name: '-', username: '', role: '', caps: [] };
+    try { admin = (await this.get('/admin/me')).admin; } catch (e) { return; }
+    this.caps = admin.caps || [];
+    this.role = admin.role || '';
+    /* The level, in the reader's language, from the server rather than from a
+       copy of the list kept here. Two copies of "what the levels are called"
+       drift within a month, and the one on the screen is the one people quote
+       back at you. */
+    const roleLabel = (admin.label && (this.isVi() ? admin.label.vi : admin.label.en)) || admin.role || '';
 
     /* A page's data-active may be a sub-tab (tests/formats/bank) or an old key
        (users); resolve which top-level nav item should light up, and whether the
@@ -176,17 +208,14 @@ const AD = {
     const tabGroup = this.NAV.find(n => n.key === navOwner && n.tabs);
     const subtabs = tabGroup
       ? '<div class="border-b border-line bg-card px-4 sm:px-6 lg:px-8 flex gap-1 overflow-x-auto no-scrollbar" role="tablist" aria-label="Test System sections">' +
-        tabGroup.tabs.map(t => '<a href="' + t.href + '" role="tab" class="shrink-0 px-3.5 py-3 text-sm font-semibold border-b-2 -mb-px transition ' +
+        tabGroup.tabs.filter(t => this.can(t.cap)).map(t => '<a href="' + t.href + '" role="tab" class="shrink-0 px-3.5 py-3 text-sm font-semibold border-b-2 -mb-px transition ' +
           (t.key === active ? 'border-brand-strong text-brand-strong' : 'border-transparent text-muted hover:text-ink') +
           '"' + (t.key === active ? ' aria-selected="true"' : '') + '>' + this.esc(t.label) + '</a>').join('') +
         '</div>'
       : '';
 
-    let admin = { name: '-', username: '', role: '' };
-    try { admin = (await this.get('/admin/me')).admin; } catch (e) { return; }
-
     const initials = (admin.name || 'QT').trim().split(/\s+/).map(w => w[0]).slice(-2).join('').toUpperCase();
-    const nav = this.NAV.map(n =>
+    const nav = this.NAV.filter(n => this.can(n.cap)).map(n =>
       '<a href="' + n.href + '" class="nav-item" ' + (n.key === navOwner ? 'aria-current="page"' : '') + '>' +
       this.icon(n.icon, 'w-5 h-5 shrink-0') + '<span>' + n.label + '</span></a>').join('');
 
@@ -216,7 +245,7 @@ const AD = {
               '<div class="flex items-center gap-3 mt-2.5">' +
                 '<span class="w-10 h-10 rounded-full bg-brand-soft text-brand-strong font-bold text-sm inline-flex items-center justify-center shrink-0" data-profile-initials>' + this.esc(initials) + '</span>' +
                 '<span class="min-w-0"><span class="block text-sm font-bold truncate" data-profile-name>' + this.esc(admin.name) + '</span>' +
-                  '<span class="block text-xs text-muted truncate">@' + this.esc(admin.username) + ' · ' + this.esc(admin.role === 'owner' ? 'Owner' : 'Editor') + '</span></span>' +
+                  '<span class="block text-xs text-muted truncate">@' + this.esc(admin.username) + ' · ' + this.esc(roleLabel) + '</span></span>' +
               '</div>' +
               '<label class="label mt-3.5" for="ad-name-input">Display name</label>' +
               '<div class="flex gap-2">' +
@@ -233,7 +262,7 @@ const AD = {
               '<span class="w-10 h-10 rounded-full bg-brand-soft text-brand-strong font-bold text-sm inline-flex items-center justify-center shrink-0" data-profile-initials>' + this.esc(initials) + '</span>' +
               '<span class="min-w-0 flex-1 leading-tight">' +
                 '<span class="block text-sm font-bold truncate" data-profile-name>' + this.esc(admin.name) + '</span>' +
-                '<span class="block text-xs text-muted truncate">' + this.esc(admin.role === 'owner' ? 'Owner' : 'Editor') + '</span>' +
+                '<span class="block text-xs text-muted truncate">' + this.esc(roleLabel) + '</span>' +
               '</span>' +
               '<span class="text-muted shrink-0">' + this.icon('settings', 'w-4 h-4') + '</span>' +
             '</button>' +

@@ -251,6 +251,11 @@ node scripts/test-payments.mjs || fail=1
 step "Security (headers, write limit, per-endpoint guards)"
 node scripts/test-security.mjs || fail=1
 
+# Reads the live Express stack, so it catches an admin route added without a
+# capability — which is not a broken route, it is one that works for everybody.
+step "Administrator levels (three roles, a capability on every admin route)"
+node scripts/test-roles.mjs || fail=1
+
 step "Vocabulary (schema, importer, lookup by inflected form)"
 node scripts/test-vocab.mjs || fail=1
 

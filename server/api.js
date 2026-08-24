@@ -134,8 +134,9 @@ router.get('/admin/me', async (req, res) => {
      menu item that is merely absent is one devtools inspection away from being
      present. What it buys is an admin area that shows a teacher a screen they
      can actually work on rather than six links that answer 403. */
+  const r = roles.roleOf(admin.role);
   res.json({
-    admin: { ...admin, caps: roles.capsOf(admin.role), label: roles.roleOf(admin.role).label }
+    admin: { ...admin, caps: roles.capsOf(admin.role), label: r.label, blurb: r.blurb }
   });
 });
 
