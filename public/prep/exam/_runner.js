@@ -236,7 +236,7 @@ const PrepRunner = {
     box.innerHTML =
       '<div class="flex flex-wrap items-baseline gap-x-3 gap-y-1 mb-4">' +
         '<h3 class="font-extrabold text-xl tracking-tight">' + PREP.esc(p.name) + '</h3>' +
-        '<span class="text-[13.5px] font-semibold text-muted">' + p.items.length + ' items</span>' +
+        '<span class="text-[13px] font-semibold text-muted">' + p.items.length + ' items</span>' +
         (closed ? '<span class="badge badge-muted">Finished</span>' : '') +
       '</div>' +
       '<div class="grid gap-4">' + p.items.map((it, i) => this.itemHTML(p, it, i)).join('') + '</div>' +
@@ -396,11 +396,11 @@ const PrepRunner = {
     PREP.qs('#ex-part').innerHTML =
       '<div class="flex flex-wrap items-baseline gap-x-3 gap-y-1 mb-4">' +
         '<h3 class="font-extrabold text-xl tracking-tight">' + PREP.esc(p.name) + '</h3>' +
-        '<span class="text-[13.5px] font-semibold text-muted">' +
+        '<span class="text-[13px] font-semibold text-muted">' +
           noun + ' ' + (st.index + 1) + ' of ' + p.items.length + '</span>' +
       '</div>' +
       '<article class="card p-5">' +
-        '<p class="flex flex-wrap items-center gap-2.5 text-[13.5px] font-semibold">' +
+        '<p class="flex flex-wrap items-center gap-2.5 text-[13px] font-semibold">' +
           '<span class="badge ' + (st.phase === 'answer' ? 'badge-muted' : 'badge-ok') + '">' +
             this.phaseLabel(p, st.phase) + '</span>' +
           (seconds ? '<span class="ms-auto tabular-nums" data-pace-left>' + seconds + 's</span>' : '') +
@@ -454,7 +454,7 @@ const PrepRunner = {
 
   phaseBody(p, it, phase) {
     if (phase === 'read') {
-      return '<p class="text-[16px] leading-relaxed mt-4">' + PREP.esc(it.prompt) + '</p>' +
+      return '<p class="text-[15px] leading-relaxed mt-4">' + PREP.esc(it.prompt) + '</p>' +
         '<p class="text-[13px] text-muted font-semibold mt-4">' +
           'The passage disappears when the time runs out. You cannot get it back.</p>';
     }
@@ -632,7 +632,7 @@ const PrepRunner = {
             (o === it.answer ? 'checked ' : '') +
             'class="w-4 h-4 mt-0.5 accent-[color:var(--color-accent)] shrink-0" ' +
             'data-answer="' + it.questionId + '" aria-label="Option ' + (k + 1) + '">' +
-          '<span class="text-[14.5px]">' + PREP.esc(o) + '</span>' +
+          '<span class="text-[14px]">' + PREP.esc(o) + '</span>' +
         '</label>').join('') + '</div>';
     } else if (it.type === 'speaking') {
       body =

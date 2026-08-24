@@ -75,7 +75,7 @@
         if (summary.detail && summary.detail.length) {
           var list = el('ul', 'grid gap-1.5 mt-3');
           summary.detail.forEach(function (d) {
-            var li = el('li', 'flex items-baseline gap-2 text-[13.5px]');
+            var li = el('li', 'flex items-baseline gap-2 text-[13px]');
             li.appendChild(el('span', 'badge shrink-0 ' + (d.right ? 'badge-ok' : 'badge-danger'),
               d.right ? T('Correct', 'Đúng') : T('Wrong', 'Sai')));
             var txt = el('span', '');
@@ -123,7 +123,7 @@
       var it = items[at];
       body.innerHTML = '';
 
-      var count = el('p', 'text-[12.5px] font-bold uppercase tracking-wide text-muted',
+      var count = el('p', 'text-[13px] font-bold uppercase tracking-wide text-muted',
         T('Question ', 'Câu ') + (at + 1) + ' / ' + items.length);
 
       var prompt = el('p', 'text-[17px] font-semibold leading-relaxed mt-2');

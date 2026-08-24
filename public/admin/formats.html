@@ -33,17 +33,17 @@
       </section>
 
       <div class="flex flex-wrap items-center gap-2.5 mb-6">
-        <label class="flex items-center gap-2 text-[13.5px] font-semibold text-muted">
+        <label class="flex items-center gap-2 text-[13px] font-semibold text-muted">
           Exam
           <select id="f-family" class="input w-auto py-2"><option value="">All</option></select>
         </label>
-        <label class="flex items-center gap-2 text-[13.5px] font-semibold text-muted">
+        <label class="flex items-center gap-2 text-[13px] font-semibold text-muted">
           Level
           <select id="f-level" class="input w-auto py-2">
             <option>A2</option><option selected>B1</option><option>B2</option><option>C1</option>
           </select>
         </label>
-        <label class="flex items-center gap-2 text-[13.5px] font-semibold text-muted">
+        <label class="flex items-center gap-2 text-[13px] font-semibold text-muted">
           <input type="checkbox" id="f-strict" class="w-4 h-4 rounded accent-[color:var(--color-accent)]">
           Count only items at this level
         </label>
@@ -79,7 +79,7 @@ AD.mount({ title: 'Standard paper formats' }).then(async () => {
     return '<div class="rounded-xl border border-line p-3.5">' +
       '<div class="flex flex-wrap items-center gap-2">' +
         '<span class="badge badge-muted">' + SKILL_LABEL[s.skill] + '</span>' +
-        '<b class="text-[14.5px]">' + AD.esc(s.name) + '</b>' +
+        '<b class="text-[14px]">' + AD.esc(s.name) + '</b>' +
         '<span class="text-[13px] text-muted">' + s.items + ' items · ' + s.minutes + ' min</span>' +
         '<span class="badge ' + (ok ? 'badge-ok' : 'badge-hl') + ' ms-auto">' +
           (ok ? 'bank is sufficient (' + b.have + ')' : b.short + ' items short') +
@@ -88,9 +88,16 @@ AD.mount({ title: 'Standard paper formats' }).then(async () => {
       (s.parts.length
         ? '<ul class="grid gap-1 mt-3 text-[13px] text-muted">' +
             s.parts.map(p =>
-              '<li class="flex gap-2"><b class="text-ink shrink-0 w-[9rem]">' + AD.esc(p.label) + '</b>' +
+              /* Three fixed columns — 144px label, 56px count, then the note —
+                 add up to 216px before the note has said anything, which is
+                 most of a 390px phone once the card and the inner box have
+                 taken their padding. The English labels fitted; "Thông báo và
+                 hướng dẫn ngắn" did not, and pushed the page 16px sideways.
+                 The label narrows on a phone and the row is allowed to wrap,
+                 so the note drops to its own line instead of shoving. */
+              '<li class="flex flex-wrap gap-x-2 gap-y-0.5"><b class="text-ink shrink-0 w-24 sm:w-[9rem]">' + AD.esc(p.label) + '</b>' +
               '<span class="shrink-0 w-14">' + p.items + ' items</span>' +
-              '<span class="min-w-0">' + AD.esc(p.note) + '</span></li>').join('') +
+              '<span class="min-w-0 flex-1">' + AD.esc(p.note) + '</span></li>').join('') +
           '</ul>'
         : '') +
     '</div>';
@@ -107,7 +114,7 @@ AD.mount({ title: 'Standard paper formats' }).then(async () => {
               (f.ready ? 'Ready to generate' : f.shortBy + ' items short') + '</span>' +
           '</div>' +
           '<h3 class="text-lg font-extrabold tracking-tight mt-2.5">' + AD.esc(f.name) + '</h3>' +
-          '<p class="text-[13.5px] font-semibold text-muted mt-1">' +
+          '<p class="text-[13px] font-semibold text-muted mt-1">' +
             f.totalItems + ' items · ' + f.totalMinutes + ' min · ' + AD.esc(f.scoring) + '</p>' +
         '</div>' +
         '<div class="flex gap-2 ms-auto">' +
@@ -118,8 +125,8 @@ AD.mount({ title: 'Standard paper formats' }).then(async () => {
       '</div>' +
       '<div class="grid gap-2.5 mt-4">' + f.sections.map(sectionRow).join('') + '</div>' +
       (f.notes && f.notes.length
-        ? '<details class="mt-4"><summary class="text-[13.5px] font-bold text-brand-strong cursor-pointer">Notes on the exam</summary>' +
-          '<ul class="grid gap-1.5 mt-2.5 text-[13.5px] text-muted">' +
+        ? '<details class="mt-4"><summary class="text-[13px] font-bold text-brand-strong cursor-pointer">Notes on the exam</summary>' +
+          '<ul class="grid gap-1.5 mt-2.5 text-[13px] text-muted">' +
             f.notes.map(n => '<li class="flex gap-2"><span class="text-accent-strong">·</span><span>' + AD.esc(n) + '</span></li>').join('') +
           '</ul></details>'
         : '') +
@@ -161,14 +168,14 @@ AD.mount({ title: 'Standard paper formats' }).then(async () => {
     if (!f) return;
     AD.modal(
       '<h3 class="text-lg font-extrabold tracking-tight">' + AD.esc(f.name) + '</h3>' +
-      '<p class="text-[13.5px] text-muted mt-1">' + f.totalItems + ' items · ' + f.totalMinutes +
+      '<p class="text-[13px] text-muted mt-1">' + f.totalItems + ' items · ' + f.totalMinutes +
         ' min · for levels ' + f.levels.join(', ') + '</p>' +
       '<p class="label mt-5 mb-2">Instructions shown to the student</p>' +
-      '<ul class="grid gap-1.5 text-[13.5px] text-muted">' +
+      '<ul class="grid gap-1.5 text-[13px] text-muted">' +
         f.guide.map(g => '<li class="flex gap-2"><span class="text-accent-strong">·</span><span>' + AD.esc(g) + '</span></li>').join('') +
       '</ul>' +
       '<p class="label mt-5 mb-2">How it is marked</p>' +
-      '<p class="text-[13.5px] text-muted">' + AD.esc(f.scoring) + '</p>' +
+      '<p class="text-[13px] text-muted">' + AD.esc(f.scoring) + '</p>' +
       '<p class="help mt-4">The full structure and score conversion live in docs/SCORING.md.</p>',
       { wide: true });
   }

@@ -47,22 +47,22 @@
           <div class="flex flex-wrap items-center gap-x-10 gap-y-5">
             <span class="min-w-0">
               <h2 class="text-[22px] sm:text-[26px] font-extrabold tracking-tight leading-tight">Practise one part at a time</h2>
-              <p class="text-muted text-[14.5px] leading-relaxed mt-1 max-w-[52ch]">Ten minutes on one part of the paper, marked as soon as you finish. What you score here moves your progress.</p>
+              <p class="text-muted text-[14px] leading-relaxed mt-1 max-w-[52ch]">Ten minutes on one part of the paper, marked as soon as you finish. What you score here moves your progress.</p>
             </span>
             <span class="flex items-center gap-8 ms-auto">
               <span class="text-center">
                 <b id="s-level" class="block text-2xl font-extrabold tracking-tight leading-none">-</b>
-                <span class="block text-[11.5px] font-bold uppercase tracking-wider text-muted mt-1.5">Your level</span>
+                <span class="block text-[12px] font-bold uppercase tracking-wider text-muted mt-1.5">Your level</span>
               </span>
               <span class="text-center">
                 <b id="s-measured" class="block text-2xl font-extrabold tracking-tight leading-none tabular-nums">-</b>
-                <span class="block text-[11.5px] font-bold uppercase tracking-wider text-muted mt-1.5">Parts measured</span>
+                <span class="block text-[12px] font-bold uppercase tracking-wider text-muted mt-1.5">Parts measured</span>
               </span>
             </span>
           </div>
           <div id="s-next-wrap" hidden class="flex flex-wrap items-center gap-3 mt-5 pt-5 border-t border-line">
             <button type="button" id="s-next" class="btn btn-primary btn-md"></button>
-            <span id="s-next-why" class="text-[13.5px] text-muted"></span>
+            <span id="s-next-why" class="text-[13px] text-muted"></span>
           </div>
         </div>
 
@@ -79,9 +79,9 @@
                  grid raises and the answer should be in view when it does. -->
             <div class="card p-5">
               <h3 class="text-[13px] font-bold uppercase tracking-wider text-muted">Three kinds of practice</h3>
-              <p class="text-[13.5px] text-muted leading-relaxed mt-2.5">Parts A, C, E and F are typed answers. Six at a time, marked the moment you finish.</p>
-              <p class="text-[13.5px] text-muted leading-relaxed mt-2.5">Parts B and D are e-mails. One at a time, and it goes to the marker with the same rubric a real paper gets.</p>
-              <p class="text-[13.5px] text-muted leading-relaxed mt-2.5">Parts G, H, I and J are spoken. You record your answer, it is written down, then marked the same way.</p>
+              <p class="text-[13px] text-muted leading-relaxed mt-2.5">Parts A, C, E and F are typed answers. Six at a time, marked the moment you finish.</p>
+              <p class="text-[13px] text-muted leading-relaxed mt-2.5">Parts B and D are e-mails. One at a time, and it goes to the marker with the same rubric a real paper gets.</p>
+              <p class="text-[13px] text-muted leading-relaxed mt-2.5">Parts G, H, I and J are spoken. You record your answer, it is written down, then marked the same way.</p>
               <a href="/prep/" class="btn btn-soft btn-sm mt-4">Sit a full paper</a>
             </div>
 
@@ -91,7 +91,7 @@
             </div>
             <div id="p-none" hidden class="card p-5">
               <h3 class="text-[13px] font-bold uppercase tracking-wider text-muted">Recently practised</h3>
-              <p class="text-[13.5px] text-muted leading-relaxed mt-2.5">Nothing yet. Your last five drills will sit here, with what you scored on each.</p>
+              <p class="text-[13px] text-muted leading-relaxed mt-2.5">Nothing yet. Your last five drills will sit here, with what you scored on each.</p>
             </div>
           </aside>
 
@@ -117,7 +117,7 @@
         <div class="flex flex-wrap items-center gap-3 mt-5">
           <button type="button" id="r-next" class="btn btn-primary btn-md" disabled>Next</button>
           <button type="button" id="r-skip" class="btn btn-ghost btn-md">Skip</button>
-          <span class="text-[12.5px] text-muted ms-auto">1-4 to choose, Enter for next</span>
+          <span class="text-[13px] text-muted ms-auto">1-4 to choose, Enter for next</span>
         </div>
       </section>
 
@@ -231,7 +231,7 @@ PREP.boot({ auth: true }).then(async () => {
        sat a paper yet does not know what "Part G" means, and the letter alone
        never tells them. */
     const does = document.createElement('span');
-    does.className = 'block text-[12.5px] leading-snug mt-1';
+    does.className = 'block text-[13px] leading-snug mt-1';
     if (x.asks) does.textContent = PREP.t(x.asks, ASKS[x.asks] || x.asks);
 
     const meta = document.createElement('span');
@@ -276,14 +276,14 @@ PREP.boot({ auth: true }).then(async () => {
          slot says how much the score can be trusted, which differs per part
          and is the thing a learner cannot work out for themselves. */
       const note = document.createElement('span');
-      note.className = 'text-[12.5px] text-muted';
+      note.className = 'text-[13px] text-muted';
       note.textContent = PREP.t(
         x.n + (x.n === 1 ? ' answer' : ' answers') + (x.confident ? '' : ', estimate'),
         x.n + ' câu' + (x.confident ? '' : ', ước lượng'));
       foot.appendChild(note);
     } else {
       const note = document.createElement('span');
-      note.className = 'text-[12.5px] text-muted';
+      note.className = 'text-[13px] text-muted';
       note.textContent = PREP.t('Not measured yet', 'Chưa đo được');
       foot.appendChild(note);
     }
@@ -360,7 +360,7 @@ PREP.boot({ auth: true }).then(async () => {
     PREP.qs('#p-recent').toggleAttribute('hidden', !hist.length);
     PREP.qs('#p-none').toggleAttribute('hidden', !!hist.length);
     PREP.qs('#p-hist').innerHTML = hist.map(d =>
-      '<li class="flex items-center gap-3 py-2 border-b border-line last:border-0 text-[13.5px]">' +
+      '<li class="flex items-center gap-3 py-2 border-b border-line last:border-0 text-[13px]">' +
         '<span class="badge badge-muted">Part ' + PREP.esc(d.part) + '</span>' +
         '<span class="text-muted">' + PREP.esc(d.level) + '</span>' +
         '<b class="ms-auto tabular-nums">' + d.earned + '/' + d.max + '</b>' +
@@ -484,7 +484,7 @@ PREP.boot({ auth: true }).then(async () => {
       player.src = '/api/drills/' + drill.drillId + '/items/' + it.questionId + '/audio';
       player.setAttribute('aria-label', PREP.t('Play the recording', 'Nghe bản ghi'));
       const hint = document.createElement('p');
-      hint.className = 'text-[12.5px] text-muted mb-4 -mt-3';
+      hint.className = 'text-[13px] text-muted mb-4 -mt-3';
       hint.textContent = PREP.t('Play it as often as you like. The real exam does not allow that.',
                                 'Nghe lại bao nhiêu lần cũng được. Thi thật thì không.');
       box.append(player, hint);
@@ -499,7 +499,7 @@ PREP.boot({ auth: true }).then(async () => {
       ta.setAttribute('aria-label', PREP.t('Your answer', 'Bài viết của bạn'));
       ta.placeholder = PREP.t('Write your answer here', 'Viết bài của bạn ở đây');
       const count = document.createElement('p');
-      count.className = 'text-[12.5px] text-muted mt-2';
+      count.className = 'text-[13px] text-muted mt-2';
       const floor = it.minWords || 0;
       const tally = () => {
         const n = ta.value.trim() ? ta.value.trim().split(/\s+/).length : 0;
@@ -623,10 +623,10 @@ PREP.boot({ auth: true }).then(async () => {
                   PREP.esc(x.score + '/10') + '</span>'
               : '<span class="badge shrink-0 ' + (x.right ? 'badge-ok' : 'badge-danger') + '">' +
                   PREP.esc(x.right ? PREP.t('Correct', 'Đúng') : PREP.t('Wrong', 'Sai')) + '</span>') +
-          '<span class="text-[14.5px] leading-snug">' + PREP.esc(x.prompt) + '</span>' +
+          '<span class="text-[14px] leading-snug">' + PREP.esc(x.prompt) + '</span>' +
         '</span>' +
         /* What the marker said, and for a spoken answer what it heard. */
-        (x.note ? '<span class="block text-[13.5px] leading-relaxed mt-3">' + PREP.esc(x.note) + '</span>' : '') +
+        (x.note ? '<span class="block text-[13px] leading-relaxed mt-3">' + PREP.esc(x.note) + '</span>' : '') +
         (x.heard
           ? '<span class="block text-[13px] leading-relaxed mt-2.5 ps-3 border-s-2 border-line text-muted">' +
               PREP.esc(PREP.t('Heard as: ', 'Nghe thành: ')) + PREP.esc(x.heard) + '</span>'
@@ -639,7 +639,7 @@ PREP.boot({ auth: true }).then(async () => {
               '</span>').join('') + '</span>'
           : '') +
         (x.right ? '' :
-          '<span class="block text-[13.5px] mt-3 ps-1">' +
+          '<span class="block text-[13px] mt-3 ps-1">' +
             '<span class="text-muted">' + PREP.esc(PREP.t('You put: ', 'Bạn điền: ')) + '</span>' +
             PREP.esc(x.given || PREP.t('(nothing)', '(bỏ trống)')) + '<br>' +
             '<span class="text-muted">' + PREP.esc(PREP.t('Answer: ', 'Đáp án: ')) + '</span>' +

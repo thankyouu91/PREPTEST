@@ -117,11 +117,18 @@
       '</div>' +
       '<div class="lg:col-span-5 card p-6">' +
         '<h2 class="text-lg font-extrabold tracking-tight">Exams</h2>' +
-        '<p class="text-[13.5px] text-muted mt-1 mb-4">The fixed catalogue of the platform.</p>' +
+        '<p class="text-[13px] text-muted mt-1 mb-4">The fixed catalogue of the platform.</p>' +
         '<ul class="grid gap-2.5">' + S.families.map(f =>
-          '<li class="flex items-center gap-3 py-2 border-b border-line last:border-0">' +
+          /* `min-w-0` on the truncating span, and it is the whole fix for a
+             real overflow at 1024. `truncate` cannot shrink a flex item on its
+             own: a flex child's min-width defaults to `auto`, which is its
+             content, so the ellipsis never engages and the row pushes the card
+             29px past the viewport instead. The class does nothing visible
+             until the text is too long, which is why this survived — the
+             English strings fit and the Vietnamese ones do not. */
+          '<li class="flex items-center gap-3 py-2 border-b border-line last:border-0 min-w-0">' +
             '<span class="exam-chip shrink-0" data-family="' + f.id + '">' + AD.esc(f.name) + '</span>' +
-            '<span class="text-[13.5px] text-muted truncate">' + AD.esc(f.format) + '</span>' +
+            '<span class="text-[13px] text-muted truncate min-w-0">' + AD.esc(f.format) + '</span>' +
           '</li>').join('') + '</ul>' +
       '</div>' +
     '</div>';
@@ -137,7 +144,7 @@
     '<div class="card p-6 sm:p-7 mt-6 grid gap-4 content-start" id="ai-card">' +
       '<div class="grid gap-1">' +
         '<h2 class="text-lg font-extrabold tracking-tight">Marking writing and speaking</h2>' +
-        '<p class="text-[13.5px] text-muted">Reading and Listening are marked automatically. ' +
+        '<p class="text-[13px] text-muted">Reading and Listening are marked automatically. ' +
           'Writing and Speaking need a model - without one they stay unmarked and no overall band is given.</p>' +
       '</div>' +
       '<div id="ai-body"><div class="skeleton h-24 w-full rounded-2xl"></div></div>' +
@@ -160,7 +167,7 @@
          and every other admin was being shown a red failure panel on a screen
          they had done nothing wrong to reach. */
       box.innerHTML = e.status === 403
-        ? '<p class="text-[13.5px] text-muted">Only the owner account can set up marking.</p>'
+        ? '<p class="text-[13px] text-muted">Only the owner account can set up marking.</p>'
         : AD.errorBox(e.message);
       return;
     }
@@ -181,11 +188,11 @@
        size of the job; the second is how many PAPERS the next sweep would pick
        up, which is what tells an owner whether anything is actually moving. */
     const waiting = d.waiting
-      ? '<p class="text-[13.5px] font-semibold">' + d.waiting + ' answer(s) across all sittings are waiting to be marked.' +
+      ? '<p class="text-[13px] font-semibold">' + d.waiting + ' answer(s) across all sittings are waiting to be marked.' +
         (d.due ? ' <span class="font-normal text-muted">' + d.due + ' paper(s) are due a pass; marking runs by itself ' +
           'every ten minutes.</span>' : ' <span class="font-normal text-muted">None are due right now - ' +
           'a paper that has just failed waits before it is tried again.</span>') + '</p>'
-      : '<p class="text-[13.5px] text-muted">Nothing is waiting to be marked.</p>';
+      : '<p class="text-[13px] text-muted">Nothing is waiting to be marked.</p>';
 
     /* Today's spend against the ceiling. On the screen because a limit nobody
        can see is a limit that arrives as a mystery — the first anybody would
@@ -218,9 +225,9 @@
         '<label class="grid gap-1.5"><span class="label">API key</span>' +
           '<input class="input" id="ai-key" type="password" autocomplete="off" placeholder="' +
             (a.hasKey ? 'Leave blank to keep the key already saved' : 'Paste the key') + '">' +
-          '<span class="text-[12.5px] text-muted">Stored encrypted. It is never shown again and never sent to a browser.</span></label>' +
+          '<span class="text-[13px] text-muted">Stored encrypted. It is never shown again and never sent to a browser.</span></label>' +
 
-        '<details class="mt-2"><summary class="text-[13.5px] font-semibold cursor-pointer">Speaking: transcription</summary>' +
+        '<details class="mt-2"><summary class="text-[13px] font-semibold cursor-pointer">Speaking: transcription</summary>' +
           '<p class="text-[13px] text-muted mt-2 max-w-[62ch]">The model reads text, not audio, so a spoken answer is ' +
             'transcribed first. Without this, Speaking stays unmarked and says so. What is scored is the transcript - ' +
             'the words and the grammar - not pronunciation or fluency.</p>' +
@@ -306,7 +313,7 @@
     AD.qs('#ai-test').addEventListener('click', async (ev) => {
       const btn = ev.currentTarget;
       btn.disabled = true;
-      out.innerHTML = '<p class="text-[13.5px] text-muted">Asking the model to mark one sample answer…</p>';
+      out.innerHTML = '<p class="text-[13px] text-muted">Asking the model to mark one sample answer…</p>';
       try {
         const r = await AD.post('/admin/ai/test', {});
         out.innerHTML = '<div class="banner banner-success show"><span>Working. ' + AD.esc(r.model) +
@@ -332,7 +339,7 @@
     '<div class="card p-6 sm:p-7 mt-6 grid gap-4 content-start" id="bk-card">' +
       '<div class="grid gap-1">' +
         '<h2 class="text-lg font-extrabold tracking-tight">Database backups</h2>' +
-        '<p class="text-[13.5px] text-muted">Accounts, codes sold and every paper anybody has sat live in one ' +
+        '<p class="text-[13px] text-muted">Accounts, codes sold and every paper anybody has sat live in one ' +
           'file. This says whether a copy of it exists anywhere else.</p>' +
       '</div>' +
       '<div id="bk-body"><div class="skeleton h-20 w-full rounded-2xl"></div></div>' +
@@ -352,7 +359,7 @@
     try { d = await AD.get('/admin/backup'); }
     catch (e) {
       box.innerHTML = e.status === 403
-        ? '<p class="text-[13.5px] text-muted">Only the owner account can see the backup state.</p>'
+        ? '<p class="text-[13px] text-muted">Only the owner account can see the backup state.</p>'
         : AD.errorBox(e.message);
       return;
     }
@@ -375,7 +382,7 @@
             '<span class="ms-auto text-muted tabular-nums">' + AD.esc(mb(b.bytes)) + '</span>' +
             '<span class="text-muted w-24 text-end">' + AD.esc(ago(Date.now() - b.at)) + '</span>' +
           '</li>').join('') + '</ul>'
-      : '<p class="text-[13.5px] text-muted">Nothing has been backed up yet.</p>';
+      : '<p class="text-[13px] text-muted">Nothing has been backed up yet.</p>';
 
     box.innerHTML = banner +
       '<p class="text-[13px] text-muted">Kept ' + d.keepDays + ' days, and never fewer than ' + d.minKeep +
@@ -397,7 +404,7 @@
     AD.qs('#bk-run').addEventListener('click', async (ev) => {
       const btn = ev.currentTarget;
       btn.disabled = true;
-      out.innerHTML = '<p class="text-[13.5px] text-muted">Taking a consistent copy…</p>';
+      out.innerHTML = '<p class="text-[13px] text-muted">Taking a consistent copy…</p>';
       try {
         const r = await AD.post('/admin/backup', {});
         await bkLoad({ text: 'Backed up ' + r.name + ' — ' + mb(r.bytes) + ', ' + r.users + ' accounts.' });
@@ -417,7 +424,7 @@
     '<div class="card p-6 sm:p-7 mt-6 grid gap-4 content-start" id="cr-card">' +
       '<div class="grid gap-1">' +
         '<h2 class="text-lg font-extrabold tracking-tight">Google Classroom</h2>' +
-        '<p class="text-[13.5px] text-muted">Connect a teacher account to read its courses and rosters. ' +
+        '<p class="text-[13px] text-muted">Connect a teacher account to read its courses and rosters. ' +
           'Nothing is written to Classroom.</p>' +
       '</div>' +
       '<div id="cr-body"><div class="skeleton h-16 w-full rounded-2xl"></div></div>' +
@@ -439,18 +446,18 @@
     const body = AD.qs('#cr-body');
     let st;
     try { st = await AD.get('/admin/classroom'); }
-    catch (e) { body.innerHTML = '<p class="text-[13.5px] text-danger">' + AD.esc(e.message) + '</p>'; return; }
+    catch (e) { body.innerHTML = '<p class="text-[13px] text-danger">' + AD.esc(e.message) + '</p>'; return; }
 
     if (!st.enabled) {
       body.innerHTML =
-        '<p class="text-[13.5px] text-muted">Not available on this server. Missing: ' +
+        '<p class="text-[13px] text-muted">Not available on this server. Missing: ' +
         '<span class="font-mono">' + AD.esc((st.missing || []).join(', ')) + '</span>.</p>';
       return;
     }
     if (!st.linked) {
       body.innerHTML =
         '<div class="grid gap-3 justify-items-start">' +
-          '<p class="text-[13.5px] text-muted">No account is connected. You will be asked to allow reading ' +
+          '<p class="text-[13px] text-muted">No account is connected. You will be asked to allow reading ' +
             'your course list and rosters.</p>' +
           '<a class="btn btn-primary btn-md" href="/auth/google/classroom">Connect a Google account</a>' +
         '</div>';
@@ -461,7 +468,7 @@
       '<div class="grid gap-4">' +
         '<div class="flex flex-wrap items-center gap-3">' +
           '<span class="badge badge-ok">Connected</span>' +
-          '<span class="text-[13.5px] font-semibold">' + AD.esc(st.email || 'a Google account') + '</span>' +
+          '<span class="text-[13px] font-semibold">' + AD.esc(st.email || 'a Google account') + '</span>' +
           '<button type="button" class="btn btn-ghost btn-sm" id="cr-unlink">Disconnect</button>' +
         '</div>' +
         '<div class="grid sm:grid-cols-[1fr_auto] gap-3 items-end">' +
@@ -497,7 +504,7 @@
       try {
         const r = await AD.get('/admin/classroom/courses/' + encodeURIComponent(id) + '/roster');
         out.innerHTML = r.students.length
-          ? '<div class="card overflow-hidden"><div class="overflow-x-auto">' +
+          ? '<div class="card overflow-hidden scroll-card"><div class="overflow-x-auto">' +
               '<table class="w-full text-[14px]"><thead><tr>' +
                 '<th class="th">Student</th><th class="th">Email</th><th class="th">Account here</th>' +
               '</tr></thead><tbody>' +
@@ -511,9 +518,9 @@
                 '</tr>').join('') +
               '</tbody></table></div></div>' +
               (r.more ? '<p class="help mt-2">Only the first page is shown.</p>' : '')
-          : '<p class="text-[13.5px] text-muted">This course has no students.</p>';
+          : '<p class="text-[13px] text-muted">This course has no students.</p>';
       } catch (e) {
-        out.innerHTML = '<p class="text-[13.5px] text-danger">' + AD.esc(e.message) + '</p>';
+        out.innerHTML = '<p class="text-[13px] text-danger">' + AD.esc(e.message) + '</p>';
       }
     });
   }
@@ -553,7 +560,7 @@
           '<h3 class="font-extrabold text-[17px] tracking-tight">' + AD.esc(p.name) + '</h3>' +
           (p.featured ? '<span class="badge badge-hl ms-auto">Featured</span>' : '') +
         '</div>' +
-        '<p class="text-muted text-[13.5px] leading-relaxed mt-2 min-h-[42px]">' + AD.esc(p.description) + '</p>' +
+        '<p class="text-muted text-[13px] leading-relaxed mt-2 min-h-[42px]">' + AD.esc(p.description) + '</p>' +
         '<label class="label mt-4" for="pk-' + AD.esc(p.id) + '">Price (VND)</label>' +
         '<input class="input" id="pk-' + AD.esc(p.id) + '" type="number" min="0" step="1000" value="' + p.price + '" data-price>' +
         '<label class="flex items-center gap-2.5 text-[14px] font-medium text-muted mt-3.5">' +
@@ -600,7 +607,7 @@
           '<span class="badge badge-hl">' + AD.esc(pick(me.label)) + '</span>' +
           '<span class="text-[13px] text-muted">@' + AD.esc(me.username) + '</span>' +
         '</div>' +
-        '<p class="text-[13.5px] text-muted">' + AD.esc(pick(me.blurb)) + '</p>' +
+        '<p class="text-[13px] text-muted">' + AD.esc(pick(me.blurb)) + '</p>' +
         '<p class="help">A level is set by an administrator at the top level, never by the account itself.</p>' +
       '</div>' +
       /* Two-factor. Rendered as its own card rather than folded into the password
@@ -781,7 +788,7 @@
               AD.esc((a.name || a.username).slice(0, 2).toUpperCase()) + '</span>' +
             '<span class="min-w-0">' +
               '<b class="block text-[14px] truncate">' + AD.esc(a.name) + (self ? ' <span class="badge badge-muted">you</span>' : '') + '</b>' +
-              '<span class="block text-[12.5px] text-muted truncate">@' + AD.esc(a.username) + '</span>' +
+              '<span class="block text-[13px] text-muted truncate">@' + AD.esc(a.username) + '</span>' +
             '</span>' +
           '</div>' +
         '</td>' +
@@ -812,7 +819,7 @@
 
     box.innerHTML =
       '<div class="grid lg:grid-cols-12 gap-6">' +
-        '<div class="lg:col-span-8 card p-6 sm:p-7 grid gap-4 content-start">' +
+        '<div class="lg:col-span-8 card p-6 sm:p-7 grid gap-4 content-start scroll-card">' +
           '<div class="flex items-start gap-3 flex-wrap">' +
             '<div class="min-w-0 flex-1">' +
               '<h2 class="text-lg font-extrabold tracking-tight">Administrators</h2>' +
@@ -831,7 +838,7 @@
             '<tbody>' + active.map(row).join('') + '</tbody>' +
           '</table></div>' +
           (off.length
-            ? '<details class="mt-2"><summary class="text-[13.5px] font-semibold cursor-pointer">' +
+            ? '<details class="mt-2"><summary class="text-[13px] font-semibold cursor-pointer">' +
               off.length + ' deactivated</summary>' +
               '<div class="overflow-x-auto mt-3"><table class="w-full opacity-70"><tbody>' +
               off.map(row).join('') + '</tbody></table></div></details>'
@@ -862,7 +869,7 @@
           '<div class="grid md:grid-cols-3 gap-4">' + d.roles.map(r =>
             '<div class="rounded-xl border border-line p-4 grid gap-2 content-start">' +
               '<span class="badge badge-hl justify-self-start">' + AD.esc(pick(r.label)) + '</span>' +
-              '<p class="text-[13.5px] text-muted">' + AD.esc(pick(r.blurb)) + '</p>' +
+              '<p class="text-[13px] text-muted">' + AD.esc(pick(r.blurb)) + '</p>' +
               '<ul class="grid gap-1.5 mt-1">' + r.abilities.map(a =>
                 '<li class="text-[13px] text-muted flex gap-2"><span aria-hidden="true">·</span>' +
                 '<span>' + AD.esc(pick(a.label)) + '</span></li>').join('') + '</ul>' +
@@ -947,7 +954,7 @@
     try {
       const { items } = await AD.get('/admin/audit?limit=100');
       AD.qs('#p-audit').innerHTML = items.length
-        ? '<div class="card overflow-hidden"><div class="overflow-x-auto"><table class="w-full text-[14px]">' +
+        ? '<div class="card overflow-hidden scroll-card"><div class="overflow-x-auto"><table class="w-full text-[14px]">' +
           '<thead><tr class="text-[12px] uppercase tracking-wide text-muted border-b border-line bg-surface">' +
             '<th class="text-left font-bold px-5 py-3">When</th>' +
             '<th class="text-left font-bold px-4 py-3">Who</th>' +

@@ -32,7 +32,7 @@
           <button type="button" class="chip" data-days="30" aria-current="page">30 days</button>
           <button type="button" class="chip" data-days="90">90 days</button>
         </div>
-        <span id="period-note" class="text-[12.5px] text-muted font-medium ms-auto"></span>
+        <span id="period-note" class="text-[13px] text-muted font-medium ms-auto"></span>
       </div>
 
       <div id="loading" class="mt-6">
@@ -63,7 +63,7 @@
   /* ---------- A metric tile, with a comparison against the previous period ---------- */
   function delta(k) {
     if (k.delta === null) {
-      return '<span class="text-[12.5px] text-muted font-semibold">' +
+      return '<span class="text-[13px] text-muted font-semibold">' +
         AD.t('no figure for the previous period', 'chưa có số liệu kỳ trước') + '</span>';
     }
     const len = k.delta === 0 ? 'khong' : (k.delta > 0 ? 'tang' : 'giam');
@@ -74,7 +74,7 @@
   const stat = (label, value, k, sub, icon, tone) =>
     '<div class="card p-5">' +
       '<div class="flex items-start justify-between gap-3">' +
-        '<span class="text-[12.5px] font-bold uppercase tracking-wide text-muted">' + AD.esc(label) + '</span>' +
+        '<span class="text-[13px] font-bold uppercase tracking-wide text-muted">' + AD.esc(label) + '</span>' +
         '<span class="w-9 h-9 rounded-xl inline-flex items-center justify-center shrink-0 ' +
           (tone === 'accent' ? 'bg-accent-soft text-accent-strong' : 'bg-brand-soft text-brand-strong') + '">' +
           AD.icon(icon, 'w-[18px] h-[18px]') + '</span>' +
@@ -82,7 +82,7 @@
       '<p class="text-[30px] font-extrabold tracking-tight leading-none mt-3">' + AD.esc(value) + '</p>' +
       '<div class="flex flex-wrap items-center gap-x-2 gap-y-1 mt-2">' +
         (k ? delta(k) : '') +
-        '<span class="text-[12.5px] text-muted font-medium">' + AD.esc(sub) + '</span>' +
+        '<span class="text-[13px] text-muted font-medium">' + AD.esc(sub) + '</span>' +
       '</div>' +
     '</div>';
 
@@ -122,14 +122,14 @@
       return '<div class="flex items-start gap-3">' +
         '<span class="w-9 h-9 rounded-full bg-accent-soft text-accent-strong shrink-0 inline-flex items-center justify-center">' +
           AD.icon('check', 'w-[18px] h-[18px]') + '</span>' +
-        '<p class="text-[14.5px] text-muted leading-relaxed">' + AD.t('Nothing is waiting. The content is complete, the codes are in date, and no student is stuck.', 'Không có việc nào đang chờ. Nội dung đã đủ, mã còn hạn, và không học viên nào bị kẹt.') + '</p>' +
+        '<p class="text-[14px] text-muted leading-relaxed">' + AD.t('Nothing is waiting. The content is complete, the codes are in date, and no student is stuck.', 'Không có việc nào đang chờ. Nội dung đã đủ, mã còn hạn, và không học viên nào bị kẹt.') + '</p>' +
       '</div>';
     }
     return '<ul class="grid gap-3">' + todo.map(t =>
       '<li class="rounded-xl border border-line px-4 py-3.5">' +
         '<div class="flex flex-wrap items-center gap-2">' +
           '<span class="badge ' + SEV_BADGE[t.sev] + '">' + SEV_NHAN[t.sev] + '</span>' +
-          '<b class="text-[14.5px] font-extrabold tracking-tight">' + AD.esc(t.title) + '</b>' +
+          '<b class="text-[14px] font-extrabold tracking-tight">' + AD.esc(t.title) + '</b>' +
         '</div>' +
         '<p class="text-[13px] text-muted font-medium mt-1.5">' + AD.esc(t.detail) + '</p>' +
         '<a href="' + AD.esc(t.href) + '" class="inline-flex items-center gap-1 text-[13px] font-bold text-brand-strong hover:underline mt-2">' +
@@ -144,7 +144,7 @@
       const rong = Math.max(3, Math.round((s.value / dau) * 100));
       const roi = i > 0 ? funnel[i - 1].value - s.value : 0;
       return '<li>' +
-        '<div class="flex flex-wrap items-baseline gap-x-2 text-[13.5px]">' +
+        '<div class="flex flex-wrap items-baseline gap-x-2 text-[13px]">' +
           '<span class="font-semibold">' + AD.esc(s.label) + '</span>' +
           '<b class="ms-auto font-extrabold">' + AD.num(s.value) + '</b>' +
           '<span class="text-muted font-semibold w-11 text-right">' + s.rate + '%</span>' +
@@ -204,11 +204,11 @@
 
     const recent = d.recent.length
       ? '<ul class="grid gap-3">' + d.recent.map(r =>
-          '<li class="flex gap-3 text-[13.5px]">' +
+          '<li class="flex gap-3 text-[13px]">' +
             '<span class="w-2 h-2 rounded-full bg-accent mt-1.5 shrink-0"></span>' +
             '<span class="min-w-0"><b class="font-semibold">' + AD.esc(r.action) + '</b>' +
               (r.target ? ' <span class="text-muted">' + AD.esc(r.target) + '</span>' : '') +
-              '<span class="block text-muted text-[12.5px] mt-0.5">' + AD.esc(r.admin_name || '-') +
+              '<span class="block text-muted text-[13px] mt-0.5">' + AD.esc(r.admin_name || '-') +
               ' · ' + AD.ago(r.at) + '</span></span>' +
           '</li>').join('') + '</ul>'
       : '<p class="text-[14px] text-muted">No actions have been recorded.</p>';
@@ -249,7 +249,7 @@
 
           '<section class="card p-6" aria-labelledby="h-funnel">' +
             '<h2 id="h-funnel" class="text-lg font-extrabold tracking-tight">Student funnel</h2>' +
-            '<p class="text-[13.5px] text-muted mt-1 mb-4">Percentages are of everyone who registered</p>' +
+            '<p class="text-[13px] text-muted mt-1 mb-4">Percentages are of everyone who registered</p>' +
             funnelBlock(d.funnel) +
           '</section>' +
 
@@ -277,7 +277,7 @@
             '<div id="chart" class="mt-5"></div>' +
           '</section>' +
 
-          '<section class="card overflow-hidden" aria-labelledby="h-fam">' +
+          '<section class="card overflow-hidden scroll-card" aria-labelledby="h-fam">' +
             '<h2 id="h-fam" class="text-lg font-extrabold tracking-tight px-6 pt-6 pb-4">Supply and demand by exam</h2>' +
             '<div class="overflow-x-auto"><table class="w-full text-[14px]">' +
               '<thead><tr class="text-[12px] uppercase tracking-wide text-muted border-y border-line bg-surface">' +

@@ -39,7 +39,7 @@
         <button type="button" id="new-student" class="btn btn-primary btn-md">New student</button>
       </div>
 
-      <p class="text-[13.5px] font-semibold text-muted mb-3" id="count">Loading…</p>
+      <p class="text-[13px] font-semibold text-muted mb-3" id="count">Loading…</p>
       <div id="list"><div class="card p-5 grid gap-3.5">
         <div class="skeleton h-6 w-11/12"></div><div class="skeleton h-6 w-full"></div><div class="skeleton h-6 w-4/5"></div>
       </div></div>
@@ -81,7 +81,7 @@
       '<p class="text-muted text-[14px] leading-relaxed mt-2">Write this down now. It is stored ' +
         'only as a hash, so this is the one and only time it can be read.</p>' +
       '<div class="card bg-brand-soft border-0 p-4 mt-4 flex items-center gap-3">' +
-        '<code class="font-mono text-[16px] font-extrabold tracking-tight break-all flex-1" id="once-pw">' +
+        '<code class="font-mono text-[15px] font-extrabold tracking-tight break-all flex-1" id="once-pw">' +
           AD.esc(password) + '</code>' +
         '<button type="button" class="btn btn-ghost btn-sm shrink-0" id="once-copy">Copy</button>' +
       '</div>' +
@@ -258,7 +258,7 @@
         return;
       }
       AD.qs('#list').innerHTML =
-        '<div class="card overflow-hidden"><div class="overflow-x-auto"><table class="w-full text-[14px]">' +
+        '<div class="card overflow-hidden scroll-card"><div class="overflow-x-auto"><table class="w-full text-[14px]">' +
         '<thead><tr class="text-[12px] uppercase tracking-wide text-muted border-b border-line bg-surface">' +
           '<th class="text-left font-bold px-5 py-3">Student</th>' +
           '<th class="text-left font-bold px-4 py-3 hidden md:table-cell">Following</th>' +
@@ -273,7 +273,7 @@
               '<span class="w-9 h-9 rounded-full bg-brand-soft text-brand-strong text-[12px] font-extrabold inline-flex items-center justify-center shrink-0">' +
                 AD.esc(u.name.trim().split(/\s+/).map(w => w[0]).slice(-2).join('').toUpperCase()) + '</span>' +
               '<span class="min-w-0"><b class="block truncate">' + AD.esc(u.name) + '</b>' +
-              '<span class="block text-[12.5px] text-muted truncate">' + AD.esc(u.email) + '</span></span>' +
+              '<span class="block text-[13px] text-muted truncate">' + AD.esc(u.email) + '</span></span>' +
             '</div></td>' +
             '<td class="px-4 py-3.5 hidden md:table-cell">' +
               (u.interests.length
@@ -296,7 +296,7 @@
       const cur = Math.floor(r.offset / r.limit) + 1;
       AD.qs('#pager').innerHTML = pages > 1
         ? '<button type="button" class="btn btn-ghost btn-sm" data-page="prev" ' + (cur === 1 ? 'disabled' : '') + '>Previous</button>' +
-          '<span class="text-[13.5px] font-bold text-muted self-center px-2">Trang ' + cur + '/' + pages + '</span>' +
+          '<span class="text-[13px] font-bold text-muted self-center px-2">Trang ' + cur + '/' + pages + '</span>' +
           '<button type="button" class="btn btn-ghost btn-sm" data-page="next" ' + (cur === pages ? 'disabled' : '') + '>Sau</button>'
         : '';
       AD.qsa('[data-page]').forEach(b => b.addEventListener('click', () => {
@@ -317,7 +317,7 @@
 
     const codeRows = d.codes.length
       ? d.codes.map(c =>
-          '<li class="flex items-center gap-3 py-2.5 border-b border-line last:border-0 text-[13.5px]">' +
+          '<li class="flex items-center gap-3 py-2.5 border-b border-line last:border-0 text-[13px]">' +
             '<code class="font-bold tracking-wide shrink-0">' + AD.esc(c.code) + '</code>' +
             '<span class="min-w-0 flex-1 truncate text-muted">' + AD.esc(c.label) + '</span>' +
             '<span class="text-muted shrink-0">' + AD.date(c.redeemedAt) + '</span>' +
@@ -338,7 +338,7 @@
     const orderRows = d.orders.length
       ? d.orders.map(o => {
           const st = ORDER_STATE[o.status] || ['badge-muted', o.status || 'unknown'];
-          return '<li class="flex items-center gap-3 py-2.5 border-b border-line last:border-0 text-[13.5px]">' +
+          return '<li class="flex items-center gap-3 py-2.5 border-b border-line last:border-0 text-[13px]">' +
             '<span class="min-w-0 flex-1 truncate"><b>' + AD.esc(o.name) + '</b></span>' +
             '<span class="badge ' + st[0] + ' shrink-0">' + st[1] + '</span>' +
             '<span class="font-bold shrink-0">' + AD.vnd(o.amount) + '</span>' +
@@ -353,7 +353,7 @@
           AD.esc(u.name.trim().split(/\s+/).map(w => w[0]).slice(-2).join('').toUpperCase()) + '</span>' +
         '<div class="min-w-0">' +
           '<h3 class="text-lg font-extrabold tracking-tight truncate">' + AD.esc(u.name) + '</h3>' +
-          '<p class="text-[13.5px] text-muted truncate">' + AD.esc(u.email) +
+          '<p class="text-[13px] text-muted truncate">' + AD.esc(u.email) +
             (u.phone ? ' · ' + AD.esc(u.phone) : '') + ' · @' + AD.esc(u.username) + '</p>' +
           '<p class="flex flex-wrap gap-1.5 mt-2">' +
             (u.status === 'locked' ? '<span class="badge badge-hl">Locked</span>' : '<span class="badge badge-ok">Active</span>') +

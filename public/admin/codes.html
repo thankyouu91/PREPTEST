@@ -26,7 +26,7 @@
       <section class="mb-7" aria-labelledby="h-batches">
         <div class="flex items-baseline gap-3 mb-3">
           <h2 id="h-batches" class="text-lg font-extrabold tracking-tight">Code batches</h2>
-          <span class="text-[13.5px] text-muted font-semibold">Codes issued together for one class or one intake</span>
+          <span class="text-[13px] text-muted font-semibold">Codes issued together for one class or one intake</span>
         </div>
         <div id="batches" class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
           <div class="card p-5"><div class="skeleton h-5 w-2/3 mb-3"></div><div class="skeleton h-4 w-1/2"></div></div>
@@ -47,7 +47,7 @@
         </label>
       </div>
 
-      <p class="text-[13.5px] font-semibold text-muted mb-3" id="count">Loading…</p>
+      <p class="text-[13px] font-semibold text-muted mb-3" id="count">Loading…</p>
       <div id="list"><div class="card p-5 grid gap-3.5">
         <div class="skeleton h-6 w-11/12"></div><div class="skeleton h-6 w-full"></div><div class="skeleton h-6 w-4/5"></div>
       </div></div>
@@ -98,10 +98,10 @@
             return '<article class="card p-5">' +
               '<div class="flex items-start gap-2.5">' +
                 '<span class="min-w-0"><b class="block truncate">' + AD.esc(b.name) + '</b>' +
-                '<span class="block text-[12.5px] text-muted mt-0.5 truncate">' + AD.esc(b.label) + '</span></span>' +
+                '<span class="block text-[13px] text-muted mt-0.5 truncate">' + AD.esc(b.label) + '</span></span>' +
                 '<span class="badge badge-muted ms-auto shrink-0">' + b.total + ' codes</span>' +
               '</div>' +
-              '<div class="flex items-center justify-between text-[12.5px] font-bold mt-4 mb-1.5">' +
+              '<div class="flex items-center justify-between text-[13px] font-bold mt-4 mb-1.5">' +
                 '<span class="text-muted">Used</span><span>' + b.used + '/' + b.total + '</span></div>' +
               '<div class="meter"><i data-w="' + pct + '"></i></div>' +
               '<div class="flex gap-2 mt-4">' +
@@ -155,7 +155,7 @@
         return;
       }
       AD.qs('#list').innerHTML =
-        '<div class="card overflow-hidden"><div class="overflow-x-auto"><table class="w-full text-[14px]">' +
+        '<div class="card overflow-hidden scroll-card"><div class="overflow-x-auto"><table class="w-full text-[14px]">' +
         '<thead><tr class="text-[12px] uppercase tracking-wide text-muted border-b border-line bg-surface">' +
           '<th class="text-left font-bold px-5 py-3">Code</th>' +
           '<th class="text-left font-bold px-4 py-3">Unlocks</th>' +
@@ -194,7 +194,7 @@
       const cur = Math.floor(r.offset / r.limit) + 1;
       AD.qs('#pager').innerHTML = pages > 1
         ? '<button type="button" class="btn btn-ghost btn-sm" data-page="prev" ' + (cur === 1 ? 'disabled' : '') + '>Previous</button>' +
-          '<span class="text-[13.5px] font-bold text-muted self-center px-2">Trang ' + cur + '/' + pages + '</span>' +
+          '<span class="text-[13px] font-bold text-muted self-center px-2">Trang ' + cur + '/' + pages + '</span>' +
           '<button type="button" class="btn btn-ghost btn-sm" data-page="next" ' + (cur === pages ? 'disabled' : '') + '>Sau</button>'
         : '';
       AD.qsa('[data-page]').forEach(b => b.addEventListener('click', () => {
@@ -322,7 +322,7 @@
       box.innerHTML =
         '<div class="card bg-brand-soft border-0 p-3 flex items-center gap-3">' +
           '<span class="min-w-0"><b class="block truncate">' + AD.esc(chosenUser.name || chosenUser.email) + '</b>' +
-            '<span class="block text-[12.5px] text-muted truncate">' + AD.esc(chosenUser.email) +
+            '<span class="block text-[13px] text-muted truncate">' + AD.esc(chosenUser.email) +
               ' · ' + AD.esc(chosenUser.phone || 'no phone') + '</span></span>' +
           '<button type="button" class="btn btn-ghost btn-sm ms-auto shrink-0" id="i-acct-clear">Change</button>' +
         '</div>';

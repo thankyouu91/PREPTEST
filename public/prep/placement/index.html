@@ -43,15 +43,15 @@
         <ul class="grid gap-3 mt-6">
           <li class="flex items-start gap-3">
             <span class="w-6 h-6 rounded-full bg-brand-soft text-brand-strong shrink-0 inline-flex items-center justify-center text-[12px] font-extrabold">1</span>
-            <span class="text-[14.5px] leading-snug">The questions get harder or easier as you go, so it finds your level quickly.</span>
+            <span class="text-[14px] leading-snug">The questions get harder or easier as you go, so it finds your level quickly.</span>
           </li>
           <li class="flex items-start gap-3">
             <span class="w-6 h-6 rounded-full bg-brand-soft text-brand-strong shrink-0 inline-flex items-center justify-center text-[12px] font-extrabold">2</span>
-            <span class="text-[14.5px] leading-snug">Answer what you can and guess the rest — a wrong answer costs nothing here.</span>
+            <span class="text-[14px] leading-snug">Answer what you can and guess the rest — a wrong answer costs nothing here.</span>
           </li>
           <li class="flex items-start gap-3">
             <span class="w-6 h-6 rounded-full bg-brand-soft text-brand-strong shrink-0 inline-flex items-center justify-center text-[12px] font-extrabold">3</span>
-            <span class="text-[14.5px] leading-snug">Close the tab any time. You come back to the question you were on.</span>
+            <span class="text-[14px] leading-snug">Close the tab any time. You come back to the question you were on.</span>
           </li>
         </ul>
 
@@ -78,7 +78,7 @@
         <div class="flex flex-wrap items-center gap-3 mt-5">
           <button type="button" id="next" class="btn btn-primary btn-md" disabled>Next</button>
           <button type="button" id="skip" class="btn btn-ghost btn-md">I don't know</button>
-          <span class="text-[12.5px] text-muted ms-auto">Tip: press 1–4 to choose, Enter for next</span>
+          <span class="text-[13px] text-muted ms-auto">Tip: press 1–4 to choose, Enter for next</span>
         </div>
       </section>
 
@@ -90,13 +90,13 @@
           </span>
           <p class="text-[13px] font-bold uppercase tracking-wide text-muted mt-5">Your starting point</p>
           <b id="d-level" class="block text-5xl font-extrabold tracking-tight mt-2">–</b>
-          <p id="d-score" class="text-[14.5px] font-medium text-muted mt-2"></p>
+          <p id="d-score" class="text-[14px] font-medium text-muted mt-2"></p>
           <p id="d-note" class="text-[14px] leading-relaxed mt-5 max-w-[46ch] mx-auto"></p>
         </div>
 
         <div class="card p-6 sm:p-7 mt-5">
           <h3 class="font-extrabold text-lg tracking-tight">What to do first</h3>
-          <p class="text-[13.5px] text-muted mt-1">Three things, chosen from how you just answered. This list changes as you practise.</p>
+          <p class="text-[13px] text-muted mt-1">Three things, chosen from how you just answered. This list changes as you practise.</p>
           <ul id="d-plan" class="grid gap-2.5 mt-4"></ul>
           <a href="/prep/" class="btn btn-primary btn-md mt-6">Go to my dashboard</a>
         </div>
@@ -300,7 +300,7 @@ PREP.boot({ auth: true }).then(async () => {
                 : PREP.t('not measured yet — worth a look first', 'chưa đo được — nên làm trước')) +
             '</span>' +
           '</li>').join('')
-      : '<li class="text-[13.5px] text-muted">' +
+      : '<li class="text-[13px] text-muted">' +
           PREP.t('Sit a full paper and a plan appears here.',
                  'Làm một bài đầy đủ là kế hoạch sẽ hiện ở đây.') + '</li>';
 

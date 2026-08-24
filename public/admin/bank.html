@@ -61,7 +61,7 @@
         <div class="flex gap-2 overflow-x-auto no-scrollbar" id="fam-chips"></div>
       </div>
 
-      <p class="text-[13.5px] font-semibold text-muted mb-3" id="count">Loading…</p>
+      <p class="text-[13px] font-semibold text-muted mb-3" id="count">Loading…</p>
       <div id="list"><div class="card p-5 grid gap-3.5">
         <div class="skeleton h-6 w-11/12"></div><div class="skeleton h-6 w-full"></div><div class="skeleton h-6 w-4/5"></div>
       </div></div>
@@ -156,7 +156,7 @@
       const cur = Math.floor(r.offset / r.limit) + 1;
       AD.qs('#pager').innerHTML = pages > 1
         ? '<button type="button" class="btn btn-ghost btn-sm" data-page="prev" ' + (cur === 1 ? 'disabled' : '') + '>Previous</button>' +
-          '<span class="text-[13.5px] font-bold text-muted self-center px-2">Trang ' + cur + '/' + pages + '</span>' +
+          '<span class="text-[13px] font-bold text-muted self-center px-2">Trang ' + cur + '/' + pages + '</span>' +
           '<button type="button" class="btn btn-ghost btn-sm" data-page="next" ' + (cur === pages ? 'disabled' : '') + '>Sau</button>'
         : '';
       AD.qsa('[data-page]').forEach(b => b.addEventListener('click', () => {
@@ -241,9 +241,9 @@
             : '') +
           (i.status === 'retired' ? '<span class="badge badge-hl">Withdrawn</span>' : '') +
         '</span>' +
-        '<span class="block text-[14.5px] leading-snug">' + AD.esc(i.prompt) + '</span>' +
+        '<span class="block text-[14px] leading-snug">' + AD.esc(i.prompt) + '</span>' +
         (i.options && i.options.length
-          ? '<span class="block text-[12.5px] text-muted mt-1.5">' +
+          ? '<span class="block text-[13px] text-muted mt-1.5">' +
               i.options.map(o => (o === i.answer ? '<b class="text-accent-strong">' + AD.esc(o) + '</b>' : AD.esc(o))).join(' · ') + '</span>'
           : '') +
         audioBlock(i) +
@@ -461,7 +461,7 @@
       /* ----- Tab CSV ----- */
       '<div role="tabpanel" id="pn-csv" aria-labelledby="tb-csv" class="grid gap-4 mt-5">' +
         '<div class="card bg-brand-soft border-0 p-4">' +
-          '<p class="text-[13.5px] leading-relaxed">Columns, in order: <b>ky_thi, ky_nang, do_kho, dang_cau, phan_thi, noi_dung, phuong_an_1..4, dap_an, giai_thich</b>. ' +
+          '<p class="text-[13px] leading-relaxed">Columns, in order: <b>ky_thi, ky_nang, do_kho, dang_cau, phan_thi, noi_dung, phuong_an_1..4, dap_an, giai_thich</b>. ' +
           'The <b>phan_thi</b> column is the part letter (VPET: A–J); leave it blank for an exam with no part table. ' +
             'The skill column accepts Vietnamese (nghe, đọc, viết, nói) as well as English.</p>' +
           '<a href="/api/admin/questions/template.csv" class="btn btn-soft btn-sm mt-3">' +
@@ -470,7 +470,7 @@
         '<div><label class="label" for="c-file">Choose a CSV file</label>' +
           '<input class="input py-2" id="c-file" type="file" accept=".csv,text/csv"></div>' +
         '<div><label class="label" for="c-text">Or paste the CSV directly</label>' +
-          '<textarea class="input font-mono text-[12.5px]" id="c-text" rows="6" spellcheck="false" ' +
+          '<textarea class="input font-mono text-[13px]" id="c-text" rows="6" spellcheck="false" ' +
             'placeholder="ky_thi,ky_nang,do_kho,dang_cau,phan_thi,noi_dung,..."></textarea></div>' +
         '<button type="button" id="c-preview" class="btn btn-ghost btn-md">Preview</button>' +
         '<div id="c-result"></div>' +
@@ -479,7 +479,7 @@
       /* ----- Tab JSON ----- */
       '<div role="tabpanel" id="pn-json" aria-labelledby="tb-json" hidden class="grid gap-4 mt-5">' +
         '<div><label class="label" for="b-json">A JSON array</label>' +
-          '<textarea class="input font-mono text-[12.5px]" id="b-json" rows="10" spellcheck="false">' + AD.esc(sampleJson) + '</textarea></div>' +
+          '<textarea class="input font-mono text-[13px]" id="b-json" rows="10" spellcheck="false">' + AD.esc(sampleJson) + '</textarea></div>' +
         '<button type="button" id="b-go" class="btn btn-primary btn-md">Import into the bank</button>' +
       '</div>' +
 
@@ -550,7 +550,7 @@
         '</div>' +
         (pending.length
           ? '<div class="card overflow-hidden mb-3"><div class="max-h-52 overflow-y-auto"><table class="w-full text-[13px]">' +
-            '<thead><tr class="text-[11.5px] uppercase tracking-wide text-muted border-b border-line bg-surface">' +
+            '<thead><tr class="text-[12px] uppercase tracking-wide text-muted border-b border-line bg-surface">' +
               '<th class="text-left font-bold px-3 py-2">Exam</th>' +
               '<th class="text-left font-bold px-3 py-2">Skill</th>' +
               '<th class="text-left font-bold px-3 py-2">Level</th>' +
@@ -565,16 +565,16 @@
                 '<td class="px-3 py-2 truncate max-w-[280px]">' + AD.esc(it.prompt) + '</td>' +
               '</tr>').join('') +
             '</tbody></table></div>' +
-            (pending.length > 50 ? '<p class="text-[12.5px] text-muted px-3 py-2 border-t border-line">Previewing the first 50 rows.</p>' : '') +
+            (pending.length > 50 ? '<p class="text-[13px] text-muted px-3 py-2 border-t border-line">Previewing the first 50 rows.</p>' : '') +
             '</div>'
           : '') +
         (bad.length
           ? '<div class="card border-[color:var(--color-danger)] p-3 mb-3 max-h-40 overflow-y-auto">' +
-            '<p class="text-[12.5px] font-bold uppercase tracking-wide text-muted mb-2">Rejected rows</p>' +
+            '<p class="text-[13px] font-bold uppercase tracking-wide text-muted mb-2">Rejected rows</p>' +
             bad.slice(0, 30).map(b =>
               '<p class="text-[13px] leading-relaxed"><b>Row ' + b.row + ':</b> ' + AD.esc(b.error) +
               (b.preview ? ' <span class="text-muted">- ' + AD.esc(b.preview) + '…</span>' : '') + '</p>').join('') +
-            (bad.length > 30 ? '<p class="text-[12.5px] text-muted mt-2">…and ' + (bad.length - 30) + ' more.</p>' : '') +
+            (bad.length > 30 ? '<p class="text-[13px] text-muted mt-2">…and ' + (bad.length - 30) + ' more.</p>' : '') +
             '</div>'
           : '') +
         (pending.length

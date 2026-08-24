@@ -5,7 +5,7 @@
 import { postWithCsrf } from './_csrf.mjs';
 import { pool, isFailure, JOBS } from './_pool.mjs';
 import { launchChromium } from './_browser.mjs';
-import { DEMO_PASSWORD } from './_demo.mjs';
+import { DEMO_PASSWORD, ADMIN_USER, ADMIN_PASSWORD } from './_demo.mjs';
 
 const BASE = process.env.BASE_URL || 'http://localhost:3000';
 /* A real cookie session as the demo account + a local overlay for client-side codes */
@@ -26,6 +26,21 @@ const GUEST_URLS = ['/prep/landing/', '/prep/tai-lieu/', '/prep/tai-lieu/?level=
   '/prep/dang-ky/', '/prep/dang-nhap/', '/prep/quen-mat-khau/',
   '/prep/xac-thuc-email/', '/prep/dat-lai-mat-khau/'];
 
+/* The admin area, and it had NEVER been audited.
+ *
+ * The screenshot step opens these pages and watches the console, so a page that
+ * threw was caught. Nothing ever measured whether they FIT. Every overflow and
+ * contrast check this file makes stopped at the student side, so the interface
+ * an owner uses all day was the one part of the platform with no layout check
+ * at all — and it is the part with the widest tables and the longest
+ * Vietnamese labels, which is where a layout breaks first.
+ *
+ * Signed in as an administrator rather than a learner; see ADMIN_URLS below. */
+const ADMIN_URLS = [
+  '/admin/', '/admin/de-thi/', '/admin/format/', '/admin/ngan-hang/',
+  '/admin/hoc-vien/', '/admin/code/', '/admin/quan-tri/'
+];
+
 const URLS = GUEST_URLS.concat([
   '/prep/', '/prep/mua-code/', '/prep/nhap-code/',
   '/prep/code-cua-toi/', '/prep/bai-thi/vpet-b1-01/', '/prep/bai-thi/khong-co-that/', '/prep/tai-khoan/',
@@ -36,7 +51,7 @@ const URLS = GUEST_URLS.concat([
      revision area and is a different page from /prep/hoc/on-tap/ below. */
   '/prep/luyen/', '/prep/xep-lop/', '/prep/on-tap/',
   '/prep/hoc/on-tap/', '/prep/hoc/dong-tu-bat-quy-tac/', '/prep/hoc/tu-noi/', '/prep/hoc/thi/', '/prep/hoc/danh-tu/', '/prep/hoc/tinh-tu/', '/prep/hoc/khuyet-thieu/', '/prep/hoc/dieu-kien/', '/prep/hoc/bi-dong/', '/prep/hoc/menh-de/', '/prep/hoc/nhan-manh/', '/prep/hoc/sac-thai/'
-]);
+]).concat(ADMIN_URLS);
 const WIDTHS = [360, 390, 768, 1024, 1440];
 
 /* WCAG contrast */
@@ -110,12 +125,21 @@ const run = async () => {
       page.on('console', m => { if (m.type() === 'error') errs.push(m.text()); });
       page.on('pageerror', e => errs.push('PAGEERROR ' + e.message));
       const guest = GUEST_URLS.includes(url.split('?')[0]);
+      const isAdmin = url.startsWith('/admin/');
       await page.addInitScript(({ o, d, g }) => {
         localStorage.clear();
         if (!g) localStorage.setItem('prep.local.v1', JSON.stringify(o));
         localStorage.setItem('prep.theme', d ? 'dark' : 'light');
       }, { o: LOCAL_OVERLAY, d: dark, g: guest });
-      if (!guest) {
+      if (isAdmin) {
+        /* A different cookie and a different table: prep_admin, not prep_user.
+           Signing in as the learner and then asking for /admin/ answers a
+           redirect, and an audit that measures the sign-in page thirty times
+           over is an audit that reports nothing. */
+        const r = await postWithCsrf(ctx, BASE, '/api/admin/login',
+          { username: ADMIN_USER, password: ADMIN_PASSWORD });
+        if (!r.ok()) mine.push(`[sign-in] ${url}: HTTP ${r.status()}`);
+      } else if (!guest) {
         const r = await postWithCsrf(ctx, BASE, '/api/auth/login', { username: DEMO.id, password: DEMO.pw });
         if (!r.ok()) mine.push(`[sign-in] ${url}: HTTP ${r.status()}`);
       }
@@ -125,7 +149,25 @@ const run = async () => {
       const tag = tagOf(job);
       if (errs.length) mine.push(`[console] ${tag}: ${errs[0].slice(0, 140)}`);
 
-      const overflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1);
+      /* "Can a person actually slide this page sideways?" — asked by trying it,
+         not by reading documentElement.scrollWidth.
+         That was the old test and it is wrong on any page holding a horizontal
+         scroller. Chromium folds a clipped descendant's scrollable width into
+         the ROOT element's scrollWidth, so `/admin/code/` reported 482 against
+         a 390 viewport while `body.scrollWidth` was 390 and the page did not
+         move a pixel: the wide table was inside its `overflow-x-auto` wrapper,
+         behaving exactly as designed. Adding the admin pages to this audit
+         turned that into six false failures at once, which is the sort of
+         result that gets an audit switched off.
+         Two things are genuine breakage and both are kept: the page really
+         slides, or the body is wider than the window (content cut off at the
+         edge with no way to reach it). */
+      const overflow = await page.evaluate(() => {
+        window.scrollTo({ left: 99999, behavior: 'instant' });
+        const slid = Math.round(window.scrollX);
+        window.scrollTo({ left: 0, behavior: 'instant' });
+        return slid > 1 || document.body.scrollWidth > window.innerWidth + 1;
+      });
       if (overflow) mine.push(`[overflow] ${tag}`);
 
       /* A heading or a control that takes up space and says nothing.

@@ -100,9 +100,9 @@
 
       <!-- Table (desktop) -->
       <div id="table-wrap" hidden class="card mt-6 overflow-hidden hidden lg:block">
-        <table class="w-full text-[14.5px]">
+        <table class="w-full text-[14px]">
           <thead>
-            <tr class="text-left text-[12.5px] uppercase tracking-wide text-muted border-b border-line">
+            <tr class="text-left text-[13px] uppercase tracking-wide text-muted border-b border-line">
               <th class="font-bold px-5 py-4">V1 - base form</th>
               <th class="font-bold px-4 py-4">V2 - past simple</th>
               <th class="font-bold px-4 py-4">V3 - past participle</th>
@@ -162,7 +162,7 @@
 
     const ipaCell = v => {
       const ipa = PrepTTS.accent() === 'uk' ? v.ipaUk : v.ipaUs;
-      return ipa ? '<span class="block text-[12.5px] text-muted font-medium mt-0.5">/' + PREP.esc(ipa) + '/</span>' : '';
+      return ipa ? '<span class="block text-[13px] text-muted font-medium mt-0.5">/' + PREP.esc(ipa) + '/</span>' : '';
     };
 
     const noteChip = v => v.note
@@ -204,12 +204,12 @@
             '</div>').join('') +
         '</div>' +
         (PrepTTS.accent() === 'uk' ? v.ipaUk : v.ipaUs
-          ? '<p class="text-[12.5px] text-muted font-medium mt-2.5">/' + PREP.esc(PrepTTS.accent() === 'uk' ? v.ipaUk : v.ipaUs) + '/ · V-ing: ' + PREP.esc(v.ving) + '</p>'
-          : '<p class="text-[12.5px] text-muted font-medium mt-2.5">V-ing: ' + PREP.esc(v.ving) + '</p>') +
+          ? '<p class="text-[13px] text-muted font-medium mt-2.5">/' + PREP.esc(PrepTTS.accent() === 'uk' ? v.ipaUk : v.ipaUs) + '/ · V-ing: ' + PREP.esc(v.ving) + '</p>'
+          : '<p class="text-[13px] text-muted font-medium mt-2.5">V-ing: ' + PREP.esc(v.ving) + '</p>') +
         '<p class="font-semibold mt-2.5">' + PREP.esc(v.vi) + '</p>' +
         (v.note ? '<p class="badge badge-hl mt-2 inline-flex">' + PREP.esc(v.note) + '</p>' : '') +
         (v.exEn
-          ? '<p class="text-[13.5px] text-muted mt-3">' + PrepTTS.wordify(v.exEn) + '</p>' +
+          ? '<p class="text-[13px] text-muted mt-3">' + PrepTTS.wordify(v.exEn) + '</p>' +
             '<p class="text-[13px] text-muted/80 italic">' + PREP.esc(v.exVi || '') + '</p>'
           : '') +
       '</article>';

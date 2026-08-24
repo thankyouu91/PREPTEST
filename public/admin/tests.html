@@ -103,7 +103,7 @@
         return;
       }
       AD.qs('#list').innerHTML =
-        '<div class="card overflow-hidden"><div class="overflow-x-auto"><table class="w-full text-[14px]">' +
+        '<div class="card overflow-hidden scroll-card"><div class="overflow-x-auto"><table class="w-full text-[14px]">' +
         '<thead><tr class="text-[12px] uppercase tracking-wide text-muted border-b border-line bg-surface">' +
           '<th class="text-left font-bold px-5 py-3">Test</th>' +
           '<th class="text-left font-bold px-4 py-3 hidden md:table-cell">Structure</th>' +
@@ -117,7 +117,7 @@
               '<div class="flex items-center gap-2.5">' +
                 '<span class="exam-chip shrink-0" data-family="' + t2.familyId + '">' + AD.esc(t2.familyName) + '</span>' +
                 '<span class="min-w-0"><b class="block truncate">' + AD.esc(t2.title) + '</b>' +
-                '<span class="block text-[12.5px] text-muted">' + AD.esc(t2.level) +
+                '<span class="block text-[13px] text-muted">' + AD.esc(t2.level) +
                 (t2.buildMode === 'auto' ? ' · generated' : '') + '</span></span>' +
               '</div>' +
             '</td>' +

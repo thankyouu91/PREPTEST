@@ -254,7 +254,11 @@ const AD = {
               '</div>' +
               '<div class="grid gap-1 mt-3">' +
                 '<button type="button" class="btn btn-ghost btn-sm justify-start" data-profile-pw>' + this.icon('lock', 'w-4 h-4') + 'Change password</button>' +
-                '<a href="/admin/quan-tri/" class="btn btn-ghost btn-sm justify-start">' + this.icon('settings', 'w-4 h-4') + 'Administration</a>' +
+                /* No "Administration" link here. It is already the fifth item
+                   in the sidebar, four centimetres above this panel and always
+                   visible, so the copy inside the profile popover was a second
+                   door onto the same room — and the two sat close enough that
+                   the panel looked like it had a setting of its own. */
                 '<button type="button" data-logout class="btn btn-ghost btn-sm justify-start text-danger">' + this.icon('logout', 'w-4 h-4') + 'Sign out</button>' +
               '</div>' +
             '</div>' +
@@ -276,7 +280,7 @@ const AD = {
           '<span class="lg:hidden inline-flex items-center justify-center rounded-xl text-white panel-brand w-9 h-9 shrink-0">' + this.icon('cap', 'w-5 h-5') + '</span>' +
           '<div class="min-w-0">' +
             '<h1 class="text-[17px] sm:text-lg font-extrabold tracking-tight truncate">' + this.esc(opts.title || '') + '</h1>' +
-            (opts.subtitle ? '<p class="text-[12.5px] text-muted font-medium truncate">' + this.esc(opts.subtitle) + '</p>' : '') +
+            (opts.subtitle ? '<p class="text-[13px] text-muted font-medium truncate">' + this.esc(opts.subtitle) + '</p>' : '') +
           '</div>' +
           '<div class="ms-auto flex items-center gap-2" id="page-actions"></div>' +
           '<button type="button" data-dark class="p-2.5 rounded-full text-muted hover:text-ink transition lg:hidden" aria-label="Toggle dark mode"><span data-dark-icon></span></button>' +
@@ -456,7 +460,7 @@ const AD = {
       '<span class="w-12 h-12 rounded-full inline-flex items-center justify-center mx-auto text-danger bg-[color:var(--color-card)] border border-line">' +
         this.icon('alert', 'w-6 h-6') + '</span>' +
       '<h3 class="font-extrabold tracking-tight mt-3.5">The data could not be loaded</h3>' +
-      '<p class="text-muted text-[14.5px] mt-1.5">' + this.esc(msg) + '</p>' +
+      '<p class="text-muted text-[14px] mt-1.5">' + this.esc(msg) + '</p>' +
       (retryId ? '<button type="button" id="' + retryId + '" class="btn btn-ghost btn-md mt-5">Try again</button>' : '') +
       '</div>';
   },

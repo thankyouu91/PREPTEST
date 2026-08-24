@@ -51,8 +51,8 @@
           <svg viewBox="0 0 24 24" class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21.8 10.1A10 10 0 1 1 14 2.2"/><path d="m9 11 3 3L22 4"/></svg>
         </span>
         <span class="min-w-0">
-          <b id="cur-name" class="block font-extrabold text-[15.5px]"></b>
-          <span id="cur-meta" class="block text-[13.5px] text-muted font-medium mt-0.5"></span>
+          <b id="cur-name" class="block font-extrabold text-[15px]"></b>
+          <span id="cur-meta" class="block text-[13px] text-muted font-medium mt-0.5"></span>
         </span>
         <a href="/prep/code-cua-toi/" class="btn btn-ghost btn-sm ms-auto">My codes</a>
       </div>
@@ -96,11 +96,11 @@
       <b id="bm-price" class="text-lg font-extrabold whitespace-nowrap"></b>
     </div>
 
-    <ul id="bm-perks" class="grid gap-2 mt-4 text-[13.5px] font-medium text-muted"></ul>
+    <ul id="bm-perks" class="grid gap-2 mt-4 text-[13px] font-medium text-muted"></ul>
 
     <!-- Paying online. Hidden until the server says a gateway is configured. -->
     <div id="bm-pay" hidden class="border-t border-line mt-5 pt-5">
-      <p class="text-[14.5px] font-bold">Pay online</p>
+      <p class="text-[14px] font-bold">Pay online</p>
       <p class="text-muted text-[14px] leading-relaxed mt-1.5">
         You will be taken to the payment provider and brought straight back. Your code is issued
         the moment the payment settles, and it works for one account only.
@@ -113,7 +113,7 @@
     </div>
 
     <div class="border-t border-line mt-5 pt-5">
-      <p class="text-[14.5px] font-bold">Buy through a centre</p>
+      <p class="text-[14px] font-bold">Buy through a centre</p>
       <p id="bm-centre" class="text-muted text-[14px] leading-relaxed mt-1.5">
         Contact your centre to buy this plan - each code works for one account only, and the term
         starts the moment it is activated.
@@ -184,7 +184,7 @@
           '<b class="text-[26px] font-extrabold tracking-tight">' + PREP.vnd(p.price) + '</b>' +
           '<span class="text-[14px] font-semibold text-muted">/ ' + PREP.months(p.months) + '</span>' +
         '</p>' +
-        '<ul class="grid gap-2 mt-4 text-[13.5px] font-medium text-muted">' +
+        '<ul class="grid gap-2 mt-4 text-[13px] font-medium text-muted">' +
           (p.perks || []).map(x =>
             '<li class="flex gap-2"><span class="text-accent-strong mt-0.5 shrink-0">' +
             PREP.icon('check', 'w-4 h-4') + '</span>' + PREP.esc(x) + '</li>').join('') +

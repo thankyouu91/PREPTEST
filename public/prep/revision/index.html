@@ -57,16 +57,16 @@
         </div>
 
         <div class="card p-6 sm:p-8 mt-5">
-          <p id="k-kind" class="text-[12.5px] font-bold uppercase tracking-wide text-muted"></p>
+          <p id="k-kind" class="text-[13px] font-bold uppercase tracking-wide text-muted"></p>
           <p id="k-prompt" class="text-[17px] sm:text-[18px] font-semibold leading-relaxed mt-2"></p>
-          <p id="k-hint" class="text-[13.5px] text-muted mt-2"></p>
+          <p id="k-hint" class="text-[13px] text-muted mt-2"></p>
           <div id="k-answer" class="mt-5"></div>
         </div>
 
         <div class="flex flex-wrap items-center gap-3 mt-5">
           <button type="button" id="k-next" class="btn btn-primary btn-md">Next</button>
           <button type="button" id="k-skip" class="btn btn-ghost btn-md">Skip</button>
-          <span class="text-[12.5px] text-muted ms-auto">Enter for next</span>
+          <span class="text-[13px] text-muted ms-auto">Enter for next</span>
         </div>
       </section>
 
@@ -81,7 +81,7 @@
         <div id="m-build" hidden class="card p-6 mt-5">
           <h3 class="font-extrabold text-[15px] tracking-tight">The sentence you wrote</h3>
           <q id="m-built" class="block text-[15px] leading-relaxed mt-2 ps-3 border-s-2 border-line italic"></q>
-          <p id="m-measured" class="text-[12.5px] text-muted leading-relaxed mt-3"></p>
+          <p id="m-measured" class="text-[13px] text-muted leading-relaxed mt-3"></p>
         </div>
 
         <ul id="m-detail" class="grid gap-3 mt-5"></ul>
@@ -145,7 +145,7 @@ PREP.boot({ auth: true }).then(async () => {
       const left = document.createElement('span');
       left.className = 'min-w-0';
       const h = document.createElement('b');
-      h.className = 'block text-[15.5px] tracking-tight';
+      h.className = 'block text-[15px] tracking-tight';
       h.textContent = PREP.t(x.nameEn, x.nameVi);
       const sub = document.createElement('span');
       sub.className = 'block text-[13px] text-muted mt-0.5';
@@ -288,10 +288,10 @@ PREP.boot({ auth: true }).then(async () => {
         '<span class="flex items-start gap-3">' +
           '<span class="badge shrink-0 ' + (x.right ? 'badge-ok' : 'badge-danger') + '">' +
             PREP.esc(x.right ? PREP.t('Correct', 'Đúng') : PREP.t('Wrong', 'Sai')) + '</span>' +
-          '<span class="text-[14.5px] leading-snug">' + PREP.esc(x.sentence) + '</span>' +
+          '<span class="text-[14px] leading-snug">' + PREP.esc(x.sentence) + '</span>' +
         '</span>' +
         (x.right ? '' :
-          '<span class="block text-[13.5px] mt-3 ps-1">' +
+          '<span class="block text-[13px] mt-3 ps-1">' +
             '<span class="text-muted">' + PREP.esc(PREP.t('You put: ', 'Bạn điền: ')) + '</span>' +
             PREP.esc(x.given || PREP.t('(nothing)', '(bỏ trống)')) + '<br>' +
             '<span class="text-muted">' + PREP.esc(PREP.t('Answer: ', 'Đáp án: ')) + '</span>' +

@@ -50,7 +50,7 @@
         <section class="card p-7 sm:p-9 mt-8">
           <p class="text-[13px] font-bold uppercase tracking-wide text-muted">Test result</p>
           <h2 id="r-title" class="text-2xl font-extrabold tracking-tight mt-1.5"></h2>
-          <p id="r-when" class="text-[13.5px] font-medium text-muted mt-1"></p>
+          <p id="r-when" class="text-[13px] font-medium text-muted mt-1"></p>
 
           <div class="flex flex-wrap items-end gap-x-8 gap-y-4 mt-6">
             <span>
@@ -81,7 +81,7 @@
         <!-- Part-by-part breakdown -->
         <section id="r-parts-box" hidden class="mt-8">
           <h3 class="font-extrabold text-lg tracking-tight">Part by part, item by item</h3>
-          <p class="text-muted text-[14.5px] mt-1.5 max-w-[62ch]">
+          <p class="text-muted text-[14px] mt-1.5 max-w-[62ch]">
             Your own answers are kept here so you can compare. The correct answers are not shown, because the paper is still used for later sittings.
           </p>
           <div id="r-parts" class="grid gap-4 mt-4"></div>
@@ -195,15 +195,15 @@
           '<div class="flex flex-wrap items-center gap-3 px-5 py-4 border-b border-line bg-surface">' +
             '<b class="text-[15px]">' + PREP.esc(p.name) + '</b>' +
             (p.part ? '<span class="badge badge-muted">Part ' + PREP.esc(p.part) + '</span>' : '') +
-            '<span class="ms-auto text-[13.5px] font-bold">' +
+            '<span class="ms-auto text-[13px] font-bold">' +
               (p.max ? p.earned + '/' + p.max + ' correct' : 'Awaiting marking') + '</span>' +
           '</div>' +
           '<ul class="px-5 py-1">' + p.items.map((it, i) =>
             '<li class="flex items-start gap-3 py-2.5 border-b border-line last:border-0">' +
-              '<span class="w-6 shrink-0 text-[12.5px] font-bold text-muted pt-0.5">' + (i + 1) + '</span>' +
+              '<span class="w-6 shrink-0 text-[13px] font-bold text-muted pt-0.5">' + (i + 1) + '</span>' +
               '<span class="min-w-0 flex-1">' +
                 '<span class="block text-[14px] leading-snug">' + PREP.esc(it.prompt) + '</span>' +
-                '<span class="block text-[12.5px] text-muted font-medium mt-1">' +
+                '<span class="block text-[13px] text-muted font-medium mt-1">' +
                   (it.hasRecording ? 'Recorded' : (it.given ? 'You answered: ' + PREP.esc(it.given) : 'Left blank')) +
                 '</span>' +
                 feedback(it) +
@@ -233,7 +233,7 @@
     function feedback(it) {
       const n = (it.note || '').trim();
       if (!n || n === 'Left blank' || n === 'Awaiting marking') return '';
-      return '<span class="block text-[12.5px] leading-relaxed mt-1.5 ps-3 border-s-2 border-line">' +
+      return '<span class="block text-[13px] leading-relaxed mt-1.5 ps-3 border-s-2 border-line">' +
         PREP.esc(n) + '</span>';
     }
 
@@ -258,8 +258,8 @@
       const rows = cs.map(c =>
         '<li class="py-1.5 border-b border-line last:border-0">' +
           '<span class="flex items-baseline gap-2">' +
-            '<b class="text-[12.5px]">' + PREP.esc(PREP.t(c.en, c.vi)) + '</b>' +
-            '<span class="ms-auto text-[12.5px] font-bold tabular-nums">' + c.score.toFixed(1) + '</span>' +
+            '<b class="text-[13px]">' + PREP.esc(PREP.t(c.en, c.vi)) + '</b>' +
+            '<span class="ms-auto text-[13px] font-bold tabular-nums">' + c.score.toFixed(1) + '</span>' +
           '</span>' +
           (c.comment
             ? '<span class="block text-[12px] text-muted leading-snug mt-0.5">' + PREP.esc(c.comment) + '</span>'
@@ -270,7 +270,7 @@
             : '') +
         '</li>').join('');
       return '<details class="mt-2">' +
-        '<summary class="text-[12.5px] font-semibold cursor-pointer">' +
+        '<summary class="text-[13px] font-semibold cursor-pointer">' +
           PREP.t('How this mark was made', 'Điểm này được chấm thế nào') + '</summary>' +
         '<ul class="mt-1.5">' + rows + '</ul>' +
       '</details>';

@@ -110,7 +110,7 @@
     const rows = s.items.length
       ? s.items.map((it, i) =>
           '<li class="flex items-start gap-3 py-2.5 border-b border-line last:border-0">' +
-            '<span class="w-6 text-[12.5px] font-bold text-muted shrink-0 pt-0.5">' + (i + 1) + '</span>' +
+            '<span class="w-6 text-[13px] font-bold text-muted shrink-0 pt-0.5">' + (i + 1) + '</span>' +
             '<span class="min-w-0 flex-1">' +
               '<span class="block text-[14px] leading-snug">' + AD.esc(it.prompt) + '</span>' +
               '<span class="block text-[12px] text-muted font-semibold mt-1">' +
@@ -129,7 +129,7 @@
         '<span class="min-w-0">' +
           '<b class="block">' + AD.esc(s.name) +
             (s.part ? ' <span class="badge badge-ok align-middle">Part ' + AD.esc(s.part) + '</span>' : '') + '</b>' +
-          '<span class="block text-[12.5px] text-muted font-semibold">' +
+          '<span class="block text-[13px] text-muted font-semibold">' +
             AD.esc(AD.SKILL_LABEL[s.skill] || s.skill) + ' · ' + AD.esc(s.type) + ' · ' + s.minutes + ' min · ' +
             s.items.length + ' items</span>' +
         '</span>' +
@@ -285,7 +285,7 @@
 
     const mm = AD.modal(
       '<h3 class="text-lg font-extrabold tracking-tight">Choose items for ' + AD.esc(s.name) + '</h3>' +
-      '<p class="text-muted text-[13.5px] mt-1.5">Only items from the same exam and skill as this part are shown.</p>' +
+      '<p class="text-muted text-[13px] mt-1.5">Only items from the same exam and skill as this part are shown.</p>' +
       '<div class="flex flex-wrap gap-2 mt-4">' +
         '<label class="sr-only" for="p-q">Search questions</label>' +
         '<input class="input flex-1 min-w-[160px] py-2" id="p-q" type="search" placeholder="Search the item text…">' +
@@ -295,7 +295,7 @@
       '</div>' +
       '<div id="p-list" class="mt-4 max-h-[46vh] overflow-y-auto grid gap-1.5"></div>' +
       '<div class="flex items-center gap-2.5 mt-5 pt-4 border-t border-line">' +
-        '<span class="text-[13.5px] font-bold text-muted" id="p-count">0 selected</span>' +
+        '<span class="text-[13px] font-bold text-muted" id="p-count">0 selected</span>' +
         '<button type="button" id="p-add" class="btn btn-primary btn-md ms-auto" disabled>Add to the part</button>' +
         '<button type="button" data-close class="btn btn-ghost btn-md">Close</button>' +
       '</div>', { wide: true });
@@ -334,7 +334,7 @@
                 AD.esc(AD.TYPE_LABEL[i.type] || i.type) + ' · ' + AD.esc(i.level) + '</span>' +
             '</span>' +
           '</label>').join('') +
-          (total > free.length ? '<p class="text-[12.5px] text-muted text-center pt-2">Showing the first ' + free.length + ' items; filter further to narrow it down.</p>' : '');
+          (total > free.length ? '<p class="text-[13px] text-muted text-center pt-2">Showing the first ' + free.length + ' items; filter further to narrow it down.</p>' : '');
         AD.qsa('[data-qid]', listEl).forEach(cb => cb.addEventListener('change', () => {
           const id = +cb.getAttribute('data-qid');
           if (cb.checked) chosen.add(id); else chosen.delete(id);

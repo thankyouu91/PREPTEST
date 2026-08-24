@@ -687,6 +687,25 @@
 }
 
 @layer utilities {
+  /* ---- A box that really does contain its horizontal scroller ----
+     `overflow-x-auto` on a wide table scrolls the table, and it is supposed to
+     stop there. It does not: Chromium folds the scroller's scrollable width
+     into the ROOT element's, so on a 390px phone the codes table left
+     `document.documentElement.scrollWidth` at 482 and the WHOLE PAGE could be
+     dragged 92px sideways onto blank space — while the table also scrolled
+     inside its own box. Two scrollbars for one table, one of them empty.
+
+     `contain: paint` on the wrapping card is what stops it. The card already
+     says `overflow-hidden`; this is what makes the browser honour that when it
+     works out how wide the document is. Measured, not guessed: max-width,
+     width, display:grid and `contain:paint` on the scroller itself all left it
+     at 92px, and `table-layout: fixed` fixed the number by squashing the
+     columns instead of scrolling them, which is not the same thing.
+
+     Forgetting it on the next table is caught rather than shipped —
+     scripts/audit.mjs drags every page sideways at five widths. */
+  .scroll-card { contain: paint; }
+
   .no-scrollbar::-webkit-scrollbar { display: none; }
   .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
   .text-balance { text-wrap: balance; }

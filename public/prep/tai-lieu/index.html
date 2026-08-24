@@ -49,17 +49,17 @@
   <!-- ===== Đầu trang + chọn cấp độ ===== -->
   <section class="halo-brand border-b border-line">
     <div class="max-w-shell mx-auto px-4 sm:px-6 pt-12 pb-10 lg:pt-16">
-      <p class="text-[12.5px] font-bold uppercase tracking-[0.16em] text-muted">VPET · Versant Professional English Test</p>
+      <p class="text-[13px] font-bold uppercase tracking-[0.16em] text-muted">VPET · Versant Professional English Test</p>
       <h1 class="text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight mt-3 text-balance">Bộ tài liệu luyện thi VPET</h1>
-      <p class="text-muted text-[16px] leading-relaxed mt-3 max-w-[62ch]">
+      <p class="text-muted text-[15px] leading-relaxed mt-3 max-w-[62ch]">
         Mười phần A-J, mẹo làm bài cho từng phần, lộ trình ôn 8 tuần. Chọn cấp độ của bạn rồi đọc thẳng ở đây - hoặc tải bản PDF về xem sau.
       </p>
 
       <!-- Chọn cấp độ: hai nút, đổi là cả trang đổi theo -->
       <div class="flex flex-wrap items-center gap-3 mt-8">
         <div class="lang-switch" role="group" aria-label="Chọn cấp độ">
-          <button type="button" class="lang-opt !px-5 !py-2 !text-[13.5px]" data-level="1" aria-pressed="true">Level 1</button>
-          <button type="button" class="lang-opt !px-5 !py-2 !text-[13.5px]" data-level="2" aria-pressed="false">Level 2</button>
+          <button type="button" class="lang-opt !px-5 !py-2 !text-[13px]" data-level="1" aria-pressed="true">Level 1</button>
+          <button type="button" class="lang-opt !px-5 !py-2 !text-[13px]" data-level="2" aria-pressed="false">Level 2</button>
         </div>
         <a id="pdf-link" href="/tai-lieu/vpet-level-1.pdf" download class="btn btn-ghost btn-md">
           <svg viewBox="0 0 24 24" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/></svg>
@@ -78,7 +78,7 @@
   <section class="max-w-shell mx-auto px-4 sm:px-6 py-12 lg:py-16">
     <div class="flex flex-wrap items-baseline gap-3">
       <h2 class="text-2xl sm:text-3xl font-extrabold tracking-tight">Mười phần thi</h2>
-      <p class="text-[13.5px] font-semibold text-muted" id="parts-hint">Bấm vào một phần để xem chi tiết</p>
+      <p class="text-[13px] font-semibold text-muted" id="parts-hint">Bấm vào một phần để xem chi tiết</p>
       <button type="button" id="toggle-all" class="btn btn-ghost btn-sm ms-auto">Mở tất cả</button>
     </div>
 
@@ -148,7 +148,7 @@
         '<span class="text-[13px] font-bold text-muted">CEFR ' + esc(L.cefr) + ' · ' + esc(L.gse) + '</span>' +
       '</div>' +
       '<p class="text-[15px] leading-relaxed mt-3">' + esc(L.aiCho) + '</p>' +
-      '<div class="flex flex-wrap gap-x-7 gap-y-2 mt-4 pt-4 border-t border-line text-[13.5px] font-semibold text-muted">' +
+      '<div class="flex flex-wrap gap-x-7 gap-y-2 mt-4 pt-4 border-t border-line text-[13px] font-semibold text-muted">' +
         '<span><b class="text-ink">' + data.tong.cau + '</b> câu hỏi</span>' +
         '<span><b class="text-ink">' + data.tong.phut + '</b> phút</span>' +
         '<span><b class="text-ink">' + data.tong.phan + '</b> phần A → J</span>' +
@@ -164,8 +164,8 @@
                 'data-part="' + i + '" aria-expanded="false">' +
           '<span class="w-9 h-9 rounded-xl panel-brand text-white font-extrabold text-[15px] inline-flex items-center justify-center shrink-0">' + esc(p.ma) + '</span>' +
           '<span class="min-w-0 flex-1">' +
-            '<span class="block font-extrabold text-[16px] tracking-tight truncate">' + esc(p.ten) + '</span>' +
-            '<span class="block text-[12.5px] text-muted truncate">' + esc(p.tenEn) + '</span>' +
+            '<span class="block font-extrabold text-[15px] tracking-tight truncate">' + esc(p.ten) + '</span>' +
+            '<span class="block text-[13px] text-muted truncate">' + esc(p.tenEn) + '</span>' +
           '</span>' +
           '<span class="hidden sm:flex items-center gap-2 shrink-0">' +
             (p.audio ? '<span class="badge badge-ok">có audio</span>' : '') +
@@ -181,7 +181,7 @@
           (meo.length
             ? '<p class="text-[12px] font-bold uppercase tracking-wide text-muted mt-5 mb-2.5">Mẹo làm bài</p>' +
               '<ul class="grid gap-2.5">' + meo.map(m =>
-                '<li class="flex gap-2.5 text-[14.5px] leading-relaxed">' +
+                '<li class="flex gap-2.5 text-[14px] leading-relaxed">' +
                   '<span class="text-accent-strong mt-1 shrink-0"><svg viewBox="0 0 24 24" class="w-[15px] h-[15px]" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></span>' +
                   '<span>' + esc(m).replace(/\*\*(.+?)\*\*/g, '<b class="text-ink">$1</b>') + '</span>' +
                 '</li>').join('') + '</ul>'
@@ -203,7 +203,7 @@
     qs('#roadmap').innerHTML = data.capDo[level].lotrinh.map(([tuan, viec], i) =>
       '<li class="card p-5">' +
         '<span class="badge badge-muted">' + esc(tuan) + '</span>' +
-        '<p class="text-[14.5px] leading-relaxed mt-3">' + esc(viec) + '</p>' +
+        '<p class="text-[14px] leading-relaxed mt-3">' + esc(viec) + '</p>' +
       '</li>').join('');
   }
 
