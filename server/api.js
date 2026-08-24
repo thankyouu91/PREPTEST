@@ -1729,6 +1729,29 @@ router.put('/admin/ai', roles.requireCap('secrets.manage'), async (req, res) => 
     if (!(field in b)) continue;
     const raw = String(b[field] == null ? '' : b[field]).trim();
     if (raw && raw.length < 12) return bad(res, 'That does not look like an API key.');
+
+    /* The one wrong value worth spending a scrypt on.
+     *
+     * These two inputs are `type="password"`, so a browser's password manager
+     * offers the credential it has saved for THIS site — the administrator's
+     * own sign-in password. The field markup now tells every manager not to,
+     * but the browser is not the last word on what arrives here, and the cost
+     * of this particular mistake is not a bad setting: the value is sealed into
+     * the database and then sent to api.anthropic.com in an `x-api-key` header
+     * on the next paper marked. An administrator password handed to a third
+     * party, by a form that looked like it worked.
+     *
+     * So it is checked, once, against the account doing the saving — which is
+     * the only credential a manager would have had to offer. One scrypt on a
+     * route somebody touches twice a year. */
+    if (raw) {
+      const me = await q.get('SELECT pass_hash FROM admins WHERE id=?', req.admin.id);
+      if (me && A.verifyPassword(raw, me.pass_hash)) {
+        return bad(res, 'That is your own sign-in password, not an API key — your browser '
+          + 'probably filled it in. Paste the key from the provider instead.');
+      }
+    }
+
     try {
       await aiMarking.setKey(which, raw || null);
     } catch (e) {

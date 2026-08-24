@@ -159,6 +159,35 @@ try {
     'The settings endpoint returns nothing from the ai.* rows',
     Object.keys((r.data && r.data.settings) || {}).join(', '));
 
+  /* ---- The wrong value a browser volunteers ----
+     Both key fields are type="password", so a password manager offers the
+     credential saved for THIS site: the administrator's own sign-in password.
+     The markup now tells every manager not to, but the browser is not the last
+     word on what arrives, and this particular mistake does not stop at a bad
+     setting — the value is sealed into the database and then sent to the model
+     provider in an x-api-key header on the next paper marked. */
+  r = await admin.req('PUT', '/api/admin/ai', { apiKey: ADMIN_PASSWORD });
+  ok(r.status === 400, 'The administrator\'s own password is refused as an API key', 'status ' + r.status);
+  ok(/own sign-in password/i.test((r.data && r.data.error) || ''),
+    'and the message says which mistake it was, so it reads as a warning rather than a bug',
+    (r.data && r.data.error) || '');
+
+  r = await admin.req('GET', '/api/admin/ai');
+  ok(r.data.ai.keyHint === 'eeff',
+    'and the refusal left the real key untouched rather than half-replacing it', r.data.ai.keyHint);
+
+  r = await admin.req('PUT', '/api/admin/ai', { sttApiKey: ADMIN_PASSWORD });
+  ok(r.status === 400, 'The transcription field refuses it too — same field type, same accident');
+
+  /* ---- The audit trail is a place a secret can end up by accident ----
+     It records who changed what, which is exactly the shape of a log that
+     quietly grows a copy of the value. */
+  const auditRows = await admin.req('GET', '/api/admin/audit');
+  const auditText = JSON.stringify(auditRows.data || {});
+  ok(!auditText.includes(KEY), 'The key is not in the audit log');
+  ok(!auditText.includes(ADMIN_PASSWORD),
+    'and neither is the password that was refused — a rejected value must not be logged either');
+
   /* Saving a model name must not wipe the key that is already there. */
   r = await admin.req('PUT', '/api/admin/ai', { baseUrl: STUB, model: 'stub-model-2' });
   ok(r.data.ai.hasKey && r.data.ai.model === 'stub-model-2',

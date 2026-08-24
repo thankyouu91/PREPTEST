@@ -173,9 +173,19 @@
     }
     const a = d.ai;
 
+    /* The blocker, with the two commands that clear it.
+       It used to say "Set one and restart" and stop there, which is true and
+       is not help: the reader is an owner on a phone looking at a form that
+       refuses to save, and the next thing they need is the exact line to type.
+       The generated value is never echoed anywhere — it is written straight
+       into the env file by the shell, and this screen never sees it. */
     const status = !a.canStore
       ? '<div class="banner banner-warn show"><span>This server has no <code>TOKEN_ENCRYPTION_KEY</code>, ' +
-          'so a key cannot be stored safely. Set one and restart before using this.</span></div>'
+          'so a key cannot be stored safely. On the server, generate one:<br>' +
+          '<code class="text-[12px]">openssl rand -base64 32</code><br>' +
+          'add it to <code>/etc/vpet-prep.env</code> as <code>TOKEN_ENCRYPTION_KEY=&lt;value&gt;</code>, then ' +
+          '<code class="text-[12px]">set -a; . /etc/vpet-prep.env; set +a &amp;&amp; pm2 restart preptest --update-env &amp;&amp; pm2 save</code>' +
+          ' and reload this page. Full steps in <code>docs/VAN-HANH.md</code> §1.</span></div>'
       : a.hasKey
         ? '<div class="banner banner-success show"><span>A key ending <b>' + AD.esc(a.keyHint) + '</b> is in use' +
             (a.checkedAt ? ', last checked ' + AD.esc(new Date(a.checkedAt).toLocaleString()) : '') + '.</span></div>'
@@ -223,7 +233,19 @@
             '<input class="input" id="ai-model" value="' + AD.esc(a.model) + '"></label>' +
         '</div>' +
         '<label class="grid gap-1.5"><span class="label">API key</span>' +
-          '<input class="input" id="ai-key" type="password" autocomplete="off" placeholder="' +
+          /* `new-password`, not `off`. Chrome ignores autocomplete="off" on a
+             password field and offers the credential saved for this site — and
+             the screenshot that started this showed exactly that: a row of dots
+             in a field with nothing stored behind it. The accident it invites is
+             not cosmetic. Press Save on an autofilled field and the
+             administrator's own sign-in password is sealed into the database as
+             the marking key, and the next paper marked SENDS IT to
+             api.anthropic.com in an x-api-key header. The server refuses that
+             specific value too (see PUT /admin/ai) — this is the half that stops
+             it being offered in the first place. The data-* attributes are the
+             same instruction to 1Password, LastPass and Bitwarden. */
+          '<input class="input" id="ai-key" type="password" autocomplete="new-password"' +
+            ' data-1p-ignore data-lpignore="true" data-bwignore data-form-type="other" placeholder="' +
             (a.hasKey ? 'Leave blank to keep the key already saved' : 'Paste the key') + '">' +
           '<span class="text-[13px] text-muted">Stored encrypted. It is never shown again and never sent to a browser.</span></label>' +
 
@@ -239,7 +261,8 @@
           '</div>' +
           '<label class="grid gap-1.5 mt-3"><span class="label">Transcription API key' +
             (a.hasSttKey ? ' (ending ' + AD.esc(a.sttKeyHint) + ')' : '') + '</span>' +
-            '<input class="input" id="ai-stt-key" type="password" autocomplete="off" placeholder="' +
+            '<input class="input" id="ai-stt-key" type="password" autocomplete="new-password"' +
+              ' data-1p-ignore data-lpignore="true" data-bwignore data-form-type="other" placeholder="' +
               (a.hasSttKey ? 'Leave blank to keep the key already saved' : 'Paste the key') + '"></label>' +
         '</details>' +
 

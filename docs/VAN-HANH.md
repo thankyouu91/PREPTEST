@@ -94,7 +94,23 @@ chạy nhưng biến mất ở lần `pm2 resurrect` sau, tức là ở lần kh
 
 Vào **Quản trị → Cài đặt → Marking writing and speaking**. Màn hình tự biết
 bước 1 đã xong hay chưa (`canStore`): chưa xong thì nó **nói ra** trước khi hiện
-một cái form sẽ từ chối.
+một cái form sẽ từ chối — và nay nó in luôn hai dòng lệnh cần gõ.
+
+Điền đúng ba ô này (khoá Anthropic):
+
+| Ô | Giá trị |
+|---|---|
+| Model endpoint | `https://api.anthropic.com` |
+| Model | `claude-sonnet-5` |
+| API key | khoá Anthropic, dạng `sk-ant-…` |
+
+> **Cảnh báo về trình quản lý mật khẩu.** Hai ô khoá là `type="password"`, nên
+> Chrome/1Password sẽ **mời điền mật khẩu đăng nhập của chính anh/chị** vào đó.
+> Nếu lỡ lưu, mật khẩu quản trị sẽ được niêm vào CSDL rồi **gửi thẳng cho
+> Anthropic** trong header `x-api-key` ở lần chấm kế tiếp. Ô nhập đã được đánh
+> dấu để các trình đó không tự điền, và **máy chủ từ chối** đúng giá trị đó kèm
+> lời giải thích. Thấy thông báo "That is your own sign-in password" thì nghĩa
+> là cái chặn đã làm việc — xoá ô đi và dán khoá thật.
 
 - **Base URL** — mặc định `https://api.anthropic.com`
 - **Model** — mặc định `claude-sonnet-5`
@@ -114,8 +130,16 @@ Mô hình đọc chữ, không nghe tiếng. Một câu nói phải được **g
 chấm được, và đó là nhà cung cấp thứ hai với khoá thứ hai. Không cấu hình thì
 G, H, I, J ở lại `pending` và màn hình **nói vì sao** thay vì bịa ra điểm.
 
-Điền **Transcription base URL** và **Transcription model** (mặc định
-`whisper-1`) rồi dán khoá thứ hai.
+Mở **Speaking: transcription** rồi điền (khoá OpenAI):
+
+| Ô | Giá trị |
+|---|---|
+| Transcription endpoint | `https://api.openai.com` |
+| Transcription model | `whisper-1` |
+| Transcription API key | khoá OpenAI, dạng `sk-…` |
+
+Ô endpoint để trống chính là tín hiệu "chưa cấu hình gỡ băng" — nên phải điền
+`https://api.openai.com`, không bỏ trống rồi chỉ dán khoá.
 
 > Phải nói rõ một lần nữa, vì nó nằm trong rubric và nằm trong cả ghi chú học
 > viên đọc: cái được chấm là **bản gỡ băng**. Nó đo từ vựng và ngữ pháp. Nó
