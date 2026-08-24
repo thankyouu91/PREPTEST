@@ -571,7 +571,23 @@ function stopSweeper() {
 /** Mark everything outstanding on one paper, then re-score it. */
 async function run(attemptId, opts) {
   if (!await ai.ready()) return { skipped: 'no-key' };
-  if (opts && opts.force) await clearRubricMarks(attemptId);
+
+  /* A forced re-mark wipes the existing marks before it knows whether it can
+     produce new ones, and `ai.ready()` is not that knowledge: it only checks
+     that the stored key still DECRYPTS, so a key the provider has revoked sails
+     past it. An administrator pressing "mark again" on a paper whose provider
+     is unreachable therefore destroyed a candidate's band and could not get it
+     back — the marks are gone, `overall` is null, and there is no undo.
+     Snapshotted here, and put back below if the pass turns out to mark nothing
+     at all. Re-marking is meant to replace a mark, never to subtract one. */
+  let restore = null;
+  if (opts && opts.force) {
+    restore = await q.all(
+      `SELECT id, earned, max_score, mark_note, marked_at FROM attempt_answers
+        WHERE attempt_id=? AND earned IS NOT NULL AND question_id IN (
+          SELECT id FROM questions WHERE type IN ('essay','speaking'))`, attemptId);
+    await clearRubricMarks(attemptId);
+  }
 
   const rows = await pending(attemptId);
   /* Nothing owed. Still worth a call: a paper finished by an earlier pass may
@@ -597,7 +613,7 @@ async function run(attemptId, opts) {
      per-account ceiling in server/ai-budget.js mean anything. */
   const userId = await q.val('SELECT user_id FROM attempts WHERE id=?', attemptId);
 
-  let marked = 0, failed = 0, skipped = 0, stopped = null;
+  let marked = 0, failed = 0, skipped = 0, stopped = null, restored = 0;
   for (const row of rows) {
     /* markRow's own try covers the model call only. Transcription, storage and
        the writes throw too, and an uncaught one used to end the pass - so a
@@ -629,6 +645,17 @@ async function run(attemptId, opts) {
     try { await markAttempt(attemptId); } catch (e) { /* re-scored again below */ }
   }
 
+  /* The pass replaced nothing, so put back what the clear above took. */
+  if (restore && restore.length && marked === 0) {
+    for (const r of restore) {
+      await q.run('UPDATE attempt_answers SET earned=?, max_score=?, mark_note=?, marked_at=? WHERE id=?',
+        r.earned, r.max_score, r.mark_note, r.marked_at, r.id);
+    }
+    restored = restore.length;
+    console.warn('[ai] attempt ' + attemptId + ': the forced re-mark could not mark anything, so its '
+      + restored + ' previous mark' + (restored === 1 ? ' was' : 's were') + ' kept rather than lost.');
+  }
+
   await markAttempt(attemptId);
   /* Last, and outside the loop: what is still owed decides whether this paper
      comes back. Its own try, because a bookkeeping failure must not throw away
@@ -642,7 +669,7 @@ async function run(attemptId, opts) {
     + (stopped && !stopped.fatal
       ? ` Stopped at the ${stopped.reason} spending ceiling (${stopped.count}/${stopped.cap}).` : ''));
   return {
-    marked, failed, skipped, left,
+    marked, failed, skipped, left, restored,
     stopped: stopped ? (stopped.fatal ? 'config' : stopped.reason) : null
   };
 }

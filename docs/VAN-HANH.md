@@ -44,6 +44,52 @@ trạng thái `pending` thay vì cho 0, vì **chấm 0 một bài luận chưa a
 lời nói dối trông giống một con số**. Nhưng trạng thái `pending` đó không có gì
 gỡ ra, nên nó ở lại vĩnh viễn cho tới khi có khoá.
 
+### Bước 0 — dọn các bài mô phỏng TRƯỚC khi dán khoá
+
+**Làm bước này trước tiên.** Nếu trên máy còn các lần làm bài mô phỏng, bộ quét
+nền sẽ tự chấm chúng ngay sau khi khoá được lưu — không hỏi, không có nút huỷ.
+
+Cửa sổ thời gian là bao lâu: bộ quét chạy **10 phút một lần** kể từ lúc tiến
+trình khởi động, và lần đầu tiên là **15 giây** sau khi khởi động. Hai mốc đó
+được đặt lúc `pm2 start`, không phải lúc dán khoá — nên thực tế anh/chị có từ
+vài giây đến mười phút, tuỳ lúc dán rơi vào đâu trong chu kỳ. Bước 1 dưới đây
+lại yêu cầu `pm2 restart`, và mỗi lần deploy cũng khởi động lại, nên trường hợp
+15 giây không hiếm.
+
+Cái giá: **26 lần gọi mô hình mỗi bài** (cộng 21 lần gỡ băng nếu đã bật bước 3).
+56 bài mô phỏng là khoảng **1.456 lần gọi**, tức gần một phần tư trần
+`AI_CALLS_PER_DAY` mặc định (6000) trong cửa sổ trượt 24 giờ. Tiền thì nhỏ, vài
+chục đô; **phần không lấy lại được là cái trần đó** — `scripts/attempts.js` cố ý
+không xoá bảng `ai_calls`, vì đó là sổ chi tiêu chứ không phải bài làm. Xoá bài
+sau khi đã chấm không hoàn lại phần trần đã tiêu, nên nếu lớp thật vào làm bài
+cùng ngày, họ sẽ gặp thông báo hết hạn mức.
+
+```
+pm2 stop preptest                      # các lệnh dưới đây đều GHI vào CSDL
+cd /home/ubuntu/PREPTEST
+node scripts/backup.mjs run            # có đường lùi trước khi xoá
+node scripts/attempts.js list          # đọc TÊN tài khoản, đừng chỉ nhìn cột KIND
+node scripts/attempts.js purge         # chạy thử, in ra thiệt hại rồi dừng
+node scripts/attempts.js purge --yes   # làm thật
+node scripts/attempts.js pending       # phải về 0
+pm2 start preptest
+```
+
+`purge` không có phạm vi nào kèm theo chỉ đụng vào 8 tài khoản mẫu và các tài
+khoản thử nghiệm `@thu-nghiem.vn`. Tài khoản hiện `REAL` là bài làm thật và
+không bị đụng tới — muốn xoá cả chúng thì phải gõ `--all`, và **không có undo**.
+Muốn xoá đúng một tài khoản: `purge --user=<tên> --yes`.
+
+> `pm2 stop` ở đầu là thật chứ không phải cho chắc. Mọi lệnh trong
+> `scripts/attempts.js`, kể cả `list`, đều nạp `server/db` — mà việc nạp đó chạy
+> migration và seed, tức là **ghi**. Chạy song song với máy chủ đang bật thì hai
+> tiến trình tranh khoá ghi, và `busy_timeout` chỉ có 5 giây.
+
+Nếu khoá đã dán rồi mới nhớ ra bước này: **Quản trị → Cài đặt → "Remove the
+key"**. Mỗi bài và mỗi lần gọi đều đọc lại khoá, nên việc chấm dừng trong vòng
+một bài. `pm2 stop` **không** phải cách dừng — lần khởi động sau lại quét tiếp
+sau 15 giây.
+
 ### Bước 1 — tạo `TOKEN_ENCRYPTION_KEY`
 
 Khoá API của mô hình không được nằm trần trong CSDL. Nó được niêm bằng
@@ -53,29 +99,39 @@ khoá** — nó không âm thầm lưu bản trần; đó là chỗ duy nhất n
 không "xuống cấp cho êm", vì một bản dự phòng êm ái sẽ khiến cái máy không làm
 gì trở thành cái máy kém an toàn nhất.
 
-Sinh khoá — **32 byte, mã base64, đúng 32 byte chứ không phải 32 ký tự**:
+Sinh khoá và ghi thẳng vào `/etc/vpet-prep.env` bằng một lệnh — **32 byte, mã
+base64, đúng 32 byte chứ không phải 32 ký tự**. Tệp đang có 4 dòng; đây là
+**dòng thứ 5, không sửa 4 dòng cũ**:
 
 ```
-openssl rand -base64 32
+sudo sh -c '[ -s /etc/vpet-prep.env ] && [ -n "$(tail -c1 /etc/vpet-prep.env)" ] && printf "\n" >> /etc/vpet-prep.env; printf "TOKEN_ENCRYPTION_KEY=%s\n" "$(openssl rand -base64 32)" >> /etc/vpet-prep.env'
 ```
 
-Thêm vào `/etc/vpet-prep.env` (tệp đang có 4 dòng; **thêm dòng thứ 5, không sửa
-4 dòng cũ**):
-
-```
-sudo sh -c 'printf "TOKEN_ENCRYPTION_KEY=%s\n" "$(openssl rand -base64 32)" >> /etc/vpet-prep.env'
-```
+Giá trị được sinh bên trong dấu nháy đơn, do `sh` của root chạy, nên nó **không
+đi qua shell của anh/chị và không vào lịch sử lệnh**. Đoạn `tail -c1` ở đầu là
+để phòng trường hợp tệp cũ không kết thúc bằng ký tự xuống dòng — nếu không có
+nó, dòng mới sẽ dán vào đuôi dòng cuối và hỏng cả hai biến cùng lúc.
 
 Kiểm tra là đã ghi được — **không in giá trị ra màn hình**, chỉ đếm:
 
 ```
 sudo grep -c '^TOKEN_ENCRYPTION_KEY=' /etc/vpet-prep.env     # phải là 1
-sudo awk -F= '/^TOKEN_ENCRYPTION_KEY=/{print length($2)}' /etc/vpet-prep.env   # phải là 44
+sudo sed -n 's/^TOKEN_ENCRYPTION_KEY=//p' /etc/vpet-prep.env | tr -d '\n' | wc -c   # phải là 44
 ```
 
 > 44 ký tự base64 = 32 byte. Ra số khác là sai độ dài, và app sẽ báo
 > `TOKEN_ENCRYPTION_KEY must be exactly 32 bytes, base64 encoded` lúc khởi động
 > chứ không phải lúc ai đó nộp bài.
+>
+> Chỗ này trước đây dùng `awk -F=`, và nó **luôn** in ra 43 với một khoá hoàn
+> toàn đúng: `-F=` cắt chuỗi tại dấu `=`, mà base64 của 32 byte luôn kết thúc
+> bằng đúng một dấu `=` đệm — nên `$2` là 43 ký tự trước dấu đệm. Ai làm theo sẽ
+> xoá một khoá tốt rồi sinh lại, mãi không ra 44.
+
+Chép giá trị này vào nơi giữ bí mật của anh/chị (password manager, Secrets
+Manager). **Bản sao lưu CSDL không chứa nó** — đó là chủ ý, khoá và dữ liệu đi
+riêng — nhưng hệ quả là mất tệp env thì khoá mô hình đã niêm và token Google
+Classroom trong bản sao lưu không mở lại được nữa.
 
 Nạp lại — và đây là cái bẫy đã ghi trong `docs/BLOCKS.md`:
 `pm2 restart --update-env` **gộp** env mới vào env cũ, nó không đọc lại tệp.
@@ -149,30 +205,24 @@ Mở **Speaking: transcription** rồi điền (khoá OpenAI):
 ### Làm sao biết là xong
 
 Sau khi lưu khoá, bộ quét nền sẽ tự tìm những bài còn `pending` và chấm nốt —
-kể cả những bài đã nộp từ trước khi có khoá. Nó chạy 10 phút một lần.
+**kể cả những bài đã nộp từ trước khi có khoá, nên phải làm Bước 0 trước.** Nó
+chạy 10 phút một lần.
 
-Đếm số bài **chưa có band tổng**. Band tổng không nằm trong bảng `attempts`, nó
-là một dòng `skill='overall'` trong `attempt_scores`, và `pending=1` nghĩa là
-"đã có chỗ nhưng chưa chấm xong":
-
-```
-sqlite3 data/prep.sqlite "
-  SELECT COUNT(*) FROM attempts a
-   WHERE a.status='submitted'
-     AND NOT EXISTS (SELECT 1 FROM attempt_scores s
-                      WHERE s.attempt_id=a.id AND s.skill='overall' AND s.pending=0);"
-```
-
-Chạy trước khi dán khoá, rồi chạy lại sau ~15 phút. Con số phải **giảm**. Muốn
-biết đang kẹt ở kỹ năng nào:
+Đếm số bài **chưa có band tổng**, trước khi dán khoá và lại sau ~15 phút. Con số
+phải **giảm**:
 
 ```
-sqlite3 data/prep.sqlite \
-  "SELECT skill, COUNT(*) FROM attempt_scores WHERE pending=1 GROUP BY skill;"
+node scripts/attempts.js pending
 ```
 
-Còn `speaking` mà hết `writing` nghĩa là bước 3 chưa làm — đúng như thiết kế,
-không phải lỗi.
+Lệnh này cũng in ra đang kẹt ở kỹ năng nào. Còn `speaking` mà hết `writing`
+nghĩa là bước 3 chưa làm — đúng như thiết kế, không phải lỗi.
+
+> Trước đây chỗ này là hai câu lệnh `sqlite3`. Máy chủ **không có** CLI đó:
+> `deploy/ec2-bootstrap.sh` không cài, `Dockerfile` không cài, và Ubuntu server
+> không kèm sẵn — nền tảng nói chuyện với SQLite qua `node:sqlite` nên chưa bao
+> giờ cần đến. Câu lệnh duy nhất để kiểm tra việc chấm có chạy hay không lại là
+> câu lệnh báo `command not found`.
 
 Không giảm gì cả thì xem **Quản trị → Cài đặt**: ô `lastError` giữ lý do thất
 bại gần nhất, đã được scrub.
@@ -207,9 +257,23 @@ Phải thấy:
 3. `restore` — tạo `/tmp/thu.sqlite` mở được:
 
 ```
-sqlite3 /tmp/thu.sqlite "SELECT COUNT(*) FROM users;"
+PREP_DB=/tmp/thu.sqlite node -e "console.log(require('./server/db').db.prepare('SELECT COUNT(*) n FROM users').get())"
 rm -f /tmp/thu.sqlite
 ```
+
+Và câu lệnh cần đến khi có sự cố thật, khác hẳn bài diễn tập ở trên vì nó **ghi
+đè CSDL đang chạy** — thiếu `--into` là một chữ:
+
+```
+pm2 stop preptest                             # bắt buộc, xem ghi chú dưới
+node scripts/backup.mjs restore latest --yes
+pm2 start preptest
+```
+
+> `pm2 stop` không phải cho chắc. `restore` đổi tên tệp cũ sang một bên rồi chép
+> bản lưu vào chỗ của nó — tiến trình Node đang chạy vẫn giữ inode cũ, nên nó
+> tiếp tục phục vụ dữ liệu cũ và ghi vào cái tệp đã bị đẩy sang bên, rồi lần
+> khởi động sau vứt hết những gì nó vừa ghi.
 
 `set -a; . /etc/vpet-prep.env; set +a` **không được bỏ**. Thiếu nó thì
 `BACKUP_DRIVER` không có và lệnh sẽ âm thầm ghi vào `disk` — tức là chụp bản sao
@@ -322,10 +386,19 @@ Không phải việc phải làm — ghi ở đây để tra khi cần.
 |---|---|---|
 | **Quản trị** | `owner` | tất cả; **duy nhất** tạo được tài khoản quản trị, giữ khoá mô hình, phục hồi sao lưu |
 | **Quản lý** | `manager` | học viên, mã kích hoạt, đề thi, ngân hàng câu hỏi, nhật ký |
-| **Giáo viên** | `teacher` | xem báo cáo, soạn câu hỏi, chấm lại bài. Không đụng tiền, không sửa tài khoản |
+| **Giáo viên** | `teacher` | xem báo cáo, soạn câu hỏi, chấm lại bài. Không sửa tài khoản, không thấy khoá API |
 
 Tạo và đổi cấp: **Quản trị → Cài đặt → Tài khoản quản trị**. Tab đó chỉ hiện với
 cấp Quản trị.
+
+> **Cả ba cấp đều chấm lại được bài, và việc đó tiêu tiền của khoá.** Quyền
+> `marking.run` cố ý mở cho cả ba: chấm lại một bài là cách xử lý thường ngày
+> khi giáo viên nhìn thấy một điểm sai, đẩy nó lên cấp Quản trị thì biến việc đó
+> thành một cái ticket. Thứ chặn chi tiêu là trần trong `server/ai-budget.js`
+> chứ không phải phân quyền. Cụ thể, `teacher` và `manager` gọi được
+> `POST /admin/ai/sweep` (xếp hàng toàn bộ tồn đọng) và
+> `POST /admin/attempts/:id/mark?force=1` (xoá điểm cũ và chấm lại, 26 lần gọi
+> một bài) qua API, dù nút không hiện trên màn hình của họ.
 
 Vài quy tắc do **máy chủ** giữ, không phải giao diện — nghĩa là mở devtools cũng
 không lách được:
