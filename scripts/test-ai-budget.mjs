@@ -180,7 +180,18 @@ function ceilingWith(value) {
 ok(ceilingWith('none') === 6000, 'a word falls back to the DEFAULT, not to unlimited', ceilingWith('none'));
 ok(ceilingWith('-5') === 6000, 'a negative number falls back to the default', ceilingWith('-5'));
 ok(ceilingWith('') === 6000, 'an empty value falls back to the default', ceilingWith(''));
-ok(ceilingWith('0') === 0, 'but an explicit 0 does turn it off, because somebody meant that', ceilingWith('0'));
+
+/* The polarity, which was the wrong way round and silently so.
+ *
+ * `0` used to mean "no ceiling", and the guards read it by truthiness so the
+ * limit was simply never consulted. Read the variable's name the way the person
+ * typing it does: whoever sets AI_CALLS_PER_DAY=0 has just seen an invoice and
+ * wants the spending to stop. Unlimited spending is the worst available answer
+ * to that, and nothing on any screen said it had happened. */
+ok(ceilingWith('0') === 0, 'zero is a ceiling of zero — the number somebody types to mean STOP',
+  ceilingWith('0'));
+ok(ceilingWith('off') === Infinity, 'switching a ceiling off has to be spelt out', ceilingWith('off'));
+ok(ceilingWith('OFF') === Infinity, 'and is not case-sensitive, because env vars are shouted');
 
 head('Housekeeping');
 

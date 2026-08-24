@@ -344,6 +344,13 @@ này không phải việc phải làm — nó là chỗ tra khi có gì đó b�
 Một bài VPET đầy đủ = **26 lần chấm + 21 lần gỡ băng**. Nên 240 ≈ năm bài trọn
 vẹn một ngày cho một người, và 6000 ≈ 127 bài cho cả nền tảng.
 
+Muốn **dừng chi tiêu ngay**: đặt `AI_CALLS_PER_DAY=0` rồi nạp lại env. Số 0
+nghĩa là trần bằng không, tức từ chối ngay lần gọi đầu tiên. (Trước đây số 0 lại
+có nghĩa là *bỏ trần* — đúng ngược với điều người gõ nó đang muốn, và không màn
+hình nào báo gì cả.) Muốn **bỏ hẳn trần** thì phải viết ra chữ: `=off`. Mọi giá
+trị sai hoặc gõ nhầm đều quay về mặc định chứ không bao giờ thành "không giới
+hạn".
+
 Đặt `0` là **tắt hẳn** cái trần đó. Gõ sai (`none`, `-5`, để trống) thì rơi về
 **mặc định**, không rơi về "không giới hạn" — một lỗi đánh máy không được phép
 là thứ gỡ mất giới hạn chi tiêu.

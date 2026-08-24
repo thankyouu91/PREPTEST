@@ -79,10 +79,29 @@ const DAY_MS = 24 * 3600e3;
 const PER_ACCOUNT_PER_DAY = num(process.env.AI_CALLS_PER_ACCOUNT_PER_DAY, 240);
 const PLATFORM_PER_DAY = num(process.env.AI_CALLS_PER_DAY, 6000);
 
-/* 0 disables a ceiling; a negative or unparseable value falls back to the
-   default rather than to "off", because a typo in an environment variable must
-   never be the thing that removes a spending limit. */
+/* A negative or unparseable value falls back to the default rather than to
+   "off", because a typo in an environment variable must never be the thing that
+   removes a spending limit.
+ *
+ * `0` means STOP, not "no ceiling", and it used to mean the opposite. Read the
+ * variable's name the way the person typing it does: someone who sets
+ * AI_CALLS_PER_DAY=0 is an owner who has just seen an invoice and wants the
+ * spending to stop. Handing them unlimited spending is the single worst
+ * response available, and it is silent — `take()` simply never refuses.
+ *
+ * Switching a ceiling off is still possible and now has to be said out loud:
+ * AI_CALLS_PER_DAY=off. The one that costs money is the one you have to spell. */
+/* A function declaration, not a const: the two ceilings above are initialised at
+   module load and call straight into it, so anything in a temporal dead zone
+   here would throw at require time. */
+function isOff(raw) { return String(raw == null ? '' : raw).trim().toLowerCase() === 'off'; }
 function num(raw, fallback) {
+  /* Infinity, not 0, for "no ceiling". 0 was doing both jobs — the sentinel for
+     off AND the number an owner types to mean stop — and every guard below had
+     to test truthiness before comparing, which is what silently turned "stop"
+     into "unlimited". With Infinity the comparison is just a comparison, and 0
+     can mean what it says: refuse everything. */
+  if (isOff(raw)) return Infinity;
   const n = parseInt(raw, 10);
   if (!Number.isFinite(n) || n < 0) return fallback;
   return n;
@@ -116,10 +135,10 @@ async function take(opts) {
   const o = opts || {};
   const u = await used(o.userId);
 
-  if (PLATFORM_PER_DAY && u.platform >= PLATFORM_PER_DAY) {
+  if (u.platform >= PLATFORM_PER_DAY) {
     return refusal('platform', u.platform, PLATFORM_PER_DAY, null);
   }
-  if (PER_ACCOUNT_PER_DAY && o.userId != null && u.account >= PER_ACCOUNT_PER_DAY) {
+  if (o.userId != null && u.account >= PER_ACCOUNT_PER_DAY) {
     return refusal('account', u.account, PER_ACCOUNT_PER_DAY, o.userId);
   }
 
@@ -179,8 +198,17 @@ async function settle(id, outcome) {
 async function status() {
   const u = await used(null);
   return {
-    platform: { used: u.platform, cap: PLATFORM_PER_DAY, off: PLATFORM_PER_DAY === 0 },
-    perAccount: { cap: PER_ACCOUNT_PER_DAY, off: PER_ACCOUNT_PER_DAY === 0 },
+    /* JSON has no Infinity — it serialises as null — so the screen is told
+       `off` and given a cap it can print. */
+    platform: {
+      used: u.platform,
+      cap: PLATFORM_PER_DAY === Infinity ? null : PLATFORM_PER_DAY,
+      off: PLATFORM_PER_DAY === Infinity
+    },
+    perAccount: {
+      cap: PER_ACCOUNT_PER_DAY === Infinity ? null : PER_ACCOUNT_PER_DAY,
+      off: PER_ACCOUNT_PER_DAY === Infinity
+    },
     windowHours: 24
   };
 }
