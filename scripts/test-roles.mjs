@@ -333,8 +333,9 @@ if (whoGotIn) {
     const row = rows.find(x => x.username === u);
     if (row && !row.active) await probe.call('PUT', '/api/admin/admins/' + row.id, { active: true });
   }
-  const back = (await probe.call('GET', '/api/admin/admins')).data.admins;
-  ok(back.find(x => x.username === OWNER_USER).active === 1,
+  const back = ((await probe.call('GET', '/api/admin/admins')).data || {}).admins || [];
+  const restored = back.find(x => x.username === OWNER_USER);
+  ok(restored && restored.active === 1,
     'and the account that lost the race can be switched back on from inside');
   const m2 = back.find(x => x.username === mUser);
   if (m2 && m2.role === 'owner' && m2.id !== (await probe.call('GET', '/api/admin/me')).data.admin.id) {
@@ -343,13 +344,39 @@ if (whoGotIn) {
 }
 
 head('Tidying up');
-for (const u of [mUser, tUser]) {
-  const row = (await owner.call('GET', '/api/admin/admins')).data.admins.find(a => a.username === u);
-  if (row) await owner.call('PUT', '/api/admin/admins/' + row.id, { active: false });
+
+/* A FRESH sign-in, not the `owner` client from the top of the file.
+ *
+ * This is a real flake I shipped and CI caught on the first run. The race above
+ * deactivates one of the two owners, and deactivating an account deletes its
+ * sessions — so if `admin` is the one that loses, the `owner` client is holding
+ * a dead cookie even though the account has since been switched back on. Every
+ * call it makes then answers 401, `data.admins` is undefined, and the suite
+ * dies with a TypeError instead of failing an assertion.
+ *
+ * It passed locally because the race went the other way there. That is the
+ * definition of a flaky test, and a flaky gate is worse than no gate: it
+ * teaches everybody to press re-run. Which account won is not knowable, so the
+ * tidy-up stops assuming and signs in again. */
+const cleaner = client();
+const cleanerIs = (await cleaner.signIn(OWNER_USER, ADMIN_PASSWORD)) ? OWNER_USER
+  : (await cleaner.signIn(mUser, MPASS)) ? mUser : null;
+ok(cleanerIs !== null, 'an owner session is available to tidy up with');
+
+if (cleanerIs) {
+  const meId = ((await cleaner.call('GET', '/api/admin/me')).data || {}).admin?.id;
+  for (const u of [mUser, tUser]) {
+    const rows = ((await cleaner.call('GET', '/api/admin/admins')).data || {}).admins || [];
+    const row = rows.find(a => a.username === u);
+    /* Never the account doing the tidying: the server refuses it, correctly. */
+    if (row && row.active && row.id !== meId) {
+      await cleaner.call('PUT', '/api/admin/admins/' + row.id, { active: false });
+    }
+  }
+  const left = (((await cleaner.call('GET', '/api/admin/admins')).data || {}).admins || [])
+    .filter(a => (a.username === mUser || a.username === tUser) && a.active && a.id !== meId);
+  ok(left.length === 0, 'the two test accounts are deactivated again', left.length);
 }
-const left = (await owner.call('GET', '/api/admin/admins')).data.admins
-  .filter(a => (a.username === mUser || a.username === tUser) && a.active);
-ok(left.length === 0, 'the two test accounts are deactivated again', left.length);
 
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
