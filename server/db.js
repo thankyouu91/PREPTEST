@@ -1538,6 +1538,10 @@ function seed() {
                             VALUES (?,?,?,?,?,?,?)`);
     const daysAgo = n => new Date(Date.now() - n * 86400000).toISOString();
     ins.run('student', 'student@vpetprep.vn', 'Demo Student', 1, 'active', JSON.stringify(['vpet','ielts']), daysAgo(21));
+    /* The same list DEMO_USERNAMES exports below. Kept as one array rather than
+       two, because `scripts/attempts.js` decides what counts as a simulated
+       sitting from it — and a second copy of "who is a fixture" is how a purge
+       eventually spares an account it should have cleared, or clears a real one. */
     const DEMO = [
       ['thuhang.nt','thuhang.nt@ftu.edu.vn','Nguyễn Thu Hằng',1,['ielts'],14],
       ['khanhqd','khanh.qd@hcmut.edu.vn','Quốc Khánh',1,['toeic','ielts'],11],
@@ -1910,7 +1914,16 @@ function seedGrammar() {
 
 seed();
 
-module.exports = { db, q, tx, nowISO, jparse, makeCode, audit, DB_FILE, seedVocab,
+/**
+ * Every learner account the seed creates, demo student first.
+ *
+ * Exported so the purge tool can say what a "simulated" sitting is without
+ * keeping its own copy of the list. Read by scripts/attempts.js.
+ */
+const DEMO_USERNAMES = ['student', 'thuhang.nt', 'khanhqd', 'mailinh.hu',
+  'baolong.tb', 'ngocanh.study', 'huyphan', 'thaovy.dn'];
+
+module.exports = { db, q, tx, nowISO, jparse, makeCode, audit, DB_FILE, seedVocab, DEMO_USERNAMES,
   SCHEMA_SQL, ADDED_COLUMNS, ADDED_INDEXES,
   /* Exported for scripts/test-paper.mjs, which checks a stored paper against
      the same plan the builder works from. */
