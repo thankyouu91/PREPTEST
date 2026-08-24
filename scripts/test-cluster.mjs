@@ -180,11 +180,21 @@ try {
   ok(up, 'a three-worker cluster comes up and answers /healthz', out.slice(-600));
 
   if (up) {
-    /* Enough requests that a round-robin dispatcher has to touch every worker.
-       Sequential on purpose: parallel requests could be served by one worker
-       reading three sockets, and that would prove nothing. */
+    /* A NEW CONNECTION each time, and that is the whole point of the check.
+     *
+     * The first version fired 45 plain `fetch` calls and asserted the work
+     * spread. It passed for days and then went red on CI, and the assertion was
+     * simply wrong: Node's cluster scheduler round-robins CONNECTIONS, not
+     * requests, and undici keeps one connection alive and reuses it. Forty-five
+     * requests down one socket are forty-five requests for one worker — the
+     * dispatcher behaving exactly as designed, reported as a failure.
+     *
+     * `connection: close` makes each request its own TCP connection, which is
+     * what actually reaches the scheduler. It also means this now measures the
+     * thing the cluster is for: a browser opening six connections to this host
+     * gets six workers, not one. */
     for (let i = 0; i < 45; i++) {
-      const r = await fetch(BASE + '/healthz');
+      const r = await fetch(BASE + '/healthz', { headers: { connection: 'close' } });
       if (!r.ok) { ok(false, 'every request during the spread check succeeded', 'status ' + r.status); break; }
       await r.json();
     }
