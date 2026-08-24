@@ -672,17 +672,35 @@ try {
   ok(spokenRow && /tried again/i.test(spokenRow.mark_note || ''),
     'And the candidate is told it will be tried again', spokenRow && spokenRow.mark_note);
 
-  /* After the paper has been round enough times with the same answer, silence
-     is the better reading, and a mark has to be given rather than withheld for
-     ever. Wind the try count up rather than wait out the backoff. */
+  /* The paper's own try counter must NOT be what decides this.
+   *
+   * `tries` goes up whenever anything on the paper is still unmarked, whatever
+   * the reason — the model refusing every item because its key was revoked
+   * counts. That was the trigger for "this recording is silent", so an outage
+   * on the MARKING provider wrote a permanent zero for the TRANSCRIPTION
+   * provider's ambiguous answer. Permanent because once earned is not null the
+   * item is never picked up again. Winding the counter to 5 here proves the
+   * decision no longer listens to it. */
   await q.run('UPDATE ai_marking_backlog SET tries=?, next_try=? WHERE attempt_id=?',
     5, new Date(Date.now() - 60e3).toISOString(), att6.id);
+  await q.run('UPDATE attempt_answers SET mark_note=NULL WHERE attempt_id=? AND question_id=?',
+    att6.id, spokenItem.questionId);
+  await admin.req('POST', '/api/admin/attempts/' + att6.id + '/mark', {});
+  spokenRow = await q.get(
+    'SELECT earned, mark_note FROM attempt_answers WHERE attempt_id=? AND question_id=?',
+    att6.id, spokenItem.questionId);
+  ok(spokenRow && spokenRow.earned == null,
+    'A paper that failed for unrelated reasons does not make this recording silent',
+    JSON.stringify(spokenRow));
+
+  /* But a second silent pass on the SAME recording is the better reading of it,
+     and a mark has to be given rather than withheld for ever. */
   await admin.req('POST', '/api/admin/attempts/' + att6.id + '/mark', {});
   spokenRow = await q.get(
     'SELECT earned, mark_note FROM attempt_answers WHERE attempt_id=? AND question_id=?',
     att6.id, spokenItem.questionId);
   ok(spokenRow && spokenRow.earned === 0,
-    'But after repeated tries with the same empty answer it is finally scored',
+    'But a second silent pass on the same recording finally scores it',
     JSON.stringify(spokenRow));
 
   /* And with real words, the rubric marks it and says what it marked. */

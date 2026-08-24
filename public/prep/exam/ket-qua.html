@@ -70,6 +70,10 @@
           </div>
 
           <p id="r-disclaimer" class="text-[13px] text-muted/80 font-medium mt-6"></p>
+          <!-- How the speaking mark was made. Shown to every candidate, not
+               only the ones whose plan includes the per-item breakdown: it is
+               the basis of the number, not a premium detail. -->
+          <p id="r-spoken-from" hidden class="text-[13px] text-muted/80 mt-2"></p>
         </section>
 
         <!-- Mark per skill -->
@@ -145,6 +149,9 @@
     PREP.qs('#r-title').textContent = test ? test.title : r.testId;
     PREP.qs('#r-when').textContent = r.submittedAt ? 'Handed in ' + PREP.fmtDate(r.submittedAt) : '';
     PREP.qs('#r-disclaimer').textContent = r.disclaimer || '';
+    const spokenFrom = PREP.qs('#r-spoken-from');
+    spokenFrom.textContent = r.spokenFrom || '';
+    spokenFrom.hidden = !r.spokenFrom;
 
     /* The overall mark only appears once everything is marked. Until then show a
     dash and say what is outstanding - a half-computed number gets read as

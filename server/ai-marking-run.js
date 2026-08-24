@@ -116,7 +116,9 @@ const STORAGE_MS = 30e3;
  * The count comes from ai_marking_backlog, so this is "after the paper has come
  * back around twice" - about half an hour with the backoff below.
  */
-const SILENCE_AFTER_TRIES = 2;
+/* The note a first silent transcription leaves behind, and the thing a second
+   one looks for. A marker on the item itself: see the long note in words(). */
+const SILENT_ONCE = 'No words could be made out yet.';
 
 /**
  * `p`, unless it takes longer than `ms`, in which case an error.
@@ -165,7 +167,9 @@ async function pending(attemptId) {
      this whole feature exists to end. It has to be marked zero, and to be marked
      zero it has to be found. */
   return q.all(
-    `SELECT aa.id, aa.answer, aa.audio_key,
+    /* mark_note comes along because words() reads it: a silent transcription
+       leaves a marker there, and the second one turns it into a zero. */
+    `SELECT aa.id, aa.answer, aa.audio_key, aa.mark_note,
             si.question_id, ap.section_id,
             qs.prompt, qs.type, qs.level, qs.part, qs.ext_key,
             t.level paper_level
@@ -259,9 +263,21 @@ async function words(row, tries, ctx) {
      the platform can only make with the try count in front of it, which is
      exactly what ai_marking_backlog now holds. */
   if (!text) {
-    return tries >= SILENCE_AFTER_TRIES
+    /* Counted on THIS ITEM, from the note the last silent pass left, rather
+       than on the paper's `tries`.
+     *
+     * `tries` goes up whenever anything on the paper is still unmarked, for any
+     * reason — including the model refusing every item because its key was
+     * revoked, which has nothing to do with this recording. So an outage on the
+     * marking provider pushed `tries` past the threshold, and the next
+     * ambiguous empty transcript from the OTHER provider was written down as
+     * `earned = 0` with "No words could be made out". Once earned is not null
+     * the item is never picked up again: one provider's bad afternoon became a
+     * permanent zero on a candidate's speaking score, with no way back short of
+     * an administrator forcing a re-mark. */
+    return String(row.mark_note || '').startsWith(SILENT_ONCE)
       ? { blank: 'No words could be made out in this recording.' }
-      : { retry: 'No words could be made out yet. The recording will be tried again.' };
+      : { retry: SILENT_ONCE + ' The recording will be tried again.' };
   }
   return { text };
 }

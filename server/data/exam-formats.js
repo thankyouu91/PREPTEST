@@ -203,7 +203,13 @@ function vpetSections() {
     S('G', 'Passage Comprehension', 'listening', 'Answer out loud', 6, ['speaking'], true,
       'Two spoken passages, three questions each, answered out loud. Needs audio.'),
     S('H', 'Repeat', 'speaking', 'Say the sentence back', 10, ['speaking'], true,
-      'Repeat each sentence exactly, 15 seconds each. Scores pronunciation and fluency. Needs audio.'),
+      /* NOT pronunciation and fluency, whatever the published VPET description
+         says: this platform marks Part H from a transcript, and every spoken
+         rubric in server/rubric.js tells the model to say nothing about
+         pronunciation, accent or fluency. Only an administrator sees this
+         screen, and an administrator who reads it will repeat it to a class. */
+      'Repeat each sentence exactly, 15 seconds each. Marked from a transcript, on how much of the '
+        + 'sentence survives — not on pronunciation. Needs audio.'),
     S('I', 'Speaking Situations', 'speaking', 'Respond to a situation', 2, ['speaking'], false,
       '10 seconds to think, then up to 60 to speak in the register the situation calls for.'),
     S('J', 'Story Retellings', 'speaking', 'Retell what you heard', 3, ['speaking'], true,
@@ -215,7 +221,22 @@ const VPET_GUIDE = [
   'Ten parts, A to J, 58 items in one sitting. Every part has its own timer.',
   'Parts E, F, G, H and J play audio. Check your headphones before you start.',
   'Parts H, I and J record your voice. Speak after the beep and stay in the time shown.',
-  'Reading and Listening are marked automatically; Writing and Speaking are AI scored, then a reviewer can override.'
+  /* This said "then a reviewer can override", and no such path exists:
+     `rubric_scores.marked_by` is the string 'ai' at its one and only insert
+     site, and the only marking route an administrator has re-runs the same
+     model. Promising a human backstop that is not there is the worst of the
+     three options — worse than saying nothing — because it is the sentence a
+     candidate would rely on when a mark looks wrong.
+
+     The second line is new. Writing and Speaking answers are sent to an
+     outside marking service to be scored, and a spoken answer is sent as the
+     recording itself. A candidate is entitled to know that before they speak,
+     not to find it in a settings screen they cannot see. */
+  'Reading and Listening are marked automatically. Writing and Speaking are marked by an AI service; '
+    + 'an administrator can have a paper marked again, but no person re-reads it.',
+  'To mark them, your written answers and your voice recordings are sent to an outside AI service. '
+    + 'Your name, e-mail and account are not sent with them. Speaking is scored from a written '
+    + 'transcript of your recording: the words and the grammar, not pronunciation or fluency.'
 ];
 
 const VPET_NOTES = [

@@ -328,13 +328,26 @@
     const sweepBtn = AD.qs('#ai-sweep');
     if (sweepBtn) sweepBtn.addEventListener('click', async (ev) => {
       const btn = ev.currentTarget;
+      /* This reads like a progress button and is the fastest way to spend real
+         money on the site: about 26 model calls per paper, against the owner's
+         own key. Above a handful, say the number out loud first. */
+      const due = Number(d.due || 0);
+      if (due > 5 && !confirm('This queues ' + due + ' paper(s) for marking — roughly '
+        + (due * 26) + ' calls against your API key. Are the simulated sittings cleared?')) {
+        return;
+      }
       btn.disabled = true;
       try {
         const r = await AD.post('/admin/ai/sweep', {});
+        /* "20 paper(s) queued" with 56 due reads as "that was all of them".
+           sweep() takes twenty at a time, so say what is left behind. */
+        const rest = Math.max(0, due - Number(r.queued || 0));
         out.innerHTML = '<div class="banner banner-success show"><span>' +
           (r.queued
-            ? AD.esc(String(r.queued)) + ' paper(s) queued. They are marked one at a time; ' +
-              'reload in a few minutes to see the count fall.'
+            ? AD.esc(String(r.queued)) + ' paper(s) queued'
+              + (rest ? ' of ' + AD.esc(String(due)) + ' due — the rest follow on the next sweeps' : '')
+              + '. About ' + AD.esc(String(Number(r.queued) * 26)) + ' calls against your key. '
+              + 'They are marked one at a time; reload in a few minutes to see the count fall.'
             : 'Nothing is due a pass right now.') + '</span></div>';
       } catch (e) {
         out.innerHTML = '<div class="banner banner-error show"><span>' + AD.esc(e.message) + '</span></div>';

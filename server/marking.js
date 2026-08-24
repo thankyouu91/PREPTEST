@@ -293,6 +293,19 @@ async function resultOf(attemptId, detailed) {
     overall: overall ? overall.scaled : null,
     pending: !overall || !!overall.pending,
     band: overall ? toBand(overall.scaled) : null,
+    /* How the speaking mark was arrived at, on every result screen rather than
+       only the paid one.
+     *
+     * The per-item version of this note is real and well written, but it lives
+     * on `parts`, and `parts` is returned only when `detailed` — the
+     * detailedReport entitlement. So a candidate on the free plan saw a
+     * speaking band and a CEFR level with nothing anywhere telling them that
+     * nobody had listened to their voice. That is not a premium detail; it is
+     * the basis of the number. It belongs with the disclaimer. */
+    spokenFrom: skills.some(r => r.skill === 'speaking' && !r.pending)
+      ? 'Speaking is marked from a written transcript of your recording: the words and the '
+        + 'grammar, not pronunciation or fluency.'
+      : null,
     detailed: !!detailed
   };
   if (!detailed) return out;
