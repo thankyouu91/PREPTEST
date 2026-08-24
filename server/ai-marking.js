@@ -532,8 +532,14 @@ const RUBRIC = {
     + 'lower than a fuller retelling.',
   D: 'Part D, E-mail Writing. The candidate had 9 minutes and at least 100 words. Mark on: '
     + 'whether every task in the situation is addressed, whether the tone suits the recipient '
-    + 'and a workplace, organisation, grammar and spelling. An email under 100 words has not '
-    + 'met the task. Being polite is not enough if a requested point is missing.',
+    /* No sentence about length here, deliberately. It used to say "An email
+       under 100 words has not met the task" — and userPrompt() adds, two lines
+       further down the same prompt, that length is measured separately and the
+       marker must NOT deduct for shortness. A prompt that says both gets one of
+       them at random. Length is arithmetic and belongs to applyCaps() in
+       server/rubric.js; the model marks the writing. */
+    + 'and a workplace, organisation, grammar and spelling. Being polite is not enough if a '
+    + 'requested point is missing.',
   G: 'Part G, Passage Comprehension. The candidate heard a passage ONCE and was asked a question '
     + 'about it, which they answered out loud. You are given a TRANSCRIPT of that answer and the '
     + 'question. Mark on ONE thing: whether the answer is right. The guide tells candidates to '

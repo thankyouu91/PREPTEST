@@ -50,7 +50,10 @@
 
 /** Bump when a criterion is added, removed, or its meaning changes. Stored with
     every score so old marks stay interpretable. */
-const RUBRIC_VERSION = '2026-08-vpet-1';
+/* Bumped when G and H gained criteria of their own and the length cap stopped
+   being a cliff. Stored marks carry this, so a report can still say which rules
+   produced a number from before the change rather than implying the new ones. */
+const RUBRIC_VERSION = '2026-08-vpet-2';
 
 /**
  * The criteria, per part.
@@ -90,6 +93,28 @@ const CRITERIA = {
     { key: 'register', en: 'Register', vi: 'Mức trang trọng',
       about: 'Whether the level of formality fits who is being spoken to.' }
   ],
+  /* G and H had no criteria at all, and between them they are 16 of the paper's
+     58 items — including 10 of the 15 that make up Speaking. combine() fell
+     through to `fallbackScore`, so for those items the model's own headline
+     number WAS the mark: nothing cross-checked it, nothing was written to
+     rubric_scores, and the candidate's report showed a score with no working
+     under it. Two thirds of a Speaking mark arrived unexplained.
+
+     Both parts are genuinely narrow — that part was right — so these say what
+     each is narrow ABOUT rather than inventing dimensions to fill a table. The
+     wording tracks each part's rubric text in server/ai-marking.js; if one
+     changes, the other has to. */
+  G: [
+    { key: 'correct', en: 'Right answer', vi: 'Trả lời đúng',
+      about: 'Whether the answer is right. A correct short phrase is a full mark and is not '
+        + 'marked down for being short; grammar matters only where it changes the meaning.' }
+  ],
+  H: [
+    { key: 'content', en: 'How much came back', vi: 'Giữ được bao nhiêu',
+      about: 'How much of the sentence is reproduced.' },
+    { key: 'structure', en: 'Structure kept', vi: 'Giữ được cấu trúc',
+      about: 'Whether the sentence\'s word order and grammar survive the repetition.' }
+  ],
   J: [
     { key: 'events', en: 'Events kept', vi: 'Giữ được sự việc',
       about: 'How many of the story\'s events survive the retelling.' },
@@ -114,6 +139,32 @@ const UNDER_LENGTH_FRACTION = 0.6;
 
 /** And that is what it is worth, whatever the sentences look like. */
 const UNDER_LENGTH_CAP = 4;
+
+/**
+ * Between "not an attempt" and the full requirement, the ceiling rises with the
+ * length instead of jumping.
+ *
+ * There was a forty-word hole here, and it let a candidate score full marks on
+ * a task they had done three fifths of. The gate fired below 60 words on a
+ * 100-word requirement and did nothing at all above it, while the marker was
+ * told in the same prompt — two lines apart — both "an email under 100 words
+ * has not met the task" AND "length is checked separately and enforced without
+ * you, so do not also deduct for shortness". So nothing penalised 60 to 99
+ * words: measured, a 60-word e-mail with good sentences came out at 9/10
+ * against a requirement of 100.
+ *
+ * The rule now runs from the hard cap at 0.6 of the floor up to no cap at the
+ * floor itself, so the two ends meet and a word either side of a threshold is
+ * worth about the same. 60 words caps at 4, 80 at 7, 99 at ~9.9 — which rounds
+ * to 10, and should: 99 words against 100 is not a shortfall worth marking.
+ */
+function lengthCeiling(n, floor) {
+  if (!floor || n >= floor) return null;
+  const at = UNDER_LENGTH_FRACTION * floor;
+  if (n < at) return UNDER_LENGTH_CAP;
+  /* Linear from (0.6·floor → 4) to (floor → 10). */
+  return UNDER_LENGTH_CAP + (10 - UNDER_LENGTH_CAP) * ((n - at) / (floor - at));
+}
 
 /** The aggregate may sit at most this far above the weakest criterion. */
 const WEAKEST_LINK_HEADROOM = 0.5;
@@ -326,15 +377,21 @@ function applyCaps(part, base, used, o) {
   const floor = o.minWords || MIN_WORDS[part];
   if (floor) {
     const n = words(o.answer).length;
-    if (n < floor * UNDER_LENGTH_FRACTION && score > UNDER_LENGTH_CAP) {
+    const ceiling = lengthCeiling(n, floor);
+    if (ceiling !== null && score > half(ceiling)) {
+      const hard = n < floor * UNDER_LENGTH_FRACTION;
       caps.push({
-        rule: 'under-length', from: half(score), to: UNDER_LENGTH_CAP,
-        en: 'Only ' + n + ' words against a required ' + floor
-          + '. Well under the length is not an attempt at the task, whatever the sentences are like.',
-        vi: 'Chỉ ' + n + ' từ so với yêu cầu ' + floor
-          + '. Quá ngắn so với yêu cầu thì chưa tính là đã làm bài, dù câu cú có tốt đến đâu.'
+        rule: 'under-length', from: half(score), to: half(ceiling),
+        en: 'Only ' + n + ' words against a required ' + floor + '. '
+          + (hard
+            ? 'Well under the length is not an attempt at the task, whatever the sentences are like.'
+            : 'A short answer cannot score as if the whole task were done, however good its sentences are.'),
+        vi: 'Chỉ ' + n + ' từ so với yêu cầu ' + floor + '. '
+          + (hard
+            ? 'Quá ngắn so với yêu cầu thì chưa tính là đã làm bài, dù câu cú có tốt đến đâu.'
+            : 'Bài viết ngắn không thể được điểm như đã làm trọn yêu cầu, dù câu cú có tốt đến đâu.')
       });
-      score = UNDER_LENGTH_CAP;
+      score = half(ceiling);
     }
   }
 

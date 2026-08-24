@@ -151,11 +151,27 @@ try {
   ok(!enough.caps.some(c => c.rule === 'under-length'),
     'A full-length answer is not capped', String(R.words(EMAIL).length) + ' words');
 
-  /* 60 words is 60% of 100 — exactly at the line, which must be inside it. */
-  const atLine = R.combine('D', { task: { score: 8 }, register: { score: 8 }, organisation: { score: 8 }, accuracy: { score: 8 } },
-    { answer: Array.from({ length: 60 }, (_, i) => 'word' + i).join(' ') });
-  ok(!atLine.caps.some(c => c.rule === 'under-length'),
-    'Exactly at 60% of the floor is inside the line, not outside it', String(atLine.score));
+  /* No word is worth six marks.
+   *
+   * This used to assert that 60 words — exactly 60% of the floor — was not
+   * capped at all, and it passed. Read together with the line above it, that
+   * was the bug written down as a requirement: 59 words capped at 4, 60 words
+   * uncapped at 8. One word, four marks, and then nothing between there and
+   * the full 100 either, so three fifths of the task could score full marks.
+   *
+   * What the check was really after is that the boundary is not a cliff, and
+   * that is what it tests now: neighbouring lengths score within half a mark of
+   * each other, all the way up. */
+  const eights = { task: { score: 8 }, register: { score: 8 }, organisation: { score: 8 }, accuracy: { score: 8 } };
+  const scoreAt = n => R.combine('D', eights,
+    { answer: Array.from({ length: n }, (_, i) => 'word' + i).join(' ') }).score;
+  const jumps = [];
+  for (let n = 55; n < 110; n++) {
+    const step = Math.abs(scoreAt(n + 1) - scoreAt(n));
+    if (step > 0.5) jumps.push(n + '→' + (n + 1) + ' (' + scoreAt(n) + '→' + scoreAt(n + 1) + ')');
+  }
+  ok(jumps.length === 0, 'no single word is worth more than half a mark anywhere along the length rule',
+    jumps.join(', '));
 
   head('A quotation is not believed until it is found');
 
@@ -249,8 +265,15 @@ try {
   ok(prompt.includes('at least 100 words'), 'And states the length floor');
   ok(/do not\s+also deduct for shortness/i.test(prompt),
     'While telling the marker not to deduct for it twice — the gate is enforced without them');
-  ok(!ai.userPrompt({ part: 'H', prompt: 'x', answer: 'y' }).includes('Score these criteria'),
-    'A part with no criteria is not asked for any');
+  /* Part H used to have no criteria and this asserted the prompt asked for
+     none — true, and the reason 10 of the 15 Speaking items were marked by an
+     unexplained headline number with nothing stored to show a candidate why.
+     It has two now, and the rule worth pinning is the general one: a part is
+     asked for criteria exactly when the rubric defines them. */
+  ok(ai.userPrompt({ part: 'H', prompt: 'x', answer: 'y' }).includes('Score these criteria'),
+    'Part H is asked for the criteria it now has');
+  ok(!ai.userPrompt({ part: 'Z', prompt: 'x', answer: 'y' }).includes('Score these criteria'),
+    'and a part with no criteria is still asked for none');
 
   /* ------------------------------------------------------------------ *
    * Through the real route
@@ -423,6 +446,171 @@ head('Nothing handed in is nothing, not four out of ten');
     JSON.stringify(short.caps.map(c => c.rule)));
   ok(R.combine('D', null, { answer: 'word '.repeat(120), fallbackScore: 8 }).score === 8,
     'A full-length answer keeps its mark');
+
+  /* ------------------------------------------------------------------ *
+   * The rubric and the marking engine describe the SAME paper
+   * ------------------------------------------------------------------ *
+   *
+   * Everything above checks that a rule works. This checks that the rules
+   * cover the paper — that no item falls between the two marking paths, and
+   * that what the model is asked for is what the combiner will accept.
+   *
+   * It is a structural check on the real seeded VPET paper rather than on a
+   * fixture, because the failure it guards against is drift: someone adds a
+   * part, or changes an item's type, or renames a criterion in one of the two
+   * places it appears, and nothing else in the suite would notice. Part D once
+   * carried a length rule in the prompt AND a contradictory one two lines
+   * later; parts G and H were AI-marked with no criteria at all, so for 16 of
+   * the 58 items the model's own headline number was the mark and nothing was
+   * stored to show a candidate why.
+   */
+  head('The rubric and the engine describe the same paper');
+
+  /* Its own import: the one above lives inside the stub-server try block. */
+  const ai = await import('../server/ai-marking.js').then(m => m.default || m);
+  const AI_TYPES = ['essay', 'speaking'];
+  const parts = await q.all(
+    `SELECT qs.part, s.skill, qs.type, COUNT(*) n
+       FROM sections s
+       JOIN section_items si ON si.section_id = s.id
+       JOIN questions qs ON qs.id = si.question_id
+      WHERE s.test_id = 'vpet-b1-01'
+      GROUP BY qs.part, s.skill, qs.type
+      ORDER BY qs.part`);
+
+  ok(parts.length === 10, 'the paper still has ten lettered parts', parts.length);
+  ok(parts.reduce((t, p) => t + p.n, 0) === 58, 'and 58 items',
+    parts.reduce((t, p) => t + p.n, 0));
+
+  /* One part, one marking path. A part split across both would mark half its
+     items by answer key and leave the other half to a rubric. */
+  const perPart = new Map();
+  for (const p of parts) perPart.set(p.part, (perPart.get(p.part) || 0) + 1);
+  ok([...perPart.values()].every(n => n === 1),
+    'each part takes exactly one marking path, not a mix',
+    [...perPart].filter(([, n]) => n > 1).map(([k]) => k).join(',') || 'ok');
+
+  for (const p of parts) {
+    if (!AI_TYPES.includes(p.type)) {
+      /* The answer-key path. markItem() returns null for anything it cannot
+         mark, and null means "not marked" — so an item of a machine-markable
+         type with no key would sit pending for ever with nobody to mark it. */
+      const keyless = await q.val(
+        `SELECT COUNT(*) FROM section_items si
+           JOIN sections s ON s.id = si.section_id
+           JOIN questions qs ON qs.id = si.question_id
+          WHERE s.test_id='vpet-b1-01' AND qs.part=?
+            AND (qs.answer IS NULL OR TRIM(qs.answer)='')`, p.part);
+      ok(keyless === 0, 'part ' + p.part + ' is answer-key marked and every item has a key',
+        keyless + ' of ' + p.n + ' without one');
+      continue;
+    }
+
+    /* The AI path: rubric.js, the prompt and combine() must name the same
+       criteria. userPrompt() builds its list from criteriaFor(), so this is
+       really checking that nothing has grown a second hard-coded copy. */
+    const keys = R.CRITERIA[p.part] ? R.CRITERIA[p.part].map(c => c.key) : [];
+    ok(keys.length > 0, 'part ' + p.part + ' is AI-marked and has criteria of its own',
+      keys.join(',') || 'none — the headline number would be the mark');
+
+    const prompt = ai.userPrompt({ part: p.part, level: 'B1', prompt: 'x', answer: 'y' });
+    const missing = keys.filter(k => !prompt.includes(k));
+    ok(missing.length === 0, 'and the marker is asked for every one of them',
+      'missing from the prompt: ' + missing.join(','));
+
+    /* combine() takes what the prompt asked for, and nothing it did not. */
+    const all = {};
+    keys.forEach(k => { all[k] = { score: 7 }; });
+    const got = R.combine(p.part, all, { answer: 'word '.repeat(150) });
+    ok(got && got.criteria.length === keys.length,
+      'and combine() uses all ' + keys.length + ' of them for part ' + p.part,
+      got ? got.criteria.length + ' used' : 'null');
+
+    const bogus = R.combine(p.part, { madeUp: { score: 10 } }, { answer: 'word '.repeat(150) });
+    ok(!bogus || bogus.criteria.length === 0,
+      'a criterion nobody defined is ignored rather than scored',
+      bogus ? JSON.stringify(bogus.criteria.map(c => c.key)) : 'null');
+  }
+
+  /* Every part the prompt builder knows about is a part the paper has, and the
+     other way round. A rubric for a part that no longer exists is dead text
+     that reads as current. */
+  const onPaper = parts.map(p => p.part).sort();
+  const withCriteria = Object.keys(R.CRITERIA).sort();
+  const orphans = withCriteria.filter(k => !onPaper.includes(k));
+  ok(orphans.length === 0, 'no criteria are defined for a part the paper does not have',
+    orphans.join(','));
+
+  /* The length rule has no cliff in it. This is the 40-word hole: the gate
+     fired below 60 words on a 100-word requirement and nothing at all applied
+     between 60 and 99, so a three-fifths answer could score full marks. */
+  const w = n => Array.from({ length: n }, (_, i) => 'w' + i).join(' ');
+  const nines = { task: { score: 9 }, register: { score: 9 }, organisation: { score: 9 }, accuracy: { score: 9 } };
+  const at = n => R.combine('D', nines, { answer: w(n) }).score;
+  ok(at(60) === 4, 'at three fifths of the required length the cap is still 4', at(60));
+  ok(at(70) > at(60) && at(90) > at(70),
+    'and it rises with the length instead of jumping', [at(60), at(70), at(80), at(90)].join(' → '));
+  ok(at(80) < 9, 'a four-fifths answer cannot score as if the task were finished', at(80));
+  ok(at(120) === 9, 'a full-length answer is not capped at all', at(120));
+
+  /* And the arithmetic that turns a rubric score into a mark on the paper.
+     combine() works out of ten; attempt_answers stores a fraction of one. */
+  ok(R.combine('B', { meaning: { score: 10 }, accuracy: { score: 10 }, organisation: { score: 10 } },
+    { answer: w(80) }).score === 10, 'ten out of ten on every criterion is ten');
+  ok(R.combine('B', { meaning: { score: 0 }, accuracy: { score: 0 }, organisation: { score: 0 } },
+    { answer: w(80) }).score === 0, 'and zero on every criterion is zero, not pending');
+
+  /* ------------------------------------------------------------------ *
+   * A band is a claim about a whole sitting
+   * ------------------------------------------------------------------ *
+   *
+   * The mean of what a paper contains is arithmetic and is true of that paper.
+   * A CEFR band is not: it is a statement about a complete VPET sitting, and it
+   * was being read off whatever skills the paper happened to hold. A
+   * reading-only paper scoring 10 came back `Bậc 5 / C1` — a full certificate
+   * band off one section — while the comment beside the completeness check
+   * promised "all four skills" and nothing checked for them.
+   */
+  head('A band needs the whole paper');
+
+  const M = await import('../server/marking.js').then(m => m.default || m);
+  const { nowISO } = await import('../server/db.js').then(m => m.default || m);
+  const uid = await q.val('SELECT id FROM users LIMIT 1');
+
+  async function bandFor(skills) {
+    const now = nowISO();
+    const r = await q.run(
+      'INSERT INTO attempts (user_id,test_id,status,started_at,submitted_at,updated_at) VALUES (?,?,?,?,?,?)',
+      uid, 'vpet-b1-01', 'submitted', now, now, now);
+    const id = r.lastInsertRowid;
+    for (const s of skills) {
+      await q.run('INSERT INTO attempt_scores (attempt_id,skill,raw_earned,raw_max,scaled,method,pending,at)'
+        + ' VALUES (?,?,8,10,8,?,0,?)', id, s, 'linear', now);
+    }
+    await q.run('INSERT INTO attempt_scores (attempt_id,skill,raw_earned,raw_max,scaled,method,pending,at)'
+      + " VALUES (?,'overall',0,0,8,?,0,?)", id, 'mean_round_half', now);
+    const res = await M.resultOf(id, { detailed: true });
+    await q.run('DELETE FROM attempts WHERE id=?', id);
+    return res;
+  }
+
+  const one = await bandFor(['reading']);
+  ok(one.band === null, 'a reading-only paper scoring 8.0 gets no certificate band',
+    JSON.stringify(one.band));
+  ok(one.overall === 8, 'but it keeps its honest mean — the arithmetic is still true of that paper',
+    String(one.overall));
+  const three = await bandFor(['reading', 'writing', 'speaking']);
+  ok(three.band === null, 'nor does a paper missing one of the four', JSON.stringify(three.band));
+  const four = await bandFor(['listening', 'reading', 'writing', 'speaking']);
+  ok(four.band && four.band.cefr === 'B2', 'a complete sitting at 8.0 is Bậc 4 / B2',
+    JSON.stringify(four.band));
+
+  /* And the paper real candidates sit does have all four, so this rule never
+     silently withholds a band somebody earned. */
+  const onPaperSkills = [...new Set(parts.map(p => p.skill))].sort();
+  ok(['listening', 'reading', 'speaking', 'writing'].every(s => onPaperSkills.includes(s)),
+    'the VPET paper carries all four skills, so a real sitting still gets its band',
+    onPaperSkills.join(','));
 }
 
 console.log(`\n${fail ? '\x1b[31m' : '\x1b[32m'}${pass} passed, ${fail} failed\x1b[0m`);

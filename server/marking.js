@@ -53,6 +53,16 @@ async function linkingWords() {
 const AUTO_TYPES = ['mcq', 'gap'];
 
 /**
+ * The four skills an overall band is the mean of.
+ *
+ * Named here rather than derived from whatever the paper contains, because
+ * "the four" is what the band table means. `sections.skill` is constrained to
+ * these in the schema, so a section can never introduce a fifth — but a paper
+ * can easily contain fewer, and one that does cannot yield a band.
+ */
+const EXAM_SKILLS = ['listening', 'reading', 'writing', 'speaking'];
+
+/**
  * VPET/VSTEP band table, per docs/SCORING.md §1.1.
  *
  * Defined once, here. It is a claim about a real exam, so it must never be
@@ -246,8 +256,14 @@ async function markAttempt(attemptId) {
         attemptId, skill, b.earned, b.max, value, 'linear', b.pending, at);
     }
 
-    /* An overall mark only means anything once all four skills are marked. Averaging
-    two of them and calling it the total is a wrong number in the costume of a result. */
+    /* An overall mark only means anything once everything markable is marked.
+    Averaging half a paper and calling it the total is a wrong number in the
+    costume of a result.
+
+    Note what this is NOT: it is not a check that the paper has all four skills.
+    The mean of what a paper contains is arithmetic and is always true of that
+    paper. What cannot be read off part of a paper is the BAND — that is a claim
+    about a whole VPET sitting, and it is withheld in toBand() instead. */
     const allSkills = [...bySkill.values()];
     const complete = allSkills.length > 0 && allSkills.every(b => !b.pending);
     await q.run(
@@ -292,7 +308,17 @@ async function resultOf(attemptId, detailed) {
     disclaimer: 'A reference mark for practice, not a real exam result.',
     overall: overall ? overall.scaled : null,
     pending: !overall || !!overall.pending,
-    band: overall ? toBand(overall.scaled) : null,
+    /* The band needs all four skills, which the overall mean does not.
+     *
+     * The mean of what a paper contains is arithmetic and is honest about that
+     * paper. A band is a claim about a whole VPET sitting, and it was being
+     * read off whatever the paper happened to hold: a reading-only paper
+     * scoring 10 came back `Bậc 5 / C1`, a full certificate band off one
+     * section. The comment beside the completeness check promised "all four
+     * skills" and nothing anywhere checked for them. */
+    band: overall && EXAM_SKILLS.every(s => skills.some(r => r.skill === s))
+      ? toBand(overall.scaled)
+      : null,
     /* How the speaking mark was arrived at, on every result screen rather than
        only the paid one.
      *
