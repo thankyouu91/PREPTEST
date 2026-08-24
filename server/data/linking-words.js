@@ -161,7 +161,7 @@ const ROWS = [
   ['compared with', 'compare', 'academic', 'prep', 'Theo sau là danh từ', 'so với', 'B2', 'Compared with last year, costs are down.', 'So với năm ngoái, chi phí đã giảm.', '"compared with" đối chiếu chi tiết, "compared to" thiên về ví von.'],
   ['in comparison', 'compare', 'academic', 'start', 'Dấu phẩy sau nó', 'khi so sánh', 'B2', 'In comparison, the new method is far faster.', 'Khi so sánh, phương pháp mới nhanh hơn nhiều.', ''],
   ['both … and', 'compare', 'neutral', 'mid', 'Hai vế phải cùng dạng ngữ pháp', 'cả … lẫn', 'A2', 'She is both fluent and accurate.', 'Cô ấy vừa trôi chảy vừa chính xác.', 'Song song sai dạng là lỗi phổ biến: "both fluent and she writes well" là sai.'],
-  ['not only … but also', 'compare', 'neutral', 'mid', 'Hai vế phải cùng dạng; đảo ngữ khi "not only" mở câu', 'không những … mà còn', 'B2', 'Not only did costs fall, but quality also improved.', 'Không những chi phí giảm mà chất lượng còn tăng.', 'Mở câu bằng "Not only" thì phải đảo ngữ: "Not only did…".'],
+  ['not only … but also', 'compare', 'neutral', 'mid', 'Hai vế phải cùng dạng; đảo ngữ khi "not only" mở câu', 'không những … mà còn', 'B2', 'Not only did costs fall, but also profits rose.', 'Không những chi phí giảm mà lợi nhuận còn tăng.', 'Mở câu bằng "Not only" thì phải đảo ngữ: "Not only did…".'],
 
   /* ------------------ Trình tự, thời gian ------------------- */
   ['first', 'sequence', 'neutral', 'start', 'Dấu phẩy sau nó', 'đầu tiên', 'A1', 'First, read the whole question.', 'Đầu tiên, đọc hết câu hỏi.', 'Dạng chuẩn là "first", không phải "firstly" trong văn Mỹ.'],

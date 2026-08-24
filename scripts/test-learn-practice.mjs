@@ -97,7 +97,11 @@ try {
     if (kind === 'link') {
       ok(String(it.prompt).includes('_____'),
         'A linking-word question is a gapped sentence, not the word itself', it.prompt);
-      ok(!new RegExp('\\b' + row.word + '\\b', 'i').test(it.prompt),
+      /* Only the FIRST half for a split linker: `both … and` is gapped in two
+         places, so the whole string is never in the prompt, but each half has
+         to be gone. */
+      const firstHalf = String(row.word).split(/\s*(?:…|\.\.\.)\s*/)[0];
+      ok(!new RegExp('\\b' + firstHalf.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b', 'i').test(it.prompt),
         'And the word it is asking for has really been taken out', it.prompt);
     }
   }
@@ -171,6 +175,39 @@ try {
 } catch (e) {
   fail++;
   console.log('\n✗ The suite threw: ' + (e && e.stack ? e.stack : e));
+}
+
+head('Every row can actually be made into a question');
+
+/* The whole table, not whichever ten a shuffle handed back.
+ *
+ * This is here because the random draw let a broken row through and then failed
+ * on CI rather than locally. Two of the 123 linking words are SPLIT — `both …
+ * and`, `not only … but also` — and a single-token replace cannot gap them, so
+ * the example sentence went out whole and the learner was shown "She is both
+ * fluent and accurate." with instructions to type the missing word. There is no
+ * missing word, and the marker wanted "both … and". About one round in seven
+ * carried one; this machine drew a clean round four times out of four.
+ *
+ * A check that depends on a shuffle reports the shuffle. This one reads every
+ * row, so a data row added next month either gaps or goes red the same day. */
+{
+  const rows = await q.all('SELECT id, word, ex_en FROM linking_words');
+  ok(rows.length > 100, 'the linking-word table really was read', rows.length + ' rows');
+
+  const ungappable = rows.filter(r => !L.gapExample(r.word, r.ex_en));
+  ok(ungappable.length === 0,
+    'every linking word can be taken out of its own example sentence',
+    ungappable.map(r => JSON.stringify(r.word) + ' in ' + JSON.stringify(r.ex_en)).join(' | '));
+
+  /* And a split one is gapped in BOTH places, which is the point of a
+     correlative pair — one blank would still be unanswerable. */
+  const split = rows.filter(r => /…|\.\.\./.test(r.word));
+  ok(split.length >= 2, 'there are split linking words to check', split.length);
+  const halfGapped = split.filter(r => (L.gapExample(r.word, r.ex_en).match(/_____/g) || []).length < 2);
+  ok(halfGapped.length === 0,
+    'a split linking word is gapped in both places, not just the first',
+    halfGapped.map(r => L.gapExample(r.word, r.ex_en)).join(' | '));
 }
 
 console.log(`\n${fail ? '\x1b[31m' : '\x1b[32m'}${pass} passed, ${fail} failed\x1b[0m`);

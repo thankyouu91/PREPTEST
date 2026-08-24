@@ -89,6 +89,44 @@ function accepts(row, field, given) {
 }
 
 /** `ROUND` rows to ask about, at or below the learner's level where possible. */
+/**
+ * The example sentence with the linking word taken out of it.
+ *
+ * Returns null when the word cannot be removed, and the caller must then drop
+ * the item rather than serve it. That is not defensive padding — it is the bug
+ * this function was written for. A single `\bword\b` replace cannot touch a
+ * SPLIT linker, and two of the 123 rows are split: `both … and`,
+ * `not only … but also`. The replace found nothing, the sentence went out
+ * whole, and the learner was shown
+ *
+ *     She is both fluent and accurate.
+ *
+ * and asked to type the missing linking word. There is no missing word. The
+ * marker meanwhile wanted "both … and", which nothing on the screen could have
+ * suggested. Roughly one round in seven contained one.
+ *
+ * So a split word is gapped in BOTH places — "She is _____ fluent _____
+ * accurate." — which is a better question than the single-gap ones, because
+ * the two halves are the whole point of the construction. And if any part is
+ * missing from the sentence, the item is refused rather than guessed at: an
+ * unanswerable question is worse than a shorter round.
+ */
+function gapExample(word, sentence) {
+  const text = String(sentence || '').trim();
+  if (!text) return null;
+  /* An ellipsis, typed as one character or as three dots. */
+  const parts = String(word || '').split(/\s*(?:…|\.\.\.)\s*/).map(w => w.trim()).filter(Boolean);
+  if (!parts.length) return null;
+
+  let out = text;
+  for (const part of parts) {
+    const re = new RegExp('\\b' + part.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b', 'i');
+    if (!re.test(out)) return null;          // this part is not in the sentence
+    out = out.replace(re, '_____');
+  }
+  return out;
+}
+
 async function draw(kind, level, size) {
   const spec = KINDS[kind];
   if (!spec) return [];
@@ -97,15 +135,18 @@ async function draw(kind, level, size) {
     `SELECT * FROM ${spec.table} ORDER BY RANDOM() LIMIT ?`, n * 3);
   /* Prefer the learner's level, then fill from anywhere rather than hand back a
      short round: a thin level should slow nobody down. */
-  const at = rows.filter(r => !level || r.level === level);
-  const out = at.concat(rows.filter(r => !at.includes(r))).slice(0, n);
+  /* Anything that cannot be turned into a question is dropped BEFORE the round
+     is cut to size, so a bad row costs the learner nothing — the round is still
+     ten items, drawn from the three times as many fetched above. */
+  const usable = kind === 'verb' ? rows : rows.filter(r => gapExample(r.word, r.ex_en));
+  const at = usable.filter(r => !level || r.level === level);
+  const out = at.concat(usable.filter(r => !at.includes(r))).slice(0, n);
   return out.map((r, i) => {
     const field = spec.fields[i % spec.fields.length];
     return {
       id: r.id, kind, field,
       /* Everything the question needs and nothing the answer needs. */
-      prompt: kind === 'verb' ? r.v1 : String(r.ex_en || '').replace(
-        new RegExp('\\b' + String(r.word || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b', 'i'), '_____'),
+      prompt: kind === 'verb' ? r.v1 : gapExample(r.word, r.ex_en),
       vi: r.vi || null,
       level: r.level || null,
       hint: kind === 'verb' ? field.toUpperCase() : (r.fn || null)
@@ -164,4 +205,5 @@ async function submit(userId, kind, roundId, answers) {
   return { right, asked: detail.length, recorded, detail };
 }
 
-module.exports = { draw, submit, accepts, norm, KINDS, ROUND, LEARN_WEIGHT };
+module.exports = {
+  gapExample, draw, submit, accepts, norm, KINDS, ROUND, LEARN_WEIGHT };
