@@ -162,7 +162,8 @@ Hướng dẫn trước khi thi hứa *"then a reviewer can override"*. Không c
 nào: `rubric_scores.marked_by` là chuỗi `'ai'` tại đúng một chỗ ghi duy nhất, và
 đường chấm lại duy nhất của quản trị viên chạy lại chính mô hình đó. Một chốt
 chặn con người không tồn tại còn tệ hơn không nói gì — đó là câu thí sinh sẽ dựa
-vào khi thấy điểm sai.
+vào khi thấy điểm sai. (Đã xác nhận: **giáo viên không cần chấm**, nên đây là
+sửa câu chữ cho đúng sự thật chứ không phải thiếu tính năng.)
 
 Và không chỗ nào nói bài viết cùng bản ghi âm rời khỏi nền tảng. Ghi chú "chấm
 từ bản gỡ băng" thì có thật, nhưng nằm sau `detailedReport` — thí sinh gói miễn
@@ -235,13 +236,52 @@ nhất là một dòng log, mười phút một lần.
 6. CloudFront/WAF ở biên — chặn lũ ẩn danh là việc của biên, không phải của
    tiến trình này.
 
-## Việc còn treo, tôi không tự quyết
+---
 
-**Không có đường ghi đè bằng con người.** Sau khi sửa mục 10, hướng dẫn nói đúng
-sự thật hiện tại — không ai đọc lại bài. Nhưng với một nền tảng cấp chứng chỉ
-luyện thi, có một đường để giáo viên sửa điểm mô hình chấm sai là việc đáng làm.
-Đó là một tính năng chứ không phải một bản vá, nên tôi dừng ở chỗ nói đúng sự
-thật và để anh/chị quyết.
+## Phụ lục — rubric khớp với hệ thống chấm
+
+Rà soát riêng sau khi có yêu cầu: **rubric chấm điểm phải khớp với hệ thống chấm
+để ra kết quả đúng.** Toàn bộ 10 phần, 58 câu, truy từ đề bài tới band tổng.
+
+| Phần | Kỹ năng | Câu | Đường chấm | Tiêu chí |
+|---|---|---:|---|---|
+| A | writing | 10 | đáp án | – |
+| B | writing | 3 | AI + rubric | meaning, accuracy, organisation |
+| C | reading | 6 | đáp án | – |
+| D | writing | 2 | AI + rubric | task, register, organisation, accuracy |
+| E | listening | 8 | đáp án | – |
+| F | listening | 8 | đáp án | – |
+| G | listening | 6 | AI + rubric | correct |
+| H | speaking | 10 | AI + rubric | content, structure |
+| I | speaking | 2 | AI + rubric | task, range, accuracy, register |
+| J | speaking | 3 | AI + rubric | events, sequence, point |
+
+Đúng như thiết kế anh/chị nói: **32 câu trắc nghiệm/điền từ chạy bằng đáp án,
+26 câu viết và nói do AI chấm.** Ba chỗ lệch đã sửa:
+
+1. **G và H trước đây không có tiêu chí nào** — 16/58 câu, trong đó 10 câu là
+   Speaking. `combine()` rơi thẳng xuống con số tổng của mô hình: không gì đối
+   chiếu, không ghi vào `rubric_scores`, và màn hình kết quả hiện điểm mà không
+   có phần giải thích nào bên dưới. Hai phần ba điểm Speaking không có căn cứ.
+2. **Luật độ dài hở 40 từ, và câu lệnh tự mâu thuẫn.** Cùng một prompt, cách nhau
+   hai dòng, vừa bảo "email dưới 100 từ là chưa đạt yêu cầu" vừa bảo "độ dài đã
+   được kiểm riêng, đừng trừ điểm vì ngắn". Đo thật: email 60 từ câu cú tốt được
+   **9/10** trên yêu cầu 100 từ. Giờ trần điểm tăng dần theo độ dài, không câu
+   nào đáng quá nửa điểm.
+3. **Band đọc được từ một phần đề.** Bình luận trong mã hứa "cả bốn kỹ năng",
+   mã lại kiểm "mọi kỹ năng CÓ TRONG đề". Đo thật: đề chỉ có Reading, 8.0 điểm →
+   **Bậc 4 / B2**. Giờ điểm trung bình vẫn giữ (đó là số học đúng với đề đó)
+   nhưng band thì cần đủ bốn kỹ năng.
+
+Bộ kiểm thử giờ kiểm **cấu trúc** trên chính đề VPET đang chạy, vì kiểu lỗi ở
+đây là trôi dần: mỗi phần đúng một đường chấm, mọi câu đáp án đều có khoá, mọi
+phần AI chấm đều có tiêu chí mà prompt hỏi và `combine()` nhận, không có tiêu chí
+thừa cho phần không tồn tại, và không có bậc thang nào trong luật độ dài.
+
+`RUBRIC_VERSION` lên `2026-08-vpet-2`. Điểm đã lưu mang theo phiên bản, nên báo
+cáo cũ vẫn nói được nó được chấm bằng luật nào.
+
+## Việc còn treo, tôi không tự quyết
 
 **Chưa có trang chính sách quyền riêng tư.** Liên kết trên landing vẫn là một
 `<span>` ghi "Privacy (being written)". Hướng dẫn trước khi thi giờ đã nói rõ
