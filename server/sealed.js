@@ -73,6 +73,16 @@ function open(sealed, what) {
 }
 
 /**
+ * Whether a stored value can still be opened, without handing back what is in
+ * it. For a screen that has to tell "a key is saved" apart from "a key is saved
+ * and it still works" — after TOKEN_ENCRYPTION_KEY changes those stop being the
+ * same thing, and only the first one is visible from the row itself.
+ */
+function opens(sealed) {
+  try { open(sealed); return true; } catch (e) { return false; }
+}
+
+/**
  * The last four characters, for a screen that has to show WHICH key is in use
  * without showing the key. Anything shorter than eight is reported as set and
  * nothing else - a four-character secret is short enough that four characters
@@ -83,4 +93,4 @@ function hint(secret) {
   return s.length >= 8 ? s.slice(-4) : '';
 }
 
-module.exports = { encryptionKey, canSeal, seal, open, hint };
+module.exports = { encryptionKey, canSeal, seal, open, opens, hint };

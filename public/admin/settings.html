@@ -186,6 +186,15 @@
           'add it to <code>/etc/vpet-prep.env</code> as <code>TOKEN_ENCRYPTION_KEY=&lt;value&gt;</code>, then ' +
           '<code class="text-[12px]">set -a; . /etc/vpet-prep.env; set +a &amp;&amp; pm2 restart preptest --update-env &amp;&amp; pm2 save</code>' +
           ' and reload this page. Full steps in <code>docs/VAN-HANH.md</code> §1.</span></div>'
+      /* A key that is stored but no longer opens is the worst of the three
+         states and used to look like the best one: green banner, nothing being
+         marked, one line in a log nobody is reading. It is called out on its
+         own, with the reason and the way back. */
+      : a.hasKey && !a.keyOpens
+        ? '<div class="banner banner-error show"><span>A key ending <b>' + AD.esc(a.keyHint) + '</b> is saved, ' +
+            'but this server can no longer open it — <code>TOKEN_ENCRYPTION_KEY</code> has changed since it ' +
+            'was saved. <b>Nothing is being marked.</b> Paste the key from the provider again to store it ' +
+            'under the current one.</span></div>'
       : a.hasKey
         ? '<div class="banner banner-success show"><span>A key ending <b>' + AD.esc(a.keyHint) + '</b> is in use' +
             (a.checkedAt ? ', last checked ' + AD.esc(new Date(a.checkedAt).toLocaleString()) : '') + '.</span></div>'

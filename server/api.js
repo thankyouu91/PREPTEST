@@ -1729,6 +1729,16 @@ router.put('/admin/ai', roles.requireCap('secrets.manage'), async (req, res) => 
     if (!(field in b)) continue;
     const raw = String(b[field] == null ? '' : b[field]).trim();
     if (raw && raw.length < 12) return bad(res, 'That does not look like an API key.');
+    /* A line break INSIDE the value, which trim() cannot reach. It matters
+       because of where the value goes next: straight into a header, where
+       Node refuses it — and the TypeError it refuses with quotes the whole
+       value back. scrub() masks `sk-...` up to the newline and publishes
+       everything after it, into ai.lastError, which is a plaintext settings
+       row that is read by the admin screen and copied into every backup. The
+       same check already guards the model name three fields up. */
+    if (/[\r\n]/.test(raw)) {
+      return bad(res, 'That key has a line break in it. Copy it again without the newline.');
+    }
 
     /* The one wrong value worth spending a scrypt on.
      *
@@ -1791,8 +1801,12 @@ router.post('/admin/ai/test', roles.requireCap('secrets.manage'), async (req, re
 });
 
 /** Mark one paper's outstanding writing and speaking now, and wait for it. */
-/* Owner-only as well: it spends against the credential, and an unbounded pass
-   is not something every admin role should be able to start. */
+/* Not owner-only: `marking.run` is held by all three levels, deliberately —
+   re-marking a paper is the everyday fix for a teacher looking at a wrong
+   score, and routing it through the owner would make that a ticket. The
+   comment here used to claim the opposite, which is the kind of thing that
+   gets believed instead of the code. It does spend against the owner's
+   credential, so what actually bounds it is server/ai-budget.js, not the role. */
 router.post('/admin/attempts/:id/mark', roles.requireCap('marking.run'), async (req, res) => {
   const id = int(req.params.id, 0);
   if (!await q.val('SELECT 1 FROM attempts WHERE id=?', id)) {

@@ -90,6 +90,15 @@ async function settings() {
     baseUrl: s[KEYS.baseUrl] || DEFAULTS.baseUrl,
     model: s[KEYS.model] || DEFAULTS.model,
     hasKey: !!s[KEYS.key],
+    /* Whether the stored key still OPENS, which is not the same question.
+     *
+     * The screen used to answer the first one and show green. Rotate
+     * TOKEN_ENCRYPTION_KEY — which a redeploy can do by appending a second line
+     * to the env file — and the row is still there, so the banner still said "a
+     * key ending QQAA is in use" while every sweep quietly returned
+     * `{skipped:'no-key'}` and nothing at all was being marked. The only sign
+     * was one line in the server log, ten minutes apart. */
+    keyOpens: !!s[KEYS.key] && sealed.opens(s[KEYS.key]),
     keyHint: s[KEYS.hint] || '',
     sttBaseUrl: s[KEYS.sttBaseUrl] || DEFAULTS.sttBaseUrl,
     sttModel: s[KEYS.sttModel] || DEFAULTS.sttModel,
@@ -194,6 +203,56 @@ function scrub(text) {
 
 const TIMEOUT_MS = 45000;
 
+/* How much room the model is given to answer in.
+ *
+ * This was 500, which is not enough and was never going to be. Parts D and I
+ * ask for four criteria, each with a score, a quotation and a comment of up to
+ * 25 words, plus a note of up to 60: a fully rule-obeying reply measures ~1600
+ * characters, about 445 tokens. That left 55 tokens of headroom before the
+ * model had written anything at all — and current models think before they
+ * answer, out of the same allowance. Truncation was not a risk on B/D/I/J, it
+ * was the expected outcome, on every item, for ever.
+ *
+ * Output is billed on what is actually produced, not on the ceiling, so raising
+ * this costs nothing on a reply that behaves. What it buys is that the answer
+ * finishes. */
+const MAX_TOKENS = { mark: 2000, test: 1200 };
+
+/** Seconds the provider asked us to wait, if it named a number we believe. */
+function retryAfter(res) {
+  const n = Number(res.headers.get('retry-after'));
+  return Number.isFinite(n) && n > 0 ? Math.min(Math.round(n), 3600) : null;
+}
+
+/* Which failures are worth trying again, and which will simply fail the same
+   way in five minutes' time.
+ *
+ * The distinction was missing entirely: every failure took one path, so a key
+ * the provider had revoked went back on the same backoff ladder as a thirty-
+ * second capacity blip. That is not just noise. On a spoken item the OpenAI
+ * transcription runs FIRST and succeeds, so each doomed pass bought 21 real
+ * transcriptions and then threw them away when Anthropic said 401 again. An
+ * invalid key was an unbounded bill.
+ *
+ * No status at all means a socket or DNS failure, which is worth another go. */
+function isRetryable(status) {
+  if (status === undefined || status === null) return true;
+  if (status === 408 || status === 409 || status === 429) return true;
+  return status >= 500;
+}
+
+/** Move the decision-carrying properties onto the scrubbed error standing in
+    for the original, since `new Error(...)` inherits none of them. */
+function carry(out, from) {
+  if (from && from.status !== undefined) out.status = from.status;
+  if (from && from.retryAfter) out.retryAfter = from.retryAfter;
+  if (from && from.truncated) out.truncated = true;
+  out.retryable = from && from.retryable !== undefined
+    ? from.retryable
+    : isRetryable(from && from.status);
+  return out;
+}
+
 /**
  * One Messages API call, returning the model's text.
  *
@@ -246,10 +305,29 @@ async function ask(cfg, key, system, user, maxTokens, ctx) {
     if (!res.ok) {
       const e = new Error('The model refused the request (HTTP ' + res.status + '): ' + scrub(text).slice(0, 200));
       e.status = res.status;
+      e.retryAfter = retryAfter(res);
       throw e;
     }
     let body;
     try { body = JSON.parse(text); } catch (e) { throw new Error('The model returned something that is not JSON'); }
+
+    /* A reply that ran out of room is refused here, where it arrives, rather
+       than interpreted downstream. Two reasons, and the second is the sharp one:
+       a half-written object cannot be marked from, and — because the model may
+       quote the candidate's answer back inside its own note — the last object
+       that happens to PARSE in a truncated reply can be one the candidate wrote.
+       `{"score": 10}` in an essay is not a mark, and this is the line that stops
+       it becoming one. stop_reason was being read by nothing at all. */
+    if (body.stop_reason === 'max_tokens') {
+      const e = new Error('The model ran out of room before it finished (max_tokens). Nothing is '
+        + 'marked from a half-written answer — raise the output ceiling if this keeps happening.');
+      e.truncated = true;
+      /* Not worth another go: the same prompt and the same ceiling produce the
+         same half-answer. This one needs a setting changed, not more attempts. */
+      e.retryable = false;
+      throw e;
+    }
+
     const out = (body.content || []).filter(c => c.type === 'text').map(c => c.text).join('');
     if (!out) throw new Error('The model returned an empty answer');
     await budget.settle(permit.id, 'ok');
@@ -260,11 +338,46 @@ async function ask(cfg, key, system, user, maxTokens, ctx) {
        had already answered cost the same as one that worked. The outcome is
        only so an administrator can tell a bad afternoon from a busy one. */
     await budget.settle(permit.id, e.name === 'AbortError' ? 'timeout' : 'failed');
-    if (e.name === 'AbortError') throw new Error('The model did not answer within ' + (TIMEOUT_MS / 1000) + ' seconds');
-    throw new Error(scrub(e.message));
+    if (e.name === 'AbortError') throw carry(new Error('The model did not answer within '
+      + (TIMEOUT_MS / 1000) + ' seconds'), { retryable: true });
+    /* scrub() has to build a NEW Error, and a new Error starts with none of the
+       properties the caller needs to decide what to do next. They were being
+       dropped here — every failure reached the sweeper looking identical, so a
+       revoked key was retried on the same ladder as a capacity blip, and each
+       pass re-ran and re-paid for the transcriptions first. */
+    throw carry(new Error(scrub(e.message)), e);
   } finally {
     clearTimeout(timer);
   }
+}
+
+/**
+ * Every top-level {...} run in a string, brace-matched and string-aware.
+ *
+ * String-aware is the part that matters: a candidate's answer arrives inside
+ * the model's `note` as an escaped JSON string, and braces they typed must stay
+ * string content rather than being read as structure. Brace-matched is the
+ * other part: `indexOf('}')` finds the end of the first NESTED object, so a
+ * reply carrying a `criteria` block could never be read at all.
+ */
+function objectsIn(raw) {
+  const out = [];
+  let depth = 0, start = -1, inStr = false, esc = false;
+  for (let i = 0; i < raw.length; i++) {
+    const ch = raw[i];
+    if (inStr) {
+      if (esc) esc = false;
+      else if (ch === '\\') esc = true;
+      else if (ch === '"') inStr = false;
+      continue;
+    }
+    if (ch === '"') { inStr = true; continue; }
+    if (ch === '{') { if (depth === 0) start = i; depth++; continue; }
+    if (ch === '}') {
+      if (depth > 0 && --depth === 0 && start >= 0) { out.push(raw.slice(start, i + 1)); start = -1; }
+    }
+  }
+  return out;
 }
 
 /**
@@ -273,32 +386,79 @@ async function ask(cfg, key, system, user, maxTokens, ctx) {
  * Returns null rather than throwing, and null means "not marked" everywhere it
  * is used. A model that answers with prose, with a score of 47, or with nothing
  * at all leaves the item exactly as it was.
+ *
+ * ## Why this refuses to guess between two objects
+ *
+ * The model is told to answer with one JSON object and nothing else, and when
+ * it does, the first parse below settles it. The rest of this function is for
+ * a model that adds a sentence — and it has been wrong twice, in opposite
+ * directions, both of which were live defects:
+ *
+ * The first version took the FIRST brace to the LAST, so a reply that quoted
+ * the candidate back could have a candidate-written {"score":10} scavenged out
+ * of the middle. The fix took the LAST well-formed object instead — and made it
+ * worse, because a model that refuses an injection and then explains what the
+ * candidate tried puts the candidate's object last. Measured, not theorised:
+ * the model marked an injected Part D answer 1/10 and the item stored 10/10.
+ *
+ * There is no safe way to pick between two verdicts in one reply, so this no
+ * longer tries. Exactly one candidate object is read; two or more is a reply
+ * that cannot be trusted, and an unmarked item an administrator can see beats a
+ * mark chosen by a coin toss. A candidate who types JSON into their essay can
+ * therefore make their own item unmarkable. That is the trade, and it is the
+ * right way round.
  */
+/**
+ * A score the model actually gave, or null.
+ *
+ * `Number()` on its own is not safe here, and the difference is a real mark on
+ * a real paper: `Number(null)`, `Number('')`, `Number(false)` and `Number([])`
+ * are all 0, and 0 is a legitimate score, so "I could not assess this" — which
+ * a model most naturally writes as `{"score": null}` — became a hard zero. The
+ * weakest-link rule in server/rubric.js then pulls the whole item down with it:
+ * one null field took a measured item from 8 to 0.5.
+ */
+function num(value) {
+  if (typeof value !== 'number' && typeof value !== 'string') return null;
+  if (typeof value === 'string' && !value.trim()) return null;
+  const n = Number(value);
+  return Number.isFinite(n) && n >= 0 && n <= 10 ? n : null;
+}
+
 function readVerdict(text) {
   const raw = String(text || '').trim();
   let v = null;
 
-  /* The model is told to answer with one JSON object and nothing else, so try
-     that first. The fallback used to be `match(/\{[\s\S]*\}/)`, which spans
-     from the FIRST brace to the LAST - so a reply that quoted the candidate's
-     answer back could have a candidate-written {"score":10} scavenged out of it.
-     The fallback now takes the last well-formed object in the reply, which is
-     where a model that adds a sentence of preamble puts its answer. */
   try { v = JSON.parse(raw); } catch (e) { v = null; }
 
+  /* A verdict has to carry a score AND a note — the checks below reject one
+     without the other anyway, and requiring both here stops a nested criterion
+     object, which has a score of its own, being mistaken for the answer.
+
+     This also cannot loop for ever, which the version before it could: it
+     stepped with `i = raw.lastIndexOf('{', i - 1)`, and a negative fromIndex
+     clamps to 0, so at i === 0 it returned 0 again. A reply that opened with `{`
+     and was cut off before any `}` — the exact shape max_tokens produces — spun
+     on the event loop with the fetch already returned and the abort timer long
+     since fired. One item wedged the worker, and the supervisor only replaces
+     workers that DIE, so it sat in the rotation answering nothing. */
   if (!v || typeof v !== 'object') {
-    for (let i = raw.lastIndexOf('{'); i >= 0; i = raw.lastIndexOf('{', i - 1)) {
-      const end = raw.indexOf('}', i);
-      if (end < 0) continue;
-      try {
-        const candidate = JSON.parse(raw.slice(i, end + 1));
-        if (candidate && typeof candidate === 'object' && 'score' in candidate) { v = candidate; break; }
-      } catch (e) { /* keep walking left */ }
+    const found = [];
+    for (const chunk of objectsIn(raw)) {
+      let parsed;
+      try { parsed = JSON.parse(chunk); } catch (e) { continue; }
+      if (parsed && typeof parsed === 'object' && 'score' in parsed && 'note' in parsed) found.push(parsed);
+    }
+    if (found.length === 1) v = found[0];
+    else if (found.length > 1) {
+      console.warn('[ai] the reply carried ' + found.length + ' scored objects, so none of them '
+        + 'is the answer. Left unmarked.');
+      return null;
     }
   }
   if (!v || typeof v !== 'object') return null;
-  const score = Number(v.score);
-  if (!Number.isFinite(score) || score < 0 || score > 10) return null;
+  const score = num(v.score);
+  if (score === null) return null;
   const note = String(v.note == null ? '' : v.note).trim();
   if (!note) return null;
 
@@ -311,8 +471,8 @@ function readVerdict(text) {
   const bag = v.criteria && typeof v.criteria === 'object' ? v.criteria : {};
   for (const [key, val] of Object.entries(bag)) {
     if (!val || typeof val !== 'object') continue;
-    const n = Number(val.score);
-    if (!Number.isFinite(n) || n < 0 || n > 10) continue;
+    const n = num(val.score);
+    if (n === null) continue;
     criteria[String(key).slice(0, 40)] = {
       score: Math.round(n * 2) / 2,
       evidence: String(val.evidence == null ? '' : val.evidence).trim().slice(0, 400) || null,
@@ -457,7 +617,7 @@ async function markOne(item) {
   const cfg = await settings();
   const key = await apiKey('model');
   if (!key) return null;
-  const text = await ask(cfg, key, SYSTEM, userPrompt(item), 500,
+  const text = await ask(cfg, key, SYSTEM, userPrompt(item), MAX_TOKENS.mark,
     { userId: item.userId, attemptId: item.attemptId });
   return readVerdict(text);
 }
@@ -517,7 +677,12 @@ async function transcribe(bytes, mime, ctx) {
       body: Buffer.concat([head, Buffer.from(bytes), tail])
     });
     const text = await res.text();
-    if (!res.ok) throw new Error('Transcription failed (HTTP ' + res.status + '): ' + scrub(text).slice(0, 200));
+    if (!res.ok) {
+      const e = new Error('Transcription failed (HTTP ' + res.status + '): ' + scrub(text).slice(0, 200));
+      e.status = res.status;
+      e.retryAfter = retryAfter(res);
+      throw e;
+    }
     await budget.settle(permit.id, 'ok');
     try {
       const body = JSON.parse(text);
@@ -525,8 +690,9 @@ async function transcribe(bytes, mime, ctx) {
     } catch (e) { return null; }
   } catch (e) {
     await budget.settle(permit.id, e.name === 'AbortError' ? 'timeout' : 'failed');
-    if (e.name === 'AbortError') throw new Error('The transcription service did not answer in time');
-    throw new Error(scrub(e.message));
+    if (e.name === 'AbortError') throw carry(new Error('The transcription service did not answer in time'),
+      { retryable: true });
+    throw carry(new Error(scrub(e.message)), e);
   } finally {
     clearTimeout(timer);
   }
@@ -546,7 +712,7 @@ async function testConnection() {
       part: 'D', level: 'B1',
       prompt: 'Write one sentence to a colleague saying you will be late.',
       answer: 'Hi Nam, I am sorry but my train is delayed and I will be about twenty minutes late.'
-    }), 300);
+    }), MAX_TOKENS.test);
     const v = readVerdict(text);
     if (!v) {
       await noteCheck(false, 'The model answered, but not with the JSON this expects.');
@@ -563,5 +729,5 @@ async function testConnection() {
 module.exports = {
   settings, setKey, setProvider, ready, canTranscribe, testConnection,
   markOne, transcribe, readVerdict, scrub, userPrompt, SYSTEM,
-  KEYS, DEFAULTS
+  isRetryable, KEYS, DEFAULTS, MAX_TOKENS
 };

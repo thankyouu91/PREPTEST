@@ -337,6 +337,27 @@ async function markRow(attemptId, row, tries, userId) {
         e.budget.en, nowISO(), rowId);
       throw e;
     }
+    /* A refusal that is going to be repeated is not worth repeating.
+     *
+     * Everything used to land here together: a revoked key, a request this
+     * version cannot make, and a thirty-second capacity blip were one case, so
+     * all three went back on the same backoff ladder. That is expensive rather
+     * than merely untidy. On a spoken item the transcription runs FIRST and
+     * succeeds, so every doomed pass bought 21 real transcriptions and threw
+     * them away when the model said 401 again — an invalid key billing OpenAI
+     * indefinitely. `retryable === false` means stop, and say what is wrong. */
+    if (e.retryable === false) {
+      const why = e.status === 401 || e.status === 403
+        ? 'the marking service would not accept the API key'
+        : e.truncated
+          ? 'the marker ran out of room before it finished'
+          : 'the marking service refused the request';
+      console.warn('[ai] stopping the pass: ' + why + ' — ' + ai.scrub(e.message));
+      await q.run('UPDATE attempt_answers SET mark_note=?, marked_at=? WHERE id=?',
+        'Not marked - ' + why + '. An administrator has to look at the settings.', nowISO(), rowId);
+      e.fatal = why;
+      throw e;
+    }
     console.warn('[ai] item ' + row.question_id + ' could not be marked: ' + ai.scrub(e.message));
     await q.run('UPDATE attempt_answers SET mark_note=?, marked_at=? WHERE id=?',
       'Not marked yet - the marker could not be reached. It will be tried again.', nowISO(), rowId);
@@ -591,6 +612,10 @@ async function run(attemptId, opts) {
          to learn nothing. Stop, leave the rest owed, and let the backlog bring
          the paper back when the rolling window has moved. */
       if (e.budget) { stopped = e.budget; break; }
+      /* Same reasoning as the ceiling, for the same reason: the next item meets
+         the identical refusal, and on a spoken one it pays for a transcription
+         to get there. See the classification in markRow. */
+      if (e.fatal) { stopped = { en: e.fatal, vi: e.fatal, fatal: true }; break; }
       console.warn('[ai] item ' + row.question_id + ' threw: ' + ai.scrub(e && e.message));
       r = 'failed';
     }
@@ -613,8 +638,13 @@ async function run(attemptId, opts) {
   catch (e) { console.warn('[ai] attempt ' + attemptId + ': backlog not recorded: ' + ai.scrub(e && e.message)); }
   console.warn(`[ai] attempt ${attemptId}: ${marked} marked, ${skipped} skipped, ${failed} failed`
     + (left ? `, ${left} still owed.` : '.')
-    + (stopped ? ` Stopped at the ${stopped.reason} spending ceiling (${stopped.count}/${stopped.cap}).` : ''));
-  return { marked, failed, skipped, left, stopped: stopped ? stopped.reason : null };
+    + (stopped && stopped.fatal ? ` Stopped: ${stopped.en}.` : '')
+    + (stopped && !stopped.fatal
+      ? ` Stopped at the ${stopped.reason} spending ceiling (${stopped.count}/${stopped.cap}).` : ''));
+  return {
+    marked, failed, skipped, left,
+    stopped: stopped ? (stopped.fatal ? 'config' : stopped.reason) : null
+  };
 }
 
 async function drain() {

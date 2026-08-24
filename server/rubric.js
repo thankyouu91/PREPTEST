@@ -241,7 +241,12 @@ function combine(part, criteria, opts) {
   for (const def of defs) {
     const got = criteria && criteria[def.key];
     if (!got) continue;
-    const n = Number(got.score);
+    /* Not `Number()`: null, '', false and [] all coerce to 0, and 0 is a real
+       score. `{"score": null}` is how a model says "I could not assess this",
+       and reading it as zero dragged the whole item down through the
+       weakest-link rule below — one absent field cost a measured 8 an item. */
+    const n = typeof got.score === 'number' || (typeof got.score === 'string' && got.score.trim())
+      ? Number(got.score) : NaN;
     if (!Number.isFinite(n) || n < 0 || n > 10) continue;
     used.push({
       key: def.key, en: def.en, vi: def.vi, score: half(n),

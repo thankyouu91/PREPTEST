@@ -542,6 +542,11 @@ async function submitMarked(userId, d, answers) {
   const events = [];
   const detail = [];
   let earned = 0, max = 0, pending = 0;
+  /* Set when a failure is about the CONFIGURATION rather than this item — a
+     spending ceiling, a key the provider will not accept. The remaining items
+     would meet the identical refusal, and a spoken one would pay for its
+     transcription first, so the loop stops and leaves them honestly pending. */
+  let stopped = null;
 
   for (const row of rows) {
     /* A spoken answer is a recording, uploaded before submitting; a written one
@@ -563,6 +568,14 @@ async function submitMarked(userId, d, answers) {
         drillId, row.id, text, audioKey,
         mark ? mark.earned : null, mark ? mark.max : null, note);
     };
+
+    /* Something already told us the next call will be refused the same way.
+       Record the rest honestly instead of buying the same answer per item. */
+    if (stopped) {
+      pending++; await save(stopped, null);
+      detail.push({ questionId: row.id, prompt: row.prompt, given: text, pending: true, note: stopped });
+      continue;
+    }
 
     /* Nothing handed in. Marked zero rather than left pending: a blank answer is
        a complete and correct thing to know about somebody. */
@@ -590,15 +603,24 @@ async function submitMarked(userId, d, answers) {
       }
       try {
         const file = await storage.get(audioKey);
-        heard = await ai.transcribe(file.body || file, file.mime);
+        /* `userId` is not decoration. server/ai-budget.js keys the per-account
+           ceiling on it, so a call made without one is counted against the
+           platform total and against nobody in particular: the 240-a-day limit
+           silently never applies, and the ledger row that is supposed to say
+           who spent the money says NULL. A practice drill is the cheapest way
+           to make these calls and was the one path that skipped the meter. */
+        heard = await ai.transcribe(file.body || file, file.mime, { userId });
       } catch (e) {
         console.warn('[drill] transcription failed: ' + ai.scrub(e && e.message));
+        if (e && e.budget) stopped = e.budget.en;
+        else if (e && e.retryable === false) stopped = 'Waiting to be marked: the transcription '
+          + 'service would not accept the key. An administrator has to look at the settings.';
         heard = null;
       }
       if (!heard) {
-        pending++; await save('Waiting to be marked: the recording could not be turned into words.', null);
-        detail.push({ questionId: row.id, prompt: row.prompt, given: '', pending: true,
-          note: 'Waiting to be marked: the recording could not be turned into words.' });
+        const note = stopped || 'Waiting to be marked: the recording could not be turned into words.';
+        pending++; await save(note, null);
+        detail.push({ questionId: row.id, prompt: row.prompt, given: '', pending: true, note });
         continue;
       }
     }
@@ -607,15 +629,19 @@ async function submitMarked(userId, d, answers) {
     try {
       verdict = await ai.markOne({
         part: row.part, level: row.level || d.level, prompt: row.prompt,
-        answer: text, heard, source: d.mode === 'spoken' ? 'transcript' : 'text'
+        answer: text, heard, source: d.mode === 'spoken' ? 'transcript' : 'text',
+        userId                                    // the meter: see the note above
       });
     } catch (e) {
       console.warn('[drill] item ' + row.id + ' could not be marked: ' + ai.scrub(e && e.message));
+      if (e && e.budget) stopped = e.budget.en;
+      else if (e && e.retryable === false) stopped = 'Waiting to be marked: the marking service '
+        + 'refused the request. An administrator has to look at the settings.';
     }
     if (!verdict) {
-      pending++; await save('Waiting to be marked: the marker could not be reached.', null);
-      detail.push({ questionId: row.id, prompt: row.prompt, given: heard || text, pending: true,
-        note: 'Waiting to be marked: the marker could not be reached.' });
+      const note = stopped || 'Waiting to be marked: the marker could not be reached.';
+      pending++; await save(note, null);
+      detail.push({ questionId: row.id, prompt: row.prompt, given: heard || text, pending: true, note });
       continue;
     }
 
