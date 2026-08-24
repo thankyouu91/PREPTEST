@@ -157,7 +157,7 @@ một cái form sẽ từ chối — và nay nó in luôn hai dòng lệnh cần
 | Ô | Giá trị |
 |---|---|
 | Model endpoint | `https://api.anthropic.com` |
-| Model | `claude-sonnet-5` |
+| Model | `claude-haiku-4-5` |
 | API key | khoá Anthropic, dạng `sk-ant-…` |
 
 > **Cảnh báo về trình quản lý mật khẩu.** Hai ô khoá là `type="password"`, nên
@@ -169,8 +169,21 @@ một cái form sẽ từ chối — và nay nó in luôn hai dòng lệnh cần
 > là cái chặn đã làm việc — xoá ô đi và dán khoá thật.
 
 - **Base URL** — mặc định `https://api.anthropic.com`
-- **Model** — mặc định `claude-sonnet-5`
+- **Model** — mặc định `claude-haiku-4-5`
 - **API key** — dán vào ô `password`, bấm Lưu
+
+> **Vì sao mặc định là Haiku chứ không phải Sonnet.** $1 vào / $5 ra mỗi triệu
+> token, so với $3 / $15 của Sonnet 5 — rẻ gấp ba cho đúng 26 lần gọi mà một bài
+> cần. Việc chấm ở đây là *trích xuất có cấu trúc* theo rubric có sẵn, không phải
+> suy luận mở: đọc định nghĩa tiêu chí, cho điểm 0–10, chép một cụm từ trong bài
+> của thí sinh, viết 25 chữ. Và những chỗ một model rẻ hay sai thì hệ thống này
+> vốn đã không tin sẵn — `readVerdict()` bỏ câu trả lời không đọc được rõ ràng,
+> `verifyEvidence()` bỏ trích dẫn thí sinh không hề viết, `combine()` áp trần dù
+> model nói gì. Nên một model yếu hơn sẽ trượt về phía **"chưa chấm"** (quản trị
+> viên nhìn thấy) chứ không phải **"chấm sai"** (không ai nhìn thấy).
+>
+> Thứ đó **không** trả lời được là *độ chuẩn của thang điểm*. Xem mục "So sánh
+> hai model" bên dưới trước khi mở cho cả lớp.
 
 Khoá đi thẳng vào `sealed.seal()`. Endpoint đọc cài đặt **không đọc được** dòng
 chứa nó; cái nó trả về là `hasKey: true` và một `hint` mấy ký tự cuối. Mọi thông
@@ -191,8 +204,18 @@ Mở **Speaking: transcription** rồi điền (khoá OpenAI):
 | Ô | Giá trị |
 |---|---|
 | Transcription endpoint | `https://api.openai.com` |
-| Transcription model | `whisper-1` |
+| Transcription model | `gpt-transcribe` |
 | Transcription API key | khoá OpenAI, dạng `sk-…` |
+
+> **Vì sao `gpt-transcribe` chứ không phải `whisper-1`.** $0.0045/phút so với
+> $0.006 — rẻ hơn 25%, chính xác hơn, và là model OpenAI khuyến nghị cho gỡ băng
+> thông thường; `whisper-1` nằm trong nhóm cũ đang bị cắt dần.
+>
+> Có model rẻ hơn nữa là `gpt-4o-mini-transcribe` ($0.003/phút) và **cố ý không
+> chọn**. Một bài nhiều nhất là 8 phút tiếng nói, nên cả khoản tiết kiệm chỉ
+> khoảng **một xu một bài** — trong khi phần H là "nhắc lại đúng câu vừa nghe",
+> tức là *bản gỡ băng chính là câu trả lời*. Trả thêm một xu để không trừ điểm
+> thí sinh vì lỗi của máy gỡ băng là đổi đúng chiều.
 
 Ô endpoint để trống chính là tín hiệu "chưa cấu hình gỡ băng" — nên phải điền
 `https://api.openai.com`, không bỏ trống rồi chỉ dán khoá.
@@ -201,6 +224,63 @@ Mở **Speaking: transcription** rồi điền (khoá OpenAI):
 > viên đọc: cái được chấm là **bản gỡ băng**. Nó đo từ vựng và ngữ pháp. Nó
 > **không** đo phát âm, độ trôi chảy hay ngữ điệu. Một điểm phát âm suy ra từ
 > bản gỡ băng là một con số không có gì đứng sau.
+
+### Một bài tốn bao nhiêu
+
+Một bài VPET đầy đủ = **26 lần gọi model + 21 lần gỡ băng**, tối đa khoảng 8
+phút tiếng nói. Ước tính theo prompt thật của nền tảng (~1.400 token vào,
+~350 token ra mỗi câu):
+
+| Cấu hình | Chấm | Gỡ băng | **Một bài** |
+|---|---:|---:|---:|
+| `claude-haiku-4-5` + `gpt-transcribe` *(mặc định)* | ~$0,08 | ~$0,036 | **~$0,12** |
+| `claude-haiku-4-5` + `gpt-4o-mini-transcribe` | ~$0,08 | ~$0,024 | ~$0,10 |
+| `claude-sonnet-5` + `whisper-1` *(mặc định cũ)* | ~$0,25 | ~$0,048 | ~$0,29 |
+
+Giá tra ngày 2026-08-24: Haiku 4.5 $1/$5, Sonnet 5 $3/$15 mỗi triệu token;
+Whisper $0,006/phút, `gpt-transcribe` $0,0045, `gpt-4o-mini-transcribe` $0,003.
+**Giá có thể đổi — tra lại trước khi lấy con số này đi báo cáo.**
+
+Còn một mức giảm nữa chưa làm: **Batch API giảm 50%**. Việc chấm ở đây vốn
+không cần trả lời ngay — bộ quét chạy 10 phút một lần và bài nằm trong hàng đợi
+sẵn — nên nó hợp gần như hoàn hảo. Đây là thay đổi mã thật (tạo batch, hỏi
+trạng thái, lấy kết quả), chưa làm, ghi lại vì đó là đòn bẩy lớn nhất còn lại:
+Haiku + Batch ≈ **$0,04/bài** cho phần chấm.
+
+**Prompt caching thì không dùng được.** Phần prompt cố định chỉ khoảng 480
+token, dưới mức tối thiểu ~1.024 token để cache — có nhồi thêm cho đủ thì cũng
+là thêm token để tiết kiệm token.
+
+### So sánh hai model, trước khi mở cho cả lớp
+
+Đừng tin lời tôi, cũng đừng tin model card. Chấm cùng một bài bằng hai model rồi
+đọc chênh lệch:
+
+```
+node scripts/model-compare.mjs --attempt=<id>          # chạy thử, chỉ ước tính
+node scripts/model-compare.mjs --attempt=<id> --yes    # làm thật
+node scripts/model-compare.mjs --attempt=<id> --repeat=3 --yes   # model tự so với chính nó
+```
+
+Lệnh này **không đụng vào bài** — điểm được đọc, so, rồi bỏ đi; `attempt_answers`,
+`rubric_scores`, `attempt_scores` không bị ghi. Nhưng nó **tiêu tiền thật** (hai
+model × 26 câu = 52 lần gọi một bài), nên nó in số ra rồi dừng cho tới khi có
+`--yes`.
+
+Ba cột đáng nhìn:
+
+- **NOT MARKED** — model không tạo được câu trả lời đọc được. Model nào cao ở
+  đây thì không rẻ ở bất kỳ giá nào: những câu đó nằm lại `pending` rồi quay
+  vòng theo thang backoff, mỗi vòng lại trả tiền.
+- **spread of the gap** — chứ không phải *mean gap*. Model rẻ chấm thấp đều 0,3
+  điểm thì không sao, đó là hằng số. Chênh lệch **tản rộng** mới là vấn đề: nghĩa
+  là hai model bất đồng về *bài nào tốt hơn bài nào*, không phải về vị trí thang.
+- **EVIDENCE DROPPED** — `rubric.js` vứt trích dẫn không có thật trong bài thí
+  sinh. Số này cao nghĩa là model đang bịa dẫn chứng: điểm có thể vẫn đúng, nhưng
+  phần nhận xét người học đọc thì không có gì đứng sau.
+
+`--repeat=3` trả lời câu khác: model bất đồng với **chính nó** bao nhiêu. Nếu
+own-spread lớn ngang chênh lệch giữa hai model thì phép so ở trên đang đo nhiễu.
 
 ### Làm sao biết là xong
 

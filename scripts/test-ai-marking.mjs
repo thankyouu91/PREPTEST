@@ -20,6 +20,10 @@ import { spawn } from 'node:child_process';
 import { readFile } from 'node:fs/promises';
 import { DEMO_PASSWORD, ADMIN_PASSWORD } from './_demo.mjs';
 
+/* Top level, not inside the try: the tidy-up in `finally` restores the default
+   model, and a binding declared inside the try does not exist there. */
+const AI = await import('../server/ai-marking.js').then(m => m.default || m);
+
 const BASE = process.env.BASE || 'http://127.0.0.1:3000';
 let pass = 0, fail = 0;
 const ok = (c, name, detail) => {
@@ -383,6 +387,34 @@ try {
   ok(!ai.isRetryable(400) && !ai.isRetryable(404),
     'a request this version cannot make is not worth another go');
   ok(ai.isRetryable(undefined), 'a socket or DNS failure has no status and is worth another go');
+
+  /* ---------------------------------------------------------------- *
+   * The request shape the cheap default can actually accept
+   * ---------------------------------------------------------------- *
+   *
+   * The default marker is Claude Haiku 4.5, chosen because marking against a
+   * stated rubric is structured extraction rather than open-ended reasoning and
+   * Haiku is a third of Sonnet's price. It is also an older-generation model,
+   * and two parameters that are ordinary on the current generation are a 400 on
+   * it: `output_config.effort`, and the adaptive `thinking` shape. ask() sends
+   * neither today — this fails the moment somebody adds one, which would break
+   * every marking call on a default install rather than only on Haiku.
+   */
+  head('The request stays inside what the default model accepts');
+
+  const sent = JSON.parse(seen.filter(s => !/audio/.test(s.url)).pop().body);
+  ok(Object.keys(sent).sort().join(',') === 'max_tokens,messages,model,system',
+    'the marking request carries exactly model, max_tokens, system and messages',
+    Object.keys(sent).sort().join(','));
+  ok(!('output_config' in sent), 'no output_config.effort — Haiku 4.5 rejects it');
+  ok(!('thinking' in sent), 'no thinking block — the adaptive shape is a 400 on Haiku 4.5');
+  ok(!('temperature' in sent) && !('top_p' in sent) && !('top_k' in sent),
+    'and no sampling parameters, which the current generation rejects instead');
+  ok(ai.DEFAULTS.model === 'claude-haiku-4-5',
+    'the default marker is the cheap one', ai.DEFAULTS.model);
+  ok(ai.DEFAULTS.sttModel === 'gpt-transcribe',
+    'and the default transcriber is cheaper than whisper-1 without being the cheapest',
+    ai.DEFAULTS.sttModel);
 
   mode = 'badKey';
   r = await admin.req('POST', '/api/admin/attempts/' + 1 + '/mark');
@@ -784,7 +816,11 @@ try {
 } finally {
   /* Leave no key behind: the next run of any other suite would otherwise start
      marking against a stub that is no longer listening. */
-  try { await admin.req('PUT', '/api/admin/ai', { apiKey: '', sttApiKey: '', baseUrl: 'https://api.anthropic.com', model: 'claude-sonnet-5' }); } catch (e) {}
+  try {
+    await admin.req('PUT', '/api/admin/ai', {
+      apiKey: '', sttApiKey: '', baseUrl: 'https://api.anthropic.com', model: AI.DEFAULTS.model
+    });
+  } catch (e) { /* tidy-up */ }
   stub.close();
 }
 

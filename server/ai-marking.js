@@ -73,11 +73,52 @@ const KEYS = {
   lastError: 'ai.lastError'
 };
 
+/**
+ * What a fresh install points at, chosen for cost as much as for quality.
+ *
+ * ## The marker: Claude Haiku 4.5
+ *
+ * $1 in / $5 out per million tokens, against Sonnet 5's $3 / $15 — three times
+ * cheaper for the same 26 calls a paper needs. Marking one VPET paper costs
+ * roughly $0.08 on Haiku and $0.25 on Sonnet.
+ *
+ * The task is not what the price difference is usually about. This is
+ * structured extraction against a stated rubric: read a criterion definition,
+ * score it 0-10, copy a phrase out of the candidate's own words, write 25
+ * words about it. It is not open-ended reasoning, and the parts of it a
+ * cheaper model gets wrong are the parts this codebase already refuses to
+ * believe — readVerdict() drops a reply it cannot read unambiguously,
+ * verifyEvidence() drops a quotation the candidate did not write, and
+ * rubric.combine() applies the caps whatever the model said. A weaker marker
+ * therefore degrades towards "not marked", which an administrator can see,
+ * rather than towards "marked wrongly", which nobody can.
+ *
+ * What that does NOT settle is calibration — whether Haiku spreads its scores
+ * the way Sonnet does, or clusters everything at 7. That cannot be argued from
+ * a model card; it needs real answers. `scripts/model-compare.mjs` marks the
+ * same work with both and prints the difference.
+ *
+ * Note for anyone changing this: Haiku 4.5 does NOT accept `output_config.effort`
+ * and uses the older `budget_tokens` shape for thinking. ask() sends neither, so
+ * the request shape here is valid on every model in the table. Adding either
+ * would break this default.
+ *
+ * ## Transcription: gpt-transcribe
+ *
+ * $0.0045 a minute against whisper-1's $0.006 — 25% cheaper, and OpenAI's own
+ * recommended general transcription model rather than the legacy one.
+ *
+ * `gpt-4o-mini-transcribe` is cheaper still at $0.003, and is deliberately not
+ * the default. A paper is at most eight minutes of audio, so the whole saving
+ * is about a cent a paper — and Part H is "say this sentence back exactly",
+ * where the transcript IS the answer. Paying a cent to not mark somebody down
+ * for the transcriber's mistake is the right way round.
+ */
 const DEFAULTS = {
   baseUrl: 'https://api.anthropic.com',
-  model: 'claude-sonnet-5',
+  model: 'claude-haiku-4-5',
   sttBaseUrl: '',
-  sttModel: 'whisper-1'
+  sttModel: 'gpt-transcribe'
 };
 
 /** Everything about the marker except the secrets themselves. */
@@ -623,7 +664,13 @@ async function markOne(item) {
   const cfg = await settings();
   const key = await apiKey('model');
   if (!key) return null;
-  const text = await ask(cfg, key, SYSTEM, userPrompt(item), MAX_TOKENS.mark,
+  /* `item.model` overrides the configured marker for this one call, and nothing
+     in the platform sets it — scripts/model-compare.mjs does, so the same
+     answers can be marked by two models and the difference read off. Comparing
+     by editing the setting instead would mean the two runs were not comparable:
+     the papers move underneath you between edits. */
+  const use = item.model ? { ...cfg, model: item.model } : cfg;
+  const text = await ask(use, key, SYSTEM, userPrompt(item), MAX_TOKENS.mark,
     { userId: item.userId, attemptId: item.attemptId });
   return readVerdict(text);
 }
