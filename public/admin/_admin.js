@@ -166,8 +166,19 @@ const AD = {
     { key: 'accounts', label: 'Account Management', icon: 'users', href: '/admin/hoc-vien/', cap: 'users.read', activeFor: ['users'] },
     { key: 'codes', label: 'Codes', icon: 'ticket', href: '/admin/code/', cap: 'codes.read' },
     /* No capability: every level manages its own password and second factor
-       here, and the screen shows each of them only the tabs they can use. */
-    { key: 'settings', label: 'Administration', icon: 'settings', href: '/admin/quan-tri/' }
+       here, and the screen shows each of them only the tabs they can use.
+
+       `inProfile` keeps it OUT of the sidebar and inside the profile panel
+       instead — the sidebar is the four places work happens, and this is where
+       you go to change something about yourself or the platform.
+
+       It stays in this list rather than moving into the panel's own markup
+       because the panel does not exist below 1024px: the whole <aside> is
+       `hidden lg:flex`, and the mobile chip rail is built from THIS array.
+       Deleting the entry would have removed the only way a phone can reach
+       Administration at all — including an administrator's own password and
+       second factor. So: hidden from the sidebar, kept in the rail. */
+    { key: 'settings', label: 'Administration', icon: 'settings', href: '/admin/quan-tri/', inProfile: true }
   ],
 
   /** Can the signed-in administrator do this? Set by mount(). */
@@ -215,9 +226,13 @@ const AD = {
       : '';
 
     const initials = (admin.name || 'QT').trim().split(/\s+/).map(w => w[0]).slice(-2).join('').toUpperCase();
-    const nav = this.NAV.filter(n => this.can(n.cap)).map(n =>
+    const nav = this.NAV.filter(n => this.can(n.cap) && !n.inProfile).map(n =>
       '<a href="' + n.href + '" class="nav-item" ' + (n.key === navOwner ? 'aria-current="page"' : '') + '>' +
       this.icon(n.icon, 'w-5 h-5 shrink-0') + '<span>' + n.label + '</span></a>').join('');
+    /* The entries that live in the profile panel instead of the sidebar. */
+    const profileLinks = this.NAV.filter(n => this.can(n.cap) && n.inProfile).map(n =>
+      '<a href="' + n.href + '" class="btn btn-ghost btn-sm justify-start">' +
+      this.icon(n.icon, 'w-4 h-4') + n.label + '</a>').join('');
 
     app.insertAdjacentHTML('afterbegin',
       '<aside class="hidden lg:flex flex-col fixed inset-y-0 left-0 w-[264px] z-40 border-r border-line bg-card px-5 py-6" aria-label="Admin navigation">' +
@@ -253,12 +268,15 @@ const AD = {
                 '<button type="button" class="btn btn-primary btn-sm shrink-0" data-profile-save>Save</button>' +
               '</div>' +
               '<div class="grid gap-1 mt-3">' +
-                '<button type="button" class="btn btn-ghost btn-sm justify-start" data-profile-pw>' + this.icon('lock', 'w-4 h-4') + 'Change password</button>' +
-                /* No "Administration" link here. It is already the fifth item
-                   in the sidebar, four centimetres above this panel and always
-                   visible, so the copy inside the profile popover was a second
-                   door onto the same room — and the two sat close enough that
-                   the panel looked like it had a setting of its own. */
+                /* Administration sits here, where "Change password" used to be,
+                   and it replaces rather than joins it. The Administration
+                   screen's own "Admin account" tab already holds the password
+                   form AND the second factor, so keeping both would put two
+                   doors onto the same room three centimetres apart — which is
+                   the thing that made this panel look wrong in the first
+                   place. One click further for a password; one obvious place
+                   for everything about your account. */
+                profileLinks +
                 '<button type="button" data-logout class="btn btn-ghost btn-sm justify-start text-danger">' + this.icon('logout', 'w-4 h-4') + 'Sign out</button>' +
               '</div>' +
             '</div>' +
@@ -337,7 +355,10 @@ const AD = {
           this.toast('Profile saved');
         } catch (e) { this.toast(e.message, 'error'); }
       });
-      this.qs('[data-profile-pw]', pWrap).addEventListener('click', () => { close(); this.changePassword(); });
+      /* No [data-profile-pw] listener any more: the button it bound to has been
+         replaced by the Administration link, and `qs()` returning null here
+         would throw during mount and take the whole chrome down with it —
+         sidebar, header and all — on every admin page. */
     }
 
     /* "View as a student" opens the real student site - dashboard and exam runner,
@@ -356,38 +377,6 @@ const AD = {
     const dark = document.documentElement.classList.contains('dark');
     this.qsa('[data-dark-icon]').forEach(el => { el.innerHTML = this.icon(dark ? 'sun' : 'moon', 'w-5 h-5'); });
     this.qsa('[data-dark-label]').forEach(el => { el.textContent = dark ? 'Light mode' : 'Dark mode'; });
-  },
-
-  /* Change the signed-in administrator's own password. On success the server drops
-     every session for the account, so the only honest next step is to sign in again. */
-  changePassword() {
-    const m = this.modal(
-      '<h3 class="text-lg font-extrabold tracking-tight">Change your password</h3>' +
-      '<div class="grid gap-4 mt-5">' +
-        '<div><label class="label" for="cp-cur">Current password</label>' +
-          '<input class="input" id="cp-cur" type="password" autocomplete="current-password"></div>' +
-        '<div><label class="label" for="cp-new">New password</label>' +
-          '<input class="input" id="cp-new" type="password" autocomplete="new-password">' +
-          '<p class="help mt-1.5">At least 10 characters, with both letters and digits.</p></div>' +
-        '<div class="banner banner-error" id="cp-err"><span id="cp-err-text"></span></div>' +
-        '<div class="flex gap-2.5"><button type="button" id="cp-go" class="btn btn-primary btn-md flex-1">Update password</button>' +
-          '<button type="button" data-close class="btn btn-ghost btn-md">Cancel</button></div>' +
-      '</div>');
-    const err = m.el.querySelector('#cp-err');
-    m.el.querySelector('#cp-go').addEventListener('click', async () => {
-      err.classList.remove('show');
-      const current = m.el.querySelector('#cp-cur').value;
-      const next = m.el.querySelector('#cp-new').value;
-      try {
-        await this.post('/admin/password', { current, next });
-        m.close();
-        this.toast('Password changed - please sign in again');
-        setTimeout(() => { location.href = '/admin/dang-nhap/'; }, 1000);
-      } catch (e) {
-        m.el.querySelector('#cp-err-text').textContent = e.message;
-        err.classList.add('show');
-      }
-    });
   },
 
   /* ---------- Toast ---------- */
