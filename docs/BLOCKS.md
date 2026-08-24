@@ -644,5 +644,73 @@ Lệnh này trả lời người cầm máy chủ, không trả lời người c
 nó giữ đúng bất biến kia nên không tự tạo ra được cái trạng thái nó sinh ra để
 sửa.
 
+**CI, 2026-08-24 — vì sao Deploy đỏ liên tục.**
+
+Chủ đầu tư chỉ vào hộp thông báo GitHub: mười hai lần "Deploy workflow run
+failed" trong ba ngày. Đã đọc log từng lần.
+
+**Không có gì hỏng cả.** Mỗi lần đỏ là **một lỗi test khác nhau, thật, tại đúng
+commit đó**:
+
+| Lần | Commit | Chỗ đỏ |
+|---|---|---|
+| #72 | `47b79e4b` | `test-catalog`: thư viện hiện 0 đề đã phát hành |
+| #84 | `07532137` | audit trang chủ: "The bars are about ability now" |
+| #89 | `9a3eba5a` | `test-plan`: Part H không có gì phía sau |
+| #99 | `29a20f8` | ảnh chụp `admin-settings`: `undefined.map` |
+
+Còn đường ống thì khỏe: #100 xanh trong 6 phút 35, job deploy đẩy `b0302e0` lên
+máy qua OIDC + SSM hết 35 giây. #101 cũng xanh. Chuỗi đỏ là **lịch sử, không
+phải hiện trạng**.
+
+**Nguyên nhân hệ thống là cách tôi làm việc, không phải CI.** Container reset
+repo khoảng mười bốn lần trong phiên này, nên tôi đẩy commit lên ngay khi nó tồn
+tại — đó là cách duy nhất công việc sống sót. Nhưng mỗi lần đẩy lên nhánh này là
+chạy đủ cổng bảy phút rồi deploy, mà tôi chỉ chạy đủ cổng ở **các mốc**, không
+phải mỗi commit. Nên commit ở giữa đỏ, và mỗi cái là một thông báo đỏ.
+
+#99 là ví dụ rõ nhất và hoàn toàn do tôi: tôi tách **một** thay đổi thành hai
+commit. `29a20f8` bỏ `admins` khỏi `GET /admin/settings` ở phía máy chủ, còn
+giao diện vẫn gọi `S.admins.map(...)` mãi tới `b0302e0` mới sửa. Commit ở giữa
+**chưa bao giờ ở trạng thái có thể xanh** — và tôi vẫn đẩy nó lên.
+
+### Ba thứ đã sửa trong workflow
+
+1. **`pg_isready -U postgres`.** `pg_isready` trần kết nối bằng user hiện tại là
+   `root`, mà `root` không phải role trong cluster — nên **cứ năm giây một dòng**
+   `FATAL: role "root" does not exist` suốt cả lần chạy. Health check vẫn qua
+   (bị từ chối cũng chứng minh server đang nghe), nên trông chẳng có gì sai. Giá
+   phải trả chỉ lộ ra lúc có sự cố: log của service container in ở **cuối** job,
+   nên đọc 45 dòng cuối của một lần chạy đỏ chỉ thấy đúng đống rác này. Hai lần
+   lấy log đầu tiên của tôi hôm nay không thấy gì chính vì thế.
+
+2. **Bảng tóm tắt "Why it went red".** Thông báo chỉ nói "Deploy workflow run
+   failed", không nói bước nào. Nay khi đỏ, trang chạy hiện thẳng mọi dòng `✗`
+   và 30 dòng cuối. Cả mười hai lần đỏ tháng này đều **cách một lệnh grep là
+   thấy ngay**.
+
+   > Kèm `set -o pipefail`. GitHub chạy bằng `bash -e`, **không** có pipefail,
+   > nên mã thoát của `npm run verify | tee` là mã thoát của `tee` — luôn bằng 0.
+   > Thiếu dòng đó thì cái `tee` vừa thêm sẽ biến một cổng đỏ thành một lần
+   > deploy xanh, đúng thứ mà cả tệp workflow này sinh ra để chặn.
+
+3. **`paths-ignore` cho tài liệu.** Commit chỉ sửa văn xuôi thì deploy ra mã
+   giống hệt; hai lần đẩy gần đây (`303c428`, `12e159a`) mỗi lần đốt bảy phút
+   cổng cho một tệp markdown. Liệt kê **từng tệp** chứ không dùng `docs/**`:
+   `docs/SECURITY.md` là tệp **sinh ra tự động** và cổng kiểm nó khớp từng dòng,
+   nên nó phải tiếp tục chạy cổng. Một tài liệu mới chưa ai thêm vào danh sách
+   sẽ chạy đủ cổng — sai về phía an toàn.
+
+### Còn lại là một lựa chọn của chủ đầu tư
+
+Ba thứ trên giảm nhiễu, nhưng **không** sửa được nguyên nhân gốc: commit chưa
+qua cổng vẫn được đẩy lên chính nhánh deploy. Hai cách, và tôi không tự quyết:
+
+- **Chạy đủ cổng trước mỗi lần đẩy.** Sạch nhất, nhưng bảy phút mỗi commit, và
+  trong bảy phút đó công việc chưa đẩy sẽ mất nếu container reset.
+- **Một nhánh nháp riêng** để đẩy cho an toàn, chỉ đưa sang nhánh deploy khi cổng
+  đã xanh tại máy. Giữ được cả hai, nhưng đổi mô hình nhánh — và lệnh hiện tại
+  là chỉ được đẩy lên đúng nhánh này.
+
 _(ghi vào đây mỗi lần một block đã khóa bị mở ra sửa: block nào, vì sao, commit
 nào đóng lại)_

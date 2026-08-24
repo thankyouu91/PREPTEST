@@ -34,6 +34,25 @@ on:
         default: manual
   push:
     branches: [claude/prep-test-platform-design-fpiuqn]
+    # Prose-only commits do not reach production and do not need seven minutes
+    # of CI to prove it: nothing under docs/ is served, so a commit that touches
+    # only these files deploys byte-identical code.
+    #
+    # Listed one by one rather than as `docs/**`, and that is the point.
+    # `docs/SECURITY.md` is GENERATED — scripts/test-security.mjs regenerates it
+    # and fails if one line is adrift — so it has to keep running the gate, and
+    # a blanket `docs/**` would have quietly excused the one file here that is
+    # a check rather than prose. A new document nobody has added to this list
+    # gets the full gate, which is the direction to be wrong in.
+    paths-ignore:
+      - 'docs/BLOCKS.md'
+      - 'docs/KE-HOACH-XAY.md'
+      - 'docs/LEARNING.md'
+      - 'docs/ROADMAP.md'
+      - 'docs/SCORING.md'
+      - 'docs/VAN-HANH.md'
+      - 'docs/VPET-BLUEPRINT.md'
+      - 'docs/VPET-OFFICIAL-SPEC.md'
 
 concurrency:
   # One deploy at a time, and a newer commit cancels an older queued one — but
@@ -55,8 +74,18 @@ jobs:
           POSTGRES_PASSWORD: postgres
           POSTGRES_DB: prep_schema_check
         ports: ['5432:5432']
+        # `-U postgres`, and it is not cosmetic. Bare `pg_isready` connects as
+        # the container's current user, which is root, and root is not a role
+        # in this cluster — so every five seconds for the whole run the server
+        # logged `FATAL: role "root" does not exist`. The health check passed
+        # anyway (a refusal still proves the server is listening), so nothing
+        # looked wrong, and the cost only appears when something goes wrong:
+        # the service-container log is printed at the END of the job, so a
+        # seven-minute run buries the actual failure under a hundred identical
+        # FATAL lines. Reading the last 45 lines of a red run showed nothing
+        # but this noise.
         options: >-
-          --health-cmd pg_isready --health-interval 5s
+          --health-cmd "pg_isready -U postgres" --health-interval 5s
           --health-timeout 5s --health-retries 10
     env:
       PG_URL: postgres://postgres:postgres@127.0.0.1:5432/prep_schema_check
@@ -93,7 +122,44 @@ jobs:
       # thing that loads every page end to end as a signed-in candidate — it is
       # what caught a server that had died mid-suite earlier today, while every
       # assertion before it still passed.
-      - run: npm run verify
+      #
+      # `set -o pipefail` is load-bearing with the pipe. GitHub runs this as
+      # `bash -e`, which does NOT set pipefail, so the exit code of a pipeline
+      # is the exit code of `tee` — always 0. Without it the tee turns a red
+      # gate into a green deploy, which is the one bug this whole file exists
+      # to prevent.
+      - name: The suite
+        run: set -o pipefail; npm run verify 2>&1 | tee /tmp/gate.log
+
+      # What actually failed, on the run page, in the notification email, and
+      # without downloading a 4 MB zip.
+      #
+      # The notification says only "Deploy workflow run failed", and the log
+      # ends with the Postgres container's shutdown chatter, so answering "why"
+      # meant fetching the archive and grepping it. Every red run this month
+      # was a DIFFERENT ordinary assertion — a paper with no items, a dashboard
+      # mid-rewrite, a page throwing on data a commit had just removed — and
+      # each one was one grep away from obvious.
+      - name: Why it went red
+        if: failure()
+        run: |
+          {
+            echo '## The gate went red'
+            echo
+            echo 'Every line the suite marked as a failure:'
+            echo '```'
+            # Strip the colour codes, or the summary renders as escape soup.
+            sed -e 's/\x1b\[[0-9;]*m//g' /tmp/gate.log \
+              | grep -E '^✗|^ - .*(PAGEERROR|CSP|console)|^⚠' \
+              | head -40 \
+              || echo '(no failed assertion — the suite died rather than failing a check)'
+            echo '```'
+            echo
+            echo 'Last 30 lines before it gave up:'
+            echo '```'
+            sed -e 's/\x1b\[[0-9;]*m//g' /tmp/gate.log | tail -30
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
 
   deploy:
     name: To the instance
