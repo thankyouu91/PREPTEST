@@ -39,6 +39,17 @@ function wrapHandler(fn) {
     : function (req, res, next) { return settle(() => fn.call(this, req, res, next), next); };
 
   wrapped.__asyncWrapped = true;
+  /* And so does anything the handler carried on itself. The name was preserved
+     from the start for the security map; `.cap` — which server/roles.js puts on
+     a capability guard to say WHICH capability it demands — was invented later
+     and was silently dropped here, so docs/SECURITY.md listed fifty-five routes
+     as `requireCap` and answered nobody's real question. Copying the own
+     properties fixes that one and the next one: a wrapper that keeps the name
+     but eats every other annotation is a trap set for whoever adds the next
+     annotation. */
+  for (const k of Object.keys(fn)) {
+    if (k !== '__asyncWrapped') wrapped[k] = fn[k];
+  }
   return rename(wrapped, fn.name);
 }
 

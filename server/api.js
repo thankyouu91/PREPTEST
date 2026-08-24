@@ -11,6 +11,7 @@ const express = require('express');
 const { asyncRoutes } = require('./async-route');
 const { q, tx, nowISO, jparse, makeCode, audit } = require('./db');
 const A = require('./auth');
+const roles = require('./roles');
 const totp = require('./totp');
 const learnPractice = require('./learn-practice');
 const EXAM_FORMATS = require('./data/exam-formats');
@@ -127,7 +128,15 @@ router.post('/admin/logout', A.csrfGuard, async (req, res) => {
 router.get('/admin/me', async (req, res) => {
   const admin = await A.currentAdmin(req);
   if (!admin) return res.status(401).json({ error: 'Not signed in.' });
-  res.json({ admin });
+  /* The capabilities travel with the identity so the interface can hide what
+     this account cannot use. Hiding is a courtesy, not the control: every one
+     of these is enforced again on the server by roles.requireCap(), because a
+     menu item that is merely absent is one devtools inspection away from being
+     present. What it buys is an admin area that shows a teacher a screen they
+     can actually work on rather than six links that answer 403. */
+  res.json({
+    admin: { ...admin, caps: roles.capsOf(admin.role), label: roles.roleOf(admin.role).label }
+  });
 });
 
 /* Everything below here needs a signed-in admin + CSRF */
@@ -142,7 +151,7 @@ router.use('/admin', A.requireAdmin, A.csrfGuard);
              where people are falling out.
    - todo:   what needs doing, ordered by urgency. This is what turns a reporting
              page into a page you run the place from.                            */
-router.get('/admin/reports', async (req, res) => {
+router.get('/admin/reports', roles.requireCap('reports.read'), async (req, res) => {
   // The window: only 7, 30 and 90 are accepted, so nobody types ?days=100000 and strains the database
   const days = [7, 30, 90].includes(int(req.query.days, 30)) ? int(req.query.days, 30) : 30;
   const from = daysAgoISO(days);
@@ -341,7 +350,7 @@ router.get('/admin/reports', async (req, res) => {
 });
 
 /* ====================== THE QUESTION BANK ====================== */
-router.get('/admin/questions', async (req, res) => {
+router.get('/admin/questions', roles.requireCap('bank.read'), async (req, res) => {
   const where = ["status != 'deleted'"];
   const args = [];
   const add = (cond, v) => { where.push(cond); args.push(v); };
@@ -436,7 +445,7 @@ async function readQuestion(body) {
   };
 }
 
-router.post('/admin/questions', async (req, res) => {
+router.post('/admin/questions', roles.requireCap('bank.write'), async (req, res) => {
   const d = await readQuestion(req.body || {});
   if (d.err) return bad(res, d.err);
   const r = await q.run(
@@ -448,7 +457,7 @@ router.post('/admin/questions', async (req, res) => {
   res.status(201).json({ id: Number(r.lastInsertRowid) });
 });
 
-router.put('/admin/questions/:id', async (req, res) => {
+router.put('/admin/questions/:id', roles.requireCap('bank.write'), async (req, res) => {
   const id = int(req.params.id, 0);
   if (!await q.val('SELECT 1 FROM questions WHERE id=?', id)) return res.status(404).json({ error: 'No such question.' });
   const d = await readQuestion(req.body || {});
@@ -462,7 +471,7 @@ router.put('/admin/questions/:id', async (req, res) => {
 });
 
 /** Withdraw or reinstate a question (never a hard delete, so old tests keep their content) */
-router.post('/admin/questions/:id/status', async (req, res) => {
+router.post('/admin/questions/:id/status', roles.requireCap('bank.publish'), async (req, res) => {
   const id = int(req.params.id, 0);
   const status = str(req.body && req.body.status, 20);
   if (!['active', 'retired'].includes(status)) return bad(res, 'That status is not valid.');
@@ -481,7 +490,7 @@ router.post('/admin/questions/:id/status', async (req, res) => {
    Both routes sit under the router-wide requireAdmin + csrfGuard. */
 const audioBody = express.raw({ type: storage.ACCEPTED_MIME, limit: storage.MAX_BYTES });
 
-router.post('/admin/questions/:id/audio', audioBody, async (req, res) => {
+router.post('/admin/questions/:id/audio', roles.requireCap('bank.write'), audioBody, async (req, res) => {
   const id = int(req.params.id, 0);
   const row = await q.get('SELECT id, audio_key FROM questions WHERE id=?', id);
   if (!row) return res.status(404).json({ error: 'No such question.' });
@@ -507,7 +516,7 @@ router.post('/admin/questions/:id/audio', audioBody, async (req, res) => {
   }
 });
 
-router.get('/admin/questions/:id/audio', async (req, res) => {
+router.get('/admin/questions/:id/audio', roles.requireCap('bank.read'), async (req, res) => {
   const row = await q.get('SELECT audio_key, audio_bytes FROM questions WHERE id=?', int(req.params.id, 0));
   if (!row || !row.audio_key) return res.status(404).json({ error: 'This question has no audio file.' });
   try {
@@ -523,7 +532,7 @@ router.get('/admin/questions/:id/audio', async (req, res) => {
   }
 });
 
-router.delete('/admin/questions/:id/audio', async (req, res) => {
+router.delete('/admin/questions/:id/audio', roles.requireCap('bank.write'), async (req, res) => {
   const id = int(req.params.id, 0);
   const row = await q.get('SELECT audio_key FROM questions WHERE id=?', id);
   if (!row) return res.status(404).json({ error: 'No such question.' });
@@ -535,7 +544,7 @@ router.delete('/admin/questions/:id/audio', async (req, res) => {
 });
 
 /** Bulk import questions (pasted JSON, or CSV already split up on the client) */
-router.post('/admin/questions/bulk', async (req, res) => {
+router.post('/admin/questions/bulk', roles.requireCap('bank.write'), async (req, res) => {
   const items = Array.isArray(req.body && req.body.items) ? req.body.items : null;
   if (!items || !items.length) return bad(res, 'There are no questions to import.');
   if (items.length > 500) return bad(res, 'At most 500 items per import.');
@@ -566,7 +575,7 @@ router.post('/admin/questions/bulk', async (req, res) => {
 
 /** A sample CSV file for bulk question import.
  *  Served from the server (rather than built as a blob on the client) so the CSP stays strict. */
-router.get('/admin/questions/template.csv', async (req, res) => {
+router.get('/admin/questions/template.csv', roles.requireCap('bank.read'), async (req, res) => {
   const fam = await q.get('SELECT id FROM families ORDER BY sort LIMIT 1');
   const famId = fam ? fam.id : 'ielts';
   /* The phan_thi column is blank for an exam with no part table; for VPET it is required,
@@ -584,7 +593,7 @@ router.get('/admin/questions/template.csv', async (req, res) => {
 });
 
 /** Count the items available against a set of criteria — the generator uses it to report shortfalls */
-router.get('/admin/questions/availability', async (req, res) => {
+router.get('/admin/questions/availability', roles.requireCap('bank.read'), async (req, res) => {
   const family = str(req.query.family, 20);
   const level = str(req.query.level, 5).toUpperCase();
   if (!await familyExists(family)) return bad(res, 'That exam is not valid.');
@@ -663,7 +672,7 @@ async function audioReadyCount(familyId, skill, types, level, part) {
   };
 }
 
-router.get('/admin/exam-formats', async (req, res) => {
+router.get('/admin/exam-formats', roles.requireCap('tests.read'), async (req, res) => {
   const familyId = str(req.query.familyId, 20);
   const level = LEVELS.includes(str(req.query.level, 5).toUpperCase())
     ? str(req.query.level, 5).toUpperCase() : '';
@@ -737,7 +746,7 @@ async function testDetail(id) {
   };
 }
 
-router.get('/admin/tests', async (req, res) => {
+router.get('/admin/tests', roles.requireCap('tests.read'), async (req, res) => {
   const where = [];
   const args = [];
   if (req.query.family) { where.push('t.family_id = ?'); args.push(str(req.query.family, 20)); }
@@ -759,14 +768,14 @@ router.get('/admin/tests', async (req, res) => {
   });
 });
 
-router.get('/admin/tests/:id', async (req, res) => {
+router.get('/admin/tests/:id', roles.requireCap('tests.read'), async (req, res) => {
   const t = await testDetail(str(req.params.id, 60));
   if (!t) return res.status(404).json({ error: 'No such test.' });
   res.json(t);
 });
 
 /** Create an empty test (the by-hand route) */
-router.post('/admin/tests', async (req, res) => {
+router.post('/admin/tests', roles.requireCap('tests.write'), async (req, res) => {
   const b = req.body || {};
   const familyId = str(b.familyId, 20);
   const title = str(b.title, 200);
@@ -789,7 +798,7 @@ router.post('/admin/tests', async (req, res) => {
   res.status(201).json(await testDetail(id));
 });
 
-router.put('/admin/tests/:id', async (req, res) => {
+router.put('/admin/tests/:id', roles.requireCap('tests.write'), async (req, res) => {
   const id = str(req.params.id, 60);
   if (!await q.val('SELECT 1 FROM tests WHERE id=?', id)) return res.status(404).json({ error: 'No such test.' });
   const b = req.body || {};
@@ -806,7 +815,7 @@ router.put('/admin/tests/:id', async (req, res) => {
 });
 
 /** Change status: publishing is allowed only once every part has questions */
-router.post('/admin/tests/:id/status', async (req, res) => {
+router.post('/admin/tests/:id/status', roles.requireCap('tests.write'), async (req, res) => {
   const id = str(req.params.id, 60);
   const status = str(req.body && req.body.status, 20);
   if (!STATUSES.includes(status)) return bad(res, 'That status is not valid.');
@@ -831,7 +840,7 @@ router.post('/admin/tests/:id/status', async (req, res) => {
   res.json({ ok: true, status });
 });
 
-router.delete('/admin/tests/:id', async (req, res) => {
+router.delete('/admin/tests/:id', roles.requireCap('tests.write'), async (req, res) => {
   const id = str(req.params.id, 60);
   const used = await q.val("SELECT COUNT(*) c FROM codes WHERE unlock_type='test' AND unlock_ref=?", id);
   if (used) return bad(res, used + ' codes point at this test. Archive it rather than deleting it.');
@@ -852,7 +861,7 @@ router.delete('/admin/tests/:id', async (req, res) => {
 });
 
 /* ---- Sections ---- */
-router.post('/admin/tests/:id/sections', async (req, res) => {
+router.post('/admin/tests/:id/sections', roles.requireCap('tests.write'), async (req, res) => {
   const id = str(req.params.id, 60);
   if (!await q.val('SELECT 1 FROM tests WHERE id=?', id)) return res.status(404).json({ error: 'No such test.' });
   const b = req.body || {};
@@ -876,7 +885,7 @@ router.post('/admin/tests/:id/sections', async (req, res) => {
   res.status(201).json({ id: Number(r.lastInsertRowid) });
 });
 
-router.put('/admin/sections/:sid', async (req, res) => {
+router.put('/admin/sections/:sid', roles.requireCap('tests.write'), async (req, res) => {
   const sid = int(req.params.sid, 0);
   const s = await q.get('SELECT * FROM sections WHERE id=?', sid);
   if (!s) return res.status(404).json({ error: 'No such part.' });
@@ -888,7 +897,7 @@ router.put('/admin/sections/:sid', async (req, res) => {
   res.json({ ok: true });
 });
 
-router.delete('/admin/sections/:sid', async (req, res) => {
+router.delete('/admin/sections/:sid', roles.requireCap('tests.write'), async (req, res) => {
   const sid = int(req.params.sid, 0);
   const s = await q.get('SELECT test_id FROM sections WHERE id=?', sid);
   if (!s) return res.status(404).json({ error: 'No such part.' });
@@ -899,7 +908,7 @@ router.delete('/admin/sections/:sid', async (req, res) => {
 });
 
 /** Attach questions to a part (by hand, chosen from the bank) */
-router.post('/admin/sections/:sid/items', async (req, res) => {
+router.post('/admin/sections/:sid/items', roles.requireCap('tests.write'), async (req, res) => {
   const sid = int(req.params.sid, 0);
   const s = await q.get('SELECT * FROM sections WHERE id=?', sid);
   if (!s) return res.status(404).json({ error: 'No such part.' });
@@ -924,7 +933,7 @@ router.post('/admin/sections/:sid/items', async (req, res) => {
   res.json({ added, skipped });
 });
 
-router.delete('/admin/items/:itemId', async (req, res) => {
+router.delete('/admin/items/:itemId', roles.requireCap('tests.write'), async (req, res) => {
   const itemId = int(req.params.itemId, 0);
   const row = await q.get(`SELECT si.id, s.test_id FROM section_items si
                        JOIN sections s ON s.id = si.section_id WHERE si.id=?`, itemId);
@@ -940,7 +949,7 @@ router.delete('/admin/items/:itemId', async (req, res) => {
  *  - strictLevel=true: only items at that level; by default the level is preferred, then others.
  *  - Returns a clear error when the bank does not hold enough.
  */
-router.post('/admin/tests/generate', async (req, res) => {
+router.post('/admin/tests/generate', roles.requireCap('tests.write'), async (req, res) => {
   const b = req.body || {};
   const familyId = str(b.familyId, 20);
   const level = str(b.level, 5).toUpperCase();
@@ -1026,7 +1035,7 @@ router.post('/admin/tests/generate', async (req, res) => {
 });
 
 /** Redraw every item in a part (keeping the count) */
-router.post('/admin/sections/:sid/reshuffle', async (req, res) => {
+router.post('/admin/sections/:sid/reshuffle', roles.requireCap('tests.write'), async (req, res) => {
   const sid = int(req.params.sid, 0);
   const s = await q.get('SELECT * FROM sections WHERE id=?', sid);
   if (!s) return res.status(404).json({ error: 'No such part.' });
@@ -1064,7 +1073,7 @@ router.post('/admin/sections/:sid/reshuffle', async (req, res) => {
 });
 
 /* ============================= USER ============================= */
-router.get('/admin/users', async (req, res) => {
+router.get('/admin/users', roles.requireCap('users.read'), async (req, res) => {
   const where = [];
   const args = [];
   if (req.query.status) { where.push('status = ?'); args.push(str(req.query.status, 20)); }
@@ -1094,7 +1103,7 @@ router.get('/admin/users', async (req, res) => {
   });
 });
 
-router.get('/admin/users/:id', async (req, res) => {
+router.get('/admin/users/:id', roles.requireCap('users.read'), async (req, res) => {
   const id = int(req.params.id, 0);
   const u = await q.get('SELECT * FROM users WHERE id=?', id);
   if (!u) return res.status(404).json({ error: 'No such student.' });
@@ -1161,7 +1170,7 @@ async function grantPlan(userId, plan, adminId, note) {
  * confirmed it by other means, and leaving it unverified would lock the person
  * out of the thing that was just made for them.
  */
-router.post('/admin/users', async (req, res) => {
+router.post('/admin/users', roles.requireCap('users.write'), async (req, res) => {
   const b = req.body || {};
   const name = str(b.name, 120);
   const email = str(b.email, 160).toLowerCase();
@@ -1219,7 +1228,7 @@ router.post('/admin/users', async (req, res) => {
    the server. Each row needs a name, a valid email and a phone; a generated
    password comes back per account, shown once. Bad rows are reported by line
    number rather than failing the whole batch. */
-router.post('/admin/users/bulk', async (req, res) => {
+router.post('/admin/users/bulk', roles.requireCap('users.write'), async (req, res) => {
   const b = req.body || {};
   const rows = Array.isArray(b.rows) ? b.rows.slice(0, 500) : [];
   const planId = str(b.planId, 40);
@@ -1257,7 +1266,7 @@ router.post('/admin/users/bulk', async (req, res) => {
 });
 
 /** POST /admin/users/:id/grant — put a term on an existing account. */
-router.post('/admin/users/:id/grant', async (req, res) => {
+router.post('/admin/users/:id/grant', roles.requireCap('users.write'), async (req, res) => {
   const id = int(req.params.id, 0);
   const plan = PLANS.byId(str(req.body && req.body.planId, 40));
   if (!plan) {
@@ -1284,7 +1293,7 @@ router.post('/admin/users/:id/grant', async (req, res) => {
  * Every session that account holds is dropped: whoever the password was reset
  * because of must not still be signed in somewhere.
  */
-router.post('/admin/users/:id/password', async (req, res) => {
+router.post('/admin/users/:id/password', roles.requireCap('users.write'), async (req, res) => {
   const id = int(req.params.id, 0);
   if (!await q.val('SELECT 1 FROM users WHERE id=?', id)) {
     return res.status(404).json({ error: 'No such student.' });
@@ -1302,7 +1311,7 @@ router.post('/admin/users/:id/password', async (req, res) => {
   res.json({ ok: true, password: chosen ? null : password });
 });
 
-router.post('/admin/users/:id/status', async (req, res) => {
+router.post('/admin/users/:id/status', roles.requireCap('users.write'), async (req, res) => {
   const id = int(req.params.id, 0);
   const status = str(req.body && req.body.status, 20);
   if (!['active', 'locked'].includes(status)) return bad(res, 'That status is not valid.');
@@ -1312,7 +1321,7 @@ router.post('/admin/users/:id/status', async (req, res) => {
   res.json({ ok: true });
 });
 
-router.post('/admin/users/:id/verify', async (req, res) => {
+router.post('/admin/users/:id/verify', roles.requireCap('users.write'), async (req, res) => {
   const id = int(req.params.id, 0);
   const r = await q.run('UPDATE users SET verified=1 WHERE id=?', id);
   if (!r.changes) return res.status(404).json({ error: 'No such student.' });
@@ -1320,7 +1329,7 @@ router.post('/admin/users/:id/verify', async (req, res) => {
   res.json({ ok: true });
 });
 
-router.put('/admin/users/:id', async (req, res) => {
+router.put('/admin/users/:id', roles.requireCap('users.write'), async (req, res) => {
   const id = int(req.params.id, 0);
   const u = await q.get('SELECT * FROM users WHERE id=?', id);
   if (!u) return res.status(404).json({ error: 'No such student.' });
@@ -1356,7 +1365,7 @@ async function validUnlock(type, ref) {
   return false;
 }
 
-router.get('/admin/codes', async (req, res) => {
+router.get('/admin/codes', roles.requireCap('codes.read'), async (req, res) => {
   const where = [];
   const args = [];
   if (req.query.status) { where.push('c.status = ?'); args.push(str(req.query.status, 20)); }
@@ -1393,7 +1402,7 @@ router.get('/admin/codes', async (req, res) => {
   });
 });
 
-router.get('/admin/batches', async (req, res) => {
+router.get('/admin/batches', roles.requireCap('codes.read'), async (req, res) => {
   const rows = await q.all(`
     SELECT b.*, (SELECT COUNT(*) FROM codes c WHERE c.batch_id=b.id) total,
            (SELECT COUNT(*) FROM codes c WHERE c.batch_id=b.id AND c.status='redeemed') used
@@ -1420,7 +1429,7 @@ router.get('/admin/batches', async (req, res) => {
  * "one code, one account" rule is enforced again at redemption; reserving simply
  * decides the owner up front instead of letting whoever types it first win.
  */
-router.post('/admin/codes', async (req, res) => {
+router.post('/admin/codes', roles.requireCap('codes.write'), async (req, res) => {
   const b = req.body || {};
   const type = str(b.unlockType, 20);
   const ref = str(b.unlockRef, 200);
@@ -1500,7 +1509,7 @@ router.post('/admin/codes', async (req, res) => {
   });
 });
 
-router.post('/admin/codes/:id/revoke', async (req, res) => {
+router.post('/admin/codes/:id/revoke', roles.requireCap('codes.write'), async (req, res) => {
   const id = int(req.params.id, 0);
   const c = await q.get('SELECT * FROM codes WHERE id=?', id);
   if (!c) return res.status(404).json({ error: 'No such code.' });
@@ -1511,7 +1520,7 @@ router.post('/admin/codes/:id/revoke', async (req, res) => {
 });
 
 /** Export the codes as CSV (by batch, or by status filter) */
-router.get('/admin/codes/export', async (req, res) => {
+router.get('/admin/codes/export', roles.requireCap('codes.read'), async (req, res) => {
   const where = [];
   const args = [];
   if (req.query.batch) { where.push('c.batch_id = ?'); args.push(int(req.query.batch, 0)); }
@@ -1552,11 +1561,11 @@ router.get('/admin/codes/export', async (req, res) => {
  * administrator must not be able to spend another's Google permission.
  */
 
-router.get('/admin/classroom', async (req, res) => {
+router.get('/admin/classroom', roles.requireCap('secrets.manage'), async (req, res) => {
   res.set('Cache-Control', 'no-store').json(await classroom.status(req.admin.id));
 });
 
-router.get('/admin/classroom/courses', async (req, res) => {
+router.get('/admin/classroom/courses', roles.requireCap('secrets.manage'), async (req, res) => {
   try {
     res.set('Cache-Control', 'no-store').json(await classroom.courses(req.admin.id));
   } catch (e) {
@@ -1567,7 +1576,7 @@ router.get('/admin/classroom/courses', async (req, res) => {
   }
 });
 
-router.get('/admin/classroom/courses/:courseId/roster', async (req, res) => {
+router.get('/admin/classroom/courses/:courseId/roster', roles.requireCap('secrets.manage'), async (req, res) => {
   const courseId = str(req.params.courseId, 60);
   if (!courseId) return bad(res, 'Which course?');
   try {
@@ -1577,7 +1586,7 @@ router.get('/admin/classroom/courses/:courseId/roster', async (req, res) => {
   }
 });
 
-router.post('/admin/classroom/unlink', async (req, res) => {
+router.post('/admin/classroom/unlink', roles.requireCap('secrets.manage'), async (req, res) => {
   const had = await classroom.unlink(req.admin.id);
   if (had) await audit(req, 'classroom.unlinked', 'admins/' + req.admin.id, {});
   res.json({ ok: true, wasLinked: had });
@@ -1593,7 +1602,7 @@ router.post('/admin/classroom/unlink', async (req, res) => {
    decides it may be seen, which is the direction that fails safe. */
 const PUBLIC_SETTING_KEYS = ['brand.name', 'brand.tenant', 'platform.notice'];
 
-router.get('/admin/settings', async (req, res) => {
+router.get('/admin/settings', roles.requireCap('reports.read'), async (req, res) => {
   const rows = await q.all(
     `SELECT key, value FROM settings WHERE key IN (${PUBLIC_SETTING_KEYS.map(() => '?').join(',')})`,
     ...PUBLIC_SETTING_KEYS);
@@ -1608,12 +1617,17 @@ router.get('/admin/settings', async (req, res) => {
     })),
     families: (await q.all('SELECT * FROM families ORDER BY sort')).map(f => ({
       id: f.id, name: f.name, sub: f.sub, format: f.format, skills: jparse(f.skills_json, [])
-    })),
-    admins: await q.all('SELECT id, username, name, role, active, created_at, last_login_at FROM admins ORDER BY id')
+    }))
+    /* The administrator list used to be returned here, and it had to move.
+       This route is readable by every level — a teacher opens the same screen
+       to change their own password — so a roster of every administrator, their
+       username and their level was travelling to accounts that cannot manage
+       them and have no reason to know they exist. It now comes from
+       GET /admin/admins, behind `admins.manage`. */
   });
 });
 
-router.put('/admin/settings', async (req, res) => {
+router.put('/admin/settings', roles.requireCap('settings.write'), async (req, res) => {
   const b = (req.body && req.body.settings) || {};
   const allowed = PUBLIC_SETTING_KEYS;
   const ins = require('./db').db.prepare(
@@ -1634,13 +1648,13 @@ const aiMarking = require('./ai-marking');
 const aiRun = require('./ai-marking-run');
 const aiBudget = require('./ai-budget');
 
-/* server/auth.js already exports requireOwner and other routes use it; a second
-   role test here would be a second thing to keep in step. Everything on this
-   credential - reading its status included, since the key hint and the endpoint
-   are its shape - is owner business. */
-const requireOwner = A.requireOwner;
+/* Everything on this credential - reading its status included, since the key
+   hint and the endpoint are its shape - needs `secrets.manage`, which only the
+   top level holds. It used to be `requireOwner`, a direct test of the role;
+   the capability says the same thing and says it in the one place that also
+   answers what a manager and a teacher may do. See server/roles.js. */
 
-router.get('/admin/ai', requireOwner, async (req, res) => {
+router.get('/admin/ai', roles.requireCap('secrets.manage'), async (req, res) => {
   const s = await aiMarking.settings();
   /* Counted the same way the pass finds work - from the PAPER, left-joining the
      answers - and not from attempt_answers alone. An item the candidate never
@@ -1672,7 +1686,7 @@ router.get('/admin/ai', requireOwner, async (req, res) => {
   res.set('Cache-Control', 'no-store').json({ ai: s, waiting, backlog, due: dueNow, budget });
 });
 
-router.put('/admin/ai', requireOwner, async (req, res) => {
+router.put('/admin/ai', roles.requireCap('secrets.manage'), async (req, res) => {
   const b = req.body || {};
 
   if ('baseUrl' in b || 'model' in b || 'sttBaseUrl' in b || 'sttModel' in b) {
@@ -1739,14 +1753,14 @@ router.put('/admin/ai', requireOwner, async (req, res) => {
  * twenty papers is twenty minutes of model calls, and no browser holds a request
  * open that long.
  */
-router.post('/admin/ai/sweep', requireOwner, async (req, res) => {
+router.post('/admin/ai/sweep', roles.requireCap('marking.run'), async (req, res) => {
   if (!await aiMarking.ready()) return bad(res, 'No marking key is configured.');
   const out = await aiRun.sweep();
   await audit(req, 'ai.sweep', 'attempts', out);
   res.json({ ok: true, ...out });
 });
 
-router.post('/admin/ai/test', requireOwner, async (req, res) => {
+router.post('/admin/ai/test', roles.requireCap('secrets.manage'), async (req, res) => {
   const out = await aiMarking.testConnection();
   await audit(req, 'ai.test', 'settings', { ok: out.ok });
   res.status(out.ok ? 200 : 502).json(out);
@@ -1755,7 +1769,7 @@ router.post('/admin/ai/test', requireOwner, async (req, res) => {
 /** Mark one paper's outstanding writing and speaking now, and wait for it. */
 /* Owner-only as well: it spends against the credential, and an unbounded pass
    is not something every admin role should be able to start. */
-router.post('/admin/attempts/:id/mark', requireOwner, async (req, res) => {
+router.post('/admin/attempts/:id/mark', roles.requireCap('marking.run'), async (req, res) => {
   const id = int(req.params.id, 0);
   if (!await q.val('SELECT 1 FROM attempts WHERE id=?', id)) {
     return res.status(404).json({ error: 'No such sitting.' });
@@ -1786,7 +1800,7 @@ router.post('/admin/attempts/:id/mark', requireOwner, async (req, res) => {
 
 const backup = require('./backup');
 
-router.get('/admin/backup', requireOwner, async (req, res) => {
+router.get('/admin/backup', roles.requireCap('secrets.manage'), async (req, res) => {
   const health = await backup.backupHealth();
   const list = await backup.list().catch(() => []);
   res.set('Cache-Control', 'no-store').json({
@@ -1809,7 +1823,7 @@ router.get('/admin/backup', requireOwner, async (req, res) => {
  * a person wants one and exactly when waiting six hours for the next cron is the
  * wrong answer.
  */
-router.post('/admin/backup', requireOwner, async (req, res) => {
+router.post('/admin/backup', roles.requireCap('secrets.manage'), async (req, res) => {
   try {
     const out = await backup.backup();
     await audit(req, 'backup.run', 'database', { name: out.name, driver: out.driver, bytes: out.bytes });
@@ -1823,7 +1837,7 @@ router.post('/admin/backup', requireOwner, async (req, res) => {
   }
 });
 
-router.put('/admin/packages/:id', async (req, res) => {
+router.put('/admin/packages/:id', roles.requireCap('settings.write'), async (req, res) => {
   const id = str(req.params.id, 40);
   const p = await q.get('SELECT * FROM packages WHERE id=?', id);
   if (!p) return res.status(404).json({ error: 'No such plan.' });
@@ -1834,6 +1848,172 @@ router.put('/admin/packages/:id', async (req, res) => {
     b.active === false ? 0 : 1, id);
   await audit(req, 'package.update', 'packages/' + id, { price });
   res.json({ ok: true });
+});
+
+/* ==================== ADMINISTRATORS ====================
+ *
+ * Making other administrators, and setting what they may do. Owner-only, all of
+ * it, because the account that can create accounts can create itself a way
+ * round every other permission in the platform.
+ *
+ * Four rules are enforced on the server and not merely hidden in the interface,
+ * because the interface is a suggestion and these are not:
+ *
+ *   1. You cannot change your own level. Otherwise the sole owner demotes
+ *      themselves by mis-clicking and the platform has nobody who can undo it.
+ *   2. You cannot deactivate yourself, for the same reason and more immediately.
+ *   3. The LAST active owner cannot be demoted or deactivated by anybody,
+ *      including another owner. This is the one that actually saves the
+ *      install: two owners, each deactivating the other, is a platform with no
+ *      way back in short of the command line.
+ *   4. Changing somebody's level or turning them off ends their sessions on the
+ *      spot. A permission that keeps working for the next eight hours because
+ *      that is when the cookie expires is not a permission that was removed.
+ *
+ * `scripts/accounts.js` stays the way back in when all four rules have somehow
+ * still produced a locked-out platform. It runs on the machine, so it answers
+ * to whoever holds the server rather than to whoever holds a session.
+ */
+
+/** Everything about the administrators, except anything secret. */
+router.get('/admin/admins', roles.requireCap('admins.manage'), async (req, res) => {
+  const rows = await q.all(
+    `SELECT id, username, name, role, active, created_at, last_login_at,
+            totp_enabled_at IS NOT NULL AS totp
+       FROM admins ORDER BY active DESC, role, lower(username)`);
+  res.set('Cache-Control', 'no-store').json({
+    admins: rows.map(r => ({ ...r, totp: !!r.totp, label: roles.roleOf(r.role).label })),
+    roles: roles.list(),
+    me: req.admin.id
+  });
+});
+
+/**
+ * The invariant: at least one owner can always still sign in.
+ *
+ * Checked AFTER the write and inside the transaction, which is not fussiness.
+ * The obvious version — count the other owners first, refuse if there are none
+ * — cannot fire at all through a single request: only an owner may manage
+ * administrators, so the actor IS another owner, and the count is never zero.
+ * It reads like a safety net and catches nothing.
+ *
+ * What it misses is two owners acting at the same moment. A deactivates B while
+ * B deactivates A; both requests count the other as the survivor, both are
+ * allowed, both writes land, and the platform has no owner left and no way back
+ * in short of the command line. The window is between the count and the update,
+ * so the fix is to look after the update, with the write held open — SQLite
+ * serialises writers, so the second transaction sees the first one's row.
+ */
+class NoOwnerLeft extends Error {}
+
+async function assertAnOwnerRemains() {
+  const owners = await q.val("SELECT COUNT(*) c FROM admins WHERE role='owner' AND active=1");
+  if (!owners) throw new NoOwnerLeft();
+}
+
+/** Make an administrator. */
+router.post('/admin/admins', roles.requireCap('admins.manage'), async (req, res) => {
+  const b = req.body || {};
+  const username = str(b.username, 40).toLowerCase();
+  const name = str(b.name, 120);
+  const role = str(b.role, 20);
+  const password = typeof b.password === 'string' ? b.password : '';
+
+  if (!/^[a-z0-9._-]{3,40}$/.test(username)) {
+    return bad(res, 'A username is 3 to 40 characters: letters, digits, dot, dash or underscore.');
+  }
+  if (!name) return bad(res, 'Give the account a display name.');
+  if (!roles.isRole(role)) return bad(res, 'Pick one of the three levels.');
+  const pwProblem = A.passwordProblem(password);
+  if (pwProblem) return bad(res, pwProblem);
+  if (await q.val('SELECT 1 FROM admins WHERE lower(username)=?', username)) {
+    return bad(res, 'That username is taken.');
+  }
+
+  await q.run(
+    'INSERT INTO admins (username,name,pass_hash,role,active,created_at) VALUES (?,?,?,?,1,?)',
+    username, name, A.hashPassword(password), role, nowISO());
+  /* The password is never echoed back, not even to the owner who just typed it.
+     It reached the server once, over one request; putting it in the response
+     puts it in every proxy log and every browser history between here and
+     them, in exchange for nothing they do not already know. */
+  await audit(req, 'admin.create', 'admins/' + username, { role });
+  res.json({ ok: true, username, role });
+});
+
+/** Rename, re-level, or turn an administrator on and off. */
+router.put('/admin/admins/:id', roles.requireCap('admins.manage'), async (req, res) => {
+  const id = int(req.params.id, 0);
+  const target = await q.get('SELECT id, username, name, role, active FROM admins WHERE id=?', id);
+  if (!target) return res.status(404).json({ error: 'No such administrator.' });
+
+  const b = req.body || {};
+  const patch = {};
+  if (typeof b.name === 'string') {
+    const name = str(b.name, 120);
+    if (!name) return bad(res, 'A display name cannot be empty.');
+    patch.name = name;
+  }
+  if (typeof b.role === 'string' && b.role !== target.role) {
+    if (!roles.isRole(b.role)) return bad(res, 'Pick one of the three levels.');
+    if (target.id === req.admin.id) {
+      return bad(res, 'You cannot change your own level. Ask another administrator.');
+    }
+    patch.role = b.role;
+  }
+  if (typeof b.active === 'boolean' && b.active !== !!target.active) {
+    if (target.id === req.admin.id) {
+      return bad(res, 'You cannot deactivate your own account.');
+    }
+    patch.active = b.active ? 1 : 0;
+  }
+
+  const keys = Object.keys(patch);
+  if (!keys.length) return res.json({ ok: true, unchanged: true });
+
+  try {
+    await tx(async () => {
+      await q.run('UPDATE admins SET ' + keys.map(k => k + '=?').join(', ') + ' WHERE id=?',
+        ...keys.map(k => patch[k]), id);
+      /* Inside the transaction, after the write: see the note on
+         assertAnOwnerRemains. Throwing rolls the change back. */
+      if ('role' in patch || 'active' in patch) await assertAnOwnerRemains();
+
+      /* Anything that changes what this account may do ends its sessions. A
+         level taken away that keeps working until the cookie expires was not
+         taken away. Inside the transaction too, so a rolled-back demotion does
+         not sign somebody out of a change that never happened. */
+      if ('role' in patch || 'active' in patch) {
+        await q.run('DELETE FROM sessions WHERE admin_id=?', id);
+      }
+    });
+  } catch (e) {
+    if (e instanceof NoOwnerLeft) {
+      return bad(res, 'That would leave the platform with no administrator at the top level. Promote somebody else first.');
+    }
+    throw e;
+  }
+  await audit(req, 'admin.update', 'admins/' + target.username, patch);
+  res.json({ ok: true, ...patch });
+});
+
+/** Set somebody else's password, for the day they lose theirs. */
+router.post('/admin/admins/:id/password', roles.requireCap('admins.manage'), async (req, res) => {
+  const id = int(req.params.id, 0);
+  const target = await q.get('SELECT id, username FROM admins WHERE id=?', id);
+  if (!target) return res.status(404).json({ error: 'No such administrator.' });
+
+  const password = typeof (req.body || {}).password === 'string' ? req.body.password : '';
+  const problem = A.passwordProblem(password);
+  if (problem) return bad(res, problem);
+
+  await q.run('UPDATE admins SET pass_hash=? WHERE id=?', A.hashPassword(password), id);
+  /* Including their own, if an owner resets their own here: a password change
+     is exactly when every other device holding a session should stop being
+     trusted, because "somebody has my password" is the usual reason. */
+  await q.run('DELETE FROM sessions WHERE admin_id=?', id);
+  await audit(req, 'admin.password_reset', 'admins/' + target.username, {});
+  res.json({ ok: true, reauth: target.id === req.admin.id });
 });
 
 /** Change your own admin password */
@@ -1857,7 +2037,7 @@ router.post('/admin/me', async (req, res) => {
    banner. Scoped to the demo account by design: an administrator can walk the
    platform, never open a real student's private dashboard. Ending the preview is
    an ordinary student sign-out, which clears the flag too. */
-router.post('/admin/preview-student', async (req, res) => {
+router.post('/admin/preview-student', roles.requireCap('users.read'), async (req, res) => {
   const demo = await q.get('SELECT id FROM users WHERE username=?', A.DEMO_STUDENT_USER);
   if (!demo) return res.status(404).json({ error: 'There is no demo student on this server to preview.' });
   await A.createUserSession(demo.id, req, res);
@@ -1952,7 +2132,7 @@ router.post('/admin/totp/disable', async (req, res) => {
   res.json({ ok: true });
 });
 
-router.get('/admin/audit', async (req, res) => {
+router.get('/admin/audit', roles.requireCap('audit.read'), async (req, res) => {
   const limit = clamp(int(req.query.limit, 60), 1, 300);
   const rows = await q.all('SELECT * FROM audit ORDER BY id DESC LIMIT ?', limit);
   res.json({

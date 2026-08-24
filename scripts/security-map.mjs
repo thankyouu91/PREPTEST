@@ -33,7 +33,14 @@ function prefixOf(layer) {
   return m ? m[1].replace(/\\\//g, '/') : null;
 }
 
-const GUARDS = new Set(['requireAdmin', 'requireUser', 'requireOwner', 'csrfGuard', 'gatewaySigned']);
+const GUARDS = new Set(['requireAdmin', 'requireUser', 'requireOwner', 'requireCap', 'csrfGuard', 'gatewaySigned']);
+
+/* A capability guard is rendered with the capability it demands, not merely as
+   `requireCap`. Every one of them is the same function name by design — see the
+   note in server/roles.js — so a table that printed only the name would say
+   "guarded" fifty-five times and answer nobody's actual question, which is
+   WHICH level may call this. The capability rides on `.cap`. */
+const guardName = h => (h.name === 'requireCap' && h.cap) ? `requireCap(${h.cap})` : h.name;
 
 /** Every route of every router, with the guards that really run before it. */
 export function routeTable(require_ = createRequire(import.meta.url)) {
@@ -56,7 +63,10 @@ export function routeTable(require_ = createRequire(import.meta.url)) {
 
       const path = layer.route.path;
       const full = (mount + path) || '/';
-      const own = layer.route.stack.map(s => (s.handle && s.handle.name) || '').filter(n => GUARDS.has(n));
+      const own = layer.route.stack
+        .map(s => s.handle)
+        .filter(h => h && GUARDS.has(h.name))
+        .map(guardName);
       const from = inherited
         .filter(g => g.prefix === '/' || path === g.prefix || path.startsWith(g.prefix + '/'))
         .map(g => g.name);
