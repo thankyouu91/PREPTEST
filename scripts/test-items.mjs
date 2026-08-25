@@ -87,12 +87,15 @@ try {
      work as much as writing. Until then a retake repeats some of what was heard.
      Checked in both directions: a part that gets deep and stays on this list is
      as red as one that quietly drops off it. */
-  const NOT_YET_DEEP = {
-    E: 'needs 16 at one level; recordings as well as scripts',
-    F: 'needs 16 at one level; recordings as well as scripts',
-    H: 'needs 20 at one level; recordings as well as scripts',
-    J: 'needs 6 at one level; recordings as well as scripts'
-  };
+  /* Empty, and that is the point: every one of the ten parts now holds two
+     sittings' worth at some level. E, F, H and J were the last four, and they
+     were the expensive ones because a script is not enough — each needs a
+     committed recording, which is why they sat here while the written parts
+     were finished.
+     Leave this here rather than deleting it. The next level the bank grows into
+     will start shallow in exactly the same way, and an empty exception list
+     that already works is easier to add one line to than a rule to reinvent. */
+  const NOT_YET_DEEP = {};
   const deepParts = PARTS.filter(x => !NOT_YET_DEEP[x]);
   for (const letter of PARTS) {
     const isDeep = deepAt[letter].size > 0;
