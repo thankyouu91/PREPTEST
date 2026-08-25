@@ -42,6 +42,7 @@ const { q } = require('./db');
 const ability = require('./ability');
 const drills = require('./drills');
 const revision = require('./revision');
+const levelAdvice = require('./level-advice');
 
 /** How many items a plan holds. Three is a deliberate ceiling, not a page size. */
 const PLAN_SIZE = 3;
@@ -234,6 +235,15 @@ async function weekly(userId, partWeights) {
     plan: out,
     level,
     overall: ab.overall,
+    /* Which of the two VPET papers to sit next, and on what evidence.
+     *
+     * Separate from the three things to do, because it is a different KIND of
+     * advice: those say what to practise, this says which instrument will
+     * actually measure the result. Getting it wrong wastes an hour and returns
+     * a number that means less than it looks — a perfect Level 1 paper reports
+     * the paper's ceiling, not the candidate's. server/level-advice.js carries
+     * the reasoning. */
+    nextPaper: await levelAdvice.recommendLevel(userId),
     /* So a screen can say "this is why the list looks like that" instead of
        presenting three items as an oracle. */
     target: TARGET,

@@ -201,6 +201,21 @@
           <section id="ke-hoach" class="card p-5 sm:p-6 scroll-mt-24" aria-labelledby="h-plan">
             <h3 id="h-plan" class="font-extrabold tracking-tight">What to do next</h3>
             <p class="text-[13px] text-muted mt-1">Three things, chosen from the numbers above.</p>
+            <!-- Which of the two VPET papers to sit next. Above the three
+                 things rather than among them: those say what to practise,
+                 this says which instrument will actually measure the result,
+                 and sitting the wrong one costs an hour for a number that
+                 means less than it looks. -->
+            <a id="next-paper" hidden class="flex items-start gap-3 mt-4 rounded-xl border border-line p-3 group">
+              <span class="w-6 h-6 rounded-full bg-brand-soft text-brand-strong shrink-0
+                inline-flex items-center justify-center mt-0.5" aria-hidden="true">
+                <svg viewBox="0 0 24 24" class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg>
+              </span>
+              <span class="min-w-0">
+                <b id="next-paper-title" class="block text-[14px] leading-snug group-hover:underline"></b>
+                <span id="next-paper-why" class="block text-[13px] text-muted mt-0.5"></span>
+              </span>
+            </a>
             <ul class="grid gap-3 mt-4" id="plan-list">
               <li class="skeleton h-12 w-full rounded-xl"></li>
             </ul>
@@ -496,6 +511,34 @@
     PrepApi.get('/api/plan').then(res => {
       const box = PREP.qs('#plan-list');
       if (!box) return;
+      /* Which paper next. The reason is a key from server/level-advice.js
+         rather than a sentence, so it can be said in either language and so
+         the server never ships prose the browser has to trust. */
+      const np = res.ok && res.data.nextPaper;
+      const npBox = PREP.qs('#next-paper');
+      if (np && npBox) {
+        const WHY = {
+          toppedOutLevel1: ['You answered nearly everything on Level 1 — it cannot measure any higher.',
+                            'Bạn làm gần đúng hết đề Cấp 1 — đề này không đo cao hơn được nữa.'],
+          bottomedOutLevel2: ['Level 2 starts at B1+, and it could not tell where you are. Level 1 can.',
+                              'Đề Cấp 2 chỉ đo từ B1+ trở lên và chưa xác định được bạn ở đâu. Đề Cấp 1 thì được.'],
+          paperFits: ['This paper is measuring you — sitting it again gives a comparable number.',
+                      'Đề này đang đo đúng tầm — làm lại sẽ có con số so sánh được.'],
+          strongOnHardMaterial: ['Your practice has been at B2 and above, and going well.',
+                                 'Bạn đang luyện ở mức B2 trở lên và làm tốt.'],
+          startAtLevel1: ['Start here. It measures from A1, so nothing is wasted.',
+                          'Bắt đầu ở đây. Đề đo từ A1 nên không phí lần làm nào.'],
+          noData: ['Start here. It measures from A1 up to B1+.',
+                   'Bắt đầu ở đây. Đề đo từ A1 tới B1+.']
+        };
+        const why = WHY[np.why] || WHY.noData;
+        PREP.qs('#next-paper-title').textContent =
+          PREP.t('Sit VPET Level ' + np.level + ' next', 'Nên làm đề VPET Cấp ' + np.level + ' tiếp theo');
+        PREP.qs('#next-paper-why').textContent = PREP.t(why[0], why[1]);
+        npBox.href = '/prep/bai-thi/' + encodeURIComponent(np.testId) + '/';
+        npBox.hidden = false;
+      }
+
       const rows = (res.ok && res.data.plan) || [];
       if (!rows.length) {
         box.innerHTML = '<li class="text-[13px] text-muted">' +

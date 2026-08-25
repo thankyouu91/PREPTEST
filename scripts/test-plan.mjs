@@ -185,6 +185,54 @@ try {
     'And so does the overall estimate',
     p2.data.overall.score + ' vs ' + ab.data.overall.score);
 
+  /* ------------------------------------------------------------------ *
+   * Which of the two papers to sit next
+   * ------------------------------------------------------------------ *
+   *
+   * VPET is two instruments and neither can see outside its own range, so
+   * sitting the wrong one costs an hour and returns a number that means less
+   * than it looks: a perfect Level 1 paper reports the paper's ceiling, and a
+   * near-blank Level 2 paper cannot tell A2 from B1. Both look like results.
+   */
+  head('Which paper to sit next');
+
+  const LA = await import('../server/level-advice.js').then(m => m.default || m);
+  const B2 = await import('../server/bands.js').then(m => m.default || m);
+
+  /* The two thresholds are DERIVED from the band scale rather than chosen, so
+     they cannot drift away from what the report can actually distinguish. */
+  ok(B2.bandFor(LA.LEVEL1_CEILING, { family: 'vpet', level: 'B1' }).atCeiling === true,
+    'the Level 1 ceiling is the mark where the report stops discriminating',
+    String(LA.LEVEL1_CEILING));
+  ok(B2.bandFor(LA.LEVEL1_CEILING - 0.5, { family: 'vpet', level: 'B1' }).atCeiling === false,
+    'and half a mark below it, the report still says something specific');
+  ok(B2.bandFor(LA.LEVEL2_FLOOR - 0.5, { family: 'vpet', level: 'B2' }).atFloor === true,
+    'the Level 2 floor is the mark below which it can only say "at most B1+"',
+    String(LA.LEVEL2_FLOOR));
+
+  ok(LA.PAPER[1] !== LA.PAPER[2] && LA.PAPER[2],
+    'and both papers exist to be recommended', JSON.stringify(LA.PAPER));
+
+  /* The plan carries it, so a dashboard does not have to ask twice. */
+  ok(p2.data.nextPaper && [1, 2].includes(p2.data.nextPaper.level),
+    'the weekly plan names which paper to sit next',
+    JSON.stringify(p2.data.nextPaper));
+  ok(p2.data.nextPaper && p2.data.nextPaper.why,
+    'and why, as a key the interface can say in either language',
+    p2.data.nextPaper && p2.data.nextPaper.why);
+  ok(p2.data.nextPaper && p2.data.nextPaper.evidence,
+    'with the evidence it read, rather than an unexplained verdict',
+    JSON.stringify(p2.data.nextPaper && p2.data.nextPaper.evidence));
+
+  /* An estimate is not labelled with a CEFR level unless we know how hard the
+     material behind it was. Seven out of ten on B1 drills and seven out of ten
+     on C1 drills are different claims about a person, and this is where the
+     old code called both of them the same thing. */
+  const ov = ab.data.overall;
+  ok(!(ov && ov.band) || ov.materialLevel != null,
+    'no CEFR label is attached to an estimate without knowing the difficulty behind it',
+    JSON.stringify({ band: ov && ov.band, materialLevel: ov && ov.materialLevel }));
+
   head('It refuses what it should');
 
   const anon = client();

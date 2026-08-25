@@ -899,7 +899,20 @@ const run = async () => {
   /* Everything the blueprint says needs sound, so the format's own count can be
      checked against a second, independent path to the same fact. */
   const audioLetters = ['E', 'F', 'G', 'H', 'J'];
-  const r2 = await call('GET', '/api/admin/questions?family=vpet&limit=300');
+  /* 500 is the API's own cap, and the truncation check below is not belt and
+     braces — it caught this. At `limit=300` the listing silently stopped
+     mid-bank once the C1 sets took VPET past 300 questions, and the group check
+     further down then reported "g-b1-1 has 0 recordings" because the item
+     carrying the passage had fallen off the end of the page. A group assertion
+     against a truncated list is a false alarm that looks exactly like a real
+     one, so the truncation is now its own named failure. */
+  const BANK_PAGE = 500;
+  const r2 = await call('GET', '/api/admin/questions?family=vpet&limit=' + BANK_PAGE);
+  const fetched = (r2.data.items || []).length;
+  check('The whole VPET bank fits in one page, so the checks below see all of it',
+    fetched < BANK_PAGE,
+    fetched + ' returned against a page size of ' + BANK_PAGE
+      + ' — the bank has outgrown the page; these checks need paging now');
   r2.data.items = (r2.data.items || []).filter(x => audioLetters.includes(x.part) && x.status === 'active');
 
   r = await call('GET', '/api/admin/exam-formats?familyId=vpet');

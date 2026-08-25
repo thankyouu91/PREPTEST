@@ -114,7 +114,25 @@ try {
   ok(near(lots.p, 82 / 104), '80 out of 100 lands at 82/104, pulled slightly by the prior', lots.p.toFixed(6));
   ok(lots.confident, 'That is enough to name a band', 'sd ' + lots.sd.toFixed(4));
   ok(lots.needed === 0, 'And it stops asking for more');
-  ok(A.bandOf(lots).band === 'B2', 'Which here is B2', JSON.stringify(A.bandOf(lots)));
+  /* The same estimate, labelled twice.
+   *
+   * bandOf() now takes the difficulty of the material behind the estimate,
+   * because 80 out of 100 on Level 1 material and 80 out of 100 on Level 2
+   * material are different claims about a person and the score alone cannot
+   * tell them apart. This used to answer "B2" to both, which is the ability
+   * panel's version of the bug that had a Level 1 paper reporting C1.
+   *
+   * `materialLevel` is on the server/ability.js LEVEL_RANK scale: 3 is B1
+   * (Level 1 material), 5 is C1 (Level 2 material). */
+  ok(A.bandOf(lots, { materialLevel: 3 }).band === 'B1',
+    'Eight out of ten on Level 1 material is B1 — that paper measures no higher than B1+',
+    JSON.stringify(A.bandOf(lots, { materialLevel: 3 })));
+  ok(A.bandOf(lots, { materialLevel: 5 }).band === 'C1',
+    'The same estimate on Level 2 material is C1',
+    JSON.stringify(A.bandOf(lots, { materialLevel: 5 })));
+  ok(A.bandOf(lots).band === null,
+    'and with no idea how hard the material was, it declines to name a level at all',
+    JSON.stringify(A.bandOf(lots)));
 
   /* Decay. The same 100 items, 30 days old, must weigh exactly half — that is
      what a 30-day half-life means, and it is the property that stops a strong
@@ -357,7 +375,11 @@ try {
        characters are allowed: the placeholder was an em dash and is now a
        hyphen, since the em dash is gone from the interface copy. */
     ok(/^([-—]|\d+(\.\d)?)$/.test(num), 'The ring shows a score or a dash, never a fraction', num);
-    ok(/not measured|chưa đo|provisional|tạm tính|B1|B2|C1|below B1|dưới B1/i.test(cap),
+    /* The allow-list is the full CEFR set now, not the three VSTEP bands it
+       was written for. A Level 1 learner can legitimately be told A1, A2, A2+
+       or "dưới A1" — those are real results on a paper that measures from A1,
+       and the old list treated everything below B1 as a single "below B1". */
+    ok(/not measured|chưa đo|provisional|tạm tính|A1|A2|B1|B2|C1|C2|below|dưới/i.test(cap),
       'And the caption says what that number is', cap);
 
     const note = (await page.locator('#progress-note').innerText()).trim();

@@ -50,6 +50,17 @@
 'use strict';
 
 const { q, nowISO } = require('./db');
+const bands = require('./bands');
+
+/**
+ * CEFR levels as a number, so an average of mixed material means something.
+ *
+ * Defined once, here, because two places need it and a second copy of a scale
+ * is how two parts of a platform come to disagree about what B2 is. B1+ sits
+ * at 3.5 rather than getting an integer of its own: it is the top half of B1
+ * on the GSE, not a level between B1 and B2.
+ */
+const LEVEL_RANK = { A1: 1, A2: 2, B1: 3, 'B1+': 3.5, B2: 4, 'B2+': 4.5, C1: 5, C2: 6 };
 
 /** Weight halves every 30 days. Long enough that a fortnight off does not erase
     a month of work, short enough that a term-old result stops dominating. */
@@ -144,20 +155,49 @@ const toTen = p => Math.round(Math.max(0, Math.min(1, p)) * 10 * 2) / 2;
  * obvious blank rather than a confident wrong number, and a caller that does
  * check has `needed` to tell the learner what would fix it.
  */
-function bandOf(est) {
+/**
+ * An estimate, and what to call it.
+ *
+ * `opts.materialLevel` is the average difficulty of the items behind the
+ * estimate, on the CEFR rank server/level-advice.js computes. It decides which
+ * of the two VPET ranges the score is read against, and it matters: seven out
+ * of ten on B1 drills and seven out of ten on C1 drills are not the same claim
+ * about a person, and a score alone cannot tell them apart. Without it the
+ * band is withheld rather than guessed — an unlabelled number is honest, and a
+ * confident wrong label is not.
+ */
+function bandOf(est, opts) {
   const [lo, hi] = interval(est);
+  const hardness = opts && opts.materialLevel;
+  let band = null;
+  if (est.confident && hardness != null) {
+    const b = bands.bandFor(toTen(est.p), {
+      family: 'vpet',
+      /* >= 4 on that rank is B2 and above, which is the Level 2 paper. */
+      level: hardness >= 4 ? 'B2' : 'B1'
+    });
+    band = b && b.cefr;
+  }
   return {
     score: toTen(est.p),
     low: toTen(lo),
     high: toTen(hi),
     confident: est.confident,
     needed: est.needed,
-    band: est.confident ? vstepBand(toTen(est.p)) : null
+    band
   };
 }
 
-/** The 6-level Vietnamese framework, as `docs/SCORING.md` §1.1 states it.
-    Below 3.5 no certificate is issued, so there is no band to name. */
+/**
+ * The VSTEP framework, as `docs/SCORING.md` §1.1 states it. Below 3.5 no
+ * certificate is issued, so there is no band to name.
+ *
+ * KEPT, BUT NO LONGER USED FOR THE HEADLINE. This is VEPT's table, and applying
+ * it to a VPET learner is the same mistake server/marking.js made until it was
+ * split into server/bands.js: it reported C1 to somebody whose entire history
+ * is Level 1 material, which measures nothing above B1+. Exported because the
+ * VSTEP-framework exams still need it.
+ */
 function vstepBand(ten) {
   if (ten >= 8.5) return 'C1';
   if (ten >= 5.5) return 'B2';
@@ -234,11 +274,27 @@ async function abilityOf(userId, now) {
     bucket(byTopic, r.topic, r);
   }
 
+  /* How hard the material behind these estimates was, computed from the SAME
+     rows the estimates come from rather than re-queried. Every skill_event
+     carries the level of the item that produced it, so this costs nothing and
+     cannot disagree with the numbers it labels. Per bucket, because somebody
+     can be drilling C1 reading and B1 listening in the same week. */
+  const hardnessOf = evs => {
+    let total = 0, weighted = 0;
+    for (const e of evs) {
+      const v = LEVEL_RANK[String(e.level || '').toUpperCase()];
+      if (!v) continue;
+      total++; weighted += v;
+    }
+    return total ? weighted / total : null;
+  };
+
   const out = (map) => {
     const o = {};
     for (const [k, evs] of map) {
       const est = estimate(evs, now);
-      o[k] = { ...bandOf(est), n: est.n, lastAt: est.lastAt, sd: est.sd };
+      const materialLevel = hardnessOf(evs);
+      o[k] = { ...bandOf(est, { materialLevel }), materialLevel, n: est.n, lastAt: est.lastAt, sd: est.sd };
     }
     return o;
   };
@@ -251,7 +307,11 @@ async function abilityOf(userId, now) {
   const overall = estimate(examEvents, now);
 
   return {
-    overall: { ...bandOf(overall), n: overall.n, lastAt: overall.lastAt, sd: overall.sd },
+    overall: {
+      ...bandOf(overall, { materialLevel: hardnessOf(examEvents) }),
+      materialLevel: hardnessOf(examEvents),
+      n: overall.n, lastAt: overall.lastAt, sd: overall.sd
+    },
     skills: out(bySkill),
     parts: out(byPart),
     topics: out(byTopic),
@@ -296,7 +356,7 @@ function roadmap(ability, weights, target, limit) {
 }
 
 module.exports = {
-  estimate, interval, bandOf, vstepBand, decay, toTen, roadmap,
+  estimate, interval, bandOf, LEVEL_RANK, vstepBand, decay, toTen, roadmap,
   record, abilityOf,
   SKILLS, HALF_LIFE_DAYS, PRIOR_A, PRIOR_B, CONFIDENT_SD
 };
