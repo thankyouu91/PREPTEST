@@ -531,6 +531,71 @@ node scripts/accounts.js reset-admin --user=<tên>
 
 ---
 
+## 6. Chuyển sang PostgreSQL
+
+Nền tảng chạy được trên **cả hai** engine. SQLite là mặc định và không cần
+làm gì; đặt `DATABASE_URL` (hoặc `PG_URL`) là chuyển sang Postgres.
+
+### Vì sao phải chuyển
+
+`data/prep.sqlite` là **một tệp trên một máy**. Trong container thì `/app/data`
+bị thay cùng với task, và toàn bộ tài khoản đi theo. Đó là lý do duy nhất, và
+nó chỉ thành vấn đề khi triển khai lên nhiều máy — máy đơn hiện tại thì SQLite
+vẫn đúng.
+
+### Ba lệnh
+
+```bash
+# 1. Một cụm để thử (máy dev; máy thật thì bỏ qua, dùng RDS)
+npm run pg:dev                      # in ra: export PG_URL=…
+
+# 2. Tạo bảng và chép dữ liệu sang. Mặc định là CHẠY THỬ, không ghi gì.
+PG_URL=… npm run pg:migrate         # xem nó sẽ làm gì
+PG_URL=… npm run pg:migrate -- --yes
+
+# 3. Chạy server trên Postgres
+DATABASE_URL=… npm start
+```
+
+Khởi động lên sẽ in `[db] postgres: 43 tables, …`. Nếu chưa chạy bước 2 thì
+tiến trình **dừng hẳn** với câu "PostgreSQL is reachable but empty" chứ không
+lên rồi lỗi từng request — một tiến trình mở cổng mà mọi request đều hỏng thì
+tệ hơn là không lên, vì health check nhìn cổng sẽ báo là khoẻ.
+
+### Ba điều cần biết
+
+**Tạo bảng là bước triển khai, không phải việc lúc khởi động.** `pg-migrate`
+chạy một lần, có chủ ý. Server không tự tạo bảng: mười task khởi động cùng lúc
+mà cùng `CREATE TABLE` là hỏng, và một seed chạy mỗi lần khởi động thì sẽ có
+ngày chạy đè lên dữ liệu thật.
+
+**Sequence.** Dữ liệu chép sang giữ nguyên id, nên nếu không chỉnh thì sequence
+vẫn ở 1 và lần chèn kế tiếp đâm vào dòng số một. `pg-migrate` đặt mọi sequence
+vượt mốc cao nhất **rồi đọc lại để kiểm**. Đây là lỗi khiến một cuộc chuyển đổi
+trông như thành công cho tới đúng lúc có người đăng ký.
+
+**Sao lưu đổi chủ.** `server/backup.js` sao lưu tệp SQLite. Trên Postgres thì
+việc đó là snapshot của RDS, không phải của tiến trình này. Màn sao lưu trong
+khu quản trị vẫn nói về tệp SQLite và **không** mô tả đúng một cài đặt Postgres.
+
+### Kiểm
+
+Ba bộ, đều nằm trong `npm run verify` và đều **báo bỏ qua thật to** khi máy
+không có Postgres:
+
+| Bộ | Kiểm gì |
+|---|---|
+| `test-pg-schema` | DDL nạp được vào một server thật, so từng bảng từng cột |
+| `test-pg-driver` | Bốn động từ trả lời **giống hệt** SQLite, dấu giữ chỗ, giao dịch |
+| `test-pg-app` | Các module thật chạy trên dữ liệu đã chép sang |
+
+Bộ thứ ba là bộ đáng giá nhất: nó tìm ra năm khác biệt phương ngữ trong những
+truy vấn đã đúng suốt nhiều tháng, trong đó có một lỗi **không báo lỗi gì cả**
+— node-postgres trả `COUNT(*)` dưới dạng chuỗi, nên phép cộng lặng lẽ thành
+phép nối chuỗi.
+
+---
+
 ## Còn treo, không sửa được từ repo
 
 `/home/ubuntu/vpet-selfupdate.sh` chạy `pm2 restart preptest --update-env` mà

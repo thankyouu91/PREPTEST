@@ -998,7 +998,18 @@ const sqliteQ = {
  * across, which is the deploy step, done once and on purpose rather than by
  * ten containers racing to CREATE TABLE.
  */
-const PG_DSN = process.env.DATABASE_URL || process.env.PG_URL || '';
+/* `DATABASE_URL` ONLY, and never `PG_URL`. The two variables mean different
+   things and conflating them was a live bug for about an hour:
+
+     DATABASE_URL  this deployment runs on Postgres
+     PG_URL        here is a Postgres the TESTS may use
+
+   scripts/verify.sh starts a throwaway cluster and `eval`s its `export PG_URL`,
+   which then persists for the whole script — including `node server.js`. With
+   both names switching the engine, the gate's own server quietly came up on a
+   scratch database holding a different seed and different passwords, and a
+   dozen student suites would have gone red for a reason nowhere near them. */
+const PG_DSN = process.env.DATABASE_URL || '';
 const pgHandle = PG_DSN ? require('./pg').createPg({ url: PG_DSN }) : null;
 const engine = pgHandle ? 'postgres' : 'sqlite';
 const live = pgHandle ? pgHandle.q : sqliteQ;

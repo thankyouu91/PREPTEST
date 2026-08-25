@@ -58,6 +58,25 @@ const sqliteFile = path.join(tmp, 'seed.sqlite');
 
 let caught = 0;
 try {
+  head('PG_URL alone must NOT switch the live engine');
+
+  /* In a child, because this process is about to set DATABASE_URL on purpose.
+     scripts/verify.sh exports PG_URL for its whole run — that is how the
+     throwaway cluster reaches these suites — so if PG_URL also switched the
+     engine, the gate's own server would come up on a scratch database with a
+     different seed and different passwords, and a dozen student suites would
+     go red for a reason nowhere near them. It did, for about an hour. */
+  const probe = async (env) => (await exec(process.execPath,
+    ['-e', "console.log(require('./server/db.js').engine)"],
+    { cwd: path.join(import.meta.dirname, '..'),
+      env: { ...process.env, DATABASE_URL: '', PG_URL: '', PREP_DB: path.join(tmp, 'probe.sqlite'), ...env },
+      maxBuffer: 8 * 1024 * 1024 })).stdout.trim().split('\n').pop();
+
+  ok(await probe({ PG_URL }) === 'sqlite',
+    'PG_URL says "here is a Postgres for the tests" and leaves the engine alone');
+  ok(await probe({ DATABASE_URL: PG_URL }) === 'postgres',
+    'DATABASE_URL says "this deployment runs on Postgres" and switches it');
+
   head('Filling PostgreSQL from a freshly seeded SQLite');
   const { stdout } = await exec(process.execPath,
     [path.join(import.meta.dirname, 'pg-migrate.mjs'), '--yes', '--fresh'],
@@ -68,10 +87,16 @@ try {
   ok(/every table holds the same number of rows on both sides/.test(stdout),
     'and both sides agree table by table');
 
-  /* Only now, with the database full, is db.js allowed to pick its engine. */
+  /* Only now, with the database full, is db.js allowed to pick its engine —
+     and it is told with DATABASE_URL, which is the ONLY name that switches it.
+     PG_URL means "here is a Postgres the tests may use" and nothing more:
+     scripts/verify.sh exports it for the whole run, so a PG_URL that also
+     switched engines would have put the gate's own server on a scratch
+     database. Set here, deliberately, for this process alone. */
+  process.env.DATABASE_URL = PG_URL;
   process.env.PREP_DB = path.join(tmp, 'scratch.sqlite');
   const db = require_('../server/db.js');
-  ok(db.engine === 'postgres', 'db.js selected the Postgres engine from PG_URL', db.engine);
+  ok(db.engine === 'postgres', 'db.js selected the Postgres engine from DATABASE_URL', db.engine);
   const info = await db.connectEngine();
   ok(info.tables > 20, 'and connectEngine() found the schema', JSON.stringify(info));
 
