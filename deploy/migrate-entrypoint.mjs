@@ -43,6 +43,21 @@
  *   PREP_DB                     where the snapshot is unpacked
  *   AWS_REGION                  for the signature
  *   NODE_EXTRA_CA_CERTS         the RDS root bundle the image carries
+ *   MIGRATE_FRESH=1             drop the schema first, then copy
+ *
+ * ## Run ONE of these at a time
+ *
+ * Two of these tasks running together do not fail, which is the problem. The
+ * copy inserts with ON CONFLICT DO NOTHING, so the loser of each race writes
+ * zero rows and reports "SOME ROWS DID NOT LAND"; a table with no unique key
+ * gets both copies and ends up with exactly twice what it should have. Worse,
+ * if one finishes its purge while the other is still copying, the second one
+ * puts the fixture accounts and their six fake orders back.
+ *
+ * That happened, on this database, at 10:55 on the day this was written. The
+ * cure is MIGRATE_FRESH=1 and one task. There is no lock here because the right
+ * place for one is not a shell script in a container — check the cluster before
+ * starting a second.
  *
  * That last one is not optional and is checked below. node-postgres now reads
  * `sslmode=require` as verify-full, Amazon's roots are not in Node's default
@@ -151,7 +166,9 @@ try {
      PostgreSQL, and then the migration has no SQLite side to read and would
      copy the target onto itself. PGHOST is the one that is easy to miss,
      because it is in this task's environment for the step AFTER this one. */
-  await run('/app/scripts/pg-migrate.mjs', ['--yes'],
+  const migrateArgs = ['--yes'];
+  if (/^(1|true|yes)$/i.test(process.env.MIGRATE_FRESH || '')) migrateArgs.push('--fresh');
+  await run('/app/scripts/pg-migrate.mjs', migrateArgs,
     { PG_URL, PREP_DB, DATABASE_URL: '', PGHOST: '' });
   /* Now against the copy: here DATABASE_URL is what points db.js's own q/tx at
      PostgreSQL, which is exactly what the purge should be operating on. */
