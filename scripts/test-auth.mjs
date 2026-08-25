@@ -114,7 +114,13 @@ check('Signing in reaches the dashboard', page.url().endsWith('/prep/'), page.ur
 await settle('#mytests-grid', '#mytests-empty');
 const name = (await page.locator('#greet-name').textContent()).trim();
 check('The student name is right', name === 'Demo Student', name);
-const unlocked = await page.locator('#mytests-grid article').count();
+/* Unlocked, not "on the page". The grid lists every published paper and locks
+   the ones this account cannot open, so `article` counts the catalogue rather
+   than the entitlement — which happened to be the same number while VPET
+   published exactly one paper, and stopped being the same number the day Level 2
+   was added. A locked card carries `card-locked` (see testCard() in
+   public/prep/index.html); an unlocked one does not. */
+const unlocked = await page.locator('#mytests-grid article:not(.card-locked)').count();
 check('One test is already unlocked (from a code in the database)', unlocked === 1, 'counted ' + unlocked);
 
 /* Signed in, the sign-in screen goes straight inside */
@@ -148,7 +154,7 @@ check('No error is shown on a successful redemption',
 await logout();
 await login('student', DEMO_PASSWORD);
 await settle('#mytests-grid', '#mytests-empty');
-const afterRelogin = await page.locator('#mytests-grid article').count();
+const afterRelogin = await page.locator('#mytests-grid article:not(.card-locked)').count();
 /* This code unlocks the whole IELTS family, and IELTS is parked so it has no
    published tests. The right is still recorded — someone who paid does not lose it
    — but nothing appears yet. The day IELTS opens, they show up. */

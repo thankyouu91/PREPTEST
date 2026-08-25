@@ -172,19 +172,46 @@ async function availableByPart() {
  * is — and starting somebody at B1 on a part when everything else about them
  * says B2 wastes the first drill proving something already known.
  */
-function levelFor(abilityData, part, fallback) {
+function levelFor(abilityData, part, fallback, targetPaper) {
   const est = (abilityData.parts || {})[part];
   const overall = abilityData.overall || {};
-  const score = est && est.confident ? est.score
-    : (overall.confident ? overall.score : null);
-  if (score == null) return fallback || placement.START_LEVEL;
-  /* The same three cut-offs the band table uses (docs/SCORING.md §1.1), one step
-     coarser: what is wanted here is which shelf to take material from, not a
-     certificate. */
-  if (score >= 8.5) return 'C1';
-  if (score >= 5.5) return 'B2';
-  if (score >= 3.5) return 'B1';
-  return 'A2';
+  const confident = est && est.confident ? est : (overall.confident ? overall : null);
+  const score = confident ? confident.score : null;
+
+  /* Which shelf to take material from, not which certificate to award — so
+     three coarse steps, and the score alone does not decide them.
+     `materialLevel` is the average difficulty of the work the estimate was
+     built from (server/ability.js), and without it an 8.5 earned entirely on
+     B1 drills would send a learner straight to C1 material they cannot do.
+     Eight and a half out of ten says "you have this shelf", and the useful
+     next drill is the shelf ABOVE it. */
+  let level;
+  if (score == null) {
+    level = fallback || placement.START_LEVEL;
+  } else {
+    const at = confident.materialLevel;
+    const STEPS = ['A2', 'B1', 'B2', 'C1'];
+    if (at == null) {
+      /* No idea what they have been doing. The old behaviour, kept as the
+         fallback rather than removed: better a coarse guess than no drill. */
+      level = score >= 8.5 ? 'C1' : score >= 5.5 ? 'B2' : score >= 3.5 ? 'B1' : 'A2';
+    } else {
+      /* Round the material they have been on to a shelf, then move up one if
+         they are comfortably on top of it and down one if they are not. */
+      const here = Math.max(0, Math.min(STEPS.length - 1, Math.round(at) - 2));
+      const move = score >= 8 ? 1 : (score < 4 ? -1 : 0);
+      level = STEPS[Math.max(0, Math.min(STEPS.length - 1, here + move))];
+    }
+  }
+
+  /* And capped by the paper they are working toward, because practice above
+     the ceiling of their own paper is practice for a test they are not
+     sitting. Level 1 tops out at B1+, so B2 material is already a stretch
+     beyond it and C1 is simply the wrong exam; Level 2 starts at B1+, so
+     anything below B2 is under the floor of what it will ask them. */
+  if (targetPaper === 1 && level === 'C1') return 'B2';
+  if (targetPaper === 2 && (level === 'A2' || level === 'B1')) return 'B2';
+  return level;
 }
 
 /** Question ids this learner has met recently, whatever they met them in. */
@@ -268,15 +295,19 @@ async function drawItems(part, level, size, skip) {
  * the placement result screen show. Three lists that disagree about what is
  * weakest would be three lists nobody trusts.
  */
-async function suggest(userId, weights, limit) {
+async function suggest(userId, weights, limit, targetPaper) {
   const cap = limit === undefined ? 3 : limit;
   const ab = await ability.abilityOf(userId);
 
   const have = await availableByPart();
 
+  /* Which VPET paper this practice is for. Passed in by the caller that already
+     knows (server/plan.js asks server/level-advice.js once and hands it down)
+     rather than worked out again here, so a learner cannot be told to sit
+     Level 2 on one line and given Level 1 drills on the next. */
   const row = (part, est) => ({
     part,
-    level: levelFor(ab, part),
+    level: levelFor(ab, part, undefined, targetPaper),
     score: est ? est.score : null,
     confident: est ? est.confident : false,
     needed: est ? est.needed : null,

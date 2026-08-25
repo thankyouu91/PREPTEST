@@ -1479,17 +1479,62 @@ function seed() {
   if (!qs.val('SELECT COUNT(*) c FROM questions')) seedQuestions();
   seedVpetItems();
 
-  if (!qs.val('SELECT COUNT(*) c FROM tests')) {
-    const insT = db.prepare(`INSERT INTO tests
-      (id,family_id,title,level,duration_min,scoring,guide_json,status,build_mode,created_at,updated_at)
-      VALUES (?,?,?,?,?,?,?,?,'manual',?,?)`);
-    for (const t of SEED_TESTS) {
-      const fmt = fullFormatOf(t.family);
-      insT.run(t.id, t.family, t.title, t.level,
-        fmt ? EXAM_FORMATS.totalMinutes(fmt) : 0,
-        fmt ? fmt.scoring : '', JSON.stringify(fmt ? fmt.guide : []), t.status, at, at);
+  /* The seeded papers, reconciled on EVERY boot rather than only on an empty
+     database — for the same reason the parts below are, and it took shipping the
+     bug to see it.
+
+     This block used to be wrapped in `if (!COUNT(*) FROM tests)`. That guard is
+     true exactly once in a database's life, so adding a paper to SEED_TESTS
+     added it to new installs and to nothing else: every existing database — the
+     production box, every developer's copy, the gate's own — silently kept the
+     old list. Level 2 was added to the list, the gate went green on the
+     nine-hundred-line paper suite, and the paper was not in the database at all.
+     Nothing failed, because the one function that would have noticed
+     (buildPaperFromBlueprint) opens with `if (!SELECT 1 FROM tests) return null`
+     and returns quietly. A missing paper looked exactly like a finished one.
+
+     What is reconciled, and what is deliberately not:
+
+       id, family, title, level   The seed's, always. `level` is not cosmetic —
+                                  server/bands.js reads it to decide which of the
+                                  two VPET instruments a sitting was, so a row
+                                  that drifts from this list reports a candidate
+                                  at the wrong CEFR level.
+       duration / scoring / guide The blueprint's, always. The parts are already
+                                  rebuilt from it every boot; leaving the paper's
+                                  stated duration behind is how a paper comes to
+                                  claim 112 minutes over ten parts adding to 58.
+       status                     NOT touched once the row exists. Taking a
+                                  broken paper out of the catalogue is an
+                                  operator's decision, and a seed that republished
+                                  it on the next restart would overrule the person
+                                  who did it. Only a row being created for the
+                                  first time takes its status from the list. */
+  const insT = db.prepare(`INSERT INTO tests
+    (id,family_id,title,level,duration_min,scoring,guide_json,status,build_mode,created_at,updated_at)
+    VALUES (?,?,?,?,?,?,?,?,'manual',?,?)`);
+  let added = 0, retitled = 0;
+  for (const t of SEED_TESTS) {
+    const fmt = fullFormatOf(t.family);
+    const mins = fmt ? EXAM_FORMATS.totalMinutes(fmt) : 0;
+    const scoring = fmt ? fmt.scoring : '';
+    const guide = JSON.stringify(fmt ? fmt.guide : []);
+    const cur = qs.get('SELECT family_id, title, level, duration_min, scoring, guide_json FROM tests WHERE id=?', t.id);
+
+    if (!cur) {
+      insT.run(t.id, t.family, t.title, t.level, mins, scoring, guide, t.status, at, at);
+      added++;
+      continue;
     }
+    if (cur.family_id === t.family && cur.title === t.title && cur.level === t.level
+        && cur.duration_min === mins && cur.scoring === scoring && cur.guide_json === guide) continue;
+
+    qs.run('UPDATE tests SET family_id=?, title=?, level=?, duration_min=?, scoring=?, guide_json=?, updated_at=? WHERE id=?',
+      t.family, t.title, t.level, mins, scoring, guide, at, t.id);
+    retitled++;
   }
+  if (added) console.warn(`[seed] ${added} seeded paper(s) added to this database.`);
+  if (retitled) console.warn(`[seed] ${retitled} seeded paper(s) brought back in step with the list.`);
 
   /* The parts themselves are built from the blueprint, on every boot rather than
      only on a fresh database — the paper this repairs is already sitting on the

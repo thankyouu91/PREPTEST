@@ -455,5 +455,44 @@ try {
   console.log('\n✗ The suite threw: ' + (e && e.stack ? e.stack : e));
 }
 
+head('Which shelf the drill comes from');
+
+/* levelFor decides which level's material a drill is drawn from, and it used
+   to decide it from the score alone using the band table's cut-offs. That sent
+   a learner with 8.5 out of ten earned entirely on B1 drills straight to C1
+   material — the same mistake as reporting C1 off a Level 1 paper, one layer
+   down: a number read without the difficulty that produced it.
+   `materialLevel` is on server/ability.js's LEVEL_RANK scale — 3 is B1, 5 is C1. */
+{
+  const D = await import('../server/drills.js').then(m => m.default || m);
+  const ab = (score, materialLevel) =>
+    ({ overall: { score, confident: true, materialLevel }, parts: {} });
+
+  ok(D.levelFor(ab(8.5, 3), 'A') === 'B2',
+    'eight and a half on B1 material means the next shelf up, not a two-level jump',
+    D.levelFor(ab(8.5, 3), 'A'));
+  ok(D.levelFor(ab(8.5, 5), 'A') === 'C1',
+    'the same score on C1 material really is C1',
+    D.levelFor(ab(8.5, 5), 'A'));
+  ok(D.levelFor(ab(3, 3), 'A') === 'A2',
+    'and struggling on B1 material means dropping a shelf',
+    D.levelFor(ab(3, 3), 'A'));
+
+  /* Capped by the paper being worked toward: practice above your own paper's
+     ceiling is practice for a test you are not sitting. */
+  ok(D.levelFor(ab(8.5, 5), 'A', undefined, 1) === 'B2',
+    'aiming at Level 1, C1 material is the wrong exam and is capped to B2',
+    D.levelFor(ab(8.5, 5), 'A', undefined, 1));
+  ok(D.levelFor(ab(5, 3), 'A', undefined, 2) === 'B2',
+    'aiming at Level 2, anything under B2 is below what that paper will ask',
+    D.levelFor(ab(5, 3), 'A', undefined, 2));
+
+  /* With no idea what they have been practising, the old coarse rule stands —
+     a rough drill beats no drill. */
+  ok(D.levelFor(ab(8.5, null), 'A') === 'C1',
+    'with the difficulty unknown it falls back to the score alone',
+    D.levelFor(ab(8.5, null), 'A'));
+}
+
 console.log(`\n${fail ? '\x1b[31m' : '\x1b[32m'}${pass} passed, ${fail} failed\x1b[0m`);
 process.exit(fail ? 1 : 0);

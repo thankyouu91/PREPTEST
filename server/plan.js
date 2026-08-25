@@ -142,7 +142,10 @@ async function weekly(userId, partWeights) {
         the shortfall for a learner who has no data at all, whose roadmap is
         empty. Re-deriving either here would be a second copy to keep in step,
         and the copy that goes stale is always the one nobody is looking at. */
-  const parts = await drills.suggest(userId, partWeights, 6);
+  /* Asked once and handed down, so the plan cannot recommend Level 2 on one
+     line and hand out Level 1 drills on the next. */
+  const nextPaper = await levelAdvice.recommendLevel(userId);
+  const parts = await drills.suggest(userId, partWeights, 6, nextPaper.level);
   parts.forEach((r, i) => {
     if (!r.available) return;                     // nothing to press
     cand.push({
@@ -243,7 +246,7 @@ async function weekly(userId, partWeights) {
      * a number that means less than it looks — a perfect Level 1 paper reports
      * the paper's ceiling, not the candidate's. server/level-advice.js carries
      * the reasoning. */
-    nextPaper: await levelAdvice.recommendLevel(userId),
+    nextPaper,
     /* So a screen can say "this is why the list looks like that" instead of
        presenting three items as an oracle. */
     target: TARGET,
