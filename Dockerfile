@@ -54,6 +54,18 @@ COPY --chown=node:node server ./server
 COPY --chown=node:node public ./public
 COPY --chown=node:node --from=build /app/public/tailwind-built.css ./public/tailwind-built.css
 
+# Amazon's RDS root certificates, so a managed database can be VERIFIED and not
+# merely encrypted to. Node's default trust store does not carry them, and
+# node-postgres now reads `sslmode=require` as verify-full, so without this the
+# connection fails outright with SELF_SIGNED_CERT_IN_CHAIN — which is the right
+# failure, and the wrong fix is to turn verification off to make it go away.
+#
+# Committed to the repo rather than curl'd here on purpose: a build that fetches
+# its own trust anchors over the network is a build whose trust anchors depend
+# on the network. Point NODE_EXTRA_CA_CERTS at this path to use it; nothing
+# happens if you do not, which is what a SQLite install wants.
+COPY --chown=node:node deploy/rds-ca-global.pem ./rds-ca-global.pem
+
 # The SQLite file and uploaded audio land here. In a container this directory
 # is EPHEMERAL: it is gone the moment the task is replaced, which for a
 # database means every account and every sitting goes with it. Mount a volume,

@@ -42,6 +42,13 @@
  *   PGPASSWORD                  injected by ECS from the RDS master secret
  *   PREP_DB                     where the snapshot is unpacked
  *   AWS_REGION                  for the signature
+ *   NODE_EXTRA_CA_CERTS         the RDS root bundle the image carries
+ *
+ * That last one is not optional and is checked below. node-postgres now reads
+ * `sslmode=require` as verify-full, Amazon's roots are not in Node's default
+ * trust store, and without the bundle the run dies on
+ * SELF_SIGNED_CERT_IN_CHAIN — after downloading the snapshot, which makes it
+ * look like a data problem.
  *
  * `DATABASE_URL` is deliberately NOT set. Setting it would switch db.js's own
  * engine to PostgreSQL, and then the migration would have no SQLite side to
@@ -116,6 +123,23 @@ function run(script, args, env) {
       ? resolve()
       : reject(new Error(`${script} exited ${code}`)));
   });
+}
+
+/* Checked before the download rather than after it, so a missing trust anchor
+   costs a second and says what it is, instead of two megabytes and a TLS stack
+   trace. */
+const SSLMODE = process.env.PGSSLMODE || 'require';
+const CA = process.env.NODE_EXTRA_CA_CERTS || '';
+if (SSLMODE !== 'disable' && SSLMODE !== 'no-verify') {
+  if (!CA) {
+    console.error('[migrate] NODE_EXTRA_CA_CERTS is not set, so the RDS certificate cannot be verified.');
+    console.error('[migrate] Point it at /app/rds-ca-global.pem, which this image carries.');
+    process.exit(1);
+  }
+  if (!fs.existsSync(CA)) {
+    console.error(`[migrate] NODE_EXTRA_CA_CERTS points at ${CA}, which is not in this image.`);
+    process.exit(1);
+  }
 }
 
 const PG_URL = dsn();

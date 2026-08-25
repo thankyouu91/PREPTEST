@@ -223,14 +223,20 @@ function createPg(opts) {
     config.port = Number(o.port || process.env.PGPORT || 5432);
     config.database = o.database || process.env.PGDATABASE;
     config.user = o.user || process.env.PGUSER;
-    /* `require` here means the transport is encrypted and the certificate is
-       not verified against a CA. Inside a VPC, reachable only from one security
-       group, that is a deliberate interim position and not a comfortable one —
-       docs/VAN-HANH.md carries it as an open item. `PGSSLMODE=disable` is
-       honoured so a local Postgres in the test suite still connects. */
-    if ((process.env.PGSSLMODE || 'require') !== 'disable') {
-      config.ssl = { rejectUnauthorized: false };
-    }
+    /* TLS on, and VERIFIED. The certificate authority is Amazon's, which is not
+       in Node's default trust store — the image carries the RDS root bundle and
+       `NODE_EXTRA_CA_CERTS` points at it, which is a whole-process setting and
+       so covers `scripts/pg-migrate.mjs` and its bare `new Client()` too.
+     *
+       Two escape hatches, both explicit. `PGSSLMODE=disable` is plaintext, for
+       the local cluster the test suite starts, which has no TLS at all.
+       `PGSSLMODE=no-verify` encrypts without checking who answered, which is
+       what to reach for if a certificate problem is standing between you and an
+       incident — but it is not a resting place: it accepts any certificate, so
+       anything that can get in front of the database can read the traffic. */
+    const mode = process.env.PGSSLMODE || 'require';
+    if (mode === 'no-verify') config.ssl = { rejectUnauthorized: false };
+    else if (mode !== 'disable') config.ssl = { rejectUnauthorized: true };
   }
 
   let password = null;
