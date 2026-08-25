@@ -214,8 +214,14 @@ Không thể chấm đúng bằng luật thuần. Thiết kế theo tầng, mỗ
    vựng (type-token ratio), độ dài câu trung bình, mật độ linking words, lỗi
    chính tả, tỉ lệ từ ngoài danh sách CEFR của bậc đang luyện. Đây **không phải
    điểm**, mà là **phản hồi chẩn đoán** — nói rõ với học viên.
-2. **Tầng rubric thủ công.** Giáo viên chấm theo đúng 4 tiêu chí của kỳ thi, lưu
-   điểm từng tiêu chí + nhận xét. Đây là nguồn sự thật để hiệu chỉnh tầng 3.
+2. **Tầng so khớp (làm ngay, miễn phí).** Chỉ dùng được khi câu hỏi có đáp án
+   đúng cố định. Part H — "nhắc lại câu vừa nghe" — là trường hợp duy nhất trong
+   các phần Nói: câu gốc nằm sẵn trong ngân hàng đề, nên `server/repeat.js` so
+   khớp từ thay vì trả tiền cho một ý kiến về câu hỏi đã có đáp án. Xem 2.3b
+   bước 2b.
+   *(Tầng rubric thủ công — giáo viên chấm tay — **không tồn tại** trong nền
+   tảng này và không có kế hoạch làm: `rubric_scores.marked_by` là chuỗi `'ai'`
+   cố định ở chỗ ghi duy nhất. Chủ đầu tư đã xác nhận giáo viên không chấm bài.)*
 3. **Tầng máy chấm.** Chỗ cắm cho dịch vụ chấm ngoài. Hợp đồng dữ liệu cố định
    `{ criteria: {...}, feedback: [...] }` để đổi nhà cung cấp không phải sửa engine.
 
@@ -236,7 +242,7 @@ nới tay, mà còn tệ hơn vì nó làm người ta bỏ cuộc. Năm luật 
 |---|---|---|
 | 1 | **Tiêu chí yếu nhất chặn trần cả bài.** Điểm chung cao nhất chỉ được hơn tiêu chí thấp nhất **0,5** | Bài có từ vựng C1 nhưng ngữ pháp A2 không phải bài B2 — ở chỗ làm thật, ngữ pháp mới là chỗ người đọc vấp |
 | 2 | **Không nộp gì thì 0 điểm.** Không có chữ nào → **0**, chặn trước mọi luật khác | Luật này thêm sau, vì thiếu nó thì bài **bỏ trống** ra **4,0**: luật 3 chặn TRẦN ở 4 và chính lời của nó nói "quá ngắn thì chưa tính là đã làm bài" — rồi vẫn cho 4 điểm. Một cái trần đứng ở chỗ đáng lẽ phải là một cái sàn. Không viết gì khác với viết ngắn, và hai việc đó phải ra hai con số khác nhau |
-| 3 | **Độ dài là cửa, không phải tiêu chí.** Dưới **60%** số từ yêu cầu → trần **4,0** | Part D yêu cầu tối thiểu 100 từ. Quá ngắn thì chưa tính là đã làm bài, dù câu cú có tốt đến đâu. Đo được, nên áp cả khi chưa có ai chấm |
+| 3 | **Độ dài là cửa, không phải tiêu chí.** Dưới số từ yêu cầu → trần điểm tăng dần theo độ dài, chạm sàn **4,0** ở mức **60%** | Part D yêu cầu tối thiểu 100 từ. Quá ngắn thì chưa tính là đã làm bài, dù câu cú có tốt đến đâu. Đo được, nên áp cả khi chưa có ai chấm. **Trước đây đây là một bậc thang và có một lỗ 40 từ**: cửa chỉ sập dưới 60 từ và không có gì áp từ 60 đến 99, nên một email 60 từ câu cú tốt ra **9/10** trên yêu cầu 100 từ. Nay trần chạy liên tục từ 4,0 ở 60 từ lên không-trần ở 100, nên không từ nào đáng quá nửa điểm |
 | 4 | **Mỗi tiêu chí phải chỉ vào bằng chứng, và bằng chứng bị KIỂM** | Điểm mà người học không truy được về chữ của chính mình thì không dạy được gì. Và vì tầng 3 là một mô hình ngôn ngữ, câu trích nó đưa ra **không được tin ngay**: `verifyEvidence` tìm câu đó trong bài thật, không thấy thì bỏ. **Một câu trích bịa còn tệ hơn không có câu trích nào, vì nó trông y hệt bằng chứng** |
 | 5 | **Mỗi điểm ghi kèm phiên bản rubric** | Tiêu chí rồi sẽ đổi. Chấm lại lịch sử khi đổi là xoá mất bản ghi tiến bộ của người học, nên điểm cũ giữ nguyên phiên bản đã chấm nó |
 
@@ -251,16 +257,157 @@ với mô hình chấm và nói với thí sinh, và `server/rubric.js` không l
 lại.
 
 **Tiêu chí theo từng phần.** Chỉ những phần thật sự có nhiều chiều mới có nhiều
-tiêu chí. Part H là "nhắc lại câu vừa nghe" — có đúng một thứ để đo, tách thành
-bốn cho ra vẻ đầy đủ thì bốn con số sẽ luôn nhích cùng nhau và chẳng nói thêm gì.
+tiêu chí — tách một thứ đo được thành bốn cho ra vẻ đầy đủ thì bốn con số sẽ
+luôn nhích cùng nhau và chẳng nói thêm gì.
 
-| Phần | Tiêu chí |
-|---|---|
-| B — Dựng lại đoạn văn | giữ được ý · ngữ pháp và chính tả · sắp xếp |
-| D — Viết email | hoàn thành yêu cầu · giọng văn · bố cục · ngữ pháp và chính tả |
-| I — Tình huống nói | xử lý tình huống · vốn ngôn ngữ · độ chính xác · mức trang trọng |
-| J — Kể lại chuyện | giữ được sự việc · trình tự · ý chính |
-| G, H | một chiều duy nhất, không tách tiêu chí |
+| Phần | Tiêu chí | Ai chấm |
+|---|---|---|
+| B — Dựng lại đoạn văn | giữ được ý · ngữ pháp và chính tả · sắp xếp | mô hình |
+| D — Viết email | hoàn thành yêu cầu · giọng văn · bố cục · ngữ pháp và chính tả | mô hình |
+| G — Nghe hiểu đoạn | trả lời đúng | mô hình |
+| H — Nhắc lại câu | giữ được bao nhiêu · giữ được cấu trúc | **so khớp, không dùng mô hình** |
+| I — Tình huống nói | xử lý tình huống · vốn ngôn ngữ · độ chính xác · mức trang trọng | mô hình |
+| J — Kể lại chuyện | giữ được sự việc · trình tự · ý chính | mô hình |
+
+> **G và H trước đây không có tiêu chí nào** — 16 trong 58 câu, trong đó 10 câu
+> là Speaking. `combine()` rơi thẳng xuống con số tổng của mô hình: không gì đối
+> chiếu nó, không ghi gì vào `rubric_scores`, và báo cáo hiện điểm mà không có
+> phần giải thích nào. Hai phần ba điểm Speaking không có căn cứ. Hai phần này
+> hẹp thật, nên tiêu chí nói *hẹp về cái gì* chứ không bịa thêm chiều.
+
+### 2.3b Công thức tính điểm một bài VPET, từ đầu đến cuối
+
+Phần trên nói *thiết kế*. Phần này là **công thức đang chạy**, đúng như mã. Mọi
+hằng số dưới đây đọc thẳng từ `server/rubric.js` và `server/marking.js`.
+
+#### Bước 1 — mỗi câu ra `earned / max`
+
+**Mọi câu đều có `max = 1`.** Một email 9 phút nặng đúng bằng một câu điền từ 25
+giây. Đây là lựa chọn có chủ ý: VPET không công bố trọng số theo câu, nên tự đặt
+ra một bảng trọng số là bịa ra một con số rồi giấu nó trong mã.
+
+| Phần | Dạng | `earned` |
+|---|---|---|
+| A, E | điền từ | `1` nếu khớp đáp án (bỏ hoa/thường, dấu câu hai đầu, chấp nhận biến thể `color\|colour`), ngược lại `0` |
+| C, F | trắc nghiệm | `1` nếu đúng, `0` nếu sai |
+| H | nhắc lại | `điểm_rubric / 10` — so khớp từ, xem bước 2b |
+| B, D, G, I, J | rubric | `điểm_rubric / 10` — xem bước 2 |
+
+Không làm → `earned = 0`. **Chưa chấm được → `earned = NULL`**, không phải `0`.
+Khác biệt này là cả một nguyên tắc: `0` nghĩa là "đã chấm, không được điểm nào";
+`NULL` nghĩa là "chưa ai chấm". Cho `0` một bài luận chưa ai đọc là một lời nói
+dối trông giống một con số.
+
+#### Bước 2 — điểm rubric của một câu Viết/Nói (thang 10)
+
+```
+điểm_thô  = trung bình cộng điểm các tiêu chí         (mỗi tiêu chí 0–10)
+```
+
+Rồi **ba luật chặn**, theo đúng thứ tự này:
+
+```
+1. Mắt xích yếu nhất   nếu điểm_thô > min(tiêu_chí) + 0,5
+                       thì điểm = min(tiêu_chí) + 0,5
+                       (chỉ áp khi có từ 2 tiêu chí trở lên)
+
+2. Sàn không-nộp-gì    nếu bài không có chữ nào  ->  điểm = 0   [DỪNG]
+
+3. Cửa độ dài          chỉ Part D, yêu cầu 100 từ.  n = số từ
+                       n >= 100          ->  không chặn
+                       60 <= n < 100     ->  trần = 4 + 6 × (n − 60) / 40
+                       n < 60            ->  trần = 4
+                       nếu điểm > trần   ->  điểm = trần
+
+điểm cuối = làm tròn tới 0,5
+```
+
+Luật 2 phải chạy **trước** luật 3 và phải là **sàn** chứ không phải trần: thiếu
+nó thì bài bỏ trống đi qua luật 3 và ra **4,0** — chính lời của luật 3 nói "quá
+ngắn thì chưa tính là đã làm bài" rồi vẫn cho 4 điểm.
+
+Ví dụ Part D, bốn tiêu chí `8 / 7 / 8 / 6`, bài 140 từ:
+
+```
+điểm_thô = (8+7+8+6)/4 = 7,25
+mắt xích yếu nhất: min = 6, trần = 6,5  ->  7,25 > 6,5  ->  điểm = 6,5
+đủ độ dài, không chặn
+điểm cuối = 6,5   ->  earned = 0,65
+```
+
+#### Bước 2b — Part H không dùng mô hình
+
+Câu phải nhắc lại nằm sẵn trong ngân hàng đề. Gọi `E` = tập từ câu gốc,
+`G` = tập từ bản gỡ băng (đã viết ra contraction, quy số về một dạng):
+
+```
+chung     = số từ có ở CẢ HAI, đếm lặp đúng số lần cả hai cùng có
+đúng_thứ_tự = chuỗi con chung dài nhất giữ nguyên thứ tự
+
+content   = chung / |E| × 10
+structure = đúng_thứ_tự / max(|E|, |G|) × 10        (0 nếu chung = 0)
+```
+
+Hai con số đó vào đúng chỗ hai tiêu chí, rồi chạy tiếp ba luật chặn ở bước 2 như
+mọi câu khác. Chia `structure` cho **bên dài hơn** là để nói thừa cũng bị trừ:
+đọc đúng câu rồi kể thêm một tràng thì không phải là nhắc lại.
+
+#### Bước 3 — điểm từng kỹ năng (thang 10)
+
+```
+điểm_kỹ_năng = làm_tròn_0,5( Σ earned / Σ max × 10 )
+```
+
+`Σ max` là **mọi câu của kỹ năng đó trên đề**, kể cả câu bỏ trống — bỏ trống
+nhiều hơn mà điểm cao hơn thì không còn là điểm nữa.
+
+| Kỹ năng | Các phần | Số câu (= `Σ max`) |
+|---|---|---:|
+| Nghe | E, F, G | 22 |
+| Đọc | C | 6 |
+| Viết | A, B, D | 15 |
+| Nói | H, I, J | 15 |
+| | | **58** |
+
+> Part G là **nói** nhưng tính vào **Nghe** — cái được đo là hiểu đoạn băng,
+> miệng chỉ là đường ra của câu trả lời. Part A là điền từ nhưng tính vào
+> **Viết**. Kỹ năng nằm ở `sections.skill`, không suy từ dạng câu.
+
+#### Bước 4 — điểm tổng và bậc
+
+```
+điểm_tổng = làm_tròn_0,5( trung bình cộng 4 điểm kỹ năng )
+```
+
+Chỉ tính khi **mọi câu chấm được đã chấm xong**; còn câu `NULL` thì điểm tổng là
+`NULL` và màn hình nói đang chờ, chứ không lấy trung bình một nửa bài.
+
+| Điểm tổng | Bậc | CEFR |
+|---|---|---|
+| 8,5 – 10 | Bậc 5 | C1 |
+| 5,5 – 8,0 | Bậc 4 | B2 |
+| 3,5 – 5,0 | Bậc 3 | B1 |
+| < 3,5 | không cấp | — |
+
+**Bậc cần đủ cả bốn kỹ năng.** Điểm trung bình là số học, luôn đúng với đề đó;
+còn *bậc* là một phát biểu về một kỳ thi VPET trọn vẹn và không đọc được từ một
+phần đề. Một đề chỉ có Đọc, 8,0 điểm, vẫn ra điểm 8,0 nhưng **không có bậc**.
+
+#### Ví dụ trọn một bài
+
+```
+Nghe      16,4 / 22  ->  16,4/22 × 10 = 7,45  ->  7,5
+Đọc          4 / 6   ->     4/6  × 10 = 6,67  ->  6,5
+Viết     10,15 / 15  -> 10,15/15 × 10 = 6,77  ->  7,0
+Nói        9,3 / 15  ->   9,3/15 × 10 = 6,20  ->  6,0
+
+điểm tổng = (7,5 + 6,5 + 7,0 + 6,0) / 4 = 6,75  ->  7,0
+bậc       = Bậc 4 (B2)
+```
+
+Ba chỗ làm tròn 0,5 và chỉ ba: mỗi tiêu chí, mỗi kỹ năng, điểm tổng. Không làm
+tròn ở `earned` từng câu — làm tròn sớm thì 58 lần sai số nhỏ cộng lại thành
+một sai số lớn.
 
 ### 2.4 Lược đồ dữ liệu cần thêm
 
