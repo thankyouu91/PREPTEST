@@ -74,3 +74,30 @@ for (const t of strays) {
   await q.run("UPDATE tests SET status = 'archived' WHERE id = ?", t.id);
 }
 say(strays.length ? 'archived ' + strays.length + ' stray test paper(s)' : 'no stray test papers');
+
+/* 4. The day's AI marking budget, spent by earlier runs on the demo accounts.
+      server/ai-budget.js allows 240 calls per account per rolling 24 hours, and
+      the marking suites drive a real paper through a stubbed marker every time
+      they run. Six or seven runs in a day and the demo student is at exactly
+      240; the next run is refused with `stopped: "account"`, and what the gate
+      prints is nine red checks in test-rubric.mjs about criteria not being
+      stored, a cap not firing and a mark coming back null — none of which is
+      what went wrong. The ceiling worked. The ledger was simply full.
+
+      Only the accounts the gate itself drives are cleared, and only their own
+      rows: `ai_calls` is the cost trail, so a real learner's marking history is
+      not something a setup script may quietly delete. The demo student and the
+      administrator are seeded by this repository, and `@thu-nghiem.vn` is the
+      throwaway domain the suites register under (scripts/attempts.js knows the
+      same convention). Nothing else is touched — including the platform-wide
+      6000 the rows still count toward, which no run has ever come near. */
+const ledger = await q.all(
+  `SELECT id FROM users
+    WHERE username IN ('student', 'admin') OR email LIKE '%@thu-nghiem.vn'`);
+let spent = 0;
+for (const u of ledger) {
+  const r = await q.run('DELETE FROM ai_calls WHERE user_id = ?', u.id);
+  spent += (r && r.changes) || 0;
+}
+say(spent ? 'cleared ' + spent + ' AI call(s) from the demo accounts\' daily budget'
+          : 'no AI budget carried over');

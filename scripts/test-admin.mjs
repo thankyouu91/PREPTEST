@@ -723,7 +723,19 @@ const run = async () => {
       await page.fill('#username', USER);
       await page.fill('#password', PASS);
       await page.click('#submit');
-      await page.waitForURL('**/admin/**', { timeout: 15000 });
+      /* Wait to leave the sign-in page, NOT to arrive under /admin/ — the
+         browser is already on /admin/dang-nhap/, which `**/admin/**` matches,
+         so that wait returned instantly without waiting for anything. The next
+         line then raced the sign-in POST: when the goto won, it was sent back
+         to the sign-in screen and the suite threw "the admin session was not
+         accepted" with an empty error banner, because there had been no error —
+         only a request that had not finished yet. When the sign-in won, the
+         goto came back ERR_ABORTED and a retry covered it. Neither is the
+         session failing, and both read exactly like it.
+
+         The predicate form every other browser suite here uses (test-catalog,
+         test-learn, test-totp, shot-admin) does the waiting this needs. */
+      await page.waitForURL(u => !u.pathname.includes('dang-nhap'), { timeout: 15000 });
       await page.goto(BASE + '/admin/hoc-vien/', { waitUntil: 'networkidle' });
       await page.waitForTimeout(1000);
 
