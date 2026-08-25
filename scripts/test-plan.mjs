@@ -280,28 +280,42 @@ try {
 
   /* WEAK, not weakest. Sorting and taking the bottom two returns two rows
      whatever the learner is like, which is how somebody at ten out of ten was
-     handed the lesson for the only grammar they had got right. */
-  const gRows = await q.all(
-    `SELECT se.user_id uid, gp.grp grp, SUM(se.earned) e, SUM(se.max_score) m, COUNT(*) n
-       FROM skill_events se JOIN grammar_points gp ON gp.slug = se.topic
-      WHERE se.skill = 'grammar' AND se.max_score > 0
-      GROUP BY se.user_id, gp.grp HAVING n >= ?`, SM.MIN_MARKS);
-  let checkedStrong = 0, leaked = 0;
-  for (const r of gRows) {
-    if ((r.e / r.m) * 10 < SM.FINE) continue;              // genuinely weak: may appear
-    checkedStrong++;
-    const got = await SM.weakGroups(r.uid, 9);
-    if (got.some(x => x.group === r.grp)) leaked++;
+     handed the lesson for the only grammar they had got right.
+
+     Built here rather than found, for the same reason as the marks below: the
+     first version scanned the database for a learner who happened to be strong
+     at something, and a check that finds nothing to check is a check that
+     passes for the wrong reason — or, when written to fail loudly, one that
+     goes red on a clean database. Two groups on the probe account, one at full
+     marks and one at nothing, and only the second may come back. */
+  const gGood = await q.all("SELECT slug FROM grammar_points WHERE grp='tense' ORDER BY slug LIMIT ?", SM.MIN_MARKS);
+  const gBad = await q.all("SELECT slug FROM grammar_points WHERE grp='modal' ORDER BY slug LIMIT ?", SM.MIN_MARKS);
+  ok(gGood.length === SM.MIN_MARKS && gBad.length === SM.MIN_MARKS,
+    'the bank has grammar points in both groups to build the case from',
+    gGood.length + '/' + gBad.length);
+  let ev = 0;
+  for (const [rows, earned] of [[gGood, 1], [gBad, 0]]) {
+    for (const r of rows) {
+      await q.run(
+        'INSERT INTO skill_events (user_id, source, ref_id, item_key, skill, part, topic, level,' +
+        ' earned, max_score, weight, at)' +
+        " VALUES (?, 'revision', ?, ?, 'grammar', NULL, ?, 'B1', ?, 1, 0.6, ?)",
+        uid, 'plan-probe:' + uid, 'pp' + (ev++), r.slug, earned, new Date().toISOString());
+    }
   }
-  ok(checkedStrong > 0 && leaked === 0,
+  const gaps = await SM.weakGroups(uid, 9);
+  ok(gaps.some(g => g.group === 'modal'),
+    'the group answered wrong every time is named as a gap',
+    JSON.stringify(gaps.map(g => g.group)));
+  ok(!gaps.some(g => g.group === 'tense'),
     'a group the learner is already good at is never named as a gap',
-    checkedStrong ? leaked + ' of ' + checkedStrong + ' leaked' : 'no strong group in the data to check');
+    JSON.stringify(gaps.map(g => g.group + ' ' + g.score)));
+  ok(gaps.every(g => SM.ALL_LESSONS.some(l => l.href === g.href)),
+    'and each gap comes with the lesson that teaches it');
 
   /* And the whole thing reaches the plan, which is the only reason it exists.
      The probe account registered above has never been marked, so it proves the
-     field is always present and never proves what goes in it. The shape checks
-     below run against whoever in this database has actually been marked — and
-     say so plainly when nobody has, rather than passing over an empty list. */
+     field is always present and never proves what goes in it. */
   const planned = await P.weekly(uid);
   ok(Array.isArray(planned.study), 'the plan carries a study list, even for an account with no marks yet',
     typeof planned.study);
@@ -309,13 +323,53 @@ try {
     'and it is empty rather than guessing at somebody nobody has marked',
     JSON.stringify(planned.study));
 
-  const marked = await q.val(
-    `SELECT a.user_id FROM rubric_scores rs JOIN attempts a ON a.id = rs.attempt_id
-      GROUP BY a.user_id ORDER BY COUNT(*) DESC LIMIT 1`);
-  ok(marked != null, 'somebody in this database has been marked, so the rest of this is a real test',
-    String(marked));
-  const study = marked == null ? [] : await SM.whatToStudy(marked);
-  ok(study.length > 0, 'and they have something to work on', String(study.length));
+  /* The marks the rest of this needs are MADE HERE, not looked for.
+     The first version went hunting for whoever in the database happened to
+     have rubric_scores against their name. That passes on a working copy that
+     has been marked at some point and goes red on a fresh install, on CI, and
+     on any database that has been reset — which is exactly what happened the
+     first time this suite met one. A check that depends on incidental data
+     tests the data rather than the code, and "nobody has been marked" says
+     nothing about what it was meant to prove.
+
+     Two known marks on the probe account prove the path instead: one criterion
+     under the line becomes a study row, one over it does not. Inserted after
+     the empty-list assertion above, so both states of the same account are
+     checked, in order. */
+  const stampNow = new Date().toISOString();
+  await q.run(
+    'INSERT INTO attempts (user_id, test_id, status, started_at, submitted_at, updated_at)' +
+    " VALUES (?, 'vpet-b1-01', 'submitted', ?, ?, ?)", uid, stampNow, stampNow, stampNow);
+  const attemptId = await q.val(
+    'SELECT id FROM attempts WHERE user_id = ? ORDER BY id DESC LIMIT 1', uid);
+  /* MIN_MARKS separate questions per criterion: one piece is not a pattern, and
+     the table's unique key is (attempt, question, criterion). */
+  const dItems = await q.all(
+    "SELECT id FROM questions WHERE part='D' AND family_id='vpet' AND status='active'" +
+    ' ORDER BY id LIMIT ?', SM.MIN_MARKS);
+  ok(dItems.length === SM.MIN_MARKS,
+    'there are Part D items to hang the marks on', String(dItems.length));
+  /* Both are real Part D criteria (server/rubric.js), so their names come back
+     from the rubric rather than falling through to the raw key. */
+  for (const [criterion, score] of [['accuracy', 3], ['task', 9]]) {
+    for (const it of dItems) {
+      await q.run(
+        'INSERT INTO rubric_scores (attempt_id, question_id, criterion, score, version, marked_by, at)' +
+        " VALUES (?, ?, ?, ?, 'test', 'ai', ?)", attemptId, it.id, criterion, score, stampNow);
+    }
+  }
+
+  const study = await SM.whatToStudy(uid);
+  ok(study.length > 0, 'and a marked account has something to work on', String(study.length));
+  ok(study.some(s => s.part === 'D' && s.criterion === 'accuracy'),
+    'the criterion marked below the line is on the list',
+    JSON.stringify(study.map(s => s.part + '/' + s.criterion)));
+  ok(!study.some(s => s.criterion === 'task'),
+    'and the one marked above it is not — this is a study list, not a report card',
+    JSON.stringify(study.map(s => s.part + '/' + s.criterion)));
+  ok(study.every(s => s.nameEn && s.nameEn !== s.criterion),
+    'every row carries the rubric\'s own name for the criterion, not the raw key',
+    JSON.stringify(study.map(s => s.nameEn)));
   ok(study.every(s =>
     s.part && s.criterion && typeof s.score === 'number' && s.n >= SM.MIN_MARKS
     && Array.isArray(s.lessons) && typeof s.technique === 'boolean'),
