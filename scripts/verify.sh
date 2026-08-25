@@ -85,6 +85,12 @@ if [ -z "${PG_URL:-}" ]; then
 fi
 node scripts/test-pg-schema.mjs || fail=1
 
+step "PostgreSQL driver (same answers as SQLite, placeholders, transactions)"
+# Shares the cluster the step above started. Skips just as loudly without one:
+# the SQL-rewriting half needs no server and always runs, and the half that
+# talks to a real Postgres says plainly that it did not.
+node scripts/test-pg-driver.mjs || fail=1
+
 step "Backup and restore (live snapshot, corrupt archive refused, pruning cannot empty the store)"
 node scripts/test-backup.mjs || fail=1
 
