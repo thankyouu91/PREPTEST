@@ -87,8 +87,12 @@ const dsn = () => {
 async function download() {
   const url = `https://${BUCKET}.s3.${REGION}.amazonaws.com/${KEY.split('/').map(encodeURIComponent).join('/')}`;
   console.log(`[migrate] GET s3://${BUCKET}/${KEY}`);
-  const headers = await aws.sign({ method: 'GET', url, service: 's3', region: REGION });
-  const res = await fetch(url, { headers });
+  /* `.headers` — sign() also returns the canonical request and the string to
+     sign, for the tests that check the signature by hand. Passing the whole
+     object to fetch puts the canonical request in a header value, which throws
+     `invalid header value` and looks, in the log, like a credentials problem. */
+  const signed = await aws.sign({ method: 'GET', url, headers: {}, body: undefined, service: 's3', region: REGION });
+  const res = await fetch(url, { headers: signed.headers });
   if (!res.ok) {
     console.error(`[migrate] S3 refused the snapshot: ${res.status} ${res.statusText}`);
     console.error(await res.text().catch(() => ''));
