@@ -1925,7 +1925,9 @@ function seedGrammar() {
     /* Nhóm thứ mười. Bậc A1-A2 trước vì đây là nhóm mà lỗi nặng nhất nằm ở
        bậc thấp: giới từ tiếng Anh không dịch một-đối-một từ tiếng Việt, nên
        người học mắc từ "at 7 o'clock" chứ không đợi tới C1 mới mắc. */
-    require('./data/grammar-prepositions')
+    require('./data/grammar-prepositions'),
+    require('./data/grammar-prepositions-b1b2'),
+    require('./data/grammar-prepositions-c1c2')
   ];
   const points = src.flatMap(s => s.points());
   const examples = src.flatMap(s => s.examples());

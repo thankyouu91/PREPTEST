@@ -291,7 +291,7 @@ try {
      check — but the total is now their sum by construction. */
   const GROUP_COUNTS = {
     tense: 21, noun: 28, adjadv: 16, modal: 29, conditional: 20,
-    passive: 22, clause: 29, emphasis: 21, register: 33, preposition: 13
+    passive: 22, clause: 29, emphasis: 21, register: 33, preposition: 35
   };
   const wantTotal = Object.values(GROUP_COUNTS).reduce((a, b) => a + b, 0);
   ok(allGrammar.count === wantTotal,
