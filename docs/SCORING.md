@@ -482,6 +482,58 @@ Ba chỗ làm tròn 0,5 và chỉ ba: mỗi tiêu chí, mỗi kỹ năng, điể
 tròn ở `earned` từng câu — làm tròn sớm thì 58 lần sai số nhỏ cộng lại thành
 một sai số lớn.
 
+### 2.3d Từ điểm sang việc phải làm — `server/study-map.js`
+
+Chấm xong mới là một nửa. Nửa còn lại là trả lời câu hỏi *"vậy giờ học gì"*, và
+nền tảng này đã có sẵn **11 bài giảng tự học** ở `/prep/hoc/…`. Thiếu duy nhất
+một bảng nối hai đầu lại.
+
+**Chẩn đoán lấy từ đâu.** Không ước lượng lại lần nữa. `rubric_scores` lưu điểm
+**từng tiêu chí, từng câu** đúng như người chấm viết ra, nên chỉ cần gộp lại theo
+`part` + `criterion`:
+
+```
+Part D · accuracy (Ngữ pháp và chính tả)   5,3/10   trên 22 câu đã chấm
+Part D · organisation                      7,25/10  trên 22 câu đã chấm
+Part H · structure                         1,0/10   trên 11 câu đã chấm
+```
+
+Câu đầu tiên là thứ đáng nói: *bài e-mail của bạn mất điểm ở ngữ pháp nhiều hơn
+mọi thứ khác*. Đó là câu hành động được ngay tối nay, khác hẳn "Part D: 5,3".
+
+**Ngưỡng.** `MIN_MARKS = 2` — một bài bị chấm thấp là một bài, chưa phải một
+khuynh hướng. `FINE = 7` — từ 7/10 trở lên coi như không còn gì phải sửa. Số câu
+đã chấm luôn đi kèm điểm ra tới giao diện: *"5,3/10 trên 22 câu"* là con số cân
+đo được, còn *"5,3"* trần trụi thì người học chỉ còn cách tin.
+
+**Bảng nối tiêu chí → bài giảng.**
+
+| Tiêu chí | Học ở đâu |
+|---|---|
+| `accuracy` | Chính những nhóm ngữ pháp **người này** hay sai (đọc từ `skill_events`) |
+| `register` | Sắc thái và mức trang trọng — `/prep/hoc/sac-thai/` |
+| `organisation` | Từ nối `/prep/hoc/tu-noi/` + Mệnh đề `/prep/hoc/menh-de/` |
+| `range` | Đảo ngữ – nhấn mạnh, Bị động – tường thuật |
+| `task`, `meaning`, `correct`, `content`, `structure`, `events`, `sequence`, `point` | **Không có bài giảng nào** |
+
+Hàng cuối là hàng quan trọng nhất. Không bài nào ở đây dạy *"trả lời đủ mọi yêu
+cầu của đề"* — cái đó chỉ khá lên bằng cách viết thêm và đọc lại nhận xét. Bịa ra
+một đường link cho nó thì tệ hơn là để trống: người học bấm vào, thấy không liên
+quan, và mất luôn niềm tin vào những link **có** thật. Nên những dòng đó mang cờ
+`technique: true` và giao diện nói thẳng ra.
+
+**Một cái bẫy đã sập.** Bản đầu lấy hai nhóm ngữ pháp *yếu nhất* — tức là sắp xếp
+rồi cắt hai dòng cuối. Cách đó luôn trả về hai dòng bất kể người học giỏi tới đâu,
+nên một người đạt **10/10** phần khuyết thiếu — nhóm duy nhất họ từng được đo —
+lại được đưa bài giảng khuyết thiếu dưới tiêu đề *"những điểm ngữ pháp đang mất
+điểm nhiều nhất"*. Giờ dùng chung ngưỡng `FINE`: yếu **thật** mới hiện, không có
+thì rơi về danh sách chung.
+
+**Hai bài kiểm tra giữ cho bảng không mục.** `scripts/test-plan.mjs` bắt buộc:
+mọi nhóm ngữ pháp trong ngân hàng phải có bài giảng, và mọi bài giảng được nêu
+tên phải là trang mà server còn phục vụ thật. Đổi tên một route giờ làm đỏ cổng
+kiểm — thay vì thành một link chết mà chỉ người học gặp.
+
 ### 2.4 Lược đồ dữ liệu cần thêm
 
 ```
