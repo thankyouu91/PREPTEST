@@ -1009,8 +1009,22 @@ const sqliteQ = {
    both names switching the engine, the gate's own server quietly came up on a
    scratch database holding a different seed and different passwords, and a
    dozen student suites would have gone red for a reason nowhere near them. */
+/* Two ways to be told to use PostgreSQL, because two kinds of deployment ask
+   differently. `DATABASE_URL` is one string and is what a laptop, the test
+   suite and a self-hosted server use. `PGHOST` and its siblings are what a
+   managed database wants: there the password rotates on its own schedule and
+   has no business being inside a URL, so it is fetched per connection from the
+   secret `DB_PASSWORD_SECRET` names. Either one switches the engine; neither
+   changes a line of the several hundred call sites above.
+
+   `PG_URL` deliberately does NOT switch it. That variable belongs to the
+   PostgreSQL test suites, and `scripts/verify.sh` exports it for the whole run
+   — honouring it here would put the gate's own server on a scratch database. */
 const PG_DSN = process.env.DATABASE_URL || '';
-const pgHandle = PG_DSN ? require('./pg').createPg({ url: PG_DSN }) : null;
+const PG_PARTS = !PG_DSN && !!process.env.PGHOST;
+const pgHandle = (PG_DSN || PG_PARTS)
+  ? require('./pg').createPg(PG_DSN ? { url: PG_DSN } : {})
+  : null;
 const engine = pgHandle ? 'postgres' : 'sqlite';
 const live = pgHandle ? pgHandle.q : sqliteQ;
 
@@ -1629,7 +1643,26 @@ function seed() {
   const strayQ = qs.run("DELETE FROM questions WHERE family_id <> 'vpet'");
   if (strayQ.changes) console.warn(`[seed] removed ${strayQ.changes} non-VPET sample question(s).`);
 
-  if (!qs.val('SELECT COUNT(*) c FROM users')) {
+  /* The demo fixtures — accounts, a code batch and their orders — are planted
+     ONCE and then never again.
+   *
+   * They used to be guarded on "is the table empty?", which is the same thing
+   * on a fresh install and the opposite of it afterwards: an owner who clears
+   * the six fixture orders gets them back on the next boot, and cannot ever be
+   * rid of them. That is not a hypothetical. Every order on the production box
+   * was a fixture — 884.000 đ of revenue that never happened, in the report the
+   * owner opens — and `scripts/demo-purge.mjs` could delete them all evening
+   * and the next restart would put them back, now with a NULL user_id because
+   * the accounts they belonged to are gone. Fake sales, and untraceable ones.
+   *
+   * So the marker records that the planting has HAPPENED, not that the tables
+   * are full. Both empty-table checks stay inside it, because an install that
+   * already has users must not be planted into either — it gets the marker
+   * without the fixtures, which is exactly right: it has been seen, and it will
+   * never be planted into again. */
+  const fixturesPlanted = !!qs.val("SELECT hash FROM seed_meta WHERE name='demo-fixtures'");
+
+  if (!fixturesPlanted && !qs.val('SELECT COUNT(*) c FROM users')) {
     // The demo student account (matching the seed account on the front end)
     const ins = db.prepare(`INSERT INTO users (username,email,name,verified,status,interests_json,created_at)
                             VALUES (?,?,?,?,?,?,?)`);
@@ -1653,7 +1686,7 @@ function seed() {
     }
   }
 
-  if (!qs.val('SELECT COUNT(*) c FROM codes')) {
+  if (!fixturesPlanted && !qs.val('SELECT COUNT(*) c FROM codes')) {
     const insB = db.prepare('INSERT INTO batches (name,unlock_type,unlock_ref,qty,expires_at,created_at) VALUES (?,?,?,?,?,?)');
     const insC = db.prepare(`INSERT INTO codes (code,batch_id,unlock_type,unlock_ref,status,expires_at,user_id,redeemed_at,note,created_at)
                              VALUES (?,?,?,?,?,?,?,?,?,?)`);
@@ -1718,7 +1751,7 @@ function seed() {
   }
   if (reattached) console.warn(`[seed] ${reattached} demo code(s) had their plan reattached.`);
 
-  if (!qs.val('SELECT COUNT(*) c FROM orders')) {
+  if (!fixturesPlanted && !qs.val('SELECT COUNT(*) c FROM orders')) {
     const ins = db.prepare('INSERT INTO orders (user_id,package_id,name,amount,status,created_at) VALUES (?,?,?,?,?,?)');
     const daysAgo = n => new Date(Date.now() - n * 86400000).toISOString();
     const rows = [
@@ -1732,6 +1765,16 @@ function seed() {
     for (const [u, pk, name, amt, d] of rows) {
       ins.run(qs.val('SELECT id FROM users WHERE username=?', u), pk, name, amt, 'paid', daysAgo(d));
     }
+  }
+
+  /* Written whether or not anything was actually planted above — see the note
+     at the top of the block. `n` is what the tables hold now rather than what
+     was inserted, so the row says something true on an install that already had
+     its own data. */
+  if (!fixturesPlanted) {
+    qs.run(`INSERT INTO seed_meta (name,hash,n,at) VALUES ('demo-fixtures','once',?,?)
+              ON CONFLICT(name) DO NOTHING`,
+      Number(qs.val('SELECT COUNT(*) c FROM users')) || 0, nowISO());
   }
 
   if (!qs.val("SELECT COUNT(*) c FROM settings")) {

@@ -1,0 +1,43 @@
+# The one-shot migration image.
+#
+# Built FROM the application image rather than from a base, deliberately: the
+# migration must run against exactly the node_modules, exactly the `pg` version
+# and exactly the `server/` code that the application will run afterwards. An
+# image built independently can differ in all three, and the way you find out is
+# a schema that the migrator wrote and the application cannot read.
+#
+# What it adds is small on purpose — two scripts and an entrypoint. Everything
+# else it needs is already in the layer below.
+#
+#   docker build -f deploy/Dockerfile.migrate --build-arg BASE=<app-image> .
+#
+# The build context is assembled by the buildspec rather than being the repo
+# root, because the repo's .dockerignore excludes scripts/ — correctly, since
+# the application image has no business carrying the test harness. Rather than
+# poke exceptions into that file and make the application image's contents
+# depend on reading two files, the buildspec copies the two scripts this needs
+# into a clean directory and builds from there.
+
+ARG BASE
+FROM ${BASE}
+
+# root only for the two things that need it: a writable working directory for
+# the unpacked snapshot, and dropping the files in with the right owner.
+USER root
+
+# The snapshot is ~2.5 MB unpacked and lives for the length of one task. It is
+# NOT under /app, which the application image made read-only to its own user.
+RUN mkdir -p /work && chown node:node /work
+
+COPY --chown=node:node scripts/ /app/scripts/
+COPY --chown=node:node migrate-entrypoint.mjs /app/migrate-entrypoint.mjs
+
+USER node
+ENV PREP_DB=/work/prep.sqlite
+
+# No HEALTHCHECK: this is a task that runs to completion and exits, not a
+# service. Inherited from the base image it would report unhealthy for the whole
+# run, because nothing is listening on 3000 and nothing should be.
+HEALTHCHECK NONE
+
+ENTRYPOINT ["node", "/app/migrate-entrypoint.mjs"]

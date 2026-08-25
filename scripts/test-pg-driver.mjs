@@ -272,6 +272,120 @@ try {
   ok(nulled && nulled.note === null,
     'an unset column is null, not undefined — callers test it with == null', JSON.stringify(nulled));
 
+  /* ---------------------------------------------------------------- *
+   * The password, when it is not in the connection string
+   * ---------------------------------------------------------------- *
+   * A managed database rotates its password, so the driver fetches one per
+   * connection instead of holding one. These checks are about the two ways
+   * that goes wrong: fetching too often, on a path a user is waiting on, and
+   * not fetching again after a rotation. */
+  head('A rotating password');
+
+  const { secretPassword } = require_('../server/pg.js');
+
+  /* Stand in for Secrets Manager by pre-loading the module the resolver asks
+     for. It is required lazily inside the resolver precisely so this is
+     possible — and so a SQLite install never loads the signer at all. */
+  const secretsPath = require_.resolve('../server/secrets.js');
+  const realSecrets = require_.cache[secretsPath];
+  let fetches = 0;
+  let payload = { password: 'first-one' };
+  require_.cache[secretsPath] = {
+    id: secretsPath, filename: secretsPath, loaded: true, exports: {
+      async fetchSecret() { fetches++; return payload; }
+    }
+  };
+
+  try {
+    const resolve = secretPassword('a-secret-arn');
+    ok(await resolve() === 'first-one', 'The password comes from the secret');
+    ok(fetches === 1, 'one fetch so far', String(fetches));
+
+    await resolve(); await resolve();
+    ok(fetches === 1, 'and repeated connections inside the TTL reuse it rather than re-fetching',
+      String(fetches));
+
+    /* Ten connections opening at once is the normal case for a pool filling,
+       not an edge case. It must be one call, not ten. */
+    fetches = 0;
+    const burst = secretPassword('a-secret-arn');
+    const all = await Promise.all(Array.from({ length: 10 }, () => burst()));
+    ok(all.every(v => v === 'first-one'), 'A burst of connections all get the password');
+    ok(fetches === 1, 'and share ONE fetch between them', String(fetches));
+
+    /* The rotation. */
+    payload = { password: 'rotated-one' };
+    ok(await resolve() === 'first-one', 'A rotation is not seen while the cached value is still fresh');
+    resolve.invalidate();
+    ok(await resolve() === 'rotated-one', 'and IS seen once the cache is cleared — which is what the pool error handler does');
+
+    /* The failure has to be legible without being a leak. */
+    const wrongField = secretPassword('a-secret-arn', 'no-such-field');
+    let message = '';
+    try { await wrongField(); } catch (e) { message = e.message; }
+    ok(/no-such-field/.test(message), 'A missing field says which field was missing', message);
+    ok(!/first-one|rotated-one/.test(message), 'and does not put the secret in the error', message);
+
+    /* The other half: config assembled from PGHOST and friends rather than a
+       DSN. This is what runs in production, so it is checked against the real
+       server rather than by reading a config object back.
+     *
+     * The first version of this check passed while testing nothing. `PG_URL` is
+     * exported for the whole suite, `createPg` preferred it over the options it
+     * was handed, and the pool connected — to the right server, by the wrong
+     * route, with every option ignored. It is proved here instead by pointing
+     * the parts at a database that does NOT exist and requiring the failure to
+     * name it: only the parts branch could have produced that. */
+    const u = new URL(PG_URL);
+    const asParts = extra => createPg({
+      host: u.hostname,
+      port: u.port || 5432,
+      database: u.pathname.replace(/^\//, ''),
+      user: decodeURIComponent(u.username || ''),
+      ...extra
+    });
+
+    /* A local cluster has no TLS, so the reachability checks run with
+       PGSSLMODE=disable — which is also the check that the switch is honoured.
+       Production leaves it unset and gets `require`, which is the check after. */
+    const sslmodeWas = process.env.PGSSLMODE;
+    process.env.PGSSLMODE = 'disable';
+    try {
+      const wrongDb = asParts({ database: 'no_such_database_here' });
+      let partsErr = '';
+      try { await wrongDb.q.val('SELECT 1'); } catch (e) { partsErr = e.message; }
+      await wrongDb.close().catch(() => {});
+      ok(/no_such_database_here/.test(partsErr),
+        'The parts are actually used — an ambient PG_URL does not override them', partsErr);
+
+      const parts = asParts({});
+      try {
+        ok(Number(await parts.q.val('SELECT 1 AS n')) === 1,
+          'A pool built from PGHOST/PGPORT/PGDATABASE/PGUSER connects and answers');
+        ok(await parts.q.val('SHOW ssl') === 'off',
+          'and PGSSLMODE=disable is honoured, which is the only reason it reached a local cluster');
+      } finally {
+        await parts.close().catch(() => {});
+      }
+    } finally {
+      if (sslmodeWas === undefined) delete process.env.PGSSLMODE;
+      else process.env.PGSSLMODE = sslmodeWas;
+    }
+
+    /* And the default, which is the one production runs: no PGSSLMODE, so TLS
+       is required — against a cluster that has none, that must FAIL rather than
+       quietly fall back to plaintext. */
+    const insecure = asParts({});
+    let sslErr = '';
+    try { await insecure.q.val('SELECT 1'); } catch (e) { sslErr = e.message; }
+    await insecure.close().catch(() => {});
+    ok(/SSL|ssl/.test(sslErr),
+      'With PGSSLMODE unset the driver demands TLS and does not fall back to plaintext', sslErr);
+  } finally {
+    if (realSecrets) require_.cache[secretsPath] = realSecrets;
+    else delete require_.cache[secretsPath];
+  }
+
 } catch (e) {
   caught++;
   console.log('\n✗ The suite threw: ' + (e && e.stack ? e.stack : e));

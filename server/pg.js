@@ -127,25 +127,136 @@ function insertTarget(sql) {
 }
 
 /**
+ * The password, fetched per connection, because a managed one MOVES.
+ *
+ * RDS was asked to manage the master password, which means Secrets Manager
+ * rotates it — every seven days, by default, and it does not ask. A password
+ * read once at boot and held in a DSN is therefore correct for a week and then
+ * wrong forever, and the failure lands at 23:59 on a Tuesday, on a service
+ * nobody is watching, as `password authentication failed`. Copying the password
+ * into a second secret has the same fault with an extra place to forget.
+ *
+ * node-postgres takes `password` as a function and calls it for EVERY new
+ * connection, which turns the whole problem into a fetch. This is that function
+ * — with a short cache, because a pool filling ten connections at once should
+ * make one call to Secrets Manager and not ten, and because the value is
+ * needed on a path a user is waiting on.
+ *
+ * The cache is deliberately short rather than clever. Sixty seconds is the
+ * longest a rotation can keep new connections failing, existing ones are
+ * already authenticated and unaffected, and the alternative — invalidating on
+ * an authentication error — needs the failure to be visible at a layer that
+ * does not see it. `invalidate()` is exported into the pool's error handler so
+ * a dropped connection also clears it, which covers the common case sooner.
+ */
+function secretPassword(secretId, field) {
+  let cached = null;
+  let until = 0;
+  let inflight = null;
+  const key = field || 'password';
+  const TTL_MS = Number(process.env.DB_PASSWORD_TTL_MS || 60000);
+
+  const fetchNow = async () => {
+    /* Required lazily: server/secrets.js pulls in the signer, and a SQLite
+       install should not load either of them to open a file. */
+    const secrets = require('./secrets');
+    const json = await secrets.fetchSecret(secretId);
+    const value = json && json[key];
+    if (!value) {
+      /* Never the secret's contents, and never the value — just which name was
+         looked for, which is the only part that helps. */
+      throw new Error(`the secret has no "${key}" field`);
+    }
+    return String(value);
+  };
+
+  const get = async () => {
+    if (cached && Date.now() < until) return cached;
+    /* One fetch in flight at a time. Ten connections opening together is the
+       normal case, not the exception. */
+    if (!inflight) {
+      inflight = fetchNow()
+        .then(v => { cached = v; until = Date.now() + TTL_MS; return v; })
+        .finally(() => { inflight = null; });
+    }
+    return inflight;
+  };
+
+  get.invalidate = () => { cached = null; until = 0; };
+  return get;
+}
+
+/**
  * One connection pool, and the state that rides with it.
  *
  * `idTables` is filled at connect from the live catalogue rather than from a
  * list kept here. A list would be a second copy of the schema, and the schema
  * is already generated from one place on purpose.
+ *
+ * The connection itself comes from one of two places. A DSN — `DATABASE_URL` —
+ * is what a laptop, the test suite and a self-hosted Postgres all use. The
+ * separate `PG*` variables are what a managed database wants, because there the
+ * password is not a constant and does not belong in a string: `DB_PASSWORD_SECRET`
+ * names a Secrets Manager secret and the password is fetched per connection.
  */
 function createPg(opts) {
   const o = opts || {};
-  const pool = new Pool({
-    connectionString: o.url || process.env.DATABASE_URL || process.env.PG_URL,
+  /* What the CALLER passed beats what happens to be in the environment, both
+     ways round. A caller naming a host means the parts branch even though
+     `PG_URL` is exported for the test suites — getting that precedence backwards
+     silently ignored every option passed in, and the test that was meant to
+     catch it passed, because it connected to the right server by the wrong
+     route. Only when the caller says nothing does the environment decide. */
+  const url = o.url || (o.host ? '' : (process.env.DATABASE_URL || process.env.PG_URL));
+  const secretId = o.passwordSecret || process.env.DB_PASSWORD_SECRET || '';
+
+  const config = {
     max: Number(o.max || process.env.PG_POOL_MAX || 10),
     idleTimeoutMillis: 30000,
     connectionTimeoutMillis: Number(o.connectTimeoutMs || 10000)
-  });
+  };
+
+  if (url) {
+    config.connectionString = url;
+  } else {
+    config.host = o.host || process.env.PGHOST;
+    config.port = Number(o.port || process.env.PGPORT || 5432);
+    config.database = o.database || process.env.PGDATABASE;
+    config.user = o.user || process.env.PGUSER;
+    /* `require` here means the transport is encrypted and the certificate is
+       not verified against a CA. Inside a VPC, reachable only from one security
+       group, that is a deliberate interim position and not a comfortable one —
+       docs/VAN-HANH.md carries it as an open item. `PGSSLMODE=disable` is
+       honoured so a local Postgres in the test suite still connects. */
+    if ((process.env.PGSSLMODE || 'require') !== 'disable') {
+      config.ssl = { rejectUnauthorized: false };
+    }
+  }
+
+  let password = null;
+  if (secretId) {
+    password = secretPassword(secretId, o.passwordField || process.env.DB_PASSWORD_FIELD);
+    config.password = password;
+    /* A DSN with a password in it AND a secret naming another one is a
+       configuration nobody meant. The secret wins — it is the one that rotates
+       — and it is said out loud, because the other way round is an incident. */
+    if (url && /:\/\/[^@/]*:[^@/]+@/.test(url)) {
+      console.warn('[pg] DB_PASSWORD_SECRET is set, so the password in the connection string is ignored.');
+    }
+  }
+
+  const pool = new Pool(config);
 
   /* A pool emits errors for idle clients the server has dropped. Unhandled,
      that is an uncaught exception and the process dies for a connection nobody
      was using. */
-  pool.on('error', e => console.error('[pg] idle client error:', e && e.message));
+  pool.on('error', e => {
+    console.error('[pg] idle client error:', e && e.message);
+    /* A dropped connection is the commonest way a rotation announces itself
+       before the TTL is up. Clearing here means the next connection re-fetches
+       rather than waiting out the cache. */
+    if (password) password.invalidate();
+  });
 
   let idTables = new Set();
   const txScope = new AsyncLocalStorage();
@@ -240,4 +351,4 @@ function createPg(opts) {
   return { q, tx, connect, pool, loadIdTables, close: () => pool.end() };
 }
 
-module.exports = { createPg, toDollars, orIgnore, insertTarget };
+module.exports = { createPg, secretPassword, toDollars, orIgnore, insertTarget };
