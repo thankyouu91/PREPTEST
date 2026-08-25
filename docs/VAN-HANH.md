@@ -596,6 +596,95 @@ phép nối chuỗi.
 
 ---
 
+## 7. Tài khoản AWS — khảo sát 25/08/2026, và những gì phải cẩn thận
+
+Khảo sát bằng quyền đọc trước khi định triển khai App Runner. Ghi lại vì hai lý
+do: nó tốn lệnh gọi thật, và nó tìm ra vài thứ mà ai triển khai cũng cần biết
+trước khi gõ `create`.
+
+### Đây là tài khoản DÙNG CHUNG
+
+Tài khoản `659161125499` không chỉ có VPET Prep. Ở **ap-southeast-1**:
+
+| Tài nguyên | Của ai | Trạng thái |
+|---|---|---|
+| EC2 `testprep-backend` (t3.micro, `54.255.98.192`) | **VPET Prep** | **đang chạy** |
+| RDS `vietravel-db` (postgres 16.14, db.t4g.micro) | dự án khác | đang chạy |
+| EC2 `Ebookmedi`, `English Learning System`, `Support Agent`, `Top Stars`, `office-server`, `vietravel-exam` | dự án khác | đã tắt |
+| S3 `vpet-prep-backups-659161125499` | **VPET Prep** | 65 bản, mới nhất 25/08 09:23 |
+
+Ở **us-east-1** còn một Aurora PostgreSQL và hai kho ECR `easy-english-*` của
+một dự án khác nữa.
+
+> **Ràng buộc bàn giao có răng thật ở đây.** "Chỉ tạo, KHÔNG xoá, không sửa,
+> không tách rời tài nguyên đang có" không còn là câu nói suông khi trong cùng
+> một VPC mặc định có production của người khác. Cụ thể: **không** đụng vào
+> `vietravel-db`, **không** sửa security group nào đang có (`default`,
+> `launch-wizard-*`, `rds-postgres-sg`) — chỉ tạo group mới.
+
+### VPET Prep ĐÃ chạy production rồi
+
+`http://54.255.98.192/healthz` trả **200**, và `/prep/landing/` trả đúng
+`<title>VPET Prep · Mock tests for the VPET exam</title>`. Nghĩa là bất kỳ việc
+dựng App Runner nào cũng **không phải triển khai lần đầu** mà là dựng một bản
+thứ hai bên cạnh một bản đang phục vụ người thật.
+
+Chủ sở hữu đã chọn (25/08): **dựng song song, nạp dữ liệu thật, không đụng máy
+EC2 đang chạy.** Kiểm xong rồi chuyển đổi là một quyết định riêng.
+
+### Hai điều đáng sửa, không liên quan tới việc triển khai
+
+**Đang thao tác bằng root.** `sts:GetCallerIdentity` trả về
+`arn:aws:iam::659161125499:root`. Root không có rào chắn nào và không thu hồi
+được từng phần. Nên tạo một IAM user hoặc role riêng cho việc triển khai, và bật
+MFA cho root.
+
+**Không có ECR, ECS hay App Runner nào ở Singapore.** Nên mọi thứ dưới đây đều
+là tạo mới, không có gì để giẫm lên.
+
+### Các bước, khi có kết nối trở lại
+
+Chưa chạy — connector AWS rớt giữa chừng. Thứ tự và tham số đã chốt:
+
+```bash
+R=ap-southeast-1
+
+# 1. Kho ảnh
+aws ecr create-repository --repository-name vpet-prep --region $R
+
+# 2. Ảnh. KHÔNG build trên testprep-backend — nó là máy đang phục vụ người thật
+#    và chỉ có t3.micro. Build ở máy có Docker rồi đẩy lên.
+docker build -t vpet-prep .
+docker tag  vpet-prep 659161125499.dkr.ecr.$R.amazonaws.com/vpet-prep:latest
+docker push 659161125499.dkr.ecr.$R.amazonaws.com/vpet-prep:latest
+
+# 3. Security group RIÊNG cho database mới. Không sửa rds-postgres-sg đang có.
+aws ec2 create-security-group --group-name vpet-prep-db-sg \
+    --description "VPET Prep RDS" --vpc-id vpc-035d01c64808a850c --region $R
+
+# 4. Database MỚI. Không dùng lại vietravel-db.
+aws rds create-db-instance --db-instance-identifier vpet-prep-db \
+    --engine postgres --engine-version 16 --db-instance-class db.t4g.micro \
+    --allocated-storage 20 --no-publicly-accessible --region $R \
+    --master-username vpetadmin --manage-master-user-password
+
+# 5. Chuỗi kết nối vào Secrets Manager, không vào biến môi trường thô
+# 6. VPC connector cho App Runner để với tới RDS riêng tư,
+#    và mở cổng 5432 trên vpet-prep-db-sg CHỈ cho security group của connector
+# 7. Nạp dữ liệu: tải bản sao lưu S3 mới nhất, giải nén, dọn tài khoản demo,
+#    rồi PREP_DB=<file> PG_URL=<rds> node scripts/pg-migrate.mjs --yes
+# 8. App Runner trỏ vào ECR, biến DATABASE_URL lấy từ Secrets Manager
+```
+
+**Chưa xác nhận được:** App Runner có mặt ở `ap-southeast-1` hay không — kết nối
+rớt trước khi tôi kiểm. Đó là việc đầu tiên phải làm, vì nếu không có thì phương
+án đổi sang ECS Fargate và bước 6–8 khác hẳn.
+
+**Chi phí ước chừng:** 25–60 USD/tháng (RDS ~14, App Runner ~10 cố định cộng CPU
+theo lượt truy cập). Ước lượng, không phải báo giá.
+
+---
+
 ## Còn treo, không sửa được từ repo
 
 `/home/ubuntu/vpet-selfupdate.sh` chạy `pm2 restart preptest --update-env` mà
