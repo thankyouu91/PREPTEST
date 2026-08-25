@@ -971,11 +971,43 @@ async function outsideTx() {
   while (openTx && txScope.getStore() !== openTx.token) await openTx.done;
 }
 
-const q = {
+const sqliteQ = {
   async all(sql, ...p) { await outsideTx(); return qs.all(sql, ...p); },
   async get(sql, ...p) { await outsideTx(); return qs.get(sql, ...p); },
   async run(sql, ...p) { await outsideTx(); return qs.run(sql, ...p); },
   async val(sql, ...p) { await outsideTx(); return qs.val(sql, ...p); }
+};
+
+/* ---------------------- Which engine answers a request ----------------------
+ *
+ * `DATABASE_URL` (or `PG_URL`) present means Postgres. Chosen here, at the top,
+ * rather than at the export at the bottom, and that placement is the whole
+ * point: `audit()` and `attachBankAudio()` further down close over `q`, so a
+ * switch made later would have left those two writing to the SQLite file while
+ * every other statement went to Postgres. An audit trail landing in a scratch
+ * file nobody reads is precisely the sort of half-migration that looks fine.
+ *
+ * A facade rather than a reassignment, so `q` stays a `const` that every
+ * reference in this file and every importer already points at.
+ *
+ * Note what does NOT switch: `qs`, the synchronous interface the schema, the
+ * migrations and the seed below use. Those still run against SQLite on the way
+ * up, because the seed is the only definition of the starter content there is
+ * and it is written synchronously. On Postgres that local file is scratch —
+ * `scripts/pg-migrate.mjs` runs this same boot and then copies the result
+ * across, which is the deploy step, done once and on purpose rather than by
+ * ten containers racing to CREATE TABLE.
+ */
+const PG_DSN = process.env.DATABASE_URL || process.env.PG_URL || '';
+const pgHandle = PG_DSN ? require('./pg').createPg({ url: PG_DSN }) : null;
+const engine = pgHandle ? 'postgres' : 'sqlite';
+const live = pgHandle ? pgHandle.q : sqliteQ;
+
+const q = {
+  all: (sql, ...p) => live.all(sql, ...p),
+  get: (sql, ...p) => live.get(sql, ...p),
+  run: (sql, ...p) => live.run(sql, ...p),
+  val: (sql, ...p) => live.val(sql, ...p)
 };
 
 /** Run several statements in one transaction (node:sqlite has no transaction API yet) */
@@ -990,7 +1022,7 @@ function txSync(fn) {
  * however deep, is part of the transaction, and every `q` call made elsewhere
  * waits until it has committed or rolled back.
  */
-function tx(fn) {
+function sqliteTx(fn) {
   /* Already inside one: join it rather than deadlocking on our own queue.
      SQLite would refuse a nested BEGIN anyway, so joining is also the only
      behaviour that could have worked. */
@@ -1018,6 +1050,15 @@ function tx(fn) {
   txQueue = started.then(() => {}, () => {});   // the queue itself never rejects
   return started;
 }
+
+/* The same switch as `q` above, and it has to be a wrapper for the same
+   reason: `tx` is imported by name in four modules and called inside this one,
+   so reassigning it later would leave some callers holding the SQLite version.
+   The two implementations have the same contract — join an open transaction
+   rather than nesting, roll back on a throw — and differ where they should:
+   under SQLite every other statement in the process waits for the open
+   transaction because there is one connection, and under Postgres they do not. */
+const tx = pgHandle ? pgHandle.tx : sqliteTx;
 
 /** Mint a code as XXXX-XXXX-XXXX, leaving out the confusable characters (I, O, 0, 1) */
 const CODE_ALPHA = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
@@ -1974,7 +2015,59 @@ seed();
 const DEMO_USERNAMES = ['student', 'thuhang.nt', 'khanhqd', 'mailinh.hu',
   'baolong.tb', 'ngocanh.study', 'huyphan', 'thaovy.dn'];
 
-module.exports = { db, q, tx, nowISO, jparse, makeCode, audit, DB_FILE, seedVocab, DEMO_USERNAMES,
+/**
+ * 'YYYY-MM-DD' for the local day an ISO-8601 TEXT column falls in, spelled for
+ * whichever engine is answering.
+ *
+ * The one place in the codebase where the two dialects genuinely diverge, and
+ * it earns a helper rather than a rewrite. `date(at, '+7 hours')` is SQLite's
+ * and Postgres has no such function; the portable alternative is to select the
+ * raw rows and group them in JavaScript, which is what this replaced — measured
+ * on an account with 5,863 events, moving the grouping into SQL took the report
+ * from 23.6ms to 11.4ms. Throwing that away to avoid four lines here would be
+ * paying twelve milliseconds on the first page every signed-in learner loads,
+ * for tidiness.
+ *
+ * `shift` is the same string sqlTzShift() already builds ('+7 hours'), so the
+ * caller does not have to know which engine it is talking to either.
+ */
+function localDaySql(column, shift) {
+  if (engine !== 'postgres') return `date(${column}, ?)`;
+  /* ::timestamptz reads the stored ISO-8601 as UTC, the interval shifts it, and
+     to_char formats it — the same three steps SQLite's date() does in one. The
+     interval is bound rather than pasted, so this stays parameterised. */
+  return `to_char((${column})::timestamptz + (?)::interval, 'YYYY-MM-DD')`;
+}
+
+/**
+ * Prove the connection before anything is served.
+ *
+ * Called by server.js and awaited before `listen`. On SQLite it is a no-op that
+ * still returns the same shape, so the caller needs no branch. On Postgres it
+ * fails LOUDLY and early: a process that starts, binds the port and then errors
+ * on every request is worse than one that never came up, because a health check
+ * on the port alone would call it well.
+ */
+async function connectEngine() {
+  if (engine !== 'postgres') return { engine, file: DB_FILE };
+  const info = await pgHandle.connect();
+  /* If the schema is not there, the deploy step has not been run. Saying that
+     is more use than three hundred "relation does not exist" errors. */
+  const n = await pgHandle.q.val(
+    "SELECT COUNT(*) c FROM information_schema.tables WHERE table_schema = current_schema()");
+  if (Number(n) === 0) {
+    throw new Error('PostgreSQL is reachable but empty. Run: PG_URL=… npm run pg:migrate -- --yes');
+  }
+  return { engine, tables: Number(n), idTables: info.idTables.length };
+}
+
+module.exports = { db, q, tx, engine, connectEngine, pg: pgHandle, localDaySql,
+  /* The SQLite interface by name, whatever engine is configured. Exported for
+     scripts/test-pg-driver.mjs alone: that suite's whole method is running an
+     operation on BOTH engines and comparing, and once `q` follows DATABASE_URL
+     it would otherwise have been comparing Postgres with itself and passing. */
+  sqliteQ,
+  nowISO, jparse, makeCode, audit, DB_FILE, seedVocab, DEMO_USERNAMES,
   SCHEMA_SQL, ADDED_COLUMNS, ADDED_INDEXES,
   /* Exported for scripts/test-paper.mjs, which checks a stored paper against
      the same plan the builder works from. */

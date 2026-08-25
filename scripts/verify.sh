@@ -91,6 +91,12 @@ step "PostgreSQL driver (same answers as SQLite, placeholders, transactions)"
 # talks to a real Postgres says plainly that it did not.
 node scripts/test-pg-driver.mjs || fail=1
 
+step "PostgreSQL, the application's own queries (dialect faults a driver test cannot see)"
+# The driver proves the four verbs; this proves the several hundred statements
+# written on top of them parse and answer on the other engine. Every fault it
+# has found was a query that had been correct for months.
+node scripts/test-pg-app.mjs || fail=1
+
 step "Backup and restore (live snapshot, corrupt archive refused, pruning cannot empty the store)"
 node scripts/test-backup.mjs || fail=1
 

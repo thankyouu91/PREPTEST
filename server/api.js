@@ -271,7 +271,7 @@ router.get('/admin/reports', roles.requireCap('reports.read'), async (req, res) 
            COALESCE(SUM(o.amount),0) amount
       FROM orders o LEFT JOIN packages p ON p.id = o.package_id
      WHERE o.status='paid' AND o.created_at >= ?
-     GROUP BY COALESCE(o.package_id, o.name)
+     GROUP BY COALESCE(o.package_id, o.name), COALESCE(p.name, o.name)
      ORDER BY amount DESC LIMIT 8`, from);
 
   /* ---- What needs doing ----
@@ -560,13 +560,18 @@ router.post('/admin/questions/bulk', roles.requireCap('bank.write'), async (req,
   }
   if (!ok.length) return res.status(400).json({ error: 'No row was valid.', errors });
 
-  await tx(() => {
-    const ins = require('./db').db.prepare(
-      `INSERT INTO questions (family_id,skill,level,type,part,prompt,options_json,answer,explanation,tags_json,status,created_at,created_by)
-       VALUES (?,?,?,?,?,?,?,?,?,?,'active',?,?)`);
+  /* Through `q` rather than a reused prepared statement off the raw SQLite
+     handle. The statement cache was worth a little on a bulk import and cost
+     the ability to run on anything else: `db.prepare` is node:sqlite's, so this
+     route was the only thing standing between the application and a managed
+     Postgres. Still one transaction, so a half-imported batch is impossible. */
+  await tx(async () => {
     const at = nowISO();
     for (const d of ok) {
-      ins.run(d.familyId, d.skill, d.level, d.type, d.part, d.prompt, JSON.stringify(d.options),
+      await q.run(
+        `INSERT INTO questions (family_id,skill,level,type,part,prompt,options_json,answer,explanation,tags_json,status,created_at,created_by)
+         VALUES (?,?,?,?,?,?,?,?,?,?,'active',?,?)`,
+        d.familyId, d.skill, d.level, d.type, d.part, d.prompt, JSON.stringify(d.options),
         d.answer, d.explanation, JSON.stringify(d.tags), at, req.admin.id);
     }
   });
@@ -1631,9 +1636,13 @@ router.get('/admin/settings', roles.requireCap('reports.read'), async (req, res)
 router.put('/admin/settings', roles.requireCap('settings.write'), async (req, res) => {
   const b = (req.body && req.body.settings) || {};
   const allowed = PUBLIC_SETTING_KEYS;
-  const ins = require('./db').db.prepare(
-    'INSERT INTO settings (key,value) VALUES (?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value');
-  for (const k of allowed) if (k in b) ins.run(k, str(b[k], 300));
+  /* Same reason as the bulk import above: no raw node:sqlite handle, so this
+     route runs on whichever engine is configured. At most a handful of keys. */
+  for (const k of allowed) {
+    if (!(k in b)) continue;
+    await q.run('INSERT INTO settings (key,value) VALUES (?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value',
+      k, str(b[k], 300));
+  }
   await audit(req, 'settings.update', 'settings', { keys: Object.keys(b) });
   res.json({ ok: true });
 });

@@ -46,8 +46,31 @@
  */
 'use strict';
 
-const { Pool } = require('pg');
+const pgLib = require('pg');
+const { Pool } = pgLib;
 const { AsyncLocalStorage } = require('node:async_hooks');
+
+/**
+ * Counts and sums come back as NUMBERS, the way SQLite hands them over.
+ *
+ * node-postgres returns `bigint` as a STRING by default, and it is right to:
+ * PostgreSQL's int8 goes past what a JavaScript number holds exactly, so
+ * parsing it silently would lose precision on values this application will
+ * never have. `COUNT(*)` is an int8. So is `SUM()` over an integer column.
+ *
+ * Left alone, every count in the codebase changes type under the new engine,
+ * and the failure is not an error — it is arithmetic quietly becoming string
+ * concatenation. It surfaced as a drill reporting `available: "050"`, which is
+ * "0" and "50" joined, on a screen that had been correct for months. Nothing
+ * threw. A `> 0` test still passed. Only the number was wrong.
+ *
+ * So int8 and numeric are parsed here, once, for the whole process. The
+ * precision argument does not apply to this schema — ids, counts and marks are
+ * all far inside the safe range, and SQLite has been handing them over as
+ * numbers all along, which is what every caller was written against.
+ */
+pgLib.types.setTypeParser(20, v => (v === null ? null : Number(v)));    // int8
+pgLib.types.setTypeParser(1700, v => (v === null ? null : Number(v)));  // numeric
 
 /**
  * `?` → `$1…$n`, without touching a question mark inside a string.

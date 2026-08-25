@@ -230,8 +230,13 @@ async function weakGroups(userId, limit) {
        JOIN grammar_points gp ON gp.slug = se.topic
       WHERE se.user_id = ? AND se.skill = 'grammar' AND se.max_score > 0
       GROUP BY gp.grp
-      HAVING n >= ?
-      ORDER BY (earned * 1.0 / max) ASC`, userId, MIN_MARKS);
+      HAVING COUNT(*) >= ?
+      /* The aggregates spelled out again rather than the output aliases.
+         A bare alias in ORDER BY is fine in both engines; an alias INSIDE an
+         expression is not — Postgres resolves it as a column and reports that
+         "max" does not exist, which reads like a missing column rather than a
+         naming rule. */
+      ORDER BY (SUM(se.earned) * 1.0 / SUM(se.max_score)) ASC`, userId, MIN_MARKS);
 
   return rows
     .map(r => {

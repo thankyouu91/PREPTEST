@@ -41,7 +41,7 @@
  */
 'use strict';
 
-const { q } = require('./db');
+const { q, localDaySql } = require('./db');
 
 /** How far back the charts look. Eight weeks fits a study run and a phone. */
 const WINDOW_DAYS = 56;
@@ -160,11 +160,21 @@ async function activity(userId, days) {
      Measured on an account with 5,863 events: the whole report went from
      23.6ms to 11.4ms, and this line is where the 12ms came from. */
   const from = since(n);
+  /* The day expression is spelled by the engine — see localDaySql() in
+     server/db.js — and grouped by ORDINAL, which both engines take.
+
+     Not by repeating the expression, which was the first attempt and does not
+     work: the expression carries a bound parameter, so the copy in GROUP BY
+     gets a different placeholder number and Postgres no longer recognises the
+     two as the same thing — "column skill_events.at must appear in the GROUP BY
+     clause". Not by the output alias either, which SQLite and Postgres both
+     accept here but which stops working the moment somebody adds a HAVING. */
+  const dayExpr = localDaySql('at', sqlTzShift());
   const evs = await q.all(
-    `SELECT date(at, ?) AS day, SUM(earned) AS earned, SUM(max_score) AS max
+    `SELECT ${dayExpr} AS day, SUM(earned) AS earned, SUM(max_score) AS max
        FROM skill_events
       WHERE user_id = ? AND at > ?
-      GROUP BY day`, sqlTzShift(), userId, from);
+      GROUP BY 1`, sqlTzShift(), userId, from);
 
   const byDay = new Map();
   const today = localDay(new Date().toISOString());

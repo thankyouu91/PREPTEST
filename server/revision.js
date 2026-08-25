@@ -173,8 +173,8 @@ async function weakestTopics(userId, level, limit) {
        JOIN grammar_examples ge ON ge.point_id = gp.id
       WHERE ge.kind = 'practice' AND ge.answer IS NOT NULL AND ge.answer <> ''
         AND gp.level = ?
-      GROUP BY gp.slug
-      HAVING items > 0`, level);
+      GROUP BY gp.slug, gp.name_en, gp.name_vi, gp.grp, gp.level
+      HAVING COUNT(ge.id) > 0`, level);
 
   const scored = rows.map(r => {
     const est = seen[r.slug];

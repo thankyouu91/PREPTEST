@@ -30,7 +30,8 @@ const security = require('./server/security');
 const lifecycle = require('./server/lifecycle');
 const clustering = require('./server/cluster');
 const analytics = require('./server/analytics');
-const { q, attachBankAudio } = require('./server/db');
+const db = require('./server/db');
+const { q, attachBankAudio } = db;
 const { entitlementOf } = require('./server/entitlements');
 const { asyncRoutes } = require('./server/async-route');
 const secrets = require('./server/secrets');
@@ -492,6 +493,21 @@ function startBackgroundJobs() {
        calling out to Secrets Manager on boot — is N times the latency and N
        times the API calls for an answer that cannot differ. */
     await secrets.load();
+
+    /* Prove the database answers before anything is served. AFTER secrets,
+       because on a managed database the connection string is one of them; and
+       before everything below, because attachBankAudio() and ensureSeedAdmin()
+       both write.
+
+       No catch, unlike the audio below: a process that binds the port and then
+       fails every request is worse than one that never came up, because a
+       health check watching the port alone would call it healthy. On SQLite
+       this is a no-op that returns the same shape, so there is no branch here. */
+    const dbInfo = await db.connectEngine();
+    if (dbInfo.engine !== 'sqlite') {
+      console.log(`[db] ${dbInfo.engine}: ${dbInfo.tables} tables, ${dbInfo.idTables} with an id column`);
+    }
+
     /* The bank's own recordings, into whatever store this install uses. After
        secrets, because S3 and GCS need their credentials; before listen(), because
        an audio item served without its audio is a question nobody was asked.

@@ -89,7 +89,10 @@ if (!PG_URL) {
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'pgdriver-'));
 process.env.PREP_DB = path.join(tmp, 'throwaway.sqlite');
 
-const { q: sq, SCHEMA_SQL, ADDED_COLUMNS, ADDED_INDEXES } = require_('../server/db.js');
+/* `sqliteQ`, not `q`. With PG_URL set — which it is, or this half would not be
+   running — db.js's `q` IS the Postgres driver, so taking it here would compare
+   Postgres against itself and pass while proving nothing. */
+const { sqliteQ: sq, SCHEMA_SQL, ADDED_COLUMNS, ADDED_INDEXES } = require_('../server/db.js');
 const S = require_('../server/schema.js');
 const { createPg } = require_('../server/pg.js');
 
@@ -142,6 +145,21 @@ try {
   const pVal = await pg.q.val('SELECT COUNT(*) c FROM users WHERE username=?', 'alpha');
   ok(Number(sVal) === 1 && Number(pVal) === 1,
     'val() pulls the first column of the first row on both', `sqlite ${sVal}, pg ${pVal}`);
+
+  /* Asserted as a TYPE, not just a value, and the first version of this check
+     did not: it wrapped both sides in Number() and passed while Postgres was
+     handing back the string "1". node-postgres returns int8 as a string by
+     default — rightly, since int8 outruns a JavaScript number — and COUNT(*) is
+     an int8. Left unparsed, arithmetic all over the codebase quietly becomes
+     string concatenation: a drill reported `available: "050"`, which is two
+     counts joined rather than added, with nothing thrown. */
+  ok(typeof sVal === 'number' && typeof pVal === 'number',
+    'and a COUNT is a NUMBER on both, not a string on one of them',
+    `sqlite ${typeof sVal}, pg ${typeof pVal}`);
+  const sSum = await sq.val('SELECT SUM(verified) s FROM users');
+  const pSum = await pg.q.val('SELECT SUM(verified) s FROM users');
+  ok(typeof sSum === typeof pSum,
+    'so is a SUM over an integer column', `sqlite ${typeof sSum}, pg ${typeof pSum}`);
 
   await sq.run(...mk('beta'));
   await pg.q.run(...mk('beta'));
