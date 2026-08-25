@@ -6,8 +6,8 @@
  * parts - what each one measures, how to write one, and the traps - plus the
  * depth rule below and what the bank is still missing.
  *
- * A 30, B 8, C 14, D 8, I 8 here; E 10, F 10, G 8, H 12, J 4 next door. A hundred
- * and twelve in all, enough to fill every part of a paper.
+ * A 50, B 14, C 26, D 12, I 12 here; E 10, F 10, G 8, H 12, J 4 next door. A
+ * hundred and fifty-eight in all, enough to fill every part of a paper.
  *
  * Depth is counted per level, not per part, because that is what the generator
  * reacts to. It orders the pool exact-level-first and then takes what it needs,
@@ -17,9 +17,17 @@
  * the two. Every part therefore holds either fewer items at a level than the
  * blueprint count (a shallow level, which only tops a paper up, and the top-up
  * varies) or at least twice it (a level two different papers can be drawn from).
- * Never the number in between. Today every part is deep at B2, and parts D and I
- * are deep at B1 as well; A, B and C are still shallow at B1, and A2 and C1 are
- * shallow everywhere. scripts/test-items.mjs holds that rule.
+ * Never the number in between. Today every part is deep at B2; parts D and I are
+ * deep at B1 as well, and A, B, C, D and I are deep at C1. A, B and C are still
+ * shallow at B1, A2 is shallow everywhere, and C1 has nothing yet in the five
+ * audio parts — which is what stops a Level 2 paper being drawn at C1 across
+ * the board. scripts/test-items.mjs holds that rule.
+ *
+ * WHY C1 EXISTS AT ALL. VPET is two papers: Level 1 measures A1 to B1+ and
+ * Level 2 B1+ to C2 (docs/VPET-OFFICIAL-SPEC.md §0, and server/bands.js turns a
+ * mark into a level accordingly). A Level 2 paper built only from B2 material
+ * cannot reach the top of what it is supposed to report, so the C1 sets below
+ * are the difference between a Level 2 paper and a hard Level 1 one.
  *
  * Each row must satisfy the blueprint in server/data/exam-formats.js — the part
  * letter fixes the skill and the item type, and the admin API refuses a mismatch:
@@ -121,7 +129,53 @@ const PART_A = [
   ['vpet-a-29', 'B2', '___ I known about the strike, I would have travelled a day earlier.', 'had',
     'The inverted third conditional: "Had I known" replaces "If I had known". Dropping "if" is what forces the auxiliary to the front.'],
   ['vpet-a-30', 'B2', 'The report makes no ___ of the complaints received last year.', 'mention',
-    'make no mention of. The preposition is already there, which rules out "reference" (reference to) and "note" (note of, but "make note of" is not the idiom).']
+    'make no mention of. The preposition is already there, which rules out "reference" (reference to) and "note" (note of, but "make note of" is not the idiom).'],
+
+  /* C1. The B2 set above turns on knowing a phrasal verb or an inversion; these
+     turn on knowing which of several idioms a register admits. Every gap still
+     takes exactly one word, and where two spellings of the same choice exist
+     (on/upon) both are accepted — that is one answer written two ways, which is
+     what the `|` in the answer key is for. */
+  ['vpet-a-31', 'C1', 'The board\'s silence was tantamount ___ an admission of failure.', 'to',
+    'tantamount to = amounting to the same thing as. The adjective takes "to" and nothing else.'],
+  ['vpet-a-32', 'C1', 'No ___ had the findings been published than the share price fell.', 'sooner',
+    '"No sooner … than" — and note it is "than", not "when". The inversion after the fronted negative is compulsory.'],
+  ['vpet-a-33', 'C1', 'The legacy system will be phased ___ by the end of next year.', 'out',
+    'phase out = withdraw gradually. "Phase in" is the opposite and cannot take "legacy system" as its object.'],
+  ['vpet-a-34', 'C1', 'The inquiry was set up ___ the behest of the outgoing chair.', 'at',
+    'at the behest of = at the request of, formal. "By the behest" and "on the behest" are both wrong.'],
+  ['vpet-a-35', 'C1', 'The full trial bore ___ what the pilot study had suggested.', 'out',
+    'bear out = confirm. "Bear on" exists but means "be relevant to", which needs a different object.'],
+  ['vpet-a-36', 'C1', 'Staff were given time off in ___ of overtime pay.', 'lieu',
+    'in lieu of = instead of. The word survives in this phrase and in "lieutenant" and almost nowhere else.'],
+  ['vpet-a-37', 'C1', 'The two sides spent the weekend hammering ___ a compromise.', 'out',
+    'hammer out = negotiate with difficulty until it is settled. "Hammer down" is not idiomatic here.'],
+  ['vpet-a-38', 'C1', 'Not ___ the audit was complete did the scale of the loss emerge.', 'until',
+    '"Not until X did Y" — the fronted negative forces the inversion in the main clause, not in the "until" clause.'],
+  ['vpet-a-39', 'C1', 'She is averse ___ taking risks with other people\'s money.', 'to',
+    'averse to + noun or -ing. "Averse from" is archaic; "adverse" is a different word altogether.'],
+  ['vpet-a-40', 'C1', 'The proposal was thrown ___ at the first committee meeting.', 'out',
+    'throw out = reject formally. "Throw off" and "throw over" both exist and mean something else.'],
+  ['vpet-a-41', 'C1', 'The whole argument rests ___ an assumption nobody has tested.', 'on|upon',
+    'rest on/upon = depend on for its validity. Both spellings of the same preposition are accepted.'],
+  ['vpet-a-42', 'C1', 'The company has come ___ sustained criticism for its hiring practices.', 'under',
+    'come under criticism / fire / pressure. "Come in for criticism" is the other idiom, but that needs two words.'],
+  ['vpet-a-43', 'C1', 'We should flesh ___ the outline before it goes to the client.', 'out',
+    'flesh out = add the detail to something that is only a skeleton.'],
+  ['vpet-a-44', 'C1', 'The scheme was conceived ___ a response to falling attendance.', 'as',
+    'conceive of something AS something. Without "of", the verb takes "as" directly.'],
+  ['vpet-a-45', 'C1', 'Little ___ they know how much the contract would eventually cost.', 'did',
+    '"Little did they know" — a fronted negative adverb again, and one of the few that survives as a set phrase.'],
+  ['vpet-a-46', 'C1', 'The deadline was brought ___ by two weeks with no warning.', 'forward',
+    'bring forward = move to an earlier date. "Bring back" and "bring up" are different verbs.'],
+  ['vpet-a-47', 'C1', 'His resignation was widely construed ___ an admission of defeat.', 'as',
+    'construe X as Y = interpret it that way. "Construed to" and "construed for" are both wrong.'],
+  ['vpet-a-48', 'C1', 'Production was wound ___ at the end of the quarter.', 'down|up',
+    'wind down = reduce gradually; wind up = close entirely. Both fit a quarter-end and both are accepted.'],
+  ['vpet-a-49', 'C1', 'She prevailed ___ the committee to reconsider its decision.', 'on|upon',
+    'prevail on/upon someone to do something = persuade them. Note that "prevail over" means defeat, not persuade.'],
+  ['vpet-a-50', 'C1', 'The clause was inserted ___ the express purpose of preventing this.', 'for',
+    'for the express purpose of. "With the express purpose" is heard, but "for" is the settled form with "purpose".']
 ];
 
 /* ---------------- Part B · Passage Reconstruction (writing, essay) ----------------
@@ -184,7 +238,56 @@ const PART_B = [
     'A hospital moved its blood tests from the wards to a small unit by the main entrance. ' +
     'The wait for the test itself barely changed. What did change was the number of patients ' +
     'who never arrived at all, which halved; staff put that down to nobody having to find a ward.',
-    'The finding is about attendance rather than speed, and the explanation is attributed to the staff rather than measured. Both distinctions have to survive.']
+    'The finding is about attendance rather than speed, and the explanation is attributed to the staff rather than measured. Both distinctions have to survive.'],
+
+  /* C1. Same task, harder passages. What rises is not the vocabulary so much as
+     the number of things that must survive TOGETHER: a claim, who is making it,
+     what it is being contrasted with, and what the passage stops short of
+     saying. A reconstruction that keeps the facts and loses the hedging has
+     changed what the passage means, and at this level that is the thing being
+     measured. */
+  ['vpet-b-09', 'C1',
+    'Read this passage, then write it again in your own words after it disappears.\n\n' +
+    'An insurer offered lower premiums to drivers who let it monitor their braking. Claims ' +
+    'among those drivers fell by a fifth. The insurer presented this as proof that feedback ' +
+    'improves driving; a statistician engaged by the regulator suggested instead that the ' +
+    'drivers willing to be monitored had been the safer ones all along.',
+    'Two explanations of one number, and the passage does not settle between them. A version that reports either as the finding has taken a side the text refuses to take.'],
+  ['vpet-b-10', 'C1',
+    'Read this passage, then write it again in your own words after it disappears.\n\n' +
+    'The department published its waiting times for the first time in April. Performance ' +
+    'appeared to worsen sharply over the following quarter. Officials attribute this to a ' +
+    'change in what counts as a wait, introduced in the same month; critics say the figures ' +
+    'were simply never this visible before.',
+    'The apparent worsening may be an artefact of measurement or of visibility, and the passage attributes each view to somebody. Losing the attribution turns disagreement into fact.'],
+  ['vpet-b-11', 'C1',
+    'Read this passage, then write it again in your own words after it disappears.\n\n' +
+    'A publisher reduced its list from ninety titles a year to fifty. Revenue held steady, ' +
+    'which the managing director cites whenever the decision is questioned. She is careful ' +
+    'to add that the titles dropped were chosen with hindsight the company did not have at ' +
+    'the time, and that the same cut made blindly would probably have gone badly.',
+    'The qualification is the point of the passage, not a footnote to it. A version that keeps only "fewer books, same revenue" has kept the half the speaker herself warns against.'],
+  ['vpet-b-12', 'C1',
+    'Read this passage, then write it again in your own words after it disappears.\n\n' +
+    'Researchers gave one group of shoppers a trolley with a line marked across the middle ' +
+    'and asked them to fill the front half with fresh produce. Those shoppers bought more ' +
+    'fruit and vegetables than a group given no line. The effect disappeared entirely once ' +
+    'the shoppers were told what the line was for.',
+    'The last sentence reverses the usefulness of the first two. A reconstruction that stops at "the line worked" has dropped the finding.'],
+  ['vpet-b-13', 'C1',
+    'Read this passage, then write it again in your own words after it disappears.\n\n' +
+    'A city replaced two lanes of a main road with a cycle track. Journey times by car rose ' +
+    'in the first month and were back to their previous level within a year, though the ' +
+    'traffic count never recovered. Planners take this as evidence that some journeys were ' +
+    'never necessary; drivers\' groups argue they simply moved to streets nobody is counting.',
+    'Three facts and two readings of them, and the two readings are compatible with the same numbers. Both have to be present and attributed.'],
+  ['vpet-b-14', 'C1',
+    'Read this passage, then write it again in your own words after it disappears.\n\n' +
+    'A charity stopped asking donors for a fixed monthly amount and let them name their own. ' +
+    'The average gift fell, but the number of donors rose enough that total income was ' +
+    'slightly higher. The finance director notes that the charity has not yet been through ' +
+    'a year in which the two move in the same direction.',
+    'An average down, a count up, a total marginally up, and an explicit warning that the arithmetic has not been stress-tested. The warning is the hardest part to keep and the most important.']
 ];
 
 /* ---------------- Part C · Reading Comprehension (reading, mcq) ----------------
@@ -352,7 +455,141 @@ const PART_C = [
       'Books started coming back considerably later than before',
       'Borrowing fell because there was no penalty for lateness'],
     'More people used the library, without books coming back later',
-    'Both findings sit in the second sentence and the right answer keeps them together. The distractors each contradict one of the two.']
+    'Both findings sit in the second sentence and the right answer keeps them together. The distractors each contradict one of the two.'],
+
+  /* C1. The B1 and B2 items above ask what the passage says. These ask what
+     follows from it, what it stops short of claiming, or whose claim it is —
+     and the distractors are all things the passage genuinely contains, put to a
+     use it does not support. An option nobody would pick teaches nothing. */
+  ['vpet-c-15', 'C1',
+    'A retailer credits its loyalty scheme with a rise in repeat custom, noting that members ' +
+    'return three times as often as non-members. Its own analysts are more cautious: joining ' +
+    'requires filling in a form at the till, which is a thing that frequent shoppers are far ' +
+    'more likely to have had the opportunity to do.\n\nWhat objection do the analysts raise?',
+    ['That the scheme may be recording loyal shoppers rather than creating them',
+      'That the form at the till takes too long to complete',
+      'That non-members return to the shop more often than the figures suggest',
+      'That three times as often is too small a difference to be meaningful'],
+    'That the scheme may be recording loyal shoppers rather than creating them',
+    'The analysts point at how members are recruited, which makes membership a consequence of frequent visits rather than a cause. The other three each reuse a real detail to make a claim the passage never supports.'],
+  ['vpet-c-16', 'C1',
+    'The committee\'s report stops short of recommending closure. It sets out the running ' +
+    'costs in detail, notes that no comparable site has stayed open beyond a decade, and ' +
+    'observes that the trustees have not sought alternative funding. It then states that the ' +
+    'decision properly belongs to the trustees.\n\nWhat is the report doing?',
+    ['Assembling the case for closure while leaving the decision to others',
+      'Recommending that the site be closed within the decade',
+      'Arguing that the trustees have already made their decision',
+      'Declining to express any view on the site\'s prospects'],
+    'Assembling the case for closure while leaving the decision to others',
+    'Every fact selected points one way; the final sentence withholds the recommendation. "Declining to express any view" ignores the selection, and "recommending closure" ignores the refusal.'],
+  ['vpet-c-17', 'C1',
+    'Early trials of the drug were stopped when the benefit became clear, on the grounds that ' +
+    'withholding it from the control group would no longer be defensible. Later reviewers have ' +
+    'pointed out that trials halted early tend to overstate how well a treatment works, because ' +
+    'they are stopped at the moment the results look best.\n\nWhy do the reviewers question the result?',
+    ['Because stopping at a favourable moment can exaggerate the benefit',
+      'Because the control group should have received the drug sooner',
+      'Because the trial was too small to show a real benefit',
+      'Because the benefit was never actually observed in the trial'],
+    'Because stopping at a favourable moment can exaggerate the benefit',
+    'The objection is about WHEN the trial stopped, not whether the benefit existed. The passage explicitly says the benefit became clear, which rules out the last option.'],
+  ['vpet-c-18', 'C1',
+    'Supporters of the scheme describe it as a pilot. Its critics note that the contract runs ' +
+    'for eleven years, that the buildings are purpose-built, and that no criteria have been ' +
+    'published against which the pilot could be judged a failure.\n\nWhat are the critics implying?',
+    ['That calling it a pilot is misleading, because nothing about it is provisional',
+      'That eleven years is too short a period to evaluate the scheme',
+      'That the buildings should have been designed for another purpose',
+      'That the criteria will be published once the pilot is under way'],
+    'That calling it a pilot is misleading, because nothing about it is provisional',
+    'Each fact the critics cite is something a genuine pilot would not have. The implication is about the word "pilot" itself, which is what makes this an inference rather than a retrieval.'],
+  ['vpet-c-19', 'C1',
+    'The survey found that staff who work from home report higher satisfaction. It also found ' +
+    'that the option is taken up mainly by senior staff, who reported higher satisfaction than ' +
+    'their colleagues before the policy existed.\n\nWhat does the second finding do to the first?',
+    ['It offers a reason for the difference other than working from home',
+      'It confirms that working from home raises satisfaction',
+      'It shows that senior staff dislike working from home',
+      'It shows that the survey asked the wrong people'],
+    'It offers a reason for the difference other than working from home',
+    'Seniority is present in both groups and predates the policy, so it can account for the gap on its own. The passage does not say the policy has no effect — only that this survey cannot separate the two.'],
+  ['vpet-c-20', 'C1',
+    'Asked whether the delay was avoidable, the director said the schedule had been "ambitious ' +
+    'from the outset" and that the team had "worked to the plan they were given". She did not ' +
+    'say who had set the plan.\n\nWhat is the effect of her answer?',
+    ['It moves responsibility away from the team without naming anyone else',
+      'It accepts that the delay was avoidable',
+      'It blames the team for failing to follow the plan',
+      'It identifies who set the schedule'],
+    'It moves responsibility away from the team without naming anyone else',
+    'Both quoted phrases exonerate the team; the final sentence points out what is missing. The question is about what the answer accomplishes, not what it asserts.'],
+  ['vpet-c-21', 'C1',
+    'The museum reports record attendance. Admission became free in the same year, and the ' +
+    'count is now taken at the door rather than from tickets sold. The director says the ' +
+    'underlying interest is real; she has not published the two years on a comparable basis.' +
+    '\n\nWhy is the record figure hard to interpret?',
+    ['Two things changed at once, and one of them was how visitors are counted',
+      'The museum has stopped counting visitors altogether',
+      'Attendance fell in the year admission became free',
+      'The director has published figures that contradict each other'],
+    'Two things changed at once, and one of them was how visitors are counted',
+    'A change in the measure and a change in the price arrived together, so the rise cannot be attributed to either. "Contradict each other" overstates: the problem is that comparable figures do not exist.'],
+  ['vpet-c-22', 'C1',
+    'The manufacturer\'s guarantee covers "failure under normal use". A tribunal has held that ' +
+    'where a manufacturer knows a product is habitually used in a particular way, that use is ' +
+    'normal for the purposes of the guarantee, whatever the instructions say.\n\nWhat does the ' +
+    'ruling establish?',
+    ['That what customers actually do can define normal use, not just the instructions',
+      'That instructions have no bearing on a guarantee',
+      'That guarantees cover any failure whatsoever',
+      'That manufacturers must anticipate every possible use of a product'],
+    'That what customers actually do can define normal use, not just the instructions',
+    'The ruling turns on the manufacturer KNOWING about the habitual use. The two absolute options ("no bearing", "any failure") go further than the passage, which is the usual shape of a distractor at this level.'],
+  ['vpet-c-23', 'C1',
+    'The consultant recommended the cheaper of the two systems. Her fee was a fixed sum agreed ' +
+    'in advance, and she had no commercial relationship with either supplier. The losing ' +
+    'supplier has nonetheless asked for the recommendation to be reviewed, on the grounds ' +
+    'that she had recommended the same system to three previous clients.\n\nWhat is the ' +
+    'supplier\'s objection?',
+    ['That she may be repeating a familiar choice rather than assessing this one',
+      'That she was paid more for recommending the cheaper system',
+      'That she has a commercial interest in the winning supplier',
+      'That the cheaper system is unsuitable for this client'],
+    'That she may be repeating a familiar choice rather than assessing this one',
+    'The passage rules out both financial motives in its second sentence, which leaves habit as the only objection the last sentence could be making.'],
+  ['vpet-c-24', 'C1',
+    'A council introduced a twenty-minute limit on the parking bays outside a row of shops. ' +
+    'Takings at the shops rose. The council attributes this to a faster turnover of customers. ' +
+    'A shopkeepers\' association points out that the limit was introduced in the same week as ' +
+    'a bus route change that brought two new services past the row.\n\nWhat is the ' +
+    'association\'s point?',
+    ['Another change that week could equally explain the rise in takings',
+      'The parking limit has reduced the number of customers',
+      'The bus route change has damaged trade at the shops',
+      'Takings did not actually rise during the period'],
+    'Another change that week could equally explain the rise in takings',
+    'The association is not disputing the rise, only its cause — a confound, not a contradiction. Two of the distractors dispute the rise itself.'],
+  ['vpet-c-25', 'C1',
+    'The guidance says an employee "may" be granted leave in these circumstances, whereas the ' +
+    'earlier version said an employer "shall" grant it. The department describes the change as ' +
+    'a clarification and states that no change in practice is intended.\n\nWhat has changed?',
+    ['An obligation on the employer has become a discretion',
+      'Employees have lost the right to apply for leave',
+      'The circumstances in which leave is available have narrowed',
+      'Nothing has changed, as the department states'],
+    'An obligation on the employer has become a discretion',
+    '"Shall" binds and "may" permits, so the duty is gone whatever the stated intention. The passage reports the department\'s characterisation without endorsing it.'],
+  ['vpet-c-26', 'C1',
+    'The paper reports that the technique identified every case in the sample. Buried in the ' +
+    'method section is the fact that the sample was assembled from records where the diagnosis ' +
+    'had already been confirmed by other means.\n\nWhy does the second sentence matter?',
+    ['The technique was only ever tested on cases already known to be positive',
+      'The sample was too small for the result to be reliable',
+      'The technique failed to identify some of the cases',
+      'The diagnosis was confirmed after the technique was applied'],
+    'The technique was only ever tested on cases already known to be positive',
+    'With no negative cases in the sample there is nothing the technique could have got wrong, so "identified every case" is close to guaranteed. The passage says nothing about sample size.']
 ];
 
 /* ---------------- Part D · E-Mail Writing (writing, essay) ----------------
@@ -415,7 +652,42 @@ const PART_D = [
     'to approve it.\n\n' +
     'Write an email of about 150 words to your manager. Explain the request, say how the work ' +
     'would be covered, and ask for a decision by a named date. Stay formal.',
-    'Three things are marked together: the request, a workable plan for the uncovered day, and a deadline. A message that only passes the request upwards has made the decision harder, not easier.']
+    'Three things are marked together: the request, a workable plan for the uncovered day, and a deadline. A message that only passes the request upwards has made the decision harder, not easier.'],
+
+  /* C1. The B-level e-mails ask for a clear message in the right register. These
+     ask for something harder: a message where the straightforward version would
+     damage something the writer needs to keep. Saying no to a superior, going
+     back on an agreement, delivering bad news to someone who will be angry.
+     What rises is not the vocabulary but the number of things that have to be
+     true at once. */
+  ['vpet-d-09', 'C1',
+    'Your director has asked you to take on a project starting next month. You are already ' +
+    'committed to two pieces of work that she signed off, and taking the third would put all ' +
+    'three at risk. She is not aware the other two overlap.\n\n' +
+    'Write an email of about 180 words. Decline in a way that keeps the relationship and the ' +
+    'project alive: set out the conflict, propose what could realistically be done, and leave ' +
+    'the choice with her.',
+    'A flat refusal and a reluctant yes both fail this. What is marked is whether the conflict is made visible, whether the alternative is concrete enough to be chosen, and whether the decision is genuinely handed back rather than pre-empted.'],
+  ['vpet-d-10', 'C1',
+    'Six weeks ago you agreed a price with a supplier. Your own costs have since risen and ' +
+    'the agreed price would now lose you money. The supplier has done nothing wrong and you ' +
+    'want to keep working with them.\n\n' +
+    'Write an email of about 180 words asking to reopen the price. Acknowledge that you are ' +
+    'the one going back on the agreement, explain what changed, and make an offer.',
+    'The register problem is that the writer is in the wrong and still asking for something. An email that hides that, or that leans on it so heavily it never makes the ask, both lose marks. A specific offer is required — "some flexibility" is not one.'],
+  ['vpet-d-11', 'C1',
+    'A long-standing client has complained, in strong terms, about a delay that was in fact ' +
+    'caused by their own late approval. You have the dates. You want to correct the record ' +
+    'and keep the client.\n\n' +
+    'Write an email of about 180 words. Set out what happened without accusing them, address ' +
+    'the complaint itself, and say what will prevent a repeat.',
+    'The dates do the work; the tone decides whether they land. Marked on whether the correction is unmistakable and whether it is made without a single sentence the client could read as blame.'],
+  ['vpet-d-12', 'C1',
+    'You recommended a candidate who was hired and has not worked out. Your manager has asked ' +
+    'for your view in writing before a probation decision next week.\n\n' +
+    'Write an email of about 180 words. Give an honest assessment, distinguish what you knew ' +
+    'at the time from what is now clear, and say what you would recommend.',
+    'Three things have to be kept apart: the assessment, the writer\'s own part in it, and the recommendation. Defending the original recommendation instead of assessing the person is the commonest way to fail this one.']
 ];
 
 /* ---------------- Part I · Speaking Situations (speaking) ----------------
@@ -476,7 +748,37 @@ const PART_I = [
     'others have said nothing at all. Time is nearly up.\n\n' +
     'Speak for up to one minute. Interrupt politely, sum up what has been said so far, and ' +
     'bring the quieter members in.',
-    'Scored on the three moves — interrupt, summarise, invite — and on whether the interruption stays courteous. Cutting the speaker off without acknowledging the point they were making misses.']
+    'Scored on the three moves — interrupt, summarise, invite — and on whether the interruption stays courteous. Cutting the speaker off without acknowledging the point they were making misses.'],
+
+  /* C1. Every one of these puts two obligations in tension and gives the speaker
+     a minute. What is measured is whether both survive — not fluency, which the
+     transcript cannot show anyway. */
+  ['vpet-i-09', 'C1',
+    'A supplier you rely on has missed a deadline for the third time. You cannot easily ' +
+    'replace them, and the person you are speaking to is not the one who caused it.\n\n' +
+    'Speak for up to one minute. Make clear this cannot continue, without threatening a ' +
+    'relationship you need, and agree a specific next step.',
+    'Firmness and dependence at the same time. A speaker who only complains has not asked for anything; one who only asks has let the third failure pass without comment. The specific next step is the third mark.'],
+  ['vpet-i-10', 'C1',
+    'Your team has been asked to adopt a new process you privately think is a mistake. The ' +
+    'decision has been made and you are briefing your team, who will ask what you think.' +
+    '\n\n' +
+    'Speak for up to one minute. Explain the change, answer honestly when asked, and leave ' +
+    'the team able to work with it.',
+    'Being loyal to a decision and honest about it at once. Pretending to agree and openly undermining the decision both fail; what is marked is whether the speaker separates their view from what the team now has to do.'],
+  ['vpet-i-11', 'C1',
+    'You are presenting figures to a committee. Partway through, you realise a number on the ' +
+    'slide behind you is wrong, and it is one the committee has already discussed.\n\n' +
+    'Speak for up to one minute. Correct it there and then, say what it changes and what it ' +
+    'does not, and carry on.',
+    'The correction has to be unambiguous and the recovery has to be quick. Burying the error in qualification, or correcting it without saying which conclusions still stand, both lose marks.'],
+  ['vpet-i-12', 'C1',
+    'A colleague has asked you to support their proposal at a meeting tomorrow. You think ' +
+    'parts of it are good and one part is unworkable. They have asked for a straight yes.' +
+    '\n\n' +
+    'Speak for up to one minute. Give them an answer they can plan around, and be specific ' +
+    'about what you will and will not say.',
+    'The task is to refuse the yes without refusing the person. Marked on whether the split is explicit — which parts are supported, which are not — and on whether the colleague could actually plan from the answer.']
 ];
 
 /* The five audio parts live in their own file because their rows carry a `say`
