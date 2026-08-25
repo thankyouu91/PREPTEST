@@ -233,6 +233,106 @@ try {
     'no CEFR label is attached to an estimate without knowing the difficulty behind it',
     JSON.stringify({ band: ov && ov.band, materialLevel: ov && ov.materialLevel }));
 
+  head('What to study, and whether the lesson it names exists');
+
+  const SM = require('../server/study-map.js');
+  const RUBRIC = require('../server/rubric.js');
+
+  /* The table is only worth having if it covers the material. A grammar group
+     the bank teaches but this table has never heard of is a learner told to
+     work on something with nowhere to go and read about it. */
+  const groups = (await q.all('SELECT DISTINCT grp FROM grammar_points WHERE grp IS NOT NULL'))
+    .map(r => r.grp);
+  const orphanGroups = groups.filter(g => !SM.BY_GROUP[g]);
+  ok(groups.length > 0 && orphanGroups.length === 0,
+    'every grammar group in the bank has a lesson to send somebody to',
+    orphanGroups.join(', ') || (groups.length ? '' : 'no groups in the database'));
+
+  /* And the other direction: a lesson named here that the routes no longer
+     serve. This is the check that catches a page being renamed, which is the
+     way a link table like this actually dies — nothing errors, the link just
+     quietly starts 404ing for learners. */
+  const dead = [];
+  for (const l of SM.ALL_LESSONS) {
+    const r = await fetch(BASE + l.href, { redirect: 'manual' });
+    /* Signed out these redirect to sign-in, which still proves the route is
+       registered; what must not happen is a 404. */
+    if (r.status === 404) dead.push(l.href);
+  }
+  ok(dead.length === 0, 'and every lesson it names is a page this server serves', dead.join(', '));
+
+  /* Every criterion the marker can write must be answerable. An unmapped one
+     renders as a weakness with no advice and no lesson — a row that tells a
+     learner they are bad at something and then stops. */
+  const allCriteria = [...new Set(Object.values(RUBRIC.CRITERIA).flat().map(c => c.key))];
+  const unmapped = allCriteria.filter(k => !SM.FOR_CRITERION[k]);
+  ok(allCriteria.length > 0 && unmapped.length === 0,
+    'every criterion the rubric can mark has an answer to "so what do I do"',
+    unmapped.join(', '));
+
+  /* The honest half: some of those answers are deliberately not a lesson, and
+     the shape has to say so rather than looking like a lesson list that failed
+     to load. */
+  const technique = allCriteria.filter(k => SM.FOR_CRITERION[k].lessons.length === 0);
+  ok(technique.length > 0,
+    'and the ones no lesson teaches say so, instead of inventing a link',
+    technique.join(', '));
+
+  /* WEAK, not weakest. Sorting and taking the bottom two returns two rows
+     whatever the learner is like, which is how somebody at ten out of ten was
+     handed the lesson for the only grammar they had got right. */
+  const gRows = await q.all(
+    `SELECT se.user_id uid, gp.grp grp, SUM(se.earned) e, SUM(se.max_score) m, COUNT(*) n
+       FROM skill_events se JOIN grammar_points gp ON gp.slug = se.topic
+      WHERE se.skill = 'grammar' AND se.max_score > 0
+      GROUP BY se.user_id, gp.grp HAVING n >= ?`, SM.MIN_MARKS);
+  let checkedStrong = 0, leaked = 0;
+  for (const r of gRows) {
+    if ((r.e / r.m) * 10 < SM.FINE) continue;              // genuinely weak: may appear
+    checkedStrong++;
+    const got = await SM.weakGroups(r.uid, 9);
+    if (got.some(x => x.group === r.grp)) leaked++;
+  }
+  ok(checkedStrong > 0 && leaked === 0,
+    'a group the learner is already good at is never named as a gap',
+    checkedStrong ? leaked + ' of ' + checkedStrong + ' leaked' : 'no strong group in the data to check');
+
+  /* And the whole thing reaches the plan, which is the only reason it exists.
+     The probe account registered above has never been marked, so it proves the
+     field is always present and never proves what goes in it. The shape checks
+     below run against whoever in this database has actually been marked — and
+     say so plainly when nobody has, rather than passing over an empty list. */
+  const planned = await P.weekly(uid);
+  ok(Array.isArray(planned.study), 'the plan carries a study list, even for an account with no marks yet',
+    typeof planned.study);
+  ok(planned.study.length === 0,
+    'and it is empty rather than guessing at somebody nobody has marked',
+    JSON.stringify(planned.study));
+
+  const marked = await q.val(
+    `SELECT a.user_id FROM rubric_scores rs JOIN attempts a ON a.id = rs.attempt_id
+      GROUP BY a.user_id ORDER BY COUNT(*) DESC LIMIT 1`);
+  ok(marked != null, 'somebody in this database has been marked, so the rest of this is a real test',
+    String(marked));
+  const study = marked == null ? [] : await SM.whatToStudy(marked);
+  ok(study.length > 0, 'and they have something to work on', String(study.length));
+  ok(study.every(s =>
+    s.part && s.criterion && typeof s.score === 'number' && s.n >= SM.MIN_MARKS
+    && Array.isArray(s.lessons) && typeof s.technique === 'boolean'),
+    'every row names a part, a criterion, a mark and how many pieces it is from',
+    JSON.stringify(study[0] || null));
+  ok(study.every(s => s.score < SM.FINE),
+    'nothing they are already fine at appears on it',
+    JSON.stringify(study.map(s => s.score)));
+  ok(study.every(s => s.lessons.every(l => SM.ALL_LESSONS.some(a => a.href === l.href))),
+    'and every link on it comes from the table the checks above just proved');
+  ok(study.every(s => s.technique === (s.lessons.length === 0)),
+    'a row with no lesson is flagged as technique rather than left looking broken',
+    JSON.stringify(study.map(s => [s.criterion, s.technique, s.lessons.length])));
+  ok(study.every(s => !s.unmapped),
+    'and no row reached a learner with no advice attached',
+    JSON.stringify(study.filter(s => s.unmapped).map(s => s.criterion)));
+
   head('It refuses what it should');
 
   const anon = client();

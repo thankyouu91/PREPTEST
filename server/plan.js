@@ -43,6 +43,7 @@ const ability = require('./ability');
 const drills = require('./drills');
 const revision = require('./revision');
 const levelAdvice = require('./level-advice');
+const studyMap = require('./study-map');
 
 /** How many items a plan holds. Three is a deliberate ceiling, not a page size. */
 const PLAN_SIZE = 3;
@@ -181,6 +182,19 @@ async function weekly(userId, partWeights) {
       reason: t.score === null ? 'notMeasured'
         : (!t.confident ? 'provisional' : (t.score < 5 ? 'weakest' : 'belowTarget')),
       href: '/prep/on-tap/',
+      /* Where this topic is TAUGHT, alongside where it is practised.
+         `href` is the revision screen, which hands out gap sentences — the
+         right place for somebody who knows the rule and needs the reps, and the
+         wrong place for somebody who does not know it yet. That learner was
+         being sent to practise a topic nobody had explained to them, past the
+         page explaining it, because the plan had no way to name that page.
+         Null when the group has no lesson written yet, and the interface is
+         expected to simply not draw the link rather than invent one. */
+      lesson: studyMap.BY_GROUP[t.group]
+        ? { href: studyMap.BY_GROUP[t.group].href,
+            en: studyMap.BY_GROUP[t.group].en,
+            vi: studyMap.BY_GROUP[t.group].vi }
+        : null,
       /* Ranked as if it were a part of average weight. Grammar competes on the
          same scale rather than being bolted on at the end, but it cannot
          outrank a genuinely weak exam part. */
@@ -247,6 +261,20 @@ async function weekly(userId, partWeights) {
      * the paper's ceiling, not the candidate's. server/level-advice.js carries
      * the reasoning. */
     nextPaper,
+    /* What is dragging the marks down, and where it is taught.
+     *
+     * Also separate from the three things to do, and for the opposite reason to
+     * nextPaper: the plan says which PART to practise, and this says what
+     * inside that part is losing the marks. "Practise Part D" and "your Part D
+     * e-mails lose more on grammar than on anything else, here are the two
+     * lessons for the grammar you keep getting wrong" are different sentences,
+     * and only the second one can be acted on this evening.
+     *
+     * Read from rubric_scores — what the marker actually wrote, item by item —
+     * rather than estimated a second time. Rows with no lesson behind them are
+     * expected and carry `technique: true`; see server/study-map.js for why
+     * inventing a link for those would be worse than leaving it out. */
+    study: await studyMap.whatToStudy(userId),
     /* So a screen can say "this is why the list looks like that" instead of
        presenting three items as an oracle. */
     target: TARGET,
