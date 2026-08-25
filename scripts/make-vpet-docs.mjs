@@ -271,6 +271,29 @@ function duLieu() {
   };
 }
 
+/* Chromium đóng dấu giờ chạy vào /CreationDate và /ModDate, nên hai bản PDF đổi
+   byte sau mỗi lần chạy dù nội dung y hệt. Vì PDF được commit, chạy lại script
+   sẽ đẻ ra nửa megabyte diff nhị phân cho đúng một nội dung không đổi - loại
+   phình repo mà .gitignore đã phải chặn với ảnh chụp màn hình. Ghim hai mốc đó
+   về một giờ cố định là hết: chạy lại mà nội dung không đổi thì git im lặng, và
+   diff nào còn hiện ra là diff thật.
+
+   Thay tại chỗ và GIỮ NGUYÊN ĐỘ DÀI: đối tượng /Info nằm ở đầu tệp, lệch một
+   byte là mọi offset trong bảng xref phía sau trỏ sai. Chuỗi thay thế ngắn hơn
+   thì đệm khoảng trắng bên trong ngoặc (bộ đọc PDF chỉ lấy phần đầu). */
+const NGAY_GHIM = "D:20240101000000+00'00'";
+async function ghimNgay(tep) {
+  const buf = await fs.readFile(tep);
+  const s = buf.toString('latin1').replace(/\(D:\d{14}[^)]*\)/g, m => {
+    const than = m.slice(1, -1);
+    const moi = NGAY_GHIM.length <= than.length
+      ? NGAY_GHIM.padEnd(than.length, ' ')
+      : NGAY_GHIM.slice(0, than.length);
+    return '(' + moi + ')';
+  });
+  await fs.writeFile(tep, Buffer.from(s, 'latin1'));
+}
+
 /* ------------------------------------------------------------------ */
 await fs.mkdir(OUT, { recursive: true });
 
@@ -293,6 +316,7 @@ try {
     });
     await page.close();
     if (!process.env.KEEP_SRC) await fs.unlink(src);
+    await ghimNgay(pdf);
     const { size } = await fs.stat(pdf);
     console.log(`✓ ${path.relative(ROOT, pdf)}  (${Math.round(size / 1024)} KB)`);
   }
