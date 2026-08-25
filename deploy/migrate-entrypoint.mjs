@@ -118,9 +118,13 @@ const PG_URL = dsn();
 
 try {
   await download();
-  /* PG_URL names the destination. DATABASE_URL stays unset — see the note at
-     the top; with it set, db.js would have no SQLite side to read. */
-  await run('/app/scripts/pg-migrate.mjs', ['--yes'], { PG_URL, PREP_DB, DATABASE_URL: '' });
+  /* PG_URL names the destination. DATABASE_URL and PGHOST are both blanked —
+     see the note at the top; EITHER of them switches db.js's own engine to
+     PostgreSQL, and then the migration has no SQLite side to read and would
+     copy the target onto itself. PGHOST is the one that is easy to miss,
+     because it is in this task's environment for the step AFTER this one. */
+  await run('/app/scripts/pg-migrate.mjs', ['--yes'],
+    { PG_URL, PREP_DB, DATABASE_URL: '', PGHOST: '' });
   /* Now against the copy: here DATABASE_URL is what points db.js's own q/tx at
      PostgreSQL, which is exactly what the purge should be operating on. */
   await run('/app/scripts/demo-purge.mjs', ['--yes'], { DATABASE_URL: PG_URL, PREP_DB });
