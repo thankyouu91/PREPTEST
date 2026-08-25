@@ -17,8 +17,25 @@
  * a suite that repairs the paper before measuring it can never see the paper
  * break.
  */
+/**
+ * Two papers, because VPET is two papers.
+ *
+ * Level 1 measures A1 to B1+ and Level 2 B1+ to C2 (docs/VPET-OFFICIAL-SPEC.md
+ * §0). server/bands.js reads `level` to decide which of the two a sitting is
+ * and therefore what range its mark may be reported in — B2 and above is the
+ * harder paper — so this field is not decoration: change it and the same score
+ * comes back as a different CEFR level.
+ *
+ * The titles say which paper is which and what each can find. A candidate
+ * choosing between them off a library page is choosing an instrument, and
+ * "VPET four skills B1" told them nothing about the ceiling they were about to
+ * hit.
+ */
 const SEED_TESTS = [
-  { id: 'vpet-b1-01', family: 'vpet', title: 'VPET four skills B1', level: 'B1', status: 'published' }
+  { id: 'vpet-b1-01', family: 'vpet', title: 'VPET Level 1 · four skills (A1–B1+)',
+    level: 'B1', status: 'published' },
+  { id: 'vpet-c1-01', family: 'vpet', title: 'VPET Level 2 · four skills (B1+–C2)',
+    level: 'C1', status: 'published' }
 ];
 
 module.exports = { SEED_TESTS };
