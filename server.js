@@ -387,6 +387,7 @@ app.get('/prep/hoc/bi-dong/', studyPage('prep/learn/bi-dong.html'));
 app.get('/prep/hoc/menh-de/', studyPage('prep/learn/menh-de.html'));
 app.get('/prep/hoc/nhan-manh/', studyPage('prep/learn/nhan-manh.html'));
 app.get('/prep/hoc/sac-thai/', studyPage('prep/learn/sac-thai.html'));
+app.get('/prep/hoc/gioi-tu/', studyPage('prep/learn/gioi-tu.html'));
 
 /* ---------------- PWA ----------------
    The worker is served from the root so its scope covers the whole site, and

@@ -38,8 +38,8 @@ const { q } = require('./db');
 const rubric = require('./rubric');
 
 /**
- * The nine grammar groups the bank uses (grammar_points.grp), each with the
- * lesson that teaches it.
+ * The grammar groups the bank uses (grammar_points.grp), each with the lesson
+ * that teaches it.
  *
  * The English is the wording already on the chip rail, so a learner following a
  * link from the plan lands on a page whose own navigation calls it what the
@@ -66,7 +66,9 @@ const BY_GROUP = {
   emphasis:    { group: 'emphasis',    href: '/prep/hoc/nhan-manh/',
                  en: 'Inversion and emphasis', vi: 'Đảo ngữ và nhấn mạnh' },
   register:    { group: 'register',    href: '/prep/hoc/sac-thai/',
-                 en: 'Register and hedging', vi: 'Sắc thái và mức trang trọng' }
+                 en: 'Register and hedging', vi: 'Sắc thái và mức trang trọng' },
+  preposition: { group: 'preposition', href: '/prep/hoc/gioi-tu/',
+                 en: 'Prepositions', vi: 'Giới từ' }
 };
 
 /** Two lessons that are not grammar groups, and are what some criteria need. */
@@ -94,7 +96,14 @@ const ALL_LESSONS = Object.values(BY_GROUP).concat([LINKING_WORDS, IRREGULAR_VER
 const FOR_CRITERION = {
   /* Grammar and spelling, wherever it is marked. The one criterion where the
      platform can be specific, because it keeps a per-topic record. */
-  accuracy:     { fromOwnGaps: true, lessons: [BY_GROUP.tense, BY_GROUP.clause, IRREGULAR_VERBS],
+  /* The fixed list is what a learner sees when there is no per-topic record to
+     be specific from, so it is chosen for BREADTH rather than precision — the
+     four places a Vietnamese learner most often loses accuracy marks.
+     Prepositions earns its place on this list more than anything else on it:
+     the errors come from Vietnamese using one word where English uses three,
+     so they appear at A1 and never stop. */
+  accuracy:     { fromOwnGaps: true,
+                  lessons: [BY_GROUP.preposition, BY_GROUP.tense, BY_GROUP.clause, IRREGULAR_VERBS],
                   en: 'the grammar you keep losing marks on',
                   vi: 'những điểm ngữ pháp đang mất điểm nhiều nhất' },
 

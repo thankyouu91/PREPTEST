@@ -1,6 +1,6 @@
 /**
  * Self-study tests: the two lookup APIs (irregular verbs, linking words), the
- * grammar API across all nine groups, and the eleven pages that use them.
+ * grammar API across all ten groups, and the twelve pages that use them.
  *
  * The focus is data quality, not just HTTP status codes: an example sentence
  * has to actually contain the item it illustrates, every entry needs its
@@ -283,17 +283,27 @@ try {
 
   /* The groups have to stay apart, with nothing bleeding across */
   const allGrammar = await get('/api/learn/grammar');
-  ok(allGrammar.count === 219, 'The nine groups come to 219 points (' + allGrammar.count + ')');
-  ok(allGrammar.groups.some(g => g.id === 'tense' && g.count === 21) &&
-     allGrammar.groups.some(g => g.id === 'noun' && g.count === 28) &&
-     allGrammar.groups.some(g => g.id === 'adjadv' && g.count === 16) &&
-     allGrammar.groups.some(g => g.id === 'modal' && g.count === 29) &&
-     allGrammar.groups.some(g => g.id === 'conditional' && g.count === 20) &&
-     allGrammar.groups.some(g => g.id === 'passive' && g.count === 22) &&
-     allGrammar.groups.some(g => g.id === 'clause' && g.count === 29) &&
-     allGrammar.groups.some(g => g.id === 'emphasis' && g.count === 21) &&
-     allGrammar.groups.some(g => g.id === 'register' && g.count === 33),
-    'The per-group counts are right: tense 21, noun 28, adjadv 16, modal 29, conditional 20, passive 22, clause 29, emphasis 21, register 33');
+  /* Counted from the table rather than typed twice. The total used to be a
+     second hand-written 219 beside nine hand-written per-group numbers, so
+     adding a tenth group meant editing the same fact in two places and the
+     failure message said "219" while naming groups that came to something
+     else. The per-group numbers below are still spelled out — that is the
+     check — but the total is now their sum by construction. */
+  const GROUP_COUNTS = {
+    tense: 21, noun: 28, adjadv: 16, modal: 29, conditional: 20,
+    passive: 22, clause: 29, emphasis: 21, register: 33, preposition: 13
+  };
+  const wantTotal = Object.values(GROUP_COUNTS).reduce((a, b) => a + b, 0);
+  ok(allGrammar.count === wantTotal,
+    'The ' + Object.keys(GROUP_COUNTS).length + ' groups come to ' + wantTotal + ' points (' + allGrammar.count + ')');
+  const countOff = Object.entries(GROUP_COUNTS)
+    .filter(([id, n]) => !allGrammar.groups.some(g => g.id === id && g.count === n))
+    .map(([id, n]) => id + ' wanted ' + n + ', got ' +
+      ((allGrammar.groups.find(g => g.id === id) || {}).count ?? 'nothing'));
+  ok(countOff.length === 0,
+    'The per-group counts are right: ' +
+      Object.entries(GROUP_COUNTS).map(([id, n]) => id + ' ' + n).join(', '),
+    countOff.join(' · '));
   ok(new Set(allGrammar.points.map(p => p.slug)).size === allGrammar.count,
     'No two points share a slug across groups');
 
@@ -1061,8 +1071,17 @@ try {
     (foreign.length ? ' (' + foreign.length + ' places, e.g. ' + foreign[0] + ')' : ''));
   ok(answerOutsideOptions.length === 0, 'The answer is always among the options of a multiple-choice sentence' +
     (answerOutsideOptions.length ? ' (' + answerOutsideOptions.length + ' wrong, e.g. ' + answerOutsideOptions[0] + ')' : ''));
-  ok(practiceTotal === 12 * 12 + 9 * 10 + 28 * 10 + 16 * 10 + 29 * 10 + 20 * 10 + 22 * 10 + 29 * 10 + 21 * 10 + 33 * 10,
-    'All of grammar comes to ' + (12 * 12 + 9 * 10 + 28 * 10 + 16 * 10 + 29 * 10 + 20 * 10 + 22 * 10 + 29 * 10 + 21 * 10 + 33 * 10) + ' practice sentences (' + practiceTotal + ')');
+  /* Stated as the RULE rather than as a sum of every group's size. It used to be
+     `12*12 + 9*10 + 28*10 + …`, one term per group, which meant a new group made
+     this go red for no reason anybody could read off the failure — and made the
+     right fix "add another term", i.e. keep a second copy of the group list
+     here for ever. The rule the data actually follows is simpler: every point
+     carries 10 practice sentences, except the 12 tenses proper, which carry 12. */
+  const TENSES_WITH_TWELVE = 12;
+  const wantPractice = (allPoints.length - TENSES_WITH_TWELVE) * 10 + TENSES_WITH_TWELVE * 12;
+  ok(practiceTotal === wantPractice,
+    'Every point carries 10 practice sentences and the 12 tenses carry 12 — ' +
+    wantPractice + ' in all (' + practiceTotal + ')');
 
   /* ============ 7. The self-study pages ============ */
   console.log('\n\x1b[1m== Self-study pages ==\x1b[0m');
