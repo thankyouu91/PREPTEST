@@ -31,6 +31,7 @@
 const { q, tx, nowISO } = require('./db');
 const ability = require('./ability');
 const rubric = require('./rubric');
+const bands = require('./bands');
 
 /**
  * The 123 linking words the platform already teaches, for the tier-1 diagnostic
@@ -63,10 +64,14 @@ const AUTO_TYPES = ['mcq', 'gap'];
 const EXAM_SKILLS = ['listening', 'reading', 'writing', 'speaking'];
 
 /**
- * VPET/VSTEP band table, per docs/SCORING.md §1.1.
+ * The VSTEP band table, kept here as the re-export it always was.
  *
- * Defined once, here. It is a claim about a real exam, so it must never be
- * copied into a second place where the two can drift apart.
+ * What a mark MEANS now lives in server/bands.js, because it stopped being one
+ * table: this one is right for VEPT, which follows the VSTEP framework, and was
+ * wrong for VPET, which is Pearson's and comes in two levels measuring
+ * different stretches of the scale. Applying it to every paper told a candidate
+ * who aced a Level 1 paper that they were C1 — two bands above anything that
+ * paper can measure.
  *
  * NOTE: `VSTEP_GUIDE` in server/data/exam-formats.js currently states different
  * cut-offs (4.0-5.5 → B1, 6.0-8.0 → B2). docs/SCORING.md is the scoring
@@ -74,17 +79,18 @@ const EXAM_SKILLS = ['listening', 'reading', 'writing', 'speaking'];
  * docs/ROADMAP.md for the owner to settle, because which one is right is a
  * question about the real exam, not about this code.
  */
-const BANDS = [
-  { min: 8.5, band: 'Bậc 5', cefr: 'C1' },
-  { min: 5.5, band: 'Bậc 4', cefr: 'B2' },
-  { min: 3.5, band: 'Bậc 3', cefr: 'B1' }
-];
+const BANDS = bands.VSTEP_BANDS;
 
-/** The band for an overall mark; null means below the level a certificate is issued at. */
-function toBand(score) {
-  if (score == null) return null;
-  const hit = BANDS.find(b => score >= b.min);
-  return hit ? { band: hit.band, cefr: hit.cefr } : { band: null, cefr: null };
+/**
+ * The level for an overall mark.
+ *
+ * `opts` carries which exam and which paper — `{ family, level }` — because the
+ * same 8.0 is B2 on a VEPT paper, B1+ on VPET Level 1 (its ceiling), and C1 on
+ * VPET Level 2. Called with no opts it still answers on the VSTEP table, which
+ * is what every existing caller expects.
+ */
+function toBand(score, opts) {
+  return bands.bandFor(score, opts);
 }
 
 /* ------------------------------------------------------------------ *
@@ -294,6 +300,10 @@ async function markAttempt(attemptId) {
 async function resultOf(attemptId, detailed) {
   const att = await q.get('SELECT * FROM attempts WHERE id=?', attemptId);
   if (!att) return null;
+  /* Which exam and which level, because a mark does not mean the same thing on
+     both VPET papers: Level 1 measures A1 to B1+, Level 2 B1+ to C2. Read here
+     rather than assumed, and see server/bands.js for what it decides. */
+  const test = await q.get('SELECT family_id, level FROM tests WHERE id=?', att.test_id);
   const rows = await q.all('SELECT * FROM attempt_scores WHERE attempt_id=?', attemptId);
   const overall = rows.find(r => r.skill === 'overall');
   const skills = rows.filter(r => r.skill !== 'overall');
@@ -317,8 +327,14 @@ async function resultOf(attemptId, detailed) {
      * section. The comment beside the completeness check promised "all four
      * skills" and nothing anywhere checked for them. */
     band: overall && EXAM_SKILLS.every(s => skills.some(r => r.skill === s))
-      ? toBand(overall.scaled)
+      ? toBand(overall.scaled, { family: test && test.family_id, level: test && test.level })
       : null,
+    /* What this paper is, so the screen can say what it could and could not
+       have found. A candidate who answers everything on a Level 1 paper is B1+
+       and has ALSO run out of paper — those are different facts and both are
+       worth telling them. */
+    paperLevel: test ? test.level : null,
+    vpetLevel: test && String(test.family_id) === 'vpet' ? bands.vpetLevelOf(test.level) : null,
     /* How the speaking mark was arrived at, on every result screen rather than
        only the paid one.
      *

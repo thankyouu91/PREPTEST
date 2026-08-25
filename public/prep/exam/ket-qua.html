@@ -69,6 +69,11 @@
             <span id="r-pending-text"></span>
           </div>
 
+          <!-- What this paper could and could not have found. A candidate who
+               tops out on Level 1 needs to know the paper ran out, not just
+               that they scored well. -->
+          <p id="r-ceiling" hidden class="text-[13px] text-muted mt-4 max-w-[62ch]"></p>
+
           <p id="r-disclaimer" class="text-[13px] text-muted/80 font-medium mt-6"></p>
           <!-- How the speaking mark was made. Shown to every candidate, not
                only the ones whose plan includes the per-item breakdown: it is
@@ -157,10 +162,29 @@
     dash and say what is outstanding - a half-computed number gets read as
     the final result. */
     PREP.qs('#r-overall').textContent = r.overall == null ? '–' : PREP.score(r.overall);
-    if (r.band && r.band.band) {
-      PREP.qs('#r-band').textContent = r.band.band + ' · ' + r.band.cefr;
+    /* Two different exams, two different things to show.
+     *
+     * VEPT publishes a "Bậc" on the VSTEP framework. VPET does not — it reports
+     * a CEFR level, and WHICH CEFR levels are even reachable depends on the
+     * paper: Level 1 measures A1 to B1+, Level 2 B1+ to C2. Rendering only
+     * `band.band` used to leave a VPET candidate with an empty box. */
+    const b = r.band;
+    if (b && (b.band || b.cefr)) {
+      PREP.qs('#r-band').textContent = b.band ? b.band + ' · ' + b.cefr : b.cefr;
       PREP.qs('#r-band-box').removeAttribute('hidden');
     }
+    /* A perfect Level 1 paper is B1+ AND has run out of paper. Those are two
+       different facts and the second one is the more useful of the pair. */
+    const ceilingNote = PREP.qs('#r-ceiling');
+    let ceilingText = '';
+    if (b && b.atCeiling) {
+      ceilingText = 'Đây là mức cao nhất đề Cấp ' + r.vpetLevel + ' đo được'
+        + (r.vpetLevel === 1 ? ' — làm đề Cấp 2 để biết trình độ thật cao đến đâu.' : '.');
+    } else if (b && b.atFloor) {
+      ceilingText = b.note || '';
+    }
+    ceilingNote.textContent = ceilingText;
+    ceilingNote.hidden = !ceilingText;
     if (r.pending) {
       PREP.qs('#r-pending-text').textContent =
         'Writing and Speaking are still to be marked. The overall mark and band appear once all four skills are in.';

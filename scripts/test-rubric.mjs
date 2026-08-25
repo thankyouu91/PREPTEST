@@ -601,9 +601,15 @@ head('Nothing handed in is nothing, not four out of ten');
     String(one.overall));
   const three = await bandFor(['reading', 'writing', 'speaking']);
   ok(three.band === null, 'nor does a paper missing one of the four', JSON.stringify(three.band));
+  /* 8.0 on `vpet-b1-01`, which is a Level 1 paper. This asserted `B2` and
+     passed, which is the corrected bug written down as a requirement: Level 1
+     measures A1 to B1+, so B2 was never a level it could report. 8.0 places at
+     GSE 48.4, which the published alignment puts in B1. */
   const four = await bandFor(['listening', 'reading', 'writing', 'speaking']);
-  ok(four.band && four.band.cefr === 'B2', 'a complete sitting at 8.0 is Bậc 4 / B2',
+  ok(four.band && four.band.cefr === 'B1',
+    'a complete Level 1 sitting at 8.0 is B1 — B2 is above what that paper measures',
     JSON.stringify(four.band));
+  ok(four.vpetLevel === 1, 'and the result says which paper it was', String(four.vpetLevel));
 
   /* ------------------------------------------------------------------ *
    * Part H is measured, not judged
@@ -651,6 +657,56 @@ head('Nothing handed in is nothing, not four out of ten');
   const slip = RP.score(say, 'I will call you back as soon as the meeting ends');
   ok(slip.note.includes(say) && slip.note.includes('meeting ends'),
     'the note quotes both what was said and what the sentence was', slip.note);
+
+  /* ------------------------------------------------------------------ *
+   * A paper cannot report a level it cannot measure
+   * ------------------------------------------------------------------ *
+   *
+   * VPET comes in two papers: Level 1 measures A1 to B1+ (GSE 10-58), Level 2
+   * B1+ to C2 (GSE 51-90). Every paper used to get the VSTEP band table
+   * regardless, so a candidate who answered EVERYTHING on a Level 1 paper was
+   * told Bậc 5 / C1 — two bands above the highest thing that paper is capable
+   * of finding. A test that stops at B1+ cannot discover a C1 speaker.
+   */
+  head('A paper cannot report a level it cannot measure');
+
+  const BD = await import('../server/bands.js').then(m => m.default || m);
+  const lvl1 = s => BD.bandFor(s, { family: 'vpet', level: 'B1' });
+  const lvl2 = s => BD.bandFor(s, { family: 'vpet', level: 'B2' });
+
+  ok(lvl1(10).cefr === 'B1+', 'ten out of ten on a Level 1 paper is B1+, not C1', lvl1(10).cefr);
+  ok(lvl1(10).atCeiling === true, 'and it says the paper ran out rather than the candidate');
+  ok(lvl1(10).gse === 58, 'which is GSE 58 — the top of the range the guide gives Level 1',
+    String(lvl1(10).gse));
+  ok(['C1', 'C2', 'B2', 'B2+'].every(c => lvl1(10).cefr !== c),
+    'no mark on a Level 1 paper can reach B2 or above');
+  ok(lvl1(0).cefr === 'dưới A1', 'and the bottom is below A1, which Level 1 can genuinely see',
+    lvl1(0).cefr);
+
+  ok(lvl2(10).cefr === 'C2', 'ten out of ten on a Level 2 paper is C2', lvl2(10).cefr);
+  ok(lvl2(10).gse === 90, 'GSE 90, the top of the scale', String(lvl2(10).gse));
+  ok(lvl2(1).atFloor === true && lvl2(1).cefr === null,
+    'a mark at the floor of Level 2 reports a ceiling, not a level',
+    JSON.stringify(lvl2(1).cefr));
+  ok(String(lvl2(1).note || '').includes('Cấp 1'),
+    'and names the easier paper, because Level 2 cannot tell them apart down there');
+  ok(lvl2(5).cefr === 'B2+', 'the middle of Level 2 is B2+', lvl2(5).cefr);
+
+  /* Monotonic: a better paper never reports a lower level. */
+  for (const at of [lvl1, lvl2]) {
+    let last = -1, broken = null;
+    for (let s = 0; s <= 10; s += 0.5) {
+      const g = at(s).gse;
+      if (g < last) broken = s;
+      last = g;
+    }
+    ok(broken === null, 'a higher mark never maps to a lower point on the scale', 'broke at ' + broken);
+  }
+
+  /* VEPT is a different exam on the VSTEP framework and keeps its own bands. */
+  const vept = BD.bandFor(8.5, { family: 'vept', level: 'B2' });
+  ok(vept.band === 'Bậc 5' && vept.cefr === 'C1',
+    'VEPT still reports a VSTEP Bậc, which is correct for that exam', JSON.stringify(vept));
 
   /* And the paper real candidates sit does have all four, so this rule never
      silently withholds a band somebody earned. */

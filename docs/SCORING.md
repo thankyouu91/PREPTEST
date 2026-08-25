@@ -15,9 +15,17 @@ chung để một bộ mã phục vụ được cả 6 kỳ mà không phải vi
 
 ## Phần 1 — Cấu trúc và thang điểm từng kỳ thi
 
-### 1.1 VEPT / VPET (theo khung VSTEP, 6 bậc dùng cho Việt Nam)
+### 1.1 VEPT (theo khung VSTEP, 6 bậc dùng cho Việt Nam)
 
-Hai chứng chỉ nội địa của nền tảng, bám Khung năng lực ngoại ngữ 6 bậc
+> **VPET **không** thuộc mục này.** Mục này từng ghi "VEPT / VPET (theo khung
+> VSTEP)" và đó là gốc của một lỗi thật: VPET là **Versant Professional English
+> Test của Pearson**, không dùng khung VSTEP, không có "Bậc", và **chia làm hai
+> cấp đề** đo hai đoạn khác nhau của thang. Gộp chung khiến engine áp bảng Bậc
+> của VSTEP lên đề VPET Cấp 1 — một thí sinh làm đúng hết được báo **Bậc 5 /
+> C1**, trong khi đề đó không đo quá **B1+**. Cách tính đúng của VPET ở **2.3c**;
+> đặc tả gốc ở `docs/VPET-OFFICIAL-SPEC.md`.
+
+Chứng chỉ nội địa bám Khung năng lực ngoại ngữ 6 bậc
 (Thông tư 01/2014/TT-BGDĐT), tương thích CEFR A1–C2. Định dạng chuẩn VSTEP.3-5
 (đánh giá bậc 3–5, tức B1–C1):
 
@@ -382,6 +390,66 @@ nhiều hơn mà điểm cao hơn thì không còn là điểm nữa.
 Chỉ tính khi **mọi câu chấm được đã chấm xong**; còn câu `NULL` thì điểm tổng là
 `NULL` và màn hình nói đang chờ, chứ không lấy trung bình một nửa bài.
 
+Quy đổi ra trình độ **phụ thuộc kỳ thi và cấp đề** — xem 2.3c ngay dưới. Đây là
+chỗ dễ sai nhất và đã từng sai: mọi đề đều bị áp bảng Bậc của VSTEP, kể cả đề
+VPET Cấp 1 vốn không đo quá B1+.
+
+**Trình độ cần đủ cả bốn kỹ năng.** Điểm trung bình là số học, luôn đúng với đề
+đó; còn *trình độ* là một phát biểu về một kỳ thi trọn vẹn và không đọc được từ
+một phần đề. Một đề chỉ có Đọc, 8,0 điểm, vẫn ra điểm 8,0 nhưng **không có trình
+độ**.
+
+### 2.3c Quy đổi điểm ra trình độ — `server/bands.js`
+
+**VPET có hai cấp đề, và mỗi cấp đo một đoạn khác nhau của thang.** Nguồn:
+`docs/VPET-OFFICIAL-SPEC.md` §0, chép từ *Official Guide for Test-Takers*.
+
+| Đề | GSE | Đo được từ | đến |
+|---|---|---|---|
+| **Cấp 1** | 10 – 58 | A1 | **B1+** |
+| **Cấp 2** | 51 – 90 | B1+ | **C2** |
+
+Hai khoảng **chồng nhau ở B1+** (58 / 51), và đó là chủ ý của kỳ thi thật: hai
+đề phải gặp nhau, để thí sinh ở ngay chỗ nối làm đề nào cũng ra kết quả như nhau.
+
+Cách quy đổi:
+
+```
+gse  = cận_dưới + (điểm_tổng / 10) × (cận_trên − cận_dưới)
+trình_độ = tra gse vào bảng GSE↔CEFR của Pearson
+```
+
+Bảng GSE↔CEFR (Pearson công bố, thang 10–90):
+
+| GSE | CEFR |  | GSE | CEFR |
+|---|---|---|---|---|
+| 85 – 90 | C2 | | 43 – 50 | B1 |
+| 76 – 84 | C1 | | 36 – 42 | A2+ |
+| 67 – 75 | B2+ | | 30 – 35 | A2 |
+| 59 – 66 | B2 | | 22 – 29 | A1 |
+| 51 – 58 | B1+ | | 10 – 21 | dưới A1 |
+
+**Trần rơi ra từ phép tính, không phải một luật gắn thêm.** 10/10 ở Cấp 1 là
+GSE 58, mà GSE 58 là đỉnh B1+. Đề dừng ở B1+ thì không thể phát hiện ra một
+người C1 — nó chỉ phát hiện được rằng người đó vượt qua nó. Màn hình kết quả nói
+đúng câu ấy chứ không để thí sinh tự hỏi vì sao bài đúng hết lại dừng ở B1+.
+
+**Sàn của Cấp 2.** Điểm rơi vào bậc thấp nhất của khoảng (B1+, tức GSE 51–58)
+nghĩa là đã chạm sàn của công cụ đo: đề chỉ nói được "không quá B1+", không phân
+biệt nổi B1+ với B1 hay A2, vì cả ba đều cho gần như cùng một điểm trên một đề ra
+ở tầm C. Trường hợp đó báo **trần** chứ không báo trình độ, và chỉ sang đề Cấp 1.
+Cấp 1 không cần luật này: sàn của nó là "dưới A1", vốn đã là một câu trả lời
+đúng và trọn vẹn.
+
+> **Đường thẳng giữa hai đầu khoảng là lựa chọn của nền tảng này, Pearson không
+> công bố gì như thế.** Điểm Versant thật đến từ một mô hình IRT trên độ khó
+> từng câu, thứ nền tảng này không có. **Ranh giới GSE↔CEFR là của Pearson; cách
+> rải điểm 0–10 vào trong khoảng là của chúng ta.** Nói rõ ở đây vì sẽ có người
+> đọc mã rồi tưởng đó là phương pháp chính thức.
+
+**VEPT thì khác và không đổi.** VEPT theo khung VSTEP (Thông tư
+01/2014/TT-BGDĐT) và giữ nguyên bảng Bậc:
+
 | Điểm tổng | Bậc | CEFR |
 |---|---|---|
 | 8,5 – 10 | Bậc 5 | C1 |
@@ -389,9 +457,9 @@ Chỉ tính khi **mọi câu chấm được đã chấm xong**; còn câu `NULL
 | 3,5 – 5,0 | Bậc 3 | B1 |
 | < 3,5 | không cấp | — |
 
-**Bậc cần đủ cả bốn kỹ năng.** Điểm trung bình là số học, luôn đúng với đề đó;
-còn *bậc* là một phát biểu về một kỳ thi VPET trọn vẹn và không đọc được từ một
-phần đề. Một đề chỉ có Đọc, 8,0 điểm, vẫn ra điểm 8,0 nhưng **không có bậc**.
+> **VPET không có "Bậc".** Bậc là của khung VSTEP. Gộp hai thứ vào một bảng
+> chính là lỗi cũ: một đề Cấp 1 làm đúng hết được báo **Bậc 5 / C1** — cao hơn
+> hai bậc so với thứ cao nhất đề đó có thể đo.
 
 #### Ví dụ trọn một bài
 
@@ -402,8 +470,13 @@ Viết     10,15 / 15  -> 10,15/15 × 10 = 6,77  ->  7,0
 Nói        9,3 / 15  ->   9,3/15 × 10 = 6,20  ->  6,0
 
 điểm tổng = (7,5 + 6,5 + 7,0 + 6,0) / 4 = 6,75  ->  7,0
-bậc       = Bậc 4 (B2)
+
+trên đề CẤP 1:  gse = 10 + 7,0/10 × 48 = 43,6  ->  B1
+trên đề CẤP 2:  gse = 51 + 7,0/10 × 39 = 78,3  ->  C1
 ```
+
+Cùng một bài làm, cùng 7,0 điểm, hai kết quả khác nhau — vì hai đề đo hai đoạn
+khác nhau của thang. Đó chính là lý do phải tách.
 
 Ba chỗ làm tròn 0,5 và chỉ ba: mỗi tiêu chí, mỗi kỹ năng, điểm tổng. Không làm
 tròn ở `earned` từng câu — làm tròn sớm thì 58 lần sai số nhỏ cộng lại thành
