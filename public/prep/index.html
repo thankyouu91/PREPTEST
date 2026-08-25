@@ -221,6 +221,18 @@
             </ul>
           </section>
 
+          <!-- ---- What is costing the marks, and where it is taught ----
+               Under the plan, not inside it. The plan says which PART to
+               practise; this says what inside that part the marker kept taking
+               marks off for, and hands over the lesson that teaches it. Hidden
+               until there is something to say: a learner nobody has marked yet
+               should see nothing here rather than an empty promise. -->
+          <section id="what-to-study" hidden class="card p-5 sm:p-6" aria-labelledby="h-study">
+            <h3 id="h-study" class="font-extrabold tracking-tight">What is costing you marks</h3>
+            <p class="text-[13px] text-muted mt-1" id="study-intro"></p>
+            <ul class="grid gap-4 mt-4" id="study-list"></ul>
+          </section>
+
           <!-- ---- Four skills ---- -->
           <section class="card p-5 sm:p-6" aria-labelledby="h-skills">
             <h3 id="h-skills" class="font-extrabold tracking-tight">Ability by skill</h3>
@@ -562,6 +574,18 @@
           /* The tip goes behind a disclosure, under the item it belongs to. A
              tip shown before somebody has met the problem is a tip they scroll
              past. */
+          /* Where the topic is TAUGHT, next to where it is practised. The row's
+             own link goes to the revision screen, which hands out gap
+             sentences — right for somebody who knows the rule and needs the
+             reps, wrong for somebody meeting it for the first time. Only the
+             grammar row carries one; every other row is null and draws
+             nothing. */
+          (x.lesson
+            ? '<p class="mt-2 ps-9 text-[13px]">' +
+                '<a class="font-bold text-brand-strong hover:underline" href="' + PREP.esc(x.lesson.href) + '">' +
+                  PREP.esc(PREP.t('Read the lesson: ', 'Đọc bài giảng: ')) +
+                  PREP.esc(PREP.t(x.lesson.en, x.lesson.vi)) + '</a></p>'
+            : '') +
           (x.tips && x.tips.length
             ? '<details class="mt-2 ps-9">' +
                 '<summary class="text-[13px] font-semibold cursor-pointer">' +
@@ -571,6 +595,52 @@
               '</details>'
             : '') +
         '</li>').join('');
+
+      /* ---- What is costing the marks ----
+         Same response, separate panel. Every number here is an average of what
+         the marker wrote criterion by criterion, so the count it came from is
+         shown beside it rather than left implied: "5.3 out of 10 across 22
+         marked pieces" is a claim somebody can weigh, and "5.3" on its own is
+         one they have to take on faith. */
+      const study = (res.ok && res.data.study) || [];
+      const sBox = PREP.qs('#study-list');
+      const sPanel = PREP.qs('#what-to-study');
+      if (study.length && sBox && sPanel) {
+        PREP.qs('#study-intro').textContent = PREP.t(
+          'From the marker\'s own notes on your written and spoken answers.',
+          'Lấy từ nhận xét của người chấm trên bài viết và bài nói của bạn.');
+        sBox.innerHTML = study.map(s =>
+          '<li>' +
+            '<p class="text-[14px] font-bold leading-snug">' +
+              PREP.esc(PREP.t('Part ' + s.part, 'Phần ' + s.part)) + ' · ' +
+              PREP.esc(PREP.t(s.nameEn, s.nameVi)) +
+            '</p>' +
+            '<p class="text-[13px] text-muted mt-0.5">' +
+              PREP.esc(s.score + '/10 · ' +
+                PREP.t('across ' + s.n + ' marked ' + (s.n === 1 ? 'answer' : 'answers'),
+                       'trên ' + s.n + ' câu đã chấm')) +
+            '</p>' +
+            '<p class="text-[13px] mt-1.5">' +
+              PREP.esc(PREP.t('Work on: ', 'Cần cải thiện: ')) +
+              PREP.esc(PREP.t(s.adviceEn || '', s.adviceVi || '')) +
+            '</p>' +
+            /* A row with no lesson says so. The alternative — an empty space
+               where the other rows have links — reads as a page that failed to
+               load, and this platform has no page that teaches "cover every
+               point the task asked for". */
+            (s.technique
+              ? '<p class="text-[13px] text-muted mt-1.5">' +
+                  PREP.esc(PREP.t('This one is exam technique — it comes from practising the part, not from a lesson.',
+                                  'Phần này là kỹ năng làm bài — luyện phần đó nhiều lên, không có bài giảng riêng.')) +
+                '</p>'
+              : '<p class="flex flex-wrap gap-2 mt-2">' +
+                  s.lessons.map(l =>
+                    '<a class="chip" href="' + PREP.esc(l.href) + '">' +
+                      PREP.esc(PREP.t(l.en, l.vi)) + '</a>').join('') +
+                '</p>') +
+          '</li>').join('');
+        sPanel.hidden = false;
+      }
     });
 
     /* ---------- The catalogue, and the papers this account can open ---------- */
