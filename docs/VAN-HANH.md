@@ -56,8 +56,9 @@ vài giây đến mười phút, tuỳ lúc dán rơi vào đâu trong chu kỳ.
 lại yêu cầu `pm2 restart`, và mỗi lần deploy cũng khởi động lại, nên trường hợp
 15 giây không hiếm.
 
-Cái giá: **26 lần gọi mô hình mỗi bài** (cộng 21 lần gỡ băng nếu đã bật bước 3).
-56 bài mô phỏng là khoảng **1.456 lần gọi**, tức gần một phần tư trần
+Cái giá: **16 lần gọi mô hình mỗi bài** (cộng 21 lần gỡ băng nếu đã bật bước 3;
+phần H được chấm bằng so khớp nên không tốn lần gọi nào).
+56 bài mô phỏng là khoảng **896 lần gọi**, tức khoảng 15% trần
 `AI_CALLS_PER_DAY` mặc định (6000) trong cửa sổ trượt 24 giờ. Tiền thì nhỏ, vài
 chục đô; **phần không lấy lại được là cái trần đó** — `scripts/attempts.js` cố ý
 không xoá bảng `ai_calls`, vì đó là sổ chi tiêu chứ không phải bài làm. Xoá bài
@@ -173,7 +174,7 @@ một cái form sẽ từ chối — và nay nó in luôn hai dòng lệnh cần
 - **API key** — dán vào ô `password`, bấm Lưu
 
 > **Vì sao mặc định là Haiku chứ không phải Sonnet.** $1 vào / $5 ra mỗi triệu
-> token, so với $3 / $15 của Sonnet 5 — rẻ gấp ba cho đúng 26 lần gọi mà một bài
+> token, so với $3 / $15 của Sonnet 5 — rẻ gấp ba cho đúng 16 lần gọi mà một bài
 > cần. Việc chấm ở đây là *trích xuất có cấu trúc* theo rubric có sẵn, không phải
 > suy luận mở: đọc định nghĩa tiêu chí, cho điểm 0–10, chép một cụm từ trong bài
 > của thí sinh, viết 25 chữ. Và những chỗ một model rẻ hay sai thì hệ thống này
@@ -227,15 +228,30 @@ Mở **Speaking: transcription** rồi điền (khoá OpenAI):
 
 ### Một bài tốn bao nhiêu
 
-Một bài VPET đầy đủ = **26 lần gọi model + 21 lần gỡ băng**, tối đa khoảng 8
-phút tiếng nói. Ước tính theo prompt thật của nền tảng (~1.400 token vào,
-~350 token ra mỗi câu):
+Một bài VPET đầy đủ cần **21 lần gỡ băng** và — kể từ khi phần H được chấm bằng
+so khớp thay vì bằng model — chỉ còn **16 lần gọi model**, không phải 26. Tối đa
+khoảng 8 phút tiếng nói. Ước tính theo prompt thật (~1.400 token vào, ~350 token
+ra mỗi câu):
 
 | Cấu hình | Chấm | Gỡ băng | **Một bài** |
 |---|---:|---:|---:|
-| `claude-haiku-4-5` + `gpt-transcribe` *(mặc định)* | ~$0,08 | ~$0,036 | **~$0,12** |
-| `claude-haiku-4-5` + `gpt-4o-mini-transcribe` | ~$0,08 | ~$0,024 | ~$0,10 |
-| `claude-sonnet-5` + `whisper-1` *(mặc định cũ)* | ~$0,25 | ~$0,048 | ~$0,29 |
+| `claude-haiku-4-5` + `gpt-transcribe` *(mặc định)* | ~$0,05 | ~$0,036 | **~$0,09** |
+| `claude-haiku-4-5` + `gpt-4o-mini-transcribe` | ~$0,05 | ~$0,024 | ~$0,07 |
+| `claude-sonnet-5` + `whisper-1` *(cũ, và H vẫn qua model)* | ~$0,25 | ~$0,048 | ~$0,29 |
+
+**Phần H không tốn lần gọi model nào.** Câu phải nhắc lại nằm sẵn trong ngân
+hàng đề (`say`), nên `server/repeat.js` so khớp từ: bao nhiêu từ quay lại, và
+chuỗi dài nhất còn đúng thứ tự. Hai con số đó chính là hai tiêu chí `content` và
+`structure` mà rubric vốn đã định nghĩa cho H, nên báo cáo hiện y hệt như khi
+model chấm. Nó cũng **không thể tự mâu thuẫn giữa hai lần chạy**, điều mà model
+thì có.
+
+> Đánh đổi phải nói rõ: **độ chính xác của máy gỡ băng giờ chính là điểm.** Một
+> model chấm bản gỡ băng có thể bỏ qua sai lệch nhỏ; phép so khớp thì không, vì
+> nó không biết lỗi là của thí sinh hay của máy. Đó là lý do trực tiếp để dùng
+> `gpt-transcribe` chứ không phải model gỡ băng rẻ nhất. Ghi chú chấm điểm luôn
+> in **cả hai câu** — thí sinh nói gì và câu gốc là gì — để ai bị trừ điểm cũng
+> thấy được chính xác cái gì đã được đem so.
 
 Giá tra ngày 2026-08-24: Haiku 4.5 $1/$5, Sonnet 5 $3/$15 mỗi triệu token;
 Whisper $0,006/phút, `gpt-transcribe` $0,0045, `gpt-4o-mini-transcribe` $0,003.
@@ -421,8 +437,8 @@ này không phải việc phải làm — nó là chỗ tra khi có gì đó b�
 | `AI_CALLS_PER_ACCOUNT_PER_DAY` | 240 | một tài khoản trong 24 giờ trượt |
 | `READ_PER_MIN` | 1200 | số lần đọc `/api/` mỗi phút, tính theo phiên đăng nhập |
 
-Một bài VPET đầy đủ = **26 lần chấm + 21 lần gỡ băng**. Nên 240 ≈ năm bài trọn
-vẹn một ngày cho một người, và 6000 ≈ 127 bài cho cả nền tảng.
+Một bài VPET đầy đủ = **16 lần chấm + 21 lần gỡ băng**. Nên 240 ≈ sáu bài trọn
+vẹn một ngày cho một người, và 6000 ≈ 162 bài cho cả nền tảng.
 
 Muốn **dừng chi tiêu ngay**: đặt `AI_CALLS_PER_DAY=0` rồi nạp lại env. Số 0
 nghĩa là trần bằng không, tức từ chối ngay lần gọi đầu tiên. (Trước đây số 0 lại
@@ -484,7 +500,7 @@ cấp Quản trị.
 > thành một cái ticket. Thứ chặn chi tiêu là trần trong `server/ai-budget.js`
 > chứ không phải phân quyền. Cụ thể, `teacher` và `manager` gọi được
 > `POST /admin/ai/sweep` (xếp hàng toàn bộ tồn đọng) và
-> `POST /admin/attempts/:id/mark?force=1` (xoá điểm cũ và chấm lại, 26 lần gọi
+> `POST /admin/attempts/:id/mark?force=1` (xoá điểm cũ và chấm lại, 16 lần gọi
 > một bài) qua API, dù nút không hiện trên màn hình của họ.
 
 Vài quy tắc do **máy chủ** giữ, không phải giao diện — nghĩa là mở devtools cũng

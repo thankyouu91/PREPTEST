@@ -47,6 +47,7 @@ const formats = require('./data/exam-formats');
 const ai = require('./ai-marking');
 const rubric = require('./rubric');
 const storage = require('./storage');
+const repeat = require('./repeat');
 
 /** How many items a drill holds. Ten minutes' worth, and the ceiling a request may ask for. */
 const DEFAULT_SIZE = 6;
@@ -534,7 +535,10 @@ async function submitMarked(userId, d, answers) {
 
   const rows = ids.length
     ? await q.all(
-        `SELECT id, part, type, level, prompt FROM questions WHERE id IN (${ids.map(() => '?').join(',')})`,
+        /* ext_key comes along so a Part H drill can be marked by comparison
+           against the sentence the candidate heard, the same way a real paper's
+           Part H is. See the note at the markOne call below. */
+        `SELECT id, part, type, level, prompt, ext_key FROM questions WHERE id IN (${ids.map(() => '?').join(',')})`,
         ...ids)
     : [];
 
@@ -626,17 +630,29 @@ async function submitMarked(userId, d, answers) {
     }
 
     let verdict = null;
-    try {
-      verdict = await ai.markOne({
-        part: row.part, level: row.level || d.level, prompt: row.prompt,
-        answer: text, heard, source: d.mode === 'spoken' ? 'transcript' : 'text',
-        userId                                    // the meter: see the note above
-      });
-    } catch (e) {
-      console.warn('[drill] item ' + row.id + ' could not be marked: ' + ai.scrub(e && e.message));
-      if (e && e.budget) stopped = e.budget.en;
-      else if (e && e.retryable === false) stopped = 'Waiting to be marked: the marking service '
-        + 'refused the request. An administrator has to look at the settings.';
+
+    /* Part H is measured rather than judged, here as on a real paper: the
+       candidate heard a sentence and had to say it back, the sentence is on the
+       bank item, and comparing two strings answers the question a model was
+       being paid to have an opinion about. Same scorer, same two criteria, so a
+       drill mark and a paper mark mean the same thing — which is the point of
+       drills going down the real road at all. */
+    const sentence = row.part === 'H' ? repeat.sentenceFor(row.ext_key) : null;
+    if (sentence && heard) {
+      verdict = repeat.score(sentence, heard);
+    } else {
+      try {
+        verdict = await ai.markOne({
+          part: row.part, level: row.level || d.level, prompt: row.prompt,
+          answer: text, heard, source: d.mode === 'spoken' ? 'transcript' : 'text',
+          userId                                  // the meter: see the note above
+        });
+      } catch (e) {
+        console.warn('[drill] item ' + row.id + ' could not be marked: ' + ai.scrub(e && e.message));
+        if (e && e.budget) stopped = e.budget.en;
+        else if (e && e.retryable === false) stopped = 'Waiting to be marked: the marking service '
+          + 'refused the request. An administrator has to look at the settings.';
+      }
     }
     if (!verdict) {
       const note = stopped || 'Waiting to be marked: the marker could not be reached.';

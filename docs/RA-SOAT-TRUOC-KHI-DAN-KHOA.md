@@ -98,7 +98,7 @@ thử lại. Bản thân `retry-after` cũng được đọc.
 Tệ hơn: §1 nói bộ quét sẽ chấm cả những bài nộp trước khi có khoá — **nói như
 một tính năng** — và lấy việc con số giảm xuống làm bằng chứng thành công.
 
-56 bài mô phỏng × 26 lần gọi ≈ **1.456 lần gọi**, khoảng một phần tư trần ngày
+56 bài mô phỏng × 16 lần gọi ≈ **896 lần gọi**, khoảng 15% trần ngày
 mặc định. Tiền là phần nhỏ. Phần không lấy lại được là cái trần: `attempts.js`
 cố ý giữ `ai_calls` vì đó là sổ chi tiêu, nên xoá bài sau đó **không** hoàn trần
 trong 24 giờ — lớp thật vào làm bài cùng ngày sẽ gặp giới hạn do bài không ai

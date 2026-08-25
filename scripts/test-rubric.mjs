@@ -605,6 +605,53 @@ head('Nothing handed in is nothing, not four out of ten');
   ok(four.band && four.band.cefr === 'B2', 'a complete sitting at 8.0 is Bậc 4 / B2',
     JSON.stringify(four.band));
 
+  /* ------------------------------------------------------------------ *
+   * Part H is measured, not judged
+   * ------------------------------------------------------------------ *
+   *
+   * "Say this sentence back" is the one spoken part with a right answer, and
+   * the answer is on the bank item. Ten of the paper's 26 model calls were
+   * spent asking a model's opinion about a question that has one.
+   */
+  head('Part H is compared, not sent to a model');
+
+  const RP = await import('../server/repeat.js').then(m => m.default || m);
+  const say = RP.sentenceFor('vpet-h-03');
+  ok(typeof say === 'string' && say.length > 10,
+    'the bank carries the exact sentence a Part H item asks for', JSON.stringify(say));
+  ok(RP.sentenceFor('vpet-g-01') === null,
+    'and refuses to hand one back for a part that is not H — G answers are free-form');
+
+  const rp = (heard, want) => {
+    const v = RP.score(say, heard);
+    ok(v.score === want, 'repeating "' + heard.slice(0, 34) + '…" scores ' + want,
+      'got ' + v.score);
+    return v;
+  };
+  const perfect = rp(say, 10);
+  rp('I will call you back as soon as the meeting finishes', 10);   // punctuation only
+  rp('Ill call you back as soon as the meeting finishes', 8);       // transcriber dropped the apostrophe
+  rp('I will call you back', 4.5);                                  // half of it
+  ok(RP.score(say, '').score === 0, 'and silence scores zero, not a cap');
+
+  /* The two criteria are the ones rubric.js already names for H, so combine()
+     treats this exactly as it treats a model's answer — including the caps. */
+  ok(Object.keys(perfect.criteria).sort().join(',') === 'content,structure',
+    'the criteria are the two the rubric already defines for Part H',
+    Object.keys(perfect.criteria).join(','));
+  const scrambled = RP.score('She works in the office next to ours.',
+    'ours to next office the in works she');
+  const capped = R.combine('H', scrambled.criteria, { answer: 'ours to next office the in works she' });
+  ok(capped.score <= 2.5,
+    'every word in the wrong order is held down by the weakest-link cap, like any other item',
+    capped.score + ' caps=' + capped.caps.map(c => c.rule).join(','));
+
+  /* The note has to show its working, because this marker cannot tell a
+     candidate's slip from the transcription service's. */
+  const slip = RP.score(say, 'I will call you back as soon as the meeting ends');
+  ok(slip.note.includes(say) && slip.note.includes('meeting ends'),
+    'the note quotes both what was said and what the sentence was', slip.note);
+
   /* And the paper real candidates sit does have all four, so this rule never
      silently withholds a band somebody earned. */
   const onPaperSkills = [...new Set(parts.map(p => p.skill))].sort();

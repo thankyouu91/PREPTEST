@@ -55,6 +55,7 @@ const ai = require('./ai-marking');
 const storage = require('./storage');
 const { markAttempt } = require('./marking');
 const rubric = require('./rubric');
+const repeat = require('./repeat');
 
 /**
  * Attempts being marked right now: id -> the promise of that pass.
@@ -334,50 +335,73 @@ async function markRow(attemptId, row, tries, userId) {
   }
 
   let verdict;
-  try {
-    verdict = await ai.markOne({
-      part: row.part,
-      level: row.level || row.paper_level,
-      prompt: row.prompt,
-      answer: row.answer,
-      heard, source,
-      userId, attemptId
-    });
-  } catch (e) {
-    /* A spending ceiling is not a marking failure, and it must not be recorded
-       as one: the item is untouched, the note says the paper is waiting rather
-       than broken, and the error carries `budget` so run() can stop the pass
-       instead of asking twenty-five more times for the same refusal. */
-    if (e.budget) {
+
+  /* Part H is measured, not judged.
+   *
+   * "Say this sentence back" is the one spoken part with a right answer, and
+   * the answer is on file — `say` on the bank item, which is what the candidate
+   * heard. Sending the transcript and the sentence to a language model and
+   * asking how much survived is paying for an opinion about a question that has
+   * one. Ten of the paper's 26 model calls were this.
+   *
+   * So it goes to server/repeat.js instead: word overlap for how much came
+   * back, longest in-order run for whether the structure held. It returns the
+   * same {score, note, criteria} shape ai.markOne() does, against the same two
+   * criteria rubric.js already names for Part H, so everything below — the
+   * caps, rubric_scores, the report — is unchanged. It also cannot disagree
+   * with itself between two runs, which a model can.
+   *
+   * `source` is null when the bank item has no script, and then this falls
+   * through to the model rather than guessing. */
+  const sentence = row.part === 'H' ? repeat.sentenceFor(row.ext_key) : null;
+  if (sentence && heard) {
+    verdict = repeat.score(sentence, heard);
+  } else {
+    try {
+      verdict = await ai.markOne({
+        part: row.part,
+        level: row.level || row.paper_level,
+        prompt: row.prompt,
+        answer: row.answer,
+        heard, source,
+        userId, attemptId
+      });
+    } catch (e) {
+      /* A spending ceiling is not a marking failure, and it must not be recorded
+         as one: the item is untouched, the note says the paper is waiting rather
+         than broken, and the error carries `budget` so run() can stop the pass
+         instead of asking twenty-five more times for the same refusal. */
+      if (e.budget) {
+        await q.run('UPDATE attempt_answers SET mark_note=?, marked_at=? WHERE id=?',
+          e.budget.en, nowISO(), rowId);
+        throw e;
+      }
+      /* A refusal that is going to be repeated is not worth repeating.
+       *
+       * Everything used to land here together: a revoked key, a request this
+       * version cannot make, and a thirty-second capacity blip were one case, so
+       * all three went back on the same backoff ladder. That is expensive rather
+       * than merely untidy. On a spoken item the transcription runs FIRST and
+       * succeeds, so every doomed pass bought 21 real transcriptions and threw
+       * them away when the model said 401 again — an invalid key billing OpenAI
+       * indefinitely. `retryable === false` means stop, and say what is wrong. */
+      if (e.retryable === false) {
+        const why = e.status === 401 || e.status === 403
+          ? 'the marking service would not accept the API key'
+          : e.truncated
+            ? 'the marker ran out of room before it finished'
+            : 'the marking service refused the request';
+        console.warn('[ai] stopping the pass: ' + why + ' — ' + ai.scrub(e.message));
+        await q.run('UPDATE attempt_answers SET mark_note=?, marked_at=? WHERE id=?',
+          'Not marked - ' + why + '. An administrator has to look at the settings.', nowISO(), rowId);
+        e.fatal = why;
+        throw e;
+      }
+      console.warn('[ai] item ' + row.question_id + ' could not be marked: ' + ai.scrub(e.message));
       await q.run('UPDATE attempt_answers SET mark_note=?, marked_at=? WHERE id=?',
-        e.budget.en, nowISO(), rowId);
-      throw e;
-    }
-    /* A refusal that is going to be repeated is not worth repeating.
-     *
-     * Everything used to land here together: a revoked key, a request this
-     * version cannot make, and a thirty-second capacity blip were one case, so
-     * all three went back on the same backoff ladder. That is expensive rather
-     * than merely untidy. On a spoken item the transcription runs FIRST and
-     * succeeds, so every doomed pass bought 21 real transcriptions and threw
-     * them away when the model said 401 again — an invalid key billing OpenAI
-     * indefinitely. `retryable === false` means stop, and say what is wrong. */
-    if (e.retryable === false) {
-      const why = e.status === 401 || e.status === 403
-        ? 'the marking service would not accept the API key'
-        : e.truncated
-          ? 'the marker ran out of room before it finished'
-          : 'the marking service refused the request';
-      console.warn('[ai] stopping the pass: ' + why + ' — ' + ai.scrub(e.message));
-      await q.run('UPDATE attempt_answers SET mark_note=?, marked_at=? WHERE id=?',
-        'Not marked - ' + why + '. An administrator has to look at the settings.', nowISO(), rowId);
-      e.fatal = why;
-      throw e;
-    }
-    console.warn('[ai] item ' + row.question_id + ' could not be marked: ' + ai.scrub(e.message));
-    await q.run('UPDATE attempt_answers SET mark_note=?, marked_at=? WHERE id=?',
-      'Not marked yet - the marker could not be reached. It will be tried again.', nowISO(), rowId);
-    return 'failed';
+        'Not marked yet - the marker could not be reached. It will be tried again.', nowISO(), rowId);
+      return 'failed';
+  }
   }
   if (!verdict) {
     /* The skip path leaves a reason; this one used to leave nothing, so the item

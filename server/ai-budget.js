@@ -8,7 +8,7 @@
  * ## The shape of the risk
  *
  * The marking pass is automatic. A paper is handed in, the sweeper finds it,
- * and twenty-six items go to a model without anybody deciding anything. That is
+ * and sixteen items go to a model without anybody deciding anything. That is
  * the point of it — and it means the platform's spend is a function of how many
  * papers exist, which is a function of how many accounts exist, which is a
  * number an attacker gets to choose. Sign up, submit, repeat. Nothing in the
@@ -61,16 +61,21 @@ const DAY_MS = 24 * 3600e3;
 /**
  * The defaults, and the arithmetic behind them.
  *
- * A full VPET paper is 26 model calls: parts B and D are 5 essays, parts G, H,
- * I and J are 21 spoken answers. A spoken answer also needs a transcription,
- * so a paper marked end to end is 26 marking calls plus 21 transcription calls,
- * and `ai_calls` counts both.
+ * A full VPET paper has 26 items no answer key can mark: 5 essays (parts B and
+ * D) and 21 spoken answers (G, H, I and J). Every spoken answer needs a
+ * transcription, so that is 21 transcription calls.
  *
- * PER ACCOUNT 240/day is therefore about five complete papers. A learner sitting
- * five full mock exams in one day is not a learner this platform needs to
+ * But only 16 of the 26 reach a model. Part H is "say this sentence back", the
+ * sentence is on the bank item, and server/repeat.js marks it by comparing
+ * words — so its 10 items cost a transcription each and nothing more. A paper
+ * marked end to end is therefore 16 marking calls plus 21 transcriptions, and
+ * `ai_calls` counts both.
+ *
+ * PER ACCOUNT 240/day is therefore about six complete papers. A learner sitting
+ * six full mock exams in one day is not a learner this platform needs to
  * accommodate; a learner sitting two is normal and nowhere near it.
  *
- * PLATFORM 6000/day is about 127 complete papers, which is far above anything
+ * PLATFORM 6000/day is about 162 complete papers, which is far above anything
  * this deployment has seen and still a number an invoice can survive. It is
  * meant to be raised deliberately once there is real traffic to size it
  * against — the point of the default is that there IS one, not that it is
