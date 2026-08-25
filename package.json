@@ -13,7 +13,9 @@
     "test": "node scripts/test-accounts.js && node scripts/test-admin.mjs && node scripts/test-auth.mjs && node scripts/test-catalog.mjs && node scripts/test-user-api.mjs && node scripts/test-exam.mjs && node scripts/test-paper.mjs && node scripts/test-exam-ui.mjs && node scripts/test-navscroll.mjs && node scripts/test-ai-marking.mjs && node scripts/test-learn.mjs && node scripts/audit.mjs",
     "verify": "bash scripts/verify.sh",
     "icons": "node scripts/make-icons.mjs",
-    "audio:vpet": "node scripts/make-vpet-audio.mjs"
+    "audio:vpet": "node scripts/make-vpet-audio.mjs",
+    "pg:migrate": "node scripts/pg-migrate.mjs",
+    "pg:dev": "bash scripts/pg-dev.sh"
   },
   "dependencies": {
     "express": "^4.21.2",
