@@ -174,6 +174,20 @@ check('After signing out the student area is closed', page.url().includes('/dang
 
 /* ---------- 7. Registering a new account through the interface ---------- */
 await page.goto(BASE + '/prep/dang-ky/', { waitUntil: 'networkidle' });
+
+/* The tick-box says "I agree to the Privacy policy", so that document has to be
+   something the person ticking it can actually open. It was a <b> for months:
+   the consent was collected and there was nothing to consent TO. Checked as a
+   real fetch rather than "is there an href", because a link to a route nobody
+   registered is the same failure wearing a link's clothes. */
+const privacyHref = await page.locator('label[for="terms"] a, #terms ~ span a').first()
+  .getAttribute('href').catch(() => null);
+check('The sign-up consent links to the privacy policy', !!privacyHref, String(privacyHref));
+if (privacyHref) {
+  const priv = await page.request.get(BASE + privacyHref);
+  check('And that policy is a page this server serves', priv.status() === 200, String(priv.status()));
+}
+
 await page.fill('#name', 'Interface Test Person');
 await page.fill('#email', TMP_EMAIL);
 await page.fill('#phone', '0912345678');

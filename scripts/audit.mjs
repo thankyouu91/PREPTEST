@@ -23,6 +23,7 @@ const LOCAL_OVERLAY = {
 /* Guest pages (signed out) — the server bounces these to /prep/ when a session
    exists, so they have to be visited from a SIGNED-OUT context. */
 const GUEST_URLS = ['/prep/landing/', '/prep/tai-lieu/', '/prep/tai-lieu/?level=2',
+  '/prep/rieng-tu/',
   '/prep/dang-ky/', '/prep/dang-nhap/', '/prep/quen-mat-khau/',
   '/prep/xac-thuc-email/', '/prep/dat-lai-mat-khau/'];
 

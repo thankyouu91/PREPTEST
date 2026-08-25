@@ -260,6 +260,10 @@ app.get('/prep/landing/', serveHtmlWithNonce('prep/landing/index.html'));
 /* Bộ tài liệu VPET, đọc trực tiếp trên web. Công khai có chủ đích: trang đích
    hứa "tải miễn phí, không cần tài khoản", nên bắt đăng nhập ở đây là nuốt lời. */
 app.get('/prep/tai-lieu/', serveHtmlWithNonce('prep/tai-lieu/index.html'));
+/* Chính sách quyền riêng tư. Công khai, và phải công khai: nó nói bài viết cùng
+   bản ghi âm được gửi ra ngoài để chấm, mà người cần biết điều đó nhất là người
+   đang cân nhắc có đăng ký hay không — tức là người chưa có tài khoản. */
+app.get('/prep/rieng-tu/', serveHtmlWithNonce('prep/rieng-tu/index.html'));
 /* Shown by the service worker when a navigation cannot reach the network.
    Public: the point of it is to work with no session and no radio. */
 app.get('/prep/offline/', serveHtmlWithNonce('prep/offline.html'));
