@@ -164,11 +164,15 @@ const codeStillThere = await page.evaluate(() =>
   (PrepState.load().myCodes || []).some(c => String(c.code).startsWith('IELT-')));
 check('A redeemed code stays on the account rather than vanishing', codeStillThere === true);
 
-/* ---------- 6. Signing out with the button on the Account screen ---------- */
+/* ---------- 6. Signing out from the sidebar ----------
+   This used to click #logout-btn, a Sign out card on the Account screen. The
+   card is gone: it duplicated the icon beside the account name, which is on
+   every learner page rather than only that one. Same action, and now the check
+   covers the control every learner actually reaches for. */
 await page.goto(BASE + '/prep/tai-khoan/', { waitUntil: 'networkidle' });
-await page.click('#logout-btn');
+await page.click('[data-logout]');
 await page.waitForURL('**/prep/landing/', { timeout: 8000 }).catch(() => {});
-check('The sign-out button returns to the landing page', page.url().includes('/prep/landing/'), page.url());
+check('Signing out returns to the landing page', page.url().includes('/prep/landing/'), page.url());
 await page.goto(BASE + '/prep/', { waitUntil: 'networkidle' });
 check('After signing out the student area is closed', page.url().includes('/dang-nhap/'), page.url());
 

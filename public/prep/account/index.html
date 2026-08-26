@@ -78,24 +78,15 @@
           <button type="submit" id="profile-save" class="btn btn-primary btn-md justify-self-start">Save changes</button>
         </form>
 
-        <aside class="lg:col-span-5 grid gap-6 content-start">
-          <div class="card p-6">
-            <h3 class="font-extrabold tracking-tight">Appearance</h3>
-            <label class="flex items-center justify-between gap-4 mt-4">
-              <span class="text-[14px] font-semibold">Dark mode</span>
-              <input type="checkbox" id="dark-switch" class="toggle" role="switch" aria-label="Turn on dark mode">
-            </label>
-            <div class="border-t border-line mt-4 pt-4">
-              <p class="text-[14px] font-semibold mb-2.5">Branding (white-label demo)</p>
-              <div id="tenant-pick" class="flex flex-wrap gap-2"></div>
-            </div>
-          </div>
-          <div class="card p-6">
-            <h3 class="font-extrabold tracking-tight">Session</h3>
-            <p class="text-muted text-[14px] leading-relaxed mt-2">Sign out of this device. Changing your password signs out every other device.</p>
-            <button type="button" id="logout-btn" class="btn btn-ghost btn-md w-full mt-4 text-danger">Sign out</button>
-          </div>
-        </aside>
+        <!-- The Appearance and Session cards used to sit here. Every control in
+             them is in the sidebar of every learner page already: the dark mode
+             button, the palette that switches tenant branding, and the sign-out
+             icon beside the account name (data-dark-toggle, data-tenant-btn and
+             data-logout in _prep/_chrome.js). Two of them were duplicates, and
+             the third — a brand picker labelled "white-label demo", offering to
+             turn the site into Evergreen English or Sunrise Academy — was a
+             showroom control that should never have been on a real learner's
+             profile at all. -->
       </section>
 
       <!-- Security -->
@@ -275,22 +266,6 @@
         });
       });
     });
-
-    /* Appearance: dark mode + tenant */
-    const ds = PREP.qs('#dark-switch');
-    ds.checked = PrepTheme.isDark();
-    ds.addEventListener('change', () => { PrepTheme.toggleDark(); PrepChrome.syncDarkUI(); });
-    const tp = PREP.qs('#tenant-pick');
-    const renderTenants = () => {
-      tp.innerHTML = PREP.tenants.map(t =>
-        '<button type="button" class="chip" data-tenant-pick="' + t.id + '" aria-pressed="' + (PrepTheme.tenant() === t.id) + '">' + PREP.esc(t.name) + '</button>').join('');
-      PREP.qsa('[data-tenant-pick]', tp).forEach(b => b.addEventListener('click', () => {
-        PrepTheme.setTenant(b.getAttribute('data-tenant-pick'));
-        renderTenants();
-      }));
-    };
-    renderTenants();
-    PREP.qs('#logout-btn').addEventListener('click', () => PrepAuth.logout());
 
     /* --- Security --- POST /api/me/password; other devices are signed out */
     const np = PREP.qs('#new-pass');

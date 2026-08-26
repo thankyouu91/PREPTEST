@@ -697,9 +697,7 @@
     'Personal details': 'Thông tin cá nhân',
     'Account sections': 'Các mục tài khoản',
     'Security': 'Bảo mật',
-    'Session': 'Phiên đăng nhập',
     'Notifications': 'Thông báo',
-    'Appearance': 'Giao diện',
     'Order history': 'Lịch sử đơn hàng',
     'No orders yet': 'Chưa có đơn hàng',
     'Exams you follow': 'Kỳ thi bạn theo dõi',
@@ -719,8 +717,6 @@
     'Keeping your account safe': 'Giữ an toàn cho tài khoản',
     'Use a password of its own, not the one on your email or social accounts.':
       'Dùng mật khẩu riêng, không trùng với email hay mạng xã hội.',
-    'Sign out of this device. Changing your password signs out every other device.':
-      'Đăng xuất thiết bị này. Đổi mật khẩu sẽ đăng xuất mọi thiết bị khác.',
     'Sign out on lab machines and shared computers.':
       'Nhớ đăng xuất trên máy phòng thực hành và máy dùng chung.',
     'Email notifications': 'Thông báo qua email',
@@ -735,8 +731,6 @@
     'Offers and promotions': 'Ưu đãi và khuyến mãi',
     'News of discounts on code plans. No more than one email a month.':
       'Tin giảm giá các gói mã. Không quá một email mỗi tháng.',
-    'Turn on dark mode': 'Bật chế độ tối',
-    'Branding (white-label demo)': 'Thương hiệu (demo white-label)',
     'Code purchases appear here, along with the codes they issued.':
       'Các lần mua mã hiện ở đây, kèm mã đã cấp.',
     'Do not share an activated code: each one works once.':
