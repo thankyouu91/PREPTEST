@@ -2,37 +2,39 @@
 
 ## `login-hero.png` — khung phải trang đăng nhập
 
-**File hiện tại là ảnh trống 1600×900, trong suốt.** Nó tồn tại để `/img/login-hero.png`
-luôn trả 200: CSS ở `src/tailwind.css` (`.panel-illustration`) đã trỏ sẵn vào đường dẫn
-này, và một đường dẫn 404 sẽ làm `scripts/audit.mjs` đỏ — script đó đếm **mọi** lỗi
-console, không lọc.
+Hiện tại: 1280×720, nền phẳng `#1c408c`.
 
-Với ảnh trống, khung phải hiện nền xanh thương hiệu phẳng kèm dòng tiêu đề. Trông vẫn
-chỉn chu, chỉ là chưa có hình.
+CSS ở `src/tailwind.css` (`.panel-illustration`) dùng `background-size: contain` +
+`background-position: center bottom`, nên ảnh **đứng ở đáy khung**, phần trên là nền
+phẳng do CSS tô.
 
-### Thay bằng ảnh thật
+### Nếu thay ảnh khác
 
-Ghi đè đúng file này, **giữ nguyên tên**. Không cần sửa một dòng code nào.
-
-```
-public/img/login-hero.png
-```
-
-Yêu cầu:
+Ghi đè đúng file này, giữ nguyên tên — không cần sửa code, **trừ khi màu nền đổi**.
 
 | | |
 |---|---|
-| Tỷ lệ | 16:9 (khuyến nghị 1600×900 hoặc 2000×1125) |
+| Tỷ lệ | 16:9 |
 | Định dạng | PNG |
-| Nền | Xanh navy `#1c3d8f` — **đúng bằng** `--color-primary` |
-| Bố cục | Chủ thể nằm ở nửa dưới, canh giữa |
+| Nền | Một màu phẳng, tràn hết khung |
+| Bố cục | Chủ thể ở nửa dưới, canh giữa |
 
-Hai yêu cầu cuối không phải tùy chọn:
+**Đổi màu nền thì phải sửa hai chỗ trong `src/tailwind.css`:** `.panel-illustration`
+(`background-color`) và `.panel-scrim`. Hai chỗ này đang ghi cứng `#1c408c` — đó là màu
+nền **của chính file ảnh**, không phải màu thương hiệu.
 
-- CSS dùng `background-size: contain` và `background-position: center bottom`, nên ảnh
-  đứng ở đáy khung và phần trên là nền phẳng của khung. Nền ảnh lệch màu sẽ tạo một
-  đường ngang nhìn thấy được ở giữa khung.
-- Khung có tỷ lệ gần vuông, ảnh 16:9 nên chỉ chiếm khoảng nửa dưới. Chủ thể đặt cao quá
-  sẽ chui vào sau dòng tiêu đề.
+Nghe như trùng lặp nhưng không phải. Màu thương hiệu `--color-primary` là `#1c3d8f`,
+lệch 3 điểm ở hai kênh so với ảnh. Lệch từng đó thì nhìn cả mảng không thấy gì, nhưng
+chỗ hai mảng phẳng giáp nhau thành một đường ngang chạy hết chiều rộng khung thì mắt
+bắt được. Nên màu ở đó bám theo **file ảnh**, không bám theo tenant.
 
-Đổi màu thương hiệu (tenant khác trong `src/tailwind.css`) thì phải đổi cả nền ảnh.
+Vì vậy: đổi ảnh → lấy màu nền của ảnh mới → sửa hai chỗ đó. Đổi tenant (màu thương hiệu)
+→ phải xuất lại ảnh theo màu mới.
+
+### Vì sao chủ thể phải ở nửa dưới
+
+Khung bên phải gần vuông, ảnh 16:9 nên chỉ chiếm khoảng nửa dưới khung. Chủ thể đặt cao
+quá sẽ chui vào sau dòng tiêu đề.
+
+Đã thử `cover` và bỏ: nó cắt mất khoảng 2/5 chiều ngang của ảnh 16:9 trong khung gần
+vuông — mất cây đèn một bên, chồng sách bên kia.

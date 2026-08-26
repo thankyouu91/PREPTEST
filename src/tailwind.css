@@ -682,23 +682,34 @@
      panel with brand colour above it.
 
      Which is why the colour here is FLAT rather than .panel-brand's radial
-     gradients. The artwork's own ground is this same navy, so a flat field
-     joins it with no visible edge; a gradient would meet the image along a line
-     you could see, exactly halfway up the panel. */
+     gradients: contained, the image covers only the lower half, and a gradient
+     would meet its flat ground along a line you could see, straight across the
+     middle of the panel.
+
+     And why that colour is a hex rather than var(--color-primary), which is the
+     one place in this file that is allowed. #1c408c is not a brand token — it
+     is the PNG's own background, sampled from the file. The brand navy is
+     #1c3d8f, three points away in two channels: invisible as a wash, and just
+     visible as a hairline where two flat fields meet edge to edge across a whole
+     panel. So it tracks the artwork, not the theme, and changing the artwork
+     means changing it. public/img/README.md says so. */
   .panel-illustration {
-    background-color: var(--color-primary);
+    background-color: #1c408c;
     background-image: url('/img/login-hero.png');
     background-size: contain;
     background-position: center bottom;
     background-repeat: no-repeat;
   }
-  /* Insurance for a short, wide panel, where the artwork reaches up into the
-     headline. It fades from the same colour the panel already is, so on the
-     usual shapes it is invisible and costs nothing. */
+  /* Insurance for a short, wide panel. Contained and bottom-anchored, the
+     artwork only reaches the headline once the panel is wider than about 1.56:1
+     — an ultrawide screen at laptop height — and there it would sit right
+     behind the type. Everywhere else this fades from the colour the panel
+     already is, so it is invisible and costs nothing.
+     Same #1c408c, and for the same reason: see .panel-illustration above. */
   .panel-scrim {
     background: linear-gradient(to bottom,
-      var(--color-primary) 0%,
-      color-mix(in srgb, var(--color-primary) 88%, transparent) 40%,
+      #1c408c 0%,
+      color-mix(in srgb, #1c408c 88%, transparent) 40%,
       transparent 100%);
   }
 
