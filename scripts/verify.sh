@@ -188,6 +188,9 @@ node scripts/test-serving.mjs || fail=1
 step "Admin API"
 node scripts/test-admin.mjs || fail=1
 
+step "Test builder (writing questions where the part is built)"
+node scripts/test-builder.mjs || fail=1
+
 step "Student journey"
 node scripts/test-auth.mjs || fail=1
 

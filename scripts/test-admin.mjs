@@ -492,6 +492,94 @@ const run = async () => {
     name: 'Bad section', skill: 'writing', type: 'Gap fill', minutes: 10, part: 'Z'
   });
   check('Refuses a part letter that does not exist when adding a section', r.status === 400, 'status ' + r.status);
+
+  /* ---- Writing items in the same call as the part ----
+     The builder can type items where the part is being built, instead of writing
+     them on the bank screen and coming back to pick them out again. Every one is
+     still an ordinary bank row: the checks below are as much about that as about
+     the route working. */
+  const written = [];
+  const mcq = (n) => ({
+    type: 'mcq', prompt: 'Inline item ' + n + ': which word fits the gap?',
+    options: ['alpha', 'beta', 'gamma', 'delta'], answer: 'beta'
+  });
+
+  r = await call('POST', '/api/admin/tests/' + partTestId + '/sections', {
+    name: 'Part C - typed in place', skill: 'reading', type: 'Multiple choice', minutes: 20, part: 'C',
+    questions: [mcq(1), mcq(2)]
+  });
+  const inlineSid = r.data && r.data.id;
+  check('Adds a part and writes its items in one call',
+    r.status === 201 && (r.data.questionIds || []).length === 2, JSON.stringify(r.data));
+  written.push(...((r.data && r.data.questionIds) || []));
+
+  r = await call('GET', '/api/admin/tests/' + partTestId);
+  const inlineSec = (r.data.sections || []).find(s => s.id === inlineSid);
+  check('The typed items are attached to the part, in order',
+    !!inlineSec && inlineSec.items.length === 2 && /Inline item 1/.test(inlineSec.items[0].prompt),
+    inlineSec ? inlineSec.items.length + ' items' : 'section missing');
+
+  r = await call('GET', '/api/admin/questions?family=vpet&skill=reading&part=C&q=Inline%20item%201');
+  const banked = ((r.data && r.data.items) || []).find(i => /Inline item 1/.test(i.prompt));
+  check('A typed item is an ordinary bank row, filed under the part',
+    !!banked && banked.part === 'C' && banked.skill === 'reading' && banked.status === 'active',
+    JSON.stringify(banked && { part: banked.part, skill: banked.skill, status: banked.status }));
+
+  /* A batch is all-or-nothing. Somebody who mistyped the seventh of eight items
+     must get the seventh back, not a part holding six and no way to tell. */
+  const partsBefore = (await call('GET', '/api/admin/tests/' + partTestId)).data.sections.length;
+  r = await call('POST', '/api/admin/tests/' + partTestId + '/sections', {
+    name: 'Part C - rejected batch', skill: 'reading', type: 'Multiple choice', minutes: 20, part: 'C',
+    questions: [mcq(3), { type: 'mcq', prompt: 'Only one option here', options: ['just this'], answer: 'just this' }]
+  });
+  check('Refuses the whole batch and names the item that is wrong',
+    r.status === 400 && r.data.index === 1 && /Item 2/.test(r.data.error || ''), JSON.stringify(r.data));
+  const partsAfter = (await call('GET', '/api/admin/tests/' + partTestId)).data.sections.length;
+  check('A rejected batch leaves no half-built part behind',
+    partsAfter === partsBefore, partsBefore + ' -> ' + partsAfter);
+  r = await call('GET', '/api/admin/questions?family=vpet&skill=reading&q=Inline%20item%203');
+  check('A rejected batch writes nothing to the bank either',
+    !((r.data && r.data.items) || []).some(i => /Inline item 3/.test(i.prompt)));
+
+  /* An item type the blueprint does not allow for that part */
+  r = await call('POST', '/api/admin/sections/' + inlineSid + '/questions', {
+    questions: [{ type: 'essay', prompt: 'An essay filed under a multiple-choice part' }]
+  });
+  check('Refuses an item type the part does not take', r.status === 400, JSON.stringify(r.data));
+
+  /* Writing into a part that already exists */
+  r = await call('POST', '/api/admin/sections/' + inlineSid + '/questions', {
+    questions: [mcq(4)]
+  });
+  check('Writes new items into a part that already exists',
+    r.status === 201 && r.data.added === 1, JSON.stringify(r.data));
+  written.push(...((r.data && r.data.questionIds) || []));
+  r = await call('GET', '/api/admin/tests/' + partTestId);
+  check('The part now holds three items',
+    ((r.data.sections || []).find(s => s.id === inlineSid) || {}).items.length === 3);
+
+  r = await call('POST', '/api/admin/sections/' + inlineSid + '/questions', { questions: [] });
+  check('Refuses a write with no items in it', r.status === 400, 'status ' + r.status);
+
+  /* A gap fill is marked against its key, so one without a key scores zero for
+     everybody and says so nowhere a person would look. */
+  r = await call('POST', '/api/admin/tests/' + partTestId + '/sections', {
+    name: 'Part A - no key', skill: 'writing', type: 'Gap fill', minutes: 10, part: 'A',
+    questions: [{ type: 'gap', prompt: 'The meeting has been ____ until Friday.', answer: '' }]
+  });
+  check('Refuses a gap fill with no answer key',
+    r.status === 400 && /answer key/i.test(r.data.error || ''), JSON.stringify(r.data));
+
+  r = await call('POST', '/api/admin/tests/' + partTestId + '/sections', {
+    name: 'Part A - with key', skill: 'writing', type: 'Gap fill', minutes: 10, part: 'A',
+    questions: [{ type: 'gap', prompt: 'The meeting has been ____ until Friday.', answer: 'postponed|put off' }]
+  });
+  check('Accepts a gap fill whose key lists accepted variants', r.status === 201, JSON.stringify(r.data));
+  written.push(...((r.data && r.data.questionIds) || []));
+
+  /* Put the bank back the way it was found */
+  for (const id of written) await call('POST', '/api/admin/questions/' + id + '/status', { status: 'retired' });
+
   await call('DELETE', '/api/admin/tests/' + partTestId);
 
   await call('POST', '/api/admin/questions/' + partAId + '/status', { status: 'retired' });

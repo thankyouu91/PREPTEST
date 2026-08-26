@@ -125,7 +125,7 @@ nếu chưa có tài khoản nào và cũng không có `ADMIN_PASSWORD`.
 | Tổng quan | `/admin/` | **Việc cần làm** xếp theo mức khẩn; 4 chỉ số so với kỳ liền trước; phễu học viên; biểu đồ 7/30/90 ngày; cung–cầu theo kỳ thi; doanh thu theo gói; thao tác gần đây |
 | Đề thi | `/admin/de-thi/` | Danh sách, lọc theo kỳ thi và trạng thái, tạo thủ công, **sinh đề tự động** |
 | Format đề | `/admin/format/` | 11 format chuẩn của 6 kỳ thi, phân tích độ phủ ngân hàng, **sinh đề một chạm** |
-| Xây đề | `/admin/de-thi/:id/` | Sửa thông tin, thêm/xoá phần, chọn câu từ ngân hàng, bốc lại cả phần, phát hành |
+| Xây đề | `/admin/de-thi/:id/` | Sửa thông tin, thêm/xoá phần, **soạn câu hỏi ngay trong phần** (gõ thẳng ở hộp thoại thêm phần, hoặc nút *Soạn câu hỏi* trên phần đã có — kèm đính MP3 cho phần Nghe/Nói), chọn câu từ ngân hàng, bốc lại cả phần, phát hành |
 | Ngân hàng câu hỏi | `/admin/ngan-hang/` | Lọc đa tiêu chí, thêm/sửa câu, ngưng dùng, **nhập hàng loạt từ CSV** (tải mẫu, xem trước, báo lỗi từng dòng) hoặc JSON, **gắn MP3 cho câu Nghe / Nói** (nghe thử ngay trong danh sách, thay hoặc gỡ), **gắn nhãn phần thi VPET (A–J)** — lọc theo phần, lọc riêng câu chưa gắn phần |
 | Học viên | `/admin/hoc-vien/` | Tìm kiếm, xem code và đơn, ghi chú, khoá/mở, đánh dấu xác thực, cấp code |
 | Code | `/admin/code/` | Lô code, cấp theo lô hoặc cho một học viên, thu hồi, xuất CSV |

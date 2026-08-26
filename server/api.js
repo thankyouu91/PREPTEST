@@ -866,10 +866,109 @@ router.delete('/admin/tests/:id', roles.requireCap('tests.write'), async (req, r
   res.json({ ok: true });
 });
 
+/* ==================== Writing items straight into a part ====================
+ *
+ * The builder could do exactly one thing with a part: attach items that were
+ * already in the bank. Writing a paper therefore meant leaving the builder,
+ * typing the items on the bank screen, coming back, and hunting them down again
+ * in the picker — once per part, on every paper. The two paths below let the
+ * text be typed where the part is being built.
+ *
+ * What they deliberately do NOT do is invent a second kind of question. Every
+ * item written here becomes an ordinary bank row, filed under the paper's exam,
+ * the part's skill and the part's letter. That is what keeps a later redraw, the
+ * availability counts, the shortage report and the bank screen itself all
+ * telling the truth about it afterwards. A question that existed only inside one
+ * paper would be invisible to every one of them.
+ *
+ * Because the exam, skill and part come from the paper rather than the body,
+ * four of the eight fields the bank screen asks for are already answered — which
+ * is the whole reason this is faster than the round trip it replaces.
+ */
+const MAX_INLINE_ITEMS = 60;
+
+/**
+ * Validate a batch of typed-in items against the part they are going into.
+ *
+ * The whole batch is checked before a single row is written. Somebody who has
+ * just typed eight items and got the seventh wrong should get the seventh back
+ * to fix, not a part holding six of them and no way to tell which is missing.
+ */
+async function readInlineQuestions(list, ctx) {
+  if (!Array.isArray(list) || !list.length) return { rows: [] };
+  if (list.length > MAX_INLINE_ITEMS) {
+    return { err: 'Write at most ' + MAX_INLINE_ITEMS + ' items at a time.' };
+  }
+  const rows = [];
+  for (let i = 0; i < list.length; i++) {
+    const raw = list[i] || {};
+    /* The paper fixes the exam; the part fixes the skill and the letter. Reading
+       any of them from the body would let an item be filed under a part it is
+       not actually in — which no screen would ever show, because every screen
+       trusts those three to agree with the part it came from. */
+    const d = await readQuestion({
+      familyId: ctx.familyId,
+      skill: ctx.skill,
+      part: ctx.part || '',
+      level: str(raw.level, 5) || ctx.level,
+      type: raw.type,
+      prompt: raw.prompt,
+      options: raw.options,
+      answer: raw.answer,
+      explanation: raw.explanation,
+      tags: raw.tags
+    });
+    if (d.err) return { err: 'Item ' + (i + 1) + ': ' + d.err, index: i };
+    /* A gap fill is marked by comparing text to the answer key, so one with no
+       key scores zero for every candidate and says so only in a per-item note
+       nobody reads. readQuestion lets it through because the CSV importer has
+       always allowed the key to be filled in later; typed here, in a form with
+       the field on screen, an empty key is a mistake every time. */
+    if (d.type === 'gap' && !d.answer) {
+      return { err: 'Item ' + (i + 1) + ': a gap-fill item needs an answer key.', index: i };
+    }
+    rows.push(d);
+  }
+  return { rows };
+}
+
+/** Insert a validated batch into the bank and attach it to a part, in order.
+    Call inside tx(): a half-written part is worse than no part at all. */
+async function writeInlineQuestions(rows, sid, adminId) {
+  let sort = (await q.val('SELECT COALESCE(MAX(sort),-1) s FROM section_items WHERE section_id=?', sid)) + 1;
+  const ids = [];
+  for (const d of rows) {
+    const r = await q.run(
+      `INSERT INTO questions (family_id,skill,level,type,part,prompt,options_json,answer,explanation,tags_json,status,created_at,created_by)
+       VALUES (?,?,?,?,?,?,?,?,?,?,'active',?,?)`,
+      d.familyId, d.skill, d.level, d.type, d.part, d.prompt, JSON.stringify(d.options), d.answer,
+      d.explanation, JSON.stringify(d.tags), nowISO(), adminId);
+    const qid = Number(r.lastInsertRowid);
+    await q.run('INSERT INTO section_items (section_id,question_id,sort) VALUES (?,?,?)', sid, qid, sort++);
+    ids.push(qid);
+  }
+  return ids;
+}
+
+/* Writing a paper and writing the bank are two different capabilities, and today
+   every role that holds one holds the other. That is exactly why it is worth
+   asserting rather than assuming: the moment somebody defines a role that can
+   arrange a paper but not author questions, this route would otherwise be the
+   back door that lets them do it anyway. */
+function mayWriteBank(req, res) {
+  if (roles.can(req.admin.role, 'bank.write')) return true;
+  res.status(403).json({
+    error: 'Your account level can arrange a paper but not write new questions.',
+    need: 'bank.write', role: req.admin.role
+  });
+  return false;
+}
+
 /* ---- Sections ---- */
 router.post('/admin/tests/:id/sections', roles.requireCap('tests.write'), async (req, res) => {
   const id = str(req.params.id, 60);
-  if (!await q.val('SELECT 1 FROM tests WHERE id=?', id)) return res.status(404).json({ error: 'No such test.' });
+  const test = await q.get('SELECT family_id, level FROM tests WHERE id=?', id);
+  if (!test) return res.status(404).json({ error: 'No such test.' });
   const b = req.body || {};
   const name = str(b.name, 100);
   const skill = str(b.skill, 20);
@@ -877,18 +976,61 @@ router.post('/admin/tests/:id/sections', roles.requireCap('tests.write'), async 
   if (!SKILLS.includes(skill)) return bad(res, 'That skill is not valid.');
   /* Attach the part letter if this exam has a part table — so a later reshuffle
      still knows which part to draw from. */
-  const fam = await q.val('SELECT family_id FROM tests WHERE id=?', id);
-  const allowed = EXAM_FORMATS.partsOf(fam);
+  const allowed = EXAM_FORMATS.partsOf(test.family_id);
   const part = str(b.part, 2).toUpperCase();
   if (part && !allowed.includes(part)) {
     return bad(res, 'That part is not valid. This exam has the parts: ' + (allowed.join(', ') || 'none') + '.');
   }
-  const sort = (await q.val('SELECT COALESCE(MAX(sort),-1) s FROM sections WHERE test_id=?', id)) + 1;
-  const r = await q.run('INSERT INTO sections (test_id,name,skill,type,minutes,sort,part) VALUES (?,?,?,?,?,?,?)',
-    id, name, skill, str(b.type, 100) || 'Multiple choice', clamp(int(b.minutes, 0), 0, 600), sort, part || null);
-  await q.run('UPDATE tests SET updated_at=? WHERE id=?', nowISO(), id);
-  await audit(req, 'section.create', 'tests/' + id, { section: name, part: part || null });
-  res.status(201).json({ id: Number(r.lastInsertRowid) });
+
+  /* Items typed in the same dialog as the part. Validated before the part is
+     created, so a rejected batch leaves nothing at all behind rather than an
+     empty part the operator has to notice and delete. */
+  const wanted = Array.isArray(b.questions) ? b.questions : [];
+  if (wanted.length && !mayWriteBank(req, res)) return;
+  const batch = await readInlineQuestions(wanted, {
+    familyId: test.family_id, skill, part, level: str(b.level, 5) || test.level
+  });
+  if (batch.err) return res.status(400).json({ error: batch.err, index: batch.index });
+
+  let sid = 0, questionIds = [];
+  await tx(async () => {
+    const sort = (await q.val('SELECT COALESCE(MAX(sort),-1) s FROM sections WHERE test_id=?', id)) + 1;
+    const r = await q.run('INSERT INTO sections (test_id,name,skill,type,minutes,sort,part) VALUES (?,?,?,?,?,?,?)',
+      id, name, skill, str(b.type, 100) || 'Multiple choice', clamp(int(b.minutes, 0), 0, 600), sort, part || null);
+    sid = Number(r.lastInsertRowid);
+    if (batch.rows.length) questionIds = await writeInlineQuestions(batch.rows, sid, req.admin.id);
+    await q.run('UPDATE tests SET updated_at=? WHERE id=?', nowISO(), id);
+  });
+  await audit(req, 'section.create', 'tests/' + id,
+    { section: name, part: part || null, written: questionIds.length });
+  res.status(201).json({ id: sid, questionIds });
+});
+
+/** Write brand-new items into a part that already exists. */
+router.post('/admin/sections/:sid/questions', roles.requireCap('tests.write'), async (req, res) => {
+  const sid = int(req.params.sid, 0);
+  const s = await q.get('SELECT * FROM sections WHERE id=?', sid);
+  if (!s) return res.status(404).json({ error: 'No such part.' });
+  if (!mayWriteBank(req, res)) return;
+
+  const test = await q.get('SELECT family_id, level FROM tests WHERE id=?', s.test_id);
+  const b = req.body || {};
+  const wanted = Array.isArray(b.questions) ? b.questions : [];
+  if (!wanted.length) return bad(res, 'There are no items to write.');
+
+  const batch = await readInlineQuestions(wanted, {
+    familyId: test.family_id, skill: s.skill, part: s.part, level: str(b.level, 5) || test.level
+  });
+  if (batch.err) return res.status(400).json({ error: batch.err, index: batch.index });
+
+  let questionIds = [];
+  await tx(async () => {
+    questionIds = await writeInlineQuestions(batch.rows, sid, req.admin.id);
+    await q.run('UPDATE tests SET updated_at=? WHERE id=?', nowISO(), s.test_id);
+  });
+  await audit(req, 'section.questions.write', 'sections/' + sid,
+    { written: questionIds.length, part: s.part || null });
+  res.status(201).json({ added: questionIds.length, questionIds });
 });
 
 router.put('/admin/sections/:sid', roles.requireCap('tests.write'), async (req, res) => {

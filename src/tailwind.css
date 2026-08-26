@@ -622,10 +622,27 @@
     backdrop-filter: blur(3px);
   }
   .modal-backdrop.show { @apply flex; }
+  /* The panel scrolls itself rather than growing past the screen. A dialog you
+     can fill in but not submit — the button below the fold, nothing to scroll —
+     is the failure this prevents; it turned up first on the test builder, where
+     the form now holds however many questions somebody types into it. A dialog
+     shorter than the screen is untouched. */
   .modal-panel {
     @apply w-full sm:max-w-md bg-card border border-line shadow-soft-lg
-           rounded-t-2xl sm:rounded-2xl p-6 sm:p-7;
+           rounded-t-2xl sm:rounded-2xl p-6 sm:p-7 max-h-[92dvh] overflow-y-auto;
     animation: modal-in .28s cubic-bezier(.16,1,.3,1) both;
+  }
+  /* An action row that stays put while the form above it scrolls.
+     The panel gives up its bottom padding to whichever dialog has one, and the
+     bar supplies the same space itself. Doing it the other way round — leaving
+     the padding and pulling the bar down over it with a negative margin — looks
+     right until you measure it: `bottom: 0` is resolved against the MARGIN box,
+     so a negative bottom margin lifts the bar by exactly that much and it sits
+     on top of the last control instead of below it. */
+  .modal-panel:has(.modal-actions) { @apply pb-0; }
+  .modal-actions {
+    @apply sticky bottom-0 -mx-6 sm:-mx-7 px-6 sm:px-7 py-4
+           bg-card border-t border-line flex gap-2.5;
   }
 
   /* ---- Motion nhẹ (fade/slide-in) ---- */

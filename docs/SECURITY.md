@@ -304,6 +304,7 @@ guard đăng nhập, 8 route còn lại là danh sách ở mục 3.
 | DELETE | `/api/admin/sections/:sid` | `requireAdmin` + `csrfGuard` + `requireCap(tests.write)` | yes |
 | PUT | `/api/admin/sections/:sid` | `requireAdmin` + `csrfGuard` + `requireCap(tests.write)` | yes |
 | POST | `/api/admin/sections/:sid/items` | `requireAdmin` + `csrfGuard` + `requireCap(tests.write)` | yes |
+| POST | `/api/admin/sections/:sid/questions` | `requireAdmin` + `csrfGuard` + `requireCap(tests.write)` | yes |
 | POST | `/api/admin/sections/:sid/reshuffle` | `requireAdmin` + `csrfGuard` + `requireCap(tests.write)` | yes |
 | GET | `/api/admin/settings` | `requireAdmin` + `csrfGuard` + `requireCap(reports.read)` | n/a (read) |
 | PUT | `/api/admin/settings` | `requireAdmin` + `csrfGuard` + `requireCap(settings.write)` | yes |

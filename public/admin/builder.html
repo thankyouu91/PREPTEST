@@ -134,7 +134,8 @@
             s.items.length + ' items</span>' +
         '</span>' +
         '<div class="ms-auto flex flex-wrap gap-2">' +
-          '<button type="button" class="btn btn-soft btn-sm" data-pick="' + s.id + '">' + AD.icon('plus', 'w-4 h-4') + 'Choose items</button>' +
+          '<button type="button" class="btn btn-soft btn-sm" data-write="' + s.id + '">' + AD.icon('edit', 'w-4 h-4') + 'Write items</button>' +
+          '<button type="button" class="btn btn-ghost btn-sm" data-pick="' + s.id + '">' + AD.icon('plus', 'w-4 h-4') + 'Choose items</button>' +
           '<button type="button" class="btn btn-ghost btn-sm" data-shuffle="' + s.id + '">' + AD.icon('shuffle', 'w-4 h-4') + '<span class="hidden sm:inline">Redraw</span></button>' +
           '<button type="button" class="btn btn-ghost btn-sm text-danger" data-del-section="' + s.id + '" aria-label="Delete the part ' + AD.esc(s.name) + '">' + AD.icon('trash', 'w-4 h-4') + '</button>' +
         '</div>' +
@@ -150,6 +151,7 @@
     AD.qs('#btn-meta').addEventListener('click', editMeta);
     AD.qs('#btn-add-section').addEventListener('click', addSection);
 
+    AD.qsa('[data-write]').forEach(b => b.addEventListener('click', () => writeItems(+b.getAttribute('data-write'))));
     AD.qsa('[data-pick]').forEach(b => b.addEventListener('click', () => pickQuestions(+b.getAttribute('data-pick'))));
     AD.qsa('[data-shuffle]').forEach(b => b.addEventListener('click', () => reshuffle(+b.getAttribute('data-shuffle'))));
     AD.qsa('[data-del-section]').forEach(b => b.addEventListener('click', () => delSection(+b.getAttribute('data-del-section'))));
@@ -205,8 +207,236 @@
     });
   }
 
+  /* ============================================================
+     Writing items where the part is being built
+
+     Until now a part could only be filled from the bank, so building a paper
+     meant: leave the builder, write the items on the bank screen, come back,
+     find them again in the picker. Once per part, on every paper.
+
+     The composer below is the same form, minus the four fields the part has
+     already answered — the exam comes from the paper, the skill and the letter
+     from the part, the level from the paper. What is left is the text, the
+     options and the key, which is the part a person actually has to type.
+
+     Items written here are ordinary bank rows. Nothing about them is special,
+     and that is the point: a redraw, the shortage report and the bank screen
+     all keep working on them afterwards.
+     ============================================================ */
+  const ALL_TYPES = ['mcq', 'gap', 'essay', 'speaking'];
+  const AUDIO_SKILLS = ['listening', 'speaking'];
+
+  function questionComposer() {
+    /* The context is read through setContext rather than captured, because in
+       the add-a-part dialog the skill and the part are still being chosen while
+       items are already being typed. */
+    let ctx = { skill: 'listening', part: '' };
+    let seq = 0;
+    let listEl = null, countEl = null, audioNote = null;
+
+    /* A lettered part limits what it will take; a part with no letter takes
+       anything, because nothing constrains it. */
+    const typesAllowed = () => {
+      const p = ctx.part && FAM_PARTS ? FAM_PARTS.find(x => x.part === ctx.part) : null;
+      return (p && p.types && p.types.length) ? p.types : ALL_TYPES;
+    };
+
+    const html =
+      '<div class="mt-1">' +
+        '<div class="flex items-center gap-2">' +
+          '<p class="label !mb-0">Questions</p>' +
+          '<span class="badge badge-muted" id="c-count">none yet</span>' +
+        '</div>' +
+        '<p class="help mt-1.5">Typed here, they go into the bank under this exam and part, ' +
+          'and into this part in order. Leave it empty to add the part on its own.</p>' +
+        '<p class="help mt-1.5" id="c-audio" hidden>This skill is played to the student, so each item needs ' +
+          'an MP3 — attach it on the row, or later from the question bank.</p>' +
+        '<div id="c-list" class="grid gap-2.5 mt-3"></div>' +
+        '<button type="button" id="c-add" class="btn btn-soft btn-sm mt-2.5">Add a question</button>' +
+      '</div>';
+
+    function answerBox(key, type) {
+      if (type === 'mcq') {
+        return '<div class="grid gap-1.5 mt-2">' +
+          [0, 1, 2, 3].map(i =>
+            '<label class="flex items-center gap-2.5">' +
+              '<input type="radio" name="ans-' + key + '" data-ans="' + i + '" ' +
+                'class="w-4 h-4 accent-[color:var(--color-accent)] shrink-0" ' +
+                'aria-label="Option ' + (i + 1) + ' is the correct answer">' +
+              '<input class="input py-1.5 text-[14px]" data-opt="' + i + '" ' +
+                'placeholder="Option ' + (i + 1) + '" aria-label="Option ' + (i + 1) + '">' +
+            '</label>').join('') +
+          '</div>';
+      }
+      if (type === 'gap') {
+        return '<div class="mt-2">' +
+          '<input class="input py-1.5 text-[14px]" data-key ' +
+            'placeholder="Answer key — write color|colour to accept either" aria-label="Answer key">' +
+          '</div>';
+      }
+      return '<p class="help mt-2">Marked by the AI examiner, so it takes no answer key.</p>';
+    }
+
+    function renumber() {
+      AD.qsa('[data-row]', listEl).forEach((r, i) => {
+        r.querySelector('[data-num]').textContent = String(i + 1);
+      });
+      const n = listEl.children.length;
+      countEl.textContent = n
+        ? n + AD.t(n === 1 ? ' question' : ' questions', ' câu hỏi')
+        : AD.t('none yet', 'chưa có câu nào');
+    }
+
+    function addRow() {
+      const key = 'q' + (++seq);
+      const types = typesAllowed();
+      /* A new row copies the type of the one above it: a part is nearly always
+         one type all the way down, and re-picking it every time is the kind of
+         small friction that makes people go back to the bank screen. */
+      const last = listEl.lastElementChild;
+      const prev = last ? last.querySelector('[data-type]').value : '';
+      const type = types.includes(prev) ? prev : types[0];
+
+      const row = document.createElement('div');
+      row.className = 'rounded-xl border border-line p-3 bg-surface';
+      row.setAttribute('data-row', key);
+      row.innerHTML =
+        '<div class="flex items-center gap-2">' +
+          '<span class="w-6 text-[13px] font-bold text-muted shrink-0" data-num>1</span>' +
+          '<select class="input w-auto py-1.5 text-[13px]" data-type aria-label="Item type">' +
+            types.map(t => '<option value="' + t + '"' + (t === type ? ' selected' : '') + '>' +
+              AD.esc(AD.TYPE_LABEL[t] || t) + '</option>').join('') +
+          '</select>' +
+          '<button type="button" class="ms-auto p-1.5 rounded-full text-muted hover:text-danger transition" ' +
+            'data-drop aria-label="Remove this question">' + AD.icon('x', 'w-4 h-4') + '</button>' +
+        '</div>' +
+        '<textarea class="input mt-2 py-1.5 text-[14px]" rows="2" data-prompt ' +
+          'placeholder="Question text" aria-label="Question text"></textarea>' +
+        '<div data-answers>' + answerBox(key, type) + '</div>' +
+        '<label class="mt-2 flex items-center gap-2 text-[13px] font-semibold text-muted" data-audio-row hidden>' +
+          '<span class="btn btn-ghost btn-sm cursor-pointer">Attach MP3</span>' +
+          '<input type="file" accept="audio/mpeg" class="sr-only" data-audio>' +
+          '<span data-audio-name>no file</span>' +
+        '</label>';
+
+      listEl.appendChild(row);
+      row.querySelector('[data-drop]').addEventListener('click', () => { row.remove(); renumber(); });
+      row.querySelector('[data-type]').addEventListener('change', e => {
+        row.querySelector('[data-answers]').innerHTML = answerBox(key, e.target.value);
+      });
+      const file = row.querySelector('[data-audio]');
+      file.addEventListener('change', () => {
+        row.querySelector('[data-audio-name]').textContent =
+          file.files && file.files[0] ? file.files[0].name : 'no file';
+      });
+      syncAudio(row);
+      renumber();
+      row.querySelector('[data-prompt]').focus();
+    }
+
+    function syncAudio(row) {
+      const on = AUDIO_SKILLS.includes(ctx.skill);
+      row.querySelector('[data-audio-row]').hidden = !on;
+      if (!on) row.querySelector('[data-audio]').value = '';
+    }
+
+    /* The skill or the part changed under rows that are already typed. Keep the
+       text, and move the type only if the new part will not take the old one —
+       redrawing the answer box on every context change would throw away four
+       options somebody had already written. */
+    function setContext(next) {
+      ctx = Object.assign({}, ctx, next);
+      if (!listEl) return;
+      const types = typesAllowed();
+      AD.qsa('[data-row]', listEl).forEach(row => {
+        const sel = row.querySelector('[data-type]');
+        const before = sel.value;
+        const keep = types.includes(before) ? before : types[0];
+        sel.innerHTML = types.map(t => '<option value="' + t + '"' + (t === keep ? ' selected' : '') + '>' +
+          AD.esc(AD.TYPE_LABEL[t] || t) + '</option>').join('');
+        if (keep !== before) {
+          row.querySelector('[data-answers]').innerHTML = answerBox(row.getAttribute('data-row'), keep);
+        }
+        syncAudio(row);
+      });
+      audioNote.hidden = !AUDIO_SKILLS.includes(ctx.skill);
+    }
+
+    function mount(root, next) {
+      listEl = root.querySelector('#c-list');
+      countEl = root.querySelector('#c-count');
+      audioNote = root.querySelector('#c-audio');
+      root.querySelector('#c-add').addEventListener('click', addRow);
+      setContext(next || {});
+    }
+
+    /** What was typed, plus the row element for each — so an error can point at one. */
+    function read() {
+      return AD.qsa('[data-row]', listEl).map(row => {
+        const type = row.querySelector('[data-type]').value;
+        const opts = AD.qsa('[data-opt]', row).map(i => i.value.trim());
+        const ansIdx = AD.qsa('[data-ans]', row).findIndex(x => x.checked);
+        const keyEl = row.querySelector('[data-key]');
+        const fileEl = row.querySelector('[data-audio]');
+        return {
+          row,
+          type,
+          prompt: row.querySelector('[data-prompt]').value.trim(),
+          options: type === 'mcq' ? opts.filter(Boolean) : [],
+          answer: type === 'mcq' ? (ansIdx >= 0 ? opts[ansIdx] : '') : (keyEl ? keyEl.value.trim() : ''),
+          file: (fileEl && fileEl.files && fileEl.files[0]) || null
+        };
+      });
+    }
+
+    /* Checked here as well as on the server, so a typo comes back on the row that
+       has it rather than as one line above a list of eight. The server is still
+       the one that decides. */
+    function firstProblem(list) {
+      for (let i = 0; i < list.length; i++) {
+        const it = list[i];
+        const at = AD.t('Question ', 'Câu ') + (i + 1) + ': ';
+        if (it.prompt.length < 5) {
+          return { i, msg: at + AD.t('the question text is too short.', 'nội dung câu hỏi quá ngắn.') };
+        }
+        if (it.type === 'mcq') {
+          if (it.options.length < 2) {
+            return { i, msg: at + AD.t('a multiple-choice item needs at least two options.',
+              'câu trắc nghiệm cần ít nhất hai phương án.') };
+          }
+          if (!it.answer) {
+            return { i, msg: at + AD.t('mark which option is correct.', 'hãy đánh dấu phương án đúng.') };
+          }
+        }
+        if (it.type === 'gap' && !it.answer) {
+          return { i, msg: at + AD.t('a gap-fill item needs an answer key.', 'câu điền từ cần có đáp án.') };
+        }
+      }
+      return null;
+    }
+
+    return { html, mount, setContext, read, firstProblem, count: () => (listEl ? listEl.children.length : 0) };
+  }
+
+  /** Attach the MP3s that were picked alongside the items, once they have ids. */
+  async function uploadComposerAudio(typed, questionIds) {
+    let failed = 0;
+    for (let i = 0; i < typed.length; i++) {
+      if (!typed[i].file || !questionIds[i]) continue;
+      try { await AD.upload('/admin/questions/' + questionIds[i] + '/audio', typed[i].file); }
+      catch (e) { failed++; }
+    }
+    /* The items exist either way — an upload that failed is a missing MP3 on a
+       real question, not a lost question, and the bank screen can fix it. */
+    if (failed) {
+      AD.toast(AD.t(failed + ' audio file(s) did not upload. Attach them from the question bank.',
+        failed + ' file âm thanh chưa tải lên được. Hãy đính kèm lại ở ngân hàng câu hỏi.'), 'error');
+    }
+  }
+
   function addSection() {
     const skills = ['listening', 'reading', 'writing', 'speaking'];
+    const comp = questionComposer();
     const mm = AD.modal(
       '<h3 class="text-lg font-extrabold tracking-tight">Add a part</h3>' +
       '<div class="grid gap-4 mt-5">' +
@@ -225,37 +455,164 @@
           : '') +
         '<div><label class="label" for="s-type">Item type, as described to the student</label>' +
           '<input class="input" id="s-type" value="Multiple choice"></div>' +
+        comp.html +
         '<div class="banner banner-error" id="s-err"><span id="s-err-text"></span></div>' +
-        '<div class="flex gap-2.5"><button type="button" id="s-save" class="btn btn-primary btn-md flex-1">Add part</button>' +
+        '<div class="modal-actions"><button type="button" id="s-save" class="btn btn-primary btn-md flex-1">Add part</button>' +
           '<button type="button" data-close class="btn btn-ghost btn-md">Cancel</button></div>' +
-      '</div>');
+      '</div>', { wide: true });
     const nameEl = mm.el.querySelector('#s-name'), skillEl = mm.el.querySelector('#s-skill');
     const partEl = mm.el.querySelector('#s-part');
+    const saveBtn = mm.el.querySelector('#s-save');
+    comp.mount(mm.el, { skill: skillEl.value, part: partEl ? partEl.value : '' });
+
+    /* The button says what pressing it will do. "Add part" when nothing is typed
+       is the old behaviour, unchanged; the count appears only once there is one.
+       Bound to the whole dialog because adding and removing a row are two
+       different buttons and both change the answer — but it must keep its hands
+       off the button while a save is in flight, or the click that started the
+       save would re-enable it on the way up and let it be pressed twice. */
+    let busy = false;
+    const syncSave = () => {
+      if (busy) return;
+      const n = comp.count();
+      saveBtn.textContent = n
+        ? AD.t('Add part with ' + n + (n === 1 ? ' question' : ' questions'), 'Thêm phần kèm ' + n + ' câu hỏi')
+        : AD.t('Add part', 'Thêm phần');
+    };
+    mm.el.addEventListener('click', syncSave);
+
     skillEl.addEventListener('change', () => {
       if (!nameEl.value) nameEl.placeholder = 'VD: ' + skillEl.options[skillEl.selectedIndex].text;
+      comp.setContext({ skill: skillEl.value });
     });
     /* Choosing a part fills in the name and skill from the blueprint - retyping them
     by hand only creates a chance for part A to carry part C's skill. */
     if (partEl) partEl.addEventListener('change', () => {
       const p2 = FAM_PARTS.find(x => x.part === partEl.value);
-      if (!p2) return;
-      if (p2.skill) skillEl.value = p2.skill;
-      if (!nameEl.value) nameEl.value = p2.name;
+      if (p2) {
+        if (p2.skill) skillEl.value = p2.skill;
+        if (!nameEl.value) nameEl.value = p2.name;
+      }
+      comp.setContext({ skill: skillEl.value, part: partEl.value });
     });
-    mm.el.querySelector('#s-save').addEventListener('click', async () => {
+
+    saveBtn.addEventListener('click', async () => {
       const err = mm.el.querySelector('#s-err');
+      const errText = mm.el.querySelector('#s-err-text');
       err.classList.remove('show');
+      AD.qsa('[data-row]', mm.el).forEach(r => r.classList.remove('ring-2', 'ring-danger'));
+
+      const typed = comp.read();
+      const problem = comp.firstProblem(typed);
+      if (problem) {
+        typed[problem.i].row.classList.add('ring-2', 'ring-danger');
+        typed[problem.i].row.scrollIntoView({ block: 'nearest' });
+        errText.textContent = problem.msg;
+        err.classList.add('show');
+        return;
+      }
+
+      busy = true;
+      saveBtn.disabled = true;
       try {
-        await AD.post('/admin/tests/' + encodeURIComponent(testId) + '/sections', {
+        const r = await AD.post('/admin/tests/' + encodeURIComponent(testId) + '/sections', {
           name: nameEl.value || skillEl.options[skillEl.selectedIndex].text,
           skill: skillEl.value,
           type: mm.el.querySelector('#s-type').value,
           minutes: +mm.el.querySelector('#s-min').value || 0,
-          part: partEl ? partEl.value : ''
+          part: partEl ? partEl.value : '',
+          questions: typed.map(t => ({ type: t.type, prompt: t.prompt, options: t.options, answer: t.answer }))
         });
-        mm.close(); AD.toast('Part added'); await load();
+        await uploadComposerAudio(typed, r.questionIds || []);
+        mm.close();
+        AD.toast(typed.length
+          ? AD.t('Part added with ' + typed.length + ' questions', 'Đã thêm phần kèm ' + typed.length + ' câu hỏi')
+          : AD.t('Part added', 'Đã thêm phần'));
+        await load();
       } catch (e) {
-        mm.el.querySelector('#s-err-text').textContent = e.message;
+        busy = false;
+        saveBtn.disabled = false;
+        /* The server names the item it refused, counting from 1 like the rows do. */
+        if (Number.isInteger(e.data && e.data.index) && typed[e.data.index]) {
+          typed[e.data.index].row.classList.add('ring-2', 'ring-danger');
+          typed[e.data.index].row.scrollIntoView({ block: 'nearest' });
+        }
+        errText.textContent = e.message;
+        err.classList.add('show');
+      }
+    });
+  }
+
+  /** Write brand-new items into a part that already exists. */
+  function writeItems(sid) {
+    const s = T.sections.find(x => x.id === sid);
+    const comp = questionComposer();
+    const mm = AD.modal(
+      '<h3 class="text-lg font-extrabold tracking-tight">Write items for ' + AD.esc(s.name) + '</h3>' +
+      '<p class="text-muted text-[13px] mt-1.5">' +
+        AD.esc(AD.SKILL_LABEL[s.skill] || s.skill) +
+        (s.part ? ' · Part ' + AD.esc(s.part) : ' · no blueprint part') +
+        ' · ' + AD.esc(T.level) + '</p>' +
+      '<div class="grid gap-4 mt-5">' +
+        comp.html +
+        '<div class="banner banner-error" id="w-err"><span id="w-err-text"></span></div>' +
+        '<div class="modal-actions"><button type="button" id="w-save" class="btn btn-primary btn-md flex-1" disabled>Write items</button>' +
+          '<button type="button" data-close class="btn btn-ghost btn-md">Cancel</button></div>' +
+      '</div>', { wide: true });
+
+    const saveBtn = mm.el.querySelector('#w-save');
+    comp.mount(mm.el, { skill: s.skill, part: s.part || '' });
+    /* Same as the add-a-part dialog, and here the flag earns its keep twice over:
+       this one disables the button when there is nothing to write, so without it
+       the click that starts the save would switch the button back on as it
+       bubbled, and a slow request could be sent twice. */
+    let busy = false;
+    const syncSave = () => {
+      if (busy) return;
+      const n = comp.count();
+      saveBtn.disabled = !n;
+      saveBtn.textContent = n
+        ? AD.t('Write ' + n + (n === 1 ? ' item' : ' items'), 'Lưu ' + n + ' câu hỏi')
+        : AD.t('Write items', 'Soạn câu hỏi');
+    };
+    mm.el.addEventListener('click', syncSave);
+    mm.el.querySelector('#c-add').click();     // start with one row open, ready to type
+
+    saveBtn.addEventListener('click', async () => {
+      const err = mm.el.querySelector('#w-err');
+      const errText = mm.el.querySelector('#w-err-text');
+      err.classList.remove('show');
+      AD.qsa('[data-row]', mm.el).forEach(r => r.classList.remove('ring-2', 'ring-danger'));
+
+      const typed = comp.read();
+      const problem = comp.firstProblem(typed);
+      if (problem) {
+        typed[problem.i].row.classList.add('ring-2', 'ring-danger');
+        typed[problem.i].row.scrollIntoView({ block: 'nearest' });
+        errText.textContent = problem.msg;
+        err.classList.add('show');
+        return;
+      }
+
+      busy = true;
+      saveBtn.disabled = true;
+      try {
+        const r = await AD.post('/admin/sections/' + sid + '/questions', {
+          questions: typed.map(t => ({ type: t.type, prompt: t.prompt, options: t.options, answer: t.answer }))
+        });
+        await uploadComposerAudio(typed, r.questionIds || []);
+        mm.close();
+        AD.toast(AD.t('Wrote ' + r.added + (r.added === 1 ? ' item' : ' items'),
+          'Đã lưu ' + r.added + ' câu hỏi'));
+        await load();
+      } catch (e) {
+        busy = false;
+        saveBtn.disabled = false;
+        if (Number.isInteger(e.data && e.data.index) && typed[e.data.index]) {
+          typed[e.data.index].row.classList.add('ring-2', 'ring-danger');
+          typed[e.data.index].row.scrollIntoView({ block: 'nearest' });
+        }
+        errText.textContent = e.message;
         err.classList.add('show');
       }
     });
