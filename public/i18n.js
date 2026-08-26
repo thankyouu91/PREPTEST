@@ -479,6 +479,11 @@
     'Create account': 'Tạo tài khoản',
     'Already have an account?': 'Đã có tài khoản?',
     'Continue with Google': 'Tiếp tục với Google',
+    /* Đăng ký nói "Đăng ký", đăng nhập nói "Tiếp tục" — cùng một nút, nhưng ở
+       trang tạo tài khoản thì người đọc cần biết bấm vào là sẽ có tài khoản mới. */
+    'Sign up with Google': 'Đăng ký bằng Google',
+    'Google gives us your name and email. You will be asked for a phone number in your account.':
+      'Google chỉ cung cấp họ tên và email của bạn. Số điện thoại sẽ được hỏi sau, trong trang tài khoản.',
     'or': 'hoặc',
     'Enter your password.': 'Hãy nhập mật khẩu.',
     'Enter your username or email.': 'Hãy nhập tên đăng nhập hoặc email.',
