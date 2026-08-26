@@ -250,7 +250,53 @@ Ba điểm khác của lớp thư, cũng có kiểm:
   dot-stuffing vốn hay làm hỏng SMTP client viết tay trở thành không thể xảy ra
   chứ không phải chỉ khó xảy ra.
 
-## 5. Bảng endpoint → guard → giới hạn ghi
+## 5. Bài của ai là của người đó
+
+Guard ở mục 3 trả lời "có được vào không". Mục này trả lời câu khác: **đã vào
+rồi thì chạm được vào dữ liệu của ai.** Ba lỗi đã tìm thấy đều nằm ở đây, và
+không lỗi nào bị guard nào chặn — cả ba đều đến từ một tài khoản đăng nhập hợp
+lệ, làm đúng việc của mình, chỉ là trên hàng của người khác.
+
+**Khoá `UNIQUE` bỏ quên chủ sở hữu.** `skill_events` từng là
+`UNIQUE (source, ref_id, item_key)` và `ability.record()` upsert trên đúng bộ
+ba đó. Phần lớn nơi sinh sự kiện dựng `ref_id` từ một số toàn cục (id bài thi,
+id drill) nên không đụng nhau — trừ `learn-practice.js`, lấy số vòng **từ trình
+duyệt**. Hai tài khoản luyện cùng loại, cùng số vòng thì ghi vào một hàng, và
+`ON CONFLICT` giữ chủ cũ nhưng lấy điểm của người mới.
+
+**Client tự chọn câu để chấm.** `placement.answer()` chấm mọi
+`{questionId, answer}` gửi lên, không kiểm câu đó có nằm trong đề đã phát hay
+không. Kéo theo ba chuyện: phản hồi có `rungRight` nên gửi một câu lạ với một
+đáp án đoán là biết đoán đúng hay sai — tức là một cách dò đáp án của cả ngân
+hàng dùng chung với đề thật; `right` quyết định `nextLevel()` và `settle()` nên
+tự chọn được mức xếp lớp; và mỗi câu chấm được ghi vào `skill_events` ở trọng
+số 1, bằng đúng một bài thi có canh giờ. `drills.js` và `revision.js` vốn đã
+chặn việc này; chỉ đường xếp lớp là quên.
+
+**Phiên "xem như học viên" sống lâu hơn lần xem.** `POST /admin/preview-student`
+tạo một phiên **thật** trên tài khoản `student` — đó là điều làm nó hữu ích —
+nhưng phát đủ hai tuần như một lần đăng nhập bình thường. Đóng tab, tuần sau mở
+lại trang học viên: vẫn đang là `student`. Bài làm lúc đó ghi vào `student` và
+ghi **đúng**, vì phiên nói vậy. Không có gì trong cơ sở dữ liệu trông sai cả,
+nên đây là lỗi không thể tìm ra bằng cách đọc dữ liệu. Nay phiên preview chỉ
+sống 2 giờ (`PREVIEW_SESSION_HOURS`), và cờ banner được đặt cùng chỗ với phiên
+nên một lần đăng nhập thường luôn hạ nó xuống.
+
+Rà tay một lần thì không thành cái gì cả, nên hai nửa cơ học của nó thành
+`scripts/test-tenancy.mjs`, chạy trong `verify.sh`:
+
+1. Mọi khoá `UNIQUE` trên bảng có cột `user_id` phải chứa `user_id` — hoặc phải
+   có tên trong `GLOBAL_BY_DESIGN` **kèm lý do** vì sao buộc phải toàn cục
+   (mã kích hoạt, `ref` đơn hàng, hash token phiên và token đặt lại mật khẩu:
+   cả bốn được tra cứu trước khi biết người dùng là ai).
+2. Mọi `ON CONFLICT` trong `server/` nhắm vào những bảng đó cũng phải chứa
+   `user_id`. Ràng buộc có chủ mà upsert không có là đúng lỗi cũ thêm một bước.
+
+Kèm theo đó là ba test hành vi: `test-ability-isolation.mjs`,
+`test-placement-scope.mjs`, `test-preview-session.mjs`. Cả ba đều đã được chứng
+minh là **đỏ trên mã chưa sửa** trước khi được nhận.
+
+## 6. Bảng endpoint → guard → giới hạn ghi
 
 74 route, 43 route ghi. **43/43 route ghi đều có `csrfGuard`**; 35/43 có thêm
 guard đăng nhập, 8 route còn lại là danh sách ở mục 3.
