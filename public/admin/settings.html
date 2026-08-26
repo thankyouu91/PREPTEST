@@ -203,6 +203,29 @@
     const err = a.lastError
       ? '<div class="banner banner-error show"><span>Last check failed: ' + AD.esc(a.lastError) + '</span></div>' : '';
 
+    /* The transcription key, said out loud in the same four states as the
+       marking key above. It used to be a parenthesis on a label — "(ending
+       QQAA)" — which reports that a row exists and nothing else.
+       The middle state is the reason this is here. A key sealed under a
+       TOKEN_ENCRYPTION_KEY that has since changed is still a row, so the label
+       still printed its last four characters, while every spoken answer failed
+       to transcribe and therefore never reached the marker. Speaking simply
+       stopped, and the only place that said so was the server log. Warn rather
+       than error when there is no key at all: writing still marks perfectly
+       well without one, so a platform in that state is degraded, not broken. */
+    const sttStatus = !a.canStore ? ''       // the banner at the top already says this
+      : a.hasSttKey && !a.sttKeyOpens
+        ? '<div class="banner banner-error show mt-3"><span>A transcription key ending <b>' +
+            AD.esc(a.sttKeyHint) + '</b> is saved, but this server can no longer open it — ' +
+            '<code>TOKEN_ENCRYPTION_KEY</code> has changed since it was saved. <b>Speaking is not being ' +
+            'marked</b>, because the audio never becomes text. Paste the key again to store it under the ' +
+            'current one.</span></div>'
+      : a.hasSttKey
+        ? '<div class="banner banner-success show mt-3"><span>A transcription key ending <b>' +
+            AD.esc(a.sttKeyHint) + '</b> is in use.</span></div>'
+        : '<div class="banner banner-warn show mt-3"><span>No transcription key, so Speaking stays unmarked. ' +
+            'Reading, Listening and Writing are unaffected.</span></div>';
+
     /* Two numbers, because they answer different questions. The first is the
        size of the job; the second is how many PAPERS the next sweep would pick
        up, which is what tells an owner whether anything is actually moving. */
@@ -268,11 +291,11 @@
             '<label class="grid gap-1.5"><span class="label">Transcription model</span>' +
               '<input class="input" id="ai-stt-model" value="' + AD.esc(a.sttModel) + '"></label>' +
           '</div>' +
-          '<label class="grid gap-1.5 mt-3"><span class="label">Transcription API key' +
-            (a.hasSttKey ? ' (ending ' + AD.esc(a.sttKeyHint) + ')' : '') + '</span>' +
+          '<label class="grid gap-1.5 mt-3"><span class="label">Transcription API key</span>' +
             '<input class="input" id="ai-stt-key" type="password" autocomplete="new-password"' +
               ' data-1p-ignore data-lpignore="true" data-bwignore data-form-type="other" placeholder="' +
               (a.hasSttKey ? 'Leave blank to keep the key already saved' : 'Paste the key') + '"></label>' +
+          sttStatus +
         '</details>' +
 
         waiting +

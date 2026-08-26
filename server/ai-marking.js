@@ -144,6 +144,14 @@ async function settings() {
     sttBaseUrl: s[KEYS.sttBaseUrl] || DEFAULTS.sttBaseUrl,
     sttModel: s[KEYS.sttModel] || DEFAULTS.sttModel,
     hasSttKey: !!s[KEYS.sttKey],
+    /* The same question as keyOpens above, asked of the transcription key,
+       because it has the same answer and the same failure. It was missing: the
+       marking key got the check after a rotated TOKEN_ENCRYPTION_KEY left a
+       green banner over a server marking nothing, and the transcription key was
+       left showing "(ending QQAA)" whatever state it was in. When it will not
+       open, Speaking is what stops — the audio never becomes text, so there is
+       nothing to mark — and the screen said nothing at all. */
+    sttKeyOpens: !!s[KEYS.sttKey] && sealed.opens(s[KEYS.sttKey]),
     sttKeyHint: s[KEYS.sttHint] || '',
     checkedAt: s[KEYS.checkedAt] || null,
     lastError: s[KEYS.lastError] || null,
