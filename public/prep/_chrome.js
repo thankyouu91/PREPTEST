@@ -86,7 +86,20 @@ const PrepChrome = {
         '</a>' +
         '<nav class="grid gap-1.5" aria-label="Menu">' + nav + '</nav>' +
         '<a href="/prep/nhap-code/" class="btn btn-soft btn-md mt-6 justify-start gap-3">' + PREP.icon('plus', 'w-5 h-5') + 'Enter an unlock code</a>' +
-        '<div class="mt-auto pt-6 grid gap-4">' +
+        /* grid-cols-[minmax(0,1fr)], not a bare `grid`.
+           An auto track's floor is the widest item's MIN-CONTENT, and the
+           account row's min-content is the avatar, the sign-out button and the
+           full width of the email — 278px against the 228px this sidebar has.
+           The track took the 278, every row stretched to it, and the language
+           switch, the dark-mode row and the account block all hung out over the
+           page. `min-w-0` on the text does not prevent it: that lets a flex item
+           SHRINK when space is short, but the row still CONTRIBUTES its
+           min-content when something upstream is being sized from content, and
+           a grid track is. minmax(0,…) is what says the column may be narrower
+           than its contents; the truncation then happens where it was meant to.
+           Invisible with the demo account, whose email is short. Reported by a
+           real one: nguyentuanh304@gmail.com. */
+        '<div class="mt-auto pt-6 grid grid-cols-[minmax(0,1fr)] gap-4">' +
           /* Chuyển ngôn ngữ: /i18n.js tự bắt mọi nút [data-lang], kể cả nút
              được dựng bằng JS như ở đây, nên không cần nối sự kiện thêm. */
           '<span class="lang-switch w-full" role="group" aria-label="Language">' +

@@ -243,7 +243,12 @@ const AD = {
         '</a>' +
         '<nav class="grid gap-1.5">' + nav + '</nav>' +
         '<button type="button" data-view-student class="nav-item mt-6 w-full text-start">' + this.icon('eye', 'w-5 h-5 shrink-0') + '<span>View as a student</span></button>' +
-        '<div class="mt-auto pt-6 grid gap-4">' +
+        /* Same footer, same fix as the learner sidebar — see the note on
+           grid-cols-[minmax(0,1fr)] in public/prep/_chrome.js. This one has not
+           been reported only because no administrator has a long enough display
+           name yet; the row below truncates a name and a username in exactly
+           the way that blows an auto track open. */
+        '<div class="mt-auto pt-6 grid grid-cols-[minmax(0,1fr)] gap-4">' +
           '<div class="flex items-center gap-2">' +
             '<button type="button" data-dark class="btn btn-ghost btn-sm flex-1" aria-label="Toggle dark mode"><span data-dark-icon></span><span data-dark-label>Dark mode</span></button>' +
             /* Chuyển ngôn ngữ giao diện quản trị: mặc định tiếng Việt */
