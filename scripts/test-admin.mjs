@@ -506,6 +506,26 @@ const run = async () => {
   r = await call('POST', '/api/admin/codes/' + codeId + '/revoke');
   check('Will not revoke the same code twice', r.status === 400, 'status ' + r.status);
 
+  /* Refund: revoking withdraws the code, refunding also writes the money back
+     down against the order. The distinction matters because `orders.status` is
+     what the revenue figure counts — a code handed back while the order still
+     reads 'paid' is a sale on the books that was returned in real life. */
+  {
+    const list = await call('GET', '/api/admin/codes?batch=' + batchId);
+    const spare = list.data.items.find(c => c.id !== codeId);
+
+    let x = await call('POST', '/api/admin/codes/' + spare.id + '/refund', { reason: 'test' });
+    check('Refuses to refund a code that was never bought online',
+      x.status === 400 && /not bought online/i.test(x.data.error || ''), 'status ' + x.status);
+
+    x = await call('POST', '/api/admin/codes/' + spare.id + '/refund', {});
+    check('Refuses a refund with no reason — it has to reach the audit log',
+      x.status === 400, 'status ' + x.status);
+
+    x = await call('POST', '/api/admin/codes/999999/refund', { reason: 'test' });
+    check('Refunding a code that does not exist is a 404', x.status === 404, 'status ' + x.status);
+  }
+
   r = await call('GET', '/api/admin/codes/export?batch=' + batchId);
   check('Exports the code list as CSV',
     typeof r.data === 'string' && r.data.split('\r\n').length === 6, 'rows ' + String(r.data).split('\r\n').length);

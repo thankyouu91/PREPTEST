@@ -260,6 +260,45 @@ try {
       'Checkout refuses a caller with no session', String(res.status));
   }
 
+  /* ====== 4b. The published policy and the engine quote one set of numbers ======
+   *
+   * Three commercial windows live in `server/data/plans.js` and are also written
+   * out in Vietnamese on two public pages. Nothing links the two, so the failure
+   * mode is silent drift: somebody edits "14 ngày" to "30 ngày" on the page and
+   * the engine keeps its own figure, or the constant moves and the page keeps
+   * promising the old one. Either way a customer is entitled to hold us to
+   * whichever number suits them, and nobody finds out until they do.
+   *
+   * Checked by reading the shipped HTML for the digits, not by re-implementing
+   * the sentences: the assertion is "this page says this number somewhere",
+   * which is the part that has to stay true. */
+  head('The refund windows say the same thing in the code and on the page');
+  {
+    const PLANS_ = require_('../server/data/plans.js');
+    const page = f => fs.readFileSync(new URL('../public/prep/' + f, import.meta.url), 'utf8');
+    const refund = page('hoan-tien/index.html');
+    const terms = page('dieu-khoan/index.html');
+
+    const says = (html, n, unit) => new RegExp(`${n}\\s*(</b>\\s*)?${unit}`).test(html);
+
+    ok(says(refund, PLANS_.REFUND_DAYS, 'ngày'),
+      `The refund page quotes the ${PLANS_.REFUND_DAYS}-day request window`);
+    ok(says(refund, PLANS_.ACTIVATION_DAYS, 'ngày'),
+      `and the ${PLANS_.ACTIVATION_DAYS}-day activation deadline`);
+    ok(says(refund, PLANS_.REFUND_PAID_DAYS, 'ngày'),
+      `and the ${PLANS_.REFUND_PAID_DAYS}-day outside limit for the money to arrive`);
+    ok(says(terms, PLANS_.ACTIVATION_DAYS, 'ngày'),
+      `The terms quote the same ${PLANS_.ACTIVATION_DAYS}-day activation deadline`);
+    ok(says(terms, PLANS_.REFUND_DAYS, 'ngày'),
+      `and the same ${PLANS_.REFUND_DAYS}-day refund window`);
+
+    /* The one sentence that must NOT survive a policy change: an unactivated
+       code that has lapsed is still refundable inside the window, so the page
+       must not also list "past its activation deadline" as a refusal. */
+    ok(!/quá hạn kích hoạt[^<]*<\/li>/.test(refund),
+      'and the refund page no longer lists a lapsed code among the refusals, which the 14/7 split contradicts');
+  }
+
   /* ============ 5. What settles an order, and what must not ============ */
   head('The settlement rules');
 
@@ -294,6 +333,16 @@ try {
       ok(code && code.plan_id === 'starter-3m', 'for the plan that was bought', code && code.plan_id);
       ok(code.status === 'unused' && code.user_id === null,
         'and it is issued unused: buying is not activating, so a code bought as a gift still works');
+
+      /* The activation deadline shipped as NULL for a while — a code good
+         forever, against a policy page promising it lapses. Checked as a span
+         rather than a literal date so the constant stays the only place the
+         number lives. */
+      const PLANS_ = require_('../server/data/plans.js');
+      const lapseDays = (Date.parse(code.expires_at) - Date.parse(code.created_at)) / 86400e3;
+      ok(Math.abs(lapseDays - PLANS_.ACTIVATION_DAYS) < 0.01,
+        `and it carries a ${PLANS_.ACTIVATION_DAYS}-day activation deadline, not "good forever"`,
+        `expires_at=${code.expires_at} → ${lapseDays} days`);
 
       /* A gateway retries until it is acknowledged. The second delivery is
          ordinary traffic and must be free. */

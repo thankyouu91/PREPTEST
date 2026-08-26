@@ -1525,6 +1525,59 @@ router.post('/admin/codes/:id/revoke', roles.requireCap('codes.write'), async (r
   res.json({ ok: true });
 });
 
+/**
+ * Refund a bought code: withdraw it and write the refund down against the order.
+ *
+ * Revoking on its own was never enough. It stops the code being used, which is
+ * the half that protects us, and leaves `orders.status` reading 'paid' — so the
+ * revenue report counts a sale that was handed back, and nothing anywhere says
+ * why the code died. The schema has had a 'refunded' state all along and no code
+ * path that could ever write it.
+ *
+ * Both writes go in one transaction. A revoked code beside an order still
+ * reading 'paid' is the worst of the three possible outcomes: the customer has
+ * lost the code and the books say they were not refunded.
+ *
+ * It does NOT refuse a redeemed code. The published policy says an activated
+ * code is not refundable, but it also says our own faults are refundable whether
+ * activated or not — charged twice, charged with no code issued, a long outage.
+ * An endpoint that hard-blocks those would push the administrator into editing
+ * the database by hand, which is worse than the thing it prevents. So the rule
+ * is enforced by recording rather than by refusing: `withinPolicy` says whether
+ * this one followed the ordinary rule, and the audit row keeps the reason, the
+ * redemption state and the age of the order. A refund outside the rule is then a
+ * thing somebody can find later, which is the point.
+ */
+router.post('/admin/codes/:id/refund', roles.requireCap('codes.write'), async (req, res) => {
+  const id = int(req.params.id, 0);
+  const reason = str(req.body && req.body.reason, 300);
+  if (!reason) return bad(res, 'Say why this is being refunded — it goes in the audit log.');
+
+  const c = await q.get('SELECT * FROM codes WHERE id=?', id);
+  if (!c) return res.status(404).json({ error: 'No such code.' });
+
+  const order = await q.get('SELECT * FROM orders WHERE code_id=?', id);
+  if (!order) return bad(res, 'That code was not bought online, so there is no payment to refund.');
+  if (order.status === 'refunded') return bad(res, 'That order was already refunded.');
+  if (order.status !== 'paid') return bad(res, `That order is "${order.status}", so there is nothing to refund.`);
+
+  /* The two conditions the policy actually names, evaluated rather than assumed:
+     never activated, and asked for inside the refund window. */
+  const ageDays = (Date.now() - Date.parse(order.created_at)) / 86400e3;
+  const withinPolicy = c.status === 'unused' && ageDays <= PLANS.REFUND_DAYS;
+
+  await tx(async () => {
+    if (c.status !== 'revoked') await q.run("UPDATE codes SET status='revoked' WHERE id=?", id);
+    await q.run("UPDATE orders SET status='refunded' WHERE id=?", order.id);
+  });
+
+  await audit(req, 'code.refund', 'codes/' + id, {
+    code: c.code, order: order.id, amount: order.amount, reason,
+    wasStatus: c.status, orderAgeDays: Math.round(ageDays * 10) / 10, withinPolicy
+  });
+  res.json({ ok: true, withinPolicy, order: { id: order.id, amount: order.amount } });
+});
+
 /** Export the codes as CSV (by batch, or by status filter) */
 router.get('/admin/codes/export', roles.requireCap('codes.read'), async (req, res) => {
   const where = [];

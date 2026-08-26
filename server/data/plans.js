@@ -105,4 +105,31 @@ function rank(planId) {
   return i < 0 ? -1 : i;
 }
 
-module.exports = { PLANS, byId, rank, UNLIMITED };
+/* The three commercial windows, in days, decided by the owner on 2026-08-26.
+ * They live here beside the prices because they are the same kind of thing: a
+ * number the business chose, that both the engine and a published page have to
+ * say identically. `scripts/test-payments.mjs` reads these and asserts the two
+ * legal pages quote the same figures, because the failure mode is drift -
+ * somebody edits a policy sentence and the code keeps doing the old thing, and
+ * nothing notices until a customer holds us to whichever number suits them.
+ *
+ *   ACTIVATION_DAYS  How long a bought code stays usable before it lapses.
+ *                    Stamped into codes.expires_at when the payment settles.
+ *                    Distinct from the plan's own months: this is the deadline
+ *                    to START, the months are how long you get after starting.
+ *
+ *   REFUND_DAYS      How long after purchase a refund can be asked for. The
+ *                    code must ALSO still be unredeemed - the window is a
+ *                    second condition, never a way to refund a used code.
+ *
+ *   REFUND_PAID_DAYS The outside limit for the money to be back with the buyer,
+ *                    counted from the day the request is approved.
+ */
+const ACTIVATION_DAYS = 7;
+const REFUND_DAYS = 14;
+const REFUND_PAID_DAYS = 45;
+
+module.exports = {
+  PLANS, byId, rank, UNLIMITED,
+  ACTIVATION_DAYS, REFUND_DAYS, REFUND_PAID_DAYS
+};

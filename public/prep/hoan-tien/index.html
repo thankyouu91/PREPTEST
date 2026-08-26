@@ -64,18 +64,30 @@
 
         <div class="card p-5 sm:p-6 mt-4 border-s-4 border-s-[color:var(--color-brand-strong)]">
           <p class="text-[16px] leading-relaxed">
-            <b>Hoàn 100% khi mã kích hoạt chưa được sử dụng.</b><br>
+            <b>Hoàn 100% nếu mã chưa được kích hoạt và bạn yêu cầu trong vòng 14 ngày kể từ ngày mua.</b><br>
             <b>Đã kích hoạt thì không hoàn tiền</b>, kể cả khi bạn chưa làm bài nào.
           </p>
         </div>
 
         <p class="text-[15px] leading-relaxed text-muted mt-4">
-          Ranh giới đặt ở đó vì đó là mốc bạn thực sự nhận được thứ mình mua. Khi bạn trả tiền,
-          nền tảng cấp cho bạn một mã ở trạng thái chưa kích hoạt — chưa gắn với tài khoản nào và
-          chưa mở khoá gì cả. Kỳ hạn sử dụng
+          Hai điều kiện phải <b class="text-ink">cùng đúng</b>: mã còn nguyên chưa dùng, và yêu cầu
+          gửi trong hạn 14 ngày. Quá 14 ngày thì dù mã vẫn chưa kích hoạt cũng không hoàn được nữa.
+        </p>
+        <p class="text-[15px] leading-relaxed text-muted mt-2">
+          Ranh giới đặt ở việc kích hoạt vì đó là mốc bạn thực sự nhận được thứ mình mua. Khi bạn
+          trả tiền, nền tảng cấp cho bạn một mã ở trạng thái chưa kích hoạt — chưa gắn với tài khoản
+          nào và chưa mở khoá gì cả. Kỳ hạn sử dụng
           <b class="text-ink">chỉ bắt đầu chạy từ lúc mã được nhập vào một tài khoản</b>, không phải
           từ lúc mua.
         </p>
+        <div class="card p-5 mt-4">
+          <p class="text-[15px] leading-relaxed">
+            <b>Đừng nhầm hai cái hạn với nhau.</b> Mã có <b class="text-ink">7 ngày</b> để được kích
+            hoạt, tính từ ngày mua — quá hạn đó mã tự hết hiệu lực. Còn <b class="text-ink">14
+            ngày</b> là hạn để gửi yêu cầu hoàn tiền. Nghĩa là sau khi mã hết hạn kích hoạt, bạn vẫn
+            còn một tuần nữa để xin hoàn lại tiền.
+          </p>
+        </div>
         <p class="text-[15px] leading-relaxed text-muted mt-2">
           Nghĩa là trước khi kích hoạt, bạn chưa dùng đến một ngày nào của gói, nên hoàn lại toàn bộ
           là đúng. Sau khi kích hoạt, quyền truy cập đã mở và đồng hồ đã chạy — toàn bộ kho đề, phần
@@ -103,7 +115,7 @@
               <tr>
                 <td class="p-3 border-b border-line align-top"><span class="badge badge-ok">Chưa kích hoạt</span></td>
                 <td class="p-3 border-b border-line align-top text-muted">Mã đã được cấp nhưng chưa nhập vào tài khoản nào.</td>
-                <td class="p-3 border-b border-line align-top"><b class="text-ink">Hoàn 100%</b></td>
+                <td class="p-3 border-b border-line align-top"><b class="text-ink">Hoàn 100%</b><br><span class="text-[13px] text-muted">nếu còn trong 14 ngày</span></td>
               </tr>
               <tr>
                 <td class="p-3 align-top"><span class="badge badge-hl">Đã kích hoạt</span></td>
@@ -129,11 +141,16 @@
           <li>Mã đã kích hoạt nhưng <b class="text-ink">chưa làm bài nào</b> — vẫn không hoàn, vì kỳ hạn đã bắt đầu.</li>
           <li>Mã đã kích hoạt và <b class="text-ink">đã dùng một phần</b> kỳ hạn — không hoàn phần còn lại.</li>
           <li>Kích hoạt <b class="text-ink">nhầm tài khoản</b> — mã đã dùng rồi, và một mã chỉ thuộc về một tài khoản. Hãy kiểm tra kỹ đang đăng nhập bằng tài khoản nào trước khi nhập mã.</li>
+          <li>Yêu cầu gửi <b class="text-ink">quá 14 ngày</b> kể từ ngày mua, kể cả khi mã vẫn chưa kích hoạt.</li>
           <li>Bạn <b class="text-ink">đổi ý</b> sau khi kích hoạt, hoặc không sắp xếp được thời gian học.</li>
           <li>Điểm luyện tập <b class="text-ink">không như kỳ vọng</b>, hoặc kết quả kỳ thi thật không như mong muốn. Nền tảng là công cụ luyện tập, không bảo đảm điểm số.</li>
           <li>Tài khoản bị khoá do <b class="text-ink">vi phạm điều khoản</b> (phát tán đề, bán lại tài khoản, tấn công hệ thống).</li>
-          <li>Mã <b class="text-ink">quá hạn kích hoạt</b> mà không được nhập trong thời hạn ghi trên mã.</li>
         </ul>
+        <p class="text-[15px] leading-relaxed text-muted mt-4">
+          Ngược lại, <b class="text-ink">mã hết hạn kích hoạt vẫn hoàn được</b> nếu bạn còn trong
+          hạn 14 ngày và chưa từng kích hoạt nó. Mã lỡ mất hiệu lực không có nghĩa là tiền mất theo —
+          bạn vẫn chưa dùng gì cả.
+        </p>
       </section>
 
       <!-- 4 -->
@@ -175,7 +192,9 @@
         </div>
         <p class="text-[15px] leading-relaxed text-muted mt-4">
           <b class="text-ink">Đừng kích hoạt mã trong lúc chờ trả lời.</b> Chỉ cần nhập mã một lần
-          là yêu cầu hoàn tiền không còn hiệu lực, kể cả khi bạn đã gửi thư trước đó.
+          là yêu cầu hoàn tiền không còn hiệu lực, kể cả khi bạn đã gửi thư trước đó. Và hãy gửi
+          sớm: mốc tính là <b class="text-ink">ngày bạn gửi yêu cầu</b>, không phải ngày chúng tôi
+          trả lời, nhưng gửi vào ngày thứ 14 thì không còn chỗ cho sai sót nào nữa.
         </p>
       </section>
 
@@ -186,16 +205,16 @@
           <table class="w-full text-[14.5px] border border-line rounded-xl overflow-hidden">
             <tbody>
               <tr>
-                <td class="p-3 border-b border-line font-bold align-top w-[45%]">Phản hồi yêu cầu</td>
+                <td class="p-3 border-b border-line font-bold align-top w-[45%]">Hạn gửi yêu cầu</td>
+                <td class="p-3 border-b border-line text-muted"><b class="text-ink">14 ngày</b> kể từ ngày mua.</td>
+              </tr>
+              <tr>
+                <td class="p-3 border-b border-line font-bold align-top">Phản hồi yêu cầu</td>
                 <td class="p-3 border-b border-line text-muted">Trong 3 ngày làm việc.</td>
               </tr>
               <tr>
-                <td class="p-3 border-b border-line font-bold align-top">Chuyển hoàn sau khi duyệt</td>
-                <td class="p-3 border-b border-line text-muted">Trong 7 ngày làm việc.</td>
-              </tr>
-              <tr>
-                <td class="p-3 border-b border-line font-bold align-top">Tiền về tài khoản của bạn</td>
-                <td class="p-3 border-b border-line text-muted">Thêm 3–14 ngày làm việc, tuỳ ngân hàng và cổng thanh toán. Quãng này nằm ngoài tầm kiểm soát của chúng tôi.</td>
+                <td class="p-3 border-b border-line font-bold align-top">Tiền về tới bạn</td>
+                <td class="p-3 border-b border-line text-muted">Chậm nhất <b class="text-ink">45 ngày</b> kể từ ngày yêu cầu được duyệt. Thường nhanh hơn nhiều; mốc 45 ngày là hạn ngoài cùng, vì quãng cuối phụ thuộc ngân hàng và cổng thanh toán.</td>
               </tr>
               <tr>
                 <td class="p-3 font-bold align-top">Hình thức</td>

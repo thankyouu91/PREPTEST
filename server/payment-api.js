@@ -178,12 +178,20 @@ async function applyNotification(read, driverId) {
     while (await q.val('SELECT 1 FROM codes WHERE code=?', code)) code = makeCode();
     /* Issued unused and unassigned: buying is not activating. The buyer
        redeems it like any other code, which is what starts their term — and
-       which means a code bought as a gift still works. */
+       which means a code bought as a gift still works.
+     *
+       It does carry a deadline to start, though. Until now this went in with
+       expires_at NULL — a code good forever — while the published policy is
+       that a bought code lapses if it is not activated within
+       PLANS.ACTIVATION_DAYS. A promise on a page that the INSERT does not keep
+       is the sort of gap that only shows up in an argument with a customer, so
+       the date is stamped here rather than left to be enforced by hand. */
+    const lapses = new Date(Date.parse(at) + PLANS.ACTIVATION_DAYS * 86400e3).toISOString();
     await q.run(
       `INSERT INTO codes (code, batch_id, unlock_type, unlock_ref, plan_id, status,
                           expires_at, user_id, redeemed_at, note, created_at)
-       VALUES (?, NULL, 'family', 'vpet', ?, 'unused', NULL, NULL, NULL, ?, ?)`,
-      code, plan.id, `Bought online, order ${order.id}`, at);
+       VALUES (?, NULL, 'family', 'vpet', ?, 'unused', ?, NULL, NULL, ?, ?)`,
+      code, plan.id, lapses, `Bought online, order ${order.id}`, at);
     const codeId = await q.val('SELECT id FROM codes WHERE code=?', code);
     await q.run("UPDATE orders SET status='paid', paid_at=?, gateway_ref=?, code_id=? WHERE id=?",
       at, read.gatewayRef || null, codeId, order.id);
