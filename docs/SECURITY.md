@@ -278,6 +278,7 @@ guard đăng nhập, 8 route còn lại là danh sách ở mục 3.
 | POST | `/api/admin/classroom/unlink` | `requireAdmin` + `csrfGuard` + `requireCap(secrets.manage)` | yes |
 | GET | `/api/admin/codes` | `requireAdmin` + `csrfGuard` + `requireCap(codes.read)` | n/a (read) |
 | POST | `/api/admin/codes` | `requireAdmin` + `csrfGuard` + `requireCap(codes.write)` | yes |
+| POST | `/api/admin/codes/:id/refund` | `requireAdmin` + `csrfGuard` + `requireCap(codes.write)` | yes |
 | POST | `/api/admin/codes/:id/revoke` | `requireAdmin` + `csrfGuard` + `requireCap(codes.write)` | yes |
 | GET | `/api/admin/codes/export` | `requireAdmin` + `csrfGuard` + `requireCap(codes.read)` | n/a (read) |
 | GET | `/api/admin/exam-formats` | `requireAdmin` + `csrfGuard` + `requireCap(tests.read)` | n/a (read) |
