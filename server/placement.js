@@ -97,7 +97,7 @@ async function takeAtLevel(level, skip, picked, want) {
     for (const { part } of parts) {
       if (picked.length >= want) break;
       const rows = await q.all(
-        `SELECT id, part, type, prompt, options_json, level
+        `SELECT id, part, type, prompt, options_json, level, audio_key
            FROM questions
           WHERE status = 'active' AND level = ? AND part = ?
             AND type IN (${TYPE_HOLES})
@@ -151,15 +151,40 @@ async function drawRung(level, exclude) {
   return picked;
 }
 
-/** What the browser is allowed to see. Never the answer key. */
+/**
+ * What the browser is allowed to see. Never the answer key.
+ *
+ * `hasAudio` was missing, and its absence was not cosmetic. The draw takes an
+ * item from every part that has one — A and C, which are read, and E and F,
+ * which are HEARD — so about half of an eighteen-item test was Part E asking a
+ * learner to "type the sentence exactly as you hear it" above an empty text box,
+ * and Part F asking them to "choose the best reply" to nothing. There was no
+ * player, because this object never said there was anything to play.
+ *
+ * The recording itself is not named here. The key stays on the server and the
+ * bytes come from the route below, so a placement item cannot be used to read an
+ * arbitrary file out of the bank.
+ */
 function forClient(row) {
   return {
     questionId: row.id,
     part: row.part,
     type: row.type,
     prompt: row.prompt,
-    options: jparse(row.options_json, null)
+    options: jparse(row.options_json, null),
+    hasAudio: !!row.audio_key
   };
+}
+
+/**
+ * May this learner hear this item — is it one of the ones they were actually
+ * asked? `asked_json` is the list the draw recorded, so an item that was never
+ * put in front of them is refused, and so is every item once the test is done.
+ */
+async function mayHear(userId, questionId) {
+  const row = await rowOf(userId);
+  if (!row || row.status === 'done') return false;
+  return jparse(row.asked_json, []).map(Number).includes(Number(questionId));
 }
 
 /* ------------------------------- The lifecycle ------------------------------- */
@@ -373,6 +398,6 @@ async function stateOf(userId) {
 }
 
 module.exports = {
-  needed, start, answer, stateOf, resultOf, settle, nextLevel, drawRung, skillOfPart,
+  needed, start, answer, stateOf, resultOf, settle, nextLevel, drawRung, skillOfPart, mayHear,
   PER_RUNG, RUNGS, LADDER, START_LEVEL, UP_AT, DOWN_AT, INSTANT_TYPES
 };

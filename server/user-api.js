@@ -28,6 +28,7 @@ const PLANS = require('./data/plans');
 const { entitlementOf } = require('./entitlements');
 const abilityModel = require('./ability');
 const placement = require('./placement');
+const storage = require('./storage');
 const drills = require('./drills');
 const revision = require('./revision');
 const plan = require('./plan');
@@ -511,6 +512,42 @@ router.post('/placement/start', A.requireUser, A.csrfGuard, async (req, res) => 
     });
   }
   res.json(out);
+});
+
+/**
+ * The recording for one placement item.
+ *
+ * Parts E and F are listening items and roughly half of every draw, so without
+ * this the placement test asked a new learner to type what they heard with
+ * nothing to hear. It is a GET and it plays as often as they need: this is a
+ * twelve-minute screener, not the exam, and there is no replay budget to spend.
+ *
+ * Authorised against the learner's OWN draw, not merely against having a
+ * session. `asked_json` is the list recorded when the rung was dealt, so this
+ * cannot be walked through the question bank id by id, and it closes as soon as
+ * the placement is done.
+ */
+router.get('/placement/items/:questionId/audio', A.requireUser, async (req, res) => {
+  const questionId = Number.parseInt(req.params.questionId, 10) || 0;
+  if (!await placement.mayHear(req.user.id, questionId)) {
+    return res.status(404).json({ error: 'That item is not part of your placement test.' });
+  }
+  const row = await q.get('SELECT audio_key FROM questions WHERE id=?', questionId);
+  if (!row || !row.audio_key) return res.status(404).json({ error: 'This item has no audio file.' });
+
+  let file;
+  try {
+    file = await storage.get(row.audio_key);
+  } catch (e) {
+    console.error('[placement] audio read failed', e);
+    return res.status(502).json({ error: 'The audio file could not be read.' });
+  }
+  res.set('Content-Type', 'audio/mpeg')
+     .set('Content-Length', String(file.body.length))
+     /* Private, because it is bank content behind a session — but cacheable for
+        the sitting, so replaying a dictation does not re-download it. */
+     .set('Cache-Control', 'private, max-age=600')
+     .send(file.body);
 });
 
 router.post('/placement/answers', A.requireUser, A.csrfGuard, async (req, res) => {

@@ -72,6 +72,7 @@
 
         <div class="card p-6 sm:p-8 mt-5">
           <p id="q-prompt" class="text-[17px] sm:text-[18px] font-semibold leading-relaxed"></p>
+          <div id="q-audio" class="mt-5" hidden></div>
           <div id="q-answer" class="mt-6"></div>
         </div>
 
@@ -191,6 +192,37 @@ PREP.boot({ auth: true }).then(async () => {
     PREP.qs('#q-bar').style.setProperty('--w',
       Math.round((doneBefore + at) / (rungs * perRung) * 100) + '%');
     PREP.qs('#q-prompt').textContent = it.prompt;
+
+    /* Parts E and F are heard, not read, and the draw takes one item from every
+       part that has one — so about half of these eighteen questions are
+       listening. Without a player they read as "type the sentence exactly as you
+       hear it" above an empty box, which is what a learner met on their very
+       first screen. Unlike the exam there is no replay budget: this is a
+       twelve-minute screener, and rationing replays here would measure whether
+       somebody guessed right the first time, not what level they are. */
+    const player = PREP.qs('#q-audio');
+    player.innerHTML = '';
+    if (it.hasAudio) {
+      const a = document.createElement('audio');
+      a.controls = true;
+      a.preload = 'auto';
+      a.className = 'w-full';
+      a.src = '/api/placement/items/' + encodeURIComponent(it.questionId) + '/audio';
+      a.setAttribute('aria-label', PREP.t('Play the recording', 'Phát bản ghi'));
+      /* A dictation nobody can hear must not look like one nobody answered. */
+      a.addEventListener('error', () => {
+        player.innerHTML = '';
+        const p = document.createElement('p');
+        p.className = 'text-[13px] text-danger font-semibold';
+        p.textContent = PREP.t('The recording could not be loaded. Skip this one.',
+                               'Không tải được bản ghi. Hãy bỏ qua câu này.');
+        player.appendChild(p);
+      });
+      player.appendChild(a);
+      player.hidden = false;
+    } else {
+      player.hidden = true;
+    }
 
     const box = PREP.qs('#q-answer');
     box.innerHTML = '';
