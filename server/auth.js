@@ -177,14 +177,46 @@ async function purgeSessions() {
    mechanism: a 32-byte token, only its hash stored, HttpOnly + SameSite=Strict. */
 const USER_SESSION_DAYS = 14;
 
-async function createUserSession(userId, req, res) {
+/**
+ * An administrator's "view as student" session, in hours rather than weeks.
+ *
+ * The preview is a REAL session on the demo student — that is what makes it a
+ * useful preview — and it used to be issued for the full fortnight, which is
+ * how it stops being a preview and becomes a trap. An administrator looks at
+ * the student site once, closes the tab, and their browser is quietly signed in
+ * as `student` for two weeks. Everything they then do in the student area is
+ * recorded against that account and is CORRECT to be: the session says student,
+ * so the work is student's. Nothing in the database looks wrong, which is
+ * exactly why this is hard to see from the data — the misattribution happened
+ * in the browser, a fortnight earlier.
+ *
+ * Two hours is long enough to walk the platform and short enough that it cannot
+ * survive to the next sitting.
+ */
+const PREVIEW_SESSION_HOURS = 2;
+
+/**
+ * @param {object} [opts] `{preview: true}` for the administrator's view-as
+ *   session: shorter life, and the banner cookie raised to match.
+ */
+async function createUserSession(userId, req, res, opts) {
+  const preview = !!(opts && opts.preview);
   const token = crypto.randomBytes(32).toString('base64url');
-  const maxAge = USER_SESSION_DAYS * 86400;
+  const maxAge = preview ? PREVIEW_SESSION_HOURS * 3600 : USER_SESSION_DAYS * 86400;
   const expires = new Date(Date.now() + maxAge * 1000).toISOString();
   await q.run('INSERT INTO user_sessions (token_hash, user_id, created_at, expires_at, ip, ua) VALUES (?,?,?,?,?,?)',
     sha256(token), userId, nowISO(), expires, req.ip || null, (req.headers['user-agent'] || '').slice(0, 200));
   setCookie(res, 'prep_user', token, { maxAge });
   setCookie(res, 'prep_csrf', crypto.randomBytes(24).toString('base64url'), { httpOnly: false, maxAge });
+  /* The flag is set HERE, with the session it describes, and that is the whole
+     point of moving it: it was raised beside the preview and cleared only on
+     sign-OUT, so signing in as somebody else left it standing. The next learner
+     to use that browser — a brand new account, on the machine the platform is
+     demonstrated from — read "you are previewing as a student" across their own
+     dashboard, which reads as their account being tangled up with the demo
+     account's. Now every sign-in states the answer, and an ordinary one states
+     `false`. */
+  setPreviewFlag(res, preview, maxAge);
   return token;
 }
 
@@ -223,9 +255,12 @@ async function destroyUserSession(req, res) {
 
 /* The "view as student" flag. Deliberately NOT HttpOnly: it drives a banner on
    the student pages and carries nothing sensitive — the actual preview is the
-   prep_user session set alongside it, which IS HttpOnly. */
-function setPreviewFlag(res, on) {
-  setCookie(res, 'prep_preview', on ? '1' : '', { httpOnly: false, maxAge: on ? USER_SESSION_DAYS * 86400 : 0 });
+   prep_user session set alongside it, which IS HttpOnly.
+   `maxAge` is the session's, passed in rather than recomputed, so the banner and
+   the thing it is describing can never outlive one another. */
+function setPreviewFlag(res, on, maxAge) {
+  setCookie(res, 'prep_preview', on ? '1' : '',
+    { httpOnly: false, maxAge: on ? (maxAge || PREVIEW_SESSION_HOURS * 3600) : 0 });
 }
 
 /** Sign out every device — used after a password change or reset */

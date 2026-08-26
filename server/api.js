@@ -2273,17 +2273,23 @@ router.post('/admin/me', async (req, res) => {
 });
 
 /* POST /admin/preview-student — look at the student site with real data.
-   It signs THIS browser into the read-only demo student alongside the admin
-   session (prep_user and prep_admin are separate cookies and never collide), and
-   raises a prep_preview flag the student pages read to show a "back to admin"
-   banner. Scoped to the demo account by design: an administrator can walk the
-   platform, never open a real student's private dashboard. Ending the preview is
-   an ordinary student sign-out, which clears the flag too. */
+   It signs THIS browser into the demo student alongside the admin session
+   (prep_user and prep_admin are separate cookies and never collide), and raises
+   a prep_preview flag the student pages read to show a "back to admin" banner.
+   Scoped to the demo account by design: an administrator can walk the platform,
+   never open a real student's private dashboard. Ending the preview is an
+   ordinary student sign-out, which clears the flag too.
+
+   It is NOT read-only — this comment used to say it was, and the word was doing
+   no work: the session it creates is an ordinary student session, so a paper sat
+   during a preview is really sat, by `student`. That is fine while the preview
+   is a preview, which is why the session is a SHORT one (see
+   PREVIEW_SESSION_HOURS in server/auth.js). Anyone wanting to test as a learner
+   for longer than that should sign in as one. */
 router.post('/admin/preview-student', roles.requireCap('users.read'), async (req, res) => {
   const demo = await q.get('SELECT id FROM users WHERE username=?', A.DEMO_STUDENT_USER);
   if (!demo) return res.status(404).json({ error: 'There is no demo student on this server to preview.' });
-  await A.createUserSession(demo.id, req, res);
-  A.setPreviewFlag(res, true);
+  await A.createUserSession(demo.id, req, res, { preview: true });
   await audit(req, 'admin.preview_student', 'users/' + demo.id, {});
   res.json({ ok: true });
 });
