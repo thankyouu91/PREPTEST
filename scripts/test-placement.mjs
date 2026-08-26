@@ -269,10 +269,16 @@ try {
   const empty = await me.req('POST', '/api/placement/answers', { answers: [] });
   ok(empty.status === 400, 'An empty answer list is refused', String(empty.status));
 
+  /* This asked for 200 with rungRight 0 until answer() started refusing items it
+     never dealt (scripts/test-placement-scope.mjs says why it had to). Scoring
+     an item outside the draw as WRONG is not the harmless reading it looks like:
+     the rung then advances on a score the learner did not earn, and six junk ids
+     would drop them a level. Refusing is the honest answer, and the 409 names the
+     one innocent cause — a second tab posting an earlier rung. */
   const junk = await me.req('POST', '/api/placement/answers',
     { answers: [{ questionId: 999999999, answer: 'made up' }] });
-  ok(junk.status === 200 && junk.data && junk.data.rungRight === 0,
-    'An answer to a question that does not exist scores nothing rather than erroring',
+  ok(junk.status === 409 && junk.data && junk.data.reload === true,
+    'An answer to a question that was never dealt is refused, not scored',
     JSON.stringify(junk.data).slice(0, 120));
 
   await q.run('DELETE FROM placements WHERE user_id=?', uid);

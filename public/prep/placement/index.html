@@ -301,6 +301,18 @@ PREP.boot({ auth: true }).then(async () => {
     btn.textContent = PREP.t('Checking…', 'Đang chấm…');
     const r = await PrepApi.post('/api/placement/answers', { answers });
     btn.textContent = PREP.t('Next', 'Tiếp');
+    /* The rung on screen is not the rung the account is on — a second tab, or a
+       page left open across a sign-in. The server knows which rung is live, so
+       ask it rather than telling the learner to reload: the questions they have
+       just worked through are gone either way, and an error message would leave
+       them with no way forward at all. */
+    if (!r.ok && r.data && r.data.reload) {
+      const fresh = await PrepApi.post('/api/placement/start', {});
+      btn.disabled = false;
+      if (fresh.ok && fresh.data && !fresh.data.done) return loadRung(fresh.data);
+      if (fresh.ok && fresh.data && fresh.data.done) return finish(fresh.data.result, true);
+      return oops(PrepApi.err(r));
+    }
     if (!r.ok) { btn.disabled = false; return oops(PrepApi.err(r)); }
     if (r.data.done) return finish(r.data.result, false);
     loadRung(r.data);

@@ -554,6 +554,12 @@ router.post('/placement/answers', A.requireUser, A.csrfGuard, async (req, res) =
   const out = await placement.answer(req.user.id, (req.body || {}).answers);
   if (out.error === 'not-started') return bad(res, 'Start the placement test first.');
   if (out.error === 'no-answers') return bad(res, 'No answers were sent.');
+  if (out.error === 'stale-rung') {
+    return res.status(409).json({
+      error: 'This page is showing an earlier set of questions. Reload to carry on where you left off.',
+      reload: true
+    });
+  }
   if (out.done) {
     await audit(req, 'placement.done', 'users/' + req.user.id,
       { level: out.result.level, score: out.result.score });

@@ -859,6 +859,13 @@ addColumnIfMissing('questions', 'audio_sha', 'TEXT');
 addColumnIfMissing('drills', 'mode', "TEXT NOT NULL DEFAULT 'instant'");
 addColumnIfMissing('drill_answers', 'audio_key', 'TEXT');
 
+/* The six items of the rung currently on screen — the placement's equivalent of
+   `drills.item_ids_json`, and there for the same reason. `asked_json` is every
+   item dealt across the whole sitting, so it cannot answer "may this rung be
+   marked with this item": it would let rung 1's six known-correct answers be
+   replayed into rung 3. See server/placement.js answer(). */
+addColumnIfMissing('placements', 'rung_json', "TEXT NOT NULL DEFAULT '[]'");
+
 /* Which lettered VPET part an item belongs to (A-J), or NULL for families that
    have no part table. Skill alone cannot separate them: parts B and D are both
    writing essays, F and G are both listening multiple choice, H and J are both

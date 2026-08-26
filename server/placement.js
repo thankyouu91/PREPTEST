@@ -236,17 +236,40 @@ async function start(userId) {
     row = await rowOf(userId);
   }
 
-  const asked = jparse(row.asked_json, []);
-  const items = await drawRung(row.level, asked);
-  if (!items.length) {
-    /* An empty bank at this level is a content problem, not a learner problem.
-       Saying so beats handing back an empty test that cannot be finished. */
-    return { error: 'no-items', level: row.level };
+  /* A rung already on screen comes back as ITSELF.
+     This is the resume the docblock above promises, and until rung_json existed
+     the code did the opposite of it: drawRung() excludes everything in
+     asked_json, so every reload dealt six BRAND NEW items, appended them, and
+     left whatever the learner had been working on unreachable — a sitting could
+     accumulate twenty-four "asked" items inside one six-item rung. Harmless
+     while answer() marked anything it was sent; not harmless now that answer()
+     marks only this rung, which is what makes this a fix and not a tidy-up. */
+  const open = jparse(row.rung_json, []).map(Number);
+  let items = [];
+  if (open.length) {
+    const rows = await q.all(
+      `SELECT id, part, type, prompt, options_json, level, audio_key
+         FROM questions WHERE id IN (${open.map(() => '?').join(',')})`, ...open);
+    /* Back into the order they were dealt in: `IN (…)` returns them by id. */
+    const byId = new Map(rows.map(r => [r.id, r]));
+    items = open.map(id => byId.get(id)).filter(Boolean);
   }
-  /* Recorded before they are answered, so a reload cannot draw a different six
-     and quietly discard the ones already thought about. */
-  await q.run('UPDATE placements SET asked_json = ? WHERE user_id = ?',
-    JSON.stringify(asked.concat(items.map(i => i.id))), userId);
+
+  const asked = jparse(row.asked_json, []);
+  if (!items.length) {
+    items = await drawRung(row.level, asked);
+    if (!items.length) {
+      /* An empty bank at this level is a content problem, not a learner problem.
+         Saying so beats handing back an empty test that cannot be finished. */
+      return { error: 'no-items', level: row.level };
+    }
+    /* Recorded before they are answered, so a reload cannot draw a different six
+       and quietly discard the ones already thought about. `rung_json` is the same
+       list narrowed to THIS rung, which is what answer() will agree to mark. */
+    await q.run('UPDATE placements SET asked_json = ?, rung_json = ? WHERE user_id = ?',
+      JSON.stringify(asked.concat(items.map(i => i.id))),
+      JSON.stringify(items.map(i => i.id)), userId);
+  }
 
   return {
     rung: row.rung, rungs: RUNGS, level: row.level,
@@ -266,12 +289,37 @@ async function answer(userId, answers) {
   if (!row) return { error: 'not-started' };
   if (row.status === 'done') return { done: true, result: resultOf(row) };
 
+  /* Only the six items THIS rung served.
+     Without the check the browser chooses what gets marked, and all three of
+     these follow. The reply carries `rungRight`, the number of posted items that
+     came back correct, so posting one unknown item with a guessed answer says
+     whether the guess was right — an answer-key oracle over a bank shared with
+     the real papers. `right` drives nextLevel() and settle(), so posting items
+     whose answers are already known picks the placed level. And every marked
+     item is written to skill_events at weight 1, the same weight as a timed
+     paper, for work nobody did. server/drills.js and server/revision.js have
+     always guarded this; this path was the one that did not.
+     Scoped to the RUNG, not to asked_json: asked_json is the whole sitting, and
+     matching against it would still let rung 1's six known-correct answers be
+     replayed into rung 3. The fallback is for a sitting that was already in
+     flight when rung_json arrived — one replay for those few beats marking their
+     current rung zero and dropping them a level for it. */
+  const scope = new Set(jparse(row.rung_json, []).map(Number));
+  const dealt = scope.size ? scope : new Set(jparse(row.asked_json, []).map(Number));
+
+  const list = Array.isArray(answers) ? answers : [];
   const given = new Map();
-  for (const a of Array.isArray(answers) ? answers : []) {
+  for (const a of list) {
     const id = Number(a && a.questionId);
-    if (Number.isFinite(id)) given.set(id, String((a && a.answer) || ''));
+    if (Number.isFinite(id) && dealt.has(id)) given.set(id, String((a && a.answer) || ''));
   }
-  if (!given.size) return { error: 'no-answers' };
+  /* Sent nothing, and sent nothing THIS RUNG CAN USE, are different situations
+     and get different answers. The second one has an innocent cause worth naming:
+     a second tab left open on rung 1 posts rung 1's ids while the account has
+     moved on to rung 2. Marking those would score the wrong rung; scoring them
+     zero would drop the learner a level for having two tabs open. Saying "reload"
+     is the only one of the three that is true. */
+  if (!given.size) return { error: list.length ? 'stale-rung' : 'no-answers' };
 
   const keys = await q.all(
     `SELECT id, part, type, answer, level FROM questions WHERE id IN (${[...given.keys()].map(() => '?').join(',')})`,
@@ -307,7 +355,7 @@ async function answer(userId, answers) {
     const placed = settle(rights, row.level);
     await q.run(
       `UPDATE placements SET status = 'done', right_json = ?, done_at = ?,
-              placed_level = ?, placed_score = ? WHERE user_id = ?`,
+              placed_level = ?, placed_score = ?, rung_json = '[]' WHERE user_id = ?`,
       JSON.stringify(rights), nowISO(), placed.level, placed.score, userId);
     return { done: true, result: placed, rungRight: right, rungOf: PER_RUNG };
   }
@@ -318,8 +366,9 @@ async function answer(userId, answers) {
 
   const asked = jparse(row.asked_json, []);
   const items = await drawRung(level, asked);
-  await q.run('UPDATE placements SET asked_json = ? WHERE user_id = ?',
-    JSON.stringify(asked.concat(items.map(i => i.id))), userId);
+  await q.run('UPDATE placements SET asked_json = ?, rung_json = ? WHERE user_id = ?',
+    JSON.stringify(asked.concat(items.map(i => i.id))),
+    JSON.stringify(items.map(i => i.id)), userId);
 
   return {
     rung: row.rung + 1, rungs: RUNGS, level,
