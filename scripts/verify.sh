@@ -203,6 +203,9 @@ node scripts/test-catalog.mjs || fail=1
 step "Placement (the gate is a URL rule, and eighteen answers must reach skill_events)"
 node scripts/test-placement.mjs || fail=1
 
+step "Ability isolation (one learner's work is never filed under another)"
+node scripts/test-ability-isolation.mjs || fail=1
+
 step "Placement audio (listening items must be audible)"
 node scripts/test-placement-audio.mjs || fail=1
 

@@ -187,7 +187,13 @@ async function submit(userId, kind, roundId, answers) {
       user_id: userId, source: 'learn',
       /* The round id makes a re-post of the SAME round idempotent while a new
          round still counts. Supplied by the browser and namespaced by kind, so
-         two kinds cannot collide on one number. */
+         two kinds cannot collide on one number.
+         Two LEARNERS could, though, and that is not this line's job to prevent:
+         the round id is a small number the browser picks, so any two accounts
+         practising the same kind collide constantly. What stops it is that
+         skill_events is now unique on (user_id, source, ref_id, item_key), so
+         this ref_id only ever has to be unique within one account — which is
+         exactly the idempotency it was written for. */
       ref_id: 'learn:' + kind + ':' + String(roundId || '0').slice(0, 40),
       item_key: kind + row.id + ':' + field,
       skill: spec.skill, level: row.level || null,

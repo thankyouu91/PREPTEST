@@ -615,7 +615,11 @@ CREATE TABLE IF NOT EXISTS skill_events (
   max_score REAL NOT NULL,
   weight    REAL NOT NULL DEFAULT 1,       -- an item under exam conditions counts for more
   at        TEXT NOT NULL,
-  UNIQUE (source, ref_id, item_key)
+  /* user_id FIRST, and it is not decoration. Without it the key identifies a
+     piece of work rather than a learner's piece of work, and any two learners
+     whose ref_id happens to match write onto one row — see widenSkillEventsKey
+     in the migrations below for how that happened and what it cost. */
+  UNIQUE (user_id, source, ref_id, item_key)
 );
 CREATE INDEX IF NOT EXISTS idx_se_user ON skill_events (user_id, at DESC);
 CREATE INDEX IF NOT EXISTS idx_se_part ON skill_events (user_id, part, at DESC);
@@ -921,6 +925,89 @@ addColumnIfMissing('orders', 'ref', 'TEXT');
 addColumnIfMissing('orders', 'gateway_ref', 'TEXT');
 addColumnIfMissing('orders', 'paid_at', 'TEXT');
 addIndex('CREATE UNIQUE INDEX IF NOT EXISTS idx_orders_ref ON orders (ref)');
+
+/* skill_events: put the learner INTO the key that is supposed to identify their
+   own work.
+ *
+ * The constraint was UNIQUE (source, ref_id, item_key), and ability.record()
+ * upserts on that same triple — without user_id in either. It held only because
+ * every producer happened to build ref_id from a global surrogate: an attempt
+ * id, a drills row id, a placements row id. Nothing enforced that, and one
+ * producer does not do it. server/learn-practice.js builds
+ *
+ *     ref_id = 'learn:' + kind + ':' + roundId
+ *
+ * from a round id SUPPLIED BY THE BROWSER, and its comment says it is
+ * "namespaced by kind, so two kinds cannot collide" — which is true, and not
+ * the collision that matters. Two LEARNERS practising the same kind on the same
+ * round number produce the same triple, and the ON CONFLICT then fires across
+ * accounts.
+ *
+ * What that does is worse than losing the second write. The DO UPDATE sets the
+ * score and leaves user_id alone, because user_id is not in the SET either — so
+ * one learner's answers are written on top of another learner's row, under the
+ * first learner's name. The victim's estimate moves for work they never did,
+ * and the author of the work sees nothing.
+ *
+ * Not yet triggered in production: nothing has used the self-study area, so
+ * there are no `learn` rows to have collided. It would have started with the
+ * first two learners who did.
+ *
+ * SQLite cannot alter a table-level UNIQUE, so the table is rebuilt. Widening a
+ * unique tuple only ever permits more rows, so every existing row carries over.
+ */
+(function widenSkillEventsKey() {
+  const wanted = ['user_id', 'source', 'ref_id', 'item_key'];
+  const already = db.prepare("PRAGMA index_list('skill_events')").all()
+    .filter(i => i.unique)
+    .some(i => {
+      const cols = db.prepare(`PRAGMA index_info('${i.name}')`).all().map(c => c.name);
+      return cols.length === wanted.length && wanted.every((w, n) => cols[n] === w);
+    });
+  if (already) return;
+
+  /* Foreign keys off for the swap, as SQLite requires for a table rebuild, and
+     restored afterwards whatever happens. Outside a transaction because the
+     pragma is a no-op inside one. */
+  const fk = db.prepare('PRAGMA foreign_keys').get();
+  db.exec('PRAGMA foreign_keys = OFF');
+  try {
+    db.exec('BEGIN');
+    db.exec(`
+      CREATE TABLE skill_events_rebuilt (
+        id        INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id   INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        source    TEXT NOT NULL,
+        ref_id    TEXT NOT NULL,
+        item_key  TEXT NOT NULL,
+        skill     TEXT NOT NULL,
+        part      TEXT,
+        topic     TEXT,
+        level     TEXT,
+        earned    REAL NOT NULL,
+        max_score REAL NOT NULL,
+        weight    REAL NOT NULL DEFAULT 1,
+        at        TEXT NOT NULL,
+        UNIQUE (user_id, source, ref_id, item_key)
+      );
+      INSERT INTO skill_events_rebuilt
+        (id,user_id,source,ref_id,item_key,skill,part,topic,level,earned,max_score,weight,at)
+        SELECT id,user_id,source,ref_id,item_key,skill,part,topic,level,earned,max_score,weight,at
+          FROM skill_events;
+      DROP TABLE skill_events;
+      ALTER TABLE skill_events_rebuilt RENAME TO skill_events;
+      CREATE INDEX IF NOT EXISTS idx_se_user ON skill_events (user_id, at DESC);
+      CREATE INDEX IF NOT EXISTS idx_se_part ON skill_events (user_id, part, at DESC);
+    `);
+    db.exec('COMMIT');
+    console.log('[schema] skill_events: unique key now includes user_id');
+  } catch (e) {
+    try { db.exec('ROLLBACK'); } catch (e2) {}
+    throw e;
+  } finally {
+    if (!fk || fk.foreign_keys) db.exec('PRAGMA foreign_keys = ON');
+  }
+})();
 
 /* ============================== HELPERS ============================== */
 const nowISO = () => new Date().toISOString();

@@ -229,7 +229,12 @@ async function record(events) {
       `INSERT INTO skill_events
          (user_id, source, ref_id, item_key, skill, part, topic, level, earned, max_score, weight, at)
        VALUES (?,?,?,?,?,?,?,?,?,?,?,?)
-       ON CONFLICT(source, ref_id, item_key) DO UPDATE SET
+       /* user_id in the conflict target, matching the constraint. It was absent
+          from both, so a matching triple from a DIFFERENT learner updated this
+          row in place — and since user_id is not in the SET either, it kept the
+          original owner. One learner's answers, recorded against another's
+          name. */
+       ON CONFLICT(user_id, source, ref_id, item_key) DO UPDATE SET
          earned=excluded.earned, max_score=excluded.max_score,
          weight=excluded.weight, skill=excluded.skill, part=excluded.part,
          topic=excluded.topic, level=excluded.level, at=excluded.at`,
