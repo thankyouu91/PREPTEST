@@ -52,18 +52,54 @@ function parseCookies(req) {
   return out;
 }
 
-/* Secure on in production, without needing a second switch.
+/**
+ * Did this request reach us over TLS — whatever the environment claims?
+ *
+ * Deliberately NOT `req.secure` alone. `req.secure` believes X-Forwarded-Proto
+ * only as far as TRUST_PROXY allows, and the failure this exists to survive is
+ * precisely the one where the environment went missing: no NODE_ENV, and no
+ * TRUST_PROXY either, so `req.secure` reads false on a request that genuinely
+ * arrived over HTTPS. Reading the header directly is the only thing that still
+ * knows the truth at that moment.
+ *
+ * Trusting an unverified header is safe HERE and nowhere else, because of the
+ * direction it can be wrong in. A forged `X-Forwarded-Proto: https` can only
+ * make the sender's OWN cookie carry Secure — a restriction, not a permission,
+ * and one that hurts nobody but the forger. Compare req.ip, where believing the
+ * same class of header hands an attacker somebody else's rate-limit bucket;
+ * that one stays gated on TRUST_PROXY.
+ */
+function arrivedOverTls(req) {
+  if (!req) return false;
+  if (req.secure) return true;
+  const claimed = req.headers && req.headers['x-forwarded-proto'];
+  return String(claimed || '').split(',')[0].trim().toLowerCase() === 'https';
+}
+
+/* Secure on in production, without needing a second switch — and on any request
+   that actually came over TLS, whether or not the environment says so.
+ *
    It used to be `FORCE_SECURE_COOKIE === '1'` alone, so NODE_ENV=production by
    itself shipped session cookies that a browser would send over plain HTTP —
    two switches for one intention, which is how a deployment goes out unprotected
-   while looking configured. Production now opts in by itself; the env var stays
-   as an explicit override in both directions, '1' to force it on for a dev box
-   behind a TLS proxy, '0' to force it off if a production run ever has to serve
-   plain HTTP on purpose. */
-function cookieIsSecure(env) {
+   while looking configured. Production then opted in by itself, which was better
+   and still not enough: it made the flag depend on ONE environment variable
+   surviving, and on 26/08/2026 that variable did not. A file-permission mistake
+   left the process without NODE_ENV, the site kept serving happily over HTTPS,
+   and every session cookie went out without Secure. Nothing failed, nothing was
+   logged, and the only reason it was caught is that somebody looked.
+ *
+   So the request itself now gets a vote, and it is the deciding one. A missing
+   variable can no longer downgrade a connection that is demonstrably encrypted.
+   The env var stays as an explicit override in both directions: '1' to force it
+   on for a dev box behind a TLS proxy, '0' to force it off if a production run
+   ever has to serve plain HTTP on purpose — and security.js says so out loud
+   when that override is what is holding Secure off. */
+function cookieIsSecure(env, req) {
   const forced = (env || {}).FORCE_SECURE_COOKIE;
   if (forced === '1') return true;
   if (forced === '0') return false;
+  if (arrivedOverTls(req)) return true;
   return (env || {}).NODE_ENV === 'production';
 }
 
@@ -76,7 +112,10 @@ function setCookie(res, name, value, opts) {
   const bits = [`${name}=${encodeURIComponent(value)}`, 'Path=/', `SameSite=${sameSite}`];
   if (opts.httpOnly !== false) bits.push('HttpOnly');
   if (opts.maxAge != null) bits.push('Max-Age=' + opts.maxAge);
-  if (cookieIsSecure(process.env)) bits.push('Secure');
+  /* res.req is Express's back-reference to the request being answered. Reading
+     it here rather than threading a `req` through a dozen call sites keeps every
+     caller unchanged, and means no future one can forget to pass it. */
+  if (cookieIsSecure(process.env, res && res.req)) bits.push('Secure');
   const prev = res.getHeader('Set-Cookie');
   const list = prev ? (Array.isArray(prev) ? prev.slice() : [prev]) : [];
   list.push(bits.join('; '));
@@ -602,7 +641,7 @@ async function reportAdminAccounts() {
 
 module.exports = {
   hashPassword, verifyPassword,
-  parseCookies, setCookie, cookieIsSecure,
+  parseCookies, setCookie, cookieIsSecure, arrivedOverTls,
   createSession, destroySession, currentAdmin, purgeSessions,
   createUserSession, destroyUserSession, dropUserSessions, currentUser, requireUser,
   ensureCsrfCookie, setPreviewFlag,

@@ -312,6 +312,32 @@ try {
   ok(A_.cookieIsSecure({ NODE_ENV: 'production', FORCE_SECURE_COOKIE: '0' }) === false,
     'FORCE_SECURE_COOKIE=0 is the deliberate way out, and has to be deliberate');
 
+  /* The incident of 26/08/2026, as a test.
+     A file-permission mistake left the process with NO environment at all: no
+     NODE_ENV, and no TRUST_PROXY either — so `req.secure` read false on requests
+     that had genuinely arrived over HTTPS, and every session cookie went out
+     without Secure. Nothing failed and nothing was logged.
+     The request itself is the one witness that still knew the truth. */
+  const tlsReq = { headers: { 'x-forwarded-proto': 'https' }, secure: false };
+  ok(A_.cookieIsSecure({}, tlsReq) === true,
+    'A request that arrived over TLS gets Secure even with the whole environment missing');
+  ok(A_.cookieIsSecure({}, { headers: {}, secure: true }) === true,
+    'and so does one Express itself already knows is secure');
+  ok(A_.cookieIsSecure({}, { headers: { 'x-forwarded-proto': 'http' }, secure: false }) === false,
+    'while a genuine plain-HTTP request still gets its cookies, so local development works');
+  ok(A_.cookieIsSecure({ FORCE_SECURE_COOKIE: '0' }, tlsReq) === false,
+    'FORCE_SECURE_COOKIE=0 still overrides even that — deliberate stays deliberate');
+
+  /* Reading an unverified header is safe in this ONE direction: a forged
+     X-Forwarded-Proto can only put Secure on the forger's own cookie, which is a
+     restriction on themselves. req.ip may never be decided this way. */
+  ok(A_.arrivedOverTls({ headers: { 'x-forwarded-proto': 'https, http' }, secure: false }) === true,
+    'The first hop of a comma-joined X-Forwarded-Proto is the one that counts');
+  ok(A_.arrivedOverTls({ headers: { 'x-forwarded-proto': 'HTTPS' }, secure: false }) === true,
+    'and the comparison is case-insensitive, because proxies disagree about that');
+  ok(A_.arrivedOverTls(undefined) === false,
+    'No request at all is not a TLS request');
+
   head('Misconfigurations that would otherwise stay silent');
 
   /* Both of these were found on a real deployment and neither said anything.
@@ -362,6 +388,27 @@ try {
     const tls = withEnv_({ NODE_ENV: 'production' }, () =>
       say(() => sec.checkDeployment({ headers: { 'x-forwarded-proto': 'https' }, secure: true })));
     ok(!/Secure cookies/.test(tls), 'and neither does a production run that really is on HTTPS');
+
+    /* The case that had no warning at all until 26/08/2026: HTTPS in, cookies out
+       without Secure. After the fix the only way to reach it is to ask for it. */
+    sec.resetWarnings();
+    const held = withEnv_({ NODE_ENV: 'production', FORCE_SECURE_COOKIE: '0' }, () =>
+      say(() => sec.checkDeployment({ headers: { 'x-forwarded-proto': 'https' }, secure: true })));
+    ok(/WITHOUT Secure/.test(held),
+      'An HTTPS request answered with a non-Secure cookie is now reported', held.slice(0, 90));
+    ok(/lift a signed-in session/.test(held),
+      'and it names what an attacker gets, not just the setting that is wrong');
+    ok(/FORCE_SECURE_COOKIE=0/.test(held),
+      'and points at the switch actually holding it off');
+
+    /* And the incident itself no longer reaches that state: with the environment
+       gone, the request alone is enough to keep Secure on. */
+    sec.resetWarnings();
+    const stripped = withEnv_({ NODE_ENV: undefined, FORCE_SECURE_COOKIE: undefined }, () =>
+      say(() => sec.checkDeployment({ headers: { 'x-forwarded-proto': 'https' }, secure: false })));
+    ok(!/WITHOUT Secure/.test(stripped),
+      'A process that lost its whole environment still issues Secure cookies over TLS',
+      stripped.slice(0, 90));
     sec.resetWarnings();
   }
 

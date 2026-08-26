@@ -95,13 +95,29 @@ function checkDeployment(req) {
      and lands straight back on the sign-in page, with nothing in any log. */
   const proto = String(req.headers['x-forwarded-proto'] || '').split(',')[0].trim() ||
     (req.secure ? 'https' : 'http');
-  if (proto === 'http' && A.cookieIsSecure(process.env)) {
+  if (proto === 'http' && A.cookieIsSecure(process.env, req)) {
     warnOnce('secure-cookie',
       'cookies are being issued with Secure, but this request arrived over plain HTTP.',
       'The browser will accept the session cookie and never send it back: signing in',
       'appears to work and lands straight back on the sign-in page.',
       'Terminate TLS in front of this and forward X-Forwarded-Proto: https — or, knowing',
       'what it costs, set FORCE_SECURE_COOKIE=0 until there is a certificate.');
+  }
+
+  /* 3. The mirror of 2, and the one that was missing on 26/08/2026.
+     A request arrives over TLS and the cookie goes back WITHOUT Secure. Nothing
+     breaks, nothing is logged, the site looks perfect — and every session cookie
+     is one a browser will hand over on a plain-HTTP request. It stayed invisible
+     for three minutes only because somebody happened to check the headers.
+     `cookieIsSecure` now takes the request into account, so reaching this state
+     means FORCE_SECURE_COOKIE=0 is deliberately holding the flag off. That can be
+     a real decision, and it is still worth saying out loud on an HTTPS site. */
+  if (proto === 'https' && !A.cookieIsSecure(process.env, req)) {
+    warnOnce('insecure-cookie-over-tls',
+      'this request arrived over HTTPS, but cookies are going out WITHOUT Secure.',
+      'A browser will then send the session cookie over plain HTTP too, so anyone on',
+      'the network can lift a signed-in session. Nothing here will fail or look wrong.',
+      'FORCE_SECURE_COOKIE=0 is what is holding it off — remove it.');
   }
 }
 
