@@ -79,12 +79,13 @@
         </fieldset>
         <label class="flex items-start gap-3 text-[14px] font-medium text-muted select-none">
           <input type="checkbox" id="terms" class="mt-0.5 w-4 h-4 rounded accent-[color:var(--color-accent)]">
-          <!-- The privacy half is a real link now that there is a page behind it.
-               A consent tick-box naming a document nobody can open is the worst
-               shape this control can have: it collects the agreement and gives
-               nothing to agree WITH. Terms stays bold-not-linked until that page
-               exists too — pointing it at a 404 would be the same fault again. -->
-          <span>I agree to the <b class="text-ink">Terms of use</b> and the
+          <!-- Both halves are real links now that both pages exist. A consent
+               tick-box naming a document nobody can open is the worst shape this
+               control can have: it collects the agreement and gives nothing to
+               agree WITH. Opening in a new tab on purpose — a half-filled
+               registration form must survive somebody reading what they sign. -->
+          <span>I agree to the
+            <a class="font-bold text-brand-strong hover:underline" href="/prep/dieu-khoan/" target="_blank" rel="noopener">Terms of use</a> and the
             <a class="font-bold text-brand-strong hover:underline" href="/prep/rieng-tu/" target="_blank" rel="noopener">Privacy policy</a>.</span>
         </label>
         <p class="field-error -mt-2" id="err-terms">You need to accept the terms to continue.</p>

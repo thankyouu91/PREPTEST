@@ -265,6 +265,11 @@ app.get('/prep/tai-lieu/', serveHtmlWithNonce('prep/tai-lieu/index.html'));
    bản ghi âm được gửi ra ngoài để chấm, mà người cần biết điều đó nhất là người
    đang cân nhắc có đăng ký hay không — tức là người chưa có tài khoản. */
 app.get('/prep/rieng-tu/', serveHtmlWithNonce('prep/rieng-tu/index.html'));
+/* Điều khoản và chính sách hoàn tiền, cùng lý do công khai như trang trên: người
+   cần đọc chúng nhất là người đang cân nhắc trả tiền, và người đó chưa đăng nhập.
+   Bắt đăng nhập ở đây là giấu điều khoản bán hàng khỏi chính người sắp mua. */
+app.get('/prep/dieu-khoan/', serveHtmlWithNonce('prep/dieu-khoan/index.html'));
+app.get('/prep/hoan-tien/', serveHtmlWithNonce('prep/hoan-tien/index.html'));
 /* Shown by the service worker when a navigation cannot reach the network.
    Public: the point of it is to work with no session and no radio. */
 app.get('/prep/offline/', serveHtmlWithNonce('prep/offline.html'));

@@ -1,0 +1,275 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Chính sách hoàn tiền · VPET Prep</title>
+  <meta name="description" content="Hoàn tiền khi mã kích hoạt chưa được sử dụng. Đã kích hoạt thì không hoàn. Kèm cách gửi yêu cầu, thời gian xử lý và các trường hợp lỗi từ phía nền tảng.">
+  <meta name="theme-color" content="#1c3d8f">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="preload" href="/fonts/pjs-800-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/fonts/pjs-400-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/tailwind-built.css">
+  <style>body{font-family:'Plus Jakarta Sans',system-ui,sans-serif}</style>
+  <script>
+    /* Boot: dark mode + tenant before paint, so the colours do not flash */
+    (function(){try{
+      var t=localStorage.getItem('prep.theme');
+      if(t==='dark'||(!t&&matchMedia('(prefers-color-scheme: dark)').matches))document.documentElement.classList.add('dark');
+      var tn=localStorage.getItem('prep.tenant');
+      if(tn&&tn!=='default')document.documentElement.setAttribute('data-tenant',tn);
+    }catch(e){}})();
+  </script>
+  <script src="/i18n.js"></script>
+</head>
+<body class="bg-surface text-ink">
+
+<header class="sticky top-0 z-40 border-b border-line bg-[color:var(--color-surface)]/85 backdrop-blur-md">
+  <div class="max-w-shell mx-auto flex items-center gap-4 h-16 px-4 sm:px-6">
+    <a href="/prep/landing/" class="flex items-center gap-2.5 shrink-0" aria-label="VPET Prep home">
+      <span class="inline-flex items-center justify-center rounded-xl text-white panel-brand w-9 h-9">
+        <svg viewBox="0 0 24 24" class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21.4 10.9a1 1 0 0 0 0-1.8L12.8 5.2a2 2 0 0 0-1.6 0L2.6 9.1a1 1 0 0 0 0 1.8l8.6 3.9a2 2 0 0 0 1.6 0Z"/><path d="M22 10.5V16"/><path d="M6 12.5V16a6 3 0 0 0 12 0v-3.5"/></svg>
+      </span>
+      <b data-brand-name class="font-extrabold tracking-tight text-[17px] hidden sm:inline">VPET Prep</b>
+    </a>
+    <a href="/prep/landing/" class="text-sm font-semibold text-muted hover:text-ink transition ms-2 hidden md:inline">Về trang chủ</a>
+    <div class="flex items-center gap-2 ms-auto">
+      <a href="/prep/dang-ky/" class="btn btn-primary btn-sm sm:btn-md">Bắt đầu miễn phí</a>
+    </div>
+  </div>
+</header>
+
+<main id="main">
+
+  <section class="halo-brand border-b border-line">
+    <div class="max-w-shell mx-auto px-4 sm:px-6 pt-12 pb-10 lg:pt-16">
+      <p class="text-[13px] font-bold uppercase tracking-[0.16em] text-muted">VPET Prep</p>
+      <h1 class="text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight mt-3 text-balance">Chính sách hoàn tiền</h1>
+      <p class="text-muted text-[15px] leading-relaxed mt-3 max-w-[62ch]">
+        Toàn bộ chính sách xoay quanh đúng một câu hỏi: <b class="text-ink">mã kích hoạt đã được
+        nhập vào tài khoản nào chưa?</b> Trước khi nhập thì hoàn được; sau khi nhập thì không.
+      </p>
+      <p class="text-[13px] text-muted mt-5">Cập nhật: 26/08/2026</p>
+    </div>
+  </section>
+
+  <div class="max-w-shell mx-auto px-4 sm:px-6 py-12 grid lg:grid-cols-[minmax(0,1fr)_260px] gap-10">
+
+    <div class="grid gap-10 max-w-[68ch]">
+
+      <!-- 1 -->
+      <section aria-labelledby="h-nguyen-tac">
+        <h2 id="h-nguyen-tac" class="text-2xl font-extrabold tracking-tight scroll-mt-24">1. Nguyên tắc</h2>
+
+        <div class="card p-5 sm:p-6 mt-4 border-s-4 border-s-[color:var(--color-brand-strong)]">
+          <p class="text-[16px] leading-relaxed">
+            <b>Hoàn 100% khi mã kích hoạt chưa được sử dụng.</b><br>
+            <b>Đã kích hoạt thì không hoàn tiền</b>, kể cả khi bạn chưa làm bài nào.
+          </p>
+        </div>
+
+        <p class="text-[15px] leading-relaxed text-muted mt-4">
+          Ranh giới đặt ở đó vì đó là mốc bạn thực sự nhận được thứ mình mua. Khi bạn trả tiền,
+          nền tảng cấp cho bạn một mã ở trạng thái chưa kích hoạt — chưa gắn với tài khoản nào và
+          chưa mở khoá gì cả. Kỳ hạn sử dụng
+          <b class="text-ink">chỉ bắt đầu chạy từ lúc mã được nhập vào một tài khoản</b>, không phải
+          từ lúc mua.
+        </p>
+        <p class="text-[15px] leading-relaxed text-muted mt-2">
+          Nghĩa là trước khi kích hoạt, bạn chưa dùng đến một ngày nào của gói, nên hoàn lại toàn bộ
+          là đúng. Sau khi kích hoạt, quyền truy cập đã mở và đồng hồ đã chạy — toàn bộ kho đề, phần
+          tự học và hệ thống chấm đã nằm trong tay bạn, dùng hay không là lựa chọn của bạn.
+        </p>
+      </section>
+
+      <!-- 2 -->
+      <section aria-labelledby="h-hai-truong-hop">
+        <h2 id="h-hai-truong-hop" class="text-2xl font-extrabold tracking-tight scroll-mt-24">2. Hai trường hợp, nhìn là biết</h2>
+        <p class="text-[15px] leading-relaxed text-muted mt-3">
+          Bạn tự kiểm tra được, không cần hỏi ai: vào mục
+          <b class="text-ink">"Code của tôi"</b> và xem trạng thái của mã.
+        </p>
+        <div class="overflow-x-auto mt-4">
+          <table class="w-full text-[14.5px] border border-line rounded-xl overflow-hidden">
+            <thead class="bg-[color:var(--color-card)]">
+              <tr>
+                <th class="text-start font-bold p-3 border-b border-line">Trạng thái mã</th>
+                <th class="text-start font-bold p-3 border-b border-line">Nghĩa là</th>
+                <th class="text-start font-bold p-3 border-b border-line">Hoàn tiền</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="p-3 border-b border-line align-top"><span class="badge badge-ok">Chưa kích hoạt</span></td>
+                <td class="p-3 border-b border-line align-top text-muted">Mã đã được cấp nhưng chưa nhập vào tài khoản nào.</td>
+                <td class="p-3 border-b border-line align-top"><b class="text-ink">Hoàn 100%</b></td>
+              </tr>
+              <tr>
+                <td class="p-3 align-top"><span class="badge badge-hl">Đã kích hoạt</span></td>
+                <td class="p-3 align-top text-muted">Mã đã được nhập vào một tài khoản; kỳ hạn đã bắt đầu chạy.</td>
+                <td class="p-3 align-top"><b class="text-ink">Không hoàn</b></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="text-[15px] leading-relaxed text-muted mt-4">
+          Nếu bạn mua nhiều mã trong một đơn, mỗi mã được xét riêng. Kích hoạt một mã không làm mất
+          quyền hoàn tiền của những mã còn lại trong cùng đơn hàng.
+        </p>
+      </section>
+
+      <!-- 3 -->
+      <section aria-labelledby="h-khong-hoan">
+        <h2 id="h-khong-hoan" class="text-2xl font-extrabold tracking-tight scroll-mt-24">3. Nói rõ những trường hợp không hoàn</h2>
+        <p class="text-[15px] leading-relaxed text-muted mt-3">
+          Liệt kê thẳng ra để bạn cân nhắc trước khi bấm nút kích hoạt, thay vì biết sau khi đã bấm:
+        </p>
+        <ul class="grid gap-2.5 mt-4 text-[15px] leading-relaxed text-muted">
+          <li>Mã đã kích hoạt nhưng <b class="text-ink">chưa làm bài nào</b> — vẫn không hoàn, vì kỳ hạn đã bắt đầu.</li>
+          <li>Mã đã kích hoạt và <b class="text-ink">đã dùng một phần</b> kỳ hạn — không hoàn phần còn lại.</li>
+          <li>Kích hoạt <b class="text-ink">nhầm tài khoản</b> — mã đã dùng rồi, và một mã chỉ thuộc về một tài khoản. Hãy kiểm tra kỹ đang đăng nhập bằng tài khoản nào trước khi nhập mã.</li>
+          <li>Bạn <b class="text-ink">đổi ý</b> sau khi kích hoạt, hoặc không sắp xếp được thời gian học.</li>
+          <li>Điểm luyện tập <b class="text-ink">không như kỳ vọng</b>, hoặc kết quả kỳ thi thật không như mong muốn. Nền tảng là công cụ luyện tập, không bảo đảm điểm số.</li>
+          <li>Tài khoản bị khoá do <b class="text-ink">vi phạm điều khoản</b> (phát tán đề, bán lại tài khoản, tấn công hệ thống).</li>
+          <li>Mã <b class="text-ink">quá hạn kích hoạt</b> mà không được nhập trong thời hạn ghi trên mã.</li>
+        </ul>
+      </section>
+
+      <!-- 4 -->
+      <section aria-labelledby="h-loi-nen-tang">
+        <h2 id="h-loi-nen-tang" class="text-2xl font-extrabold tracking-tight scroll-mt-24">4. Khi lỗi thuộc về nền tảng</h2>
+        <p class="text-[15px] leading-relaxed text-muted mt-3">
+          Các trường hợp dưới đây <b class="text-ink">được hoàn tiền dù mã đã kích hoạt hay chưa</b>,
+          vì lỗi không nằm ở phía bạn:
+        </p>
+        <ul class="grid gap-2.5 mt-4 text-[15px] leading-relaxed text-muted">
+          <li><b class="text-ink">Bị trừ tiền hai lần</b> cho cùng một đơn hàng.</li>
+          <li><b class="text-ink">Đã trừ tiền nhưng không nhận được mã</b> sau khi đơn đã được cổng thanh toán xác nhận.</li>
+          <li><b class="text-ink">Trừ tiền cho một giao dịch bạn không thực hiện.</b></li>
+          <li><b class="text-ink">Dịch vụ hỏng kéo dài</b> khiến bạn không dùng được phần đáng kể của gói. Chúng tôi sẽ bù thời gian vào kỳ hạn trước; nếu việc bù không giải quyết được vấn đề thì hoàn tiền theo phần chưa dùng.</li>
+          <li><b class="text-ink">Chúng tôi ngừng cung cấp dịch vụ</b> khi gói của bạn còn hiệu lực — hoàn theo phần thời gian còn lại.</li>
+        </ul>
+        <p class="text-[15px] leading-relaxed text-muted mt-4">
+          Đây không phải ngoại lệ ban ơn: bạn trả tiền cho một dịch vụ hoạt động được, và khi nó
+          không hoạt động được thì tiền quay lại.
+        </p>
+      </section>
+
+      <!-- 5 -->
+      <section aria-labelledby="h-cach-yeu-cau">
+        <h2 id="h-cach-yeu-cau" class="text-2xl font-extrabold tracking-tight scroll-mt-24">5. Cách gửi yêu cầu</h2>
+        <p class="text-[15px] leading-relaxed text-muted mt-3">
+          Gửi thư <b class="text-ink">từ chính địa chỉ email đã đăng ký tài khoản</b> tới
+          <a class="font-bold text-brand-strong hover:underline" href="mailto:hotro@vpetprep.vn">hotro@vpetprep.vn</a>,
+          tiêu đề ghi <span class="font-mono text-[13.5px]">Yêu cầu hoàn tiền</span>. Gửi từ đúng email
+          đăng ký là cách chúng tôi xác minh bạn là chủ đơn hàng.
+        </p>
+        <div class="card p-5 mt-4">
+          <p class="text-[15px] font-bold">Trong thư cần có</p>
+          <ul class="grid gap-2 mt-3 text-[15px] leading-relaxed text-muted">
+            <li>Mã tham chiếu đơn hàng (xem trong mục "Code của tôi").</li>
+            <li>Mã kích hoạt bạn muốn hoàn.</li>
+            <li>Lý do, viết ngắn gọn cũng được.</li>
+          </ul>
+        </div>
+        <p class="text-[15px] leading-relaxed text-muted mt-4">
+          <b class="text-ink">Đừng kích hoạt mã trong lúc chờ trả lời.</b> Chỉ cần nhập mã một lần
+          là yêu cầu hoàn tiền không còn hiệu lực, kể cả khi bạn đã gửi thư trước đó.
+        </p>
+      </section>
+
+      <!-- 6 -->
+      <section aria-labelledby="h-xu-ly">
+        <h2 id="h-xu-ly" class="text-2xl font-extrabold tracking-tight scroll-mt-24">6. Thời gian và hình thức hoàn</h2>
+        <div class="overflow-x-auto mt-3">
+          <table class="w-full text-[14.5px] border border-line rounded-xl overflow-hidden">
+            <tbody>
+              <tr>
+                <td class="p-3 border-b border-line font-bold align-top w-[45%]">Phản hồi yêu cầu</td>
+                <td class="p-3 border-b border-line text-muted">Trong 3 ngày làm việc.</td>
+              </tr>
+              <tr>
+                <td class="p-3 border-b border-line font-bold align-top">Chuyển hoàn sau khi duyệt</td>
+                <td class="p-3 border-b border-line text-muted">Trong 7 ngày làm việc.</td>
+              </tr>
+              <tr>
+                <td class="p-3 border-b border-line font-bold align-top">Tiền về tài khoản của bạn</td>
+                <td class="p-3 border-b border-line text-muted">Thêm 3–14 ngày làm việc, tuỳ ngân hàng và cổng thanh toán. Quãng này nằm ngoài tầm kiểm soát của chúng tôi.</td>
+              </tr>
+              <tr>
+                <td class="p-3 font-bold align-top">Hình thức</td>
+                <td class="p-3 text-muted">Hoàn về <b class="text-ink">đúng phương thức bạn đã thanh toán</b>. Chúng tôi không hoàn bằng tiền mặt hay chuyển sang tài khoản của người khác.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="text-[15px] leading-relaxed text-muted mt-4">
+          Chúng tôi không thu phí xử lý hoàn tiền. Nếu cổng thanh toán hoặc ngân hàng có thu phí
+          giao dịch riêng, phần phí đó nằm ngoài số tiền chúng tôi hoàn.
+        </p>
+      </section>
+
+      <!-- 7 -->
+      <section aria-labelledby="h-sau-khi-hoan">
+        <h2 id="h-sau-khi-hoan" class="text-2xl font-extrabold tracking-tight scroll-mt-24">7. Mã sau khi được hoàn tiền</h2>
+        <p class="text-[15px] leading-relaxed text-muted mt-3">
+          Ngay khi yêu cầu được duyệt, mã bị <b class="text-ink">thu hồi</b> và không kích hoạt được
+          nữa trên bất kỳ tài khoản nào. Đơn hàng tương ứng được ghi nhận là đã hoàn tiền.
+        </p>
+        <p class="text-[15px] leading-relaxed text-muted mt-2">
+          Nếu bạn đã đưa mã cho người khác, hãy báo họ trước khi gửi yêu cầu — sau khi thu hồi, mã
+          trong tay họ sẽ không dùng được.
+        </p>
+      </section>
+
+      <!-- 8 -->
+      <section aria-labelledby="h-khieu-nai">
+        <h2 id="h-khieu-nai" class="text-2xl font-extrabold tracking-tight scroll-mt-24">8. Nếu bạn không đồng ý với quyết định</h2>
+        <p class="text-[15px] leading-relaxed text-muted mt-3">
+          Trả lời thẳng vào thư từ chối và nêu lý do bạn cho rằng quyết định chưa đúng. Chúng tôi
+          sẽ xem lại và trả lời trong 5 ngày làm việc. Nếu vẫn không thống nhất được, bạn có quyền
+          khiếu nại tới cơ quan bảo vệ quyền lợi người tiêu dùng theo quy định của pháp luật Việt Nam.
+        </p>
+        <p class="text-[15px] leading-relaxed text-muted mt-2">
+          Chính sách này là một phần của
+          <a class="font-bold text-brand-strong hover:underline" href="/prep/dieu-khoan/">Điều khoản sử dụng</a>.
+        </p>
+      </section>
+
+      <nav class="border-t border-line pt-6" aria-label="Trang pháp lý khác">
+        <p class="text-[13px] font-bold uppercase tracking-wider text-muted">Xem thêm</p>
+        <ul class="flex flex-wrap gap-x-6 gap-y-2 mt-3 text-[14.5px] font-semibold">
+          <li><a class="text-brand-strong hover:underline" href="/prep/dieu-khoan/">Điều khoản sử dụng</a></li>
+          <li><a class="text-brand-strong hover:underline" href="/prep/rieng-tu/">Chính sách quyền riêng tư</a></li>
+        </ul>
+      </nav>
+
+    </div>
+
+    <!-- Mục lục: dính theo màn hình trên máy tính, ẩn trên điện thoại vì đã có tiêu đề rõ -->
+    <nav class="hidden lg:block" aria-label="Mục lục">
+      <div class="sticky top-24">
+        <p class="text-[12px] font-bold uppercase tracking-wider text-muted">Trong trang này</p>
+        <ul class="grid gap-2 mt-3 text-[14px] font-medium">
+          <li><a class="text-muted hover:text-ink transition" href="#h-nguyen-tac">1. Nguyên tắc</a></li>
+          <li><a class="text-muted hover:text-ink transition" href="#h-hai-truong-hop">2. Hai trường hợp</a></li>
+          <li><a class="text-muted hover:text-ink transition" href="#h-khong-hoan">3. Trường hợp không hoàn</a></li>
+          <li><a class="text-muted hover:text-ink transition" href="#h-loi-nen-tang">4. Khi lỗi thuộc về nền tảng</a></li>
+          <li><a class="text-muted hover:text-ink transition" href="#h-cach-yeu-cau">5. Cách gửi yêu cầu</a></li>
+          <li><a class="text-muted hover:text-ink transition" href="#h-xu-ly">6. Thời gian và hình thức</a></li>
+          <li><a class="text-muted hover:text-ink transition" href="#h-sau-khi-hoan">7. Mã sau khi hoàn</a></li>
+          <li><a class="text-muted hover:text-ink transition" href="#h-khieu-nai">8. Khiếu nại</a></li>
+        </ul>
+      </div>
+    </nav>
+
+  </div>
+</main>
+
+<footer class="border-t border-line mt-4">
+  <p class="max-w-shell mx-auto px-4 sm:px-6 py-5 text-[13px] text-muted">© 2026 VPET Prep. Nền tảng luyện tập, không phải kỳ thi chính thức.</p>
+</footer>
+
+</body>
+</html>

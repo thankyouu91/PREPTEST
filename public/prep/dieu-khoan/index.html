@@ -1,0 +1,334 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Điều khoản sử dụng · VPET Prep</title>
+  <meta name="description" content="Bạn mua gì, kỳ hạn tính từ lúc nào, được và không được làm gì trên nền tảng. Viết theo đúng cách hệ thống thực sự vận hành.">
+  <meta name="theme-color" content="#1c3d8f">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="preload" href="/fonts/pjs-800-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/fonts/pjs-400-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/tailwind-built.css">
+  <style>body{font-family:'Plus Jakarta Sans',system-ui,sans-serif}</style>
+  <script>
+    /* Boot: dark mode + tenant before paint, so the colours do not flash */
+    (function(){try{
+      var t=localStorage.getItem('prep.theme');
+      if(t==='dark'||(!t&&matchMedia('(prefers-color-scheme: dark)').matches))document.documentElement.classList.add('dark');
+      var tn=localStorage.getItem('prep.tenant');
+      if(tn&&tn!=='default')document.documentElement.setAttribute('data-tenant',tn);
+    }catch(e){}})();
+  </script>
+  <script src="/i18n.js"></script>
+</head>
+<body class="bg-surface text-ink">
+
+<header class="sticky top-0 z-40 border-b border-line bg-[color:var(--color-surface)]/85 backdrop-blur-md">
+  <div class="max-w-shell mx-auto flex items-center gap-4 h-16 px-4 sm:px-6">
+    <a href="/prep/landing/" class="flex items-center gap-2.5 shrink-0" aria-label="VPET Prep home">
+      <span class="inline-flex items-center justify-center rounded-xl text-white panel-brand w-9 h-9">
+        <svg viewBox="0 0 24 24" class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21.4 10.9a1 1 0 0 0 0-1.8L12.8 5.2a2 2 0 0 0-1.6 0L2.6 9.1a1 1 0 0 0 0 1.8l8.6 3.9a2 2 0 0 0 1.6 0Z"/><path d="M22 10.5V16"/><path d="M6 12.5V16a6 3 0 0 0 12 0v-3.5"/></svg>
+      </span>
+      <b data-brand-name class="font-extrabold tracking-tight text-[17px] hidden sm:inline">VPET Prep</b>
+    </a>
+    <a href="/prep/landing/" class="text-sm font-semibold text-muted hover:text-ink transition ms-2 hidden md:inline">Về trang chủ</a>
+    <div class="flex items-center gap-2 ms-auto">
+      <a href="/prep/dang-ky/" class="btn btn-primary btn-sm sm:btn-md">Bắt đầu miễn phí</a>
+    </div>
+  </div>
+</header>
+
+<main id="main">
+
+  <section class="halo-brand border-b border-line">
+    <div class="max-w-shell mx-auto px-4 sm:px-6 pt-12 pb-10 lg:pt-16">
+      <p class="text-[13px] font-bold uppercase tracking-[0.16em] text-muted">VPET Prep</p>
+      <h1 class="text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight mt-3 text-balance">Điều khoản sử dụng</h1>
+      <p class="text-muted text-[15px] leading-relaxed mt-3 max-w-[62ch]">
+        Trang này viết theo đúng cách hệ thống vận hành, không phải theo một mẫu chung.
+        Hai mục đáng đọc trước khi trả tiền là mục 1 — <b class="text-ink">đây là nền tảng
+        luyện tập, không phải kỳ thi lấy chứng chỉ</b> — và mục 4, về mốc bắt đầu tính
+        kỳ hạn.
+      </p>
+      <p class="text-[13px] text-muted mt-5">Cập nhật: 26/08/2026</p>
+    </div>
+  </section>
+
+  <div class="max-w-shell mx-auto px-4 sm:px-6 py-12 grid lg:grid-cols-[minmax(0,1fr)_260px] gap-10">
+
+    <div class="grid gap-10 max-w-[68ch]">
+
+      <!-- 1 -->
+      <section aria-labelledby="h-dich-vu">
+        <h2 id="h-dich-vu" class="text-2xl font-extrabold tracking-tight scroll-mt-24">1. Dịch vụ này là gì, và không phải là gì</h2>
+        <p class="text-[15px] leading-relaxed text-muted mt-3">
+          VPET Prep là nền tảng <b class="text-ink">luyện thi thử</b>. Bạn làm đề bám sát cấu trúc
+          thật của kỳ thi VPET — mười phần A đến J, 58 câu, 60 phút — rồi nhận điểm từng kỹ năng
+          và một ước lượng bậc CEFR, kèm phần chỉ ra bạn đang yếu ở đâu.
+        </p>
+        <div class="card p-5 mt-4 border-s-4 border-s-[color:var(--color-brand-strong)]">
+          <p class="text-[15px] leading-relaxed">
+            <b>Điểm ở đây không phải điểm thi thật và không có giá trị như một chứng chỉ.</b>
+            Nền tảng không tổ chức thi, không cấp chứng chỉ, và không liên kết với đơn vị tổ chức
+            kỳ thi VPET. VPET (Versant Professional English Test) do Pearson phát hành. Toàn bộ
+            đề luyện trên nền tảng là do chúng tôi tự biên soạn và không sao chép bất kỳ phần nào
+            của đề thi thật.
+          </p>
+        </div>
+        <p class="text-[15px] leading-relaxed text-muted mt-4">
+          Điểm số là <b class="text-ink">ước lượng</b>. Nó được dựng để bám sát cách kỳ thi thật
+          chấm, nhưng không ai bảo đảm được rằng điểm luyện tập sẽ trùng với điểm bạn nhận trong
+          phòng thi.
+        </p>
+      </section>
+
+      <!-- 2 -->
+      <section aria-labelledby="h-ben-cung-cap">
+        <h2 id="h-ben-cung-cap" class="text-2xl font-extrabold tracking-tight scroll-mt-24">2. Bên cung cấp dịch vụ</h2>
+        <div class="card p-5 mt-3">
+          <table class="w-full text-[14.5px]">
+            <tbody>
+              <tr class="border-b border-line"><td class="py-2.5 pe-4 font-bold align-top w-[42%]">Đơn vị chủ quản</td><td class="py-2.5 text-muted" data-seller="name">(chưa điền)</td></tr>
+              <tr class="border-b border-line"><td class="py-2.5 pe-4 font-bold align-top">Mã số doanh nghiệp</td><td class="py-2.5 text-muted" data-seller="tax">(chưa điền)</td></tr>
+              <tr class="border-b border-line"><td class="py-2.5 pe-4 font-bold align-top">Địa chỉ</td><td class="py-2.5 text-muted" data-seller="address">(chưa điền)</td></tr>
+              <tr class="border-b border-line"><td class="py-2.5 pe-4 font-bold align-top">Điện thoại</td><td class="py-2.5 text-muted" data-seller="phone">(chưa điền)</td></tr>
+              <tr><td class="py-2.5 pe-4 font-bold align-top">Email hỗ trợ</td><td class="py-2.5"><a class="font-bold text-brand-strong hover:underline" href="mailto:hotro@vpetprep.vn">hotro@vpetprep.vn</a></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="text-[13px] leading-relaxed text-muted mt-3">
+          Bằng việc tạo tài khoản hoặc mua gói, bạn đồng ý với các điều khoản trên trang này và với
+          <a class="font-bold text-brand-strong hover:underline" href="/prep/rieng-tu/">Chính sách quyền riêng tư</a>.
+          Nếu bạn không đồng ý, vui lòng không sử dụng dịch vụ.
+        </p>
+      </section>
+
+      <!-- 3 -->
+      <section aria-labelledby="h-tai-khoan">
+        <h2 id="h-tai-khoan" class="text-2xl font-extrabold tracking-tight scroll-mt-24">3. Tài khoản</h2>
+        <p class="text-[15px] leading-relaxed text-muted mt-3">
+          Nền tảng dành cho người học từ 15 tuổi trở lên. Học viên nhỏ hơn cần cha mẹ hoặc người
+          giám hộ đồng ý, và nên đăng ký qua trung tâm.
+        </p>
+        <p class="text-[15px] leading-relaxed text-muted mt-2">
+          Thông tin đăng ký phải là thông tin thật: email và số điện thoại là hai đường duy nhất để
+          lấy lại tài khoản và để chúng tôi liên hệ khi có vấn đề về đơn hàng.
+        </p>
+        <p class="text-[15px] leading-relaxed text-muted mt-2">
+          <b class="text-ink">Một người, một tài khoản.</b> Bạn chịu trách nhiệm với mọi hoạt động
+          diễn ra dưới tài khoản của mình. Cho người khác mượn tài khoản là vi phạm điều khoản, và
+          cũng là cách nhanh nhất để dữ liệu tiến bộ của bạn trở thành vô nghĩa — vì phần ước lượng
+          trình độ được dựng từ chính bài làm của bạn.
+        </p>
+        <p class="text-[15px] leading-relaxed text-muted mt-2">
+          Tài khoản miễn phí cho phép bạn đăng ký, xem nền tảng và tải bộ tài liệu VPET. Muốn làm
+          đề thì cần một gói còn hiệu lực.
+        </p>
+      </section>
+
+      <!-- 4 -->
+      <section aria-labelledby="h-goi-code">
+        <h2 id="h-goi-code" class="text-2xl font-extrabold tracking-tight scroll-mt-24">4. Gói, mã kích hoạt và kỳ hạn</h2>
+        <p class="text-[15px] leading-relaxed text-muted mt-3">
+          Bạn không mua thẳng quyền truy cập — bạn mua một <b class="text-ink">mã kích hoạt (code)</b>.
+          Mã được cấp ở trạng thái chưa kích hoạt và chưa gán cho ai, nên mua tặng người khác được.
+          Quyền truy cập chỉ bắt đầu khi mã được nhập vào một tài khoản.
+        </p>
+        <div class="card p-5 mt-4 border-s-4 border-s-[color:var(--color-brand-strong)]">
+          <p class="text-[15px] leading-relaxed">
+            <b>Kỳ hạn tính từ lúc kích hoạt, không phải từ lúc mua.</b> Mua tháng Một và kích hoạt
+            tháng Ba thì đồng hồ chạy từ tháng Ba. Đây cũng chính là lý do chính sách hoàn tiền
+            xoay quanh việc mã đã được kích hoạt hay chưa.
+          </p>
+        </div>
+        <h3 class="font-bold mt-6 text-[15px]">Ba quy tắc còn lại của mã</h3>
+        <ul class="grid gap-2.5 mt-3 text-[15px] leading-relaxed text-muted">
+          <li><b class="text-ink">Một mã, một tài khoản.</b> Đã kích hoạt trên tài khoản nào thì thuộc về tài khoản đó, không chuyển sang tài khoản khác được.</li>
+          <li><b class="text-ink">Nhập lại mã của chính mình không cộng thêm kỳ hạn.</b> Bạn sẽ thấy lại quyền đang có, không phải một kỳ hạn mới.</li>
+          <li><b class="text-ink">Nhiều mã thì cộng dồn.</b> Quyền truy cập chạy tới ngày xa nhất mà các mã còn hiệu lực chạm tới, và tính năng lấy theo gói mạnh nhất bạn đang giữ.</li>
+        </ul>
+        <p class="text-[15px] leading-relaxed text-muted mt-4">
+          Một mã có thể kèm <b class="text-ink">hạn kích hoạt</b>. Quá hạn đó mà chưa nhập thì mã
+          không dùng được nữa. Hạn kích hoạt khác với kỳ hạn sử dụng: hạn kích hoạt là hạn chót để
+          bắt đầu, kỳ hạn sử dụng là quãng thời gian bạn được dùng sau khi đã bắt đầu.
+        </p>
+      </section>
+
+      <!-- 5 -->
+      <section aria-labelledby="h-thanh-toan">
+        <h2 id="h-thanh-toan" class="text-2xl font-extrabold tracking-tight scroll-mt-24">5. Giá và thanh toán</h2>
+        <p class="text-[15px] leading-relaxed text-muted mt-3">
+          Giá niêm yết trên trang gói, bằng đồng Việt Nam và đã gồm thuế nếu có. Giá đang áp dụng
+          là giá ưu đãi ra mắt; mức giá gốc được hiển thị bên cạnh để bạn đối chiếu. Chúng tôi có
+          thể thay đổi giá bất cứ lúc nào, nhưng <b class="text-ink">không áp dụng hồi tố</b>: mã
+          bạn đã mua giữ nguyên quyền lợi theo gói tại thời điểm mua.
+        </p>
+        <p class="text-[15px] leading-relaxed text-muted mt-2">
+          Thanh toán qua cổng trung gian. Nền tảng <b class="text-ink">không lưu số thẻ</b> của bạn —
+          thông tin thẻ do cổng thanh toán xử lý, chúng tôi chỉ nhận lại mã tham chiếu đơn hàng và
+          kết quả thanh toán.
+        </p>
+        <p class="text-[15px] leading-relaxed text-muted mt-2">
+          Đơn hàng chỉ được chốt khi cổng thanh toán xác nhận trực tiếp với máy chủ của chúng tôi.
+          Vì vậy sau khi trả tiền, bạn có thể thấy trạng thái <b class="text-ink">"đang xác nhận"</b>
+          trong ít phút — đó là trạng thái bình thường, không phải lỗi. Mã sẽ xuất hiện trong mục
+          "Code của tôi" khi xác nhận xong.
+        </p>
+      </section>
+
+      <!-- 6 -->
+      <section aria-labelledby="h-hoan-tien">
+        <h2 id="h-hoan-tien" class="text-2xl font-extrabold tracking-tight scroll-mt-24">6. Hoàn tiền</h2>
+        <p class="text-[15px] leading-relaxed text-muted mt-3">
+          Nguyên tắc gọn trong một câu: <b class="text-ink">hoàn tiền khi mã chưa được kích hoạt;
+          đã kích hoạt thì không hoàn.</b> Các trường hợp lỗi từ phía nền tảng được xử lý riêng.
+        </p>
+        <p class="text-[15px] leading-relaxed text-muted mt-2">
+          Chi tiết, kèm cách gửi yêu cầu và thời gian xử lý, nằm ở
+          <a class="font-bold text-brand-strong hover:underline" href="/prep/hoan-tien/">Chính sách hoàn tiền</a>.
+          Trang đó là một phần của điều khoản này.
+        </p>
+      </section>
+
+      <!-- 7 -->
+      <section aria-labelledby="h-khong-duoc">
+        <h2 id="h-khong-duoc" class="text-2xl font-extrabold tracking-tight scroll-mt-24">7. Những việc bạn không được làm</h2>
+        <ul class="grid gap-2.5 mt-3 text-[15px] leading-relaxed text-muted">
+          <li>Chia sẻ, bán lại, hoặc cho mượn tài khoản và mã kích hoạt.</li>
+          <li>Sao chép, chụp màn hình hàng loạt, tải về hoặc phát tán đề luyện và nội dung tự học ra ngoài nền tảng.</li>
+          <li>Dùng chương trình tự động để làm bài, thu thập dữ liệu hoặc tạo tài khoản hàng loạt.</li>
+          <li>Cố gắng vượt qua các giới hạn kỹ thuật, dò mật khẩu, hoặc truy cập dữ liệu của người khác.</li>
+          <li>Nộp nội dung vi phạm pháp luật, xúc phạm người khác, hoặc chứa dữ liệu cá nhân của người khác trong phần bài viết và bài nói.</li>
+        </ul>
+        <p class="text-[15px] leading-relaxed text-muted mt-4">
+          Nội dung đề luyện là thứ tốn nhiều công nhất để làm ra và cũng dễ bị mang đi nhất. Phát
+          tán nó ra ngoài là lý do khiến chúng tôi khoá tài khoản mà không hoàn tiền.
+        </p>
+      </section>
+
+      <!-- 8 -->
+      <section aria-labelledby="h-so-huu">
+        <h2 id="h-so-huu" class="text-2xl font-extrabold tracking-tight scroll-mt-24">8. Nội dung thuộc về ai</h2>
+        <p class="text-[15px] leading-relaxed text-muted mt-3">
+          Đề luyện, bộ tài liệu, nội dung tự học, giao diện và mã nguồn của nền tảng thuộc quyền sở
+          hữu của chúng tôi. Bạn được dùng chúng cho việc học của chính mình, trong thời gian gói
+          còn hiệu lực — không được dùng cho mục đích thương mại hay giảng dạy lại mà không có thoả
+          thuận riêng.
+        </p>
+        <p class="text-[15px] leading-relaxed text-muted mt-2">
+          <b class="text-ink">Bài làm của bạn thuộc về bạn.</b> Chúng tôi lưu và xử lý bài làm để
+          chấm điểm, dựng báo cáo tiến bộ và cải thiện chất lượng chấm. Chi tiết về việc bài viết
+          và bản ghi âm được gửi đi đâu nằm trong
+          <a class="font-bold text-brand-strong hover:underline" href="/prep/rieng-tu/">Chính sách quyền riêng tư</a>.
+        </p>
+      </section>
+
+      <!-- 9 -->
+      <section aria-labelledby="h-cham-may">
+        <h2 id="h-cham-may" class="text-2xl font-extrabold tracking-tight scroll-mt-24">9. Bài được máy chấm</h2>
+        <p class="text-[15px] leading-relaxed text-muted mt-3">
+          Các câu trắc nghiệm và điền từ được chấm bằng đáp án. Các phần <b class="text-ink">viết và
+          nói</b> được chấm bằng mô hình ngôn ngữ theo một bộ tiêu chí cố định, và kết quả kèm phần
+          trích dẫn lấy nguyên văn từ bài của bạn làm căn cứ.
+        </p>
+        <p class="text-[15px] leading-relaxed text-muted mt-2">
+          Máy chấm có thể sai. Nếu bạn cho rằng một bài bị chấm không đúng, gửi thư cho chúng tôi
+          kèm mã bài làm và chúng tôi sẽ xem lại. Việc chấm lại có thể làm điểm tăng
+          <b class="text-ink">hoặc giảm</b> — nói trước để bạn cân nhắc trước khi yêu cầu.
+        </p>
+      </section>
+
+      <!-- 10 -->
+      <section aria-labelledby="h-cham-dut">
+        <h2 id="h-cham-dut" class="text-2xl font-extrabold tracking-tight scroll-mt-24">10. Tạm dừng và chấm dứt</h2>
+        <p class="text-[15px] leading-relaxed text-muted mt-3">
+          Chúng tôi có thể tạm khoá hoặc chấm dứt tài khoản vi phạm mục 7. Với vi phạm nghiêm trọng —
+          phát tán đề, bán lại tài khoản, tấn công hệ thống — việc khoá có hiệu lực ngay và
+          <b class="text-ink">không hoàn tiền phần kỳ hạn còn lại</b>.
+        </p>
+        <p class="text-[15px] leading-relaxed text-muted mt-2">
+          Bạn có thể ngừng sử dụng bất cứ lúc nào, và yêu cầu xoá tài khoản theo cách mô tả trong
+          Chính sách quyền riêng tư. Xoá tài khoản không tự động hoàn tiền phần kỳ hạn chưa dùng.
+        </p>
+        <p class="text-[15px] leading-relaxed text-muted mt-2">
+          Nếu chúng tôi ngừng cung cấp dịch vụ, chúng tôi sẽ báo trước và hoàn lại phần tương ứng
+          với thời gian còn lại của các gói đang có hiệu lực.
+        </p>
+      </section>
+
+      <!-- 11 -->
+      <section aria-labelledby="h-trach-nhiem">
+        <h2 id="h-trach-nhiem" class="text-2xl font-extrabold tracking-tight scroll-mt-24">11. Giới hạn trách nhiệm</h2>
+        <p class="text-[15px] leading-relaxed text-muted mt-3">
+          Chúng tôi cố gắng giữ nền tảng chạy liên tục, nhưng không cam kết không bao giờ gián đoạn:
+          vẫn có bảo trì, sự cố nhà cung cấp hạ tầng, và lỗi phần mềm. Khi gián đoạn kéo dài đáng kể,
+          chúng tôi sẽ bù thời gian tương ứng vào kỳ hạn của bạn.
+        </p>
+        <p class="text-[15px] leading-relaxed text-muted mt-2">
+          Chúng tôi không chịu trách nhiệm về kết quả kỳ thi thật của bạn. Nền tảng là công cụ luyện
+          tập; điểm luyện tập không bảo đảm điểm thi. Trong mọi trường hợp, trách nhiệm của chúng tôi
+          không vượt quá số tiền bạn đã trả cho gói đang tranh chấp.
+        </p>
+      </section>
+
+      <!-- 12 -->
+      <section aria-labelledby="h-thay-doi">
+        <h2 id="h-thay-doi" class="text-2xl font-extrabold tracking-tight scroll-mt-24">12. Thay đổi điều khoản, luật áp dụng và liên hệ</h2>
+        <p class="text-[15px] leading-relaxed text-muted mt-3">
+          Khi điều khoản thay đổi ở điểm ảnh hưởng tới bạn, ngày cập nhật ở đầu trang sẽ đổi và bạn
+          được báo trên trang học. Thay đổi <b class="text-ink">không áp dụng hồi tố</b> với các mã
+          đã mua trước đó.
+        </p>
+        <p class="text-[15px] leading-relaxed text-muted mt-2">
+          Điều khoản này theo pháp luật Việt Nam. Tranh chấp trước hết được giải quyết bằng thương
+          lượng; không thương lượng được thì đưa ra toà án có thẩm quyền tại Việt Nam. Bản tiếng Việt
+          là bản có giá trị áp dụng.
+        </p>
+        <p class="text-[15px] leading-relaxed text-muted mt-2">
+          Mọi câu hỏi:
+          <a class="font-bold text-brand-strong hover:underline" href="mailto:hotro@vpetprep.vn">hotro@vpetprep.vn</a>.
+        </p>
+      </section>
+
+      <nav class="border-t border-line pt-6" aria-label="Trang pháp lý khác">
+        <p class="text-[13px] font-bold uppercase tracking-wider text-muted">Xem thêm</p>
+        <ul class="flex flex-wrap gap-x-6 gap-y-2 mt-3 text-[14.5px] font-semibold">
+          <li><a class="text-brand-strong hover:underline" href="/prep/hoan-tien/">Chính sách hoàn tiền</a></li>
+          <li><a class="text-brand-strong hover:underline" href="/prep/rieng-tu/">Chính sách quyền riêng tư</a></li>
+        </ul>
+      </nav>
+
+    </div>
+
+    <!-- Mục lục: dính theo màn hình trên máy tính, ẩn trên điện thoại vì đã có tiêu đề rõ -->
+    <nav class="hidden lg:block" aria-label="Mục lục">
+      <div class="sticky top-24">
+        <p class="text-[12px] font-bold uppercase tracking-wider text-muted">Trong trang này</p>
+        <ul class="grid gap-2 mt-3 text-[14px] font-medium">
+          <li><a class="text-muted hover:text-ink transition" href="#h-dich-vu">1. Dịch vụ này là gì</a></li>
+          <li><a class="text-muted hover:text-ink transition" href="#h-ben-cung-cap">2. Bên cung cấp dịch vụ</a></li>
+          <li><a class="text-muted hover:text-ink transition" href="#h-tai-khoan">3. Tài khoản</a></li>
+          <li><a class="text-muted hover:text-ink transition" href="#h-goi-code">4. Gói, mã và kỳ hạn</a></li>
+          <li><a class="text-muted hover:text-ink transition" href="#h-thanh-toan">5. Giá và thanh toán</a></li>
+          <li><a class="text-muted hover:text-ink transition" href="#h-hoan-tien">6. Hoàn tiền</a></li>
+          <li><a class="text-muted hover:text-ink transition" href="#h-khong-duoc">7. Việc không được làm</a></li>
+          <li><a class="text-muted hover:text-ink transition" href="#h-so-huu">8. Nội dung thuộc về ai</a></li>
+          <li><a class="text-muted hover:text-ink transition" href="#h-cham-may">9. Bài được máy chấm</a></li>
+          <li><a class="text-muted hover:text-ink transition" href="#h-cham-dut">10. Tạm dừng và chấm dứt</a></li>
+          <li><a class="text-muted hover:text-ink transition" href="#h-trach-nhiem">11. Giới hạn trách nhiệm</a></li>
+          <li><a class="text-muted hover:text-ink transition" href="#h-thay-doi">12. Thay đổi và liên hệ</a></li>
+        </ul>
+      </div>
+    </nav>
+
+  </div>
+</main>
+
+<footer class="border-t border-line mt-4">
+  <p class="max-w-shell mx-auto px-4 sm:px-6 py-5 text-[13px] text-muted">© 2026 VPET Prep. Nền tảng luyện tập, không phải kỳ thi chính thức.</p>
+</footer>
+
+</body>
+</html>

@@ -189,8 +189,13 @@
     'An independent mock-test platform for Vietnamese students. Not affiliated with any examination board.':
       'Nền tảng luyện thi thử độc lập dành cho người học Việt Nam, không trực thuộc hội đồng thi nào.',
     'How codes work': 'Mã dùng thế nào',
-    'Terms (being written)': 'Điều khoản (đang soạn)',
-    'Privacy (being written)': 'Bảo mật (đang soạn)',
+    /* Ba trang pháp lý đã có thật, nên nhãn "(đang soạn)" cũ bị bỏ hẳn thay vì
+       giữ lại: một chuỗi không còn trang nào dùng chỉ chờ ngày bị chép lại nhầm.
+       Riêng "Privacy" trước đây chưa từng có bản dịch, nên bản tiếng Việt của
+       trang đích vẫn hiện chữ Anh — thêm luôn ở đây. */
+    'Terms': 'Điều khoản',
+    'Refunds': 'Hoàn tiền',
+    'Privacy': 'Quyền riêng tư',
     '© 2026 VPET Prep. For practice only, not an official examination.':
       '© 2026 VPET Prep. Chỉ để luyện tập, không phải kỳ thi chính thức.',
 
