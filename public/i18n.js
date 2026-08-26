@@ -490,7 +490,7 @@
     /* ---- Đăng nhập / đăng ký / mật khẩu ---- */
     'Welcome back': 'Chào bạn trở lại',
     'Sign in to pick up where you left off.': 'Đăng nhập để tiếp tục từ chỗ đang dở.',
-    'Your practice is waiting.': 'Bài luyện của bạn đang chờ.',
+    'Practise without limits, and get there.': 'Luyện không giới hạn, đảm bảo đầu ra.',
     'Username or email': 'Tên đăng nhập hoặc email',
     'Your password': 'Mật khẩu của bạn',
     'Password': 'Mật khẩu',
@@ -533,7 +533,6 @@
       'Miễn phí, chỉ mất một phút. Mở khóa bài thi khi bạn sẵn sàng.',
     'Progress, activated codes and skill breakdowns all live in your account.':
       'Tiến độ, mã đã kích hoạt và phân tích kỹ năng đều nằm trong tài khoản của bạn.',
-    'Keep practising': 'Tiếp tục luyện',
     'Back to sign in': 'Quay lại đăng nhập',
     'Remembered it?': 'Đã nhớ ra?',
     'Remembered your password?': 'Đã nhớ ra mật khẩu?',
