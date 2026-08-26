@@ -286,16 +286,11 @@
     'Blueprint part': 'Phần theo cấu trúc đề',
     'With a part attached, a later reshuffle draws only from that part.':
       'Gắn phần rồi thì lần bốc lại sau chỉ lấy câu trong đúng phần đó.',
-    'Item type, as described to the student': 'Dạng bài, như mô tả cho học viên',
     'Redraw': 'Bốc lại',
     'Write items': 'Soạn câu hỏi',
     'Choose items': 'Chọn từ ngân hàng',
     'Add a question': 'Thêm một câu',
     'Question text': 'Nội dung câu hỏi',
-    'Typed here, they go into the bank under this exam and part, and into this part in order. Leave it empty to add the part on its own.':
-      'Soạn ở đây thì câu hỏi vừa vào ngân hàng theo đúng kỳ thi và phần này, vừa vào phần này theo thứ tự. Để trống nếu chỉ muốn thêm phần.',
-    'This skill is played to the student, so each item needs an MP3 — attach it on the row, or later from the question bank.':
-      'Kỹ năng này phát cho học viên nghe, nên mỗi câu cần một file MP3 — đính kèm ngay tại dòng, hoặc thêm sau ở ngân hàng câu hỏi.',
     'Marked by the AI examiner, so it takes no answer key.':
       'Do giám khảo AI chấm, nên không cần đáp án.',
     'Answer key — write color|colour to accept either':

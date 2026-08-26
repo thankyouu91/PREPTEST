@@ -232,7 +232,7 @@
        items are already being typed. */
     let ctx = { skill: 'listening', part: '' };
     let seq = 0;
-    let listEl = null, countEl = null, audioNote = null;
+    let listEl = null;
 
     /* A lettered part limits what it will take; a part with no letter takes
        anything, because nothing constrains it. */
@@ -241,17 +241,13 @@
       return (p && p.types && p.types.length) ? p.types : ALL_TYPES;
     };
 
+    /* No heading, no count, no explanation. The rows say what they are, the
+       submit button already carries the count, and each row grows its own MP3
+       control when the skill needs one — four lines of prose above all that were
+       telling the operator things the form was about to show them anyway. */
     const html =
       '<div class="mt-1">' +
-        '<div class="flex items-center gap-2">' +
-          '<p class="label !mb-0">Questions</p>' +
-          '<span class="badge badge-muted" id="c-count">none yet</span>' +
-        '</div>' +
-        '<p class="help mt-1.5">Typed here, they go into the bank under this exam and part, ' +
-          'and into this part in order. Leave it empty to add the part on its own.</p>' +
-        '<p class="help mt-1.5" id="c-audio" hidden>This skill is played to the student, so each item needs ' +
-          'an MP3 — attach it on the row, or later from the question bank.</p>' +
-        '<div id="c-list" class="grid gap-2.5 mt-3"></div>' +
+        '<div id="c-list" class="grid gap-2.5"></div>' +
         '<button type="button" id="c-add" class="btn btn-soft btn-sm mt-2.5">Add a question</button>' +
       '</div>';
 
@@ -281,10 +277,6 @@
       AD.qsa('[data-row]', listEl).forEach((r, i) => {
         r.querySelector('[data-num]').textContent = String(i + 1);
       });
-      const n = listEl.children.length;
-      countEl.textContent = n
-        ? n + AD.t(n === 1 ? ' question' : ' questions', ' câu hỏi')
-        : AD.t('none yet', 'chưa có câu nào');
     }
 
     function addRow() {
@@ -359,13 +351,10 @@
         }
         syncAudio(row);
       });
-      audioNote.hidden = !AUDIO_SKILLS.includes(ctx.skill);
     }
 
     function mount(root, next) {
       listEl = root.querySelector('#c-list');
-      countEl = root.querySelector('#c-count');
-      audioNote = root.querySelector('#c-audio');
       root.querySelector('#c-add').addEventListener('click', addRow);
       setContext(next || {});
     }
@@ -418,6 +407,32 @@
     return { html, mount, setContext, read, firstProblem, count: () => (listEl ? listEl.children.length : 0) };
   }
 
+  /**
+   * What the part is called under its name on the student's screen —
+   * "Writing · Type the missing word · 4 min".
+   *
+   * This used to be a free-text box in the add-a-part dialog, filled in by hand
+   * for every part of every paper, pre-set to "Multiple choice" and therefore
+   * wrong the moment somebody added a writing part without noticing it. Both
+   * things that could answer it were already on screen:
+   *
+   *   · the blueprint, which has said what each part asks of a candidate since
+   *     the format was written down — Part A is "Type the missing word";
+   *   · failing that, the items just typed, which know their own kind.
+   *
+   * Falls back to nothing, and the server then applies its own default: a part
+   * with no letter and no items is the only case left, and guessing there is
+   * worse than the default that has always been there.
+   */
+  function describePart(part, typed) {
+    const p = part && FAM_PARTS ? FAM_PARTS.find(x => x.part === part) : null;
+    if (p && p.type) return p.type;
+    const kinds = [...new Set((typed || []).map(t => t.type))];
+    if (kinds.length === 1) return AD.TYPE_LABEL[kinds[0]] || kinds[0];
+    if (kinds.length > 1) return kinds.map(k => AD.TYPE_LABEL[k] || k).join(' + ');
+    return '';
+  }
+
   /** Attach the MP3s that were picked alongside the items, once they have ids. */
   async function uploadComposerAudio(typed, questionIds) {
     let failed = 0;
@@ -453,8 +468,6 @@
               FAM_PARTS.map(p2 => '<option value="' + AD.esc(p2.part) + '">' + AD.esc(p2.name) + '</option>').join('') +
             '</select><p class="help mt-1.5">With a part attached, a later reshuffle draws only from that part.</p></div>'
           : '') +
-        '<div><label class="label" for="s-type">Item type, as described to the student</label>' +
-          '<input class="input" id="s-type" value="Multiple choice"></div>' +
         comp.html +
         '<div class="banner banner-error" id="s-err"><span id="s-err-text"></span></div>' +
         '<div class="modal-actions"><button type="button" id="s-save" class="btn btn-primary btn-md flex-1">Add part</button>' +
@@ -518,7 +531,7 @@
         const r = await AD.post('/admin/tests/' + encodeURIComponent(testId) + '/sections', {
           name: nameEl.value || skillEl.options[skillEl.selectedIndex].text,
           skill: skillEl.value,
-          type: mm.el.querySelector('#s-type').value,
+          type: describePart(partEl ? partEl.value : '', typed),
           minutes: +mm.el.querySelector('#s-min').value || 0,
           part: partEl ? partEl.value : '',
           questions: typed.map(t => ({ type: t.type, prompt: t.prompt, options: t.options, answer: t.answer }))

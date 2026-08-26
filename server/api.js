@@ -2413,7 +2413,14 @@ router.get('/catalog', async (req, res) => {
        rather than carrying its own copy of the VPET table. */
     parts: EXAM_FORMATS.partsOf(f.id).map(letter => {
       const sec = EXAM_FORMATS.sectionOfPart(f.id, letter) || {};
-      return { part: letter, name: sec.name || letter, skill: sec.skill || '', types: sec.types || [] };
+      /* `type` is the blueprint's own words for what the part asks of a student
+         — "Type the missing word", "Read, then rewrite from memory". The builder
+         used to make an operator retype that into a free-text box for every
+         part; it is written down here already, so it is sent along. */
+      return {
+        part: letter, name: sec.name || letter, skill: sec.skill || '',
+        types: sec.types || [], type: sec.type || ''
+      };
     })
   }));
   /* A test whose family is hidden goes with it. Leaving it in would put an

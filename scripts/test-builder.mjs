@@ -50,8 +50,10 @@ await p.waitForSelector('#btn-add-section');
 await p.click('#btn-add-section');
 await p.waitForSelector('#c-add');
 check('The composer is in the add-a-part dialog', await p.isVisible('#c-add'));
-check('It starts empty, so the old flow is unchanged',
-  (await p.textContent('#c-count')).trim() === 'none yet', await p.textContent('#c-count'));
+check('It starts with no rows, so the old flow is unchanged',
+  (await p.locator('[data-row]').count()) === 0);
+check('The part description is no longer asked for by hand',
+  (await p.locator('#s-type').count()) === 0);
 
 await p.selectOption('#s-part', 'C');                       // reading / mcq
 await p.waitForTimeout(150);
@@ -59,8 +61,6 @@ check('Choosing a part fills the name from the blueprint',
   (await p.inputValue('#s-name')).includes('Part C'), await p.inputValue('#s-name'));
 check('and pulls the skill with it',
   (await p.inputValue('#s-skill')) === 'reading', await p.inputValue('#s-skill'));
-check('The audio note stays hidden for a reading part',
-  await p.locator('#c-audio').isHidden());
 
 await p.click('#c-add');
 await p.waitForSelector('[data-row]');
@@ -92,9 +92,7 @@ await p.waitForTimeout(150);
 
 await p.click('#c-add');
 await fill(1, 'Probe item two: what happens next?', 2);
-check('The count follows what has been typed',
-  (await p.textContent('#c-count')).trim() === '2 questions', await p.textContent('#c-count'));
-check('The button says what pressing it will do',
+check('The count is carried by the button, the only place it is now shown',
   (await p.textContent('#s-save')).trim() === 'Add part with 2 questions', await p.textContent('#s-save'));
 
 /* A deliberate mistake first: clear one prompt and check the row is flagged. */
@@ -166,8 +164,8 @@ await p.waitForSelector('#c-add');
 await p.selectOption('#s-part', 'E');                       // listening / gap, needs audio
 await p.waitForTimeout(150);
 await p.click('#c-add');
-check('A listening part shows the audio note', await p.locator('#c-audio').isVisible());
-check('and puts an MP3 control on the row', await p.locator('[data-row] [data-audio-row]').isVisible());
+check('A listening part puts an MP3 control on the row',
+  await p.locator('[data-row] [data-audio-row]').isVisible());
 check('A gap part asks for an answer key, not options',
   (await p.locator('[data-row] [data-key]').count()) === 1 &&
   (await p.locator('[data-row] [data-opt]').count()) === 0);
@@ -176,7 +174,16 @@ await p.click('#s-save');
 await p.waitForTimeout(250);
 check('A gap with no key is caught before it is sent',
   (await p.textContent('#s-err-text')).includes('answer key'), await p.textContent('#s-err-text'));
-await p.keyboard.press('Escape');
+
+/* Give it a key and let it through, to see what the part calls itself. Part E's
+   blueprint says "Type what you hear" — nobody typed that, and it is not the
+   "Multiple choice" the removed free-text box used to default to. */
+await p.locator('[data-row] [data-key]').fill('the train leaves at nine');
+await p.click('#s-save');
+await p.waitForTimeout(1500);
+const partELine = await p.locator('[data-section]').last().locator('.text-muted').first().textContent();
+check('A part describes itself from the blueprint, with nothing typed by hand',
+  partELine.includes('Type what you hear'), partELine.trim());
 
 /* Clean up the throwaway paper and the items it created. */
 await p.evaluate(async ([t, id]) => {
