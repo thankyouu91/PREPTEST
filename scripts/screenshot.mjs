@@ -45,6 +45,7 @@ const PAGES = [
   { slug: 'rieng-tu',       url: '/prep/rieng-tu/',             auth: false, full: true },
   { slug: 'dieu-khoan',     url: '/prep/dieu-khoan/',           auth: false, full: true },
   { slug: 'hoan-tien',      url: '/prep/hoan-tien/',            auth: false, full: true },
+  { slug: 'bao-mat',        url: '/prep/bao-mat/',              auth: false, full: true },
   { slug: 'dang-ky',        url: '/prep/dang-ky/',              auth: false },
   { slug: 'dang-nhap',      url: '/prep/dang-nhap/',            auth: false },
   { slug: 'quen-mat-khau',  url: '/prep/quen-mat-khau/',        auth: false },

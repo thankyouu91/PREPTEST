@@ -1,0 +1,328 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Chính sách bảo mật thông tin · VPET Prep</title>
+  <meta name="description" content="Nền tảng bảo vệ tài khoản, bài làm và dữ liệu của bạn bằng cách nào: mật khẩu, phiên đăng nhập, phân quyền nội bộ, nhật ký thao tác, sao lưu và cách xử lý khi có sự cố.">
+  <meta name="theme-color" content="#1c3d8f">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="preload" href="/fonts/pjs-800-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/fonts/pjs-400-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/tailwind-built.css">
+  <style>body{font-family:'Plus Jakarta Sans',system-ui,sans-serif}</style>
+  <script>
+    /* Boot: dark mode + tenant before paint, so the colours do not flash */
+    (function(){try{
+      var t=localStorage.getItem('prep.theme');
+      if(t==='dark'||(!t&&matchMedia('(prefers-color-scheme: dark)').matches))document.documentElement.classList.add('dark');
+      var tn=localStorage.getItem('prep.tenant');
+      if(tn&&tn!=='default')document.documentElement.setAttribute('data-tenant',tn);
+    }catch(e){}})();
+  </script>
+  <script src="/i18n.js"></script>
+</head>
+<body class="bg-surface text-ink">
+
+<header class="sticky top-0 z-40 border-b border-line bg-[color:var(--color-surface)]/85 backdrop-blur-md">
+  <div class="max-w-shell mx-auto flex items-center gap-4 h-16 px-4 sm:px-6">
+    <a href="/prep/landing/" class="flex items-center gap-2.5 shrink-0" aria-label="VPET Prep home">
+      <span class="inline-flex items-center justify-center rounded-xl text-white panel-brand w-9 h-9">
+        <svg viewBox="0 0 24 24" class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21.4 10.9a1 1 0 0 0 0-1.8L12.8 5.2a2 2 0 0 0-1.6 0L2.6 9.1a1 1 0 0 0 0 1.8l8.6 3.9a2 2 0 0 0 1.6 0Z"/><path d="M22 10.5V16"/><path d="M6 12.5V16a6 3 0 0 0 12 0v-3.5"/></svg>
+      </span>
+      <b data-brand-name class="font-extrabold tracking-tight text-[17px] hidden sm:inline">VPET Prep</b>
+    </a>
+    <a href="/prep/landing/" class="text-sm font-semibold text-muted hover:text-ink transition ms-2 hidden md:inline">Về trang chủ</a>
+    <div class="flex items-center gap-2 ms-auto">
+      <a href="/prep/dang-ky/" class="btn btn-primary btn-sm sm:btn-md">Bắt đầu miễn phí</a>
+    </div>
+  </div>
+</header>
+
+<main id="main">
+
+  <section class="halo-brand border-b border-line">
+    <div class="max-w-shell mx-auto px-4 sm:px-6 pt-12 pb-10 lg:pt-16">
+      <p class="text-[13px] font-bold uppercase tracking-[0.16em] text-muted">VPET Prep</p>
+      <h1 class="text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight mt-3 text-balance">Chính sách bảo mật thông tin</h1>
+      <p class="text-muted text-[15px] leading-relaxed mt-3 max-w-[62ch]">
+        Trang <a class="font-bold text-brand-strong hover:underline" href="/prep/rieng-tu/">Quyền riêng tư</a>
+        nói nền tảng <b class="text-ink">giữ những gì và gửi đi đâu</b>. Trang này nói phần còn lại:
+        <b class="text-ink">bảo vệ chúng bằng cách nào</b>. Mọi điều dưới đây mô tả cơ chế đang thực
+        sự chạy trong mã nguồn, không phải một danh sách mong muốn.
+      </p>
+      <p class="text-[13px] text-muted mt-5">Cập nhật: 26/08/2026</p>
+    </div>
+  </section>
+
+  <div class="max-w-shell mx-auto px-4 sm:px-6 py-12 grid lg:grid-cols-[minmax(0,1fr)_260px] gap-10">
+
+    <div class="grid gap-10 max-w-[68ch]">
+
+      <!-- 1 -->
+      <section aria-labelledby="h-mat-khau">
+        <h2 id="h-mat-khau" class="text-2xl font-extrabold tracking-tight scroll-mt-24">1. Mật khẩu của bạn</h2>
+        <p class="text-[15px] leading-relaxed text-muted mt-3">
+          Mật khẩu <b class="text-ink">không được lưu ở bất kỳ đâu</b>. Thứ nền tảng giữ là kết quả
+          băm bằng <span class="font-mono text-[13.5px]">scrypt</span> kèm một chuỗi muối ngẫu nhiên
+          riêng cho từng tài khoản. Từ chuỗi đã băm không tính ngược lại được mật khẩu.
+        </p>
+        <p class="text-[15px] leading-relaxed text-muted mt-2">
+          Nghĩa là <b class="text-ink">quản trị viên cũng không đọc được mật khẩu của bạn</b>. Khi
+          bạn quên, họ chỉ có thể đặt lại một mật khẩu mới — không ai tra ra được mật khẩu cũ.
+        </p>
+        <p class="text-[15px] leading-relaxed text-muted mt-2">
+          Việc so khớp lúc đăng nhập dùng phép so sánh có thời gian không đổi, để không ai đoán dần
+          mật khẩu bằng cách đo xem máy chủ trả lời nhanh hay chậm.
+        </p>
+        <div class="card p-5 mt-4">
+          <p class="text-[15px] leading-relaxed">
+            <b>Đổi mật khẩu là đăng xuất mọi thiết bị khác.</b> Dù bạn tự đổi trong trang tài khoản,
+            đặt lại qua email, hay nhờ quản trị viên đặt lại — mọi phiên đăng nhập cũ đều bị huỷ ngay.
+            Chỉ thiết bị bạn đang dùng để đổi là còn đăng nhập.
+          </p>
+        </div>
+      </section>
+
+      <!-- 2 -->
+      <section aria-labelledby="h-phien">
+        <h2 id="h-phien" class="text-2xl font-extrabold tracking-tight scroll-mt-24">2. Phiên đăng nhập</h2>
+        <p class="text-[15px] leading-relaxed text-muted mt-3">
+          Phiên đăng nhập nằm trong một cookie mang hai thuộc tính quan trọng:
+        </p>
+        <ul class="grid gap-2.5 mt-3 text-[15px] leading-relaxed text-muted">
+          <li><b class="text-ink">HttpOnly</b> — mã JavaScript trên trang không đọc được cookie này, kể cả nếu ai đó chèn được mã lạ vào trang.</li>
+          <li><b class="text-ink">SameSite=Strict</b> — trình duyệt không gửi cookie này khi bạn tới từ một trang web khác, nên một trang lạ không mượn được phiên của bạn.</li>
+        </ul>
+        <p class="text-[15px] leading-relaxed text-muted mt-4">
+          Phiên tự hết hạn. Bấm đăng xuất là huỷ phiên ở phía máy chủ, không chỉ xoá cookie ở máy bạn —
+          nên một cookie bị sao chép trước đó cũng thành vô dụng.
+        </p>
+      </section>
+
+      <!-- 3 -->
+      <section aria-labelledby="h-chan">
+        <h2 id="h-chan" class="text-2xl font-extrabold tracking-tight scroll-mt-24">3. Chặn truy cập trái phép</h2>
+
+        <h3 class="font-bold mt-6 text-[15px]">Dò mật khẩu</h3>
+        <p class="text-[15px] leading-relaxed text-muted mt-2">
+          Sai mật khẩu vài lần liên tiếp là tài khoản bị tạm khoá đăng nhập. Bộ đếm nằm
+          <b class="text-ink">trong cơ sở dữ liệu</b>, không nằm trong bộ nhớ tiến trình — nên khởi
+          động lại máy chủ không xoá được nó, và nó vẫn đúng khi nền tảng chạy trên nhiều tiến trình.
+        </p>
+        <p class="text-[15px] leading-relaxed text-muted mt-2">
+          Bộ đếm khoá theo địa chỉ mạng thật của kết nối, không theo một tiêu đề mà trình duyệt tự
+          khai — nếu không thì chỉ cần đổi một dòng tiêu đề là dò được vô hạn.
+        </p>
+
+        <h3 class="font-bold mt-6 text-[15px]">Thao tác giả mạo từ trang khác</h3>
+        <p class="text-[15px] leading-relaxed text-muted mt-2">
+          Mọi thao tác làm thay đổi dữ liệu đều đòi một mã CSRF hợp lệ. Một trang web khác không lấy
+          được mã đó, nên không thể lừa trình duyệt của bạn thực hiện thao tác dưới danh nghĩa bạn.
+        </p>
+
+        <h3 class="font-bold mt-6 text-[15px]">Xác thực hai lớp cho quản trị viên</h3>
+        <p class="text-[15px] leading-relaxed text-muted mt-2">
+          Tài khoản quản trị có thể bật xác thực hai lớp bằng mã sáu số theo chuẩn TOTP (RFC 6238),
+          dùng được với mọi ứng dụng authenticator thông dụng.
+        </p>
+      </section>
+
+      <!-- 4 -->
+      <section aria-labelledby="h-noi-bo">
+        <h2 id="h-noi-bo" class="text-2xl font-extrabold tracking-tight scroll-mt-24">4. Trong nội bộ, ai xem được gì</h2>
+        <p class="text-[15px] leading-relaxed text-muted mt-3">
+          Không phải quản trị viên nào cũng xem được mọi thứ. Nền tảng có
+          <b class="text-ink">ba cấp quản trị</b>, và mỗi thao tác trên máy chủ kiểm tra riêng xem
+          cấp đang thao tác có quyền làm việc đó không — quyền được kiểm ở phía máy chủ, không phải
+          bằng cách ẩn nút đi trên giao diện.
+        </p>
+        <p class="text-[15px] leading-relaxed text-muted mt-2">
+          Về phía học viên, ranh giới là tuyệt đối: mọi truy vấn tới bài làm đều
+          <b class="text-ink">ràng buộc theo tài khoản đang đăng nhập</b>. Không có đường nào để một
+          học viên đọc bài, điểm hay bản ghi âm của học viên khác, kể cả khi đoán đúng số thứ tự bài
+          làm.
+        </p>
+      </section>
+
+      <!-- 5 -->
+      <section aria-labelledby="h-trinh-duyet">
+        <h2 id="h-trinh-duyet" class="text-2xl font-extrabold tracking-tight scroll-mt-24">5. Trên trình duyệt của bạn</h2>
+        <p class="text-[15px] leading-relaxed text-muted mt-3">
+          Máy chủ đặt một chính sách nội dung nghiêm ngặt (Content-Security-Policy) cho từng trang:
+          <b class="text-ink">chỉ mã nguồn của chính nền tảng được chạy</b>, mỗi lần tải trang lại
+          sinh một mã dùng một lần riêng.
+        </p>
+        <p class="text-[15px] leading-relaxed text-muted mt-2">
+          Hệ quả là <b class="text-ink">không có script quảng cáo, không có mã theo dõi của bên thứ
+          ba nào</b> trên nền tảng — kể cả muốn nhúng cũng không nhúng được. Và nếu ai đó chèn được
+          mã lạ vào một ô nhập liệu, trình duyệt vẫn từ chối chạy nó.
+        </p>
+        <p class="text-[15px] leading-relaxed text-muted mt-2">
+          Nền tảng dùng đúng <b class="text-ink">hai thư viện bên ngoài</b> cho phần máy chủ. Bề mặt
+          tấn công nhỏ là một lựa chọn có chủ đích: mỗi thư viện thêm vào là thêm mã của người khác
+          chạy cạnh dữ liệu của bạn.
+        </p>
+        <!-- ĐỂ TRỐNG CÓ CHỦ ĐÍCH: đoạn về mã hoá đường truyền (TLS/HTTPS).
+             Chỉ thêm vào ĐÚNG NGÀY chứng chỉ được cài và trang chạy trên https://.
+             Viết trước một câu "kết nối được mã hoá" trong khi máy thật còn chạy
+             http:// là một lời khai sai trên trang bảo mật — thứ tệ hơn cả việc
+             không có đoạn đó. Câu để dùng khi tới lúc:
+             "Mọi kết nối tới nền tảng đều đi qua HTTPS. Cookie phiên mang cờ
+             Secure, nên trình duyệt không bao giờ gửi nó qua kết nối không mã hoá." -->
+      </section>
+
+      <!-- 6 -->
+      <section aria-labelledby="h-bai-lam">
+        <h2 id="h-bai-lam" class="text-2xl font-extrabold tracking-tight scroll-mt-24">6. Bài làm, ghi âm và tệp tải lên</h2>
+        <p class="text-[15px] leading-relaxed text-muted mt-3">
+          Tên tệp trong kho lưu trữ do <b class="text-ink">máy chủ tự sinh</b>, không lấy theo tên
+          tệp bạn gửi lên — nên không ai đặt được một cái tên khiến tệp ghi đè lên chỗ khác trong hệ
+          thống.
+        </p>
+        <p class="text-[15px] leading-relaxed text-muted mt-2">
+          Tệp tải lên được kiểm bằng <b class="text-ink">chính nội dung của nó</b>, đọc các byte đầu
+          để nhận diện định dạng, chứ không tin vào loại tệp mà trình duyệt khai báo. Một tệp khai là
+          âm thanh nhưng bên trong là thứ khác sẽ bị từ chối.
+        </p>
+        <p class="text-[15px] leading-relaxed text-muted mt-2">
+          Bản ghi âm chỉ tải về được từ trong chính bài thi của bạn, và chỉ trong lúc phần thi đó còn
+          mở. Bài viết và bản ghi âm có được gửi ra ngoài để chấm hay không, và gửi tới đâu, nằm ở
+          <a class="font-bold text-brand-strong hover:underline" href="/prep/rieng-tu/">Chính sách quyền riêng tư</a>
+          — đó là câu hỏi về dữ liệu đi đâu, nên nó thuộc trang kia.
+        </p>
+      </section>
+
+      <!-- 7 -->
+      <section aria-labelledby="h-nhat-ky">
+        <h2 id="h-nhat-ky" class="text-2xl font-extrabold tracking-tight scroll-mt-24">7. Nhật ký thao tác</h2>
+        <p class="text-[15px] leading-relaxed text-muted mt-3">
+          Mọi thao tác quản trị chạm tới tài khoản, mã kích hoạt hay đơn hàng đều được ghi lại: ai
+          làm, làm gì, lúc nào, từ địa chỉ nào. Bao gồm cả những việc động tới tiền như thu hồi mã và
+          hoàn tiền.
+        </p>
+        <p class="text-[15px] leading-relaxed text-muted mt-2">
+          Nhật ký này tồn tại để trả lời được câu "chuyện gì đã xảy ra với tài khoản của tôi" — bằng
+          bản ghi, chứ không bằng trí nhớ của ai đó.
+        </p>
+      </section>
+
+      <!-- 8 -->
+      <section aria-labelledby="h-sao-luu">
+        <h2 id="h-sao-luu" class="text-2xl font-extrabold tracking-tight scroll-mt-24">8. Sao lưu</h2>
+        <p class="text-[15px] leading-relaxed text-muted mt-3">
+          Cơ sở dữ liệu được sao lưu định kỳ, nén lại và gửi lên kho lưu trữ đám mây kèm
+          <b class="text-ink">mã kiểm tra toàn vẹn</b>, để một bản sao lưu hỏng giữa đường không âm
+          thầm được chấp nhận. Kho lưu trữ bật chế độ chống xoá, nên một bản đã ghi không bị xoá đè.
+        </p>
+        <p class="text-[15px] leading-relaxed text-muted mt-2">
+          Sao lưu chỉ có nghĩa khi phục hồi được, nên quy trình phục hồi được chạy thử chứ không chỉ
+          được viết ra.
+        </p>
+      </section>
+
+      <!-- 9 -->
+      <section aria-labelledby="h-ben-thu-ba">
+        <h2 id="h-ben-thu-ba" class="text-2xl font-extrabold tracking-tight scroll-mt-24">9. Bên thứ ba</h2>
+        <p class="text-[15px] leading-relaxed text-muted mt-3">
+          <b class="text-ink">Thanh toán:</b> thông tin thẻ của bạn <b class="text-ink">không bao giờ
+          đi qua nền tảng</b>. Bạn nhập thẻ trên trang của cổng thanh toán; nền tảng chỉ nhận lại mã
+          tham chiếu đơn hàng và kết quả. Chúng tôi không lưu số thẻ vì chúng tôi không hề nhìn thấy nó.
+        </p>
+        <p class="text-[15px] leading-relaxed text-muted mt-2">
+          <b class="text-ink">Khoá của các dịch vụ ngoài</b> được mã hoá bằng AES-256-GCM trước khi
+          lưu, và không một giao diện hay API nào đọc ngược chúng ra — kể cả với tài khoản quản trị
+          cao nhất, màn hình chỉ hiện "đã có khoá" cùng vài ký tự cuối.
+        </p>
+        <p class="text-[15px] leading-relaxed text-muted mt-2">
+          <b class="text-ink">Đăng nhập bằng Google</b> chỉ xin phạm vi tối thiểu để biết bạn là ai.
+          Nền tảng không xin quyền đọc Gmail, Drive hay danh bạ của bạn.
+        </p>
+      </section>
+
+      <!-- 10 -->
+      <section aria-labelledby="h-su-co">
+        <h2 id="h-su-co" class="text-2xl font-extrabold tracking-tight scroll-mt-24">10. Nếu có sự cố rò rỉ</h2>
+        <p class="text-[15px] leading-relaxed text-muted mt-3">
+          Không hệ thống nào tuyệt đối an toàn, và một trang bảo mật hứa điều ngược lại là một trang
+          không đáng tin. Cam kết của chúng tôi là về <b class="text-ink">cách xử lý</b>:
+        </p>
+        <ul class="grid gap-2.5 mt-4 text-[15px] leading-relaxed text-muted">
+          <li>Nếu dữ liệu cá nhân của bạn bị lộ, chúng tôi <b class="text-ink">báo cho bạn qua email</b> trong vòng 72 giờ kể từ khi xác định được sự việc.</li>
+          <li>Thông báo sẽ nói rõ <b class="text-ink">dữ liệu nào</b> bị ảnh hưởng và <b class="text-ink">bạn nên làm gì</b>, chứ không phải một lời xin lỗi chung chung.</li>
+          <li>Nếu phiên đăng nhập có thể đã bị lộ, chúng tôi huỷ toàn bộ phiên và buộc đăng nhập lại, kể cả khi việc đó gây phiền.</li>
+          <li>Chúng tôi thông báo cho cơ quan có thẩm quyền theo quy định của pháp luật Việt Nam.</li>
+        </ul>
+      </section>
+
+      <!-- 11 -->
+      <section aria-labelledby="h-bao-loi">
+        <h2 id="h-bao-loi" class="text-2xl font-extrabold tracking-tight scroll-mt-24">11. Bạn tìm thấy lỗ hổng?</h2>
+        <p class="text-[15px] leading-relaxed text-muted mt-3">
+          Gửi thư cho chúng tôi tại
+          <a class="font-bold text-brand-strong hover:underline" href="mailto:hotro@vpetprep.vn">hotro@vpetprep.vn</a>
+          với tiêu đề <span class="font-mono text-[13.5px]">Báo lỗi bảo mật</span>. Mô tả cách tái hiện
+          là đủ; bạn không cần chứng minh bằng cách lấy dữ liệu thật của người khác.
+        </p>
+        <p class="text-[15px] leading-relaxed text-muted mt-2">
+          Chúng tôi phản hồi trong 5 ngày làm việc và <b class="text-ink">không truy cứu</b> người báo
+          lỗi một cách có thiện chí: không truy cập dữ liệu người dùng khác quá mức cần thiết để chứng
+          minh, không phá hoại dữ liệu, và cho chúng tôi thời gian vá trước khi công bố.
+        </p>
+      </section>
+
+      <!-- 12 -->
+      <section aria-labelledby="h-khong-hua">
+        <h2 id="h-khong-hua" class="text-2xl font-extrabold tracking-tight scroll-mt-24">12. Những gì trang này không hứa</h2>
+        <p class="text-[15px] leading-relaxed text-muted mt-3">
+          Nói ra để bạn biết ranh giới, thay vì suy đoán từ những gì trang này có nhắc tới:
+        </p>
+        <ul class="grid gap-2.5 mt-4 text-[15px] leading-relaxed text-muted">
+          <li>Nền tảng <b class="text-ink">chưa có màn hình để bạn tự xem danh sách thiết bị đang đăng nhập</b>. Cách đăng xuất mọi thiết bị hiện nay là đổi mật khẩu.</li>
+          <li>Chúng tôi <b class="text-ink">không kiểm soát được thiết bị của bạn</b>. Máy tính công cộng, trình duyệt lưu sẵn mật khẩu, hay người khác mượn máy — đó là phần bạn giữ.</li>
+          <li>Bảo mật của tài khoản email bạn dùng để đăng ký nằm ngoài tầm chúng tôi, mà ai vào được email đó thì đặt lại được mật khẩu ở đây.</li>
+        </ul>
+      </section>
+
+      <nav class="border-t border-line pt-6" aria-label="Trang pháp lý khác">
+        <p class="text-[13px] font-bold uppercase tracking-wider text-muted">Xem thêm</p>
+        <ul class="flex flex-wrap gap-x-6 gap-y-2 mt-3 text-[14.5px] font-semibold">
+          <li><a class="text-brand-strong hover:underline" href="/prep/rieng-tu/">Chính sách quyền riêng tư</a></li>
+          <li><a class="text-brand-strong hover:underline" href="/prep/dieu-khoan/">Điều khoản sử dụng</a></li>
+          <li><a class="text-brand-strong hover:underline" href="/prep/hoan-tien/">Chính sách hoàn tiền</a></li>
+        </ul>
+      </nav>
+
+    </div>
+
+    <!-- Mục lục: dính theo màn hình trên máy tính, ẩn trên điện thoại vì đã có tiêu đề rõ -->
+    <nav class="hidden lg:block" aria-label="Mục lục">
+      <div class="sticky top-24">
+        <p class="text-[12px] font-bold uppercase tracking-wider text-muted">Trong trang này</p>
+        <ul class="grid gap-2 mt-3 text-[14px] font-medium">
+          <li><a class="text-muted hover:text-ink transition" href="#h-mat-khau">1. Mật khẩu của bạn</a></li>
+          <li><a class="text-muted hover:text-ink transition" href="#h-phien">2. Phiên đăng nhập</a></li>
+          <li><a class="text-muted hover:text-ink transition" href="#h-chan">3. Chặn truy cập trái phép</a></li>
+          <li><a class="text-muted hover:text-ink transition" href="#h-noi-bo">4. Nội bộ ai xem được gì</a></li>
+          <li><a class="text-muted hover:text-ink transition" href="#h-trinh-duyet">5. Trên trình duyệt của bạn</a></li>
+          <li><a class="text-muted hover:text-ink transition" href="#h-bai-lam">6. Bài làm và tệp tải lên</a></li>
+          <li><a class="text-muted hover:text-ink transition" href="#h-nhat-ky">7. Nhật ký thao tác</a></li>
+          <li><a class="text-muted hover:text-ink transition" href="#h-sao-luu">8. Sao lưu</a></li>
+          <li><a class="text-muted hover:text-ink transition" href="#h-ben-thu-ba">9. Bên thứ ba</a></li>
+          <li><a class="text-muted hover:text-ink transition" href="#h-su-co">10. Nếu có sự cố</a></li>
+          <li><a class="text-muted hover:text-ink transition" href="#h-bao-loi">11. Báo lỗ hổng</a></li>
+          <li><a class="text-muted hover:text-ink transition" href="#h-khong-hua">12. Điều không hứa</a></li>
+        </ul>
+      </div>
+    </nav>
+
+  </div>
+</main>
+
+<footer class="border-t border-line mt-4">
+  <p class="max-w-shell mx-auto px-4 sm:px-6 py-5 text-[13px] text-muted">© 2026 VPET Prep. Nền tảng luyện tập, không phải kỳ thi chính thức.</p>
+</footer>
+
+</body>
+</html>

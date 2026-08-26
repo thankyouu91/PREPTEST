@@ -270,6 +270,10 @@ app.get('/prep/rieng-tu/', serveHtmlWithNonce('prep/rieng-tu/index.html'));
    Bắt đăng nhập ở đây là giấu điều khoản bán hàng khỏi chính người sắp mua. */
 app.get('/prep/dieu-khoan/', serveHtmlWithNonce('prep/dieu-khoan/index.html'));
 app.get('/prep/hoan-tien/', serveHtmlWithNonce('prep/hoan-tien/index.html'));
+/* Bảo vệ dữ liệu bằng cách nào — phần bù cho trang quyền riêng tư, vốn chỉ nói
+   giữ gì và gửi đi đâu. Công khai vì nó là thứ một trung tâm đọc trước khi giao
+   danh sách học viên cho nền tảng. */
+app.get('/prep/bao-mat/', serveHtmlWithNonce('prep/bao-mat/index.html'));
 /* Shown by the service worker when a navigation cannot reach the network.
    Public: the point of it is to work with no session and no radio. */
 app.get('/prep/offline/', serveHtmlWithNonce('prep/offline.html'));

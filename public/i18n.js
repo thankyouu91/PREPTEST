@@ -196,6 +196,7 @@
     'Terms': 'Điều khoản',
     'Refunds': 'Hoàn tiền',
     'Privacy': 'Quyền riêng tư',
+    'Security': 'Bảo mật',
     '© 2026 VPET Prep. For practice only, not an official examination.':
       '© 2026 VPET Prep. Chỉ để luyện tập, không phải kỳ thi chính thức.',
 
