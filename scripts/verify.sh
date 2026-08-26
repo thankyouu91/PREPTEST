@@ -191,6 +191,9 @@ node scripts/test-admin.mjs || fail=1
 step "Test builder (writing questions where the part is built)"
 node scripts/test-builder.mjs || fail=1
 
+step "Service worker (a deploy reaches the browser; the shell still opens offline)"
+node scripts/test-sw.mjs || fail=1
+
 step "Student journey"
 node scripts/test-auth.mjs || fail=1
 

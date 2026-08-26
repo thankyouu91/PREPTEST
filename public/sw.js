@@ -20,7 +20,10 @@
  */
 'use strict';
 
-const CACHE = 'vpet-shell-v1';
+/* Bump this and every older cache is deleted on the next activation. It also
+   changes this file's bytes, which is the only thing that makes a browser
+   install a new worker at all — see the note on the fetch handler. */
+const CACHE = 'vpet-shell-v2';
 const OFFLINE_URL = '/prep/offline/';
 
 /* Small on purpose. Anything missing is fetched normally and then cached on
@@ -85,16 +88,44 @@ self.addEventListener('fetch', event => {
 
   if (!STATIC_EXTENSIONS.test(url.pathname)) return;
 
-  /* Static assets: serve from cache at once, refresh in the background. The
-     page paints instantly offline and picks up the new file next load. */
+  /* ---- Two strategies, split by what the file IS ----
+   *
+   * This was one strategy for everything: serve the cache, refresh behind it,
+   * "picks up the new file next load". That last clause is the bug. A worker is
+   * only reinstalled when sw.js ITSELF changes, and deploying a fix to
+   * _chrome.js or the stylesheet does not change sw.js — so nothing reprecaches,
+   * and the cached copy is handed to the page while the new one is still in
+   * flight. Every returning visitor runs the previous version of the CSS and
+   * JS, once, on every deploy.
+   *
+   * It cost a real afternoon: a sidebar layout fix went out, was verified on the
+   * server, and the person who reported it still saw the broken layout — because
+   * their browser was being handed the _chrome.js from before the fix. There is
+   * no way to tell that apart from "the fix did not work".
+   *
+   * So scripts and stylesheets go NETWORK FIRST, falling back to the cache when
+   * the network is genuinely gone. This costs those files nothing in practice:
+   * they are served `cache-control: max-age=0`, so a browser with no worker at
+   * all would revalidate them on every load anyway. What the cache still buys
+   * them is the thing it was added for — the site opens offline.
+   *
+   * Fonts, icons and images keep the old behaviour. They are big, they are
+   * effectively immutable, and one load of a stale icon is not a broken page.
+   */
+  const mustBeFresh = /\.(css|js)$/i.test(url.pathname);
+
   event.respondWith((async () => {
     const cache = await caches.open(CACHE);
-    const cached = await cache.match(req);
-    const network = fetch(req).then(res => {
+    const fromNetwork = fetch(req).then(res => {
       if (res && res.ok && res.type === 'basic') cache.put(req, res.clone());
       return res;
     }).catch(() => null);
-    return cached || (await network) ||
+
+    if (mustBeFresh) {
+      return (await fromNetwork) || (await cache.match(req)) ||
+        new Response('', { status: 504, statusText: 'Offline' });
+    }
+    return (await cache.match(req)) || (await fromNetwork) ||
       new Response('', { status: 504, statusText: 'Offline' });
   })());
 });
