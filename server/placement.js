@@ -81,8 +81,10 @@ function nextLevel(level, right) {
 
 const TYPE_HOLES = INSTANT_TYPES.map(() => '?').join(',');
 
-/** Everything usable at one level, one item per part per pass, spread wide. */
-async function takeAtLevel(level, skip, picked, want) {
+/** Everything usable at one level, one item per part per pass, spread wide.
+    `cap` is the most this rung may take from any single part, counted across
+    every level already swept — see MAX_PER_PART. */
+async function takeAtLevel(level, skip, picked, want, cap) {
   const parts = await q.all(
     `SELECT DISTINCT part FROM questions
       WHERE status = 'active' AND level = ? AND type IN (${TYPE_HOLES})
@@ -92,10 +94,17 @@ async function takeAtLevel(level, skip, picked, want) {
   /* One pass takes a single item from each part, then it goes round again. That
      is what spreads them: six items sorted by RANDOM() over the whole pool
      cluster into whichever part happens to be deepest. */
+  const ceiling = cap > 0 ? cap : want;
+  const from = part => picked.filter(p => p.part === part).length;
+
   for (let round = 0; round < 6 && picked.length < want; round++) {
     let took = 0;
     for (const { part } of parts) {
       if (picked.length >= want) break;
+      /* Counted over `picked`, which is the whole rung so far rather than this
+         level's share of it — the cap has to hold across the level fallback,
+         because that is where the imbalance came from. */
+      if (from(part) >= ceiling) continue;
       const rows = await q.all(
         `SELECT id, part, type, prompt, options_json, level, audio_key
            FROM questions
@@ -128,25 +137,48 @@ async function takeAtLevel(level, skip, picked, want) {
  * `exclude` is everything already served this sitting, so rung two cannot repeat
  * rung one — which at the same level it otherwise would, often, on a shallow part.
  */
+/**
+ * At most this many items from any one part in a single rung.
+ *
+ * takeAtLevel() already takes one item per part per pass, so a rung drawn wholly
+ * from one level is balanced by construction. The imbalance came from the level
+ * FALLBACK below, which starts a fresh pass sequence at each substitute level —
+ * and the part with items everywhere wins every one of them.
+ *
+ * What that did to a real sitting: A2 holds four items and all four are Part A,
+ * which is gap-fill. A learner who does badly on rung 1 is dropped to A2, and
+ * rung 2 came back A A A A A E — five text boxes in a row, nothing to choose on
+ * any of them. It was reported as "không nhấn chọn được kết quả", and it is a
+ * fair description of a screen with no options on it.
+ *
+ * Two of six leaves room for at least three parts in every rung. The cap is
+ * relaxed rather than enforced to the point of a short rung — see below.
+ */
+const MAX_PER_PART = 2;
+
 async function drawRung(level, exclude) {
   const skip = new Set((exclude || []).map(Number));
   const picked = [];
 
-  await takeAtLevel(level, skip, picked, PER_RUNG);
+  /* Nearest first, alternating below then above: an item one level easier is a
+     closer substitute than one two levels harder. */
+  const i = Math.max(0, LADDER.indexOf(level));
+  const order = [level];
+  for (let d = 1; d < LADDER.length; d++) {
+    if (LADDER[i - d]) order.push(LADDER[i - d]);
+    if (LADDER[i + d]) order.push(LADDER[i + d]);
+  }
 
-  if (picked.length < PER_RUNG) {
-    const i = Math.max(0, LADDER.indexOf(level));
-    /* Nearest first, alternating below then above: an item one level easier is a
-       closer substitute than one two levels harder. */
-    const order = [];
-    for (let d = 1; d < LADDER.length; d++) {
-      if (LADDER[i - d]) order.push(LADDER[i - d]);
-      if (LADDER[i + d]) order.push(LADDER[i + d]);
-    }
+  /* Two sweeps of the same ladder. The first holds the per-part cap, so a thin
+     level cannot fill a rung with its one part; the second drops the cap and
+     takes whatever is left. A rung of six mixed items beats a balanced rung of
+     four, and a bank deep enough never reaches the second sweep. */
+  for (const cap of [MAX_PER_PART, PER_RUNG]) {
     for (const alt of order) {
       if (picked.length >= PER_RUNG) break;
-      await takeAtLevel(alt, skip, picked, PER_RUNG);
+      await takeAtLevel(alt, skip, picked, PER_RUNG, cap);
     }
+    if (picked.length >= PER_RUNG) break;
   }
   return picked;
 }

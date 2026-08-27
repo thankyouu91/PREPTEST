@@ -170,6 +170,24 @@ try {
   ok(r.data.items.length === P.PER_RUNG, 'Six of them', String(r.data.items.length));
   ok(r.data.level === P.START_LEVEL, 'The first rung is at the starting level', r.data.level);
 
+  /* No rung may be one part wearing six hats.
+   *
+   * takeAtLevel() spreads within a level, so this only ever went wrong through
+   * the level FALLBACK, which starts a fresh pass at each substitute level and
+   * hands every one of them to whichever part has items everywhere. A2 holds
+   * four items and all four are Part A, which is gap-fill, so a learner who did
+   * badly on rung 1 was dropped to A2 and met A A A A A E — five text boxes in a
+   * row with nothing to choose on any of them. Reported as "không nhấn chọn được
+   * kết quả", which is what a screen with no options looks like from outside.
+   *
+   * Asserted on the wire rather than on drawRung(), because what the learner
+   * meets is the payload. */
+  const mix = {};
+  for (const it of r.data.items) mix[it.part] = (mix[it.part] || 0) + 1;
+  const worst = Math.max(...Object.values(mix));
+  ok(worst <= 2, 'No single part fills more than a third of a rung', JSON.stringify(mix));
+  ok(Object.keys(mix).length >= 3, 'A rung draws on at least three parts', JSON.stringify(mix));
+
   /* The one that matters most on this route. A browser that can see the key can
      pass the test, and a placement anybody can pass measures nothing. */
   const wire = JSON.stringify(r.data);

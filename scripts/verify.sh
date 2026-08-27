@@ -215,6 +215,9 @@ node scripts/test-part-skill.mjs || fail=1
 step "Placement audio (listening items must be audible)"
 node scripts/test-placement-audio.mjs || fail=1
 
+step "Answer buttons (choosing must look chosen, in both themes)"
+node scripts/test-pick-contrast.mjs || fail=1
+
 step "Placement scope (only the items it dealt may be marked)"
 node scripts/test-placement-scope.mjs || fail=1
 

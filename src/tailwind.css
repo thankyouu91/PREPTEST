@@ -24,6 +24,28 @@
     --color-hl:      #ffc94d;   /* vàng: highlight chức năng, không trang trí */
     --color-hl-ink:  #4a3608;
 
+    /* ---- Bốn biến mà giao diện làm bài vẫn gọi ----
+       Chúng được DÙNG 13 lần trong khối .pick / .part-* mà chưa từng được định
+       nghĩa ở đâu cả. `var()` không có giá trị và không có fallback thì cả dòng
+       khai báo đó hỏng ở bước tính giá trị, nên thuộc tính rơi về giá trị kế
+       thừa hoặc mặc định — im lặng, không lỗi console, không ai thấy.
+
+       Hậu quả đúng như báo lỗi. `.pick-on .pick-key` khai báo
+       `background: var(--color-brand); color: #fff`: nền hỏng nên trong suốt,
+       còn `color: #fff` thì hợp lệ và vẫn áp — nên ở chế độ SÁNG, chọn một đáp
+       án là con số hoá trắng trên nền trắng và biến mất. Ở chế độ TỐI thì
+       `.pick-on` mất cả nền lẫn viền, nên bấm chọn xong không có gì đổi: câu
+       được chọn "không hiển thị luôn".
+
+       Định nghĩa ở đây chứ không sửa 13 chỗ gọi, vì tên gọi vốn đúng — brand là
+       primary, line là border — và một chỗ định nghĩa thì tenant với dark mode
+       tự đi theo. `--color-border` từ trước tới nay không có ai gọi bằng var()
+       cũng chỉ vì lý do này. */
+    --color-line:         var(--color-border);
+    --color-brand:        var(--color-primary);
+    --color-brand-soft:   color-mix(in srgb, var(--color-primary) 12%, var(--color-card));
+    --color-brand-strong: color-mix(in srgb, var(--color-primary) 80%, black);
+
     /* Bảng màu cố định nhận diện KỲ THI — chỉ dùng cho chip/nhãn */
     --exam-ielts: #d64545;      /* đỏ-cam */
     --exam-toeic: #2563eb;      /* lam */
@@ -55,6 +77,13 @@
     --color-success: #4fc98f;
     --color-hl:      #ffc94d;
     --color-hl-ink:  #4a3608;
+    /* `--color-line` and `--color-brand` are aliases and follow by themselves;
+       these two are MIXES and the direction has to flip. A 12% tint toward a
+       white card is a pale wash, and the same formula against a #141c33 card is
+       a shade nobody can tell from the card — so the tint is stronger, and
+       "strong" is lightened toward white rather than darkened toward black. */
+    --color-brand-soft:   color-mix(in srgb, var(--color-primary) 26%, var(--color-card));
+    --color-brand-strong: color-mix(in srgb, var(--color-primary) 72%, white);
   }
   .dark[data-tenant='evergreen'] {
     --color-primary: #52b788;
@@ -347,6 +376,10 @@
   }
   .pick-on { border-color: var(--color-brand); background: var(--color-brand-soft); }
   .pick-on .pick-key { background: var(--color-brand); color: #fff; }
+  /* White on the dark theme's brand is about 3.4:1, which is under the bar for a
+     12.5px number. Dark ink on it is the same rule .dark .btn-primary already
+     follows, and for the same reason: the dark palette's brand is a LIGHT blue. */
+  .dark .pick-on .pick-key { color: #0a1020; }
 
   /* ---- Biểu đồ trên trang chủ ----
      Màu nằm ở đây chứ không nằm trong public/prep/_charts.js, nên biểu đồ tự

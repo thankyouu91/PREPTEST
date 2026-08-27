@@ -10,7 +10,7 @@
     "docs:vpet": "node scripts/make-vpet-docs.mjs",
     "screenshot": "node scripts/screenshot.mjs",
     "screenshot:admin": "node scripts/shot-admin.mjs",
-    "test": "node scripts/test-accounts.js && node scripts/test-ability-isolation.mjs && node scripts/test-tenancy.mjs && node scripts/test-part-skill.mjs && node scripts/test-placement-scope.mjs && node scripts/test-preview-session.mjs && node scripts/test-admin.mjs && node scripts/test-builder.mjs && node scripts/test-sw.mjs && node scripts/test-auth.mjs && node scripts/test-catalog.mjs && node scripts/test-user-api.mjs && node scripts/test-exam.mjs && node scripts/test-paper.mjs && node scripts/test-exam-ui.mjs && node scripts/test-navscroll.mjs && node scripts/test-ai-marking.mjs && node scripts/test-learn.mjs && node scripts/audit.mjs",
+    "test": "node scripts/test-accounts.js && node scripts/test-ability-isolation.mjs && node scripts/test-tenancy.mjs && node scripts/test-part-skill.mjs && node scripts/test-pick-contrast.mjs && node scripts/test-placement-scope.mjs && node scripts/test-preview-session.mjs && node scripts/test-admin.mjs && node scripts/test-builder.mjs && node scripts/test-sw.mjs && node scripts/test-auth.mjs && node scripts/test-catalog.mjs && node scripts/test-user-api.mjs && node scripts/test-exam.mjs && node scripts/test-paper.mjs && node scripts/test-exam-ui.mjs && node scripts/test-navscroll.mjs && node scripts/test-ai-marking.mjs && node scripts/test-learn.mjs && node scripts/audit.mjs",
     "verify": "bash scripts/verify.sh",
     "icons": "node scripts/make-icons.mjs",
     "audio:vpet": "node scripts/make-vpet-audio.mjs",
