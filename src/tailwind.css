@@ -631,15 +631,54 @@
     @apply w-full sm:max-w-md bg-card border border-line shadow-soft-lg
            rounded-t-2xl sm:rounded-2xl p-6 sm:p-7 max-h-[92dvh] overflow-y-auto;
     animation: modal-in .28s cubic-bezier(.16,1,.3,1) both;
+    /* How tall .modal-actions is: py-4 either side of a btn-md. Measured at 75px,
+       rounded up. Named here because the panel's padding and its scroll padding
+       both have to match it, and three hardcoded copies of one measurement is
+       how they come apart. */
+    --modal-bar-h: 5rem;
   }
   /* An action row that stays put while the form above it scrolls.
-     The panel gives up its bottom padding to whichever dialog has one, and the
-     bar supplies the same space itself. Doing it the other way round — leaving
-     the padding and pulling the bar down over it with a negative margin — looks
-     right until you measure it: `bottom: 0` is resolved against the MARGIN box,
-     so a negative bottom margin lifts the bar by exactly that much and it sits
-     on top of the last control instead of below it. */
-  .modal-panel:has(.modal-actions) { @apply pb-0; }
+     The bar is `sticky bottom-0` INSIDE the scrolling panel, which means every
+     earlier sibling passes underneath it — that is what sticky is. The panel
+     used to answer that with `pb-0`, on the reasoning that the bar supplies its
+     own space. It supplies space BELOW itself, which is the space nothing needs.
+     What was missing is scroll room PAST the bar, and without it a strip the
+     height of the bar at the bottom of the panel was permanently covered:
+     measured on the add-a-part dialog at 1003×633, the bar sat at y 532–607 and
+     options 2, 3 and 4 of a multiple-choice row sat at 550, 591 and 632. Option 2
+     took no text. A click aimed at option 3 landed on the save button, so the
+     dialog closed and saved a half-written part. Not a wrinkle — that is losing
+     an operator's work at the moment they try to type.
+
+     So the panel keeps bottom padding, and it is the bar's height rather than
+     the panel's usual 1.5rem: that is the scroll room that lets the last field
+     be brought out from under the bar. `scroll-padding-bottom` is the other
+     half — it stops the browser's own scroll-into-view, the one that runs when a
+     field is reached by Tab, from parking that field underneath the bar.
+
+     Doing it the other way round — leaving the padding and pulling the bar down
+     over it with a negative margin — looks right until you measure it: `bottom:
+     0` is resolved against the MARGIN box, so a negative bottom margin lifts the
+     bar by exactly that much and it sits on top of the last control. */
+  .modal-panel:has(.modal-actions) {
+    @apply pb-0;
+    scroll-padding-bottom: var(--modal-bar-h);
+  }
+  /* The scroll room, as CONTENT rather than as padding on the container.
+     Padding was the first attempt and it made things worse in a way worth
+     recording, because it is the same trap the note above describes wearing a
+     different hat: a sticky `bottom: 0` resolves against the scrollport's
+     CONTENT box, so `padding-bottom: 5rem` on the panel lifted the bar 5rem off
+     the panel's floor — measured, the bar went from y 532–607 to 452–527 — and
+     it still covered everything behind it, now with a gap underneath as well.
+     Padding on the container moves the bar. A block after the bar does not: it
+     only lengthens the scroll, which is the one thing actually needed, so the
+     last field can always be brought up clear of the bar. */
+  .modal-panel:has(.modal-actions)::after {
+    content: '';
+    display: block;
+    height: var(--modal-bar-h);
+  }
   .modal-actions {
     @apply sticky bottom-0 -mx-6 sm:-mx-7 px-6 sm:px-7 py-4
            bg-card border-t border-line flex gap-2.5;

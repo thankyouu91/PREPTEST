@@ -251,17 +251,32 @@
         '<button type="button" id="c-add" class="btn btn-soft btn-sm mt-2.5">Add a question</button>' +
       '</div>';
 
+    /**
+     * One answer row per item type.
+     *
+     * The four multiple-choice rows are a plain `div`, NOT a `<label>` wrapping
+     * both controls, and that is the fix rather than the tidy-up it looks like.
+     * A label with no `for` labels its FIRST labelable descendant, which here
+     * was the radio — so the whole row, the text box included, was part of the
+     * radio's hit area. Chromium happens to let a click through to a text input
+     * nested in someone else's label; that is a courtesy in the spec's
+     * "interactive content" carve-out, not a guarantee, and where it does not
+     * apply the click selects the radio and the keystrokes go nowhere. The box
+     * then sits there still showing "Option 1" while the operator types, which
+     * is exactly what was reported. Two controls that mean different things do
+     * not belong under one label.
+     */
     function answerBox(key, type) {
       if (type === 'mcq') {
         return '<div class="grid gap-1.5 mt-2">' +
           [0, 1, 2, 3].map(i =>
-            '<label class="flex items-center gap-2.5">' +
-              '<input type="radio" name="ans-' + key + '" data-ans="' + i + '" ' +
-                'class="w-4 h-4 accent-[color:var(--color-accent)] shrink-0" ' +
+            '<div class="flex items-center gap-2.5">' +
+              '<input type="radio" name="ans-' + key + '" data-ans="' + i + '" id="ans-' + key + '-' + i + '" ' +
+                'class="w-4 h-4 accent-[color:var(--color-accent)] shrink-0 cursor-pointer" ' +
                 'aria-label="Option ' + (i + 1) + ' is the correct answer">' +
-              '<input class="input py-1.5 text-[14px]" data-opt="' + i + '" ' +
+              '<input class="input py-1.5 text-[14px]" data-opt="' + i + '" id="opt-' + key + '-' + i + '" ' +
                 'placeholder="Option ' + (i + 1) + '" aria-label="Option ' + (i + 1) + '">' +
-            '</label>').join('') +
+            '</div>').join('') +
           '</div>';
       }
       if (type === 'gap') {

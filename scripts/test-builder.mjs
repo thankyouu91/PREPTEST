@@ -69,6 +69,90 @@ check('A VPET part offers only the item type it takes',
   typeOpts.length === 1 && typeOpts[0] === 'Multiple choice', JSON.stringify(typeOpts));
 check('The mcq option boxes appear', (await p.locator('[data-row] [data-opt]').count()) === 4);
 
+/* ---- The boxes must take TYPED text, not just a scripted value ----
+ *
+ * Everything below this block uses locator.fill(), which writes the DOM value
+ * directly. That is fine for checking what the composer reads back, and it is
+ * blind to the whole class of fault where the box is on screen but cannot be
+ * reached: something covering it, or a click that lands on a different control.
+ * Both had happened here at once, and both were reported as "Part C will not
+ * take an answer" while this file stayed green.
+ *
+ * So: put a long passage in the prompt, which is what makes the dialog tall
+ * enough for the sticky action bar to matter, then for each of the four boxes
+ * bring it into view the way the browser does when a field is reached, check
+ * that a click at its centre actually arrives at it, and type with the keyboard.
+ */
+{
+  /* On the 1440×1000 this file otherwise runs at, the dialog fits and the bar
+     covers nothing — the first version of this block passed on the broken
+     build, which makes it worse than no check at all. The fault needs a screen
+     the dialog OVERFLOWS. 1366×768 is the commonest laptop still in use and is
+     roughly what the report came from; the reported symptom appears there and
+     not at 1000px tall, which is the whole reason it reached a person before it
+     reached this file. */
+  await p.setViewportSize({ width: 1366, height: 768 });
+  await p.waitForTimeout(250);
+
+  const PASSAGE = 'The staff kitchen on the third floor will be closed on Friday morning while a '
+    + 'new refrigerator is installed. Employees may use the kitchen on the second floor during '
+    + 'this time. Please remove any food you are storing there before Thursday evening.';
+  await p.locator('[data-row] [data-prompt]').first().fill(PASSAGE);
+  await p.waitForTimeout(250);
+
+  const trouble = [];
+  for (let i = 0; i < 4; i++) {
+    /* Sampled at the centre AND near the bottom edge, not the centre alone.
+       The centre-only version passed on the broken build: scroll-into-view left
+       the last 12px of the box under the bar, which the centre never touches
+       and a real click often does. A box is reachable only if all of it is. */
+    const geo = await p.evaluate(n => {
+      const el = document.querySelectorAll('[data-row] [data-opt]')[n];
+      el.scrollIntoView({ block: 'nearest' });
+      const r = el.getBoundingClientRect();
+      const bar = document.querySelector('.modal-actions').getBoundingClientRect();
+      const cx = r.left + r.width / 2;
+      const at = p2 => { const e = document.elementFromPoint(cx, p2); return e === el ? null : e; };
+      const blocker = at(r.top + r.height / 2) || at(r.bottom - 3);
+      return {
+        cx: Math.round(cx), cy: Math.round(r.top + r.height / 2),
+        reaches: !blocker && r.bottom <= bar.top + 1,
+        hits: blocker ? blocker.tagName.toLowerCase() + (blocker.id ? '#' + blocker.id : '')
+                      : 'bar overlaps its last ' + Math.round(r.bottom - bar.top) + 'px'
+      };
+    }, i);
+    if (!geo.reaches) { trouble.push('box ' + (i + 1) + ': ' + geo.hits); continue; }
+    await p.mouse.click(geo.cx, geo.cy);
+    await p.waitForTimeout(80);
+    if (!(await p.locator('.modal-actions').count())) {
+      trouble.push('box ' + (i + 1) + ' click closed the dialog');
+      break;
+    }
+    await p.keyboard.type('Typed ' + (i + 1), { delay: 12 });
+    await p.waitForTimeout(80);
+    const got = await p.locator('[data-row] [data-opt]').nth(i).inputValue();
+    if (got !== 'Typed ' + (i + 1)) trouble.push('box ' + (i + 1) + ' holds ' + JSON.stringify(got));
+  }
+  check('Every option box can be clicked and typed into', trouble.length === 0, trouble.join(' | '));
+
+  /* And the keyboard route: Tab must never park a field under the sticky bar. */
+  await p.locator('[data-row] [data-prompt]').first().click();
+  for (let k = 0; k < 5; k++) { await p.keyboard.press('Tab'); await p.waitForTimeout(60); }
+  const clear = await p.evaluate(() => {
+    const r = document.activeElement.getBoundingClientRect();
+    const bar = document.querySelector('.modal-actions').getBoundingClientRect();
+    return { ok: r.bottom <= bar.top + 1, bottom: Math.round(r.bottom), barTop: Math.round(bar.top) };
+  });
+  check('Tabbing to a field scrolls it clear of the action bar', clear.ok,
+    'field bottom ' + clear.bottom + ' vs bar top ' + clear.barTop);
+
+  /* Reset, so the fill()-based checks below start from where they expect. */
+  for (let i = 0; i < 4; i++) await p.locator('[data-row] [data-opt]').nth(i).fill('');
+  await p.locator('[data-row] [data-prompt]').first().fill('');
+  await p.setViewportSize({ width: 1440, height: 1000 });
+  await p.waitForTimeout(200);
+}
+
 const fill = async (i, prompt, correct) => {
   const row = p.locator('[data-row]').nth(i);
   await row.locator('[data-prompt]').fill(prompt);
