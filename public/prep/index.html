@@ -503,9 +503,44 @@
 
       const basis = PREP.qs('#ability-basis');
       if (ab && ab.events) {
+        /* Where the items came from, named. This line said only how many, and
+           it sits directly under "Chưa nộp bài nào" — so a learner whose only
+           marked work is the placement test read "18 câu đã chấm" beside "no
+           papers submitted" and reasonably concluded the numbers were somebody
+           else's. Both sentences were true; neither said that a placement is
+           not a paper. */
+        const SOURCE = {
+          placement: ['the placement test', 'bài xếp lớp'],
+          exam: ['papers you sat', 'bài thi bạn đã làm'],
+          drill: ['part practice', 'luyện theo phần'],
+          revision: ['revision', 'ôn tập'],
+          learn: ['self-study', 'tự học']
+        };
+        /* Both sentences are built in full and PREP.t picks one, rather than
+           resolving the source names first and dropping the same resolved
+           string into both branches — that works only by accident of the unused
+           branch being discarded. */
+        const rows = Object.entries(ab.sources || {});
+        const name = (k, i) => (SOURCE[k] || [k, k])[i];
+        /* `rows` is never empty here: the block is guarded on ab.events, and an
+           event has a source. */
+        const lead = i => {
+          /* One source is the common case and deserves the plain sentence:
+             "18 items, all from the placement test", not "18 items: 18 from …". */
+          if (rows.length === 1) return name(rows[0][0], i);
+          return rows.map(([k, n]) => n + (i === 0 ? ' from ' : ' từ ') + name(k, i)).join(', ');
+        };
+        const decay = i => i === 0
+          ? ' Each counts half as much every ' + ab.halfLifeDays + ' days. * means provisional.'
+          : ' Mỗi câu giảm một nửa trọng số sau mỗi ' + ab.halfLifeDays + ' ngày. Dấu * là tạm tính.';
+        const one = rows.length === 1;
         basis.textContent = PREP.t(
-          'From ' + ab.events + ' marked items. Each counts half as much every ' + ab.halfLifeDays + ' days. * means provisional.',
-          'Dựa trên ' + ab.events + ' câu đã chấm. Mỗi câu giảm một nửa trọng số sau mỗi ' + ab.halfLifeDays + ' ngày. Dấu * là tạm tính.');
+          (one ? 'From ' + ab.events + ' marked items, all from ' + lead(0) + '.'
+               : 'From ' + ab.events + ' marked items: ' + lead(0) + '.')
+            + decay(0),
+          (one ? 'Dựa trên ' + ab.events + ' câu đã chấm của ' + lead(1) + '.'
+               : 'Dựa trên ' + ab.events + ' câu đã chấm: ' + lead(1) + '.')
+            + decay(1));
         basis.removeAttribute('hidden');
       }
     }

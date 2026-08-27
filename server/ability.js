@@ -276,7 +276,7 @@ async function record(events) {
  */
 async function abilityOf(userId, now) {
   const rows = await q.all(
-    `SELECT skill, part, level, topic, earned, max_score, weight, at
+    `SELECT source, skill, part, level, topic, earned, max_score, weight, at
        FROM skill_events WHERE user_id = ? ORDER BY at DESC LIMIT 20000`, userId);
 
   const bucket = (map, key, row) => {
@@ -332,7 +332,17 @@ async function abilityOf(userId, now) {
     skills: out(bySkill),
     parts: out(byPart),
     topics: out(byTopic),
-    events: rows.length
+    events: rows.length,
+    /* WHERE the evidence came from, so a screen can say so.
+       The dashboard reported "based on 18 marked items" directly above a panel
+       reading "no papers submitted yet", and both were true: the eighteen are
+       the placement test, which is not a paper. Two true sentences that read as
+       a contradiction, and the reading somebody reasonably reached was that the
+       numbers belonged to a different account. A count with no provenance is
+       what made that the most plausible explanation available to them. */
+    sources: [...rows.reduce((m, r) => m.set(r.source, (m.get(r.source) || 0) + 1), new Map())]
+      .sort((a, b) => b[1] - a[1])
+      .reduce((o, [k, v]) => (o[k] = v, o), {})
   };
 }
 
