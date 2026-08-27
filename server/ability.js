@@ -224,6 +224,18 @@ async function record(events) {
     /* Skipped rather than stored: an event worth nothing out of nothing moves no
        estimate and would only dilute the count. */
     if (!(Number(e.max_score) > 0)) continue;
+    /* And an event that cannot say WHICH skill it is evidence of is dropped
+       rather than guessed at. `skill` is NOT NULL, so a caller with no answer
+       has to either invent one or be refused here, and inventing one is what
+       server/placement.js used to do: its part→skill lookup silently returned
+       nothing and defaulted to 'reading', so every learner's listening and
+       writing answers were filed as reading. A missing dimension is a visible
+       gap the learner can be told about; a wrong one is a wrong band. */
+    if (!e.skill) {
+      console.error('[ability] event dropped: no skill  ' +
+        JSON.stringify({ source: e.source, ref_id: e.ref_id, item_key: e.item_key, part: e.part }));
+      continue;
+    }
     written++;
     await q.run(
       `INSERT INTO skill_events

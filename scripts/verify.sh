@@ -209,6 +209,9 @@ node scripts/test-ability-isolation.mjs || fail=1
 step "Tenancy (no unique key or upsert on a learner's table leaves the learner out)"
 node scripts/test-tenancy.mjs || fail=1
 
+step "Part → skill (evidence filed under the skill the part actually tests)"
+node scripts/test-part-skill.mjs || fail=1
+
 step "Placement audio (listening items must be audible)"
 node scripts/test-placement-audio.mjs || fail=1
 

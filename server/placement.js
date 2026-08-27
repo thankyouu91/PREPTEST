@@ -381,21 +381,55 @@ async function answer(userId, answers) {
 /**
  * Which of the four skills a VPET part belongs to.
  *
- * Read from the published part tables rather than hardcoded here, so a change to
- * the blueprint does not leave this file quietly disagreeing with the exam.
+ * Read from the published blueprint rather than hardcoded here, so a change to
+ * the exam does not leave this file quietly disagreeing with it.
+ *
+ * It disagreed with it anyway, for the whole life of the function. The walk was
+ * `Object.values(formats)` looking for `f.parts`, and neither half was right:
+ * the module exports `{FORMATS, partsOf, totalItems, …}`, so the values being
+ * walked were a format LIST and a handful of functions, and a format carries
+ * `sections`, not `parts`. Nothing ever matched, PART_SKILL stayed `{}`, and
+ * every part fell through the old `|| 'reading'`.
+ *
+ * That default is what made it invisible. Part C really is reading, so the
+ * mapping looked right wherever anybody spot-checked it. But A, B and D are
+ * WRITING, E, F and G are LISTENING, and H, I and J are SPEAKING — the
+ * blueprint says so — and all of them were being recorded as reading evidence.
+ * Both callers are affected: the placement below, and the three drill paths in
+ * server/drills.js. A learner who sat the placement and answered twelve
+ * listening items was then shown "Nghe: chưa có" beside a reading band carrying
+ * all eighteen.
+ *
+ * So the fallback is gone. A part with no entry is a question this cannot
+ * answer, and answering it with a guess is what cost every learner their
+ * listening and writing evidence. Callers get null; ability.record() drops an
+ * event with no skill rather than filing it under the wrong one.
  */
 let PART_SKILL = null;
-function skillOfPart(part) {
-  if (!PART_SKILL) {
-    PART_SKILL = {};
-    try {
-      const formats = require('./data/exam-formats');
-      for (const f of Object.values(formats)) {
-        for (const p of (f && f.parts) || []) if (p.part && p.skill) PART_SKILL[p.part] = p.skill;
+function partSkillMap() {
+  if (PART_SKILL) return PART_SKILL;
+  PART_SKILL = {};
+  try {
+    const { FORMATS } = require('./data/exam-formats');
+    for (const f of FORMATS || []) {
+      for (const s of (f && f.sections) || []) {
+        if (s.part && s.skill) PART_SKILL[s.part] = s.skill;
       }
-    } catch { /* fall through to the default below */ }
+    }
+  } catch (e) {
+    console.error('[placement] could not read the blueprint for part→skill', e);
   }
-  return PART_SKILL[part] || 'reading';
+  /* Said out loud, because the silent version of this ran for the life of the
+     function. An empty map means every event this file and server/drills.js
+     produce is about to be filed under the wrong skill. */
+  if (!Object.keys(PART_SKILL).length) {
+    console.error('[placement] part→skill map is EMPTY — placement and drill events cannot be filed by skill');
+  }
+  return PART_SKILL;
+}
+
+function skillOfPart(part) {
+  return partSkillMap()[part] || null;
 }
 
 /**

@@ -1016,6 +1016,48 @@ addIndex('CREATE UNIQUE INDEX IF NOT EXISTS idx_orders_ref ON orders (ref)');
   }
 })();
 
+/**
+ * Re-file the events whose skill disagrees with their part.
+ *
+ * server/placement.js's part→skill lookup never matched anything and defaulted
+ * every part to 'reading' (the note on skillOfPart says exactly how). So every
+ * placement item and every drill item ever recorded went in as reading
+ * evidence — including parts E, F and G, which are LISTENING, and A, B and D,
+ * which are WRITING. On the dashboard that reads as "Nghe: chưa có" and
+ * "Viết: chưa có" beside a reading band quietly carrying all of it.
+ *
+ * Fixing the function only fixes what comes next. The rows already written are
+ * repairable exactly, without guessing, because `part` was stored correctly all
+ * along and the blueprint says what each letter is — so this derives the skill
+ * from the part rather than from anything about how the row was made.
+ *
+ * Confined to rows that HAVE a part. Revision and self-study events carry a
+ * topic and no part; their skill was always set explicitly and is not in doubt.
+ */
+(function refileEventsByPart() {
+  let map = {};
+  try {
+    const { FORMATS } = require('./data/exam-formats');
+    for (const f of FORMATS || []) {
+      for (const s of (f && f.sections) || []) if (s.part && s.skill) map[s.part] = s.skill;
+    }
+  } catch (e) {
+    console.error('[schema] skill_events: cannot read the blueprint, leaving skills alone', e);
+    return;
+  }
+  /* No map, no repair. Running with an empty one would rewrite every row to
+     nothing, which is worse than the fault being fixed. */
+  if (!Object.keys(map).length) return;
+
+  let moved = 0;
+  for (const [part, skill] of Object.entries(map)) {
+    const r = db.prepare(
+      'UPDATE skill_events SET skill = ? WHERE part = ? AND skill <> ?').run(skill, part, skill);
+    moved += Number(r.changes) || 0;
+  }
+  if (moved) console.log('[schema] skill_events: ' + moved + ' row(s) re-filed under the skill their part belongs to');
+})();
+
 /* ============================== HELPERS ============================== */
 const nowISO = () => new Date().toISOString();
 const jparse = (s, fb) => { try { return JSON.parse(s); } catch (e) { return fb; } };
