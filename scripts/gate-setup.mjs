@@ -75,6 +75,35 @@ for (const t of strays) {
 }
 say(strays.length ? 'archived ' + strays.length + ' stray test paper(s)' : 'no stray test papers');
 
+/* 3b. Questions left behind by earlier runs.
+      The suites create questions — to attach audio to, to test the editor, to
+      fill a draft paper — and most of them are never removed. They accumulate:
+      by the time this was written the gate database held 284 seeded bank items
+      and 274 leftovers, nearly twice the intended size.
+
+      That is not merely untidy, and it caused a real false alarm. The admin
+      question listing is capped at 200 rows a page, so once the bank plus the
+      residue passed 200 the Part G items — which are old, and the listing is
+      newest-first — fell off the end, and test-admin.mjs reported "this group
+      has 0 recordings" about a bank that was perfectly intact. A gate failing
+      because of what previous runs left behind is exactly what this file is
+      for. (The truncation guard in that suite was also wrong and has been
+      fixed; both had to be, because either one alone still fails eventually.)
+
+      Only rows with no `ext_key` — nothing the seed authored — and only those
+      no paper points at, so a question that has been sat against is left alone
+      and the foreign key cannot trip. */
+const leftover = await q.all(
+  `SELECT id FROM questions
+    WHERE ext_key IS NULL
+      AND id NOT IN (SELECT question_id FROM section_items)`);
+for (const row of leftover) {
+  await q.run('DELETE FROM questions WHERE id = ?', row.id);
+}
+say(leftover.length
+  ? 'removed ' + leftover.length + ' question(s) left by earlier runs'
+  : 'no leftover questions');
+
 /* 4. The day's AI marking budget, spent by earlier runs on the demo accounts.
       server/ai-budget.js allows 240 calls per account per rolling 24 hours, and
       the marking suites drive a real paper through a stubbed marker every time

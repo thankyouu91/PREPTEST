@@ -1021,20 +1021,36 @@ const run = async () => {
   /* Everything the blueprint says needs sound, so the format's own count can be
      checked against a second, independent path to the same fact. */
   const audioLetters = ['E', 'F', 'G', 'H', 'J'];
-  /* 500 is the API's own cap, and the truncation check below is not belt and
-     braces — it caught this. At `limit=300` the listing silently stopped
-     mid-bank once the C1 sets took VPET past 300 questions, and the group check
-     further down then reported "g-b1-1 has 0 recordings" because the item
-     carrying the passage had fallen off the end of the page. A group assertion
-     against a truncated list is a false alarm that looks exactly like a real
-     one, so the truncation is now its own named failure. */
-  const BANK_PAGE = 500;
-  const r2 = await call('GET', '/api/admin/questions?family=vpet&limit=' + BANK_PAGE);
-  const fetched = (r2.data.items || []).length;
-  check('The whole VPET bank fits in one page, so the checks below see all of it',
-    fetched < BANK_PAGE,
-    fetched + ' returned against a page size of ' + BANK_PAGE
-      + ' — the bank has outgrown the page; these checks need paging now');
+  /* The whole bank, paged.
+   *
+   * The group checks below are meaningless against a partial list: the item
+   * carrying a passage falls off the end and the group reads as "0 recordings",
+   * which looks exactly like a real fault. This has now caused that false alarm
+   * twice.
+   *
+   * The second time is the instructive one. A guard was already here for it,
+   * and it could not fire: it asked for `limit=500` on the belief that 500 was
+   * "the API's own cap" and passed when fewer than 500 came back — but the API
+   * clamps limit to 200. So it requested 500, received 200 of 402, compared 200
+   * against 500, and reported the list complete. A truncation guard that
+   * measures the request instead of the answer cannot detect truncation.
+   *
+   * So it is paged against `total`, which the endpoint returns, and the check
+   * is that everything claimed was actually collected. That is correct at any
+   * bank size and does not need a constant kept in step with the server. */
+  const wholeBank = [];
+  let bankTotal = 0;
+  for (let offset = 0; ; offset += 200) {
+    const page = await call('GET', '/api/admin/questions?family=vpet&limit=200&offset=' + offset);
+    const got = (page.data && page.data.items) || [];
+    bankTotal = (page.data && page.data.total) || 0;
+    wholeBank.push(...got);
+    if (!got.length || wholeBank.length >= bankTotal || offset > 5000) break;
+  }
+  const r2 = { data: { items: wholeBank, total: bankTotal } };
+  check('The whole VPET bank was collected, so the checks below see all of it',
+    wholeBank.length === bankTotal && bankTotal > 0,
+    wholeBank.length + ' of ' + bankTotal + ' collected');
   r2.data.items = (r2.data.items || []).filter(x => audioLetters.includes(x.part) && x.status === 'active');
 
   r = await call('GET', '/api/admin/exam-formats?familyId=vpet');
