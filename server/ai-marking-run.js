@@ -173,7 +173,7 @@ async function pending(attemptId) {
     `SELECT aa.id, aa.answer, aa.audio_key, aa.mark_note,
             si.question_id, ap.section_id,
             qs.prompt, qs.type, qs.level, qs.part, qs.ext_key,
-            t.level paper_level
+            t.level paper_level, t.family_id family
        FROM attempt_parts ap
        JOIN section_items si ON si.section_id = ap.section_id
        JOIN questions qs ON qs.id = si.question_id
@@ -360,7 +360,15 @@ async function markRow(attemptId, row, tries, userId) {
     try {
       verdict = await ai.markOne({
         part: row.part,
-        level: row.level || row.paper_level,
+        /* Two levels, deliberately. `level` is how hard THIS ITEM is; the scale
+           the marker aims at belongs to the PAPER, because that is the range
+           server/bands.js will read the mark back through. They used to be one
+           argument — `row.level || row.paper_level` — so a B2-tagged item on a
+           B1 paper silently moved the whole scale under the marker while the
+           report went on reading it against the paper's. */
+        level: row.level,
+        paperLevel: row.paper_level,
+        family: row.family,
         prompt: row.prompt,
         answer: row.answer,
         heard, source,

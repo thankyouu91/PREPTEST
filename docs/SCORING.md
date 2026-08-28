@@ -238,6 +238,23 @@ Phần Nói còn cần đo **phát âm và độ trôi chảy**. Miễn phí tr�
 (chỉ hợp cho dạng *Read Aloud* / *Repeat Sentence*), cộng thêm đo tốc độ nói và
 số lần ngập ngừng từ chính file ghi âm.
 
+#### Part D chấm theo rubric của chính Pearson
+
+**Ngoại lệ quan trọng nhất, và nó có nguồn.** Part D (Viết email) **không** dùng
+sáu luật dưới đây theo cách các phần khác dùng. Nó chấm theo **rubric Write
+Email của PTE Core — của chính Pearson** — 7 tiêu chí trên thang 15 điểm, có
+trọng số, trong đó `form` (độ dài) và `spelling` (chính tả) được **đếm** chứ
+không phán đoán. Hai luật của nền tảng (mắt xích yếu nhất, cửa độ dài) nhường
+chỗ, và một luật của Pearson được thêm vào (lạc đề → cả bài 0 điểm).
+
+Chi tiết đầy đủ, kèm bảng mô tả từng mức và những chỗ cố ý khác PTE (mốc độ dài
+lấy của VPET, không lấy của PTE), ở
+[`docs/CHAM-DIEM-CHUAN.md`](CHAM-DIEM-CHUAN.md) §3.1.
+
+Mỗi tiêu chí cũng ghi nó ứng với **subscore nào của Versant Writing** — Grammar,
+Vocabulary, Organization, Voice and Tone — theo đúng định nghĩa Pearson công bố,
+để ai đọc cũng lần ngược được về kỳ thi mà nó đang mô phỏng.
+
 #### Sáu luật giữ cho điểm rubric trung thực — `server/rubric.js`
 
 > **Quy cách chấm đầy đủ: [`docs/CHAM-DIEM-CHUAN.md`](CHAM-DIEM-CHUAN.md).** Mục

@@ -114,17 +114,22 @@ const { q } = await import('../server/db.js').then(m => m.default || m);
 try {
   head('The weakest criterion holds the whole thing down');
 
-  const wide = R.combine('D', {
-    task: { score: 8 }, register: { score: 8 }, organisation: { score: 7 }, accuracy: { score: 4 }
-  }, { answer: EMAIL });
+  /* On Part I, not Part D. Part D follows Pearson's own weighted scheme now and
+     this house rule deliberately steps aside for it — see the Part D section
+     further down, which asserts that it does. */
+  const SPOKEN = 'I am really sorry about missing the meeting yesterday afternoon. I had a '
+    + 'problem with the train and there was no way to let anyone know in time.';
+  const wide = R.combine('I', {
+    task: { score: 8 }, range: { score: 8 }, register: { score: 7 }, accuracy: { score: 4 }
+  }, { answer: SPOKEN });
   ok(wide.beforeCaps === 7, 'Four criteria averaging 6.75 round to 7', String(wide.beforeCaps));
   ok(wide.score === 4.5, 'But the mark is 4.5 — half a band above the weakest', String(wide.score));
   ok(wide.caps.some(c => c.rule === 'weakest-criterion'), 'And the reason is named');
-  ok(/Grammar and spelling/.test(wide.caps[0].en), 'Naming which criterion did it', wide.caps[0].en);
+  ok(/Accuracy/.test(wide.caps[0].en), 'Naming which criterion did it', wide.caps[0].en);
 
-  const tight = R.combine('D', {
-    task: { score: 7 }, register: { score: 7 }, organisation: { score: 7.5 }, accuracy: { score: 6.5 }
-  }, { answer: EMAIL });
+  const tight = R.combine('I', {
+    task: { score: 7 }, range: { score: 7 }, register: { score: 7.5 }, accuracy: { score: 6.5 }
+  }, { answer: SPOKEN });
   ok(tight.score === tight.beforeCaps,
     'An even profile is not capped — the rule is about a real weak point, not a tax on everyone',
     tight.score + ' vs ' + tight.beforeCaps);
@@ -137,17 +142,21 @@ try {
 
   head('Length is a gate, and it is measured rather than judged');
 
-  const short = R.combine('D', {
-    task: { score: 9 }, register: { score: 9 }, organisation: { score: 9 }, accuracy: { score: 9 }
-  }, { answer: 'Thanks. See you Thursday. Linh' });
-  ok(short.score === 4, 'Nine across the board, 5 words against 100 required, capped at 4', String(short.score));
-  ok(short.caps.some(c => c.rule === 'under-length'), 'For the stated reason');
-  ok(/5 words against a required 100/.test(short.caps.find(c => c.rule === 'under-length').en),
-    'Which quotes the actual count', short.caps.find(c => c.rule === 'under-length').en);
+  /* The gate itself is unchanged and still fires wherever a part declares a word
+     floor and does not score length as a criterion of its own. Part D no longer
+     qualifies — it counts length as `form`, worth 2 of Pearson's 15 — so the
+     gate is exercised here through an explicit `minWords`, which is the same
+     code path any future part with a floor will take. */
+  const nines = { meaning: { score: 9 }, accuracy: { score: 9 }, organisation: { score: 9 } };
+  const shortB = R.combine('B', nines, { answer: 'Thanks. See you Thursday. Linh', minWords: 100 });
+  ok(shortB.score === 4, 'Nine across the board, 5 words against 100 required, capped at 4',
+    String(shortB.score));
+  ok(shortB.caps.some(c => c.rule === 'under-length'), 'For the stated reason');
+  ok(/5 words against a required 100/.test(shortB.caps.find(c => c.rule === 'under-length').en),
+    'Which quotes the actual count', shortB.caps.find(c => c.rule === 'under-length').en);
 
-  const enough = R.combine('D', {
-    task: { score: 7 }, register: { score: 7 }, organisation: { score: 7 }, accuracy: { score: 7 }
-  }, { answer: EMAIL });
+  const enough = R.combine('B', { meaning: { score: 7 }, accuracy: { score: 7 }, organisation: { score: 7 } },
+    { answer: EMAIL, minWords: 100 });
   ok(!enough.caps.some(c => c.rule === 'under-length'),
     'A full-length answer is not capped', String(R.words(EMAIL).length) + ' words');
 
@@ -162,9 +171,9 @@ try {
    * What the check was really after is that the boundary is not a cliff, and
    * that is what it tests now: neighbouring lengths score within half a mark of
    * each other, all the way up. */
-  const eights = { task: { score: 8 }, register: { score: 8 }, organisation: { score: 8 }, accuracy: { score: 8 } };
-  const scoreAt = n => R.combine('D', eights,
-    { answer: Array.from({ length: n }, (_, i) => 'word' + i).join(' ') }).score;
+  const eights = { meaning: { score: 8 }, accuracy: { score: 8 }, organisation: { score: 8 } };
+  const scoreAt = n => R.combine('B', eights,
+    { answer: Array.from({ length: n }, (_, i) => 'word' + i).join(' '), minWords: 100 }).score;
   const jumps = [];
   for (let n = 55; n < 110; n++) {
     const step = Math.abs(scoreAt(n + 1) - scoreAt(n));
@@ -172,6 +181,14 @@ try {
   }
   ok(jumps.length === 0, 'no single word is worth more than half a mark anywhere along the length rule',
     jumps.join(', '));
+
+  /* And the same, on the criterion that replaced it for Part D. */
+  const formJumps = [];
+  for (let n = 40; n < 220; n++) {
+    if (Math.abs(R.computedForm(n + 1) - R.computedForm(n)) > 0.5) formJumps.push(String(n));
+  }
+  ok(formJumps.length === 0, 'nor anywhere along the form criterion that replaced it for Part D',
+    formJumps.slice(0, 6).join(', '));
 
   head('A quotation is not believed until it is found');
 
@@ -189,9 +206,10 @@ try {
   ok(R.verifyEvidence('anything at all', '') === null, 'And nothing to check against is not a match');
 
   const withFake = R.combine('D', {
-    task: { score: 7, evidence: 'I have moved the installation to Friday' },
-    register: { score: 7, evidence: 'Yours faithfully, a valued colleague' },
-    organisation: { score: 7 }, accuracy: { score: 7 }
+    content: { score: 7, evidence: 'I have moved the installation to Friday' },
+    conventions: { score: 7, evidence: 'Yours faithfully, a valued colleague' },
+      vocabulary: { score: 7 }, spelling: { score: 10 },
+    organisation: { score: 7 }, grammar: { score: 7 }
   }, { answer: EMAIL });
   ok(withFake.criteria[0].evidence !== null, 'The real quotation is kept');
   ok(withFake.criteria[1].evidence === null, 'The invented one is dropped');
@@ -202,13 +220,16 @@ try {
 
   head('Missing is not zero');
 
-  const partial = R.combine('D', { task: { score: 8 }, accuracy: { score: 8 } }, { answer: EMAIL });
-  ok(partial.criteria.length === 2 && partial.score === 8,
-    'Two of four criteria produce a mark from two, not two eighths',
+  const partial = R.combine('D', { content: { score: 8 }, grammar: { score: 8 } }, { answer: EMAIL });
+  /* Three, not two: `form` is computed and is always there. What the check is
+     really about is that the two MISSING criteria are absent rather than zero. */
+  ok(partial.criteria.filter(c => !c.computed).length === 2 && partial.score > 7,
+    'Two of the judged criteria produce a mark from two, not two sevenths',
     partial.criteria.length + ' → ' + partial.score);
-  const bogus = R.combine('D', { task: { score: 47 }, accuracy: { score: -3 }, register: { score: 6 } },
+  const bogus = R.combine('D', { content: { score: 47 }, grammar: { score: -3 }, conventions: { score: 6 } },
     { answer: EMAIL });
-  ok(bogus.criteria.length === 1, 'Out-of-range criterion scores are dropped', String(bogus.criteria.length));
+  ok(bogus.criteria.filter(c => !c.computed).length === 1,
+    'Out-of-range criterion scores are dropped', String(bogus.criteria.length));
   ok(R.combine('D', {}, { answer: EMAIL }) === null,
     'Nothing usable at all returns null — which means "not marked", never zero');
 
@@ -253,7 +274,7 @@ try {
   ok(junk.criteria === null, 'Criteria that are all unusable come back as none, not as noise');
 
   const prompt = ai.userPrompt({ part: 'D', level: 'B2', prompt: 'Write to your manager.', answer: EMAIL });
-  for (const key of ['task', 'register', 'organisation', 'accuracy']) {
+  for (const key of ['content', 'conventions', 'form', 'organisation', 'vocabulary', 'grammar', 'spelling']) {
     ok(prompt.includes('"' + key + '"'), 'The prompt names the "' + key + '" criterion');
   }
   /* The instruction that makes the evidence worth checking lives in the system
@@ -274,6 +295,217 @@ try {
     'Part H is asked for the criteria it now has');
   ok(!ai.userPrompt({ part: 'Z', prompt: 'x', answer: 'y' }).includes('Score these criteria'),
     'and a part with no criteria is still asked for none');
+
+  /* ------------------------------------------------------------------ *
+   * The scale the marker aims at is the scale the report reads
+   * ------------------------------------------------------------------ *
+   *
+   * This is the assertion the whole level scale exists for.
+   *
+   * server/bands.js turns a mark into a CEFR level by placing it inside the
+   * paper's published GSE range — 10/10 on a Level 1 paper is GSE 58, the top
+   * of B1+. So the mark already carries a claim about the candidate's level,
+   * and for two years nothing told the marker that: the prompt said "Candidate
+   * level for this paper: B1" and left the model to decide for itself whether
+   * that meant "mark against B1 expectations" or "mark against good English".
+   * Those give very different numbers from one answer, and bands.js read
+   * whatever came back as though the first had happened.
+   *
+   * rubric.levelScale() inverts bands.js's own arithmetic rather than restating
+   * it, so what is checked here is that the two really are inverses — not that
+   * two hand-written tables happen to agree today.
+   */
+  head('The marker aims at the scale the report reads back');
+
+  const bands = await import('../server/bands.js').then(m => m.default || m);
+  for (const paper of ['B1', 'C1']) {
+    const scale = R.levelScale(paper, 'vpet');
+    ok(scale.length >= 5, 'A ' + paper + ' paper has a scale with every level it can measure',
+      scale.map(s => s.cefr).join(' '));
+
+    /* The middle of each rung must come back as that rung. A floor band is
+       reported as a ceiling by design — bands.js says "at most B1+" rather
+       than guessing below its own range — so that answer counts too. */
+    const wrong = [];
+    for (const r of scale) {
+      const mid = (r.min + r.max) / 2;
+      const got = bands.bandFor(mid, { family: 'vpet', level: paper });
+      if (!(got.cefr === r.cefr || got.atFloor)) wrong.push(r.cefr + '→' + (got.cefr || 'floor'));
+    }
+    ok(wrong.length === 0, 'and every rung on it round-trips through bands.js', wrong.join(', '));
+
+    /* The ends are the claim a candidate will read on their report. */
+    ok(scale[0].max === 10, 'Full marks on a ' + paper + ' paper is the top of its range',
+      scale[0].cefr + ' at ' + scale[0].max);
+    ok(scale[scale.length - 1].min === 0, 'and zero is the bottom of it');
+  }
+
+  /* The two papers measure different stretches, so the same mark must NOT mean
+     the same level on both — if it did the whole exercise would be decoration. */
+  ok(R.levelScale('B1', 'vpet')[0].cefr !== R.levelScale('C1', 'vpet')[0].cefr,
+    'The two VPET papers top out at different levels, and the scale says so',
+    R.levelScale('B1', 'vpet')[0].cefr + ' vs ' + R.levelScale('C1', 'vpet')[0].cefr);
+  ok(R.levelScale('B1', 'vept').length === 0,
+    'and an exam with no published range gets no invented one');
+
+  /* Every criterion has to declare which ladder answers for it, or it silently
+     gets neither and the marker is back to guessing on that one criterion. */
+  const undeclared = [], noLadder = [];
+  for (const [part, defs] of Object.entries(R.CRITERIA)) {
+    for (const d of defs) {
+      if (!d.dim) undeclared.push(part + '.' + d.key);
+      else if (d.dim !== 'content' && !R.LADDER[d.dim]) noLadder.push(part + '.' + d.key + '→' + d.dim);
+    }
+  }
+  ok(undeclared.length === 0, 'Every criterion says which scale it is measured on', undeclared.join(', '));
+  ok(noLadder.length === 0, 'and every one that is not content has a ladder to be measured on',
+    noLadder.join(', '));
+  const thin = [];
+  for (const [dim, rungs] of Object.entries(R.LADDER)) {
+    for (const lv of R.LADDER_LEVELS) if (!rungs[lv]) thin.push(dim + '/' + lv);
+  }
+  ok(thin.length === 0, 'and every ladder has a rung at every level', thin.join(', '));
+
+  /* ------------------------------------------------------------------ *
+   * What the prompt actually carries
+   * ------------------------------------------------------------------ */
+  head('The standard reaches the marker, not just the repository');
+
+  /* Part I, not D: Part D now carries the owner's own band descriptors and is
+     therefore shown NEITHER ladder, which is the point of the block below. Part
+     I is a part the derived scale still answers for. */
+  const lvl1 = ai.userPrompt({ part: 'I', level: 'B1', paperLevel: 'B1', family: 'vpet',
+    prompt: 'Apologise to a colleague.', answer: '', heard: 'sorry I missed the meeting' });
+  const lvl2 = ai.userPrompt({ part: 'I', level: 'B1', paperLevel: 'C1', family: 'vpet',
+    prompt: 'Apologise to a colleague.', answer: '', heard: 'sorry I missed the meeting' });
+
+  ok(/This paper measures below A1 up to B1\+/.test(lvl1),
+    'A Level 1 paper tells the marker it measures below A1 to B1+');
+  ok(/This paper measures B1\+ up to C2/.test(lvl2),
+    'and a Level 2 paper that it measures B1+ to C2');
+  ok(lvl1.includes('8.5 – 10') && lvl2.includes('8.7 – 10'),
+    'each with its own mark table, derived rather than copied');
+  ok(!/dưới/.test(lvl1),
+    'The Vietnamese band label does not leak into an English prompt');
+
+  /* The ceiling in both directions: a Level 1 marker must not reach for a C1
+     rung it cannot award, and must not mark a strong answer DOWN for being
+     "only" B1+. */
+  ok(!lvl1.includes('C1 — Consistently accurate'),
+    'A Level 1 paper is not shown rungs it cannot award');
+  ok(/Anything stronger than B1\+ also scores 10/.test(lvl1),
+    'but is told that a stronger answer still scores full marks');
+  ok(!/Anything stronger than C2/.test(lvl2),
+    'and a Level 2 paper is not told about something above C2, which is not a thing');
+
+  /* The item's own difficulty is context, not the scale. It used to be passed
+     as the only level, so a B2-tagged item on a B1 paper moved the marker's
+     whole scale while the report went on reading it against the paper's. */
+  const hardItem = ai.userPrompt({ part: 'I', level: 'B2', paperLevel: 'B1', family: 'vpet',
+    prompt: 'x', answer: '', heard: 'z' });
+  ok(hardItem.includes('8.5 – 10') && /This paper measures below A1 up to B1\+/.test(hardItem),
+    'A harder item does not move the scale — that belongs to the paper');
+  ok(/This particular item is pitched at B2/.test(hardItem),
+    'though the marker is still told how hard the item is');
+
+  /* ------------------------------------------------------------------ *
+   * The owner's own Part D table
+   * ------------------------------------------------------------------ *
+   *
+   * The owner wrote the Email Writing rubric out in full — four criteria, three
+   * bands each, on a 5/3/1 scale anchored to B1. Where their standard exists it
+   * IS the standard, so it is reproduced rather than paraphrased and the
+   * derived ladders step aside for it.
+   *
+   * The band names are the reason it is scoped to one paper: "Đạt B1 cao",
+   * "Đạt yêu cầu B1", "Dưới chuẩn B1". That is the Level 1 paper. Reusing it on
+   * Level 2 would put a C1 candidate's ceiling at B1 and award full marks for
+   * work that paper exists to see past — so Level 2 falls through to the
+   * derived scale until the owner supplies its own table.
+   */
+  head('Part D follows Pearson\'s own Write Email rubric');
+
+  /* The owner supplied PTE Core's Write Email rubric — Pearson's own, seven
+     criteria over fifteen points — and asked that Part D be marked the way
+     Pearson actually marks an e-mail. It is reproduced rather than paraphrased,
+     and three of this file's own habits step aside for it. */
+  const dDefs = R.criteriaFor('D');
+  ok(dDefs.map(c => c.key).join() === 'content,conventions,form,organisation,vocabulary,grammar,spelling',
+    'Part D carries PTE Core\'s seven criteria', dDefs.map(c => c.key).join(', '));
+  ok(dDefs.reduce((t, c) => t + c.ptePoints, 0) === 15,
+    'adding up to Pearson\'s fifteen points', String(dDefs.reduce((t, c) => t + c.ptePoints, 0)));
+  ok(dDefs.find(c => c.key === 'content').weight === 3
+     && dDefs.filter(c => c.key !== 'content').every(c => c.weight === 2),
+    'weighted the way Pearson weights them — Content 3, the rest 2 each');
+  ok(dDefs.every(c => c.pearson),
+    'and each names the Versant Writing subscore it answers to',
+    dDefs.map(c => c.key + '←' + c.pearson).join(' '));
+  ok(dDefs.filter(c => c.bands).every(c => c.bands.every(b => b.en && b.vi)),
+    'with every band in both languages, because the candidate reads them too');
+
+  /* Weighted, not averaged. With Content at 3 of 15, dropping it costs more
+     than dropping any other criterion — which an even average would hide. */
+  const flat = k => {
+    const c = {};
+    for (const d of dDefs) if (!d.computed) c[d.key] = { score: d.key === k ? 0 : 10 };
+    return R.combine('D', c, { answer: EMAIL }).score;
+  };
+  ok(flat('content') < flat('grammar'),
+    'Losing Content costs more than losing any 2-point criterion — the weights are real',
+    'content→' + flat('content') + ' vs grammar→' + flat('grammar'));
+
+  /* PTE's own zero-trigger, and the only one in their scheme. */
+  const offTopic = {};
+  for (const d of dDefs) if (!d.computed) offTopic[d.key] = { score: d.key === 'content' ? 0 : 10 };
+  const off = R.combine('D', offTopic, { answer: EMAIL });
+  ok(off.score === 0, 'Content at zero — off the topic — scores the whole e-mail zero',
+    String(off.score));
+  ok(off.caps.some(c => c.rule === 'off-topic'), 'and says so in its own words');
+
+  /* The house rules that step aside, and the reason each does. */
+  const threeTypos = {};
+  for (const d of dDefs) if (!d.computed) threeTypos[d.key] = { score: d.key === 'spelling' ? 0 : 10 };
+  const typo = R.combine('D', threeTypos, { answer: EMAIL });
+  ok(!typo.caps.some(c => c.rule === 'weakest-criterion') && typo.score > 8,
+    'Three typos cost the 2 points Pearson says they cost, not the whole e-mail',
+    String(typo.score));
+  ok(R.WEIGHTED_SCHEME_PARTS.has('D'),
+    'because Part D is on a published weighted scheme and the weakest-link rule is ours, not theirs');
+
+  const shortD = {};
+  for (const d of dDefs) if (!d.computed) shortD[d.key] = { score: 10 };
+  const brief = R.combine('D', shortD, { answer: 'word '.repeat(60) });
+  ok(!brief.caps.some(c => c.rule === 'under-length'),
+    'A short e-mail is not capped as well as marked down — length is one of the seven now');
+  ok(brief.criteria.find(c => c.key === 'form').score === 0,
+    'It is the form criterion that carries it, computed from the count',
+    String(brief.criteria.find(c => c.key === 'form').score));
+  ok(brief.criteria.find(c => c.key === 'form').computed === true,
+    'and marked as computed, so nothing reads it as the marker\'s opinion');
+
+  /* Length still bites when there is no form criterion in the average — a model
+     that answered in the old two-field shape. Without this the item scored 0
+     off the word count alone and threw the marker's number away. */
+  const oldShape = R.combine('D', null, { answer: 'word '.repeat(20), fallbackScore: 8 });
+  ok(oldShape.score === 4 && oldShape.caps.some(c => c.rule === 'under-length'),
+    'A reply with no criteria at all falls back to its own score, with the length gate back on',
+    oldShape.score + ' ' + JSON.stringify(oldShape.caps.map(c => c.rule)));
+
+  /* The computed criteria are never asked of the marker. */
+  const dPrompt = ai.userPrompt({ part: 'D', level: 'B1', paperLevel: 'B1', family: 'vpet',
+    prompt: 'x', answer: EMAIL });
+  ok(!/"form" \(Length/.test(dPrompt) && /Do NOT score "form"/.test(dPrompt),
+    'The marker is not asked to score length, and is told not to');
+  ok(/content 3, conventions 2/.test(dPrompt),
+    'and is told the weights, so its headline number and the stored mark agree');
+  ok(/0 or 1 misspelt words/.test(dPrompt),
+    'Spelling is anchored on a count, the way Pearson states it');
+
+  /* Where the owner's descriptors named something this file computes, the
+     clause is withheld from the marker and enforced by arithmetic instead. */
+  ok(R.OWNER_OVERLAP.length === 2 && R.OWNER_OVERLAP.every(o => o.criterion && o.rule),
+    'and the clauses withheld from the marker are recorded, not silently dropped',
+    R.OWNER_OVERLAP.map(o => o.criterion + '/' + o.rule).join(', '));
 
   /* ------------------------------------------------------------------ *
    * Through the real route
@@ -333,10 +565,11 @@ try {
     score: 8,
     note: 'Say what you want the reader to do.',
     criteria: {
-      task: { score: 8, evidence: 'I have moved the installation to Friday', comment: 'Every point is covered' },
-      register: { score: 8, evidence: 'Kind regards, Linh' },
+      content: { score: 8, evidence: 'I have moved the installation to Friday', comment: 'Every point is covered' },
+      conventions: { score: 8, evidence: 'Kind regards, Linh' },
+        vocabulary: { score: 8 }, spelling: { score: 10 },
       organisation: { score: 7.5 },
-      accuracy: { score: 4, evidence: 'I look forward to your kind consideration', comment: 'Verb forms slip' }
+      grammar: { score: 4, evidence: 'I look forward to your kind consideration', comment: 'Verb forms slip' }
     }
   });
 
@@ -347,38 +580,55 @@ try {
   const stored = await q.all(
     'SELECT criterion, score, evidence, comment, version, marked_by FROM rubric_scores WHERE attempt_id=? AND question_id=? ORDER BY criterion',
     att.id, dItems[0]);
-  ok(stored.length === 4, 'Four criteria are stored for the item', String(stored.length));
+  /* Seven: PTE Core's six judged criteria plus the computed `form`. */
+  ok(stored.length === 7, 'All seven criteria are stored for the item', String(stored.length));
   ok(stored.every(s => s.version === R.RUBRIC_VERSION),
     'Each carries the rubric version it was made under', stored[0] && stored[0].version);
   ok(stored.every(s => s.marked_by === 'ai'), 'And who made it');
 
-  const acc = stored.find(s => s.criterion === 'accuracy');
+  const acc = stored.find(s => s.criterion === 'grammar');
   ok(acc && acc.score === 4, 'The weak criterion is stored as it was given', acc && String(acc.score));
   ok(acc && acc.evidence === null,
     'And its invented quotation did NOT reach the database', acc && String(acc.evidence));
-  const task = stored.find(s => s.criterion === 'task');
+  const task = stored.find(s => s.criterion === 'content');
   ok(task && task.evidence && /moved the installation/.test(task.evidence),
     'While the real one did', task && task.evidence);
 
   const earned = await q.val('SELECT earned FROM attempt_answers WHERE attempt_id=? AND question_id=?',
     att.id, dItems[0]);
-  /* The model said 8. The criteria average 6.875, and accuracy at 4 caps it at
-     4.5. The stored mark is a fraction of one item. */
-  ok(Math.abs(earned - 0.45) < 1e-6,
-    'The stored mark is the CAPPED one, not the number the model volunteered',
-    'earned=' + earned + ' (expected 0.45)');
+  /* The model said 8. Pearson's weighted sum over what it actually returned —
+     content 8×3, conventions 8×2, organisation 7×2, vocabulary 8×2, grammar
+     4×2, spelling 10×2, plus the computed form 10×2, all over 15 — is 7.87,
+     which rounds to 8.0. An EVEN average of the same seven would be 7.86 and
+     round the same way, so the check that the weights are really being used is
+     the one in the Part D section above; this one proves the whole road from
+     the model's reply to the stored fraction still works. */
+  ok(Math.abs(earned - 0.8) < 1e-6,
+    'The stored mark is the weighted one, out of one item',
+    'earned=' + earned + ' (expected 0.8)');
+
+  /* And the weights survive the trip: the stored rows carry what the marker
+     said, criterion by criterion, so a candidate can add it up themselves. */
+  const byKey = Object.fromEntries(stored.map(r => [r.criterion, r.score]));
+  ok(byKey.form === 10 && byKey.grammar === 4 && byKey.content === 8,
+    'with every criterion written down beside it, including the computed one',
+    JSON.stringify(byKey));
 
   const note = await q.val('SELECT mark_note FROM attempt_answers WHERE attempt_id=? AND question_id=?',
     att.id, dItems[0]);
-  ok(/weakest|Held down/i.test(note || ''),
-    'And the candidate is told a cap fired, rather than left to wonder', String(note).slice(0, 160));
+  /* Nothing capped this one — Part D's weighted scheme has no weakest-link rule
+     and the e-mail is long enough — so what is checked is that the marker's own
+     advice reached the candidate, which is the half of marking the platform
+     exists for. */
+  ok((note || '').includes('Say what you want the reader to do'),
+    'The marker\'s advice reaches the candidate', String(note).slice(0, 120));
 
   head('Marking again corrects the record instead of growing it');
 
   reply = JSON.stringify({
     score: 6, note: 'Better.',
     criteria: {
-      task: { score: 7 }, register: { score: 7 }, organisation: { score: 7 }, accuracy: { score: 6.5 }
+      content: { score: 7 }, conventions: { score: 7 }, organisation: { score: 7 }, vocabulary: { score: 7 }, grammar: { score: 6.5 }, spelling: { score: 10 }
     }
   });
   await q.run('UPDATE attempt_answers SET earned=NULL, max_score=NULL WHERE attempt_id=? AND question_id=?',
@@ -386,9 +636,9 @@ try {
   r = await admin.req('POST', '/api/admin/attempts/' + att.id + '/mark', {});
   const again = await q.all('SELECT criterion, score FROM rubric_scores WHERE attempt_id=? AND question_id=?',
     att.id, dItems[0]);
-  ok(again.length === 4, 'Still four rows, not eight', String(again.length));
-  ok(again.find(s => s.criterion === 'accuracy').score === 6.5,
-    'And the corrected score replaced the old one', String(again.find(s => s.criterion === 'accuracy').score));
+  ok(again.length === 7, 'Still seven rows, not fourteen', String(again.length));
+  ok(again.find(s => s.criterion === 'grammar').score === 6.5,
+    'And the corrected score replaced the old one', String(again.find(s => s.criterion === 'grammar').score));
 
   /* ------------------------------------------------------------------ *
    * The reported bug, end to end
@@ -509,8 +759,8 @@ try {
     ok(true, 'The detailed report is gated by plan on this account — checked in the database above');
   } else {
     const item = partD.items.find(i => i.questionId === dItems[0]);
-    ok(item && item.criteria && item.criteria.length === 4,
-      'The report carries the criteria', item ? String((item.criteria || []).length) : 'no item');
+    ok(item && item.criteria && item.criteria.length === 7,
+      'The report carries all seven criteria', item ? String((item.criteria || []).length) : 'no item');
     ok(item.criteria.every(c => c.en && c.vi),
       'Each named in both languages, so the page needs no second table');
     ok(item.diagnostics && item.diagnostics.words > 100,
@@ -561,7 +811,7 @@ head('Nothing handed in is nothing, not four out of ten');
      that hallucinates criteria for an empty answer must not be able to pay
      out on them. */
   const invented = R.combine('D',
-    { task: { score: 10 }, tone: { score: 10 }, accuracy: { score: 10 }, range: { score: 10 } },
+    { content: { score: 10 }, tone: { score: 10 }, grammar: { score: 10 }, range: { score: 10 } },
     { answer: '' });
   ok(invented.score === 0,
     'Even ten out of ten on every criterion cannot mark an empty answer',
@@ -687,7 +937,7 @@ head('Nothing handed in is nothing, not four out of ten');
     'while B and D, whose stimulus is text on the screen, are');
 
   /* An email that pastes the situation back has not written an email. */
-  const FULL_D = { task: { score: 10 }, register: { score: 10 }, organisation: { score: 10 }, accuracy: { score: 10 } };
+  const FULL_D = { content: { score: 10 }, conventions: { score: 10 }, organisation: { score: 10 }, vocabulary: { score: 10 }, grammar: { score: 10 }, spelling: { score: 10 } };
   ok(R.combine('D', FULL_D, { answer: PASSAGE, stimulus: PASSAGE }).score === R.COPY_CAP,
     'Part D: handing the prompt back is capped the same way');
 
@@ -776,6 +1026,48 @@ head('Nothing handed in is nothing, not four out of ten');
   const missingBands = R.BANDS.filter(b => !doc.includes('**' + b.at + '**')).map(b => b.at);
   ok(missingBands.length === 0, 'and all six rungs of the ten-point scale',
     missingBands.join(', '));
+
+  /* The level scale is the part somebody will argue with — "why is my perfect
+     paper only B1+" — so the document has to carry every rung of both papers,
+     with the same numbers the marker was given. Written with a comma in the
+     document, as Vietnamese writes decimals. */
+  const staleScale = [];
+  for (const paper of ['B1', 'C1']) {
+    for (const r of R.levelScale(paper, 'vpet')) {
+      const row = String(r.min).replace('.', ',') + ' – ' + String(r.max).replace('.', ',');
+      if (!doc.includes(row)) staleScale.push(paper + ' ' + r.cefr + ': ' + row);
+    }
+  }
+  ok(staleScale.length === 0,
+    'and every rung of the per-paper level scale, with the marks the marker was given',
+    staleScale.join(' | '));
+
+  /* Each ladder rung is a claim about what a level looks like, and a candidate
+     told "you are at A2 on accuracy" is entitled to read what that means.
+     Matched on a distinctive opening rather than the whole sentence: the
+     document sets them in table cells and may re-wrap. */
+  const missingRungs = [];
+  for (const [dim, rungs] of Object.entries(R.LADDER)) {
+    for (const [lv, text] of Object.entries(rungs)) {
+      /* The Vietnamese half: the document is what a candidate reads, and a rung
+         published only in English is not published to the reader it is for. */
+      const stem = text.vi.split(/[.;—]/)[0].trim();
+      if (!doc.includes(stem)) missingRungs.push(dim + '/' + lv);
+    }
+  }
+  ok(missingRungs.length === 0, 'and every rung of every level ladder',
+    missingRungs.slice(0, 6).join(', '));
+
+  /* The usage rules are the ones a candidate can act on before the exam — "am I
+     allowed to write color" is a question they will actually have — so a rule
+     that reaches the marker and not the document is the wrong half published. */
+  const unpublished = R.USAGE.filter(u => {
+    const stem = u.vi.split(/[.:—]/)[0].trim().slice(0, 24);
+    return !doc.includes(stem);
+  }).length;
+  ok(unpublished === 0,
+    'and all ' + R.USAGE.length + ' usage rules in the language candidates read',
+    unpublished + ' missing');
 
   /* The parts the copy rule does and does not touch is the judgement most
      likely to be misread, and the one that would be a false accusation if the
@@ -884,10 +1176,14 @@ head('Nothing handed in is nothing, not four out of ten');
 
   /* The length rule has no cliff in it. This is the 40-word hole: the gate
      fired below 60 words on a 100-word requirement and nothing at all applied
-     between 60 and 99, so a three-fifths answer could score full marks. */
+     between 60 and 99, so a three-fifths answer could score full marks.
+     Exercised through an explicit `minWords` rather than through Part D, which
+     scores length as one of Pearson's seven criteria instead — the shape of the
+     rule is what is being checked, and every part that ever declares a floor
+     takes this path. */
   const w = n => Array.from({ length: n }, (_, i) => 'w' + i).join(' ');
-  const nines = { task: { score: 9 }, register: { score: 9 }, organisation: { score: 9 }, accuracy: { score: 9 } };
-  const at = n => R.combine('D', nines, { answer: w(n) }).score;
+  const nines = { meaning: { score: 9 }, accuracy: { score: 9 }, organisation: { score: 9 } };
+  const at = n => R.combine('B', nines, { answer: w(n), minWords: 100 }).score;
   ok(at(60) === 4, 'at three fifths of the required length the cap is still 4', at(60));
   ok(at(70) > at(60) && at(90) > at(70),
     'and it rises with the length instead of jumping', [at(60), at(70), at(80), at(90)].join(' → '));

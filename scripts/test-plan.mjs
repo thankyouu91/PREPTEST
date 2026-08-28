@@ -351,7 +351,7 @@ try {
     'there are Part D items to hang the marks on', String(dItems.length));
   /* Both are real Part D criteria (server/rubric.js), so their names come back
      from the rubric rather than falling through to the raw key. */
-  for (const [criterion, score] of [['accuracy', 3], ['task', 9]]) {
+  for (const [criterion, score] of [['grammar', 3], ['content', 9]]) {
     for (const it of dItems) {
       await q.run(
         'INSERT INTO rubric_scores (attempt_id, question_id, criterion, score, version, marked_by, at)' +
@@ -361,12 +361,18 @@ try {
 
   const study = await SM.whatToStudy(uid);
   ok(study.length > 0, 'and a marked account has something to work on', String(study.length));
-  ok(study.some(s => s.part === 'D' && s.criterion === 'accuracy'),
+  ok(study.some(s => s.part === 'D' && s.criterion === 'grammar'),
     'the criterion marked below the line is on the list',
     JSON.stringify(study.map(s => s.part + '/' + s.criterion)));
-  ok(!study.some(s => s.criterion === 'task'),
+  ok(!study.some(s => s.criterion === 'content'),
     'and the one marked above it is not — this is a study list, not a report card',
     JSON.stringify(study.map(s => s.part + '/' + s.criterion)));
+
+  /* `content` means two different things in two parts, so the advice has to be
+     part-scoped or a Part D candidate is sent to practise Part H's problem. */
+  ok(SM.FOR_CRITERION['D.content'] && SM.FOR_CRITERION['D.content'].en !== SM.FOR_CRITERION.content.en,
+    'Part D\'s "content" gets its own advice, not Part H\'s',
+    (SM.FOR_CRITERION['D.content'] || {}).en + ' vs ' + SM.FOR_CRITERION.content.en);
   ok(study.every(s => s.nameEn && s.nameEn !== s.criterion),
     'every row carries the rubric\'s own name for the criterion, not the raw key',
     JSON.stringify(study.map(s => s.nameEn)));

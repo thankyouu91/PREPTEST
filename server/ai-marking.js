@@ -590,16 +590,18 @@ const RUBRIC = {
     + ' Whether the answer is copied from the passage is measured separately and '
     + 'enforced without you, so mark the criteria on what is in front of you and do not '
     + 'also deduct for copying.',
-  D: 'Part D, E-mail Writing. The candidate had 9 minutes and at least 100 words. Mark on: '
-    + 'whether every task in the situation is addressed, whether the tone suits the recipient '
+  D: 'Part D, E-mail Writing. The candidate had 9 minutes and a 100-word minimum. This part is '
+    + 'marked on Pearson\'s own Write Email rubric — seven criteria over fifteen points — and the '
+    + 'criteria below are that rubric, not a paraphrase of it. Mark each one against its bands and '
+    + 'nothing else.'
     /* No sentence about length here, deliberately. It used to say "An email
-       under 100 words has not met the task" — and userPrompt() adds, two lines
-       further down the same prompt, that length is measured separately and the
-       marker must NOT deduct for shortness. A prompt that says both gets one of
-       them at random. Length is arithmetic and belongs to applyCaps() in
-       server/rubric.js; the model marks the writing. */
-    + 'and a workplace, organisation, grammar and spelling. Being polite is not enough if a '
-    + 'requested point is missing.',
+       under 100 words has not met the task", and length is now one of the seven
+       criteria — `form`, computed by the platform from the word count. A prompt
+       that both names a criterion and asks the marker to weigh it separately
+       gets it counted twice on the runs where the marker notices.
+       Nor about copying: that is Rule 4 in server/rubric.js, measured. */
+    + ' Whether the answer is copied from the prompt is measured separately and enforced without '
+    + 'you, so mark the criteria on what is in front of you and do not also deduct for copying.',
   G: 'Part G, Passage Comprehension. The candidate heard a passage ONCE and was asked a question '
     + 'about it, which they answered out loud. You are given a TRANSCRIPT of that answer and the '
     + 'question. Mark on ONE thing: whether the answer is right. The guide tells candidates to '
@@ -622,8 +624,17 @@ const RUBRIC = {
     + 'recording, so say nothing about pronunciation, accent or fluency.'
 };
 
-/** The prompt for one item. `heard` is the transcript for a spoken part. */
-function userPrompt({ part, level, prompt, answer, heard, source }) {
+/**
+ * The prompt for one item. `heard` is the transcript for a spoken part.
+ *
+ * `level` is the ITEM's difficulty; `paperLevel` is what the whole paper was
+ * built at, and only the second one decides the scale. They were one argument
+ * until the level scale arrived, and the caller passed `row.level ||
+ * row.paper_level` into it — so a B2-tagged item on a B1 paper moved the
+ * marker's whole scale, and the report then read the mark against the paper's.
+ * `family` picks the scheme; only VPET has a published range to derive from.
+ */
+function userPrompt({ part, level, paperLevel, family, prompt, answer, heard, source }) {
   const lines = [
     RUBRIC[part] || 'Mark this answer for meaning, task completion and accuracy.',
     ''
@@ -633,7 +644,11 @@ function userPrompt({ part, level, prompt, answer, heard, source }) {
      words the candidate will read them in. Taken from server/rubric.js rather
      than written again here: two lists of criteria is two lists to keep in step,
      and the one that goes stale is the one nobody is looking at. */
-  const defs = rubric.criteriaFor(part);
+  /* A criterion the platform counts for itself is not asked for at all. The word
+     count is not a matter of opinion, and asking anyway invites a number that
+     disagrees with the one actually used — which a candidate would see. */
+  const defs = rubric.criteriaFor(part).filter(d => !d.computed);
+  const counted = rubric.criteriaFor(part).filter(d => d.computed);
   if (defs.length) {
     lines.push('Score these criteria, using exactly these keys:');
     for (const d of defs) lines.push('  "' + d.key + '" (' + d.en + ') — ' + d.about);
@@ -642,18 +657,124 @@ function userPrompt({ part, level, prompt, answer, heard, source }) {
       'other way round: a piece can be well organised and still be full of grammar',
       'mistakes, and saying so is the useful part.',
       '');
+    if (counted.length) {
+      lines.push('Do NOT score ' + counted.map(d => '"' + d.key + '"').join(', ')
+        + ' — ' + (counted.length > 1 ? 'those are' : 'that is') + ' counted by the platform'
+        + ' and any score you give for ' + (counted.length > 1 ? 'them' : 'it') + ' is ignored.', '');
+    }
+    /* Pearson weights these; an unweighted average would be a different rubric
+       wearing the same name. Told to the marker so its own headline number and
+       the stored mark do not diverge, which a candidate comparing them would
+       notice. */
+    if (defs.some(d => (d.weight || 1) !== 1) || counted.some(d => (d.weight || 1) !== 1)) {
+      const all = rubric.criteriaFor(part);
+      lines.push('These are WEIGHTED, not averaged evenly: '
+        + all.map(d => d.key + ' ' + (d.weight || 1)).join(', ')
+        + '. That is Pearson\'s weighting for this task, not a preference.', '');
+    }
   }
 
-  /* What the numbers mean. Without this the criteria said what each was ABOUT
-     and nothing said what a 7 was, and the same answer marked twice came back
-     10 and then 1. The ladder is in server/rubric.js and rendered from there,
-     not written again here: a second copy is a copy to keep in step, and the
-     one nobody reads is the one that goes stale. */
-  /* Unconditional: a part with no criteria of its own still answers with a
-     headline score on the same ten, and that number needs the same anchors. */
-  lines.push('What the numbers mean. Every score below uses this one scale:');
-  for (const b of rubric.BANDS) lines.push('  ' + String(b.at).padStart(2) + ' — ' + b.en);
-  lines.push('Halves and odd numbers are allowed, and mean "between these two".', '');
+  /* What the numbers mean.
+   *
+   * Two anchors, for two kinds of criterion, and which one a criterion uses is
+   * declared on the criterion itself in server/rubric.js. Everything below is
+   * rendered from there rather than written again here: a second copy is a copy
+   * to keep in step, and the one nobody reads is the one that goes stale.
+   *
+   * The scale is the important half and it is DERIVED, from the same published
+   * tables server/bands.js will use to read the answer back. Before this the
+   * prompt said only "Candidate level for this paper: B1" and left the model to
+   * guess whether that meant "mark against B1 expectations" or "mark against
+   * good English" — two very different numbers from one answer, with bands.js
+   * assuming the first had happened. */
+  /* A criterion the owner has written band descriptors for uses THOSE, and is
+     shown neither ladder: their table is more specific than anything derived
+     here, and offering a marker two anchors for one number is the fault this
+     whole section exists to fix. */
+  /* And only on the paper they were written for. The owner's Part D table names
+     its own bands "high B1", "meets B1" and "below B1", which is the Level 1
+     paper. Applying it to Level 2 would cap a C1 candidate's ceiling at B1 and
+     hand them full marks for work that paper is built to see past. */
+  const paperVpet = rubric.levelScale(paperLevel || level, family).length
+    ? require('./bands').vpetLevelOf(paperLevel || level) : null;
+  const own = defs.filter(d => Array.isArray(d.bands) && d.bands.length
+    && (!d.bandsFor || d.bandsFor === paperVpet));
+  if (own.length) {
+    lines.push('WHAT THE NUMBERS MEAN. These bands are the exam owner\'s own standard for',
+      'this part. Where an answer sits between two of them, score between them.', '');
+    for (const d of own) {
+      lines.push('"' + d.key + '" (' + d.en + '):');
+      for (const b of d.bands) lines.push('  ' + String(b.at).padStart(2) + ' — ' + b.en);
+      lines.push('');
+    }
+  }
+
+  const rest = defs.filter(d => !own.includes(d));
+  const scale = rubric.levelScale(paperLevel || level, family);
+  const ladderDims = [...new Set(rest.map(d => d.dim).filter(d => rubric.LADDER[d]))];
+
+  if (scale.length && ladderDims.length) {
+    /* bands.js's bottom rung is 'dưới A1', because that string is rendered to a
+       Vietnamese candidate on the result screen. It is the same band either way
+       and only its label changes for this reader. */
+    const en = c => c.replace(/^dưới /, 'below ');
+    const top = en(scale[0].cefr), bottom = en(scale[scale.length - 1].cefr);
+    lines.push('WHAT THE NUMBERS MEAN.',
+      '',
+      'This paper measures ' + bottom + ' up to ' + top + ' and cannot see past either end.',
+      'A mark is not "how good is this in the abstract" — it is "where on THIS paper\'s',
+      'range does this sit". So ' + scale[0].max + ' on this paper means ' + top + ', and nothing higher',
+      'is available to award, however good the answer is.',
+      '',
+      'For ' + ladderDims.join(', ') + ', decide which level the answer shows, then take the mark',
+      'from this table:');
+    for (const r of scale) {
+      lines.push('  ' + en(r.cefr).padEnd(9) + String(r.min).padStart(4) + ' – ' + r.max);
+    }
+    lines.push('A "+" level sits in the upper half of the level below it.', '');
+
+    /* Only the rungs this paper can actually award, plus the statement that
+       anything above them still scores the maximum. Printing a C1 rung on a
+       paper whose top mark is B1+ invites a mark the report cannot render, and
+       leaving the ceiling unsaid invites the opposite mistake — marking a
+       genuinely strong answer down because it is "only" B1+. */
+    const reach = new Set(scale.map(r => r.cefr.replace('+', '').replace('dưới ', '')));
+    for (const dim of ladderDims) {
+      lines.push('What each level looks like for ' + dim + ':');
+      for (const lv of rubric.LADDER_LEVELS) {
+        if (reach.has(lv) && rubric.LADDER[dim][lv]) lines.push('  ' + lv + ' — ' + rubric.LADDER[dim][lv].en);
+      }
+      /* Only where there IS something above the ceiling. On a Level 2 paper the
+         top rung is C2 and "anything stronger than C2" is not a thing. */
+      if (top !== 'C2') {
+        lines.push('  Anything stronger than ' + top + ' also scores ' + scale[0].max
+          + ' — this paper cannot tell those apart.');
+      }
+      lines.push('');
+    }
+  }
+
+  /* Content criteria are not a judgement about anybody's English — "did they
+     mention the delivery date" has no CEFR level — so they get the ladder that
+     asks how much of what was asked for is actually there. */
+  const hasContent = !defs.length || rest.some(d => d.dim === 'content');
+  if (hasContent) {
+    const which = rest.filter(d => d.dim === 'content').map(d => d.key);
+    lines.push(which.length
+      ? 'For ' + which.join(', ') + ' — which ' + (which.length > 1 ? 'measure' : 'measures')
+        + ' how much of what was asked for is there, not how good the English is — use this scale:'
+      : 'What the numbers mean. This score uses this scale:');
+    for (const b of rubric.BANDS) lines.push('  ' + String(b.at).padStart(2) + ' — ' + b.en);
+    lines.push('Halves and odd numbers are allowed, and mean "between these two".', '');
+  }
+
+  /* The house standard: what counts as an error and what does not. Without it
+     every one of these is decided afresh on every run, which lands hardest on
+     `accuracy` — the criterion the weakest-link rule most often caps a whole
+     item from. */
+  lines.push('HOW TO COUNT AN ERROR. These are the rules of this exam, not preferences:');
+  for (const u of rubric.USAGE) lines.push('  · ' + u.en);
+  lines.push('');
 
   const floor = rubric.MIN_WORDS[part];
   if (floor) {
@@ -662,9 +783,15 @@ function userPrompt({ part, level, prompt, answer, heard, source }) {
       + ' also deduct for shortness.', '');
   }
 
-  lines.push(
-    'Candidate level for this paper: ' + (level || 'B1') + ' on the CEFR scale.',
+  /* The ITEM's own difficulty, which is not the same thing as the paper's range
+     above and used to be labelled as though it were. It is context for reading
+     the answer — a B2 item on a B1 paper is a stretch — and it must not move
+     the scale, which belongs to the paper. */
+  if (level) {
+    lines.push('This particular item is pitched at ' + level + '. That is how hard the ITEM is;'
+      + ' the scale above belongs to the paper and does not move with it.',
     '');
+  }
   lines.push(
     'WHAT THE CANDIDATE WAS ASKED:',
     String(prompt || '').slice(0, 4000)

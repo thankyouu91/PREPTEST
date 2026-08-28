@@ -92,6 +92,15 @@ const ALL_LESSONS = Object.values(BY_GROUP).concat([LINKING_WORDS, IRREGULAR_VER
  * Every key in server/rubric.js's CRITERIA appears here exactly once. The empty
  * ones are deliberate and are the honest answer: no page on this platform
  * teaches "cover every point the task asked for".
+ *
+ * A key may be scoped to one part as `PART.key`, and that entry wins over the
+ * bare one. Most criterion names mean near enough the same thing wherever they
+ * appear — `accuracy` is marked in three parts and the advice is the same in
+ * all three — but `content` does not: on Part H it is "how much of the sentence
+ * came back", and on Part D, since it moved to Pearson's Write Email rubric, it
+ * is "did you answer every point the prompt asked for". Sending a Part D
+ * candidate to practise remembering sentences would be advice about somebody
+ * else's problem.
  */
 const FOR_CRITERION = {
   /* Grammar and spelling, wherever it is marked. The one criterion where the
@@ -151,7 +160,49 @@ const FOR_CRITERION = {
                   vi: 'kể đúng trình tự' },
   point:        { fromOwnGaps: false, lessons: [],
                   en: 'getting across what the story was about',
-                  vi: 'nêu được ý chính' }
+                  vi: 'nêu được ý chính' },
+
+  /* Part D moved to Pearson's own Write Email rubric, which splits what used to
+     be `task` and `accuracy` into five. Each still has to answer "so what do I
+     do about it" or the mark teaches nothing. */
+
+  /* Scoped: `content` already means Part H's "how much of the sentence came
+     back", and on Part D it means the opposite kind of thing. */
+  'D.content':  { fromOwnGaps: false, lessons: [],
+                  en: 'answering every point the e-mail asked for',
+                  vi: 'trả lời đủ mọi ý đề bài yêu cầu' },
+
+  /* The e-mail's own furniture and how formal it should be — which is the
+     register lesson, plus the linking lesson for the body itself. */
+  conventions:  { fromOwnGaps: false, lessons: [BY_GROUP.register],
+                  en: 'the shape of an e-mail, and how formal to be',
+                  vi: 'cấu trúc một email và mức trang trọng cần dùng' },
+
+  /* Counted by the platform, so there is nothing to teach and something very
+     specific to do. Saying "write to the length" is more use than a lesson. */
+  form:         { fromOwnGaps: false, lessons: [],
+                  en: 'writing to the length the task asks for',
+                  vi: 'viết đúng độ dài đề yêu cầu' },
+
+  /* Pearson judges vocabulary on being the RIGHT word for the audience, not on
+     being a rare one, so this points at the same two lessons `range` does. */
+  vocabulary:   { fromOwnGaps: false, lessons: [BY_GROUP.emphasis, BY_GROUP.passive],
+                  en: 'choosing the right word for the reader',
+                  vi: 'chọn đúng từ cho người đọc' },
+
+  /* The same criterion `accuracy` is elsewhere, under Pearson's name for it, so
+     it gets the same per-learner treatment. */
+  grammar:      { fromOwnGaps: true,
+                  lessons: [BY_GROUP.preposition, BY_GROUP.tense, BY_GROUP.clause, IRREGULAR_VERBS],
+                  en: 'the grammar you keep losing marks on',
+                  vi: 'những điểm ngữ pháp đang mất điểm nhiều nhất' },
+
+  /* No page here teaches spelling, and pretending otherwise would send somebody
+     to a grammar lesson for a problem it does not address. What helps is the
+     one concrete thing Pearson states: pick one variety and stay in it. */
+  spelling:     { fromOwnGaps: false, lessons: [],
+                  en: 'spelling, and staying in one variety of English',
+                  vi: 'chính tả, và dùng nhất quán một lối viết' }
 };
 
 /**
@@ -267,11 +318,13 @@ async function whatToStudy(userId, limit) {
      learner's own gaps is common — accuracy is marked in three parts — and
      three identical queries to build three identical lists is waste the plan
      endpoint pays for on every dashboard load. */
-  const own = weak.some(c => (FOR_CRITERION[c.criterion] || {}).fromOwnGaps)
+  /* `PART.key` first, then the bare key — see the note on FOR_CRITERION. */
+  const adviceFor = c => FOR_CRITERION[c.part + '.' + c.criterion] || FOR_CRITERION[c.criterion];
+  const own = weak.some(c => (adviceFor(c) || {}).fromOwnGaps)
     ? await weakGroups(userId) : [];
 
   return weak.map(c => {
-    const map = FOR_CRITERION[c.criterion];
+    const map = adviceFor(c);
     /* An unmapped criterion is a bug in this file, not a learner with nothing
        to study, so it is loud rather than empty. */
     if (!map) {

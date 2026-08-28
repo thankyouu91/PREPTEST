@@ -674,7 +674,13 @@ async function submitMarked(userId, d, answers) {
     } else {
       try {
         verdict = await ai.markOne({
-          part: row.part, level: row.level || d.level, prompt: row.prompt,
+          part: row.part, level: row.level, prompt: row.prompt,
+          /* A drill has no paper, so the level the drill was BUILT at is the
+             range to mark against — the same role tests.level plays on a real
+             sitting. Passing it separately from the item's own level matters
+             here for the same reason it does there: the item's difficulty must
+             not move the scale. */
+          paperLevel: d.level, family: 'vpet',
           answer: text, heard, source: d.mode === 'spoken' ? 'transcript' : 'text',
           userId                                  // the meter: see the note above
         });

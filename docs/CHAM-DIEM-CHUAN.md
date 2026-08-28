@@ -1,6 +1,6 @@
 # Quy cách chấm điểm chuẩn — VPET
 
-**Phiên bản rubric: `2026-08-vpet-3`** · nguồn duy nhất: `server/rubric.js`
+**Phiên bản rubric: `2026-08-vpet-4`** · nguồn duy nhất: `server/rubric.js`
 
 Tài liệu này là **quy cách chấm**: một câu trả lời được chia điểm theo tiêu chí
 nào, mỗi con số trên thang 10 nghĩa là gì, và luật nào chặn điểm lại. Đây là văn
@@ -39,15 +39,21 @@ còn tệ hơn vì nó làm người học bỏ cuộc. Ba nguyên tắc quyết
 ```
      ┌─ mỗi tiêu chí được chấm 0–10 theo thang ở mục 2
      │
-     ├─ điểm_thô = trung bình cộng các tiêu chí          ← "beforeCaps"
+     ├─ điểm_thô = trung bình CÓ TRỌNG SỐ các tiêu chí   ← "beforeCaps"
+     │             (trọng số mặc định 1; Part D dùng trọng số của Pearson)
      │
-     ├─ Luật 1  Mắt xích yếu nhất      (trần)
+     ├─ Luật 1  Mắt xích yếu nhất      (trần)   — KHÔNG áp cho Part D
      ├─ Luật 2  Không nộp gì → 0       (sàn, DỪNG tại đây)
-     ├─ Luật 3  Cửa độ dài             (trần)
+     ├─ Luật 3  Cửa độ dài             (trần)   — KHÔNG áp cho Part D
+     ├─ Luật 3b Lạc đề → 0             (sàn, DỪNG) — CHỈ Part D
      ├─ Luật 4  Chép lại đề            (trần)
      │
      └─ làm tròn tới 0,5  →  điểm cuối 0–10  →  earned = điểm/10  (max luôn = 1)
 ```
+
+**Part D là ngoại lệ có chủ ý và có lý do**: nó chấm theo rubric Write Email của
+chính Pearson, và hai luật của nền tảng (1 và 3) nhường chỗ vì scheme của
+Pearson đã tính những thứ đó theo cách riêng. Chi tiết ở §3.1.
 
 **Mọi câu nặng bằng nhau: `max = 1`.** Một email 9 phút bằng đúng một câu điền
 từ 25 giây. Đây là lựa chọn có chủ ý — VPET không công bố trọng số theo câu, nên
@@ -66,8 +72,23 @@ quán: mỗi tiêu chí có một câu mô tả *nó nói về cái gì*, nhưng
 *7 điểm là thế nào*. Một thang không có mốc thì không phải thang — nó là tâm
 trạng của người chấm.
 
-Sáu mốc, dùng chung cho **mọi tiêu chí của mọi phần**. Viết từ phía **người
-đọc / người nghe**: họ phải bù đắp bao nhiêu.
+Có **hai thang**, cho **hai loại câu hỏi khác nhau**, và mỗi tiêu chí tự khai
+báo nó dùng thang nào (trường `dim` trong `server/rubric.js`):
+
+| Loại tiêu chí | Câu hỏi nó trả lời | Thang dùng |
+|---|---|---|
+| `content` — nội dung | *Có bao nhiêu phần đề yêu cầu thực sự có mặt?* | Thang mức độ hoàn thành (2.1) |
+| `accuracy` · `range` · `organisation` · `register` | *Tiếng Anh ở trình độ nào?* | **Thang theo bậc CEFR (2.2)** |
+
+> **Vì sao phải tách?** "Họ có nhắc tới ngày giao hàng không" **không phải** một
+> câu hỏi về trình độ tiếng Anh — áp thang CEFR lên nó là nhầm phạm trù. Ngược
+> lại, "ngữ pháp ở mức nào" thì đúng là câu hỏi CEFR sinh ra để trả lời. Đưa cho
+> người chấm hai thang cho **cùng một** con số là lỗi; đưa cho **hai tiêu chí
+> khác nhau** mỗi bên một thang thì không.
+
+### 2.1 Thang mức độ hoàn thành — cho tiêu chí nội dung
+
+Viết từ phía **người đọc / người nghe**: họ phải bù đắp bao nhiêu.
 
 | Điểm | Nghĩa |
 |---|---|
@@ -82,10 +103,144 @@ Số lẻ và số 0,5 được phép, nghĩa là "nằm giữa hai mốc". Ch�
 không phải mười một, vì đặt tên cả mười một là giả vờ rằng các khoảng giữa cũng
 đã được định nghĩa.
 
-> **Vì sao dùng chung một thang thay vì mỗi tiêu chí một bảng riêng?** 15 tiêu
-> chí × 6 mốc là 90 câu mô tả, và sẽ không có ai kiểm 85 câu trong đó. Bản trung
-> thực là: một cái thang thật sự tổng quát, cộng với một câu `about` cho từng
-> tiêu chí nói *đang leo cái gì*.
+### 2.2 Thang theo bậc — điểm nào ứng với bậc nào, trên từng đề
+
+**Đây là phần quan trọng nhất của cả tài liệu, và nó là chỗ hệ thống từng tự
+mâu thuẫn.**
+
+`server/bands.js` đổi điểm 0–10 thành bậc CEFR bằng cách đặt điểm đó vào **dải
+GSE mà đề công bố**: trên đề Cấp 1, 10/10 là GSE 58 — đúng đỉnh B1+. Tức là
+**con số đã mang sẵn một khẳng định về bậc của thí sinh** — đó chính là công
+dụng của nó.
+
+Và **chưa bao giờ có ai nói điều đó với AI chấm bài.** Lời nhắc chỉ ghi
+"Candidate level for this paper: B1" rồi để mô hình tự đoán xem câu đó nghĩa là
+"chấm theo kỳ vọng của B1" hay "chấm theo tiếng Anh tốt". Hai cách hiểu cho ra
+hai con số rất khác nhau từ cùng một bài, còn `bands.js` thì luôn đọc kết quả
+như thể cách thứ nhất đã xảy ra. **Hai nửa của việc chấm điểm chưa từng khớp
+nhau, ngoài lúc may mắn.**
+
+Nay bảng dưới đây được **suy ra ngược từ chính phép tính của `bands.js`**, nên
+người chấm nhắm đúng vào cái thước mà báo cáo sẽ dùng để đọc lại:
+
+| Bậc | Đề Cấp 1 (`level` = B1) | Đề Cấp 2 (`level` = C1) |
+|---|---|---|
+| **C2** | — | 8,7 – 10 |
+| **C1** | — | 6,4 – 8,7 |
+| **B2+** | — | 4,1 – 6,4 |
+| **B2** | — | 2,1 – 4,1 |
+| **B1+** | 8,5 – 10 | 0 – 2,1 |
+| **B1** | 6,9 – 8,5 | — |
+| **A2+** | 5,4 – 6,9 | — |
+| **A2** | 4,2 – 5,4 | — |
+| **A1** | 2,5 – 4,2 | — |
+| **dưới A1** | 0 – 2,5 | — |
+
+Đọc bảng này cho đúng:
+
+- **Điểm không phải "bài này hay tới đâu" mà là "bài này nằm ở đâu trên dải của
+  ĐỀ NÀY".** Cùng một bài viết, làm trên đề Cấp 1 được 10, làm trên đề Cấp 2 chỉ
+  được 8 — và như thế là đúng, vì hai đề hỏi hai câu hỏi khác nhau về nó.
+- **10/10 trên đề Cấp 1 là B1+, không phải C2.** Đề Cấp 1 không nhìn quá B1+
+  được; một bài C1 làm đề Cấp 1 cũng chỉ ra B1+, và người chấm được dặn rõ là
+  bài mạnh hơn trần vẫn cho điểm tối đa chứ **không** bị trừ vì "chỉ" B1+.
+- **Bảng này KHÔNG được gõ tay.** Nó tính ngược từ `bands.js`. Một bảng chép tay
+  sẽ là bản sao thứ hai của một phép ánh xạ đã có, và lần đầu ai đó sửa mốc GSE
+  thì hai bên lệch nhau — người chấm nhắm một thước, báo cáo đọc một thước khác,
+  im lặng, cho tới khi có người thấy một cái bậc trông sai.
+
+`scripts/test-rubric.mjs` kiểm đúng điều này: lấy điểm giữa của **mỗi** nấc rồi
+đưa ngược qua `bands.js`, và bậc trả về phải đúng nấc đó.
+
+### 2.3 Bậc trông như thế nào — mô tả từng chiều
+
+Bốn chiều, sáu bậc. Mỗi tiêu chí khai báo nó thuộc chiều nào.
+
+**`accuracy` — Độ chính xác ngữ pháp và chính tả**
+
+| Bậc | Mô tả |
+|---|---|
+| C2 | Kiểm soát hoàn toàn, kể cả câu dài. Sai sót hiếm tới mức đọc như lỗi gõ phím. |
+| C1 | Chính xác đều. Lỗi có thì cũng rõ ràng là lỡ tay, không phải lỗ hổng. |
+| B2 | Kiểm soát tốt. Lỗi xuất hiện ở câu phức và hiếm khi làm hiểu sai. |
+| B1 | Cấu trúc đơn giản thì chắc. Câu dài hơn và thì ít gặp thì sai, nhưng nghĩa vẫn còn. |
+| A2 | Có thử viết câu đơn. Đuôi từ, mạo từ, số nhiều rơi rụng đủ nhiều để người đọc phải tự vá. |
+| A1 | Từ rời và cụm học thuộc. Phần lớn nỗ lực viết thành câu đều đổ. |
+
+**`range` — Vốn ngôn ngữ**
+
+| Bậc | Mô tả |
+|---|---|
+| C2 | Vốn đầy đủ, dùng chính xác, kể cả sắc thái và thành ngữ cố định. |
+| C1 | Rộng và chuẩn. Từ được chọn là từ **đúng**, không phải từ gần đúng nhất; kết hợp từ phần lớn chuẩn. |
+| B2 | Vốn rõ rệt. Có mệnh đề phụ, có từ ít gặp, lựa chọn hợp chủ đề. |
+| B1 | Đủ cho chủ đề quen thuộc, biết đường vòng khi thiếu từ. Chủ yếu câu đơn và câu ghép. |
+| A2 | Từ đời thường và những cách nối đơn giản nhất — and, but, because. |
+| A1 | Vài từ và cụm học thuộc; không dựng được gì từ chúng. |
+
+**`organisation` — Bố cục và mạch văn**
+
+| Bậc | Mô tả |
+|---|---|
+| C2 | Bố cục là một lựa chọn có chủ ý và người đọc không hề thấy nó đang làm việc. |
+| C1 | Bố cục phục vụ điều đang nói; liên kết mượt và gần như vô hình. |
+| B2 | Hình hài rõ. Mỗi đoạn làm một việc, từ nối để giúp chứ không để trang trí. |
+| B1 | Có mở – thân – kết nhận ra được. Có liên kết, đôi khi máy móc. |
+| A2 | Các ý nối bằng and / then / but. Người đọc phải tự sắp thứ tự. |
+| A1 | Không có thứ tự nào người đọc theo được; không gì liên kết với gì. |
+
+**`register` — Mức trang trọng**
+
+| Bậc | Mô tả |
+|---|---|
+| C2 | Dùng mức trang trọng có chủ đích, kể cả chuyển giọng trong cùng một bài để đạt hiệu quả. |
+| C1 | Kiểm soát và giữ được suốt bài, kể cả cách nói lịch sự và cách nói giảm. |
+| B2 | Nhất quán và hợp người nhận; thi thoảng có câu đặt hơi lạc. |
+| B1 | Phân biệt được trang trọng và thân mật, phần lớn chọn đúng; bị áp lực thì trượt sang bên kia. |
+| A2 | Một giọng duy nhất, thường là thân mật, nói với ai cũng vậy. |
+| A1 | Không kiểm soát được mức trang trọng — biết cụm nào dùng cụm đó. |
+
+> **Đây là mô tả của nền tảng này, không phải trích CEFR.** Chúng được viết dựa
+> trên bộ mô tả của CEFR và các bậc GSE Pearson công bố, cho đúng những gì người
+> chấm nhìn thấy được trong một bài ngắn hoặc một bản ghi — nhưng **không phải
+> là trích dẫn** của bên nào, và không được dẫn lại như thể Hội đồng châu Âu
+> viết ra.
+>
+> **Vì sao chia theo chiều chứ không theo từng tiêu chí?** 16 tiêu chí × 6 bậc
+> là 96 câu mô tả, và 90 câu trong đó sẽ không bao giờ có ai đọc. Bốn chiều × 6
+> bậc = 24 câu, và cả 24 đều kiểm được.
+
+---
+
+## 2b. Quy chuẩn dùng từ và định dạng — cái gì tính là lỗi
+
+Tiêu chí nói **chấm cái gì**, thang nói **cao tới đâu**. Không cái nào nói
+"colour" có phải lỗi chính tả không khi trong bài cũng có "color", "I'll" có
+được dùng trong email trang trọng không, hay một từ máy nghe nhầm có phải lỗi
+của thí sinh không. Bỏ ngỏ thì người chấm quyết lại từ đầu **mỗi lần chạy** —
+cùng một loại lỗi với thang không có mốc, chỉ thấp hơn một tầng, và nó rơi nặng
+nhất vào `accuracy`, tiêu chí hay kéo trần cả câu xuống nhất qua Luật 1.
+
+Mười điều dưới đây được đưa **nguyên văn** vào lời nhắc cho AI và công bố ở đây,
+vì **một luật thí sinh không đọc được là một luật họ không chuẩn bị được**.
+
+| # | Quy chuẩn |
+|---|---|
+| 1 | Chính tả Mỹ, Anh, Úc và Canada đều đúng — "colour" và "color" đều được chấp nhận — nhưng phải dùng nhất quán MỘT lối trong cả bài. Cái tính là lỗi là việc trộn lẫn, không phải việc chọn lối nào. |
+| 2 | Lỡ tay khác với chưa biết. Một từ sai một lần mà chỗ khác viết đúng là lỗi đánh máy: nhắc thôi, không trừ. Một dạng sai ở mọi lần xuất hiện mới là lỗi, vì nó cho thấy người viết đang hiểu như thế. |
+| 3 | Dạng rút gọn là bình thường khi nói và trong thư thân mật. Trong email trang trọng, đó là nhận xét về giọng văn, không bao giờ là lỗi ngữ pháp. |
+| 4 | Lỗi do ảnh hưởng tiếng mẹ đẻ — thiếu mạo từ, thiếu dấu số nhiều, thì không khớp — chấm đúng như mọi lỗi cùng mức độ khác. Không nới tay cũng không khắt khe hơn vì gốc gác của thí sinh, và không nhắc đến tiếng mẹ đẻ của họ: cái họ cần biết là tiếng Anh của mình. |
+| 5 | Một email gồm lời chào, phần thân và lời kết. Thiếu lời chào hay lời kết thuộc về bố cục và giọng văn, không phải ngữ pháp; cách chia đoạn cũng thuộc bố cục. |
+| 6 | Mọi quy ước nhất quán về ngày tháng, số và viết hoa đều được chấp nhận. "15/3", "15 March" và "March 15" đều đúng. |
+| 7 | Dấu kết câu và viết hoa đầu câu tính vào độ chính xác. Cách dùng dấu phẩy thì không, trừ khi thiếu dấu phẩy làm câu không đọc được. |
+| 8 | Câu trả lời ngắn không phải là câu trả lời kém, khi đề cho phép ngắn; và một lựa chọn lạ nhưng đúng thì vẫn đúng. Không trừ điểm vì thí sinh không viết giống ý bạn. |
+| 9 | Bài nói đến tay bạn dưới dạng BẢN GHI TỰ ĐỘNG. Không ai nghe bản ghi âm, nên không nhận xét gì về phát âm, ngữ điệu hay độ trôi chảy — và chỗ nào máy rõ ràng nghe nhầm thì chấm theo điều thí sinh hiển nhiên đã nói, không theo chữ máy gõ ra. |
+| 10 | Ba thứ được đo bằng số học và áp dụng độc lập với bạn: độ dài bài làm, tỉ lệ chép lại từ đề bài, và ở Part H là lượng từ nhắc lại được. Hãy chấm các tiêu chí theo đúng bản thân chúng và không trừ thêm vì ba thứ đó. |
+
+Điều 10 là điều quan trọng nhất và ít hiển nhiên nhất. Một người chấm được yêu
+cầu đánh giá thứ đã được tính sẵn sẽ **trừ hai lần** ở những lần chạy nó để ý và
+**một lần** ở những lần không — và sự bất nhất đó nhìn từ ngoài không phân biệt
+được với thiên vị.
 
 ---
 
@@ -99,18 +254,22 @@ thêm được gì.
 Luật 1 mới kéo xuống. Không có tiêu chí nào "nặng hơn" tiêu chí nào — thứ đóng
 vai trò đó là mắt xích yếu nhất.
 
-| Phần | Ai chấm | Tiêu chí (trọng số bằng nhau) | Luật chặn áp dụng |
+Ký hiệu chiều: **[nd]** = nội dung (thang 2.1) · **[cx]** `accuracy` · **[vn]**
+`range` · **[bc]** `organisation` · **[tt]** `register` — bốn cái sau dùng thang
+bậc CEFR (2.2).
+
+| Phần | Ai chấm | Tiêu chí (trọng số bằng nhau) | Luật chặn |
 |---|---|---|---|
 | **A** — Điền từ | so khớp đáp án | *(không rubric)* | — |
-| **B** — Dựng lại đoạn văn | mô hình | `meaning` Giữ được ý · `accuracy` Ngữ pháp và chính tả · `organisation` Sắp xếp và mạch văn | 1, 2, **4** |
+| **B** — Dựng lại đoạn văn | mô hình | `meaning` Giữ được ý **[nd]** · `accuracy` Ngữ pháp và chính tả **[cx]** · `organisation` Sắp xếp và mạch văn **[bc]** | 1, 2, **4** |
 | **C** — Đọc hiểu | trắc nghiệm | *(không rubric)* | — |
-| **D** — Viết email | mô hình | `task` Hoàn thành yêu cầu · `register` Giọng văn phù hợp · `organisation` Bố cục · `accuracy` Ngữ pháp và chính tả | 1, 2, **3**, **4** |
+| **D** — Viết email | mô hình + **nền tảng đếm** | **Theo rubric PTE Core của Pearson, 7 tiêu chí / 15 điểm** — xem §3.1 | 2, **3b**, **4** |
 | **E** — Chính tả nghe | so khớp đáp án | *(không rubric)* | — |
 | **F** — Chọn câu đáp | trắc nghiệm | *(không rubric)* | — |
-| **G** — Nghe hiểu đoạn | mô hình | `correct` Trả lời đúng | 1, 2 |
-| **H** — Nhắc lại câu | **so khớp, không dùng mô hình** | `content` Giữ được bao nhiêu · `structure` Giữ được cấu trúc | 1, 2 |
-| **I** — Tình huống nói | mô hình | `task` Xử lý được tình huống · `range` Vốn ngôn ngữ · `accuracy` Độ chính xác · `register` Mức trang trọng | 1, 2 |
-| **J** — Kể lại chuyện | mô hình | `events` Giữ được sự việc · `sequence` Trình tự · `point` Ý chính | 1, 2 |
+| **G** — Nghe hiểu đoạn | mô hình | `correct` Trả lời đúng **[nd]** | 1, 2 |
+| **H** — Nhắc lại câu | **so khớp, không dùng mô hình** | `content` Giữ được bao nhiêu **[nd]** · `structure` Giữ được cấu trúc **[cx]** | 1, 2 |
+| **I** — Tình huống nói | mô hình | `task` Xử lý tình huống **[nd]** · `range` Vốn ngôn ngữ **[vn]** · `accuracy` Độ chính xác **[cx]** · `register` Mức trang trọng **[tt]** | 1, 2 |
+| **J** — Kể lại chuyện | mô hình | `events` Giữ được sự việc **[nd]** · `sequence` Trình tự **[bc]** · `point` Ý chính **[nd]** | 1, 2 |
 
 ### 3.1 Từng tiêu chí nói về cái gì
 
@@ -123,14 +282,131 @@ lời của mình trong 90 giây)*
 | `accuracy` | Ngữ pháp và chính tả | Cấu trúc câu, dạng động từ, mạo từ, chính tả. |
 | `organisation` | Sắp xếp và mạch văn | Các ý có đến theo thứ tự người đọc theo được không. |
 
-**Part D — Viết email** *(9 phút, tối thiểu 100 từ)*
+**Part D — Viết email** *(9 phút, tối thiểu 100 từ)* — **theo rubric của chính Pearson**
 
-| Khóa | Tên | Đo cái gì |
+Đây là phần duy nhất **không** dùng thang chung ở mục 2. Part D chấm theo
+**rubric Write Email của PTE Core** — của chính Pearson — gồm **7 tiêu chí trên
+thang 15 điểm. Rubric đó được đưa vào nguyên vẹn, không diễn giải lại.
+
+| Tiêu chí | Điểm PTE | Trọng số | Ai chấm | Ứng với subscore Versant |
+|---|---|---|---|---|
+| `content` **Nội dung** | 3 | 3 | mô hình | Content |
+| `conventions` **Quy cách email** | 2 | 2 | mô hình | Voice and Tone |
+| `form` **Hình thức / độ dài** | 2 | 2 | **nền tảng ĐẾM** | Form |
+| `organisation` **Sắp xếp / mạch lạc** | 2 | 2 | mô hình | Organization |
+| `vocabulary` **Từ vựng** | 2 | 2 | mô hình | Vocabulary |
+| `grammar` **Ngữ pháp** | 2 | 2 | mô hình | Grammar |
+| `spelling` **Chính tả** | 2 | 2 | mô hình | Grammar |
+| | **15** | | | |
+
+**Điểm cuối = tổng có trọng số ÷ 15**, quy về thang 10. `content` nặng gấp rưỡi
+các tiêu chí còn lại vì Pearson cho nó 3/15.
+
+#### Mô tả từng mức
+
+**`content` — Nội dung** (3 điểm)
+
+| Điểm | Mô tả |
+|---|---|
+| 10 | Trả lời đầy đủ, chính xác tất cả các ý được yêu cầu trong đề. |
+| 6 | Trả lời được hầu hết các ý. Bỏ sót 1 ý, hoặc 1 ý chưa thật rõ ràng. |
+| 2 | Bỏ sót nhiều ý bắt buộc, hoặc nội dung khiến người đọc hiểu lầm. |
+| **0** | **Lạc đề hoàn toàn → toàn bộ email 0 điểm.** Xem Luật 3b. |
+
+**`conventions` — Quy cách email** (2 điểm)
+
+| Điểm | Mô tả |
+|---|---|
+| 10 | Đủ cấu trúc một email: lời chào đầu thư, các đoạn nội dung rõ ràng, lời chúc/hẹn gặp ở cuối và ký tên. Mức trang trọng phù hợp với người nhận. |
+| 5 | Thiếu một phần, hoặc mức trang trọng chưa đúng — quá trang trọng với bạn bè, hoặc quá suồng sã với cấp trên. |
+| 0 | Không nhận ra được là một email, hoặc không xác định được viết cho ai. |
+
+**`form` — Hình thức và độ dài** (2 điểm) — **đếm, không phán đoán**
+
+Nền tảng có sẵn số từ, nên tiêu chí này **không** hỏi mô hình. Mô hình được dặn
+rõ là đừng chấm nó, và điểm nó đưa ra cho `form` bị bỏ qua.
+
+| Số từ | Điểm |
+|---|---|
+| 100 – 140 | 10 |
+| 80 | 5 |
+| ≤ 60 | 0 |
+| 160 | 8,3 |
+| ≥ 200 | 5 |
+
+Đường cong liên tục, không bậc thang — không từ nào đáng quá nửa điểm. Viết dài
+bị trừ nhẹ hơn viết ngắn, có chủ ý: người viết 180 từ đã làm bài rồi làm thêm,
+người viết 55 từ thì chưa làm.
+
+> **Mốc độ dài là của VPET, không phải của PTE.** PTE Core yêu cầu 80–120 từ và
+> phạt nặng dưới 50 hoặc trên 140. Hướng dẫn thi chính thức của VPET nói Part D
+> phải **tối thiểu 100 từ** — đây là đề VPET nên lấy 100, và **không** bê mốc của
+> PTE sang. Chấm thí sinh VPET theo yêu cầu của một kỳ thi khác chính là kiểu
+> đánh tráo mà `docs/SCORING.md` sinh ra để ngăn. Cái được giữ lại từ PTE là
+> **hình dạng** của luật: có sàn, có khoảng thoải mái, và có phạt khi vượt xa.
+
+**`organisation` — Sắp xếp và mạch lạc** (2 điểm)
+
+| Điểm | Mô tả |
+|---|---|
+| 10 | Các ý có tính liên kết, chuyển dòng hoặc chuyển đoạn hợp lý. Dùng từ nối (However, In addition, Therefore) một cách tự nhiên. |
+| 5 | Có trình tự cơ bản. Từ nối lặp lại, gượng ép, hoặc thiếu ở một số chỗ. |
+| 0 | Các câu rời rạc, không có gì nối chúng với nhau. |
+
+**`vocabulary` — Từ vựng** (2 điểm)
+
+| Điểm | Mô tả |
+|---|---|
+| 10 | Dùng từ vựng chính xác, phù hợp ngữ cảnh của bức thư, và chọn đúng sắc thái trang trọng hay thân mật theo yêu cầu của đề. |
+| 5 | Đủ dùng nhưng đơn điệu, hoặc dùng sai từ ở một hai chỗ. |
+| 0 | Nghèo nàn, lặp lại, hoặc sai đủ nhiều để làm mờ nghĩa. |
+
+**`grammar` — Ngữ pháp** (2 điểm)
+
+| Điểm | Mô tả |
+|---|---|
+| 10 | Cấu trúc, thì và sự hòa hợp chủ vị đúng suốt bài. |
+| 5 | Có một vài lỗi nhưng người đọc vẫn theo được. |
+| 0 | Sai nhiều lỗi ngữ pháp cơ bản đến mức bài viết khó hiểu. |
+
+> Cách chấm của Pearson ưu tiên **độ chính xác hơn độ tham vọng** ở tiêu chí
+> này: một câu đơn hoặc câu ghép viết đúng ăn điểm cao hơn một câu phức viết vỡ.
+> Điều này được nói thẳng với mô hình chấm.
+
+**`spelling` — Chính tả** (2 điểm) — **đếm lỗi, không cảm nhận**
+
+| Điểm | Mô tả |
+|---|---|
+| 10 | 0 – 1 lỗi chính tả. |
+| 5 | Đúng 2 lỗi chính tả. |
+| 0 | Từ 3 lỗi chính tả trở lên. |
+
+Chấp nhận chính tả Mỹ, Anh, Úc, Canada — **nhưng phải dùng nhất quán một lối**;
+trộn lẫn mới là lỗi ở tiêu chí này.
+
+#### Ba thói quen của nền tảng phải nhường chỗ ở Part D
+
+| Luật của nền tảng | Ở Part D | Vì sao |
 |---|---|---|
-| `task` | Hoàn thành yêu cầu | **Mọi** ý tình huống yêu cầu đều được nói tới. Lịch sự không bù được cho một ý bị thiếu. |
-| `register` | Giọng văn phù hợp | Giọng có hợp với người nhận và với môi trường công việc không. |
-| `organisation` | Bố cục | Mở – thân – kết; mỗi đoạn một ý; từ nối để giúp người đọc chứ không để trang trí. |
-| `accuracy` | Ngữ pháp và chính tả | Cấu trúc câu, dạng động từ, mạo từ, chính tả. |
+| **Luật 1 — mắt xích yếu nhất** | **KHÔNG áp dụng** | Đó là luật của nền tảng này; scheme của PTE là tổng có trọng số thuần túy. Chồng luật của mình lên rubric của người khác là đổi câu trả lời của họ mà vẫn gọi là rubric của họ. Với 7 tiêu chí nó còn tàn khốc ngoài ý muốn: 3 lỗi chính tả đưa `spelling` về 0, và mắt xích yếu nhất sẽ ghìm cả bức email xuống **0,5/10**. |
+| **Luật 3 — cửa độ dài** | **KHÔNG áp dụng** | Độ dài đã là một trong bảy tiêu chí (`form`). Chặn thêm là trừ cùng một thiếu sót hai lần. *Ngoại lệ:* nếu mô hình trả về theo định dạng cũ không có tiêu chí nào, `form` không nằm trong trung bình, và cửa độ dài bật lại. |
+| **Luật 2 — không nộp gì thì 0** | **Vẫn áp dụng** | Không viết gì là không viết gì, ở mọi phần. |
+| **Luật 4 — chép lại đề** | **Vẫn áp dụng** | Dán đề vào ô trả lời thì chưa viết email nào cả. |
+
+#### Luật 3b — lạc đề thì cả bài 0 điểm
+
+Đây là **luật của chính PTE**, và là *cái duy nhất* trong scheme của họ đưa cả
+bài về 0: `content` = 0 → toàn bộ email = 0, dù các tiêu chí khác có tốt đến đâu.
+
+Đáng chú ý là **độ dài không nằm trong đó**. Một email viết về chuyện khác thì
+chưa được viết, dù viết hay; một email ngắn thì đã được viết, chỉ là ngắn. Hai
+chuyện khác nhau và ra hai con số khác nhau.
+
+> **Thay đổi này nới điểm ở một chỗ, cần biết rõ:** trước đây một email 60 từ
+> câu cú tốt bị chặn ở **4,0**. Theo scheme của Pearson, `form` chỉ đáng 2/15
+> nên bài đó nay ra khoảng **8,5**. Đây là kết quả trực tiếp của việc theo cách
+> chấm của Pearson thay vì luật cũ của nền tảng. Nếu chủ đầu tư muốn giữ mức
+> khắt khe cũ về độ dài thì phải nói rõ, vì nó **trái** với rubric của Pearson.
 
 **Part G — Nghe hiểu đoạn** *(nghe một lần, trả lời miệng)*
 
@@ -343,7 +619,7 @@ người học, và tệ hơn nữa khi luật mới nghiêm hơn luật cũ: m�
 theo luật nó được thông báo, hạ điểm nó vài tháng sau là điều một điểm số không
 bao giờ được làm.
 
-Bài đã chấm dưới `2026-08-vpet-2` **giữ nguyên** — Luật 4 không hồi tố.
+Bài đã chấm dưới phiên bản cũ **giữ nguyên**. Luật 4 (chép lại đề) không hồi tố từ `-2`; và bài Part D chấm dưới `-3` có bốn tiêu chí tên khác, **không so sánh được theo từng tiêu chí** với bài chấm dưới `-4`. Phiên bản ghi trên mỗi dòng điểm là cách duy nhất để biết bài đó được chấm theo luật nào.
 
 Khi sửa `server/rubric.js`:
 

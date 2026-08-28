@@ -62,8 +62,16 @@
 
    -3 adds the copied-source cap. Marks made under -2 keep it: a paper sat before
    the rule existed was sat under the rules it was told about, and quietly
-   re-scoring it downward months later is the one thing a mark must never do. */
-const RUBRIC_VERSION = '2026-08-vpet-3';
+   re-scoring it downward months later is the one thing a mark must never do.
+
+   -4 is the big one. Part D moves to Pearson's own Write Email rubric — seven
+   criteria, weighted, two of them computed — and every criterion on every part
+   gains a level ladder and a mark table derived from server/bands.js, so the
+   marker now aims at the same scale the report reads back. A Part D mark made
+   under -3 has four criteria with different names and is not comparable
+   criterion-by-criterion with one made under -4; the version on the row is how
+   a reader can tell. */
+const RUBRIC_VERSION = '2026-08-vpet-4';
 
 /**
  * The criteria, per part.
@@ -76,31 +84,160 @@ const RUBRIC_VERSION = '2026-08-vpet-3';
  */
 const CRITERIA = {
   B: [
-    { key: 'meaning', en: 'Meaning kept', vi: 'Giữ được ý',
+    { key: 'meaning', en: 'Meaning kept', vi: 'Giữ được ý', dim: 'content',
       about: 'How much of the passage\'s meaning survives. Original wording is neither required nor rewarded; missing whole ideas is what costs marks.' },
-    { key: 'accuracy', en: 'Grammar and spelling', vi: 'Ngữ pháp và chính tả',
+    { key: 'accuracy', en: 'Grammar and spelling', vi: 'Ngữ pháp và chính tả', dim: 'accuracy',
       about: 'Sentence structure, verb forms, articles, spelling.' },
-    { key: 'organisation', en: 'Order and flow', vi: 'Sắp xếp và mạch văn',
+    { key: 'organisation', en: 'Order and flow', vi: 'Sắp xếp và mạch văn', dim: 'organisation',
       about: 'Whether the ideas come in an order a reader can follow.' }
   ],
+  /* ## Part D follows Pearson's own published rubric for this task
+     
+     The owner supplied two references and asked that the marking follow the way
+     Pearson actually scores an e-mail, rather than anything inferred here. This
+     is PTE Core's **Write Email** rubric — seven criteria over fifteen points —
+     which is Pearson's own and is the most specific thing either of us has.
+     
+     Three things about it change how this file works, and each is a deliberate
+     departure from what the other parts do:
+     
+     1. **The criteria are WEIGHTED.** Content is 3 of the 15 and the other six
+        are 2 each. Every other part here averages its criteria evenly, which was
+        fine when a part had three or four broad ones; it is not fine against a
+        published scheme that says otherwise. combine() now takes `weight`.
+     
+     2. **The weakest-link rule does NOT apply here.** It is this platform's
+        house rule and PTE's scheme is a plain weighted sum. Layering ours over
+        theirs would change their answer while still calling it their rubric —
+        and with seven criteria it would be brutal in a way nobody intended:
+        three typos put spelling at 0, and the weakest-link cap would then hold
+        the whole e-mail to 0.5 out of 10.
+     
+     3. **Two criteria are COMPUTED, not judged.** `form` is a word count and
+        `spelling` is an error count, and PTE states both as arithmetic — "under
+        50 or over 140 loses heavily", "0–1 errors is full marks, 2 is half,
+        3 or more is nothing". A marker asked to judge what is already counted
+        answers differently between runs, which is the fault this whole file
+        keeps returning to. `form` is computed outright; `spelling` is scored
+        from the error count the marker reports rather than from its impression.
+     
+     ### Where this deliberately differs from PTE Core
+     
+     **The length band is VPET's, not PTE's.** PTE Core asks for 80–120 words;
+     the VPET Official Guide for Test-Takers says Part D must be **at least 100**.
+     This is a VPET paper, so 100 is the requirement and PTE's band is not
+     imported — importing it would mark a VPET candidate against another exam's
+     instruction, which is the kind of quiet substitution docs/SCORING.md exists
+     to prevent. The SHAPE of PTE's rule is kept: a floor, a comfortable band,
+     and a penalty for running far over.
+     
+     Every criterion also records the Versant Writing subscore it corresponds to
+     (`pearson`), from Pearson's published subscore definitions, so a reader can
+     follow this rubric back to the test it is meant to imitate. */
   D: [
-    { key: 'task', en: 'Task completion', vi: 'Hoàn thành yêu cầu',
-      about: 'Whether EVERY point the situation asks for is addressed. Being polite is not enough if a requested point is missing.' },
-    { key: 'register', en: 'Tone for the reader', vi: 'Giọng văn phù hợp',
-      about: 'Whether the tone suits this recipient and a workplace.' },
-    { key: 'organisation', en: 'Organisation', vi: 'Bố cục',
-      about: 'Opening, body, closing; one idea per paragraph; linking that helps rather than decorates.' },
-    { key: 'accuracy', en: 'Grammar and spelling', vi: 'Ngữ pháp và chính tả',
-      about: 'Sentence structure, verb forms, articles, spelling.' }
+    { key: 'content', en: 'Content', vi: 'Nội dung', dim: 'content',
+      pearson: 'Content', weight: 3, ptePoints: 3,
+      about: 'Whether EVERY point the prompt asks for is answered, fully and accurately. '
+        + 'Pearson scores this on the same task by weighting how many expected words and word '
+        + 'sequences appear, so what is rewarded is the information being THERE, not the '
+        + 'phrasing it arrives in.',
+      bands: [
+        { at: 10, en: 'Every point the prompt asks for is answered, fully and accurately.',
+          vi: 'Trả lời đầy đủ, chính xác tất cả các ý được yêu cầu trong đề.' },
+        { at: 6, en: 'Most points are answered. One is missing, or one is not entirely clear.',
+          vi: 'Trả lời được hầu hết các ý. Bỏ sót 1 ý, hoặc 1 ý chưa thật rõ ràng.' },
+        { at: 2, en: 'Several required points are missing, or the content misleads the reader.',
+          vi: 'Bỏ sót nhiều ý bắt buộc, hoặc nội dung khiến người đọc hiểu lầm.' },
+        { at: 0, en: 'Off the topic entirely. Nothing the prompt asked for is here.',
+          vi: 'Lạc đề hoàn toàn. Không có gì thuộc yêu cầu của đề.' }
+      ] },
+    { key: 'conventions', en: 'E-mail conventions', vi: 'Quy cách email', dim: 'register',
+      pearson: 'Voice and Tone', weight: 2, ptePoints: 2,
+      about: 'The e-mail\'s own furniture — an opening greeting, clear body paragraphs, a '
+        + 'closing and a sign-off — and whether the level of formality fits who is being '
+        + 'written to: formal to a superior or a business contact, informal to a friend.',
+      bands: [
+        { at: 10, en: 'All of an e-mail\'s parts are there: greeting, clear body paragraphs, '
+            + 'closing and sign-off. The formality fits the recipient.',
+          vi: 'Đủ cấu trúc một email: lời chào đầu thư, các đoạn nội dung rõ ràng, lời chúc/hẹn '
+            + 'gặp ở cuối và ký tên. Mức trang trọng phù hợp với người nhận.' },
+        { at: 5, en: 'One part is missing or the formality slips — too formal for a friend, or '
+            + 'too casual for a superior.',
+          vi: 'Thiếu một phần, hoặc mức trang trọng chưa đúng — quá trang trọng với bạn bè, hoặc '
+            + 'quá suồng sã với cấp trên.' },
+        { at: 0, en: 'Not recognisable as an e-mail, or addressed to nobody in particular.',
+          vi: 'Không nhận ra được là một email, hoặc không xác định được viết cho ai.' }
+      ] },
+    /* Computed, not judged: the platform has the word count. See computedForm(). */
+    { key: 'form', en: 'Length and form', vi: 'Hình thức và độ dài', dim: 'content',
+      pearson: 'Form', weight: 2, ptePoints: 2, computed: 'form',
+      about: 'Whether the e-mail is the length the task asks for. Counted, not judged.' },
+    { key: 'organisation', en: 'Organisation', vi: 'Sắp xếp và mạch lạc', dim: 'organisation',
+      pearson: 'Organization', weight: 2, ptePoints: 2,
+      about: 'How well ideas are presented in a clear and logical sequence — Pearson\'s own '
+        + 'definition — judged on guiding the reader through the text and marking significant '
+        + 'points with discourse markers.',
+      bands: [
+        { at: 10, en: 'Ideas connect and the writing moves from one to the next. Linking words '
+            + '(however, in addition, therefore) are used naturally.',
+          vi: 'Các ý có tính liên kết, chuyển dòng hoặc chuyển đoạn hợp lý. Dùng từ nối '
+            + '(However, In addition, Therefore) một cách tự nhiên.' },
+        { at: 5, en: 'A basic order is there. Linking is repetitive, forced, or missing between '
+            + 'some ideas.',
+          vi: 'Có trình tự cơ bản. Từ nối lặp lại, gượng ép, hoặc thiếu ở một số chỗ.' },
+        { at: 0, en: 'Sentences stand apart with nothing joining them.',
+          vi: 'Các câu rời rạc, không có gì nối chúng với nhau.' }
+      ] },
+    { key: 'vocabulary', en: 'Vocabulary', vi: 'Từ vựng', dim: 'range',
+      pearson: 'Vocabulary', weight: 2, ptePoints: 2,
+      about: 'Whether the words are accurate and are the right words for this topic, purpose '
+        + 'and audience — including whether the formal or informal choice the prompt calls for '
+        + 'is actually made.',
+      bands: [
+        { at: 10, en: 'Accurate vocabulary that suits the context, and the formal or informal '
+            + 'choice the prompt calls for is made throughout.',
+          vi: 'Dùng từ vựng chính xác, phù hợp ngữ cảnh của bức thư, và chọn đúng sắc thái trang '
+            + 'trọng hay thân mật theo yêu cầu của đề.' },
+        { at: 5, en: 'Adequate but plain, or the wrong word in a place or two.',
+          vi: 'Đủ dùng nhưng đơn điệu, hoặc dùng sai từ ở một hai chỗ.' },
+        { at: 0, en: 'Thin and repetitive, or wrong often enough to obscure the meaning.',
+          vi: 'Nghèo nàn, lặp lại, hoặc sai đủ nhiều để làm mờ nghĩa.' }
+      ] },
+    { key: 'grammar', en: 'Grammar', vi: 'Ngữ pháp', dim: 'accuracy',
+      pearson: 'Grammar', weight: 2, ptePoints: 2,
+      about: 'Correct structures, tenses and subject-verb agreement. Pearson\'s scoring rewards '
+        + 'ACCURACY over ambition here: a correct simple or compound sentence scores better '
+        + 'than a complex one that breaks.',
+      bands: [
+        { at: 10, en: 'Structures, tenses and agreement are correct throughout.',
+          vi: 'Cấu trúc, thì và sự hòa hợp chủ vị đúng suốt bài.' },
+        { at: 5, en: 'A few errors, but the reader still follows.',
+          vi: 'Có một vài lỗi nhưng người đọc vẫn theo được.' },
+        { at: 0, en: 'Enough basic grammar is wrong that the writing is hard to follow.',
+          vi: 'Sai nhiều lỗi ngữ pháp cơ bản đến mức bài viết khó hiểu.' }
+      ] },
+    /* Scored from the error COUNT the marker reports, not from its impression of
+       how the spelling felt. PTE states this one as arithmetic and so does this. */
+    { key: 'spelling', en: 'Spelling', vi: 'Chính tả', dim: 'accuracy',
+      pearson: 'Grammar', weight: 2, ptePoints: 2,
+      about: 'Count the misspelt words and score by the count: 0 or 1 errors is full marks, 2 '
+        + 'is half, 3 or more is none. American, British, Australian and Canadian spellings are '
+        + 'all correct — but ONE of them has to be used throughout; mixing them is what counts '
+        + 'as an error here.',
+      bands: [
+        { at: 10, en: '0 or 1 misspelt words.', vi: '0 – 1 lỗi chính tả.' },
+        { at: 5, en: 'Exactly 2 misspelt words.', vi: 'Đúng 2 lỗi chính tả.' },
+        { at: 0, en: '3 or more misspelt words.', vi: 'Từ 3 lỗi chính tả trở lên.' }
+      ] }
   ],
   I: [
-    { key: 'task', en: 'Dealing with the situation', vi: 'Xử lý được tình huống',
+    { key: 'task', en: 'Dealing with the situation', vi: 'Xử lý được tình huống', dim: 'content',
       about: 'Whether every move the situation asks for actually happens.' },
-    { key: 'range', en: 'Range of language', vi: 'Vốn ngôn ngữ',
+    { key: 'range', en: 'Range of language', vi: 'Vốn ngôn ngữ', dim: 'range',
       about: 'Whether the vocabulary and structures stretch beyond the safest possible choices.' },
-    { key: 'accuracy', en: 'Accuracy', vi: 'Độ chính xác',
+    { key: 'accuracy', en: 'Accuracy', vi: 'Độ chính xác', dim: 'accuracy',
       about: 'Grammar and word choice, judged from the transcript.' },
-    { key: 'register', en: 'Register', vi: 'Mức trang trọng',
+    { key: 'register', en: 'Register', vi: 'Mức trang trọng', dim: 'register',
       about: 'Whether the level of formality fits who is being spoken to.' }
   ],
   /* G and H had no criteria at all, and between them they are 16 of the paper's
@@ -115,28 +252,165 @@ const CRITERIA = {
      wording tracks each part's rubric text in server/ai-marking.js; if one
      changes, the other has to. */
   G: [
-    { key: 'correct', en: 'Right answer', vi: 'Trả lời đúng',
+    { key: 'correct', en: 'Right answer', vi: 'Trả lời đúng', dim: 'content',
       about: 'Whether the answer is right. A correct short phrase is a full mark and is not '
         + 'marked down for being short; grammar matters only where it changes the meaning.' }
   ],
   H: [
-    { key: 'content', en: 'How much came back', vi: 'Giữ được bao nhiêu',
+    { key: 'content', en: 'How much came back', vi: 'Giữ được bao nhiêu', dim: 'content',
       about: 'How much of the sentence is reproduced.' },
-    { key: 'structure', en: 'Structure kept', vi: 'Giữ được cấu trúc',
+    { key: 'structure', en: 'Structure kept', vi: 'Giữ được cấu trúc', dim: 'accuracy',
       about: 'Whether the sentence\'s word order and grammar survive the repetition.' }
   ],
   J: [
-    { key: 'events', en: 'Events kept', vi: 'Giữ được sự việc',
+    { key: 'events', en: 'Events kept', vi: 'Giữ được sự việc', dim: 'content',
       about: 'How many of the story\'s events survive the retelling.' },
-    { key: 'sequence', en: 'Order of events', vi: 'Trình tự',
+    { key: 'sequence', en: 'Order of events', vi: 'Trình tự', dim: 'organisation',
       about: 'Whether they come in the right order.' },
-    { key: 'point', en: 'The point of it', vi: 'Ý chính',
+    { key: 'point', en: 'The point of it', vi: 'Ý chính', dim: 'content',
       about: 'Whether the point of the story comes across, not just its parts.' }
   ]
 };
 
 /**
- * What a number on the ten-point scale MEANS.
+ * Where the owner's Part D table and this file's measured rules overlap.
+ *
+ * Two of the owner's descriptors name something this file already computes, and
+ * both clauses are deliberately absent from the text above. Recording which,
+ * and why, because silently editing somebody's standard is not acceptable and
+ * silently applying it twice is worse.
+ *
+ *   · Communicative achievement, band 1, opened "Bài viết **quá ngắn** hoặc quá
+ *     rời rạc" — *too short* or too disjointed. Length is Rule 3: measured,
+ *     capped, and explained to the candidate in its own words. A marker also
+ *     told to judge shortness deducts for it twice on the runs where it
+ *     notices, and once on the runs where it does not. "Quá rời rạc" stays,
+ *     because disjointedness is a judgement and nothing computes it.
+ *
+ *   · Language, band 5, read "từ vựng phong phú, **không bị lặp từ từ đề bài**"
+ *     — a rich vocabulary, *not reusing the prompt's words*. Reusing the
+ *     prompt's words is Rule 4, measured as overlap and capped. The "rich
+ *     vocabulary" half stays; the copying half is arithmetic.
+ *
+ * Neither is dropped from the STANDARD — both rules are stricter and more
+ * consistent than a marker's impression of them, and docs/CHAM-DIEM-CHUAN.md
+ * §3.1 says so where a candidate reads it. They are dropped only from what the
+ * model is asked to judge.
+ */
+const OWNER_OVERLAP = [
+  { criterion: 'communicative', clause: 'quá ngắn', rule: 'under-length' },
+  { criterion: 'language', clause: 'không bị lặp từ từ đề bài', rule: 'copied-source' }
+];
+
+/**
+ * What each CEFR level looks like, on each dimension a criterion can measure.
+ *
+ * ## Why this had to exist
+ *
+ * `server/bands.js` turns a 0–10 mark into a CEFR level by placing it inside
+ * the paper's published GSE range: on a Level 1 paper 10/10 is GSE 58, which is
+ * the top of B1+, and 0/10 is GSE 10. So the mark ALREADY carries a claim about
+ * the candidate's level — that is what the number is for.
+ *
+ * And nothing ever told the marker. It was handed "Candidate level for this
+ * paper: B1" and left to decide for itself whether that meant "mark this
+ * against B1 expectations" or "mark it against good English". Those produce
+ * very different numbers from the same answer, the model had no way to know
+ * which was wanted, and bands.js then read the result as though the first had
+ * happened. The two halves of the scoring have never agreed except by luck.
+ *
+ * So the ladder below says what each level looks like, `levelScale()` works out
+ * which marks each level is worth ON THIS PAPER from bands.js's own table, and
+ * `server/ai-marking.js` puts both in front of the marker. The model's
+ * judgement and the band table now agree by construction.
+ *
+ * ## Dimensions, not criteria
+ *
+ * Five dimensions, six levels: thirty descriptors, each of which can actually
+ * be checked. Per-criterion ladders would be sixteen × six, and ninety-six
+ * descriptors is ninety of them nobody would ever read — the same argument that
+ * kept BANDS to one shared ladder rather than one per criterion.
+ *
+ * Every criterion declares its `dim`. The four proficiency dimensions use this
+ * ladder. `content` deliberately does NOT: "did they mention the delivery date"
+ * is not a question about anybody's English, and a CEFR ladder over it would be
+ * a category error. Those criteria use BANDS below, which asks how much of what
+ * was asked for is actually there.
+ *
+ * ## These are descriptions, not the CEFR
+ *
+ * Written for this rubric and for what a marker can see in a short answer or a
+ * transcript. They are informed by the CEFR's own descriptors and by the GSE
+ * levels Pearson publishes, but they are not a quotation of either, and nothing
+ * here should be cited as though the Council of Europe wrote it.
+ */
+const LADDER = {
+  accuracy: {
+    C2: { en: 'Full control, including in long sentences. Slips are so rare they read as typing.',
+          vi: 'Kiểm soát hoàn toàn, kể cả câu dài. Sai sót hiếm tới mức đọc như lỗi gõ phím.' },
+    C1: { en: 'Consistently accurate. What errors there are are evidently slips, not gaps.',
+          vi: 'Chính xác đều. Lỗi có thì cũng rõ ràng là lỡ tay, không phải lỗ hổng.' },
+    B2: { en: 'Good control. Errors appear in complex sentences and rarely cause a misreading.',
+          vi: 'Kiểm soát tốt. Lỗi xuất hiện ở câu phức và hiếm khi làm hiểu sai.' },
+    B1: { en: 'Simple structures are reliable. Longer sentences and less common tenses go wrong, but the meaning survives.',
+          vi: 'Cấu trúc đơn giản thì chắc. Câu dài hơn và thì ít gặp thì sai, nhưng nghĩa vẫn còn.' },
+    A2: { en: 'Simple sentences are attempted. Endings, articles and plurals go missing often enough that the reader repairs as they go.',
+          vi: 'Có thử viết câu đơn. Đuôi từ, mạo từ, số nhiều rơi rụng đủ nhiều để người đọc phải tự vá.' },
+    A1: { en: 'Words and memorised phrases. Most attempts at a sentence break down.',
+          vi: 'Từ rời và cụm học thuộc. Phần lớn nỗ lực viết thành câu đều đổ.' }
+  },
+  range: {
+    C2: { en: 'Full range, used precisely, including shades of meaning and fixed expressions.',
+          vi: 'Vốn đầy đủ, dùng chính xác, kể cả sắc thái và thành ngữ cố định.' },
+    C1: { en: 'Broad and precise. The word chosen is the right one rather than the nearest one; collocation is mostly right.',
+          vi: 'Rộng và chuẩn. Từ được chọn là từ đúng, không phải từ gần đúng nhất; kết hợp từ phần lớn chuẩn.' },
+    B2: { en: 'A clear range. Subordination, some less common words, choices that fit the topic.',
+          vi: 'Vốn rõ rệt. Có mệnh đề phụ, có từ ít gặp, lựa chọn hợp chủ đề.' },
+    B1: { en: 'Enough for familiar topics, with a way round a missing word. Mostly simple and compound sentences.',
+          vi: 'Đủ cho chủ đề quen thuộc, biết đường vòng khi thiếu từ. Chủ yếu câu đơn và câu ghép.' },
+    A2: { en: 'Everyday words and the simplest joins — and, but, because.',
+          vi: 'Từ đời thường và những cách nối đơn giản nhất — and, but, because.' },
+    A1: { en: 'A few memorised words and phrases; nothing built out of them.',
+          vi: 'Vài từ và cụm học thuộc; không dựng được gì từ chúng.' }
+  },
+  organisation: {
+    C2: { en: 'Structure is a deliberate choice and the reader never notices it working.',
+          vi: 'Bố cục là một lựa chọn có chủ ý và người đọc không hề thấy nó đang làm việc.' },
+    C1: { en: 'Structure serves what is being said; cohesion is smooth and largely invisible.',
+          vi: 'Bố cục phục vụ điều đang nói; liên kết mượt và gần như vô hình.' },
+    B2: { en: 'Clear shape. Each paragraph does one job and the linking helps rather than decorates.',
+          vi: 'Hình hài rõ. Mỗi đoạn làm một việc, từ nối để giúp chứ không để trang trí.' },
+    B1: { en: 'A recognisable beginning, middle and end. Linking is present and sometimes mechanical.',
+          vi: 'Có mở – thân – kết nhận ra được. Có liên kết, đôi khi máy móc.' },
+    A2: { en: 'Points strung together with and / then / but. The reader supplies the order.',
+          vi: 'Các ý nối bằng and / then / but. Người đọc phải tự sắp thứ tự.' },
+    A1: { en: 'No order a reader can follow; nothing links.',
+          vi: 'Không có thứ tự nào người đọc theo được; không gì liên kết với gì.' }
+  },
+  register: {
+    C2: { en: 'Register is used deliberately, including shifting inside one text for effect.',
+          vi: 'Dùng mức trang trọng có chủ đích, kể cả chuyển giọng trong cùng một bài để đạt hiệu quả.' },
+    C1: { en: 'Controlled and sustained, including politeness moves and hedging.',
+          vi: 'Kiểm soát và giữ được suốt bài, kể cả cách nói lịch sự và cách nói giảm.' },
+    B2: { en: 'Consistent and suited to the reader; the occasional phrase sits oddly.',
+          vi: 'Nhất quán và hợp người nhận; thi thoảng có câu đặt hơi lạc.' },
+    B1: { en: 'Knows formal from informal and mostly picks the right one; slips into the other under pressure.',
+          vi: 'Phân biệt được trang trọng và thân mật, phần lớn chọn đúng; bị áp lực thì trượt sang bên kia.' },
+    A2: { en: 'One register, usually informal, whoever is being addressed.',
+          vi: 'Một giọng duy nhất, thường là thân mật, nói với ai cũng vậy.' },
+    A1: { en: 'No control of formality — whatever phrases are known.',
+          vi: 'Không kiểm soát được mức trang trọng — biết cụm nào dùng cụm đó.' }
+  }
+};
+
+/** Which dimensions the CEFR ladder answers for. `content` is not one of them. */
+const LADDER_DIMS = Object.keys(LADDER);
+
+/** High to low, so a scale reads top-down the way a band table does. */
+const LADDER_LEVELS = ['C2', 'C1', 'B2', 'B1', 'A2', 'A1'];
+
+/**
+ * What a number on the ten-point scale means for a CONTENT criterion.
  *
  * Every criterion above says what it is about. None of them said what a 7 is,
  * and a scale with no anchors is not a scale — it is a marker's mood. That is
@@ -144,13 +418,18 @@ const CRITERIA = {
  * run and 1/10 on another, and both runs had been given the same one-sentence
  * description of "Meaning kept" and nothing else to hang a number on.
  *
- * One ladder, shared by every criterion, rather than a private table for each.
- * Fifteen criteria × six bands is ninety sentences, and nobody would ever check
- * eighty-five of them; the honest version is a ladder that is genuinely general
- * and a per-criterion `about` that says what is being climbed. The rungs are
- * written from the READER's side — how much work the person on the other end
- * has to do — because that is the same place the weakest-link rule argues from,
- * and a scale that argues from somewhere else would pull against it.
+ * This ladder is for `dim: 'content'` only — how much of what was asked for is
+ * actually there. The four proficiency dimensions use LADDER above and the
+ * per-paper scale below instead, because "how good is this English" and "did
+ * they mention the delivery date" are not the same question and one ladder
+ * cannot answer both without one of the two answers being nonsense. Giving a
+ * marker two ladders for one number would be the error this file warns about
+ * everywhere else; giving two DIFFERENT criteria one ladder each is not.
+ *
+ * The rungs are written from the READER's side — how much work the person on
+ * the other end has to do — because that is the same place the weakest-link
+ * rule argues from, and a scale that argues from somewhere else would pull
+ * against it.
  *
  * Six rungs, not eleven. Odd numbers and halves are for a marker who wants to
  * sit between two rungs, which is a real thing to want; naming all eleven would
@@ -169,6 +448,154 @@ const BANDS = [
     vi: 'Gần như chưa đạt. Chỉ có vài mảnh dùng được.' },
   { at: 0, en: 'Nothing here belongs to this criterion.',
     vi: 'Không có gì thuộc tiêu chí này.' }
+];
+
+/**
+ * Which marks each CEFR level is worth ON THIS PAPER.
+ *
+ * Derived, never typed. `server/bands.js` already owns two published tables —
+ * Pearson's GSE↔CEFR alignment and each VPET paper's GSE span — and it turns a
+ * mark into a level by placing the mark linearly inside that span. This runs
+ * the same arithmetic backwards, so the marker is told the inverse of exactly
+ * the function that will read its answer.
+ *
+ * That matters more than it saves. A hand-written table of "B1 is 7 to 8.5"
+ * would be a second copy of a mapping that already exists, and the first time
+ * somebody corrected a GSE boundary the two would disagree — with the marker
+ * aiming at one scale and the report reading the other, silently, for as long
+ * as it took somebody to notice a band that looked wrong.
+ *
+ * The consequence is worth stating plainly, because it is the whole design:
+ * **a mark is not "how good is this in the abstract", it is "where on THIS
+ * paper's range does this sit"**. Ten out of ten on a Level 1 paper is B1+,
+ * because B1+ is the top of what a Level 1 paper can see. The same answer on a
+ * Level 2 paper scores lower, and should: the two papers ask different
+ * questions of it. Only the levels a paper can actually measure are listed —
+ * offering a Level 1 marker a C1 rung would invite a mark the report has no way
+ * to render.
+ *
+ * Returns `[{ cefr, min, max }]`, high to low.
+ */
+function levelScale(paperLevel, family) {
+  /* Required lazily: bands.js is a leaf today, and a top-level require here
+     would make any future edge from bands.js back to the rubric a cycle rather
+     than a warning. */
+  const bands = require('./bands');
+  if (String(family || 'vpet').toLowerCase() !== 'vpet') return [];
+  const lvl = bands.vpetLevelOf(paperLevel);
+  const range = bands.VPET_LEVELS[lvl];
+  if (!range) return [];
+  const [low, high] = range.gse;
+  /* The inverse of bands.js's `gse = low + (mark/10) × (high − low)`. */
+  const markAt = gse => Math.max(0, Math.min(10, (gse - low) / (high - low) * 10));
+
+  const out = [];
+  for (let i = 0; i < bands.GSE_CEFR.length; i++) {
+    const row = bands.GSE_CEFR[i];
+    /* A band runs from its own floor up to the next one's, and the top band
+       runs to the top of the scale. */
+    const ceiling = i === 0 ? 90 : bands.GSE_CEFR[i - 1].min;
+    if (ceiling <= low || row.min >= high) continue;   // outside what this paper sees
+    out.push({
+      cefr: row.cefr,
+      min: Number(markAt(Math.max(row.min, low)).toFixed(1)),
+      max: Number(markAt(Math.min(ceiling, high)).toFixed(1))
+    });
+  }
+  return out;
+}
+
+/**
+ * The house standard: what counts as an error, and what does not.
+ *
+ * A criterion says what is being judged and the ladders say how far up. Neither
+ * says whether "colour" is a misspelling in an answer that also writes "color",
+ * whether "I'll" belongs in a formal e-mail, or whether a word the transcriber
+ * plainly mis-heard is the candidate's mistake. Left unsaid, a marker decides
+ * each of those afresh every run — which is the same fault as an unanchored
+ * scale, one level down, and it lands hardest on `accuracy`, the criterion the
+ * weakest-link rule most often caps a whole item from.
+ *
+ * Every line here is a decision that could have gone the other way, so each one
+ * says which way it went. They are rendered into the marker's prompt verbatim
+ * and published to candidates in docs/CHAM-DIEM-CHUAN.md: a rule a candidate
+ * cannot read is a rule they cannot prepare for.
+ *
+ * The last group matters most and is the least obvious. Three things are
+ * measured elsewhere in this file and MUST NOT be deducted for again here —
+ * length, copying, and Part H's overlap. A marker told to judge something that
+ * is also computed will deduct twice on the runs where it notices and once on
+ * the runs where it does not, and that inconsistency is indistinguishable from
+ * bias.
+ */
+const USAGE = [
+  /* Aligned to Pearson, who state this one explicitly for Write Email: all four
+     varieties accepted, but ONE of them throughout. The first version of this
+     rule said mixing was "never an error on its own", which flatly contradicted
+     Part D's spelling criterion two screens further down the same prompt — and
+     a marker given two rules picks one at random, which is the fault this file
+     keeps coming back to. Pearson is the authority here, so Pearson wins. */
+  { en: 'American, British, Australian and Canadian spellings are all correct — "colour" and '
+      + '"color" are each right — but ONE variety has to be used throughout. Mixing them is '
+      + 'what counts as an error, not the variety chosen.',
+    vi: 'Chính tả Mỹ, Anh, Úc và Canada đều đúng — "colour" và "color" đều được chấp nhận — '
+      + 'nhưng phải dùng nhất quán MỘT lối trong cả bài. Cái tính là lỗi là việc trộn lẫn, '
+      + 'không phải việc chọn lối nào.' },
+
+  { en: 'A slip is not a gap. A word misspelt once that the candidate spells correctly elsewhere '
+      + 'is a typo: mention it, do not mark it down. A form that is wrong every time it appears '
+      + 'is an error, because it shows what they believe.',
+    vi: 'Lỡ tay khác với chưa biết. Một từ sai một lần mà chỗ khác viết đúng là lỗi đánh máy: '
+      + 'nhắc thôi, không trừ. Một dạng sai ở mọi lần xuất hiện mới là lỗi, vì nó cho thấy '
+      + 'người viết đang hiểu như thế.' },
+
+  { en: 'Contractions are normal in speech and in a friendly message. In a formal e-mail they '
+      + 'are an observation about register, never a grammar error.',
+    vi: 'Dạng rút gọn là bình thường khi nói và trong thư thân mật. Trong email trang trọng, '
+      + 'đó là nhận xét về giọng văn, không bao giờ là lỗi ngữ pháp.' },
+
+  { en: 'Mark a first-language pattern exactly as you would mark any other error of the same '
+      + 'size — a dropped article, an unmarked plural, a tense that does not follow. Never be '
+      + 'gentler or harsher because of where the candidate is from, and never mention their '
+      + 'first language: they asked to be told about their English.',
+    vi: 'Lỗi do ảnh hưởng tiếng mẹ đẻ — thiếu mạo từ, thiếu dấu số nhiều, thì không khớp — chấm '
+      + 'đúng như mọi lỗi cùng mức độ khác. Không nới tay cũng không khắt khe hơn vì gốc gác của '
+      + 'thí sinh, và không nhắc đến tiếng mẹ đẻ của họ: cái họ cần biết là tiếng Anh của mình.' },
+
+  { en: 'An e-mail is a greeting, a body and a sign-off. A missing greeting or sign-off belongs '
+      + 'to organisation and register, not to grammar, and paragraphing belongs to organisation.',
+    vi: 'Một email gồm lời chào, phần thân và lời kết. Thiếu lời chào hay lời kết thuộc về bố cục '
+      + 'và giọng văn, không phải ngữ pháp; cách chia đoạn cũng thuộc bố cục.' },
+
+  { en: 'Any consistent convention for dates, numbers and capitals is accepted. "15/3", '
+      + '"15 March" and "March 15" are all correct.',
+    vi: 'Mọi quy ước nhất quán về ngày tháng, số và viết hoa đều được chấp nhận. "15/3", '
+      + '"15 March" và "March 15" đều đúng.' },
+
+  { en: 'Sentence-final punctuation and capital letters count under accuracy. Comma style does '
+      + 'not, unless a missing comma makes the sentence unreadable.',
+    vi: 'Dấu kết câu và viết hoa đầu câu tính vào độ chính xác. Cách dùng dấu phẩy thì không, '
+      + 'trừ khi thiếu dấu phẩy làm câu không đọc được.' },
+
+  { en: 'A short answer is not a poor one where the task allows one, and an unusual but correct '
+      + 'choice is correct. Do not mark down for not writing what you would have written.',
+    vi: 'Câu trả lời ngắn không phải là câu trả lời kém, khi đề cho phép ngắn; và một lựa chọn '
+      + 'lạ nhưng đúng thì vẫn đúng. Không trừ điểm vì thí sinh không viết giống ý bạn.' },
+
+  { en: 'A spoken answer reaches you as a MACHINE TRANSCRIPT. Nobody heard the recording, so say '
+      + 'nothing about pronunciation, accent or fluency — and where the transcriber has plainly '
+      + 'mis-heard a word, mark what the candidate evidently said, not what the machine typed.',
+    vi: 'Bài nói đến tay bạn dưới dạng BẢN GHI TỰ ĐỘNG. Không ai nghe bản ghi âm, nên không nhận '
+      + 'xét gì về phát âm, ngữ điệu hay độ trôi chảy — và chỗ nào máy rõ ràng nghe nhầm thì chấm '
+      + 'theo điều thí sinh hiển nhiên đã nói, không theo chữ máy gõ ra.' },
+
+  { en: 'Three things are measured by arithmetic and enforced without you: how long the answer '
+      + 'is, how much of it is copied from the text in front of the candidate, and on Part H how '
+      + 'much of the sentence came back. Judge the criteria on their own merits and do not deduct '
+      + 'for any of the three as well.',
+    vi: 'Ba thứ được đo bằng số học và áp dụng độc lập với bạn: độ dài bài làm, tỉ lệ chép lại từ '
+      + 'đề bài, và ở Part H là lượng từ nhắc lại được. Hãy chấm các tiêu chí theo đúng bản thân '
+      + 'chúng và không trừ thêm vì ba thứ đó.' }
 ];
 
 /**
@@ -282,6 +709,42 @@ const COPY_MAX_WORDS = 1500;
 /** The aggregate may sit at most this far above the weakest criterion. */
 const WEAKEST_LINK_HEADROOM = 0.5;
 
+/**
+ * Parts that follow a published weighted scheme of their own.
+ *
+ * Part D is marked on PTE Core's Write Email rubric, which is Pearson's and is
+ * a plain weighted sum over seven criteria. Two of this file's house rules step
+ * aside for it, and the reasons are different:
+ *
+ *   · **The weakest-link cap.** It is ours, not theirs, and putting it on top
+ *     of somebody's published scheme changes their answer while still calling
+ *     it their rubric. With seven criteria it would also be savage in a way
+ *     nobody intended: three typos put `spelling` at 0, and the cap would then
+ *     hold the whole e-mail to 0.5 out of 10.
+ *
+ *   · **The under-length cap.** Length is one of the seven criteria here
+ *     (`form`, computed), so the cap would be the same shortfall counted twice.
+ *
+ * Everything else still applies — nothing handed in is still zero, and a pasted
+ * prompt is still capped.
+ */
+const WEIGHTED_SCHEME_PARTS = new Set(['D']);
+
+/**
+ * The e-mail length band, in words.
+ *
+ * `min` is VPET's, from the Official Guide for Test-Takers: Part D must be at
+ * least 100 words. PTE Core's own band is 80–120 with a heavy penalty under 50
+ * or over 140, and it is deliberately NOT imported — this is a VPET paper, and
+ * marking a VPET candidate against another exam's stated instruction is exactly
+ * the quiet substitution docs/SCORING.md exists to prevent.
+ *
+ * What IS taken from PTE is the shape: a floor, a band that is comfortably
+ * right, and a penalty for running far past it. `over` is set at 1.4 × the
+ * floor, the same proportion PTE's 140 bears to its 100-word midpoint.
+ */
+const FORM_BAND = { min: 100, over: 140 };
+
 /** The shortest quotation that can count as evidence. One word matches anything. */
 const MIN_EVIDENCE_WORDS = 3;
 
@@ -384,6 +847,37 @@ function verifyEvidence(quote, source) {
   return hay.includes(q) ? String(quote).trim().slice(0, 400) : null;
 }
 
+/* --------------------------- Criteria the platform counts --------------------------- */
+
+/**
+ * The `form` criterion: how well the length fits, counted rather than judged.
+ *
+ * Continuous rather than stepped, for the reason the length gate is: a step
+ * makes one word either side of a threshold worth several marks, and the
+ * candidate on the wrong side of it is right to call that arbitrary.
+ *
+ *   at or above the floor, up to `over`  →  10
+ *   below the floor                      →  falls to 0 at 60% of it
+ *   past `over`                          →  falls to 5 at twice the floor
+ *
+ * Running long is penalised less hard than running short, and that is
+ * deliberate: a candidate who wrote 180 words did the task and then some, while
+ * one who wrote 55 did not do it. PTE penalises both ends; this keeps that
+ * shape without pretending the two failures are equivalent.
+ */
+function computedForm(n, band) {
+  const b = band || FORM_BAND;
+  if (n >= b.min && n <= b.over) return 10;
+  if (n < b.min) {
+    const floor = b.min * UNDER_LENGTH_FRACTION;
+    if (n <= floor) return 0;
+    return 10 * (n - floor) / (b.min - floor);
+  }
+  const far = b.min * 2;
+  if (n >= far) return 5;
+  return 10 - 5 * (n - b.over) / (far - b.over);
+}
+
 /* ------------------------- How much was copied, measured ------------------------- */
 
 /**
@@ -472,7 +966,25 @@ function combine(part, criteria, opts) {
   const defs = criteriaFor(part);
   const used = [];
 
+  const n0 = words(o.answer).length;
+
   for (const def of defs) {
+    /* A criterion the platform counts for itself. The marker is never asked for
+       it, so nothing it says about it is read — the word count is not a matter
+       of opinion, and the answer must not move between two runs on the same
+       text. Only computed when there is an answer to count: a blank goes to the
+       no-answer floor below, not to a form score of zero dressed up as a mark. */
+    if (def.computed === 'form') {
+      if (!n0) continue;
+      used.push({
+        key: def.key, en: def.en, vi: def.vi, weight: def.weight || 1,
+        score: half(computedForm(n0, o.formBand)),
+        computed: true, evidence: null, evidenceRejected: false,
+        comment: n0 + ' words against a required ' + (o.formBand || FORM_BAND).min
+      });
+      continue;
+    }
+
     const got = criteria && criteria[def.key];
     if (!got) continue;
     /* Not `Number()`: null, '', false and [] all coerce to 0, and 0 is a real
@@ -484,6 +996,10 @@ function combine(part, criteria, opts) {
     if (!Number.isFinite(n) || n < 0 || n > 10) continue;
     used.push({
       key: def.key, en: def.en, vi: def.vi, score: half(n),
+      /* Pearson weights Content 3 of PTE Core's 15 and the other six 2 each.
+         Everything else here is unweighted and defaults to 1, which is the same
+         arithmetic it always did. */
+      weight: def.weight || 1,
       evidence: verifyEvidence(got.evidence, o.answer),
       /* Said out loud rather than left as a silent absence: "the marker quoted
          something you did not write" is information the learner should have. */
@@ -493,14 +1009,24 @@ function combine(part, criteria, opts) {
   }
 
   /* Parts with no criteria of their own — G and H — carry a single score, and
-     the caps below still apply to it. */
-  if (!used.length) {
+     the caps below still apply to it.
+     Counted on the JUDGED criteria, not on `used`. A computed one is always
+     there whatever the marker said, so testing `used.length` meant a model that
+     answered in the old two-field shape had its score silently discarded and
+     the whole item scored off the word count alone: a 20-word e-mail with a
+     headline 8 came out at 0. `computed` is the platform's contribution to a
+     mark, never the whole of one. */
+  const judged = used.filter(c => !c.computed);
+  if (!judged.length) {
     const single = Number(o.fallbackScore);
     if (!Number.isFinite(single) || single < 0 || single > 10) return null;
-    return applyCaps(part, half(single), [], o);
+    /* And the length gate comes back for this item, because `form` is not in
+       the average to carry it. */
+    return applyCaps(part, half(single), [], Object.assign({}, o, { forceLength: true }));
   }
 
-  const mean = used.reduce((s, c) => s + c.score, 0) / used.length;
+  const total = used.reduce((s, c) => s + (c.weight || 1), 0);
+  const mean = used.reduce((s, c) => s + c.score * (c.weight || 1), 0) / total;
   return applyCaps(part, mean, used, o);
 }
 
@@ -510,8 +1036,9 @@ function applyCaps(part, base, used, o) {
   let score = base;
 
   /* Rule 1: the weakest criterion. Only where there is more than one — a single
-     score cannot be more than half a band above itself. */
-  if (used.length > 1) {
+     score cannot be more than half a band above itself — and never on a part
+     that follows a published weighted scheme; see WEIGHTED_SCHEME_PARTS. */
+  if (used.length > 1 && !WEIGHTED_SCHEME_PARTS.has(part)) {
     const weakest = Math.min(...used.map(c => c.score));
     const ceiling = weakest + WEAKEST_LINK_HEADROOM;
     if (score > ceiling) {
@@ -556,8 +1083,12 @@ function applyCaps(part, base, used, o) {
   }
 
   /* Rule 3: length. Measured, not judged — so it applies whether or not a
-     marker ever ran. A genuine but short attempt, unlike the case above. */
-  const floor = o.minWords || MIN_WORDS[part];
+     marker ever ran. A genuine but short attempt, unlike the case above.
+     Skipped where length is already one of the part's own criteria: on Part D
+     it is `form`, computed from the same word count, and capping as well would
+     be the same shortfall counted twice. */
+  const floor = (WEIGHTED_SCHEME_PARTS.has(part) && !o.forceLength)
+    ? null : (o.minWords || MIN_WORDS[part]);
   if (floor) {
     const n = words(o.answer).length;
     const ceiling = lengthCeiling(n, floor);
@@ -576,6 +1107,28 @@ function applyCaps(part, base, used, o) {
       });
       score = half(ceiling);
     }
+  }
+
+  /* Rule 3b: off the topic entirely.
+     PTE Core states this one outright — "nếu tiêu chí Content bị 0 điểm (lạc đề
+     hoàn toàn), toàn bộ bài email sẽ bị 0 điểm" — and it is the only zero-
+     trigger in their scheme, which is why length is NOT one: an e-mail about
+     the wrong thing has not been written, however well it is written, while a
+     short one has been written and is merely short.
+     A floor rather than a cap, like Rule 2, and for the same reason: what
+     follows must not be able to award anything back. */
+  const contentZero = used.find(c => c.key === 'content' && c.score === 0);
+  if (WEIGHTED_SCHEME_PARTS.has(part) && contentZero) {
+    if (score > 0) {
+      caps.push({
+        rule: 'off-topic', from: half(score), to: 0,
+        en: 'This does not answer what the task asked for. An e-mail about something else '
+          + 'scores nothing, however well it is written.',
+        vi: 'Bài này không trả lời yêu cầu của đề. Email lạc đề thì không được điểm nào, '
+          + 'dù viết hay đến đâu.'
+      });
+    }
+    return { score: 0, beforeCaps: half(base), criteria: used, caps, version: RUBRIC_VERSION };
   }
 
   /* Rule 4: the answer is the question.
@@ -619,6 +1172,8 @@ function applyCaps(part, base, used, o) {
 
 module.exports = {
   RUBRIC_VERSION, CRITERIA, BANDS, MIN_WORDS,
+  LADDER, LADDER_DIMS, LADDER_LEVELS, levelScale, USAGE, OWNER_OVERLAP,
+  WEIGHTED_SCHEME_PARTS, FORM_BAND, computedForm,
   UNDER_LENGTH_FRACTION, UNDER_LENGTH_CAP, WEAKEST_LINK_HEADROOM, MIN_EVIDENCE_WORDS,
   COPY_PARTS, COPY_SHINGLE, COPY_FREE, COPY_TOTAL, COPY_CAP, COPY_MIN_WORDS,
   criteriaFor, combine, applyCaps, diagnostics, verifyEvidence, words, sentences, half,
