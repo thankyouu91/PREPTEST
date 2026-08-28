@@ -372,7 +372,7 @@ router.get('/admin/questions', roles.requireCap('bank.read'), async (req, res) =
   const sql = 'FROM questions WHERE ' + where.join(' AND ');
   const total = await q.val('SELECT COUNT(*) c ' + sql, ...args);
   const rows = await q.all(
-    `SELECT id, family_id, skill, level, type, part, group_key, prompt, options_json, answer, explanation, tags_json, status, created_at,
+    `SELECT id, family_id, skill, level, type, part, group_key, ext_key, prompt, options_json, answer, explanation, tags_json, status, created_at,
             audio_key, audio_bytes, audio_at
        ${sql} ORDER BY id DESC LIMIT ? OFFSET ?`, ...args, limit, offset);
 
@@ -387,6 +387,12 @@ router.get('/admin/questions', roles.requireCap('bank.read'), async (req, res) =
          recording - or the other two look like items somebody forgot to
          attach audio to. */
       groupKey: r.group_key || null,
+      /* The authoring key — `vpet-g-07` — which is what every script, the item
+         bank file and the audio manifest call this item. Not a secret, and it
+         is the only name that lets an administrator (or a failing check) match
+         a row on this screen to the recording on disk it is supposed to have.
+         A numeric id cannot do that. */
+      extKey: r.ext_key || null,
       prompt: r.prompt, options: jparse(r.options_json, []), answer: r.answer,
       explanation: r.explanation, tags: jparse(r.tags_json, []), status: r.status, createdAt: r.created_at,
       /* The key itself never leaves the server - the browser only needs to know

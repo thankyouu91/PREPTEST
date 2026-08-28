@@ -1071,9 +1071,16 @@ const run = async () => {
     check('Grouped items exist and are reported with their group',
       groupKeys.length > 0, groupKeys.length + ' group(s)');
     const wrongCount = groupKeys.filter(g => groups[g].filter(x => x.hasAudio).length !== 1);
+    /* Say WHICH items and what each one reported. "g-b1-3 has 0" is true and
+       useless: it does not distinguish a recording that was never attached from
+       one something detached mid-run, and it does not name the item to go and
+       look at. This failed once in a gate run and left nothing to diagnose it
+       from, which is how a real fault gets written off as flakiness. */
     check('And each group carries exactly one recording, not three',
       wrongCount.length === 0,
-      wrongCount.map(g => g + ' has ' + groups[g].filter(x => x.hasAudio).length).join(', '));
+      wrongCount.map(g => g + ' [' + groups[g]
+        .map(x => (x.extKey || x.id) + (x.hasAudio ? '=' + x.audioBytes + 'b' : '=none'))
+        .join(' ') + ']').join('; '));
   }
 
   r = await call('DELETE', '/api/admin/questions/' + audioQid + '/audio');
