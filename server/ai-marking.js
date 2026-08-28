@@ -578,7 +578,18 @@ const RUBRIC = {
     + 'rewrote it from memory in their own words. Mark on how much of the MEANING survives '
     + 'and on grammatical accuracy. Reproducing the original wording is neither required nor '
     + 'rewarded; missing whole ideas is what costs marks. A summary that drops detail scores '
-    + 'lower than a fuller retelling.',
+    + 'lower than a fuller retelling.'
+    /* Deliberately NOT "and mark a copied answer down". How much of the answer
+       is the passage word for word is arithmetic, and it is done in
+       server/rubric.js where it comes out the same every run. Asked to judge it,
+       a marker gave the same pasted passage 10 one run and 1 the next — both
+       times reasoning correctly from the criteria it was given, which say
+       nothing about where the words came from. Telling it to deduct as well
+       would put the deduction in twice on the runs where it noticed and once on
+       the runs where it did not, which is the same inconsistency wearing a hat. */
+    + ' Whether the answer is copied from the passage is measured separately and '
+    + 'enforced without you, so mark the criteria on what is in front of you and do not '
+    + 'also deduct for copying.',
   D: 'Part D, E-mail Writing. The candidate had 9 minutes and at least 100 words. Mark on: '
     + 'whether every task in the situation is addressed, whether the tone suits the recipient '
     /* No sentence about length here, deliberately. It used to say "An email
@@ -632,6 +643,17 @@ function userPrompt({ part, level, prompt, answer, heard, source }) {
       'mistakes, and saying so is the useful part.',
       '');
   }
+
+  /* What the numbers mean. Without this the criteria said what each was ABOUT
+     and nothing said what a 7 was, and the same answer marked twice came back
+     10 and then 1. The ladder is in server/rubric.js and rendered from there,
+     not written again here: a second copy is a copy to keep in step, and the
+     one nobody reads is the one that goes stale. */
+  /* Unconditional: a part with no criteria of its own still answers with a
+     headline score on the same ten, and that number needs the same anchors. */
+  lines.push('What the numbers mean. Every score below uses this one scale:');
+  for (const b of rubric.BANDS) lines.push('  ' + String(b.at).padStart(2) + ' — ' + b.en);
+  lines.push('Halves and odd numbers are allowed, and mean "between these two".', '');
 
   const floor = rubric.MIN_WORDS[part];
   if (floor) {

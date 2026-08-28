@@ -238,12 +238,17 @@ Phần Nói còn cần đo **phát âm và độ trôi chảy**. Miễn phí tr�
 (chỉ hợp cho dạng *Read Aloud* / *Repeat Sentence*), cộng thêm đo tốc độ nói và
 số lần ngập ngừng từ chính file ghi âm.
 
-#### Năm luật giữ cho điểm rubric trung thực — `server/rubric.js`
+#### Sáu luật giữ cho điểm rubric trung thực — `server/rubric.js`
+
+> **Quy cách chấm đầy đủ: [`docs/CHAM-DIEM-CHUAN.md`](CHAM-DIEM-CHUAN.md).** Mục
+> này tóm tắt các luật; tài liệu kia là bản chi tiết đến mức chấm tay lại được —
+> thang 10 nghĩa là gì ở từng mốc, từng tiêu chí của từng phần đo cái gì, và
+> công thức của cả bốn luật chặn.
 
 Chủ đầu tư yêu cầu rubric "thật sát và khắt khe" để người học nhận ra đúng trình
 độ mình. **Khắt khe ở đây nghĩa là *đúng*, không phải *cho điểm thấp*.** Một
 rubric trừ đều một bậc của tất cả mọi người thì cũng vô ích y như một rubric
-nới tay, mà còn tệ hơn vì nó làm người ta bỏ cuộc. Năm luật dưới đây làm việc
+nới tay, mà còn tệ hơn vì nó làm người ta bỏ cuộc. Sáu luật dưới đây làm việc
 đó, và luật nào cũng là về chuyện *chấm cho đúng*:
 
 | # | Luật | Vì sao |
@@ -251,12 +256,22 @@ nới tay, mà còn tệ hơn vì nó làm người ta bỏ cuộc. Năm luật 
 | 1 | **Tiêu chí yếu nhất chặn trần cả bài.** Điểm chung cao nhất chỉ được hơn tiêu chí thấp nhất **0,5** | Bài có từ vựng C1 nhưng ngữ pháp A2 không phải bài B2 — ở chỗ làm thật, ngữ pháp mới là chỗ người đọc vấp |
 | 2 | **Không nộp gì thì 0 điểm.** Không có chữ nào → **0**, chặn trước mọi luật khác | Luật này thêm sau, vì thiếu nó thì bài **bỏ trống** ra **4,0**: luật 3 chặn TRẦN ở 4 và chính lời của nó nói "quá ngắn thì chưa tính là đã làm bài" — rồi vẫn cho 4 điểm. Một cái trần đứng ở chỗ đáng lẽ phải là một cái sàn. Không viết gì khác với viết ngắn, và hai việc đó phải ra hai con số khác nhau |
 | 3 | **Độ dài là cửa, không phải tiêu chí.** Dưới số từ yêu cầu → trần điểm tăng dần theo độ dài, chạm sàn **4,0** ở mức **60%** | Part D yêu cầu tối thiểu 100 từ. Quá ngắn thì chưa tính là đã làm bài, dù câu cú có tốt đến đâu. Đo được, nên áp cả khi chưa có ai chấm. **Trước đây đây là một bậc thang và có một lỗ 40 từ**: cửa chỉ sập dưới 60 từ và không có gì áp từ 60 đến 99, nên một email 60 từ câu cú tốt ra **9/10** trên yêu cầu 100 từ. Nay trần chạy liên tục từ 4,0 ở 60 từ lên không-trần ở 100, nên không từ nào đáng quá nửa điểm |
-| 4 | **Mỗi tiêu chí phải chỉ vào bằng chứng, và bằng chứng bị KIỂM** | Điểm mà người học không truy được về chữ của chính mình thì không dạy được gì. Và vì tầng 3 là một mô hình ngôn ngữ, câu trích nó đưa ra **không được tin ngay**: `verifyEvidence` tìm câu đó trong bài thật, không thấy thì bỏ. **Một câu trích bịa còn tệ hơn không có câu trích nào, vì nó trông y hệt bằng chứng** |
-| 5 | **Mỗi điểm ghi kèm phiên bản rubric** | Tiêu chí rồi sẽ đổi. Chấm lại lịch sử khi đổi là xoá mất bản ghi tiến bộ của người học, nên điểm cũ giữ nguyên phiên bản đã chấm nó |
+| 4 | **Chép lại đề cũng là cửa, không phải tiêu chí.** Part B và D: trùng nguyên văn với đề trên **35%** (đo bằng chuỗi 5 từ) → trần điểm hạ dần, chạm sàn **3,0** ở mức **85%** | Part B đưa thí sinh một đoạn văn rồi bảo viết lại **bằng lời của mình**. Đo được: một bài dán nguyên đoạn văn ra **10/10 cả ba tiêu chí** — và cả ba con số đều đúng theo đúng định nghĩa của chúng (không mất ý nào, ngữ pháp là ngữ pháp của đoạn văn, thứ tự là thứ tự của đoạn văn). Ba câu trả lời đúng cho ba câu hỏi sai. Cùng cú dán đó chấm lần hai ra **1/10** — nên nó phải là số học chứ không phải phán đoán. **Không** áp cho G, H, I, J: ở những phần đó nhắc lại chính chữ của nguồn là đúng việc phải làm. Xem `docs/CHAM-DIEM-CHUAN.md` §4–5 |
+| 5 | **Mỗi tiêu chí phải chỉ vào bằng chứng, và bằng chứng bị KIỂM** | Điểm mà người học không truy được về chữ của chính mình thì không dạy được gì. Và vì tầng 3 là một mô hình ngôn ngữ, câu trích nó đưa ra **không được tin ngay**: `verifyEvidence` tìm câu đó trong bài thật, không thấy thì bỏ. **Một câu trích bịa còn tệ hơn không có câu trích nào, vì nó trông y hệt bằng chứng** |
+| 6 | **Mỗi điểm ghi kèm phiên bản rubric** | Tiêu chí rồi sẽ đổi. Chấm lại lịch sử khi đổi là xoá mất bản ghi tiến bộ của người học, nên điểm cũ giữ nguyên phiên bản đã chấm nó. Luật 4 **không hồi tố**: bài chấm dưới `2026-08-vpet-2` giữ nguyên điểm cũ |
 
-> **Luật 1 là luật của nền tảng này, không phải luật của VPET.** Pearson không
-> công bố quy tắc nào như thế. Ghi rõ ra đây để không ai đọc mã rồi tưởng đó là
-> quy định chính thức của kỳ thi.
+> **Luật 1 và luật 4 là luật của nền tảng này, không phải luật của VPET.**
+> Pearson không công bố quy tắc nào như thế, và kỳ thi thật chạy trong trình
+> duyệt khóa nên không có gì để dán. Ghi rõ ra đây để không ai đọc mã rồi tưởng
+> đó là quy định chính thức của kỳ thi.
+
+**Và thang 10 giờ có mốc.** Trước đây mỗi tiêu chí có một câu nói *nó về cái
+gì*, nhưng không có gì nói *7 điểm là thế nào* — một thang không mốc thì không
+phải thang. Sáu mốc dùng chung cho mọi tiêu chí, viết từ phía người đọc: **10**
+không phải bù đắp gì · **8** vài chỗ chưa chuẩn nhưng không phải dừng lại ·
+**6** hiểu được nhưng phải đoán một hai chỗ · **4** phải đọc lại, hoặc thiếu hẳn
+một phần yêu cầu · **2** chỉ vài mảnh dùng được · **0** không có gì thuộc tiêu
+chí này. Bảng đầy đủ ở `docs/CHAM-DIEM-CHUAN.md` §2.
 
 **Cố tình KHÔNG có: phát âm và độ trôi chảy trong rubric các phần Nói.** Bài nói
 được chấm từ transcript, tức là chưa ai nghe giọng thí sinh; thêm tiêu chí về
@@ -312,7 +327,7 @@ dối trông giống một con số.
 điểm_thô  = trung bình cộng điểm các tiêu chí         (mỗi tiêu chí 0–10)
 ```
 
-Rồi **ba luật chặn**, theo đúng thứ tự này:
+Rồi **bốn luật chặn**, theo đúng thứ tự này:
 
 ```
 1. Mắt xích yếu nhất   nếu điểm_thô > min(tiêu_chí) + 0,5
@@ -327,8 +342,18 @@ Rồi **ba luật chặn**, theo đúng thứ tự này:
                        n < 60            ->  trần = 4
                        nếu điểm > trần   ->  điểm = trần
 
+4. Cửa chép lại đề     chỉ Part B và D, và chỉ khi bài có >= 12 từ.
+                       f = tỉ lệ chuỗi 5 từ của bài làm có trong đề
+                       f <= 0,35         ->  không chặn
+                       0,35 < f < 0,85   ->  trần = 3 + 7 × (1 − (f−0,35)/0,50)
+                       f >= 0,85         ->  trần = 3
+                       nếu điểm > trần   ->  điểm = trần
+
 điểm cuối = làm tròn tới 0,5
 ```
+
+Luật 4 sàn ở **3** chứ không phải 4 của luật 3, có chủ ý: bài ngắn là *một
+phần* của bài làm, bài chép là *không phần nào*.
 
 Luật 2 phải chạy **trước** luật 3 và phải là **sàn** chứ không phải trần: thiếu
 nó thì bài bỏ trống đi qua luật 3 và ra **4,0** — chính lời của luật 3 nói "quá

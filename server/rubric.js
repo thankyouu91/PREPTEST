@@ -27,6 +27,12 @@
  *      its sentences are like, and the real exam treats it that way. Capped,
  *      and told plainly why.
  *
+ *   2b. **So is copying the stimulus back.** Part B hands the candidate a
+ *      passage and asks for it again in their own words; an answer that is the
+ *      passage word for word is three perfect criterion scores and none of the
+ *      task. Measured, not judged — see COPY_PARTS below for why that
+ *      distinction is the whole point, and which parts it does NOT apply to.
+ *
  *   3. **Every criterion points at evidence, and the evidence is CHECKED.** A
  *      mark a learner cannot trace to their own words teaches nothing. And
  *      because the tier-3 marker is a language model, a quotation it offers is
@@ -52,8 +58,12 @@
     every score so old marks stay interpretable. */
 /* Bumped when G and H gained criteria of their own and the length cap stopped
    being a cliff. Stored marks carry this, so a report can still say which rules
-   produced a number from before the change rather than implying the new ones. */
-const RUBRIC_VERSION = '2026-08-vpet-2';
+   produced a number from before the change rather than implying the new ones.
+
+   -3 adds the copied-source cap. Marks made under -2 keep it: a paper sat before
+   the rule existed was sat under the rules it was told about, and quietly
+   re-scoring it downward months later is the one thing a mark must never do. */
+const RUBRIC_VERSION = '2026-08-vpet-3';
 
 /**
  * The criteria, per part.
@@ -126,6 +136,42 @@ const CRITERIA = {
 };
 
 /**
+ * What a number on the ten-point scale MEANS.
+ *
+ * Every criterion above says what it is about. None of them said what a 7 is,
+ * and a scale with no anchors is not a scale — it is a marker's mood. That is
+ * measurable in the product: the same pasted passage came back at 10/10 on one
+ * run and 1/10 on another, and both runs had been given the same one-sentence
+ * description of "Meaning kept" and nothing else to hang a number on.
+ *
+ * One ladder, shared by every criterion, rather than a private table for each.
+ * Fifteen criteria × six bands is ninety sentences, and nobody would ever check
+ * eighty-five of them; the honest version is a ladder that is genuinely general
+ * and a per-criterion `about` that says what is being climbed. The rungs are
+ * written from the READER's side — how much work the person on the other end
+ * has to do — because that is the same place the weakest-link rule argues from,
+ * and a scale that argues from somewhere else would pull against it.
+ *
+ * Six rungs, not eleven. Odd numbers and halves are for a marker who wants to
+ * sit between two rungs, which is a real thing to want; naming all eleven would
+ * only be pretending the gaps had been defined too.
+ */
+const BANDS = [
+  { at: 10, en: 'Fully met. The reader has to do no work at all on this.',
+    vi: 'Đạt trọn vẹn. Người đọc/người nghe không phải bù đắp gì.' },
+  { at: 8, en: 'Met. A few things are not quite right, but none of them stops the reader.',
+    vi: 'Đạt. Có vài chỗ chưa chuẩn nhưng không làm người đọc phải dừng lại.' },
+  { at: 6, en: 'Mostly met. The reader gets there, but has to work out a place or two.',
+    vi: 'Đạt phần lớn. Người đọc vẫn hiểu, nhưng phải tự đoán một hai chỗ.' },
+  { at: 4, en: 'Partly met. The reader has to re-read, or a whole piece of what was asked is missing.',
+    vi: 'Đạt một phần. Người đọc phải đọc lại, hoặc thiếu hẳn một phần yêu cầu.' },
+  { at: 2, en: 'Barely. There are usable fragments and not much else.',
+    vi: 'Gần như chưa đạt. Chỉ có vài mảnh dùng được.' },
+  { at: 0, en: 'Nothing here belongs to this criterion.',
+    vi: 'Không có gì thuộc tiêu chí này.' }
+];
+
+/**
  * The published length floor, where the exam publishes one.
  *
  * Part D's 100 words is from the official guide. Part B has no published floor —
@@ -165,6 +211,73 @@ function lengthCeiling(n, floor) {
   /* Linear from (0.6·floor → 4) to (floor → 10). */
   return UNDER_LENGTH_CAP + (10 - UNDER_LENGTH_CAP) * ((n - at) / (floor - at));
 }
+
+/**
+ * Copying the stimulus back.
+ *
+ * Part B is "read this passage, watch it disappear, now write it again in your
+ * own words". Measured, a candidate who selected the passage during the reading
+ * window and pasted it into the answer box scored **10/10 on all three
+ * criteria** — and every one of those tens was correct on its own terms. No
+ * meaning was lost. The grammar was the passage's own, so it was perfect. The
+ * ideas came in the order a reader can follow, because they came in the
+ * passage's order. Three right answers to three wrong questions.
+ *
+ * The same paste marked a second time came back at 1/10. That is the worse
+ * half of the fault: the rule was left to the marker's judgement, and a
+ * language model's judgement about the same text twice is two judgements. A
+ * candidate cannot be told "your mark depends on which run you got".
+ *
+ * So it is arithmetic, like the length gate, and for the same reason: it holds
+ * whether or not a marker ever ran, and it holds the same way every time.
+ *
+ * ### This is a rule of THIS PLATFORM, and it is a trade
+ *
+ * Pearson publishes no copy rule, and the real Versant runs in a locked-down
+ * browser where there is nothing to paste from. This one runs in a normal tab,
+ * where the passage arrives in the sitting payload and the reading window is
+ * thirty seconds of selectable text. The platform therefore cannot tell a paste
+ * from a genuinely extraordinary memory, and it does not pretend to: what it
+ * measures is the overlap, and the cap is stated to the candidate as being
+ * about the overlap. A candidate who really did reproduce a passage from memory
+ * has been marked down for something they did honestly — that is the cost, and
+ * it is worth paying, because the alternative is that practice on this part
+ * teaches copying and the day of the real exam is where they find out.
+ */
+const COPY_PARTS = new Set(['B', 'D']);
+
+/* Not G: the guide tells candidates to answer "using a short phrase", and the
+   right phrase is usually the passage's own words — capping that would punish
+   the correct answer. Not H: saying the sentence back verbatim IS the task, and
+   repeat.js scores it by exactly the overlap this rule penalises. Not J: the
+   story was heard, never shown, so there is nothing on screen to copy, and
+   close recall of a story is the skill being measured rather than a way round
+   it. Not I for the same reason as G — a good answer to "apologise for missing
+   the meeting" reuses the situation's own words, and a false cap on honest work
+   is a worse failure than missing a rare cheat. */
+
+/** Word runs this long are compared. Short enough to catch a paste, long enough
+    that a shared idiom is not one. */
+const COPY_SHINGLE = 5;
+
+/** Below this much verbatim overlap nothing fires: a reconstruction of a
+    passage read moments ago legitimately reuses its vocabulary and its phrases. */
+const COPY_FREE = 0.35;
+
+/** At and above this, the answer is the stimulus with the serial numbers filed
+    off, and the ceiling stops falling. */
+const COPY_TOTAL = 0.85;
+
+/** What a copy is worth. Below the 4 a short genuine attempt is capped at, on
+    purpose: a short attempt is some of the task, and a copy is none of it. */
+const COPY_CAP = 3;
+
+/** Below this many words there is nothing to measure, and the length rule and
+    the criteria already have the answer covered. */
+const COPY_MIN_WORDS = 12;
+
+/** Both texts are cut to this before the quadratic run-finder sees them. */
+const COPY_MAX_WORDS = 1500;
 
 /** The aggregate may sit at most this far above the weakest criterion. */
 const WEAKEST_LINK_HEADROOM = 0.5;
@@ -269,6 +382,76 @@ function verifyEvidence(quote, source) {
   const hay = flatten(source);
   if (!hay) return null;
   return hay.includes(q) ? String(quote).trim().slice(0, 400) : null;
+}
+
+/* ------------------------- How much was copied, measured ------------------------- */
+
+/**
+ * The longest run of words that appears, in this order, in both texts.
+ *
+ * This is what gets shown to the candidate — "31 words in a row are the
+ * passage's own" is a fact they can check against their own screen, where a
+ * percentage is a number they have to take on trust. It is the classic
+ * longest-common-substring table, one row at a time so nothing large is held.
+ */
+function longestSharedRun(a, s) {
+  if (!a.length || !s.length) return 0;
+  let best = 0;
+  let prev = new Uint16Array(s.length + 1);
+  let cur = new Uint16Array(s.length + 1);
+  for (let i = 0; i < a.length; i++) {
+    cur.fill(0);
+    for (let j = 0; j < s.length; j++) {
+      if (a[i] === s[j]) {
+        const n = prev[j] + 1;
+        cur[j + 1] = n;
+        if (n > best) best = n;
+      }
+    }
+    const t = prev; prev = cur; cur = t;
+  }
+  return best;
+}
+
+/**
+ * How much of this answer is lifted word for word from the text it was written
+ * against. `null` when there is not enough of either to measure honestly.
+ *
+ * The fraction counts five-word runs rather than single words on purpose. Word
+ * overlap alone would flag every faithful reconstruction, because a
+ * reconstruction is *supposed* to reuse the passage's nouns; what separates a
+ * retelling from a transcription is whether the words come back in the
+ * passage's own order, and a five-word run is the shortest span where that
+ * stops happening by accident.
+ */
+function copiedFrom(answer, source) {
+  const a = words(answer).slice(0, COPY_MAX_WORDS);
+  const s = words(source).slice(0, COPY_MAX_WORDS);
+  if (a.length < COPY_MIN_WORDS || s.length < COPY_SHINGLE || a.length < COPY_SHINGLE) return null;
+
+  const seen = new Set();
+  for (let i = 0; i + COPY_SHINGLE <= s.length; i++) seen.add(s.slice(i, i + COPY_SHINGLE).join(' '));
+
+  let hits = 0, total = 0;
+  for (let i = 0; i + COPY_SHINGLE <= a.length; i++) {
+    total++;
+    if (seen.has(a.slice(i, i + COPY_SHINGLE).join(' '))) hits++;
+  }
+  if (!total) return null;
+  return { fraction: hits / total, longestRun: longestSharedRun(a, s), words: a.length };
+}
+
+/**
+ * The ceiling a given overlap allows, or `null` for no ceiling.
+ *
+ * Continuous, for the reason the length gate is: a step would make one word
+ * either side of a threshold worth six marks, and the candidate on the wrong
+ * side of it would be right to say the mark was arbitrary.
+ */
+function copyCeiling(f) {
+  if (!(f > COPY_FREE)) return null;
+  if (f >= COPY_TOTAL) return COPY_CAP;
+  return COPY_CAP + (10 - COPY_CAP) * (1 - (f - COPY_FREE) / (COPY_TOTAL - COPY_FREE));
 }
 
 /* ------------------------------ Putting it together ------------------------------ */
@@ -395,6 +578,36 @@ function applyCaps(part, base, used, o) {
     }
   }
 
+  /* Rule 4: the answer is the question.
+     Measured for the same reason Rule 3 is — a marker asked to judge this
+     answered 10 one run and 1 the next, and both times it was answering a
+     different question from the one the part asks. The overlap does not vary
+     between runs. */
+  if (COPY_PARTS.has(part) && o.stimulus) {
+    const copied = copiedFrom(o.answer, o.stimulus);
+    const ceiling = copied === null ? null : copyCeiling(copied.fraction);
+    if (ceiling !== null && score > half(ceiling)) {
+      const pct = Math.round(copied.fraction * 100);
+      const run = copied.longestRun;
+      /* The run is the part a candidate can check for themselves; the
+         percentage on its own invites "says who?". */
+      const runEn = run >= COPY_SHINGLE
+        ? ' The longest stretch taken word for word is ' + run + ' words.' : '';
+      const runVi = run >= COPY_SHINGLE
+        ? ' Đoạn dài nhất chép nguyên văn là ' + run + ' từ.' : '';
+      caps.push({
+        rule: 'copied-source', from: half(score), to: half(ceiling),
+        en: pct + '% of this answer is word for word from the text you were given.'
+          + runEn + ' This part asks you to write it again in your own words, so'
+          + ' copying it back cannot score as if you had.',
+        vi: pct + '% bài làm này trùng nguyên văn với đoạn đã cho.'
+          + runVi + ' Phần này yêu cầu viết lại bằng lời của mình, nên chép lại'
+          + ' không thể được điểm như đã làm bài.'
+      });
+      score = half(ceiling);
+    }
+  }
+
   return {
     score: half(score),
     beforeCaps: half(base),
@@ -405,7 +618,9 @@ function applyCaps(part, base, used, o) {
 }
 
 module.exports = {
-  RUBRIC_VERSION, CRITERIA, MIN_WORDS,
+  RUBRIC_VERSION, CRITERIA, BANDS, MIN_WORDS,
   UNDER_LENGTH_FRACTION, UNDER_LENGTH_CAP, WEAKEST_LINK_HEADROOM, MIN_EVIDENCE_WORDS,
-  criteriaFor, combine, applyCaps, diagnostics, verifyEvidence, words, sentences, half
+  COPY_PARTS, COPY_SHINGLE, COPY_FREE, COPY_TOTAL, COPY_CAP, COPY_MIN_WORDS,
+  criteriaFor, combine, applyCaps, diagnostics, verifyEvidence, words, sentences, half,
+  copiedFrom, copyCeiling
 };

@@ -695,7 +695,7 @@ async function submitMarked(userId, d, answers) {
     /* The criteria decide the mark, not the model's headline number, and the
        caps in server/rubric.js apply here exactly as they do to a paper. */
     const graded = rubric.combine(row.part, verdict.criteria, {
-      answer: heard || text, fallbackScore: verdict.score
+      answer: heard || text, stimulus: row.prompt, fallbackScore: verdict.score
     }) || { score: verdict.score, criteria: [], caps: [] };
 
     /* One item is worth one, and the rubric works out of ten, so it is stored

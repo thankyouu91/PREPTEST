@@ -297,9 +297,25 @@ try {
   const att = r.data.attempt;
 
   /* Only Part D, and answered properly, so the mark that comes back is about
-     the criteria rather than about the length gate. */
-  let dItems = [];
+     the criteria rather than about the length gate.
+
+     Part B is answered too, with its OWN passage pasted straight back — the
+     thing that was reported from the product. It is marked further down, after
+     the Part D assertions have had the stub to themselves. */
+  let dItems = [], bItem = null;
   for (const p of att.parts) {
+    if (p.part === 'B' && p.items.length) {
+      await student.req('POST', '/api/attempts/' + att.id + '/parts/' + p.sectionId + '/start');
+      const it = p.items[0];
+      /* What a candidate can actually select on screen is the passage, not the
+         instruction line above it. Taking only that is the harder case for the
+         rule and the honest one to test. */
+      const passage = String(it.prompt || '').split(/\n{2,}/).slice(1).join('\n\n').trim()
+        || String(it.prompt || '');
+      bItem = { questionId: it.questionId, passage };
+      await student.req('PATCH', '/api/attempts/' + att.id + '/answers',
+        { answers: [{ questionId: it.questionId, answer: passage }] });
+    }
     if (p.part !== 'D') continue;
     await student.req('POST', '/api/attempts/' + att.id + '/parts/' + p.sectionId + '/start');
     dItems = p.items.map(it => it.questionId);
@@ -307,6 +323,9 @@ try {
       { answers: dItems.map(id => ({ questionId: id, answer: EMAIL })) });
   }
   ok(dItems.length > 0, 'Part D has items to answer', String(dItems.length));
+  ok(bItem && bItem.passage.split(/\s+/).length > 20,
+    'and Part B has a passage long enough to paste back',
+    bItem ? bItem.passage.split(/\s+/).length + ' words' : 'no Part B item');
 
   /* One weak criterion, so the cap has something to bite on, and one genuine
      quotation plus one invention, so both paths are exercised end to end. */
@@ -370,6 +389,78 @@ try {
   ok(again.length === 4, 'Still four rows, not eight', String(again.length));
   ok(again.find(s => s.criterion === 'accuracy').score === 6.5,
     'And the corrected score replaced the old one', String(again.find(s => s.criterion === 'accuracy').score));
+
+  /* ------------------------------------------------------------------ *
+   * The reported bug, end to end
+   * ------------------------------------------------------------------ *
+   *
+   * Everything above about copying is arithmetic on a fixture. This is the
+   * actual reported failure on the actual paper: the seeded Part B passage,
+   * pasted back through the real answer endpoint, marked by the real pass,
+   * read back out of the real column a report is built from.
+   *
+   * It is here rather than in the fixture section because the fault was never
+   * only in rubric.js — the rule cannot fire unless the marking pass hands it
+   * the passage, and the fixture tests would all still pass with that wiring
+   * missing. This is the check that would go red.
+   */
+  head('The reported bug: the Part B passage, pasted back');
+
+  if (!bItem) {
+    ok(false, 'A Part B item was found on the paper');
+  } else {
+    /* Ten on every criterion, exactly as the product reported it. The marker is
+       not wrong here — nothing was lost, the grammar is the passage's own, the
+       order is the passage's order — which is precisely why the rule cannot be
+       left to the marker. */
+    reply = JSON.stringify({
+      score: 10, note: 'Everything is here.',
+      criteria: {
+        meaning: { score: 10 }, accuracy: { score: 10 }, organisation: { score: 10 }
+      }
+    });
+    await q.run('UPDATE attempt_answers SET earned=NULL, max_score=NULL, mark_note=NULL '
+      + 'WHERE attempt_id=? AND question_id=?', att.id, bItem.questionId);
+    r = await admin.req('POST', '/api/admin/attempts/' + att.id + '/mark', {});
+    ok(r.status === 200, 'The marking pass runs over it', JSON.stringify(r.data));
+
+    const bStored = await q.all(
+      'SELECT criterion, score FROM rubric_scores WHERE attempt_id=? AND question_id=? ORDER BY criterion',
+      att.id, bItem.questionId);
+    ok(bStored.length === 3 && bStored.every(s => s.score === 10),
+      'The marker still scores all three criteria at ten, and that is recorded',
+      JSON.stringify(bStored.map(s => s.criterion + '=' + s.score)));
+
+    const bEarned = await q.val('SELECT earned FROM attempt_answers WHERE attempt_id=? AND question_id=?',
+      att.id, bItem.questionId);
+    ok(Math.abs(bEarned - R.COPY_CAP / 10) < 1e-6,
+      'but the item is worth ' + R.COPY_CAP + '/10, not 10/10 — which is the bug, fixed',
+      'earned=' + bEarned + ' (expected ' + (R.COPY_CAP / 10) + ')');
+
+    const bNote = await q.val('SELECT mark_note FROM attempt_answers WHERE attempt_id=? AND question_id=?',
+      att.id, bItem.questionId);
+    ok(/word for word/i.test(bNote || ''),
+      'and the candidate is told what was measured and why it capped the mark',
+      String(bNote).slice(0, 200));
+
+    /* The other half of the same wiring: a real answer to the same item, marked
+       by the same stub giving the same tens, is NOT capped. Without this the
+       check above would pass just as well if the rule capped every Part B. */
+    const own = 'The library started a small workshop where people can bring things that are '
+      + 'broken. It happens twice a month and helpers show visitors how to fix them rather '
+      + 'than doing it for them, so they learn something and less gets thrown away.';
+    /* Written straight to the column rather than through the answers endpoint:
+       the paper is submitted, and the endpoint refuses to change a submitted
+       answer — correctly, and the first half above already went through it. */
+    await q.run('UPDATE attempt_answers SET answer=?, earned=NULL, max_score=NULL, mark_note=NULL '
+      + 'WHERE attempt_id=? AND question_id=?', own, att.id, bItem.questionId);
+    await admin.req('POST', '/api/admin/attempts/' + att.id + '/mark', {});
+    const ownEarned = await q.val('SELECT earned FROM attempt_answers WHERE attempt_id=? AND question_id=?',
+      att.id, bItem.questionId);
+    ok(Math.abs(ownEarned - 1) < 1e-6,
+      'while an answer in the candidate\'s own words keeps all ten',
+      'earned=' + ownEarned);
+  }
 
   head('What the candidate is actually shown');
 
@@ -446,6 +537,215 @@ head('Nothing handed in is nothing, not four out of ten');
     JSON.stringify(short.caps.map(c => c.rule)));
   ok(R.combine('D', null, { answer: 'word '.repeat(120), fallbackScore: 8 }).score === 8,
     'A full-length answer keeps its mark');
+
+  /* ------------------------------------------------------------------ *
+   * Pasting the passage back is not a reconstruction
+   * ------------------------------------------------------------------ *
+   *
+   * Reported from the product, with a screenshot: on Part B the candidate
+   * selected the passage during the 30-second reading window, pasted it into
+   * the answer box, and got 10 on all three criteria. Every one of those tens
+   * was defensible on its own terms — no meaning was lost, the grammar was the
+   * passage's own, the ideas came in the passage's order. Three right answers
+   * to three wrong questions.
+   *
+   * A second screenshot of the same trick showed 1/10. That is the half that
+   * makes it a rule rather than a prompt change: judgement about the same text
+   * twice is two judgements, and a mark that depends on which run you got is
+   * not a mark. So the overlap is measured, and these checks are about the
+   * measurement being right in BOTH directions — a copy is caught, and an
+   * honest reconstruction, which legitimately reuses the passage's vocabulary,
+   * is not.
+   */
+  head('Pasting the passage back is not a reconstruction');
+
+  const PASSAGE = 'The city council has agreed to extend the bus route into the new '
+    + 'industrial park from the first of March. Drivers will run every twenty minutes '
+    + 'during the morning and evening peaks, and once an hour at other times. The council '
+    + 'expects about four hundred workers to use the service in its first year, and says '
+    + 'it will review the timetable in September.';
+  /* Full marks on every criterion, exactly as the product reported them. If the
+     cap only fired on answers a marker had already marked down, it would be
+     doing nothing: the whole point is that it holds when the marker is happy. */
+  const FULL_B = { meaning: { score: 10 }, accuracy: { score: 10 }, organisation: { score: 10 } };
+  const markB = answer => R.combine('B', FULL_B, { answer, stimulus: PASSAGE });
+
+  const pasted = markB(PASSAGE);
+  ok(pasted.score === R.COPY_CAP,
+    'The exact passage, pasted back, scores ' + R.COPY_CAP + ' — not 10',
+    JSON.stringify(pasted.score));
+  ok(pasted.caps.some(c => c.rule === 'copied-source'),
+    'And the candidate is told which rule did it');
+  ok(/word for word/.test((pasted.caps.find(c => c.rule === 'copied-source') || {}).en || ''),
+    'in words that say what was measured, not just that a cap fired');
+  ok(/\d+ từ/.test((pasted.caps.find(c => c.rule === 'copied-source') || {}).vi || ''),
+    'and in Vietnamese too, with the copied run counted');
+
+  /* Trivial edits are how somebody gets round a rule they have been told about.
+     Five-word runs survive a changed first word and a changed full stop. */
+  const tweaked = PASSAGE.replace('The city council', 'City council').replace('September.', 'September!');
+  ok(markB(tweaked).score === R.COPY_CAP,
+    'Changing the first words and the last punctuation does not undo it',
+    JSON.stringify(markB(tweaked).score));
+
+  /* The other direction, and the one that matters more: this rule must not
+     punish somebody who did the task. A reconstruction of a passage read
+     moments ago REUSES its nouns — that is not copying, that is remembering. */
+  const honest = 'From March the first, the council will run buses to the new industrial '
+    + 'park. They come every 20 minutes at busy times in the morning and evening, and '
+    + 'hourly the rest of the day. Around 400 workers are expected to use it in year one, '
+    + 'and the timetable will be looked at again in September.';
+  ok(markB(honest).score === 10,
+    'A real reconstruction in the candidate\'s own words is untouched',
+    JSON.stringify(markB(honest).score) + ' ' + JSON.stringify(markB(honest).caps.map(c => c.rule)));
+  ok(R.copiedFrom(honest, PASSAGE).fraction < R.COPY_FREE,
+    'because its overlap is measured below the free threshold',
+    (R.copiedFrom(honest, PASSAGE).fraction * 100).toFixed(0) + '%');
+
+  /* A faithful retelling that quotes one clause verbatim is normal, and stays
+     normal. 14 words in a row from a 60-word passage is a candidate who
+     remembered a sentence, not one who pasted a passage. */
+  const quoting = 'The council has agreed to extend the bus route into the new industrial '
+    + 'park from March. Buses run every twenty minutes at peak and hourly otherwise. They '
+    + 'think 400 workers will use it and will review it later in the year.';
+  ok(markB(quoting).score === 10,
+    'and so is one remembered clause inside an answer that is otherwise its own',
+    JSON.stringify(markB(quoting).score));
+
+  /* Continuous, like the length gate, and for the same reason: a step would
+     make one word either side of a threshold worth seven marks. */
+  const mostly = 'The city council has agreed to extend the bus route into the new '
+    + 'industrial park from the first of March. Drivers will run every twenty minutes '
+    + 'during the morning and evening peaks, and once an hour at other times. About 400 '
+    + 'workers may use it and it gets reviewed in September.';
+  const part = markB(mostly);
+  ok(part.score > R.COPY_CAP && part.score < 10,
+    'Half copied lands between the floor and no cap at all, not on one of them',
+    JSON.stringify(part.score));
+  let last = -1, monotone = true;
+  for (let f = 0; f <= 1.0001; f += 0.05) {
+    const c = R.copyCeiling(f);
+    const v = c === null ? 10 : c;
+    if (last >= 0 && v > last + 1e-9) monotone = false;
+    last = v;
+  }
+  ok(monotone, 'and more copying never raises the ceiling');
+
+  /* Which parts this applies to is a judgement, and getting it wrong is a
+     false accusation. Part G tells candidates to answer "using a short
+     phrase" — and the right phrase is usually the passage's own words. Part H
+     IS repetition. Part J's story was only ever heard, so there was nothing on
+     screen to copy and close recall is the skill. */
+  for (const p of ['G', 'H', 'J', 'I']) {
+    const r = R.combine(p, null, { answer: PASSAGE, stimulus: PASSAGE, fallbackScore: 10 });
+    ok(r.score === 10 && !r.caps.some(c => c.rule === 'copied-source'),
+      'Part ' + p + ' is not copy-checked — its answer is meant to echo the source',
+      JSON.stringify(r.score));
+  }
+  ok(R.COPY_PARTS.has('B') && R.COPY_PARTS.has('D'),
+    'while B and D, whose stimulus is text on the screen, are');
+
+  /* An email that pastes the situation back has not written an email. */
+  const FULL_D = { task: { score: 10 }, register: { score: 10 }, organisation: { score: 10 }, accuracy: { score: 10 } };
+  ok(R.combine('D', FULL_D, { answer: PASSAGE, stimulus: PASSAGE }).score === R.COPY_CAP,
+    'Part D: handing the prompt back is capped the same way');
+
+  /* Nothing to compare against must never become an accusation. Older marking
+     paths, and any caller that does not know about `stimulus`, pass none. */
+  ok(R.combine('B', FULL_B, { answer: PASSAGE }).score === 10,
+    'With no stimulus to compare against, nothing is capped');
+  ok(R.copiedFrom('short answer here', PASSAGE) === null,
+    'and an answer too short to measure is not measured');
+  ok(R.copiedFrom(PASSAGE, '') === null,
+    'nor is one with no source to measure it against');
+
+  /* The floor still wins: a copy is capped, a blank is zero, and the two are
+     different findings about different papers. */
+  ok(R.combine('B', FULL_B, { answer: '', stimulus: PASSAGE }).score === 0,
+    'A blank is still zero, not the copy cap');
+  ok(R.COPY_CAP < R.UNDER_LENGTH_CAP,
+    'and a copy is worth less than a short genuine attempt, which is the point',
+    R.COPY_CAP + ' < ' + R.UNDER_LENGTH_CAP);
+
+  /* ------------------------------------------------------------------ *
+   * The written standard says what the code does
+   * ------------------------------------------------------------------ *
+   *
+   * docs/CHAM-DIEM-CHUAN.md is the document somebody reaches for when a mark
+   * looks wrong — an administrator explaining a score to a candidate, or a
+   * reader working out whether the platform is doing what it claims. A marking
+   * standard that has drifted from the marker is worse than none, because it
+   * is consulted with confidence and answers wrongly.
+   *
+   * So the numbers are read back out of the file. This does not check that the
+   * PROSE is right — nothing can — but it catches the failure that actually
+   * happens: a constant is tuned in rubric.js and the table in the document
+   * still shows the old one.
+   */
+  head('The written standard still describes the code');
+
+  const fs = await import('node:fs');
+  const path = await import('node:path');
+  const url = await import('node:url');
+  const DOC = path.join(path.dirname(url.fileURLToPath(import.meta.url)), '..',
+    'docs', 'CHAM-DIEM-CHUAN.md');
+  const doc = fs.existsSync(DOC) ? fs.readFileSync(DOC, 'utf8') : '';
+  ok(doc.length > 2000, 'docs/CHAM-DIEM-CHUAN.md exists and is not a stub', doc.length + ' bytes');
+
+  ok(doc.includes(R.RUBRIC_VERSION),
+    'It names the rubric version in force — a mark stores this, so a reader can '
+    + 'tell whether the document applies to the mark in front of them',
+    R.RUBRIC_VERSION);
+
+  /* The keys are what is stored in rubric_scores and what the model is asked
+     for. A renamed key that the document still calls by its old name sends
+     somebody looking for a column that is not there. */
+  const missingKeys = [];
+  for (const [part, defs] of Object.entries(R.CRITERIA)) {
+    for (const d of defs) if (!doc.includes('`' + d.key + '`')) missingKeys.push(part + '.' + d.key);
+  }
+  ok(missingKeys.length === 0, 'and every criterion key the code scores',
+    missingKeys.join(', '));
+
+  /* Written the way the document writes numbers: Vietnamese decimals use a
+     comma, so 0.35 is "0,35". Both spellings are accepted rather than the
+     document being forced into English punctuation to suit a test. */
+  const says = n => {
+    const s = String(n);
+    return doc.includes(s) || doc.includes(s.replace('.', ','));
+  };
+  const constants = [
+    ['the weakest-link headroom', R.WEAKEST_LINK_HEADROOM],
+    ['the length floor for Part D', R.MIN_WORDS.D],
+    ['the length cap', R.UNDER_LENGTH_CAP],
+    ['the fraction of the floor the hard cap starts at', R.MIN_WORDS.D * R.UNDER_LENGTH_FRACTION],
+    ['the copy-free threshold', R.COPY_FREE],
+    ['the full-copy threshold', R.COPY_TOTAL],
+    ['the copy cap', R.COPY_CAP],
+    ['the shortest answer that is measured for copying', R.COPY_MIN_WORDS],
+    ['the run length compared', R.COPY_SHINGLE],
+    ['the evidence floor', R.MIN_EVIDENCE_WORDS]
+  ];
+  const stale = constants.filter(([, v]) => !says(v)).map(([n]) => n);
+  ok(stale.length === 0, 'and every constant a reader would check a mark against',
+    stale.join('; '));
+
+  /* Six rungs on the scale, and the document has to carry all six or a marker
+     reading it is anchoring on a different ladder from the one in the prompt. */
+  const missingBands = R.BANDS.filter(b => !doc.includes('**' + b.at + '**')).map(b => b.at);
+  ok(missingBands.length === 0, 'and all six rungs of the ten-point scale',
+    missingBands.join(', '));
+
+  /* The parts the copy rule does and does not touch is the judgement most
+     likely to be misread, and the one that would be a false accusation if the
+     document said the wrong thing. */
+  ok([...R.COPY_PARTS].every(p => doc.includes('**' + p + '** | ✅')),
+    'and marks the parts the copy rule applies to as applying',
+    [...R.COPY_PARTS].join(','));
+  const notCopyChecked = Object.keys(R.CRITERIA).filter(p => !R.COPY_PARTS.has(p));
+  ok(notCopyChecked.every(p => doc.includes('| ' + p + ' | ❌')),
+    'and the ones it does not as not',
+    notCopyChecked.join(','));
 
   /* ------------------------------------------------------------------ *
    * The rubric and the marking engine describe the SAME paper

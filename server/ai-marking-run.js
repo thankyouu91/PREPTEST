@@ -421,8 +421,14 @@ async function markRow(attemptId, row, tries, userId) {
      A model that answered in the old two-field shape has no criteria, so the
      fallback is its own score with the length cap still applied — the gate that
      is measured rather than judged keeps working with no marker at all. */
+  /* `stimulus` is the text the candidate had in front of them. On Part B that is
+     the passage they were asked to rebuild, and an answer that comes back as
+     that passage is capped by arithmetic rather than by whatever the marker
+     happened to think this run. rubric.js decides which parts that applies to;
+     handing it the prompt for a part it does not check costs nothing. */
   const graded = rubric.combine(row.part, verdict.criteria, {
     answer: heard || row.answer,
+    stimulus: row.prompt,
     fallbackScore: verdict.score
   }) || { score: verdict.score, criteria: [], caps: [], version: rubric.RUBRIC_VERSION };
 
