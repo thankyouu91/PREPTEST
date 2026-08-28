@@ -1,0 +1,10 @@
+{
+  "name": "farmgod-planner-extension",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Tribal Wars farm planning browser extension (Manifest V3).",
+  "scripts": {
+    "test": "node --test \"test/*.test.mjs\""
+  }
+}
