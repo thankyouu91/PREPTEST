@@ -383,7 +383,7 @@ const manifest = fs.existsSync(MANIFEST)
   ? JSON.parse(fs.readFileSync(MANIFEST, 'utf8'))
   : {};
 
-let made = 0, skipped = 0, held = 0;
+let made = 0, skipped = 0, held = 0, tried = 0;
 const broken = [];
 const next = {};
 
@@ -405,7 +405,11 @@ for (const it of items) {
     skipped++;
     continue;
   }
-  if (LIMIT && made >= LIMIT) { next[it.key] = known || undefined; if (!known) delete next[it.key]; held++; continue; }
+  /* Counted on ATTEMPTS, not successes. Counting successes means a batch that
+     keeps failing keeps going — which is precisely the run you want to stop
+     early, not the one you want to let carry on until five happen to work. */
+  if (LIMIT && tried >= LIMIT) { if (known) next[it.key] = known; held++; continue; }
+  tried++;
 
   const words = it.say.split(/\s+/).length;
   await render(it, file);

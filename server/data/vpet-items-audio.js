@@ -15,10 +15,18 @@
  * audio ends up on disk, S3, GCS or Supabase.
  *
  * The voices are synthetic. That is a stopgap and it is written down rather than
- * glossed over: a listening paper read by a formant synthesiser is a fair test of
- * whether the candidate caught the words, and a poor one of whether they can
- * follow a human speaker. Re-record `say` with real voices and drop the files in
- * under the same names - nothing else has to change.
+ * glossed over — but it is a smaller one than it was. They used to be espeak-ng,
+ * a FORMANT synthesiser, which models a vocal tract with filters and sounds like
+ * it: a fair test of whether the candidate caught the words and a poor one of
+ * whether they can follow a person. They are neural now (see the provider table
+ * in scripts/make-vpet-audio.mjs), which is recognisably speech.
+ *
+ * What is still missing is everything a room does to a voice, and everything a
+ * person does that a model does not: hesitation, a breath in the wrong place, a
+ * word swallowed. A candidate who is fluent against these files can still be
+ * lost against a colleague on a bad phone line, so this remains a floor rather
+ * than the finished thing. Re-record `say` with real voices and drop the files
+ * in under the same names — nothing else has to change.
  *
  * DEPTH. Same rule as the rest of the bank, counted per part PER LEVEL: fewer
  * than the blueprint count at that level (shallow, so the top-up from the other
