@@ -212,6 +212,9 @@ node scripts/test-tenancy.mjs || fail=1
 step "Part → skill (evidence filed under the skill the part actually tests)"
 node scripts/test-part-skill.mjs || fail=1
 
+step "Exam recordings (every mp3 decodes, and runs at a speaking pace)"
+node scripts/test-audio.mjs || fail=1
+
 step "Placement audio (listening items must be audible)"
 node scripts/test-placement-audio.mjs || fail=1
 

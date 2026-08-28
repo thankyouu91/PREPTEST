@@ -1000,129 +1000,171 @@
     "engine": "piper/en_US-ryan-high"
   },
   "vpet-h-40": {
-    "hash": "36f5e82d3a4a035f",
-    "bytes": 15987,
+    "hash": "cc8f65f9bab868ea",
+    "bytes": 22777,
     "part": "H",
-    "words": 10
+    "words": 10,
+    "seconds": 2.85,
+    "engine": "piper/en_US-ryan-high"
   },
   "vpet-h-41": {
-    "hash": "bc37d7e1e15bcb88",
-    "bytes": 17763,
+    "hash": "19bd5c2d58a4b5cf",
+    "bytes": 22777,
     "part": "H",
-    "words": 11
+    "words": 11,
+    "seconds": 2.85,
+    "engine": "piper/en_US-ryan-high"
   },
   "vpet-h-42": {
-    "hash": "56f27a722847b720",
-    "bytes": 17763,
+    "hash": "53467fd274aab371",
+    "bytes": 23613,
     "part": "H",
-    "words": 10
+    "words": 10,
+    "seconds": 2.95,
+    "engine": "piper/en_US-ryan-high"
   },
   "vpet-h-43": {
-    "hash": "0b4180d450e0798f",
-    "bytes": 16196,
+    "hash": "8c1190910ee3a208",
+    "bytes": 23195,
     "part": "H",
-    "words": 11
+    "words": 11,
+    "seconds": 2.9,
+    "engine": "piper/en_US-ryan-high"
   },
   "vpet-h-44": {
-    "hash": "09896abc8043f411",
-    "bytes": 16405,
+    "hash": "b24b470bd13975d0",
+    "bytes": 23613,
     "part": "H",
-    "words": 10
+    "words": 10,
+    "seconds": 2.95,
+    "engine": "piper/en_US-ryan-high"
   },
   "vpet-h-45": {
-    "hash": "ce695f3db019178e",
-    "bytes": 14315,
+    "hash": "fcd1e38cae521fdf",
+    "bytes": 18598,
     "part": "H",
-    "words": 10
+    "words": 10,
+    "seconds": 2.32,
+    "engine": "piper/en_US-ryan-high"
   },
   "vpet-h-46": {
-    "hash": "5f6cfa10cf706794",
-    "bytes": 16718,
+    "hash": "09ebde2f33bd2c30",
+    "bytes": 23195,
     "part": "H",
-    "words": 11
+    "words": 11,
+    "seconds": 2.9,
+    "engine": "piper/en_US-ryan-high"
   },
   "vpet-j-01": {
-    "hash": "13edd779648b1c45",
-    "bytes": 122671,
+    "hash": "56060fe057ef04a0",
+    "bytes": 210023,
     "part": "J",
-    "words": 73
+    "words": 73,
+    "seconds": 26.25,
+    "engine": "piper/en_US-amy-medium"
   },
   "vpet-j-02": {
-    "hash": "7f1cc48507e92038",
-    "bytes": 118805,
+    "hash": "3262d49addfa8bb1",
+    "bytes": 205843,
     "part": "J",
-    "words": 76
+    "words": 76,
+    "seconds": 25.73,
+    "engine": "piper/en_US-amy-medium"
   },
   "vpet-j-03": {
-    "hash": "d34162f618953fa7",
-    "bytes": 128000,
+    "hash": "3becfa686c61361a",
+    "bytes": 221517,
     "part": "J",
-    "words": 84
+    "words": 84,
+    "seconds": 27.69,
+    "engine": "piper/en_US-amy-medium"
   },
   "vpet-j-04": {
-    "hash": "e6482b21ea7e34fc",
-    "bytes": 125179,
+    "hash": "de16bd4f6d6b22b8",
+    "bytes": 216501,
     "part": "J",
-    "words": 76
+    "words": 76,
+    "seconds": 27.06,
+    "engine": "piper/en_US-amy-medium"
   },
   "vpet-j-05": {
-    "hash": "2a61c06d90160bf0",
-    "bytes": 88189,
+    "hash": "df806f2f570c14e5",
+    "bytes": 157151,
     "part": "J",
-    "words": 50
+    "words": 50,
+    "seconds": 19.64,
+    "engine": "piper/en_US-amy-medium"
   },
   "vpet-j-06": {
-    "hash": "2b73a11e30d1c56e",
-    "bytes": 104908,
+    "hash": "fe289cfc3dfd311d",
+    "bytes": 189334,
     "part": "J",
-    "words": 69
+    "words": 69,
+    "seconds": 23.67,
+    "engine": "piper/en_US-amy-medium"
   },
   "vpet-j-07": {
-    "hash": "a75161ce6efd2d2c",
-    "bytes": 102609,
+    "hash": "bee1dcd9035ae1db",
+    "bytes": 174705,
     "part": "J",
-    "words": 63
+    "words": 63,
+    "seconds": 21.84,
+    "engine": "piper/en_US-amy-medium"
   },
   "vpet-j-08": {
-    "hash": "70ea34a27a9627c2",
-    "bytes": 104072,
+    "hash": "3cf3ead2594b309f",
+    "bytes": 185363,
     "part": "J",
-    "words": 61
+    "words": 61,
+    "seconds": 23.17,
+    "engine": "piper/en_US-amy-medium"
   },
   "vpet-j-09": {
-    "hash": "79166185c1ed167f",
-    "bytes": 93936,
+    "hash": "d4c0c7038c246e14",
+    "bytes": 167809,
     "part": "J",
-    "words": 60
+    "words": 60,
+    "seconds": 20.98,
+    "engine": "piper/en_US-amy-medium"
   },
   "vpet-j-10": {
-    "hash": "9b0ca20e39046353",
-    "bytes": 92264,
+    "hash": "bf789f774e65f1d1",
+    "bytes": 165092,
     "part": "J",
-    "words": 59
+    "words": 59,
+    "seconds": 20.64,
+    "engine": "piper/en_US-amy-medium"
   },
   "vpet-j-11": {
-    "hash": "727670c868c37236",
-    "bytes": 109610,
+    "hash": "bab086148ee3b93d",
+    "bytes": 186826,
     "part": "J",
-    "words": 74
+    "words": 74,
+    "seconds": 23.35,
+    "engine": "piper/en_US-amy-medium"
   },
   "vpet-j-12": {
-    "hash": "8a3bd064a1ba80b5",
-    "bytes": 105744,
+    "hash": "7eba361610d1e295",
+    "bytes": 185363,
     "part": "J",
-    "words": 67
+    "words": 67,
+    "seconds": 23.17,
+    "engine": "piper/en_US-amy-medium"
   },
   "vpet-j-13": {
-    "hash": "d0a26ea3797031dd",
-    "bytes": 105012,
+    "hash": "b76946399c85a323",
+    "bytes": 177004,
     "part": "J",
-    "words": 64
+    "words": 64,
+    "seconds": 22.13,
+    "engine": "piper/en_US-amy-medium"
   },
   "vpet-j-14": {
-    "hash": "08a5885516809851",
-    "bytes": 113267,
+    "hash": "b0baea36280e3787",
+    "bytes": 199365,
     "part": "J",
-    "words": 75
+    "words": 75,
+    "seconds": 24.92,
+    "engine": "piper/en_US-amy-medium"
   }
 }
