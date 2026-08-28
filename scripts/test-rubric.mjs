@@ -315,6 +315,87 @@ try {
    * it, so what is checked here is that the two really are inverses — not that
    * two hand-written tables happen to agree today.
    */
+  /* ------------------------------------------------------------------ *
+   * The rubric is complete, on both papers
+   * ------------------------------------------------------------------ *
+   *
+   * The failure this guards is the quiet one. A criterion with no bands does
+   * not throw and nothing downstream looks wrong: the marker is simply left
+   * with a name and no scale, produces a plausible number, and it lands on a
+   * real candidate's paper with nothing behind it. Only somebody reading the
+   * rubric source would ever find it.
+   *
+   * rubric.validate() is the check, and it is deliberately the same one the
+   * server runs at boot — so an incomplete rubric is loud in production as well
+   * as red here, rather than being a thing only the test suite knows.
+   */
+  head('Every criterion has a scale, on both papers');
+
+  const problems = R.validate();
+  ok(problems.length === 0,
+    'The rubric answers for every criterion of every part, at both levels',
+    problems.slice(0, 8).join(' | '));
+
+  /* Said again from the outside, so the check is not just "validate agrees with
+     itself": walk the parts and ask for the bands the way the prompt does. */
+  const noBands = [];
+  for (const [part, defs] of Object.entries(R.CRITERIA)) {
+    for (const d of defs) {
+      for (const lvl of [1, 2]) {
+        const b = R.bandsFor(part, d.key, lvl);
+        if (!b || b.length < 2 || !b.some(x => x.at === 10) || b.some(x => !x.en || !x.vi)) {
+          noBands.push(part + '.' + d.key + '@L' + lvl);
+        }
+      }
+    }
+  }
+  ok(noBands.length === 0, 'and every one of them resolves through the same door the prompt uses',
+    noBands.join(', '));
+
+  /* The two papers must not be the same rubric with a different label. Where a
+     criterion measures how GOOD the English is, the standard has to move; where
+     it measures whether something is THERE, it must not. */
+  const moved = [], fixed = [];
+  for (const [part, defs] of Object.entries(R.CRITERIA)) {
+    for (const d of defs) {
+      const same = JSON.stringify(R.bandsFor(part, d.key, 1)) === JSON.stringify(R.bandsFor(part, d.key, 2));
+      (same ? fixed : moved).push(part + '.' + d.key);
+    }
+  }
+  ok(moved.length > 0 && fixed.length > 0,
+    'Some criteria are marked differently on the two papers and some are not',
+    moved.length + ' move, ' + fixed.length + ' do not');
+  ok(moved.every(k => {
+    const [part, key] = k.split('.');
+    return R.criteriaFor(part).find(c => c.key === key).dim !== 'content';
+  }), 'and the ones that move are the ones about how good the English is, never about what is there',
+  moved.filter(k => {
+    const [part, key] = k.split('.');
+    return R.criteriaFor(part).find(c => c.key === key).dim === 'content';
+  }).join(', '));
+
+  /* The overlap, which is the clearest single fact about the two papers: what a
+     Level 1 paper calls its ceiling, a Level 2 paper calls its floor. A reader
+     who does not know that will read "2/10 on a Level 2 paper" as "cannot form
+     a sentence" rather than "below what this paper is built to see". */
+  for (const dim of Object.keys(R.DIM_BANDS)) {
+    const l1top = R.DIM_BANDS[dim][1][0], l2bottom = R.DIM_BANDS[dim][2].slice(-1)[0];
+    ok(l1top.at === 10 && l2bottom.at === 0 && l1top.en !== l2bottom.en,
+      dim + ': the two papers meet — Level 1\'s top band and Level 2\'s bottom are the same person',
+      'L1 10: ' + l1top.en.slice(0, 40) + ' / L2 0: ' + l2bottom.en.slice(0, 40));
+  }
+
+  /* And the marker is given them. Rendering a scale for one criterion and not
+     the next is what happened while only Part D had bands, and it is worse than
+     giving none: the marker infers that the unscaled ones are the loose ones. */
+  for (const [part, sample] of [['B', 'meaning'], ['G', 'correct'], ['I', 'task'], ['J', 'events']]) {
+    const pr = ai.userPrompt({ part, level: 'B1', paperLevel: 'B1', family: 'vpet',
+      prompt: 'x', answer: 'some words here', heard: part === 'B' ? null : 'some words here' });
+    const band = R.bandsFor(part, sample, 1).find(b => b.at === 10);
+    ok(pr.includes(band.en), 'Part ' + part + '\'s bands reach the marker, not just the repository',
+      band.en.slice(0, 50));
+  }
+
   head('The marker aims at the scale the report reads back');
 
   const bands = await import('../server/bands.js').then(m => m.default || m);
@@ -1057,6 +1138,35 @@ head('Nothing handed in is nothing, not four out of ten');
   }
   ok(missingRungs.length === 0, 'and every rung of every level ladder',
     missingRungs.slice(0, 6).join(', '));
+
+  /* Every band of every criterion, on both papers. This is the biggest single
+     claim the document makes — it is the rubric — and a band that reaches the
+     marker but not the page is the half a candidate cannot prepare against.
+     Matched on a distinctive opening rather than the whole sentence: the
+     document sets them in table cells and may re-wrap. */
+  const missingBandText = [];
+  for (const [part, defs] of Object.entries(R.CRITERIA)) {
+    for (const d of defs) {
+      for (const lvl of [1, 2]) {
+        for (const b of R.bandsFor(part, d.key, lvl)) {
+          const stem = b.vi.split(/[.;—]/)[0].trim();
+          if (stem.length > 12 && !doc.includes(stem)) {
+            missingBandText.push(part + '.' + d.key + '@L' + lvl + ' ' + b.at);
+          }
+        }
+      }
+    }
+  }
+  ok(missingBandText.length === 0,
+    'and every band of every criterion, on both papers, in the language candidates read',
+    missingBandText.slice(0, 8).join(', '));
+
+  /* The two-level structure itself, not just the words: a document that printed
+     one column would read as though the papers marked the same way. */
+  ok(/Đề Cấp 1/.test(doc) && /Đề Cấp 2/.test(doc),
+    'The document distinguishes the two papers by name');
+  ok(/khác nhau theo đề/.test(doc),
+    'and marks which criteria are marked differently on each');
 
   /* The usage rules are the ones a candidate can act on before the exam — "am I
      allowed to write color" is a question they will actually have — so a rule

@@ -70,8 +70,13 @@
    marker now aims at the same scale the report reads back. A Part D mark made
    under -3 has four criteria with different names and is not comparable
    criterion-by-criterion with one made under -4; the version on the row is how
-   a reader can tell. */
-const RUBRIC_VERSION = '2026-08-vpet-4';
+   a reader can tell.
+
+   -5 completes it. Every criterion of every part now carries band descriptors,
+   and the four proficiency dimensions carry a set per paper, so a Level 2
+   sitting is marked against Level 2's standard rather than against Level 1's
+   with a different label on it. validate() refuses to let that go quiet again. */
+const RUBRIC_VERSION = '2026-08-vpet-5';
 
 /**
  * The criteria, per part.
@@ -85,7 +90,18 @@ const RUBRIC_VERSION = '2026-08-vpet-4';
 const CRITERIA = {
   B: [
     { key: 'meaning', en: 'Meaning kept', vi: 'Giữ được ý', dim: 'content',
-      about: 'How much of the passage\'s meaning survives. Original wording is neither required nor rewarded; missing whole ideas is what costs marks.' },
+      about: 'How much of the passage\'s meaning survives. Original wording is neither required nor '
+        + 'rewarded; missing whole ideas is what costs marks.',
+      bands: [
+        { at: 10, en: 'Every idea in the passage comes back. Nothing a reader would miss is lost.',
+          vi: 'Mọi ý của đoạn văn đều quay lại. Không mất ý nào người đọc sẽ thấy thiếu.' },
+        { at: 6, en: 'Most ideas come back. One is missing, or one has blurred into another.',
+          vi: 'Phần lớn các ý quay lại. Thiếu một ý, hoặc một ý bị nhòe vào ý khác.' },
+        { at: 2, en: 'Only fragments of the passage survive.',
+          vi: 'Chỉ còn lại vài mảnh của đoạn văn.' },
+        { at: 0, en: 'Nothing of the passage is here.',
+          vi: 'Không còn gì của đoạn văn.' }
+      ] },
     { key: 'accuracy', en: 'Grammar and spelling', vi: 'Ngữ pháp và chính tả', dim: 'accuracy',
       about: 'Sentence structure, verb forms, articles, spelling.' },
     { key: 'organisation', en: 'Order and flow', vi: 'Sắp xếp và mạch văn', dim: 'organisation',
@@ -173,7 +189,7 @@ const CRITERIA = {
       pearson: 'Form', weight: 2, ptePoints: 2, computed: 'form',
       about: 'Whether the e-mail is the length the task asks for. Counted, not judged.' },
     { key: 'organisation', en: 'Organisation', vi: 'Sắp xếp và mạch lạc', dim: 'organisation',
-      pearson: 'Organization', weight: 2, ptePoints: 2,
+      pearson: 'Organization', weight: 2, ptePoints: 2, bandsFor: 1,
       about: 'How well ideas are presented in a clear and logical sequence — Pearson\'s own '
         + 'definition — judged on guiding the reader through the text and marking significant '
         + 'points with discourse markers.',
@@ -189,7 +205,7 @@ const CRITERIA = {
           vi: 'Các câu rời rạc, không có gì nối chúng với nhau.' }
       ] },
     { key: 'vocabulary', en: 'Vocabulary', vi: 'Từ vựng', dim: 'range',
-      pearson: 'Vocabulary', weight: 2, ptePoints: 2,
+      pearson: 'Vocabulary', weight: 2, ptePoints: 2, bandsFor: 1,
       about: 'Whether the words are accurate and are the right words for this topic, purpose '
         + 'and audience — including whether the formal or informal choice the prompt calls for '
         + 'is actually made.',
@@ -204,7 +220,7 @@ const CRITERIA = {
           vi: 'Nghèo nàn, lặp lại, hoặc sai đủ nhiều để làm mờ nghĩa.' }
       ] },
     { key: 'grammar', en: 'Grammar', vi: 'Ngữ pháp', dim: 'accuracy',
-      pearson: 'Grammar', weight: 2, ptePoints: 2,
+      pearson: 'Grammar', weight: 2, ptePoints: 2, bandsFor: 1,
       about: 'Correct structures, tenses and subject-verb agreement. Pearson\'s scoring rewards '
         + 'ACCURACY over ambition here: a correct simple or compound sentence scores better '
         + 'than a complex one that breaks.',
@@ -232,7 +248,20 @@ const CRITERIA = {
   ],
   I: [
     { key: 'task', en: 'Dealing with the situation', vi: 'Xử lý được tình huống', dim: 'content',
-      about: 'Whether every move the situation asks for actually happens.' },
+      about: 'Whether every move the situation asks for actually happens.',
+      bands: [
+        { at: 10, en: 'Every move the situation asks for actually happens — the apology is made, '
+            + 'the reason given, the alternative offered.',
+          vi: 'Mọi việc tình huống đòi hỏi đều thực sự xảy ra — có xin lỗi, có nêu lý do, có đề '
+            + 'xuất phương án.' },
+        { at: 6, en: 'Most of them happen. One is missing, or is only implied rather than said.',
+          vi: 'Phần lớn có xảy ra. Thiếu một việc, hoặc chỉ ngụ ý chứ không nói ra.' },
+        { at: 2, en: 'The situation is barely addressed — a sentence in the right direction and '
+            + 'no more.',
+          vi: 'Gần như chưa xử lý tình huống — được một câu đúng hướng và không hơn.' },
+        { at: 0, en: 'This does not respond to the situation at all.',
+          vi: 'Bài này hoàn toàn không đáp lại tình huống.' }
+      ] },
     { key: 'range', en: 'Range of language', vi: 'Vốn ngôn ngữ', dim: 'range',
       about: 'Whether the vocabulary and structures stretch beyond the safest possible choices.' },
     { key: 'accuracy', en: 'Accuracy', vi: 'Độ chính xác', dim: 'accuracy',
@@ -254,21 +283,82 @@ const CRITERIA = {
   G: [
     { key: 'correct', en: 'Right answer', vi: 'Trả lời đúng', dim: 'content',
       about: 'Whether the answer is right. A correct short phrase is a full mark and is not '
-        + 'marked down for being short; grammar matters only where it changes the meaning.' }
+        + 'marked down for being short; grammar matters only where it changes the meaning.',
+      bands: [
+        { at: 10, en: 'Right. A correct three-word phrase is a full mark and is not marked down '
+            + 'for being short, for lacking a verb, or for not being a sentence.',
+          vi: 'Đúng. Một cụm ba từ đúng là điểm tối đa, không bị trừ vì ngắn, vì thiếu động từ, '
+            + 'hay vì không thành câu.' },
+        { at: 5, en: 'The right area, the wrong detail — or right but so vague that it could be '
+            + 'an answer to a different question.',
+          vi: 'Đúng hướng nhưng sai chi tiết — hoặc đúng nhưng mơ hồ tới mức có thể là câu trả '
+            + 'lời cho câu hỏi khác.' },
+        { at: 0, en: 'Wrong, or an answer to a question that was not asked. A confident wrong '
+            + 'answer scores nothing.',
+          vi: 'Sai, hoặc trả lời một câu hỏi không được hỏi. Trả lời sai một cách tự tin vẫn '
+            + 'không có điểm.' }
+      ] }
   ],
   H: [
     { key: 'content', en: 'How much came back', vi: 'Giữ được bao nhiêu', dim: 'content',
-      about: 'How much of the sentence is reproduced.' },
+      about: 'How much of the sentence is reproduced.',
+      /* Part H is scored by word overlap in server/repeat.js, not by a model.
+         These bands are what the NUMBER means on the report — they describe the
+         same scale the comparison produces, so a candidate reading "5.0" has
+         something to read it against. */
+      bands: [
+        { at: 10, en: 'The whole sentence comes back.',
+          vi: 'Nhắc lại được trọn câu.' },
+        { at: 5, en: 'About half of the sentence comes back.',
+          vi: 'Nhắc lại được khoảng một nửa câu.' },
+        { at: 0, en: 'Almost nothing of the sentence comes back.',
+          vi: 'Gần như không nhắc lại được gì.' }
+      ] },
     { key: 'structure', en: 'Structure kept', vi: 'Giữ được cấu trúc', dim: 'accuracy',
-      about: 'Whether the sentence\'s word order and grammar survive the repetition.' }
+      about: 'Whether the sentence\'s word order and grammar survive the repetition.',
+      bands: [
+        { at: 10, en: 'Word order and grammar survive intact.',
+          vi: 'Trật tự từ và ngữ pháp còn nguyên.' },
+        { at: 5, en: 'The words are mostly there but the order has moved.',
+          vi: 'Từ thì phần lớn còn nhưng trật tự đã xê dịch.' },
+        { at: 0, en: 'No structure survives — words in no recoverable order.',
+          vi: 'Không còn cấu trúc nào — các từ không theo trật tự nào khôi phục được.' }
+      ] }
   ],
   J: [
     { key: 'events', en: 'Events kept', vi: 'Giữ được sự việc', dim: 'content',
-      about: 'How many of the story\'s events survive the retelling.' },
+      about: 'How many of the story\'s events survive the retelling.',
+      bands: [
+        { at: 10, en: 'Every event in the story comes back.',
+          vi: 'Mọi sự việc trong câu chuyện đều được kể lại.' },
+        { at: 6, en: 'Most events come back; one or two are lost.',
+          vi: 'Phần lớn sự việc được kể lại; mất một hai việc.' },
+        { at: 2, en: 'A couple of fragments of the story, and no more.',
+          vi: 'Chỉ còn vài mảnh của câu chuyện, không hơn.' },
+        { at: 0, en: 'None of the story is here.',
+          vi: 'Không còn gì của câu chuyện.' }
+      ] },
     { key: 'sequence', en: 'Order of events', vi: 'Trình tự', dim: 'organisation',
-      about: 'Whether they come in the right order.' },
+      about: 'Whether they come in the right order.',
+      bands: [
+        { at: 10, en: 'The events come in the order they happened.',
+          vi: 'Các sự việc đến đúng theo trình tự đã xảy ra.' },
+        { at: 5, en: 'Mostly in order, with one event moved out of place.',
+          vi: 'Phần lớn đúng trình tự, có một sự việc bị đặt sai chỗ.' },
+        { at: 0, en: 'No order a listener could recover the story from.',
+          vi: 'Không có trình tự nào để người nghe dựng lại câu chuyện.' }
+      ] },
     { key: 'point', en: 'The point of it', vi: 'Ý chính', dim: 'content',
-      about: 'Whether the point of the story comes across, not just its parts.' }
+      about: 'Whether the point of the story comes across, not just its parts.',
+      bands: [
+        { at: 10, en: 'The point of the story comes across, not just its parts.',
+          vi: 'Ý của câu chuyện toát ra được, không chỉ là các mảnh rời của nó.' },
+        { at: 5, en: 'The parts are there but the listener has to work the point out for '
+            + 'themselves.',
+          vi: 'Các mảnh thì có, nhưng người nghe phải tự rút ra ý.' },
+        { at: 0, en: 'The point does not come across at all.',
+          vi: 'Ý chính hoàn toàn không toát ra được.' }
+      ] }
   ]
 };
 
@@ -400,6 +490,127 @@ const LADDER = {
           vi: 'Một giọng duy nhất, thường là thân mật, nói với ai cũng vậy.' },
     A1: { en: 'No control of formality — whatever phrases are known.',
           vi: 'Không kiểm soát được mức trang trọng — biết cụm nào dùng cụm đó.' }
+  }
+};
+
+/**
+ * The same four dimensions as bands, per paper.
+ *
+ * LADDER above says what each CEFR level looks like; this says what a MARK is
+ * worth on each of the two papers, which is a different question and the one a
+ * marker actually has to answer. Defined per dimension rather than per
+ * criterion because `accuracy` means the same thing on Part B, Part D and Part
+ * I — sixteen criteria × two levels × three bands would be ninety-six
+ * descriptors, and ninety of them would never be read again.
+ *
+ * ## Read the two columns together
+ *
+ * The papers overlap at B1+, and it shows here on purpose: **Level 2's bottom
+ * band is roughly Level 1's top band**. That is not a mistake and it is the
+ * clearest way to see what the two papers are for. A candidate who is the best
+ * thing a Level 1 paper can measure is the weakest thing a Level 2 paper can,
+ * and both papers say so about the same person. Anyone reading a Level 2 report
+ * that says "2/10 on grammar" should understand it as "below what this paper is
+ * built to see", not as "cannot form a sentence" — which is why
+ * server/bands.js reports that band as a ceiling rather than a level.
+ *
+ * A criterion may still carry `bands` of its own, and those win: Part D's come
+ * from Pearson's published Write Email rubric and are more specific than
+ * anything here.
+ */
+const DIM_BANDS = {
+  accuracy: {
+    1: [
+      { at: 10, en: 'Simple structures are reliable and the meaning always survives. What goes '
+          + 'wrong goes wrong in the longer or less common sentences.',
+        vi: 'Cấu trúc đơn giản dùng chắc, nghĩa luôn còn nguyên. Chỗ sai là ở câu dài hơn hoặc '
+          + 'thì ít gặp.' },
+      { at: 5, en: 'Simple sentences are attempted, but endings, articles and plurals go missing '
+          + 'often enough that the reader repairs as they go.',
+        vi: 'Có viết được câu đơn, nhưng đuôi từ, mạo từ và số nhiều rơi rụng đủ nhiều để người '
+          + 'đọc phải tự vá.' },
+      { at: 0, en: 'Words and memorised phrases. Most attempts at a sentence break down.',
+        vi: 'Từ rời và cụm học thuộc. Phần lớn nỗ lực viết thành câu đều đổ.' }
+    ],
+    2: [
+      { at: 10, en: 'Full control, including in long and complex sentences. What slips there are '
+          + 'read as typing rather than as gaps.',
+        vi: 'Kiểm soát hoàn toàn, kể cả câu dài và câu phức. Sai sót nếu có thì đọc như lỗi gõ '
+          + 'phím chứ không phải lỗ hổng.' },
+      { at: 5, en: 'Good control. Errors appear in complex sentences and rarely cause a '
+          + 'misreading.',
+        vi: 'Kiểm soát tốt. Lỗi xuất hiện ở câu phức và hiếm khi làm hiểu sai.' },
+      { at: 0, en: 'Simple structures hold and nothing past them does. This is the floor of what '
+          + 'this paper can see, not the floor of the language.',
+        vi: 'Cấu trúc đơn giản thì chắc, ngoài đó thì không. Đây là sàn của những gì đề này đo '
+          + 'được, không phải sàn của trình độ.' }
+    ]
+  },
+  range: {
+    1: [
+      { at: 10, en: 'Enough vocabulary for familiar topics, with a way round a word that is '
+          + 'missing. Simple and compound sentences, used correctly.',
+        vi: 'Đủ từ vựng cho chủ đề quen thuộc, biết đường vòng khi thiếu từ. Câu đơn và câu ghép, '
+          + 'dùng đúng.' },
+      { at: 5, en: 'Everyday words and the simplest joins — and, but, because.',
+        vi: 'Từ đời thường và những cách nối đơn giản nhất — and, but, because.' },
+      { at: 0, en: 'A few memorised words and phrases; nothing built out of them.',
+        vi: 'Vài từ và cụm học thuộc; không dựng được gì từ chúng.' }
+    ],
+    2: [
+      { at: 10, en: 'Full range, used precisely, including shades of meaning and fixed '
+          + 'expressions. The word chosen is the right one, not the nearest one.',
+        vi: 'Vốn đầy đủ, dùng chính xác, kể cả sắc thái và thành ngữ cố định. Từ được chọn là từ '
+          + 'đúng, không phải từ gần đúng nhất.' },
+      { at: 5, en: 'A clear range: subordination, some less common words, choices that fit the '
+          + 'topic rather than the safest available.',
+        vi: 'Vốn rõ rệt: có mệnh đề phụ, có từ ít gặp, lựa chọn hợp chủ đề chứ không phải lựa '
+          + 'chọn an toàn nhất.' },
+      { at: 0, en: 'Enough for familiar topics and no further — the safest word every time.',
+        vi: 'Đủ cho chủ đề quen thuộc và không hơn — lúc nào cũng chọn từ an toàn nhất.' }
+    ]
+  },
+  organisation: {
+    1: [
+      { at: 10, en: 'A beginning, a middle and an end that a reader can follow, with linking '
+          + 'that helps rather than decorates.',
+        vi: 'Có mở – thân – kết mà người đọc theo được, với từ nối để giúp chứ không để trang trí.' },
+      { at: 5, en: 'Points strung together with and / then / but. The reader supplies the order.',
+        vi: 'Các ý nối bằng and / then / but. Người đọc phải tự sắp thứ tự.' },
+      { at: 0, en: 'No order a reader can follow; nothing links.',
+        vi: 'Không có thứ tự nào người đọc theo được; không gì liên kết với gì.' }
+    ],
+    2: [
+      { at: 10, en: 'The structure serves what is being said and the reader never notices it '
+          + 'working.',
+        vi: 'Bố cục phục vụ điều đang nói, và người đọc không hề thấy nó đang làm việc.' },
+      { at: 5, en: 'Clear shape. Each paragraph does one job and the linking carries the reader.',
+        vi: 'Hình hài rõ. Mỗi đoạn làm một việc và từ nối dẫn được người đọc đi.' },
+      { at: 0, en: 'A beginning, a middle and an end, and nothing beyond that.',
+        vi: 'Có mở – thân – kết, và không hơn.' }
+    ]
+  },
+  register: {
+    1: [
+      { at: 10, en: 'Formal and informal are told apart and the right one is chosen for this '
+          + 'reader and held for most of the answer.',
+        vi: 'Phân biệt được trang trọng và thân mật, chọn đúng cho người nhận và giữ được gần '
+          + 'hết bài.' },
+      { at: 5, en: 'One register throughout, whoever is being addressed.',
+        vi: 'Một giọng duy nhất cho cả bài, nói với ai cũng vậy.' },
+      { at: 0, en: 'No control of formality — whatever phrases are known.',
+        vi: 'Không kiểm soát được mức trang trọng — biết cụm nào dùng cụm đó.' }
+    ],
+    2: [
+      { at: 10, en: 'Register is controlled and sustained, including politeness moves and '
+          + 'hedging, and shifts inside the answer are deliberate.',
+        vi: 'Mức trang trọng được kiểm soát và giữ suốt bài, kể cả cách nói lịch sự và nói giảm; '
+          + 'chuyển giọng trong bài là có chủ ý.' },
+      { at: 5, en: 'Consistent and suited to the reader; the occasional phrase sits oddly.',
+        vi: 'Nhất quán và hợp người nhận; thi thoảng có câu đặt hơi lạc.' },
+      { at: 0, en: 'The right register is chosen but not held under pressure.',
+        vi: 'Chọn đúng mức trang trọng nhưng không giữ được khi bí.' }
+    ]
   }
 };
 
@@ -749,6 +960,93 @@ const FORM_BAND = { min: 100, over: 140 };
 const MIN_EVIDENCE_WORDS = 3;
 
 const criteriaFor = part => CRITERIA[part] || [];
+
+/**
+ * The bands one criterion is actually marked against, on one paper.
+ *
+ * Three sources in order, and the order is the point:
+ *
+ *   1. the criterion's OWN bands, where somebody has written them out — Part
+ *      D's come from Pearson's published Write Email rubric, and nothing
+ *      derived here should override a published one;
+ *   2. the per-paper bands for its dimension, which is where a criterion about
+ *      how good the English is gets an answer that differs between the papers;
+ *   3. BANDS, the completion ladder, for anything else.
+ *
+ * `vpetLevel` is 1 or 2. Anything else is treated as Level 1, which is the
+ * paper the platform actually ships: guessing high would mark a candidate
+ * against a ceiling their paper cannot reach.
+ */
+function bandsFor(part, key, vpetLevel) {
+  const def = criteriaFor(part).find(c => c.key === key);
+  if (!def) return BANDS;
+  const lvl = vpetLevel === 2 ? 2 : 1;
+  /* `bandsFor` marks a set as written for ONE paper. PTE Core is a B1–B2 test,
+     so its wording for the proficiency criteria answers the Level 1 question
+     exactly and the Level 2 question not at all: "structures and agreement are
+     correct throughout" is full marks on a paper that stops at B1+, and does
+     not separate a B2 from a C2 on one that reaches it. Those fall through to
+     the per-paper dimension bands; the ones that measure whether something is
+     PRESENT — a greeting, every note answered, how many typos — do not, because
+     a greeting is a greeting at any level. */
+  if (Array.isArray(def.bands) && def.bands.length && (!def.bandsFor || def.bandsFor === lvl)) {
+    return def.bands;
+  }
+  const byDim = DIM_BANDS[def.dim];
+  if (byDim) return byDim[lvl];
+  return BANDS;
+}
+
+/**
+ * Everything the rubric owes an answer to, checked.
+ *
+ * A criterion with no bands on either paper is not a marking bug that shows up
+ * as a wrong number — it is a marker with nothing to aim at, producing a
+ * plausible number nobody can argue with, on a real candidate's paper. It would
+ * never throw and nothing downstream would look wrong.
+ *
+ * So it is checked rather than trusted: every criterion of every part must
+ * resolve to a complete set of bands at BOTH levels, name its dimension, and
+ * carry both languages. Returns a list of problems, empty when there are none.
+ * scripts/test-rubric.mjs fails on a non-empty list, and server.js logs it at
+ * boot — a rubric that is incomplete in production should say so on the console
+ * rather than wait for somebody to notice a strange mark.
+ */
+function validate() {
+  const problems = [];
+  for (const [part, defs] of Object.entries(CRITERIA)) {
+    if (!defs.length) problems.push(part + ': no criteria at all');
+    for (const d of defs) {
+      const at = part + '.' + d.key;
+      if (!d.key || !d.en || !d.vi) problems.push(at + ': missing a name in one language');
+      if (!d.dim) problems.push(at + ': no dimension declared');
+      else if (d.dim !== 'content' && !LADDER[d.dim]) problems.push(at + ': unknown dimension ' + d.dim);
+      if (!d.about) problems.push(at + ': nothing says what it measures');
+      if (d.weight !== undefined && !(d.weight > 0)) problems.push(at + ': weight must be positive');
+
+      for (const lvl of [1, 2]) {
+        const bands = bandsFor(part, d.key, lvl);
+        const where = at + ' (Level ' + lvl + ')';
+        if (!Array.isArray(bands) || bands.length < 2) {
+          problems.push(where + ': fewer than two bands to choose between');
+          continue;
+        }
+        if (!bands.some(b => b.at === 10)) problems.push(where + ': no band says what full marks is');
+        if (bands.some(b => !(b.at >= 0 && b.at <= 10))) problems.push(where + ': a band is off the scale');
+        if (bands.some(b => !b.en || !b.vi)) problems.push(where + ': a band is missing a language');
+        for (let i = 1; i < bands.length; i++) {
+          if (bands[i].at >= bands[i - 1].at) problems.push(where + ': bands are not in descending order');
+        }
+      }
+    }
+  }
+  /* A part the marking pass will send to a model but the rubric has no criteria
+     for is the fault that left G and H with unexplained numbers for months. */
+  for (const part of ['B', 'D', 'G', 'H', 'I', 'J']) {
+    if (!criteriaFor(part).length) problems.push(part + ': marked by rubric but has no criteria');
+  }
+  return problems;
+}
 const half = n => Math.round(n * 2) / 2;
 
 /* ----------------------------- Tier 1: measuring ----------------------------- */
@@ -1173,7 +1471,7 @@ function applyCaps(part, base, used, o) {
 module.exports = {
   RUBRIC_VERSION, CRITERIA, BANDS, MIN_WORDS,
   LADDER, LADDER_DIMS, LADDER_LEVELS, levelScale, USAGE, OWNER_OVERLAP,
-  WEIGHTED_SCHEME_PARTS, FORM_BAND, computedForm,
+  WEIGHTED_SCHEME_PARTS, FORM_BAND, computedForm, DIM_BANDS, bandsFor, validate,
   UNDER_LENGTH_FRACTION, UNDER_LENGTH_CAP, WEAKEST_LINK_HEADROOM, MIN_EVIDENCE_WORDS,
   COPY_PARTS, COPY_SHINGLE, COPY_FREE, COPY_TOTAL, COPY_CAP, COPY_MIN_WORDS,
   criteriaFor, combine, applyCaps, diagnostics, verifyEvidence, words, sentences, half,

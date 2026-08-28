@@ -695,77 +695,58 @@ function userPrompt({ part, level, paperLevel, family, prompt, answer, heard, so
      its own bands "high B1", "meets B1" and "below B1", which is the Level 1
      paper. Applying it to Level 2 would cap a C1 candidate's ceiling at B1 and
      hand them full marks for work that paper is built to see past. */
-  const paperVpet = rubric.levelScale(paperLevel || level, family).length
-    ? require('./bands').vpetLevelOf(paperLevel || level) : null;
-  const own = defs.filter(d => Array.isArray(d.bands) && d.bands.length
-    && (!d.bandsFor || d.bandsFor === paperVpet));
-  if (own.length) {
-    lines.push('WHAT THE NUMBERS MEAN. These bands are the exam owner\'s own standard for',
-      'this part. Where an answer sits between two of them, score between them.', '');
-    for (const d of own) {
+  const paperVpet = require('./bands').vpetLevelOf(paperLevel || level);
+
+  /* Every criterion now has bands on both papers — rubric.bandsFor() resolves
+     the criterion's own where somebody wrote them, the per-paper dimension
+     bands where the standard shifts with the level, and the completion ladder
+     otherwise. Rendering them all in one table means the marker is never left
+     to infer what a number is worth for one criterion while being told for the
+     next, which is what happened while only Part D had bands. */
+  if (defs.length) {
+    lines.push('WHAT THE NUMBERS MEAN. Score between two bands when the answer sits',
+      'between them. These are the standard for THIS paper — a different paper',
+      'has a different one, because the two measure different stretches.', '');
+    for (const d of defs) {
       lines.push('"' + d.key + '" (' + d.en + '):');
-      for (const b of d.bands) lines.push('  ' + String(b.at).padStart(2) + ' — ' + b.en);
+      for (const b of rubric.bandsFor(part, d.key, paperVpet)) {
+        lines.push('  ' + String(b.at).padStart(2) + ' — ' + b.en);
+      }
       lines.push('');
     }
   }
 
-  const rest = defs.filter(d => !own.includes(d));
   const scale = rubric.levelScale(paperLevel || level, family);
-  const ladderDims = [...new Set(rest.map(d => d.dim).filter(d => rubric.LADDER[d]))];
 
-  if (scale.length && ladderDims.length) {
+  if (scale.length) {
     /* bands.js's bottom rung is 'dưới A1', because that string is rendered to a
        Vietnamese candidate on the result screen. It is the same band either way
        and only its label changes for this reader. */
     const en = c => c.replace(/^dưới /, 'below ');
     const top = en(scale[0].cefr), bottom = en(scale[scale.length - 1].cefr);
-    lines.push('WHAT THE NUMBERS MEAN.',
+    lines.push('AND WHAT A MARK CLAIMS ABOUT THE LEVEL.',
       '',
       'This paper measures ' + bottom + ' up to ' + top + ' and cannot see past either end.',
       'A mark is not "how good is this in the abstract" — it is "where on THIS paper\'s',
       'range does this sit". So ' + scale[0].max + ' on this paper means ' + top + ', and nothing higher',
       'is available to award, however good the answer is.',
       '',
-      'For ' + ladderDims.join(', ') + ', decide which level the answer shows, then take the mark',
-      'from this table:');
+      'And a mark on this paper is also a claim about a level. If it helps to place',
+      'an answer, these are the marks each level is worth here:');
     for (const r of scale) {
       lines.push('  ' + en(r.cefr).padEnd(9) + String(r.min).padStart(4) + ' – ' + r.max);
     }
-    lines.push('A "+" level sits in the upper half of the level below it.', '');
-
-    /* Only the rungs this paper can actually award, plus the statement that
-       anything above them still scores the maximum. Printing a C1 rung on a
-       paper whose top mark is B1+ invites a mark the report cannot render, and
-       leaving the ceiling unsaid invites the opposite mistake — marking a
-       genuinely strong answer down because it is "only" B1+. */
-    const reach = new Set(scale.map(r => r.cefr.replace('+', '').replace('dưới ', '')));
-    for (const dim of ladderDims) {
-      lines.push('What each level looks like for ' + dim + ':');
-      for (const lv of rubric.LADDER_LEVELS) {
-        if (reach.has(lv) && rubric.LADDER[dim][lv]) lines.push('  ' + lv + ' — ' + rubric.LADDER[dim][lv].en);
-      }
-      /* Only where there IS something above the ceiling. On a Level 2 paper the
-         top rung is C2 and "anything stronger than C2" is not a thing. */
-      if (top !== 'C2') {
-        lines.push('  Anything stronger than ' + top + ' also scores ' + scale[0].max
-          + ' — this paper cannot tell those apart.');
-      }
-      lines.push('');
+    lines.push('A "+" level sits in the upper half of the level below it.');
+    /* The ceiling, said out loud. Without it a marker meets an answer better
+       than the paper's top band and marks it DOWN for being "only" B1+ — the
+       opposite of what the range means. Only where there IS something above the
+       ceiling: on a Level 2 paper the top is C2, and "stronger than C2" is not
+       a thing. */
+    if (top !== 'C2') {
+      lines.push('Anything stronger than ' + top + ' also scores ' + scale[0].max
+        + ' — this paper cannot tell those apart, and must not mark it down for that.');
     }
-  }
-
-  /* Content criteria are not a judgement about anybody's English — "did they
-     mention the delivery date" has no CEFR level — so they get the ladder that
-     asks how much of what was asked for is actually there. */
-  const hasContent = !defs.length || rest.some(d => d.dim === 'content');
-  if (hasContent) {
-    const which = rest.filter(d => d.dim === 'content').map(d => d.key);
-    lines.push(which.length
-      ? 'For ' + which.join(', ') + ' — which ' + (which.length > 1 ? 'measure' : 'measures')
-        + ' how much of what was asked for is there, not how good the English is — use this scale:'
-      : 'What the numbers mean. This score uses this scale:');
-    for (const b of rubric.BANDS) lines.push('  ' + String(b.at).padStart(2) + ' — ' + b.en);
-    lines.push('Halves and odd numbers are allowed, and mean "between these two".', '');
+    lines.push('');
   }
 
   /* The house standard: what counts as an error and what does not. Without it

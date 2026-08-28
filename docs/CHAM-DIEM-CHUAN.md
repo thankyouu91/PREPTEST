@@ -1,6 +1,6 @@
 # Quy cách chấm điểm chuẩn — VPET
 
-**Phiên bản rubric: `2026-08-vpet-4`** · nguồn duy nhất: `server/rubric.js`
+**Phiên bản rubric: `2026-08-vpet-5`** · nguồn duy nhất: `server/rubric.js`
 
 Tài liệu này là **quy cách chấm**: một câu trả lời được chia điểm theo tiêu chí
 nào, mỗi con số trên thang 10 nghĩa là gì, và luật nào chặn điểm lại. Đây là văn
@@ -271,16 +271,22 @@ bậc CEFR (2.2).
 | **I** — Tình huống nói | mô hình | `task` Xử lý tình huống **[nd]** · `range` Vốn ngôn ngữ **[vn]** · `accuracy` Độ chính xác **[cx]** · `register` Mức trang trọng **[tt]** | 1, 2 |
 | **J** — Kể lại chuyện | mô hình | `events` Giữ được sự việc **[nd]** · `sequence` Trình tự **[bc]** · `point` Ý chính **[nd]** | 1, 2 |
 
-### 3.1 Từng tiêu chí nói về cái gì
+### 3.1 Rubric đầy đủ — từng tiêu chí, từng mức, cả hai đề
 
-**Part B — Dựng lại đoạn văn** *(đọc 30 giây, đoạn văn biến mất, viết lại bằng
-lời của mình trong 90 giây)*
+Mỗi tiêu chí dưới đây có mô tả cho **từng mức điểm**, và nói rõ mức đó **có khác
+nhau giữa đề Cấp 1 và Cấp 2 hay không**.
 
-| Khóa | Tên | Đo cái gì |
-|---|---|---|
-| `meaning` | Giữ được ý | Bao nhiêu **ý** của đoạn văn còn lại. Dùng đúng từ gốc không bắt buộc và cũng không được thưởng; **mất hẳn một ý** mới là chỗ mất điểm. |
-| `accuracy` | Ngữ pháp và chính tả | Cấu trúc câu, dạng động từ, mạo từ, chính tả. |
-| `organisation` | Sắp xếp và mạch văn | Các ý có đến theo thứ tự người đọc theo được không. |
+> **Quy tắc quyết định cái nào khác:** tiêu chí hỏi *"cái đó có mặt không"* — có
+> lời chào không, trả lời đủ ý chưa, mấy lỗi chính tả — thì **giống nhau ở cả
+> hai đề**, vì một lời chào vẫn là một lời chào ở mọi trình độ. Tiêu chí hỏi
+> *"tiếng Anh giỏi tới đâu"* — ngữ pháp, từ vựng, bố cục, mức trang trọng — thì
+> **khác nhau**, vì hai đề đo hai đoạn khác nhau của thang.
+>
+> **Và hai đề gặp nhau ở B1+:** mức **10 của đề Cấp 1** và mức **0 của đề Cấp
+> 2** mô tả *cùng một người*. Đó không phải lỗi — đó là cách rõ nhất để thấy hai
+> đề dùng để làm gì. Ai đọc báo cáo đề Cấp 2 thấy "2/10 ngữ pháp" phải hiểu là
+> *"dưới mức đề này đo được"*, **không** phải *"không viết nổi một câu"* — nên
+> `server/bands.js` báo mức đó là **trần**, không phải bậc.
 
 **Part D — Viết email** *(9 phút, tối thiểu 100 từ)* — **theo rubric của chính Pearson**
 
@@ -302,87 +308,56 @@ thang 15 điểm. Rubric đó được đưa vào nguyên vẹn, không diễn g
 **Điểm cuối = tổng có trọng số ÷ 15**, quy về thang 10. `content` nặng gấp rưỡi
 các tiêu chí còn lại vì Pearson cho nó 3/15.
 
-#### Mô tả từng mức
+#### Mô tả từng mức — Part D
 
-**`content` — Nội dung** (3 điểm)
-
-| Điểm | Mô tả |
-|---|---|
-| 10 | Trả lời đầy đủ, chính xác tất cả các ý được yêu cầu trong đề. |
-| 6 | Trả lời được hầu hết các ý. Bỏ sót 1 ý, hoặc 1 ý chưa thật rõ ràng. |
-| 2 | Bỏ sót nhiều ý bắt buộc, hoặc nội dung khiến người đọc hiểu lầm. |
-| **0** | **Lạc đề hoàn toàn → toàn bộ email 0 điểm.** Xem Luật 3b. |
-
-**`conventions` — Quy cách email** (2 điểm)
+**`content` — Nội dung** *(Content, 3 điểm PTE)* · giống nhau ở cả hai đề
 
 | Điểm | Mô tả |
 |---|---|
-| 10 | Đủ cấu trúc một email: lời chào đầu thư, các đoạn nội dung rõ ràng, lời chúc/hẹn gặp ở cuối và ký tên. Mức trang trọng phù hợp với người nhận. |
-| 5 | Thiếu một phần, hoặc mức trang trọng chưa đúng — quá trang trọng với bạn bè, hoặc quá suồng sã với cấp trên. |
-| 0 | Không nhận ra được là một email, hoặc không xác định được viết cho ai. |
+| **10** | Trả lời đầy đủ, chính xác tất cả các ý được yêu cầu trong đề. |
+| **6** | Trả lời được hầu hết các ý. Bỏ sót 1 ý, hoặc 1 ý chưa thật rõ ràng. |
+| **2** | Bỏ sót nhiều ý bắt buộc, hoặc nội dung khiến người đọc hiểu lầm. |
+| **0** | Lạc đề hoàn toàn. Không có gì thuộc yêu cầu của đề. |
 
-**`form` — Hình thức và độ dài** (2 điểm) — **đếm, không phán đoán**
-
-Nền tảng có sẵn số từ, nên tiêu chí này **không** hỏi mô hình. Mô hình được dặn
-rõ là đừng chấm nó, và điểm nó đưa ra cho `form` bị bỏ qua.
-
-| Số từ | Điểm |
-|---|---|
-| 100 – 140 | 10 |
-| 80 | 5 |
-| ≤ 60 | 0 |
-| 160 | 8,3 |
-| ≥ 200 | 5 |
-
-Đường cong liên tục, không bậc thang — không từ nào đáng quá nửa điểm. Viết dài
-bị trừ nhẹ hơn viết ngắn, có chủ ý: người viết 180 từ đã làm bài rồi làm thêm,
-người viết 55 từ thì chưa làm.
-
-> **Mốc độ dài là của VPET, không phải của PTE.** PTE Core yêu cầu 80–120 từ và
-> phạt nặng dưới 50 hoặc trên 140. Hướng dẫn thi chính thức của VPET nói Part D
-> phải **tối thiểu 100 từ** — đây là đề VPET nên lấy 100, và **không** bê mốc của
-> PTE sang. Chấm thí sinh VPET theo yêu cầu của một kỳ thi khác chính là kiểu
-> đánh tráo mà `docs/SCORING.md` sinh ra để ngăn. Cái được giữ lại từ PTE là
-> **hình dạng** của luật: có sàn, có khoảng thoải mái, và có phạt khi vượt xa.
-
-**`organisation` — Sắp xếp và mạch lạc** (2 điểm)
+**`conventions` — Quy cách email** *(E-mail conventions, 2 điểm PTE)* · giống nhau ở cả hai đề
 
 | Điểm | Mô tả |
 |---|---|
-| 10 | Các ý có tính liên kết, chuyển dòng hoặc chuyển đoạn hợp lý. Dùng từ nối (However, In addition, Therefore) một cách tự nhiên. |
-| 5 | Có trình tự cơ bản. Từ nối lặp lại, gượng ép, hoặc thiếu ở một số chỗ. |
-| 0 | Các câu rời rạc, không có gì nối chúng với nhau. |
+| **10** | Đủ cấu trúc một email: lời chào đầu thư, các đoạn nội dung rõ ràng, lời chúc/hẹn gặp ở cuối và ký tên. Mức trang trọng phù hợp với người nhận. |
+| **5** | Thiếu một phần, hoặc mức trang trọng chưa đúng — quá trang trọng với bạn bè, hoặc quá suồng sã với cấp trên. |
+| **0** | Không nhận ra được là một email, hoặc không xác định được viết cho ai. |
 
-**`vocabulary` — Từ vựng** (2 điểm)
+**`organisation` — Sắp xếp và mạch lạc** *(Organisation, 2 điểm PTE)* · **khác nhau theo đề**
+
+| Điểm | Đề Cấp 1 — rubric PTE Core | Đề Cấp 2 — thang theo bậc |
+|---|---|---|
+| **10** | Các ý có tính liên kết, chuyển dòng hoặc chuyển đoạn hợp lý. Dùng từ nối (However, In addition, Therefore) một cách tự nhiên. | Bố cục phục vụ điều đang nói, và người đọc không hề thấy nó đang làm việc. |
+| **5** | Có trình tự cơ bản. Từ nối lặp lại, gượng ép, hoặc thiếu ở một số chỗ. | Hình hài rõ. Mỗi đoạn làm một việc và từ nối dẫn được người đọc đi. |
+| **0** | Các câu rời rạc, không có gì nối chúng với nhau. | Có mở – thân – kết, và không hơn. |
+
+**`vocabulary` — Từ vựng** *(Vocabulary, 2 điểm PTE)* · **khác nhau theo đề**
+
+| Điểm | Đề Cấp 1 — rubric PTE Core | Đề Cấp 2 — thang theo bậc |
+|---|---|---|
+| **10** | Dùng từ vựng chính xác, phù hợp ngữ cảnh của bức thư, và chọn đúng sắc thái trang trọng hay thân mật theo yêu cầu của đề. | Vốn đầy đủ, dùng chính xác, kể cả sắc thái và thành ngữ cố định. Từ được chọn là từ đúng, không phải từ gần đúng nhất. |
+| **5** | Đủ dùng nhưng đơn điệu, hoặc dùng sai từ ở một hai chỗ. | Vốn rõ rệt: có mệnh đề phụ, có từ ít gặp, lựa chọn hợp chủ đề chứ không phải lựa chọn an toàn nhất. |
+| **0** | Nghèo nàn, lặp lại, hoặc sai đủ nhiều để làm mờ nghĩa. | Đủ cho chủ đề quen thuộc và không hơn — lúc nào cũng chọn từ an toàn nhất. |
+
+**`grammar` — Ngữ pháp** *(Grammar, 2 điểm PTE)* · **khác nhau theo đề**
+
+| Điểm | Đề Cấp 1 — rubric PTE Core | Đề Cấp 2 — thang theo bậc |
+|---|---|---|
+| **10** | Cấu trúc, thì và sự hòa hợp chủ vị đúng suốt bài. | Kiểm soát hoàn toàn, kể cả câu dài và câu phức. Sai sót nếu có thì đọc như lỗi gõ phím chứ không phải lỗ hổng. |
+| **5** | Có một vài lỗi nhưng người đọc vẫn theo được. | Kiểm soát tốt. Lỗi xuất hiện ở câu phức và hiếm khi làm hiểu sai. |
+| **0** | Sai nhiều lỗi ngữ pháp cơ bản đến mức bài viết khó hiểu. | Cấu trúc đơn giản thì chắc, ngoài đó thì không. Đây là sàn của những gì đề này đo được, không phải sàn của trình độ. |
+
+**`spelling` — Chính tả** *(Spelling, 2 điểm PTE)* · giống nhau ở cả hai đề
 
 | Điểm | Mô tả |
 |---|---|
-| 10 | Dùng từ vựng chính xác, phù hợp ngữ cảnh của bức thư, và chọn đúng sắc thái trang trọng hay thân mật theo yêu cầu của đề. |
-| 5 | Đủ dùng nhưng đơn điệu, hoặc dùng sai từ ở một hai chỗ. |
-| 0 | Nghèo nàn, lặp lại, hoặc sai đủ nhiều để làm mờ nghĩa. |
-
-**`grammar` — Ngữ pháp** (2 điểm)
-
-| Điểm | Mô tả |
-|---|---|
-| 10 | Cấu trúc, thì và sự hòa hợp chủ vị đúng suốt bài. |
-| 5 | Có một vài lỗi nhưng người đọc vẫn theo được. |
-| 0 | Sai nhiều lỗi ngữ pháp cơ bản đến mức bài viết khó hiểu. |
-
-> Cách chấm của Pearson ưu tiên **độ chính xác hơn độ tham vọng** ở tiêu chí
-> này: một câu đơn hoặc câu ghép viết đúng ăn điểm cao hơn một câu phức viết vỡ.
-> Điều này được nói thẳng với mô hình chấm.
-
-**`spelling` — Chính tả** (2 điểm) — **đếm lỗi, không cảm nhận**
-
-| Điểm | Mô tả |
-|---|---|
-| 10 | 0 – 1 lỗi chính tả. |
-| 5 | Đúng 2 lỗi chính tả. |
-| 0 | Từ 3 lỗi chính tả trở lên. |
-
-Chấp nhận chính tả Mỹ, Anh, Úc, Canada — **nhưng phải dùng nhất quán một lối**;
-trộn lẫn mới là lỗi ở tiêu chí này.
+| **10** | 0 – 1 lỗi chính tả. |
+| **5** | Đúng 2 lỗi chính tả. |
+| **0** | Từ 3 lỗi chính tả trở lên. |
 
 #### Ba thói quen của nền tảng phải nhường chỗ ở Part D
 
@@ -392,15 +367,6 @@ trộn lẫn mới là lỗi ở tiêu chí này.
 | **Luật 3 — cửa độ dài** | **KHÔNG áp dụng** | Độ dài đã là một trong bảy tiêu chí (`form`). Chặn thêm là trừ cùng một thiếu sót hai lần. *Ngoại lệ:* nếu mô hình trả về theo định dạng cũ không có tiêu chí nào, `form` không nằm trong trung bình, và cửa độ dài bật lại. |
 | **Luật 2 — không nộp gì thì 0** | **Vẫn áp dụng** | Không viết gì là không viết gì, ở mọi phần. |
 | **Luật 4 — chép lại đề** | **Vẫn áp dụng** | Dán đề vào ô trả lời thì chưa viết email nào cả. |
-
-#### Luật 3b — lạc đề thì cả bài 0 điểm
-
-Đây là **luật của chính PTE**, và là *cái duy nhất* trong scheme của họ đưa cả
-bài về 0: `content` = 0 → toàn bộ email = 0, dù các tiêu chí khác có tốt đến đâu.
-
-Đáng chú ý là **độ dài không nằm trong đó**. Một email viết về chuyện khác thì
-chưa được viết, dù viết hay; một email ngắn thì đã được viết, chỉ là ngắn. Hai
-chuyện khác nhau và ra hai con số khác nhau.
 
 > **Thay đổi này nới điểm ở một chỗ, cần biết rõ:** trước đây một email 60 từ
 > câu cú tốt bị chặn ở **4,0**. Theo scheme của Pearson, `form` chỉ đáng 2/15
@@ -443,9 +409,144 @@ thuẫn giữa hai lần chạy còn phép so khớp thì không.
 
 ---
 
-## 4. Bốn luật chặn, theo đúng thứ tự chạy
 
-### Luật 1 — Mắt xích yếu nhất *(trần)*
+
+---
+
+### 3.2 Rubric các phần còn lại
+
+### Part B — Dựng lại đoạn văn
+
+*30 giây đọc, đoạn văn biến mất, 90 giây viết lại bằng lời của mình*
+
+**`meaning` — Giữ được ý** *(Meaning kept)* · giống nhau ở cả hai đề
+
+| Điểm | Mô tả |
+|---|---|
+| **10** | Mọi ý của đoạn văn đều quay lại. Không mất ý nào người đọc sẽ thấy thiếu. |
+| **6** | Phần lớn các ý quay lại. Thiếu một ý, hoặc một ý bị nhòe vào ý khác. |
+| **2** | Chỉ còn lại vài mảnh của đoạn văn. |
+| **0** | Không còn gì của đoạn văn. |
+
+**`accuracy` — Ngữ pháp và chính tả** *(Grammar and spelling)* · **khác nhau theo đề**
+
+| Điểm | Đề Cấp 1 (A1 – B1+) | Đề Cấp 2 (B1+ – C2) |
+|---|---|---|
+| **10** | Cấu trúc đơn giản dùng chắc, nghĩa luôn còn nguyên. Chỗ sai là ở câu dài hơn hoặc thì ít gặp. | Kiểm soát hoàn toàn, kể cả câu dài và câu phức. Sai sót nếu có thì đọc như lỗi gõ phím chứ không phải lỗ hổng. |
+| **5** | Có viết được câu đơn, nhưng đuôi từ, mạo từ và số nhiều rơi rụng đủ nhiều để người đọc phải tự vá. | Kiểm soát tốt. Lỗi xuất hiện ở câu phức và hiếm khi làm hiểu sai. |
+| **0** | Từ rời và cụm học thuộc. Phần lớn nỗ lực viết thành câu đều đổ. | Cấu trúc đơn giản thì chắc, ngoài đó thì không. Đây là sàn của những gì đề này đo được, không phải sàn của trình độ. |
+
+**`organisation` — Sắp xếp và mạch văn** *(Order and flow)* · **khác nhau theo đề**
+
+| Điểm | Đề Cấp 1 (A1 – B1+) | Đề Cấp 2 (B1+ – C2) |
+|---|---|---|
+| **10** | Có mở – thân – kết mà người đọc theo được, với từ nối để giúp chứ không để trang trí. | Bố cục phục vụ điều đang nói, và người đọc không hề thấy nó đang làm việc. |
+| **5** | Các ý nối bằng and / then / but. Người đọc phải tự sắp thứ tự. | Hình hài rõ. Mỗi đoạn làm một việc và từ nối dẫn được người đọc đi. |
+| **0** | Không có thứ tự nào người đọc theo được; không gì liên kết với gì. | Có mở – thân – kết, và không hơn. |
+
+### Part G — Nghe hiểu đoạn
+
+*nghe một lần, trả lời miệng bằng một cụm ngắn*
+
+**`correct` — Trả lời đúng** *(Right answer)* · giống nhau ở cả hai đề
+
+| Điểm | Mô tả |
+|---|---|
+| **10** | Đúng. Một cụm ba từ đúng là điểm tối đa, không bị trừ vì ngắn, vì thiếu động từ, hay vì không thành câu. |
+| **5** | Đúng hướng nhưng sai chi tiết — hoặc đúng nhưng mơ hồ tới mức có thể là câu trả lời cho câu hỏi khác. |
+| **0** | Sai, hoặc trả lời một câu hỏi không được hỏi. Trả lời sai một cách tự tin vẫn không có điểm. |
+
+### Part H — Nhắc lại câu
+
+*nghe một câu, nói lại — **so khớp từ, không dùng mô hình***
+
+**`content` — Giữ được bao nhiêu** *(How much came back)* · giống nhau ở cả hai đề
+
+| Điểm | Mô tả |
+|---|---|
+| **10** | Nhắc lại được trọn câu. |
+| **5** | Nhắc lại được khoảng một nửa câu. |
+| **0** | Gần như không nhắc lại được gì. |
+
+**`structure` — Giữ được cấu trúc** *(Structure kept)* · giống nhau ở cả hai đề
+
+| Điểm | Mô tả |
+|---|---|
+| **10** | Trật tự từ và ngữ pháp còn nguyên. |
+| **5** | Từ thì phần lớn còn nhưng trật tự đã xê dịch. |
+| **0** | Không còn cấu trúc nào — các từ không theo trật tự nào khôi phục được. |
+
+### Part I — Tình huống nói
+
+*10 giây nghĩ, tối đa 60 giây nói*
+
+**`task` — Xử lý được tình huống** *(Dealing with the situation)* · giống nhau ở cả hai đề
+
+| Điểm | Mô tả |
+|---|---|
+| **10** | Mọi việc tình huống đòi hỏi đều thực sự xảy ra — có xin lỗi, có nêu lý do, có đề xuất phương án. |
+| **6** | Phần lớn có xảy ra. Thiếu một việc, hoặc chỉ ngụ ý chứ không nói ra. |
+| **2** | Gần như chưa xử lý tình huống — được một câu đúng hướng và không hơn. |
+| **0** | Bài này hoàn toàn không đáp lại tình huống. |
+
+**`range` — Vốn ngôn ngữ** *(Range of language)* · **khác nhau theo đề**
+
+| Điểm | Đề Cấp 1 (A1 – B1+) | Đề Cấp 2 (B1+ – C2) |
+|---|---|---|
+| **10** | Đủ từ vựng cho chủ đề quen thuộc, biết đường vòng khi thiếu từ. Câu đơn và câu ghép, dùng đúng. | Vốn đầy đủ, dùng chính xác, kể cả sắc thái và thành ngữ cố định. Từ được chọn là từ đúng, không phải từ gần đúng nhất. |
+| **5** | Từ đời thường và những cách nối đơn giản nhất — and, but, because. | Vốn rõ rệt: có mệnh đề phụ, có từ ít gặp, lựa chọn hợp chủ đề chứ không phải lựa chọn an toàn nhất. |
+| **0** | Vài từ và cụm học thuộc; không dựng được gì từ chúng. | Đủ cho chủ đề quen thuộc và không hơn — lúc nào cũng chọn từ an toàn nhất. |
+
+**`accuracy` — Độ chính xác** *(Accuracy)* · **khác nhau theo đề**
+
+| Điểm | Đề Cấp 1 (A1 – B1+) | Đề Cấp 2 (B1+ – C2) |
+|---|---|---|
+| **10** | Cấu trúc đơn giản dùng chắc, nghĩa luôn còn nguyên. Chỗ sai là ở câu dài hơn hoặc thì ít gặp. | Kiểm soát hoàn toàn, kể cả câu dài và câu phức. Sai sót nếu có thì đọc như lỗi gõ phím chứ không phải lỗ hổng. |
+| **5** | Có viết được câu đơn, nhưng đuôi từ, mạo từ và số nhiều rơi rụng đủ nhiều để người đọc phải tự vá. | Kiểm soát tốt. Lỗi xuất hiện ở câu phức và hiếm khi làm hiểu sai. |
+| **0** | Từ rời và cụm học thuộc. Phần lớn nỗ lực viết thành câu đều đổ. | Cấu trúc đơn giản thì chắc, ngoài đó thì không. Đây là sàn của những gì đề này đo được, không phải sàn của trình độ. |
+
+**`register` — Mức trang trọng** *(Register)* · **khác nhau theo đề**
+
+| Điểm | Đề Cấp 1 (A1 – B1+) | Đề Cấp 2 (B1+ – C2) |
+|---|---|---|
+| **10** | Phân biệt được trang trọng và thân mật, chọn đúng cho người nhận và giữ được gần hết bài. | Mức trang trọng được kiểm soát và giữ suốt bài, kể cả cách nói lịch sự và nói giảm; chuyển giọng trong bài là có chủ ý. |
+| **5** | Một giọng duy nhất cho cả bài, nói với ai cũng vậy. | Nhất quán và hợp người nhận; thi thoảng có câu đặt hơi lạc. |
+| **0** | Không kiểm soát được mức trang trọng — biết cụm nào dùng cụm đó. | Chọn đúng mức trang trọng nhưng không giữ được khi bí. |
+
+### Part J — Kể lại chuyện
+
+*nghe một lần, 30 giây kể lại*
+
+**`events` — Giữ được sự việc** *(Events kept)* · giống nhau ở cả hai đề
+
+| Điểm | Mô tả |
+|---|---|
+| **10** | Mọi sự việc trong câu chuyện đều được kể lại. |
+| **6** | Phần lớn sự việc được kể lại; mất một hai việc. |
+| **2** | Chỉ còn vài mảnh của câu chuyện, không hơn. |
+| **0** | Không còn gì của câu chuyện. |
+
+**`sequence` — Trình tự** *(Order of events)* · giống nhau ở cả hai đề
+
+| Điểm | Mô tả |
+|---|---|
+| **10** | Các sự việc đến đúng theo trình tự đã xảy ra. |
+| **5** | Phần lớn đúng trình tự, có một sự việc bị đặt sai chỗ. |
+| **0** | Không có trình tự nào để người nghe dựng lại câu chuyện. |
+
+**`point` — Ý chính** *(The point of it)* · giống nhau ở cả hai đề
+
+| Điểm | Mô tả |
+|---|---|
+| **10** | Ý của câu chuyện toát ra được, không chỉ là các mảnh rời của nó. |
+| **5** | Các mảnh thì có, nhưng người nghe phải tự rút ra ý. |
+| **0** | Ý chính hoàn toàn không toát ra được. |
+
+---
+
+## 4. Năm luật chặn, theo đúng thứ tự chạy
+
+### Luật 1 — Mắt xích yếu nhất *(trần)* — **không áp cho Part D**
 
 ```
 nếu điểm_thô > min(các tiêu chí) + 0,5
@@ -472,26 +573,44 @@ chỗ đáng lẽ phải là một cái sàn.
 Áp cho **mọi phần**, kể cả phần không có yêu cầu số từ: không viết gì là không
 viết gì.
 
-### Luật 3 — Cửa độ dài *(trần)* — chỉ Part D
+### Luật 3 — Cửa độ dài *(trần)* — **không còn áp cho Part D**
 
-Part D yêu cầu **tối thiểu 100 từ** (con số này của hướng dẫn thi chính thức).
-Part B **không có** ngưỡng công bố nào — đoạn văn mỗi bài một khác — nên ở đây
-cũng không đặt ra một con số do ai đó đoán.
+Trên Part D, độ dài nay là **một trong bảy tiêu chí** (`form`, do nền tảng đếm),
+nên cửa này **không** chạy nữa ở đó — chặn thêm là trừ cùng một thiếu sót hai
+lần. Xem §3.1.
+
+Cửa vẫn còn nguyên và vẫn chạy cho **bất kỳ phần nào khai báo ngưỡng số từ mà
+không tính độ dài thành tiêu chí riêng**. Part B **không có** ngưỡng công bố nào
+— đoạn văn mỗi bài một khác — nên không đặt ra một con số do ai đó đoán.
 
 ```
-n = số từ.  floor = 100
-n >= 100        →  không chặn
-60 <= n < 100   →  trần = 4 + 6 × (n − 60) / 40
-n < 60          →  trần = 4
+n = số từ.  floor = ngưỡng của phần đó
+n >= floor              →  không chặn
+0,6·floor <= n < floor  →  trần = 4 + 6 × (n − 0,6·floor) / (0,4·floor)
+n < 0,6·floor           →  trần = 4
 ```
 
 **Trước đây đây là một bậc thang và có một lỗ 40 từ**: cửa chỉ sập dưới 60 từ và
 không có gì áp từ 60 đến 99, nên đo được một email 60 từ câu cú tốt ra **9/10**
-trên yêu cầu 100 từ. Nay trần chạy liên tục từ 4,0 ở 60 từ lên không-trần ở 100,
+trên yêu cầu 100 từ. Nay trần chạy liên tục từ 4,0 ở 60% lên không-trần ở ngưỡng,
 nên không có từ nào đáng quá nửa điểm.
 
-Độ dài là **cửa, không phải tiêu chí**: nó đo được, nên áp cả khi chưa có ai
-chấm, và mô hình chấm được dặn **không trừ thêm lần nữa** vì nó đã bị trừ ở đây.
+**Một ngoại lệ có chủ ý:** nếu mô hình trả lời theo định dạng cũ *không có tiêu
+chí nào*, thì `form` không nằm trong trung bình, và cửa này **bật lại** cho câu
+đó. Thiếu nó thì một email 20 từ có điểm tổng 8 của mô hình sẽ ra **0** — chấm
+hoàn toàn theo số từ và vứt bỏ đánh giá của mô hình.
+
+Độ dài là **cửa, không phải tiêu chí** (ở những phần còn dùng cửa): nó đo được,
+nên áp cả khi chưa có ai chấm, và mô hình chấm được dặn **không trừ thêm lần
+nữa** vì nó đã bị trừ ở đây.
+
+### Luật 3b — Lạc đề thì cả bài 0 điểm *(sàn — dừng tại đây)* — chỉ Part D
+
+**Luật của chính Pearson**, và là cái *duy nhất* trong scheme của họ đưa cả bài
+về 0: `content` = 0 → toàn bộ email = 0, dù các tiêu chí khác tốt đến đâu.
+
+Đáng chú ý là **độ dài không nằm trong đó**. Email viết về chuyện khác thì chưa
+được viết, dù viết hay; email ngắn thì đã được viết, chỉ là ngắn.
 
 ### Luật 4 — Chép lại đề *(trần)* — Part B và Part D
 

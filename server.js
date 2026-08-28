@@ -517,6 +517,20 @@ function startBackgroundJobs() {
       console.log(`[db] ${dbInfo.engine}: ${dbInfo.tables} tables, ${dbInfo.idTables} with an id column`);
     }
 
+    /* The rubric, checked before anything can be marked against it.
+       A criterion with no bands does not throw and does not look wrong
+       downstream — it produces a plausible number on a real candidate's paper
+       with nothing behind it. Loud on the console rather than silent, and NOT
+       fatal: a paper half-marked is better than a server that will not start,
+       and an administrator who sees this can fix it before the next sitting. */
+    const rubricProblems = require('./server/rubric').validate();
+    if (rubricProblems.length) {
+      console.warn('[rubric] ' + rubricProblems.length + ' problem(s) — marking will be '
+        + 'unreliable until these are fixed:');
+      for (const line of rubricProblems.slice(0, 12)) console.warn('  · ' + line);
+      if (rubricProblems.length > 12) console.warn('  · … and ' + (rubricProblems.length - 12) + ' more');
+    }
+
     /* The bank's own recordings, into whatever store this install uses. After
        secrets, because S3 and GCS need their credentials; before listen(), because
        an audio item served without its audio is a question nobody was asked.
