@@ -307,7 +307,7 @@ async function markRow(attemptId, row, tries, userId) {
     const w = await words(row, tries || 0, { userId, attemptId });
     if (w.blank) {
       /* A real zero: the item was sat and nothing usable came back. */
-      await q.run('UPDATE attempt_answers SET earned=0, max_score=1, mark_note=?, marked_at=? WHERE id=?',
+      await q.run('UPDATE attempt_answers SET earned=0, max_score=1, mark_note=?, mark_caps=NULL, marked_at=? WHERE id=?',
         w.blank, nowISO(), rowId);
       return 'marked';
     }
@@ -329,7 +329,7 @@ async function markRow(attemptId, row, tries, userId) {
        whose bank item carries a script have one. */
     source = await scriptFor(row.ext_key);
   } else if (!String(row.answer || '').trim()) {
-    await q.run('UPDATE attempt_answers SET earned=0, max_score=1, mark_note=?, marked_at=? WHERE id=?',
+    await q.run('UPDATE attempt_answers SET earned=0, max_score=1, mark_note=?, mark_caps=NULL, marked_at=? WHERE id=?',
       'Left blank', nowISO(), rowId);
     return 'marked';
   }
@@ -444,8 +444,14 @@ async function markRow(attemptId, row, tries, userId) {
     ? verdict.note + ' (Marked from a transcript of your answer: the words and the grammar, '
       + 'not pronunciation or fluency.)'
     : verdict.note;
-  /* A cap that fires silently is a mark the candidate cannot account for. */
+  /* A cap that fires silently is a mark the candidate cannot account for.
+     The note keeps the English sentence — it is one string, and the marker's
+     own feedback in it is English too — and the pair goes to `mark_caps` beside
+     it so the result screen can show whichever language the reader is in. */
   for (const c of graded.caps) note += ' ' + c.en;
+  const capsJson = graded.caps.length
+    ? JSON.stringify(graded.caps.map(c => ({ rule: c.rule, en: c.en, vi: c.vi })))
+    : null;
 
   /* The working, kept. Replaced rather than appended, because marking is
      re-runnable and a second pass must correct the record, not grow it. */
@@ -465,8 +471,8 @@ async function markRow(attemptId, row, tries, userId) {
      worth being deliberate about: the alternative is a second weighting scheme
      living beside markItem's, and VPET publishes no per-item weights to copy. */
   await q.run(
-    'UPDATE attempt_answers SET earned=?, max_score=1, mark_note=?, marked_at=? WHERE id=?',
-    graded.score / 10, note, nowISO(), rowId);
+    'UPDATE attempt_answers SET earned=?, max_score=1, mark_note=?, mark_caps=?, marked_at=? WHERE id=?',
+    graded.score / 10, note, capsJson, nowISO(), rowId);
   return 'marked';
 }
 

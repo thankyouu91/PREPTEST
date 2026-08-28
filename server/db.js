@@ -918,6 +918,18 @@ addColumnIfMissing('attempt_answers', 'earned', 'REAL');
 addColumnIfMissing('attempt_answers', 'max_score', 'REAL');
 addColumnIfMissing('attempt_answers', 'mark_note', 'TEXT');
 addColumnIfMissing('attempt_answers', 'marked_at', 'TEXT');
+/* The caps that fired on this item, as JSON, so the result screen can show each
+   one in the reader's own language.
+
+   They were already being explained — server/ai-marking-run.js appends each
+   cap's sentence to mark_note — but only ever the English one, on a platform
+   whose candidates are Vietnamese. Every cap in server/rubric.js has carried a
+   `vi` since it was written and not one of them had ever reached a screen. That
+   is worst for the newest cap, which tells somebody their answer was copied:
+   an accusation nobody can read is punishment without the part that teaches.
+   Nullable, and the note keeps its English sentences, so a mark made before
+   this column existed still explains itself. */
+addColumnIfMissing('attempt_answers', 'mark_caps', 'TEXT');
 
 /* An order used to be a record of something that had already happened — the
    admin issued a code, the row said 'paid'. With a gateway in front of it an

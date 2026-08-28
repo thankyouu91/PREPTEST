@@ -163,18 +163,36 @@ function need(bin) {
 const sha = s => createHash('sha256').update(s, 'utf8').digest('hex').slice(0, 16);
 
 /**
- * What this file will sound like, as one string.
+ * Which voice, at which settings, will read this part — as one readable string.
  *
- * The hash covers the engine and the delivery note as well as the words, and
- * that is the point rather than tidiness: with only the words in it, switching
- * away from espeak would have found every hash unchanged and skipped all 170
- * files, leaving the robot voices in place and reporting success.
+ * Two fields decide whether a file is re-recorded, not one, and they are kept
+ * apart because two different questions are being asked of it:
+ *
+ *   `hash`  — do these bytes match the WORDS they are supposed to say? That is
+ *             scripts/test-items.mjs's question, and it asks it about an item
+ *             bank while knowing nothing about voices. One combined fingerprint
+ *             made that check impossible to write without a second copy of
+ *             everything below, and a second copy is the thing that goes stale.
+ *             It duly did: `hash` stopped being a hash of the words, the check
+ *             kept computing one, and all 146 recordings were reported out of
+ *             date on a set that had just been made.
+ *   `voice` — and do they match the voice we would use today? Kept as the
+ *             configuration itself rather than a hash of it, so manifest.json
+ *             now says "piper en_US-amy-medium x1.18" where it carried sixteen
+ *             hex characters nobody could act on.
+ *
+ * The engine belongs in the second one, and its absence was a real fault: this
+ * had no `piper` branch at all and fell through to the espeak string, so every
+ * Piper recording was fingerprinted as though espeak had made it. A re-run
+ * under espeak would have found all 146 unchanged, skipped them, left the
+ * neural voices in place and reported success — the exact failure a fingerprint
+ * exists to prevent, in the exact place meant to prevent it.
  */
-const voiceprint = it => {
+const voiceOf = it => {
   const cfg = VOICE[it.part] || VOICE.F;
-  return PROVIDER === 'openai'
-    ? ['openai', OPENAI_MODEL, cfg.openai.voice, cfg.openai.say, it.say].join('\u0000')
-    : ['espeak', cfg.espeak.voice, cfg.espeak.speed, cfg.espeak.gap, it.say].join('\u0000');
+  if (PROVIDER === 'openai') return ['openai', OPENAI_MODEL, cfg.openai.voice, cfg.openai.say].join(' ');
+  if (PROVIDER === 'piper') return ['piper', cfg.piper.model, 'x' + cfg.piper.length].join(' ');
+  return ['espeak', cfg.espeak.voice, 's' + cfg.espeak.speed, 'g' + cfg.espeak.gap].join(' ');
 };
 
 function renderEspeak(say, cfg, dest) {
@@ -397,10 +415,14 @@ for (const f of fs.existsSync(OUT_DIR) ? fs.readdirSync(OUT_DIR) : []) {
 
 for (const it of items) {
   const file = path.join(OUT_DIR, it.key + '.mp3');
-  const hash = sha(voiceprint(it));
+  const hash = sha(it.say);
+  const voice = voiceOf(it);
   const known = manifest[it.key];
 
-  if (!force && known && known.hash === hash && fs.existsSync(file)) {
+  /* Both have to match. The words alone would leave an engine change invisible;
+     the voice alone would leave an edited sentence being read by the right
+     voice saying the wrong thing. */
+  if (!force && known && known.hash === hash && known.voice === voice && fs.existsSync(file)) {
     next[it.key] = known;
     skipped++;
     continue;
@@ -435,7 +457,7 @@ for (const it of items) {
      it back is how anybody can tell which is which without listening to 170
      files. */
   next[it.key] = {
-    hash, bytes, part: it.part, words,
+    hash, voice, bytes, part: it.part, words,
     seconds: sound.seconds,
     engine: PROVIDER === 'openai' ? OPENAI_MODEL + '/' + (VOICE[it.part] || VOICE.F).openai.voice
       : PROVIDER === 'piper' ? 'piper/' + (VOICE[it.part] || VOICE.F).piper.model

@@ -1,6 +1,7 @@
 {
   "vpet-e-01": {
-    "hash": "1da9975729ebe878",
+    "hash": "53804517f64d29da",
+    "voice": "piper en_US-amy-medium x1.18",
     "bytes": 27584,
     "part": "E",
     "words": 8,
@@ -8,7 +9,8 @@
     "engine": "piper/en_US-amy-medium"
   },
   "vpet-e-02": {
-    "hash": "16c1e35960240403",
+    "hash": "36d4e2f7f513c0da",
+    "voice": "piper en_US-amy-medium x1.18",
     "bytes": 30928,
     "part": "E",
     "words": 11,
@@ -16,7 +18,8 @@
     "engine": "piper/en_US-amy-medium"
   },
   "vpet-e-03": {
-    "hash": "4f5bf0a8419141c4",
+    "hash": "a49ed1b65bc3ba91",
+    "voice": "piper en_US-amy-medium x1.18",
     "bytes": 30301,
     "part": "E",
     "words": 9,
@@ -24,7 +27,8 @@
     "engine": "piper/en_US-amy-medium"
   },
   "vpet-e-04": {
-    "hash": "5df10da017442761",
+    "hash": "60999fb455134a4a",
+    "voice": "piper en_US-amy-medium x1.18",
     "bytes": 28002,
     "part": "E",
     "words": 9,
@@ -32,7 +36,8 @@
     "engine": "piper/en_US-amy-medium"
   },
   "vpet-e-05": {
-    "hash": "3a82304738737bab",
+    "hash": "01a626e579b646a7",
+    "voice": "piper en_US-amy-medium x1.18",
     "bytes": 30510,
     "part": "E",
     "words": 9,
@@ -40,7 +45,8 @@
     "engine": "piper/en_US-amy-medium"
   },
   "vpet-e-06": {
-    "hash": "e2a79da04399e402",
+    "hash": "61eaf12ade373648",
+    "voice": "piper en_US-amy-medium x1.18",
     "bytes": 33644,
     "part": "E",
     "words": 11,
@@ -48,7 +54,8 @@
     "engine": "piper/en_US-amy-medium"
   },
   "vpet-e-07": {
-    "hash": "29d1ce54c94a0f2e",
+    "hash": "7e20b22138933e2e",
+    "voice": "piper en_US-amy-medium x1.18",
     "bytes": 33853,
     "part": "E",
     "words": 10,
@@ -56,7 +63,8 @@
     "engine": "piper/en_US-amy-medium"
   },
   "vpet-e-08": {
-    "hash": "564fe6d676893784",
+    "hash": "35e59283e748858e",
+    "voice": "piper en_US-amy-medium x1.18",
     "bytes": 32599,
     "part": "E",
     "words": 8,
@@ -64,7 +72,8 @@
     "engine": "piper/en_US-amy-medium"
   },
   "vpet-e-09": {
-    "hash": "cda350ce7c345d86",
+    "hash": "18a0c0fb9642aa48",
+    "voice": "piper en_US-amy-medium x1.18",
     "bytes": 31136,
     "part": "E",
     "words": 10,
@@ -72,7 +81,8 @@
     "engine": "piper/en_US-amy-medium"
   },
   "vpet-e-10": {
-    "hash": "22c858a77b798fd3",
+    "hash": "7d10e4a6eaf7443a",
+    "voice": "piper en_US-amy-medium x1.18",
     "bytes": 38451,
     "part": "E",
     "words": 9,
@@ -80,7 +90,8 @@
     "engine": "piper/en_US-amy-medium"
   },
   "vpet-e-11": {
-    "hash": "b63970bf2a2376d8",
+    "hash": "ab052356df6f7000",
+    "voice": "piper en_US-amy-medium x1.18",
     "bytes": 37824,
     "part": "E",
     "words": 11,
@@ -88,7 +99,8 @@
     "engine": "piper/en_US-amy-medium"
   },
   "vpet-e-12": {
-    "hash": "9fbfbef31672d7db",
+    "hash": "2ae5863b87ca189d",
+    "voice": "piper en_US-amy-medium x1.18",
     "bytes": 52243,
     "part": "E",
     "words": 14,
@@ -96,7 +108,8 @@
     "engine": "piper/en_US-amy-medium"
   },
   "vpet-e-13": {
-    "hash": "a5abdc36c01ccf4d",
+    "hash": "6bcaa04b2fe5897c",
+    "voice": "piper en_US-amy-medium x1.18",
     "bytes": 51199,
     "part": "E",
     "words": 12,
@@ -104,7 +117,8 @@
     "engine": "piper/en_US-amy-medium"
   },
   "vpet-e-14": {
-    "hash": "b5f464ddd662ee86",
+    "hash": "ed2efd80b85782c0",
+    "voice": "piper en_US-amy-medium x1.18",
     "bytes": 43257,
     "part": "E",
     "words": 14,
@@ -112,7 +126,8 @@
     "engine": "piper/en_US-amy-medium"
   },
   "vpet-e-15": {
-    "hash": "40a1533ee22a6c5a",
+    "hash": "dea072c810996fd3",
+    "voice": "piper en_US-amy-medium x1.18",
     "bytes": 48273,
     "part": "E",
     "words": 13,
@@ -120,7 +135,8 @@
     "engine": "piper/en_US-amy-medium"
   },
   "vpet-e-16": {
-    "hash": "0e7615f5c9157012",
+    "hash": "d5232cef9243745d",
+    "voice": "piper en_US-amy-medium x1.18",
     "bytes": 42839,
     "part": "E",
     "words": 12,
@@ -128,7 +144,8 @@
     "engine": "piper/en_US-amy-medium"
   },
   "vpet-e-17": {
-    "hash": "ef9a351452050035",
+    "hash": "6ecd8a548be6562f",
+    "voice": "piper en_US-amy-medium x1.18",
     "bytes": 41585,
     "part": "E",
     "words": 9,
@@ -136,7 +153,8 @@
     "engine": "piper/en_US-amy-medium"
   },
   "vpet-e-18": {
-    "hash": "165e868cbbde0cf5",
+    "hash": "7cb2cc91fc1c18d1",
+    "voice": "piper en_US-amy-medium x1.18",
     "bytes": 46392,
     "part": "E",
     "words": 11,
@@ -144,7 +162,8 @@
     "engine": "piper/en_US-amy-medium"
   },
   "vpet-e-19": {
-    "hash": "51cc712c03f9d447",
+    "hash": "920161409f75db28",
+    "voice": "piper en_US-amy-medium x1.18",
     "bytes": 46392,
     "part": "E",
     "words": 13,
@@ -152,7 +171,8 @@
     "engine": "piper/en_US-amy-medium"
   },
   "vpet-e-20": {
-    "hash": "f80ef578eb9dea84",
+    "hash": "634a116bd1e0dc34",
+    "voice": "piper en_US-amy-medium x1.18",
     "bytes": 45765,
     "part": "E",
     "words": 11,
@@ -160,7 +180,8 @@
     "engine": "piper/en_US-amy-medium"
   },
   "vpet-e-21": {
-    "hash": "b25e365526e25834",
+    "hash": "a5d9d707a407d096",
+    "voice": "piper en_US-amy-medium x1.18",
     "bytes": 43884,
     "part": "E",
     "words": 13,
@@ -168,7 +189,8 @@
     "engine": "piper/en_US-amy-medium"
   },
   "vpet-e-22": {
-    "hash": "c5bdb54aa9e44468",
+    "hash": "0e37818179fbc3ba",
+    "voice": "piper en_US-amy-medium x1.18",
     "bytes": 46183,
     "part": "E",
     "words": 11,
@@ -176,7 +198,8 @@
     "engine": "piper/en_US-amy-medium"
   },
   "vpet-e-23": {
-    "hash": "2225019fc69d36c9",
+    "hash": "b93884e7cb94a141",
+    "voice": "piper en_US-amy-medium x1.18",
     "bytes": 40750,
     "part": "E",
     "words": 9,
@@ -184,7 +207,8 @@
     "engine": "piper/en_US-amy-medium"
   },
   "vpet-e-24": {
-    "hash": "433ce8dbdcfbe9b5",
+    "hash": "d477aa02911a8d6a",
+    "voice": "piper en_US-amy-medium x1.18",
     "bytes": 38451,
     "part": "E",
     "words": 10,
@@ -192,7 +216,8 @@
     "engine": "piper/en_US-amy-medium"
   },
   "vpet-e-25": {
-    "hash": "1187379f7e783d37",
+    "hash": "82fc13923d439461",
+    "voice": "piper en_US-amy-medium x1.18",
     "bytes": 41585,
     "part": "E",
     "words": 12,
@@ -200,7 +225,8 @@
     "engine": "piper/en_US-amy-medium"
   },
   "vpet-e-26": {
-    "hash": "de05898002281592",
+    "hash": "dc1156eebf2446b6",
+    "voice": "piper en_US-amy-medium x1.18",
     "bytes": 43675,
     "part": "E",
     "words": 12,
@@ -208,7 +234,8 @@
     "engine": "piper/en_US-amy-medium"
   },
   "vpet-e-27": {
-    "hash": "c32044f25ea6e52b",
+    "hash": "2604ba5a264062d7",
+    "voice": "piper en_US-amy-medium x1.18",
     "bytes": 37406,
     "part": "E",
     "words": 10,
@@ -216,7 +243,8 @@
     "engine": "piper/en_US-amy-medium"
   },
   "vpet-e-28": {
-    "hash": "8efb0db4af523cba",
+    "hash": "027d5338b35bf5b8",
+    "voice": "piper en_US-amy-medium x1.18",
     "bytes": 27375,
     "part": "E",
     "words": 10,
@@ -224,7 +252,8 @@
     "engine": "piper/en_US-amy-medium"
   },
   "vpet-e-29": {
-    "hash": "d20a3dbcb3735ebd",
+    "hash": "0f1f1bae72937774",
+    "voice": "piper en_US-amy-medium x1.18",
     "bytes": 30092,
     "part": "E",
     "words": 10,
@@ -232,7 +261,8 @@
     "engine": "piper/en_US-amy-medium"
   },
   "vpet-e-30": {
-    "hash": "e5491a6a193a20b7",
+    "hash": "eea7974e7f16d54a",
+    "voice": "piper en_US-amy-medium x1.18",
     "bytes": 30092,
     "part": "E",
     "words": 10,
@@ -240,7 +270,8 @@
     "engine": "piper/en_US-amy-medium"
   },
   "vpet-e-31": {
-    "hash": "0b1ed664ad8cbce5",
+    "hash": "7c3756a740b46b46",
+    "voice": "piper en_US-amy-medium x1.18",
     "bytes": 31763,
     "part": "E",
     "words": 10,
@@ -248,7 +279,8 @@
     "engine": "piper/en_US-amy-medium"
   },
   "vpet-e-32": {
-    "hash": "b982c35e670b0fb0",
+    "hash": "8c9de6c5c9561dc9",
+    "voice": "piper en_US-amy-medium x1.18",
     "bytes": 28002,
     "part": "E",
     "words": 9,
@@ -256,7 +288,8 @@
     "engine": "piper/en_US-amy-medium"
   },
   "vpet-e-33": {
-    "hash": "8c8af73cbd21dea1",
+    "hash": "3f5f31441a490836",
+    "voice": "piper en_US-amy-medium x1.18",
     "bytes": 31136,
     "part": "E",
     "words": 11,
@@ -264,7 +297,8 @@
     "engine": "piper/en_US-amy-medium"
   },
   "vpet-e-34": {
-    "hash": "77eadb20fa2b2fcb",
+    "hash": "b402771fbdd4827d",
+    "voice": "piper en_US-amy-medium x1.18",
     "bytes": 34898,
     "part": "E",
     "words": 10,
@@ -272,7 +306,8 @@
     "engine": "piper/en_US-amy-medium"
   },
   "vpet-e-35": {
-    "hash": "a02ddcd16eff40e8",
+    "hash": "7f6e78310e90aa32",
+    "voice": "piper en_US-amy-medium x1.18",
     "bytes": 34271,
     "part": "E",
     "words": 10,
@@ -280,7 +315,8 @@
     "engine": "piper/en_US-amy-medium"
   },
   "vpet-e-36": {
-    "hash": "8af379e69e688460",
+    "hash": "4299106e28a87fcf",
+    "voice": "piper en_US-amy-medium x1.18",
     "bytes": 30510,
     "part": "E",
     "words": 8,
@@ -288,7 +324,8 @@
     "engine": "piper/en_US-amy-medium"
   },
   "vpet-e-37": {
-    "hash": "95655c75c646544a",
+    "hash": "808214744f7ec68a",
+    "voice": "piper en_US-amy-medium x1.18",
     "bytes": 30928,
     "part": "E",
     "words": 10,
@@ -296,7 +333,8 @@
     "engine": "piper/en_US-amy-medium"
   },
   "vpet-f-01": {
-    "hash": "f416eef6b11ecd3d",
+    "hash": "121806313447fbe7",
+    "voice": "piper en_US-ryan-high x1",
     "bytes": 14209,
     "part": "F",
     "words": 10,
@@ -304,7 +342,8 @@
     "engine": "piper/en_US-ryan-high"
   },
   "vpet-f-02": {
-    "hash": "f0da2242913e4a12",
+    "hash": "3463bea9e00de3de",
+    "voice": "piper en_US-ryan-high x1",
     "bytes": 14627,
     "part": "F",
     "words": 7,
@@ -312,7 +351,8 @@
     "engine": "piper/en_US-ryan-high"
   },
   "vpet-f-03": {
-    "hash": "89a4c59d25781c87",
+    "hash": "d155f19004dfeb84",
+    "voice": "piper en_US-ryan-high x1",
     "bytes": 10448,
     "part": "F",
     "words": 5,
@@ -320,7 +360,8 @@
     "engine": "piper/en_US-ryan-high"
   },
   "vpet-f-04": {
-    "hash": "7e44321cd42ed6b0",
+    "hash": "9766f96e5fc96799",
+    "voice": "piper en_US-ryan-high x1",
     "bytes": 13582,
     "part": "F",
     "words": 8,
@@ -328,7 +369,8 @@
     "engine": "piper/en_US-ryan-high"
   },
   "vpet-f-05": {
-    "hash": "047e95c15fc06636",
+    "hash": "1cfebd6d285e6616",
+    "voice": "piper en_US-ryan-high x1",
     "bytes": 19434,
     "part": "F",
     "words": 10,
@@ -336,7 +378,8 @@
     "engine": "piper/en_US-ryan-high"
   },
   "vpet-f-06": {
-    "hash": "f8056af0607c957e",
+    "hash": "91df0b3755398b9f",
+    "voice": "piper en_US-ryan-high x1",
     "bytes": 16717,
     "part": "F",
     "words": 11,
@@ -344,7 +387,8 @@
     "engine": "piper/en_US-ryan-high"
   },
   "vpet-f-07": {
-    "hash": "3753fb7f172157c4",
+    "hash": "95dd539e8daf18e2",
+    "voice": "piper en_US-ryan-high x1",
     "bytes": 24031,
     "part": "F",
     "words": 12,
@@ -352,7 +396,8 @@
     "engine": "piper/en_US-ryan-high"
   },
   "vpet-f-08": {
-    "hash": "4961eadd943923a7",
+    "hash": "7b226747190a11da",
+    "voice": "piper en_US-ryan-high x1",
     "bytes": 16508,
     "part": "F",
     "words": 11,
@@ -360,7 +405,8 @@
     "engine": "piper/en_US-ryan-high"
   },
   "vpet-f-09": {
-    "hash": "ae506c5a388674e8",
+    "hash": "b4d5fd35e3153f21",
+    "voice": "piper en_US-ryan-high x1",
     "bytes": 16926,
     "part": "F",
     "words": 12,
@@ -368,7 +414,8 @@
     "engine": "piper/en_US-ryan-high"
   },
   "vpet-f-10": {
-    "hash": "f3c68d6bdb5dfc44",
+    "hash": "ebc2b18844ab4caf",
+    "voice": "piper en_US-ryan-high x1",
     "bytes": 14836,
     "part": "F",
     "words": 9,
@@ -376,7 +423,8 @@
     "engine": "piper/en_US-ryan-high"
   },
   "vpet-f-11": {
-    "hash": "e2ea971e69552c89",
+    "hash": "1f050145ce4081f5",
+    "voice": "piper en_US-ryan-high x1",
     "bytes": 19434,
     "part": "F",
     "words": 11,
@@ -384,7 +432,8 @@
     "engine": "piper/en_US-ryan-high"
   },
   "vpet-f-12": {
-    "hash": "644ca9cf892a217d",
+    "hash": "37004a8b78f1f9fc",
+    "voice": "piper en_US-ryan-high x1",
     "bytes": 16717,
     "part": "F",
     "words": 10,
@@ -392,7 +441,8 @@
     "engine": "piper/en_US-ryan-high"
   },
   "vpet-f-13": {
-    "hash": "56ebda36e6155aa4",
+    "hash": "0511a2648f01e236",
+    "voice": "piper en_US-ryan-high x1",
     "bytes": 17553,
     "part": "F",
     "words": 10,
@@ -400,7 +450,8 @@
     "engine": "piper/en_US-ryan-high"
   },
   "vpet-f-14": {
-    "hash": "464896c2aa20d459",
+    "hash": "15f86b0d596d07b3",
+    "voice": "piper en_US-ryan-high x1",
     "bytes": 11492,
     "part": "F",
     "words": 7,
@@ -408,7 +459,8 @@
     "engine": "piper/en_US-ryan-high"
   },
   "vpet-f-15": {
-    "hash": "0321d6bc88bac27b",
+    "hash": "e0b29147f2bcbac2",
+    "voice": "piper en_US-ryan-high x1",
     "bytes": 19016,
     "part": "F",
     "words": 9,
@@ -416,7 +468,8 @@
     "engine": "piper/en_US-ryan-high"
   },
   "vpet-f-16": {
-    "hash": "35332d6eaf759bf9",
+    "hash": "dac79438a6c854da",
+    "voice": "piper en_US-ryan-high x1",
     "bytes": 15672,
     "part": "F",
     "words": 9,
@@ -424,7 +477,8 @@
     "engine": "piper/en_US-ryan-high"
   },
   "vpet-f-17": {
-    "hash": "eb1a3d4a3a4bd9a1",
+    "hash": "1c3312ec63749bef",
+    "voice": "piper en_US-ryan-high x1",
     "bytes": 17344,
     "part": "F",
     "words": 7,
@@ -432,7 +486,8 @@
     "engine": "piper/en_US-ryan-high"
   },
   "vpet-f-18": {
-    "hash": "273bc137c36793a5",
+    "hash": "44f214c7a67a53bf",
+    "voice": "piper en_US-ryan-high x1",
     "bytes": 14000,
     "part": "F",
     "words": 8,
@@ -440,7 +495,8 @@
     "engine": "piper/en_US-ryan-high"
   },
   "vpet-f-19": {
-    "hash": "0bd2901c1651492d",
+    "hash": "de84e644c53f86ae",
+    "voice": "piper en_US-ryan-high x1",
     "bytes": 11074,
     "part": "F",
     "words": 7,
@@ -448,7 +504,8 @@
     "engine": "piper/en_US-ryan-high"
   },
   "vpet-f-20": {
-    "hash": "04ed9ca5f6db746d",
+    "hash": "72254f05b80257f9",
+    "voice": "piper en_US-ryan-high x1",
     "bytes": 16090,
     "part": "F",
     "words": 10,
@@ -456,7 +513,8 @@
     "engine": "piper/en_US-ryan-high"
   },
   "vpet-f-21": {
-    "hash": "6013395c4c60199b",
+    "hash": "82f261c97feadc2f",
+    "voice": "piper en_US-ryan-high x1",
     "bytes": 15045,
     "part": "F",
     "words": 8,
@@ -464,7 +522,8 @@
     "engine": "piper/en_US-ryan-high"
   },
   "vpet-f-22": {
-    "hash": "489482d235d28124",
+    "hash": "ef69530f218122f7",
+    "voice": "piper en_US-ryan-high x1",
     "bytes": 10448,
     "part": "F",
     "words": 7,
@@ -472,7 +531,8 @@
     "engine": "piper/en_US-ryan-high"
   },
   "vpet-f-23": {
-    "hash": "13776a3e7b5b6f49",
+    "hash": "35d0997d1df1b62b",
+    "voice": "piper en_US-ryan-high x1",
     "bytes": 18180,
     "part": "F",
     "words": 10,
@@ -480,7 +540,8 @@
     "engine": "piper/en_US-ryan-high"
   },
   "vpet-f-24": {
-    "hash": "049b5fa0fd604db0",
+    "hash": "13054c9b0ffebda7",
+    "voice": "piper en_US-ryan-high x1",
     "bytes": 8985,
     "part": "F",
     "words": 5,
@@ -488,7 +549,8 @@
     "engine": "piper/en_US-ryan-high"
   },
   "vpet-f-25": {
-    "hash": "7785323a59ad474e",
+    "hash": "0e10860952a3dcda",
+    "voice": "piper en_US-ryan-high x1",
     "bytes": 20688,
     "part": "F",
     "words": 10,
@@ -496,7 +558,8 @@
     "engine": "piper/en_US-ryan-high"
   },
   "vpet-f-26": {
-    "hash": "b1c1649bcaddd2c4",
+    "hash": "8aef0f97db2ba030",
+    "voice": "piper en_US-ryan-high x1",
     "bytes": 15045,
     "part": "F",
     "words": 7,
@@ -504,7 +567,8 @@
     "engine": "piper/en_US-ryan-high"
   },
   "vpet-f-27": {
-    "hash": "0df1b9735ba8dd01",
+    "hash": "d63acfa097267179",
+    "voice": "piper en_US-ryan-high x1",
     "bytes": 18389,
     "part": "F",
     "words": 9,
@@ -512,7 +576,8 @@
     "engine": "piper/en_US-ryan-high"
   },
   "vpet-f-28": {
-    "hash": "f17148b01d95cbe8",
+    "hash": "e482db15da180fd8",
+    "voice": "piper en_US-ryan-high x1",
     "bytes": 14627,
     "part": "F",
     "words": 8,
@@ -520,7 +585,8 @@
     "engine": "piper/en_US-ryan-high"
   },
   "vpet-f-29": {
-    "hash": "8a4ef58f790eaeb9",
+    "hash": "47e8b8b02dde4feb",
+    "voice": "piper en_US-ryan-high x1",
     "bytes": 15672,
     "part": "F",
     "words": 10,
@@ -528,7 +594,8 @@
     "engine": "piper/en_US-ryan-high"
   },
   "vpet-f-30": {
-    "hash": "459399960fb90fea",
+    "hash": "e67657eafbf3da7d",
+    "voice": "piper en_US-ryan-high x1",
     "bytes": 14836,
     "part": "F",
     "words": 9,
@@ -536,7 +603,8 @@
     "engine": "piper/en_US-ryan-high"
   },
   "vpet-f-31": {
-    "hash": "342680dbd341dedf",
+    "hash": "9498f8375d9757f3",
+    "voice": "piper en_US-ryan-high x1",
     "bytes": 17553,
     "part": "F",
     "words": 8,
@@ -544,7 +612,8 @@
     "engine": "piper/en_US-ryan-high"
   },
   "vpet-f-32": {
-    "hash": "44bcee9bcd2eff00",
+    "hash": "804d6400912bdf8c",
+    "voice": "piper en_US-ryan-high x1",
     "bytes": 15045,
     "part": "F",
     "words": 7,
@@ -552,7 +621,8 @@
     "engine": "piper/en_US-ryan-high"
   },
   "vpet-f-33": {
-    "hash": "daa76375f1b719fd",
+    "hash": "892989733af5da03",
+    "voice": "piper en_US-ryan-high x1",
     "bytes": 12746,
     "part": "F",
     "words": 8,
@@ -560,7 +630,8 @@
     "engine": "piper/en_US-ryan-high"
   },
   "vpet-f-34": {
-    "hash": "8ce1925e30286938",
+    "hash": "f2fa58978de606e3",
+    "voice": "piper en_US-ryan-high x1",
     "bytes": 16717,
     "part": "F",
     "words": 10,
@@ -568,7 +639,8 @@
     "engine": "piper/en_US-ryan-high"
   },
   "vpet-f-35": {
-    "hash": "e975aef60efbd783",
+    "hash": "b5efe29145374115",
+    "voice": "piper en_US-ryan-high x1",
     "bytes": 13164,
     "part": "F",
     "words": 7,
@@ -576,7 +648,8 @@
     "engine": "piper/en_US-ryan-high"
   },
   "vpet-f-36": {
-    "hash": "eb0b7fbe6a10596f",
+    "hash": "b124ed93d381fcd0",
+    "voice": "piper en_US-ryan-high x1",
     "bytes": 18180,
     "part": "F",
     "words": 8,
@@ -584,7 +657,8 @@
     "engine": "piper/en_US-ryan-high"
   },
   "vpet-f-37": {
-    "hash": "68f8be917e0e3c38",
+    "hash": "4b0a16b415b35316",
+    "voice": "piper en_US-ryan-high x1",
     "bytes": 14418,
     "part": "F",
     "words": 9,
@@ -592,7 +666,8 @@
     "engine": "piper/en_US-ryan-high"
   },
   "vpet-g-01": {
-    "hash": "9a6f47dc01e622c4",
+    "hash": "065bd43475a356aa",
+    "voice": "piper en_US-amy-medium x1.05",
     "bytes": 159241,
     "part": "G",
     "words": 52,
@@ -600,7 +675,8 @@
     "engine": "piper/en_US-amy-medium"
   },
   "vpet-g-04": {
-    "hash": "1d6e68a4a8324210",
+    "hash": "07839b72877c2d53",
+    "voice": "piper en_US-amy-medium x1.05",
     "bytes": 170108,
     "part": "G",
     "words": 60,
@@ -608,7 +684,8 @@
     "engine": "piper/en_US-amy-medium"
   },
   "vpet-g-07": {
-    "hash": "fc9d6ddf04d03c94",
+    "hash": "727c9afe026283ea",
+    "voice": "piper en_US-amy-medium x1.05",
     "bytes": 175750,
     "part": "G",
     "words": 67,
@@ -616,7 +693,8 @@
     "engine": "piper/en_US-amy-medium"
   },
   "vpet-g-10": {
-    "hash": "01a58ad186d2e249",
+    "hash": "d9d0787f8e4b1a3e",
+    "voice": "piper en_US-amy-medium x1.05",
     "bytes": 179512,
     "part": "G",
     "words": 67,
@@ -624,7 +702,8 @@
     "engine": "piper/en_US-amy-medium"
   },
   "vpet-g-13": {
-    "hash": "55ee47f96a25b87b",
+    "hash": "ab3db1170605f64a",
+    "voice": "piper en_US-amy-medium x1.05",
     "bytes": 205216,
     "part": "G",
     "words": 76,
@@ -632,7 +711,8 @@
     "engine": "piper/en_US-amy-medium"
   },
   "vpet-g-16": {
-    "hash": "76dd8c760883a39f",
+    "hash": "6a0bf8aef00d0cd2",
+    "voice": "piper en_US-amy-medium x1.05",
     "bytes": 200201,
     "part": "G",
     "words": 68,
@@ -640,7 +720,8 @@
     "engine": "piper/en_US-amy-medium"
   },
   "vpet-g-19": {
-    "hash": "71c26197f1298509",
+    "hash": "8cf3bfdbab5728c5",
+    "voice": "piper en_US-amy-medium x1.05",
     "bytes": 183483,
     "part": "G",
     "words": 59,
@@ -648,7 +729,8 @@
     "engine": "piper/en_US-amy-medium"
   },
   "vpet-g-22": {
-    "hash": "5d9b0463b254f493",
+    "hash": "64e76c1c276575d1",
+    "voice": "piper en_US-amy-medium x1.05",
     "bytes": 174496,
     "part": "G",
     "words": 64,
@@ -656,7 +738,8 @@
     "engine": "piper/en_US-amy-medium"
   },
   "vpet-g-25": {
-    "hash": "0365471d0628292d",
+    "hash": "577ccec7710f88dc",
+    "voice": "piper en_US-amy-medium x1.05",
     "bytes": 167391,
     "part": "G",
     "words": 59,
@@ -664,7 +747,8 @@
     "engine": "piper/en_US-amy-medium"
   },
   "vpet-g-28": {
-    "hash": "f0430c6e0badb97c",
+    "hash": "dec8ccd4277ea51f",
+    "voice": "piper en_US-amy-medium x1.05",
     "bytes": 155479,
     "part": "G",
     "words": 44,
@@ -672,7 +756,8 @@
     "engine": "piper/en_US-amy-medium"
   },
   "vpet-g-31": {
-    "hash": "5dc0d0e5ab206fcd",
+    "hash": "c6db56ab3f92d24f",
+    "voice": "piper en_US-amy-medium x1.05",
     "bytes": 126640,
     "part": "G",
     "words": 42,
@@ -680,7 +765,8 @@
     "engine": "piper/en_US-amy-medium"
   },
   "vpet-g-34": {
-    "hash": "02f7dc662550ccef",
+    "hash": "cecca9556f5b1473",
+    "voice": "piper en_US-amy-medium x1.05",
     "bytes": 129357,
     "part": "G",
     "words": 44,
@@ -688,7 +774,8 @@
     "engine": "piper/en_US-amy-medium"
   },
   "vpet-h-01": {
-    "hash": "e36d17c39b784dea",
+    "hash": "aafbffd790e948c9",
+    "voice": "piper en_US-ryan-high x1.08",
     "bytes": 13791,
     "part": "H",
     "words": 5,
@@ -696,7 +783,8 @@
     "engine": "piper/en_US-ryan-high"
   },
   "vpet-h-02": {
-    "hash": "76b7ba01418ca480",
+    "hash": "89948e64557ef53e",
+    "voice": "piper en_US-ryan-high x1.08",
     "bytes": 17553,
     "part": "H",
     "words": 8,
@@ -704,7 +792,8 @@
     "engine": "piper/en_US-ryan-high"
   },
   "vpet-h-03": {
-    "hash": "2a7782516672b612",
+    "hash": "5280852020052c0d",
+    "voice": "piper en_US-ryan-high x1.08",
     "bytes": 19434,
     "part": "H",
     "words": 11,
@@ -712,7 +801,8 @@
     "engine": "piper/en_US-ryan-high"
   },
   "vpet-h-04": {
-    "hash": "9ed27d24133f1299",
+    "hash": "b07790caec25c06e",
+    "voice": "piper en_US-ryan-high x1.08",
     "bytes": 22568,
     "part": "H",
     "words": 11,
@@ -720,7 +810,8 @@
     "engine": "piper/en_US-ryan-high"
   },
   "vpet-h-05": {
-    "hash": "c16b6daa1adfe9b8",
+    "hash": "827791eaef1c979f",
+    "voice": "piper en_US-ryan-high x1.08",
     "bytes": 26330,
     "part": "H",
     "words": 12,
@@ -728,7 +819,8 @@
     "engine": "piper/en_US-ryan-high"
   },
   "vpet-h-06": {
-    "hash": "a4cb7e9af7561735",
+    "hash": "97d1161b373a040c",
+    "voice": "piper en_US-ryan-high x1.08",
     "bytes": 26957,
     "part": "H",
     "words": 13,
@@ -736,7 +828,8 @@
     "engine": "piper/en_US-ryan-high"
   },
   "vpet-h-07": {
-    "hash": "b52f1120bcdf1d8f",
+    "hash": "e0c590636fdfacd0",
+    "voice": "piper en_US-ryan-high x1.08",
     "bytes": 26748,
     "part": "H",
     "words": 12,
@@ -744,7 +837,8 @@
     "engine": "piper/en_US-ryan-high"
   },
   "vpet-h-08": {
-    "hash": "d5a3bdd69dacb07f",
+    "hash": "647c14cc5baba4b2",
+    "voice": "piper en_US-ryan-high x1.08",
     "bytes": 24867,
     "part": "H",
     "words": 12,
@@ -752,7 +846,8 @@
     "engine": "piper/en_US-ryan-high"
   },
   "vpet-h-09": {
-    "hash": "280aebeb2f05a90d",
+    "hash": "90cf10f691a42096",
+    "voice": "piper en_US-ryan-high x1.08",
     "bytes": 32390,
     "part": "H",
     "words": 12,
@@ -760,7 +855,8 @@
     "engine": "piper/en_US-ryan-high"
   },
   "vpet-h-10": {
-    "hash": "3a0a54b951cec062",
+    "hash": "25f55e90e4a5ee5d",
+    "voice": "piper en_US-ryan-high x1.08",
     "bytes": 26539,
     "part": "H",
     "words": 11,
@@ -768,7 +864,8 @@
     "engine": "piper/en_US-ryan-high"
   },
   "vpet-h-11": {
-    "hash": "4a98364d41172704",
+    "hash": "cad2cb2b76b2e61c",
+    "voice": "piper en_US-ryan-high x1.08",
     "bytes": 30092,
     "part": "H",
     "words": 14,
@@ -776,7 +873,8 @@
     "engine": "piper/en_US-ryan-high"
   },
   "vpet-h-12": {
-    "hash": "9c88ad12ed2e1866",
+    "hash": "0ddc39f7d6f4102b",
+    "voice": "piper en_US-ryan-high x1.08",
     "bytes": 29465,
     "part": "H",
     "words": 15,
@@ -784,7 +882,8 @@
     "engine": "piper/en_US-ryan-high"
   },
   "vpet-h-13": {
-    "hash": "1dfb4f187db6061e",
+    "hash": "8f795ba375767a37",
+    "voice": "piper en_US-ryan-high x1.08",
     "bytes": 25912,
     "part": "H",
     "words": 13,
@@ -792,7 +891,8 @@
     "engine": "piper/en_US-ryan-high"
   },
   "vpet-h-14": {
-    "hash": "ac771b60177d9548",
+    "hash": "a7ad436edc409231",
+    "voice": "piper en_US-ryan-high x1.08",
     "bytes": 27793,
     "part": "H",
     "words": 10,
@@ -800,7 +900,8 @@
     "engine": "piper/en_US-ryan-high"
   },
   "vpet-h-15": {
-    "hash": "64f5a29721b9adeb",
+    "hash": "8b904879df5e3309",
+    "voice": "piper en_US-ryan-high x1.08",
     "bytes": 27793,
     "part": "H",
     "words": 12,
@@ -808,7 +909,8 @@
     "engine": "piper/en_US-ryan-high"
   },
   "vpet-h-16": {
-    "hash": "799172c5d3f73323",
+    "hash": "5653bcc12f15c8b5",
+    "voice": "piper en_US-ryan-high x1.08",
     "bytes": 26748,
     "part": "H",
     "words": 12,
@@ -816,7 +918,8 @@
     "engine": "piper/en_US-ryan-high"
   },
   "vpet-h-17": {
-    "hash": "eb9c11ec16ef504a",
+    "hash": "e49dae39b87d7403",
+    "voice": "piper en_US-ryan-high x1.08",
     "bytes": 30928,
     "part": "H",
     "words": 11,
@@ -824,7 +927,8 @@
     "engine": "piper/en_US-ryan-high"
   },
   "vpet-h-18": {
-    "hash": "769178071975516f",
+    "hash": "68604512b9146772",
+    "voice": "piper en_US-ryan-high x1.08",
     "bytes": 25494,
     "part": "H",
     "words": 10,
@@ -832,7 +936,8 @@
     "engine": "piper/en_US-ryan-high"
   },
   "vpet-h-19": {
-    "hash": "d5a252bcbe83d0da",
+    "hash": "936b2e7333d432e5",
+    "voice": "piper en_US-ryan-high x1.08",
     "bytes": 24867,
     "part": "H",
     "words": 11,
@@ -840,7 +945,8 @@
     "engine": "piper/en_US-ryan-high"
   },
   "vpet-h-20": {
-    "hash": "621d7ac8a8e4aec3",
+    "hash": "eb6d81e1f90173f2",
+    "voice": "piper en_US-ryan-high x1.08",
     "bytes": 26539,
     "part": "H",
     "words": 12,
@@ -848,7 +954,8 @@
     "engine": "piper/en_US-ryan-high"
   },
   "vpet-h-21": {
-    "hash": "fa7ad88ae84c3c25",
+    "hash": "1b9c027be0b2557c",
+    "voice": "piper en_US-ryan-high x1.08",
     "bytes": 30928,
     "part": "H",
     "words": 12,
@@ -856,7 +963,8 @@
     "engine": "piper/en_US-ryan-high"
   },
   "vpet-h-22": {
-    "hash": "3dd8ae4c6dbaad51",
+    "hash": "cf8da75cc0b926fc",
+    "voice": "piper en_US-ryan-high x1.08",
     "bytes": 31972,
     "part": "H",
     "words": 12,
@@ -864,7 +972,8 @@
     "engine": "piper/en_US-ryan-high"
   },
   "vpet-h-23": {
-    "hash": "3ff07e3b34aebadf",
+    "hash": "c97731ae3cafec04",
+    "voice": "piper en_US-ryan-high x1.08",
     "bytes": 26121,
     "part": "H",
     "words": 11,
@@ -872,7 +981,8 @@
     "engine": "piper/en_US-ryan-high"
   },
   "vpet-h-24": {
-    "hash": "3f370186a7ce32d9",
+    "hash": "2623c2cf7f8f8227",
+    "voice": "piper en_US-ryan-high x1.08",
     "bytes": 27166,
     "part": "H",
     "words": 12,
@@ -880,7 +990,8 @@
     "engine": "piper/en_US-ryan-high"
   },
   "vpet-h-25": {
-    "hash": "4a368ca3c6425ea7",
+    "hash": "b69fec4d6b6f8cb6",
+    "voice": "piper en_US-ryan-high x1.08",
     "bytes": 31972,
     "part": "H",
     "words": 11,
@@ -888,7 +999,8 @@
     "engine": "piper/en_US-ryan-high"
   },
   "vpet-h-26": {
-    "hash": "cc9d15f378cd518e",
+    "hash": "18687e056ba802b9",
+    "voice": "piper en_US-ryan-high x1.08",
     "bytes": 26330,
     "part": "H",
     "words": 12,
@@ -896,7 +1008,8 @@
     "engine": "piper/en_US-ryan-high"
   },
   "vpet-h-27": {
-    "hash": "130b24fe26a4ac5f",
+    "hash": "33d8100d915761ce",
+    "voice": "piper en_US-ryan-high x1.08",
     "bytes": 25703,
     "part": "H",
     "words": 12,
@@ -904,7 +1017,8 @@
     "engine": "piper/en_US-ryan-high"
   },
   "vpet-h-28": {
-    "hash": "703d9761241581d8",
+    "hash": "eaff6d7c2d924e75",
+    "voice": "piper en_US-ryan-high x1.08",
     "bytes": 23195,
     "part": "H",
     "words": 14,
@@ -912,7 +1026,8 @@
     "engine": "piper/en_US-ryan-high"
   },
   "vpet-h-29": {
-    "hash": "6b1af1c7a48aa1f8",
+    "hash": "1483b980ce19cdbe",
+    "voice": "piper en_US-ryan-high x1.08",
     "bytes": 26121,
     "part": "H",
     "words": 11,
@@ -920,7 +1035,8 @@
     "engine": "piper/en_US-ryan-high"
   },
   "vpet-h-30": {
-    "hash": "34154a0569f074ca",
+    "hash": "70725b24d800ff7a",
+    "voice": "piper en_US-ryan-high x1.08",
     "bytes": 21523,
     "part": "H",
     "words": 13,
@@ -928,7 +1044,8 @@
     "engine": "piper/en_US-ryan-high"
   },
   "vpet-h-31": {
-    "hash": "f6b82ec7548619c4",
+    "hash": "57061803271bb5c8",
+    "voice": "piper en_US-ryan-high x1.08",
     "bytes": 31554,
     "part": "H",
     "words": 12,
@@ -936,7 +1053,8 @@
     "engine": "piper/en_US-ryan-high"
   },
   "vpet-h-32": {
-    "hash": "c2640cef2c03b7c5",
+    "hash": "de528bcefb979723",
+    "voice": "piper en_US-ryan-high x1.08",
     "bytes": 22568,
     "part": "H",
     "words": 11,
@@ -944,7 +1062,8 @@
     "engine": "piper/en_US-ryan-high"
   },
   "vpet-h-33": {
-    "hash": "d37ecc9843bbf48b",
+    "hash": "26807498437bc409",
+    "voice": "piper en_US-ryan-high x1.08",
     "bytes": 11492,
     "part": "H",
     "words": 5,
@@ -952,7 +1071,8 @@
     "engine": "piper/en_US-ryan-high"
   },
   "vpet-h-34": {
-    "hash": "3bdf706912fc3b0b",
+    "hash": "e2ddc84a3f846e11",
+    "voice": "piper en_US-ryan-high x1.08",
     "bytes": 14000,
     "part": "H",
     "words": 7,
@@ -960,7 +1080,8 @@
     "engine": "piper/en_US-ryan-high"
   },
   "vpet-h-35": {
-    "hash": "4c4e1c65aae7988c",
+    "hash": "2004ac14e2967196",
+    "voice": "piper en_US-ryan-high x1.08",
     "bytes": 14836,
     "part": "H",
     "words": 8,
@@ -968,7 +1089,8 @@
     "engine": "piper/en_US-ryan-high"
   },
   "vpet-h-36": {
-    "hash": "986e96643bc4a716",
+    "hash": "21cbe4696a49b5f7",
+    "voice": "piper en_US-ryan-high x1.08",
     "bytes": 14418,
     "part": "H",
     "words": 9,
@@ -976,7 +1098,8 @@
     "engine": "piper/en_US-ryan-high"
   },
   "vpet-h-37": {
-    "hash": "3e189dd87f644d5f",
+    "hash": "aa22ec7717a601df",
+    "voice": "piper en_US-ryan-high x1.08",
     "bytes": 23613,
     "part": "H",
     "words": 11,
@@ -984,7 +1107,8 @@
     "engine": "piper/en_US-ryan-high"
   },
   "vpet-h-38": {
-    "hash": "ec91b7dfc600e038",
+    "hash": "e8418c3b479df4c9",
+    "voice": "piper en_US-ryan-high x1.08",
     "bytes": 21105,
     "part": "H",
     "words": 11,
@@ -992,7 +1116,8 @@
     "engine": "piper/en_US-ryan-high"
   },
   "vpet-h-39": {
-    "hash": "44665872a250e791",
+    "hash": "fea2a1b4d17a0eff",
+    "voice": "piper en_US-ryan-high x1.08",
     "bytes": 23613,
     "part": "H",
     "words": 11,
@@ -1000,7 +1125,8 @@
     "engine": "piper/en_US-ryan-high"
   },
   "vpet-h-40": {
-    "hash": "cc8f65f9bab868ea",
+    "hash": "36f5e82d3a4a035f",
+    "voice": "piper en_US-ryan-high x1.08",
     "bytes": 22777,
     "part": "H",
     "words": 10,
@@ -1008,7 +1134,8 @@
     "engine": "piper/en_US-ryan-high"
   },
   "vpet-h-41": {
-    "hash": "19bd5c2d58a4b5cf",
+    "hash": "bc37d7e1e15bcb88",
+    "voice": "piper en_US-ryan-high x1.08",
     "bytes": 22777,
     "part": "H",
     "words": 11,
@@ -1016,7 +1143,8 @@
     "engine": "piper/en_US-ryan-high"
   },
   "vpet-h-42": {
-    "hash": "53467fd274aab371",
+    "hash": "56f27a722847b720",
+    "voice": "piper en_US-ryan-high x1.08",
     "bytes": 23613,
     "part": "H",
     "words": 10,
@@ -1024,7 +1152,8 @@
     "engine": "piper/en_US-ryan-high"
   },
   "vpet-h-43": {
-    "hash": "8c1190910ee3a208",
+    "hash": "0b4180d450e0798f",
+    "voice": "piper en_US-ryan-high x1.08",
     "bytes": 23195,
     "part": "H",
     "words": 11,
@@ -1032,7 +1161,8 @@
     "engine": "piper/en_US-ryan-high"
   },
   "vpet-h-44": {
-    "hash": "b24b470bd13975d0",
+    "hash": "09896abc8043f411",
+    "voice": "piper en_US-ryan-high x1.08",
     "bytes": 23613,
     "part": "H",
     "words": 10,
@@ -1040,7 +1170,8 @@
     "engine": "piper/en_US-ryan-high"
   },
   "vpet-h-45": {
-    "hash": "fcd1e38cae521fdf",
+    "hash": "ce695f3db019178e",
+    "voice": "piper en_US-ryan-high x1.08",
     "bytes": 18598,
     "part": "H",
     "words": 10,
@@ -1048,7 +1179,8 @@
     "engine": "piper/en_US-ryan-high"
   },
   "vpet-h-46": {
-    "hash": "09ebde2f33bd2c30",
+    "hash": "5f6cfa10cf706794",
+    "voice": "piper en_US-ryan-high x1.08",
     "bytes": 23195,
     "part": "H",
     "words": 11,
@@ -1056,7 +1188,8 @@
     "engine": "piper/en_US-ryan-high"
   },
   "vpet-j-01": {
-    "hash": "56060fe057ef04a0",
+    "hash": "13edd779648b1c45",
+    "voice": "piper en_US-amy-medium x1.05",
     "bytes": 210023,
     "part": "J",
     "words": 73,
@@ -1064,7 +1197,8 @@
     "engine": "piper/en_US-amy-medium"
   },
   "vpet-j-02": {
-    "hash": "3262d49addfa8bb1",
+    "hash": "7f1cc48507e92038",
+    "voice": "piper en_US-amy-medium x1.05",
     "bytes": 205843,
     "part": "J",
     "words": 76,
@@ -1072,7 +1206,8 @@
     "engine": "piper/en_US-amy-medium"
   },
   "vpet-j-03": {
-    "hash": "3becfa686c61361a",
+    "hash": "d34162f618953fa7",
+    "voice": "piper en_US-amy-medium x1.05",
     "bytes": 221517,
     "part": "J",
     "words": 84,
@@ -1080,7 +1215,8 @@
     "engine": "piper/en_US-amy-medium"
   },
   "vpet-j-04": {
-    "hash": "de16bd4f6d6b22b8",
+    "hash": "e6482b21ea7e34fc",
+    "voice": "piper en_US-amy-medium x1.05",
     "bytes": 216501,
     "part": "J",
     "words": 76,
@@ -1088,7 +1224,8 @@
     "engine": "piper/en_US-amy-medium"
   },
   "vpet-j-05": {
-    "hash": "df806f2f570c14e5",
+    "hash": "2a61c06d90160bf0",
+    "voice": "piper en_US-amy-medium x1.05",
     "bytes": 157151,
     "part": "J",
     "words": 50,
@@ -1096,7 +1233,8 @@
     "engine": "piper/en_US-amy-medium"
   },
   "vpet-j-06": {
-    "hash": "fe289cfc3dfd311d",
+    "hash": "2b73a11e30d1c56e",
+    "voice": "piper en_US-amy-medium x1.05",
     "bytes": 189334,
     "part": "J",
     "words": 69,
@@ -1104,7 +1242,8 @@
     "engine": "piper/en_US-amy-medium"
   },
   "vpet-j-07": {
-    "hash": "bee1dcd9035ae1db",
+    "hash": "a75161ce6efd2d2c",
+    "voice": "piper en_US-amy-medium x1.05",
     "bytes": 174705,
     "part": "J",
     "words": 63,
@@ -1112,7 +1251,8 @@
     "engine": "piper/en_US-amy-medium"
   },
   "vpet-j-08": {
-    "hash": "3cf3ead2594b309f",
+    "hash": "70ea34a27a9627c2",
+    "voice": "piper en_US-amy-medium x1.05",
     "bytes": 185363,
     "part": "J",
     "words": 61,
@@ -1120,7 +1260,8 @@
     "engine": "piper/en_US-amy-medium"
   },
   "vpet-j-09": {
-    "hash": "d4c0c7038c246e14",
+    "hash": "79166185c1ed167f",
+    "voice": "piper en_US-amy-medium x1.05",
     "bytes": 167809,
     "part": "J",
     "words": 60,
@@ -1128,7 +1269,8 @@
     "engine": "piper/en_US-amy-medium"
   },
   "vpet-j-10": {
-    "hash": "bf789f774e65f1d1",
+    "hash": "9b0ca20e39046353",
+    "voice": "piper en_US-amy-medium x1.05",
     "bytes": 165092,
     "part": "J",
     "words": 59,
@@ -1136,7 +1278,8 @@
     "engine": "piper/en_US-amy-medium"
   },
   "vpet-j-11": {
-    "hash": "bab086148ee3b93d",
+    "hash": "727670c868c37236",
+    "voice": "piper en_US-amy-medium x1.05",
     "bytes": 186826,
     "part": "J",
     "words": 74,
@@ -1144,7 +1287,8 @@
     "engine": "piper/en_US-amy-medium"
   },
   "vpet-j-12": {
-    "hash": "7eba361610d1e295",
+    "hash": "8a3bd064a1ba80b5",
+    "voice": "piper en_US-amy-medium x1.05",
     "bytes": 185363,
     "part": "J",
     "words": 67,
@@ -1152,7 +1296,8 @@
     "engine": "piper/en_US-amy-medium"
   },
   "vpet-j-13": {
-    "hash": "b76946399c85a323",
+    "hash": "d0a26ea3797031dd",
+    "voice": "piper en_US-amy-medium x1.05",
     "bytes": 177004,
     "part": "J",
     "words": 64,
@@ -1160,7 +1305,8 @@
     "engine": "piper/en_US-amy-medium"
   },
   "vpet-j-14": {
-    "hash": "b0baea36280e3787",
+    "hash": "08a5885516809851",
+    "voice": "piper en_US-amy-medium x1.05",
     "bytes": 199365,
     "part": "J",
     "words": 75,

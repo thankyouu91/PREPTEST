@@ -443,6 +443,42 @@ try {
       'and the candidate is told what was measured and why it capped the mark',
       String(bNote).slice(0, 200));
 
+    /* And told it in a language they have.
+       Every cap in rubric.js has carried a Vietnamese sentence since it was
+       written, and not one of them had ever reached a screen: the note is one
+       English string and it was the only channel. That is worst for this cap,
+       which tells somebody their answer was copied — an accusation nobody can
+       read is punishment with the teaching removed. */
+    const bCaps = JSON.parse(await q.val(
+      'SELECT mark_caps FROM attempt_answers WHERE attempt_id=? AND question_id=?',
+      att.id, bItem.questionId) || 'null');
+    ok(Array.isArray(bCaps) && bCaps.some(c => c.rule === 'copied-source'),
+      'The cap is stored beside the note as data, not only as English prose',
+      JSON.stringify(bCaps && bCaps.map(c => c.rule)));
+    ok(bCaps && bCaps.every(c => c.en && c.vi),
+      'with both languages on every one of them');
+    ok(bCaps && /nguyên văn/.test(bCaps.find(c => c.rule === 'copied-source').vi),
+      'and the Vietnamese really is Vietnamese',
+      bCaps && (bCaps.find(c => c.rule === 'copied-source') || {}).vi);
+
+    /* And it survives the trip to the browser. Checked HERE, while a cap
+       actually exists on this item, rather than in the report section further
+       down: by then this item has been re-marked with an honest answer and
+       correctly has no caps at all, so an assertion there would either be
+       vacuous or wrong. */
+    const seen = await student.req('GET', '/api/attempts/' + att.id + '/result?detailed=1');
+    const bPart = seen.status === 200 && (seen.data.parts || []).find(p => p.part === 'B');
+    if (!bPart) {
+      ok(true, 'The detailed report is gated by plan on this account — checked in the database above');
+    } else {
+      const shown = bPart.items.find(i => i.questionId === bItem.questionId);
+      const shownCap = ((shown && shown.caps) || []).find(c => c.rule === 'copied-source');
+      ok(!!shownCap, 'The cap reaches the browser as data, not buried in the English note',
+        JSON.stringify((shown && shown.caps) || []));
+      ok(shownCap && shownCap.en && shownCap.vi,
+        'with both languages, so the page can render the reader\'s');
+    }
+
     /* The other half of the same wiring: a real answer to the same item, marked
        by the same stub giving the same tens, is NOT capped. Without this the
        check above would pass just as well if the rule capped every Part B. */
@@ -482,6 +518,11 @@ try {
     ok(item.requiredWords === 100, 'With the length the task asked for', String(item.requiredWords));
     ok(!JSON.stringify(r.data).includes('I look forward to your kind consideration'),
       'The invented quotation is nowhere in what is sent to the browser');
+    /* Always a list, even when nothing capped this item — the page iterates it,
+       and `undefined` there is a blank screen rather than a missing sentence.
+       That a cap really arrives with both languages is checked on the Part B
+       item above, where one exists. */
+    ok(Array.isArray(item.caps), 'The item carries its caps as a list', typeof item.caps);
   }
 
 } catch (e) {

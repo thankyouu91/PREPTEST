@@ -382,7 +382,7 @@ async function resultOf(attemptId, detailed) {
     .map(async p => {
       const items = await q.all(
         `SELECT si.question_id, qs.type, qs.prompt,
-                aa.answer given, aa.earned, aa.max_score, aa.mark_note, aa.audio_key
+                aa.answer given, aa.earned, aa.max_score, aa.mark_note, aa.mark_caps, aa.audio_key
            FROM section_items si
            JOIN questions qs ON qs.id = si.question_id
            LEFT JOIN attempt_answers aa ON aa.attempt_id=? AND aa.question_id=si.question_id
@@ -423,6 +423,17 @@ async function resultOf(attemptId, detailed) {
               version: c.version, markedBy: c.marked_by
             };
           }),
+          /* Which caps held this mark down, each in both languages. The note
+             above already carries the English sentence — this is the same
+             information in a shape the screen can render in Vietnamese, which
+             the note cannot be. Older marks have no column value and get an
+             empty list rather than a broken parse. */
+          caps: (() => {
+            try {
+              const parsed = JSON.parse(i.mark_caps || '[]');
+              return Array.isArray(parsed) ? parsed : [];
+            } catch { return []; }
+          })(),
           /* Measured, not judged, and labelled as such wherever it is shown.
              Only for the written parts: the spoken ones are marked from a
              transcript, and counting a transcript's sentence length would be

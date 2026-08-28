@@ -94,13 +94,22 @@ const manifest = JSON.parse(fs.readFileSync(MANIFEST, 'utf8'));
 const keys = Object.keys(manifest);
 check('The manifest lists recordings', keys.length > 0, keys.length + ' entries');
 
-const missing = [], unreadable = [], drifted = [], notSpeech = [], noEngine = [];
+const missing = [], unreadable = [], drifted = [], notSpeech = [], noEngine = [], noVoice = [];
 const engines = {};
 for (const key of keys) {
   const m = manifest[key];
   const file = path.join(DIR, key + '.mp3');
   engines[m.engine || '(unrecorded)'] = (engines[m.engine || '(unrecorded)'] || 0) + 1;
   if (!m.engine) noEngine.push(key);
+  /* `voice` is what decides whether the generator re-records: the words are
+     hashed into `hash`, and everything about HOW they are said is here. An
+     entry without it looks unchanged to the generator no matter which engine
+     is asked to run, which is how a set of espeak recordings survives a switch
+     to neural voices and reports success. That is not hypothetical — the field
+     was folded into `hash` for one release and the piper branch was missing
+     from the fingerprint entirely, so every neural file was recorded as though
+     espeak had made it. */
+  if (!m.voice) noVoice.push(key);
 
   if (!fs.existsSync(file)) { missing.push(key); continue; }
   const a = readMp3(file);
@@ -122,6 +131,7 @@ check('and every one of them decodes as audio', unreadable.length === 0, unreada
 check('and none has been replaced behind the manifest\'s back', drifted.length === 0, drifted.slice(0, 4).join(' | '));
 check('and every one runs at a speaking pace', notSpeech.length === 0, notSpeech.slice(0, 4).join(' | '));
 check('and every one records which engine made it', noEngine.length === 0, noEngine.slice(0, 6).join(', '));
+check('and the voice and settings it was made at', noVoice.length === 0, noVoice.slice(0, 6).join(', '));
 
 /* Files on disk that the manifest does not claim would still be served if
    anything asked for them, and nothing would ever regenerate them. */

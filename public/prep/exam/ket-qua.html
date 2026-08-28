@@ -262,10 +262,32 @@
      * same words twice reads as a bug rather than as emphasis.
      */
     function feedback(it) {
-      const n = (it.note || '').trim();
+      let n = (it.note || '').trim();
       if (!n || n === 'Left blank' || n === 'Awaiting marking') return '';
-      return '<span class="block text-[13px] leading-relaxed mt-1.5 ps-3 border-s-2 border-line">' +
-        PREP.esc(n) + '</span>';
+      /* The note is one English string with each cap's English sentence already
+         appended to it, because that is how it is stored. The caps also arrive
+         separately with a Vietnamese version of each, so on the Vietnamese side
+         the English sentences are lifted back out and re-shown below in a
+         language the reader has. Cutting rather than translating: only the cap
+         sentences have a Vietnamese twin — the marker's own feedback does not,
+         and dropping that would lose the useful half. */
+      const caps = it.caps || [];
+      for (const c of caps) if (c.en) n = n.split(c.en).join(' ').trim();
+      n = n.replace(/\s{2,}/g, ' ');
+
+      /* A cap is why the mark is lower than the criteria above it look, so it
+         reads as its own line rather than as a tail on the marker's sentence,
+         and in medium weight because it is the platform speaking rather than
+         the marker. Deliberately not in the danger colour: a cap explains a
+         mark, it does not report an error. */
+      const capLines = caps.map(c =>
+        '<span class="block text-[13px] font-medium leading-relaxed mt-1.5 ps-3 border-s-2 border-line">' +
+          PREP.esc(PREP.t(c.en, c.vi)) + '</span>').join('');
+
+      return (n
+        ? '<span class="block text-[13px] leading-relaxed mt-1.5 ps-3 border-s-2 border-line">' +
+          PREP.esc(n) + '</span>'
+        : '') + capLines;
     }
 
     /**
