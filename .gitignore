@@ -14,3 +14,6 @@ cai-dat/cau-hinh.bat
 # mỗi lượt chạy cổng kiểm thử, và lịch sử của chúng từng chiếm 575 MB — tức là
 # 95% khối lượng repo, cho những tệp tái tạo được bất cứ lúc nào bằng một lệnh.
 docs/screenshots/
+
+# Piper voice models: ~180 MB, fetched on demand — see scripts/make-vpet-audio.mjs
+.piper-voices/

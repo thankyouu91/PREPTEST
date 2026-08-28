@@ -1,63 +1,83 @@
 {
   "vpet-e-01": {
-    "hash": "53804517f64d29da",
-    "bytes": 16300,
+    "hash": "1da9975729ebe878",
+    "bytes": 27584,
     "part": "E",
-    "words": 8
+    "words": 8,
+    "seconds": 3.45,
+    "engine": "piper/en_US-amy-medium"
   },
   "vpet-e-02": {
-    "hash": "36d4e2f7f513c0da",
-    "bytes": 18599,
+    "hash": "16c1e35960240403",
+    "bytes": 30928,
     "part": "E",
-    "words": 11
+    "words": 11,
+    "seconds": 3.87,
+    "engine": "piper/en_US-amy-medium"
   },
   "vpet-e-03": {
-    "hash": "a49ed1b65bc3ba91",
-    "bytes": 16091,
+    "hash": "4f5bf0a8419141c4",
+    "bytes": 30301,
     "part": "E",
-    "words": 9
+    "words": 9,
+    "seconds": 3.79,
+    "engine": "piper/en_US-amy-medium"
   },
   "vpet-e-04": {
-    "hash": "60999fb455134a4a",
-    "bytes": 16927,
+    "hash": "5df10da017442761",
+    "bytes": 28002,
     "part": "E",
-    "words": 9
+    "words": 9,
+    "seconds": 3.5,
+    "engine": "piper/en_US-amy-medium"
   },
   "vpet-e-05": {
-    "hash": "01a626e579b646a7",
-    "bytes": 17972,
+    "hash": "3a82304738737bab",
+    "bytes": 30510,
     "part": "E",
-    "words": 9
+    "words": 9,
+    "seconds": 3.81,
+    "engine": "piper/en_US-amy-medium"
   },
   "vpet-e-06": {
-    "hash": "61eaf12ade373648",
-    "bytes": 18913,
+    "hash": "e2a79da04399e402",
+    "bytes": 33644,
     "part": "E",
-    "words": 11
+    "words": 11,
+    "seconds": 4.21,
+    "engine": "piper/en_US-amy-medium"
   },
   "vpet-e-07": {
-    "hash": "7e20b22138933e2e",
-    "bytes": 19122,
+    "hash": "29d1ce54c94a0f2e",
+    "bytes": 33853,
     "part": "E",
-    "words": 10
+    "words": 10,
+    "seconds": 4.23,
+    "engine": "piper/en_US-amy-medium"
   },
   "vpet-e-08": {
-    "hash": "35e59283e748858e",
-    "bytes": 20062,
+    "hash": "564fe6d676893784",
+    "bytes": 32599,
     "part": "E",
-    "words": 8
+    "words": 8,
+    "seconds": 4.08,
+    "engine": "piper/en_US-amy-medium"
   },
   "vpet-e-09": {
-    "hash": "18a0c0fb9642aa48",
-    "bytes": 17554,
+    "hash": "cda350ce7c345d86",
+    "bytes": 31136,
     "part": "E",
-    "words": 10
+    "words": 10,
+    "seconds": 3.89,
+    "engine": "piper/en_US-amy-medium"
   },
   "vpet-e-10": {
-    "hash": "7d10e4a6eaf7443a",
-    "bytes": 21629,
+    "hash": "22c858a77b798fd3",
+    "bytes": 38451,
     "part": "E",
-    "words": 9
+    "words": 9,
+    "seconds": 4.81,
+    "engine": "piper/en_US-amy-medium"
   },
   "vpet-e-11": {
     "hash": "ab052356df6f7000",
