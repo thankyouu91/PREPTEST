@@ -321,9 +321,18 @@
           'placeholder="Question text" aria-label="Question text"></textarea>' +
         '<div data-answers>' + answerBox(key, type) + '</div>' +
         '<label class="mt-2 flex items-center gap-2 text-[13px] font-semibold text-muted" data-audio-row hidden>' +
-          '<span class="btn btn-ghost btn-sm cursor-pointer">Attach MP3</span>' +
+          '<span class="btn btn-ghost btn-sm cursor-pointer" data-audio-label>Attach MP3</span>' +
           '<input type="file" accept="audio/mpeg" class="sr-only" data-audio>' +
           '<span data-audio-name>no file</span>' +
+        '</label>' +
+        /* Part G items carry TWO recordings — the passage and the question that
+           is asked about it — so writing one here has to be able to attach both,
+           or the operator finishes in the builder and then has to go and find
+           the item again on the bank screen to finish it properly. */
+        '<label class="mt-1.5 flex items-center gap-2 text-[13px] font-semibold text-muted" data-qaudio-row hidden>' +
+          '<span class="btn btn-ghost btn-sm cursor-pointer">Attach spoken question</span>' +
+          '<input type="file" accept="audio/mpeg" class="sr-only" data-qaudio>' +
+          '<span data-qaudio-name>no file</span>' +
         '</label>';
 
       listEl.appendChild(row);
@@ -331,11 +340,14 @@
       row.querySelector('[data-type]').addEventListener('change', e => {
         row.querySelector('[data-answers]').innerHTML = answerBox(key, e.target.value);
       });
-      const file = row.querySelector('[data-audio]');
-      file.addEventListener('change', () => {
-        row.querySelector('[data-audio-name]').textContent =
-          file.files && file.files[0] ? file.files[0].name : 'no file';
-      });
+      for (const [input, name] of [['[data-audio]', '[data-audio-name]'],
+                                  ['[data-qaudio]', '[data-qaudio-name]']]) {
+        const el = row.querySelector(input);
+        el.addEventListener('change', () => {
+          row.querySelector(name).textContent =
+            el.files && el.files[0] ? el.files[0].name : 'no file';
+        });
+      }
       syncAudio(row);
       renumber();
       row.querySelector('[data-prompt]').focus();
@@ -345,6 +357,17 @@
       const on = AUDIO_SKILLS.includes(ctx.skill);
       row.querySelector('[data-audio-row]').hidden = !on;
       if (!on) row.querySelector('[data-audio]').value = '';
+
+      /* Only Part G asks its questions out loud, so only Part G gets the second
+         slot — offering it everywhere would invite a recording nothing plays. */
+      const spoken = on && ctx.part === 'G';
+      const qRow = row.querySelector('[data-qaudio-row]');
+      qRow.hidden = !spoken;
+      if (!spoken) row.querySelector('[data-qaudio]').value = '';
+      /* And the first slot means something different there: on Part G it is the
+         passage the question is about, not the item's own sound. */
+      row.querySelector('[data-audio-label]').textContent =
+        spoken ? 'Attach passage' : 'Attach MP3';
     }
 
     /* The skill or the part changed under rows that are already typed. Keep the
@@ -388,7 +411,11 @@
           prompt: row.querySelector('[data-prompt]').value.trim(),
           options: type === 'mcq' ? opts.filter(Boolean) : [],
           answer: type === 'mcq' ? (ansIdx >= 0 ? opts[ansIdx] : '') : (keyEl ? keyEl.value.trim() : ''),
-          file: (fileEl && fileEl.files && fileEl.files[0]) || null
+          file: (fileEl && fileEl.files && fileEl.files[0]) || null,
+          questionFile: (() => {
+            const el = row.querySelector('[data-qaudio]');
+            return (el && el.files && el.files[0]) || null;
+          })()
         };
       });
     }
@@ -452,9 +479,15 @@
   async function uploadComposerAudio(typed, questionIds) {
     let failed = 0;
     for (let i = 0; i < typed.length; i++) {
-      if (!typed[i].file || !questionIds[i]) continue;
-      try { await AD.upload('/admin/questions/' + questionIds[i] + '/audio', typed[i].file); }
-      catch (e) { failed++; }
+      if (!questionIds[i]) continue;
+      /* Two slots, because a Part G item has two recordings: `audio` is the
+         passage and `question-audio` is the question asked about it. */
+      for (const [file, slot] of [[typed[i].file, 'audio'],
+                                  [typed[i].questionFile, 'question-audio']]) {
+        if (!file) continue;
+        try { await AD.upload('/admin/questions/' + questionIds[i] + '/' + slot, file); }
+        catch (e) { failed++; }
+      }
     }
     /* The items exist either way — an upload that failed is a missing MP3 on a
        real question, not a lost question, and the bank screen can fix it. */

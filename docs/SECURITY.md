@@ -339,9 +339,9 @@ guard đăng nhập, 8 route còn lại là danh sách ở mục 3.
 | GET | `/api/admin/questions` | `requireAdmin` + `csrfGuard` + `requireCap(bank.read)` | n/a (read) |
 | POST | `/api/admin/questions` | `requireAdmin` + `csrfGuard` + `requireCap(bank.write)` | yes |
 | PUT | `/api/admin/questions/:id` | `requireAdmin` + `csrfGuard` + `requireCap(bank.write)` | yes |
-| DELETE | `/api/admin/questions/:id/audio` | `requireAdmin` + `csrfGuard` + `requireCap(bank.write)` | yes |
-| GET | `/api/admin/questions/:id/audio` | `requireAdmin` + `csrfGuard` + `requireCap(bank.read)` | n/a (read) |
-| POST | `/api/admin/questions/:id/audio` | `requireAdmin` + `csrfGuard` + `requireCap(bank.write)` | yes |
+| DELETE | `/api/admin/questions/:id/:slot(audio\|question-audio)` | `requireAdmin` + `csrfGuard` + `requireCap(bank.write)` | yes |
+| GET | `/api/admin/questions/:id/:slot(audio\|question-audio)` | `requireAdmin` + `csrfGuard` + `requireCap(bank.read)` | n/a (read) |
+| POST | `/api/admin/questions/:id/:slot(audio\|question-audio)` | `requireAdmin` + `csrfGuard` + `requireCap(bank.write)` | yes |
 | POST | `/api/admin/questions/:id/status` | `requireAdmin` + `csrfGuard` + `requireCap(bank.publish)` | yes |
 | GET | `/api/admin/questions/availability` | `requireAdmin` + `csrfGuard` + `requireCap(bank.read)` | n/a (read) |
 | POST | `/api/admin/questions/bulk` | `requireAdmin` + `csrfGuard` + `requireCap(bank.write)` | yes |
@@ -379,7 +379,7 @@ guard đăng nhập, 8 route còn lại là danh sách ở mục 3.
 | POST | `/api/attempts` | `requireUser` + `csrfGuard` | yes |
 | GET | `/api/attempts/:id` | `requireUser` | n/a (read) |
 | PATCH | `/api/attempts/:id/answers` | `requireUser` + `csrfGuard` | yes |
-| GET | `/api/attempts/:id/items/:questionId/audio` | `requireUser` | n/a (read) |
+| GET | `/api/attempts/:id/items/:questionId/:slot(audio\|question-audio)` | `requireUser` | n/a (read) |
 | POST | `/api/attempts/:id/items/:questionId/recording` | `requireUser` + `csrfGuard` | yes |
 | POST | `/api/attempts/:id/parts/:sectionId/close` | `requireUser` + `csrfGuard` | yes |
 | POST | `/api/attempts/:id/parts/:sectionId/start` | `requireUser` + `csrfGuard` | yes |
