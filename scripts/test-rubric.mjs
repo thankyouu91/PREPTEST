@@ -868,17 +868,27 @@ try {
    * Closing the socket was not enough, and the gap only shows on the SECOND run
    * of the gate against the same database. This suite is the last one to install
    * a marker, so its key outlived the run; the next run reached test-exam.mjs —
-   * which is 27 steps earlier and assumes nothing is configured — with a live
-   * key and a dead stub behind it. The background sweeper marked that paper's
-   * writing and speaking against the no-answer floor, so "unfinished marking
-   * leaves the overall blank" saw an overall of 2.5 and a paper with nothing
-   * pending. Nothing was wrong with the product; the gate had poisoned itself
-   * and could only be trusted once per database. */
+   * which runs seven steps earlier and assumes nothing is configured — with a
+   * live key and a dead stub behind it. The background sweeper marked that
+   * paper's writing and speaking against the no-answer floor, so "unfinished
+   * marking leaves the overall blank" saw an overall of 2.5 and a paper with
+   * nothing pending. Nothing was wrong with the product; the gate had poisoned
+   * itself and could only be trusted once per database.
+   *
+   * Said out loud when it fails. A silent catch here would hide the one thing
+   * this block exists to prevent, and the next run would go red somewhere else
+   * entirely. */
   try {
-    await admin.req('PUT', '/api/admin/ai', {
+    const r = await admin.req('PUT', '/api/admin/ai', {
       apiKey: '', sttApiKey: '', baseUrl: 'https://api.anthropic.com', model: AI.DEFAULTS.model
     });
-  } catch (e) { /* tidy-up */ }
+    if (r.status !== 200) {
+      console.warn('⚠ the stub marking key was NOT removed (HTTP ' + r.status + '). '
+        + 'Clear it before the next run: the settings rows are ai.key.sealed and ai.key.hint.');
+    }
+  } catch (e) {
+    console.warn('⚠ the stub marking key was NOT removed: ' + (e && e.message));
+  }
   stub.close();
 }
 

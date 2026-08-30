@@ -15,8 +15,12 @@ const LOCAL_OVERLAY = {
     seenTestIds: [], generatedCodes: {},
     extraCodes: [{ code: 'IELT-AC12-96HD', unlocks: { familyId: 'ielts' }, redeemedAt: '2026-08-05T14:00:00Z', expiresAt: '2026-10-15', status: 'active' }],
     extraTestIds: [], extraFamilyIds: ['ielts'],
-    extraOrders: [{ id: 'DH26080101', packageId: 'pk-vpet', name: 'VPET bundle', amount: 129000, at: '2026-08-01T09:28:00Z', status: 'demo', code: 'ABCD-EFGH-JKLM' }],
-    notif: { newTests: true, reminder: true, promo: false }
+    /* `status` has to be one the screen knows — the badge map on the account
+       page renders anything else as its raw value, so the old 'demo' put a
+       lowercase "demo" chip into the audited page. `demo: true` is the flag
+       that actually means "no provider ever saw this", and it is what the
+       server sends for a seeded order. */
+    extraOrders: [{ id: 'DH26080101', packageId: 'pk-vpet', name: 'VPET bundle', amount: 129000, at: '2026-08-01T09:28:00Z', status: 'paid', demo: true, code: 'ABCD-EFGH-JKLM' }]
   }
 };
 

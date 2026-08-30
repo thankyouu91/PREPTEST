@@ -32,10 +32,12 @@ const LOCAL_OVERLAY = {
     ],
     extraTestIds: [],
     extraFamilyIds: ['ielts'],
+    /* See the note in scripts/audit.mjs: `status` must be one the account
+       screen's badge map knows, and `demo` is the separate flag for a row no
+       payment provider ever saw. */
     extraOrders: [
-      { id: 'DH26080101', packageId: 'pk-vpet', name: 'VPET bundle', amount: 129000, at: '2026-08-01T09:28:00Z', status: 'demo' }
-    ],
-    notif: { newTests: true, reminder: true, promo: false }
+      { id: 'DH26080101', packageId: 'pk-vpet', name: 'VPET bundle', amount: 129000, at: '2026-08-01T09:28:00Z', status: 'paid', demo: true }
+    ]
   }
 };
 

@@ -399,6 +399,26 @@
       row.querySelector('[data-prompt]').focus();
     }
 
+    /* Empty a file slot AND say so.
+     *
+     * Setting `.value = ''` in script fires no `change`, and the filename beside
+     * the button is written only by that listener — so clearing one on its own
+     * leaves the row reading "passage-2.mp3" over an input holding nothing. The
+     * operator saves, read() returns `file: null`, no upload is attempted and no
+     * failure is reported. A file that was chosen, is still named on screen, and
+     * is silently not there.
+     *
+     * It matters because clearing is no longer rare: renumber() re-runs
+     * syncAudio over every row, and renumber() now runs on every part change.
+     * Pick three MP3s in the add-a-part dialog before choosing the part, then
+     * choose Part G, and two of the three are dropped where they stand. */
+    function clearSlot(row, input, name) {
+      const el = row.querySelector(input);
+      if (!el.value) return;
+      el.value = '';
+      row.querySelector(name).textContent = 'no file';
+    }
+
     function syncAudio(row, index) {
       const on = AUDIO_SKILLS.includes(ctx.skill);
       const size = groupSize();
@@ -411,14 +431,14 @@
       const i = index === undefined ? AD.qsa('[data-row]', listEl).indexOf(row) : index;
       const head = size < 2 || i < 0 || isGroupHead(i);
       row.querySelector('[data-audio-row]').hidden = !on || !head;
-      if (!on || !head) row.querySelector('[data-audio]').value = '';
+      if (!on || !head) clearSlot(row, '[data-audio]', '[data-audio-name]');
 
       /* Only Part G asks its questions out loud, so only Part G gets the second
          slot — offering it everywhere would invite a recording nothing plays. */
       const spoken = on && ctx.part === 'G';
       const qRow = row.querySelector('[data-qaudio-row]');
       qRow.hidden = !spoken;
-      if (!spoken) row.querySelector('[data-qaudio]').value = '';
+      if (!spoken) clearSlot(row, '[data-qaudio]', '[data-qaudio-name]');
       /* And the first slot means something different there: on Part G it is the
          passage the question is about, not the item's own sound. */
       row.querySelector('[data-audio-label]').textContent =
@@ -434,13 +454,24 @@
      * The stash keeps the value even while its box is gone — the alternative is
      * an operator who tries Part F, changes their mind, and silently loses the
      * option they typed. The chosen answer is restored by position when that
-     * position still exists. */
+     * position still exists, and the gap-fill key is stashed on the same terms:
+     * it is one box that vanishes on a type change, and losing it silently is
+     * the same fault as losing an option.
+     *
+     * What is on screen replaces the stash outright rather than only writing
+     * over it when non-empty. Skipping the empty ones looks careful and is not:
+     * an option somebody DELETED would come back on the next redraw, which is
+     * the stash overruling a decision instead of preserving one. */
     function redrawAnswers(row, type) {
       const stash = row._opts || (row._opts = []);
-      AD.qsa('[data-opt]', row).forEach((el, i) => { if (el.value.trim()) stash[i] = el.value; });
+      AD.qsa('[data-opt]', row).forEach((el, i) => { stash[i] = el.value; });
+      const keyEl = row.querySelector('[data-key]');
+      if (keyEl) row._key = keyEl.value;
       const wasIdx = AD.qsa('[data-ans]', row).findIndex(x => x.checked);
       row.querySelector('[data-answers]').innerHTML = answerBox(row.getAttribute('data-row'), type);
       AD.qsa('[data-opt]', row).forEach((el, i) => { if (stash[i]) el.value = stash[i]; });
+      const back = row.querySelector('[data-key]');
+      if (back && row._key) back.value = row._key;
       const ans = AD.qsa('[data-ans]', row);
       if (wasIdx >= 0 && ans[wasIdx]) ans[wasIdx].checked = true;
     }
@@ -517,6 +548,19 @@
         }
         if (it.type === 'gap' && !it.answer) {
           return { i, msg: at + AD.t('a gap-fill item needs an answer key.', 'câu điền từ cần có đáp án.') };
+        }
+        /* On a part whose items share one recording, the group's first question
+           carries it, and a group saved without one is three questions about
+           silence. The exam runner builds its play queue from whether an item
+           has audio, so nothing later notices: the candidate is simply asked.
+           Refused here rather than warned about, for the same reason a typed
+           item with no answer key is refused — it is not an incomplete item, it
+           is a wrong one. The item can still be written on the bank screen and
+           given its recording there. */
+        if (groupSize() > 1 && isGroupHead(i) && !it.file) {
+          return { i, msg: at + AD.t(
+            'attach the recording these ' + groupSize() + ' questions are about.',
+            'hãy đính kèm bài nghe cho ' + groupSize() + ' câu này.') };
         }
       }
       return null;

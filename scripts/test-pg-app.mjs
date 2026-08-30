@@ -96,6 +96,8 @@ try {
   process.env.DATABASE_URL = PG_URL;
   process.env.PREP_DB = path.join(tmp, 'scratch.sqlite');
   const db = require_('../server/db.js');
+  const { ADDED_COLUMNS } = db;
+  const S = require_('../server/schema.js');
   ok(db.engine === 'postgres', 'db.js selected the Postgres engine from DATABASE_URL', db.engine);
   const info = await db.connectEngine();
   ok(info.tables > 20, 'and connectEngine() found the schema', JSON.stringify(info));
@@ -217,6 +219,29 @@ try {
          FROM (SELECT family_id, skill, level, COUNT(*) have FROM questions
                 WHERE status='active' GROUP BY family_id, skill, level) b
         LIMIT 5`), r => Array.isArray(r));
+
+  /* ---- A schema that is present but BEHIND must stop the boot ----
+   *
+   * addColumnIfMissing() alters the SQLite handle, which on Postgres is a
+   * scratch file; the live schema gets those columns only from pg-migrate. A
+   * deploy that adds a column and skips that step used to come up healthy and be
+   * wrong invisibly — SELECT * returns a row without the column, the reader sees
+   * undefined and calls it false, and the first write is a 500.
+   *
+   * This suite is the only place the fault is reachable, and only by making it:
+   * every other Postgres check builds its schema fresh, so the columns are
+   * always there. So drop one, assert the refusal names it, and put it back. */
+  const [table, column, definition] = ADDED_COLUMNS[ADDED_COLUMNS.length - 1];
+  await db.q.run(`ALTER TABLE ${table} DROP COLUMN IF EXISTS ${column}`);
+  let refusal = null;
+  try { await db.connectEngine(); } catch (e) { refusal = e.message; }
+  ok(refusal && refusal.includes(table + '.' + column) && /pg:migrate/.test(refusal),
+    'A Postgres schema missing a late column refuses to boot, and names the column and the fix',
+    String(refusal));
+  await db.q.run(`ALTER TABLE ${table} ADD COLUMN IF NOT EXISTS ${column} ${S.toPostgres(definition)}`);
+  let back = null;
+  try { back = await db.connectEngine(); } catch (e) { back = { error: e.message }; }
+  ok(back && back.engine === 'postgres', 'and boots again once the column is put back', JSON.stringify(back));
 
   if (db.pg) await db.pg.close();
 } catch (e) {

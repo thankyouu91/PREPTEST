@@ -316,6 +316,24 @@ check('The passage is attached to the first question of a group and no other',
   !(await p.locator('[data-row] [data-audio-row]').nth(2).isVisible()));
 check('and the first slot is named for what it holds there',
   (await p.locator('[data-row] [data-audio-label]').first().textContent()).trim() === 'Attach passage');
+
+/* A file chosen while the part was ungrouped, on a row that a later part turns
+   into a middle-of-group row. Clearing the input in script fires no `change`,
+   so the filename beside the button used to keep saying "vpet-e-01.mp3" over an
+   empty input — the operator saves, no upload is attempted, and nothing reports
+   it. The file must go AND the row must say so. */
+await p.selectOption('#s-part', 'E');                       // listening, ungrouped: every row gets a slot
+await p.waitForTimeout(200);
+await p.locator('[data-row]').nth(1).locator('[data-audio]').setInputFiles('server/data/audio/vpet-e-01.mp3');
+await p.waitForTimeout(150);
+check('A file attached on an ungrouped part shows its name',
+  (await p.locator('[data-row]').nth(1).locator('[data-audio-name]').textContent()).includes('vpet-e-01'));
+await p.selectOption('#s-part', 'G');                       // row 1 is now mid-group: no slot
+await p.waitForTimeout(200);
+check('Moving that row into the middle of a group drops the file AND says so',
+  !(await p.locator('[data-row]').nth(1).locator('[data-audio-row]').isVisible()) &&
+  (await p.locator('[data-row]').nth(1).locator('[data-audio-name]').textContent()).trim() === 'no file',
+  await p.locator('[data-row]').nth(1).locator('[data-audio-name]').textContent());
 /* A fourth item is half a passage, and the server says so rather than guessing. */
 await p.click('#c-add');
 await p.waitForTimeout(150);
@@ -325,9 +343,31 @@ check('A batch that does not fill its last recording is called out while typing'
 for (let k = 0; k < 4; k++) {
   await p.locator('[data-row]').nth(k).locator('[data-prompt]').fill('Probe G question ' + (k + 1) + '?');
 }
+
+/* A group with no recording is three questions about silence, and the runner
+   builds its play queue from whether an item has audio — so nothing downstream
+   notices, the candidate is just asked. Refused before anything is sent. */
 await p.click('#s-save');
-await p.waitForTimeout(400);
-check('and the server refuses it too, rather than writing a fragment',
+await p.waitForTimeout(300);
+check('A group saved without its recording is refused, and the row is named',
+  (await p.textContent('#s-err-text')).includes('attach the recording'),
+  await p.textContent('#s-err-text'));
+
+const MP3 = 'server/data/audio/vpet-g-01.mp3';
+await p.locator('[data-row]').nth(0).locator('[data-audio]').setInputFiles(MP3);
+await p.waitForTimeout(150);
+check('and attaching it names the file on the row',
+  (await p.locator('[data-row]').nth(0).locator('[data-audio-name]').textContent()).includes('vpet-g-01'),
+  await p.locator('[data-row]').nth(0).locator('[data-audio-name]').textContent());
+
+/* Row 4 starts a second group, so it is a head too and wants its own recording.
+   Give it one: with the client satisfied, the batch reaches the server, which
+   refuses it on the count — a second group of one is still half a passage. */
+await p.locator('[data-row]').nth(3).locator('[data-audio]').setInputFiles('server/data/audio/vpet-g-04.mp3');
+await p.waitForTimeout(150);
+await p.click('#s-save');
+await p.waitForTimeout(500);
+check('and the server refuses the odd batch too, rather than writing a fragment',
   (await p.textContent('#s-err-text')).includes('3 questions about each recording'),
   await p.textContent('#s-err-text'));
 await p.locator('[data-row]').nth(3).locator('[data-drop]').click();

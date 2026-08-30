@@ -1036,6 +1036,21 @@ async function readInlineQuestions(list, ctx) {
         + 'Add ' + (size - (rows.length % size)) + ' more, or remove ' + (rows.length % size) + '.' };
     }
     rows.forEach((d, i) => { d.groupIndex = Math.floor(i / size); });
+    /* One group, one level. The key is minted from the group's level and each
+       item carries its own, so a group with a B1 first question and two B2 ones
+       would be filed under g-b1-N while two thirds of it says B2 — and
+       /admin/tests/generate with strictLevel filters on `level`, so it would
+       draw part of that group and leave the rest. Unreachable from the composer,
+       which sends no per-row level; reachable from the API, which is where an
+       import script arrives. */
+    for (let g = 0; g * size < rows.length; g++) {
+      const members = rows.slice(g * size, (g + 1) * size);
+      if (members.some(d => d.level !== members[0].level)) {
+        return { err: 'Item ' + (g * size + 1) + ': the ' + size + ' questions about one recording must '
+          + 'all be the same level. This group has ' + [...new Set(members.map(d => d.level))].join(' and ') + '.',
+        index: g * size };
+      }
+    }
   }
   return { rows, groupSize: size };
 }
@@ -1263,8 +1278,8 @@ router.post('/admin/tests/generate', roles.requireCap('tests.write'), async (req
       ? str(sec.part, 2).toUpperCase() : '';
     const { sql: poolSql, args: poolArgs } = poolWhere(familyId, skill, sec.types, part);
     const pool = strict
-      ? await q.all(`SELECT id FROM questions WHERE ${poolSql} AND level=?`, ...poolArgs, level)
-      : await q.all(`SELECT id, (level=?) exact FROM questions WHERE ${poolSql} ORDER BY exact DESC`,
+      ? await q.all(`SELECT id, group_key FROM questions WHERE ${poolSql} AND level=?`, ...poolArgs, level)
+      : await q.all(`SELECT id, group_key, (level=?) exact FROM questions WHERE ${poolSql} ORDER BY exact DESC`,
               level, ...poolArgs);
 
     const avail = pool.filter(r => !usedIds.has(r.id));
@@ -1279,8 +1294,44 @@ router.post('/admin/tests/generate', roles.requireCap('tests.write'), async (req
     const exact = avail.filter(r => strict || r.exact);
     const other = avail.filter(r => !strict && !r.exact);
     const shuffle = arr => arr.map(v => [Math.random(), v]).sort((a, c) => a[0] - c[0]).map(v => v[1]);
-    const chosen = shuffle(exact).concat(shuffle(other)).slice(0, want);
-    chosen.forEach(r => usedIds.add(r.id));
+    /* Whole groups or none of them — the same rule plannedPaper() applies, and
+       for the same reason: Part G is three questions about ONE recording that
+       only the first of the three carries. Taking a slice of a shuffled list
+       splits groups, and the candidate is asked about a passage that was never
+       played. This path drew items one at a time because until now nothing an
+       administrator authored WAS grouped; every Part G batch written through the
+       composer is, so the split went from unlikely to routine.
+       A group that will not fit in what is left is skipped and the next tried,
+       which is why this counts as it goes rather than slicing at the end. */
+    const byGroup = new Map();
+    for (const r of avail) if (r.group_key) {
+      if (!byGroup.has(r.group_key)) byGroup.set(r.group_key, []);
+      byGroup.get(r.group_key).push(r);
+    }
+    const chosen = [];
+    const takenGroups = new Set();
+    for (const r of shuffle(exact).concat(shuffle(other))) {
+      if (chosen.length >= want) break;
+      if (usedIds.has(r.id)) continue;
+      if (!r.group_key) { usedIds.add(r.id); chosen.push(r); continue; }
+      if (takenGroups.has(r.group_key)) continue;
+      const members = (byGroup.get(r.group_key) || []).filter(m => !usedIds.has(m.id));
+      if (chosen.length + members.length > want) continue;
+      takenGroups.add(r.group_key);
+      for (const m of members) { usedIds.add(m.id); chosen.push(m); }
+    }
+    /* Counted after the grouping, not before: a part whose remaining items are
+       all in groups too big for the gap left is short even though `avail` said
+       otherwise, and reporting it here is the difference between a shortage the
+       operator can act on and a paper quietly one item light. */
+    if (chosen.length < want) {
+      chosen.forEach(r => usedIds.delete(r.id));
+      shortages.push({
+        section: str(sec.name, 100) || skill, skill, part: part || null,
+        need: want, have: chosen.length
+      });
+      continue;
+    }
     picked.push({ sec, part, ids: chosen.map(r => r.id) });
   }
 

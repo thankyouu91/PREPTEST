@@ -2315,6 +2315,50 @@ async function connectEngine() {
   if (Number(n) === 0) {
     throw new Error('PostgreSQL is reachable but empty. Run: PG_URL=… npm run pg:migrate -- --yes');
   }
+
+  /* Present is not the same as current.
+   *
+   * addColumnIfMissing() runs ALTER TABLE against the SQLite handle, which on a
+   * Postgres deployment is a scratch file. The live schema gets those columns
+   * only through fullPostgresDdl(), which only scripts/pg-migrate.mjs runs. So a
+   * deploy that adds a column and skips the migrate step comes up perfectly
+   * healthy and is wrong in a way nothing points at: a SELECT * hands back a row
+   * without the column, the reader sees `undefined` and treats it as false, and
+   * the first write to it is a 500 on whichever route the person happened to
+   * use. A learner's notification preferences reading "all off" is not an error
+   * anybody reports — it just looks like the setting.
+   *
+   * Checked against ADDED_COLUMNS rather than a list written here, so a column
+   * added in six months is covered by having been added. Counting tables could
+   * never have caught this; the tables were all there.
+   *
+   * The gate cannot see this either: every Postgres suite builds its schema
+   * fresh from fullPostgresDdl and therefore always has the columns. */
+  const want = new Map();
+  for (const [table, column] of ADDED_COLUMNS) {
+    if (!want.has(table)) want.set(table, new Set());
+    want.get(table).add(column.toLowerCase());
+  }
+  const have = await pgHandle.q.all(
+    'SELECT table_name, column_name FROM information_schema.columns WHERE table_schema = current_schema()');
+  const seen = new Map();
+  for (const r of have) {
+    const t = String(r.table_name);
+    if (!seen.has(t)) seen.set(t, new Set());
+    seen.get(t).add(String(r.column_name).toLowerCase());
+  }
+  const missing = [];
+  for (const [table, cols] of want) {
+    const got = seen.get(table);
+    if (!got) continue;                       // the table itself is absent; the count check owns that
+    for (const c of cols) if (!got.has(c)) missing.push(table + '.' + c);
+  }
+  if (missing.length) {
+    throw new Error('PostgreSQL is behind this build by ' + missing.length + ' column(s): '
+      + missing.slice(0, 8).join(', ') + (missing.length > 8 ? ', …' : '')
+      + '. Run the deploy step: PG_URL=… npm run pg:migrate -- --yes');
+  }
+
   return { engine, tables: Number(n), idTables: info.idTables.length };
 }
 
