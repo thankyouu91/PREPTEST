@@ -297,6 +297,10 @@
       'Đáp án — viết color|colour để chấp nhận cả hai cách viết',
     'Remove this question': 'Xóa câu này',
     'Attach MP3': 'Đính kèm MP3',
+    /* Part G's two slots. The first means something different there — it is the
+       passage the group shares, not the item's own sound. */
+    'Attach passage': 'Đính kèm bài nghe',
+    'Attach spoken question': 'Đính kèm câu hỏi đọc thành tiếng',
     'no file': 'chưa có file',
     'Item type': 'Dạng câu hỏi',
     'Answer key': 'Đáp án',
@@ -722,6 +726,14 @@
     'Email notifications': 'Thông báo qua email',
     'Changes are saved the moment you switch one on or off.':
       'Thay đổi được lưu ngay khi bạn bật hoặc tắt.',
+    'Saved to your account the moment you switch one on or off, so the answer is the same on every device. None of these three are being sent yet — what you set here is what we will honour when they start. Sign-in and password emails are not on this list: those are part of keeping the account safe and are always sent.':
+      'Lưu vào tài khoản ngay khi bạn bật hoặc tắt, nên máy nào cũng giống nhau. Cả ba loại này hiện chưa được gửi — cài đặt ở đây là điều chúng tôi sẽ tôn trọng khi bắt đầu gửi. Email đăng nhập và mật khẩu không nằm trong danh sách này: đó là phần giữ an toàn cho tài khoản và luôn được gửi.',
+    'That setting could not be saved.': 'Không lưu được cài đặt này.',
+    'Demo order': 'Đơn mẫu',
+    'Paid': 'Đã thanh toán',
+    'Awaiting payment': 'Chờ thanh toán',
+    'Not completed': 'Chưa hoàn tất',
+    'Refunded': 'Đã hoàn tiền',
     'Practice reminders': 'Nhắc luyện tập',
     'A gentle weekly nudge if you have an unlocked test you have not sat.':
       'Nhắc nhẹ mỗi tuần nếu bạn có bài đã mở mà chưa làm.',

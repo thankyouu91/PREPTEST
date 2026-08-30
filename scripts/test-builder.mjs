@@ -269,6 +269,84 @@ const partELine = await p.locator('[data-section]').last().locator('.text-muted'
 check('A part describes itself from the blueprint, with nothing typed by hand',
   partELine.includes('Type what you hear'), partELine.trim());
 
+/* ---- 4. Part F shows three options, not four ----
+   The API refuses an mcq item whose option count is not the one the part
+   publishes, so a form that can only make four boxes is a form nobody can get a
+   Part F item through. */
+await p.click('#btn-add-section');
+await p.waitForSelector('#c-add');
+await p.selectOption('#s-part', 'F');
+await p.waitForTimeout(150);
+await p.click('#c-add');
+check('Part F offers the three options the exam displays, not four',
+  (await p.locator('[data-row] [data-opt]').count()) === 3,
+  String(await p.locator('[data-row] [data-opt]').count()));
+for (let k = 0; k < 3; k++) await p.locator('[data-row] [data-opt]').nth(k).fill('Reply ' + (k + 1));
+await p.selectOption('#s-part', 'C');                       // four options
+await p.waitForTimeout(150);
+check('and moving the row to a four-option part grows the box back',
+  (await p.locator('[data-row] [data-opt]').count()) === 4);
+await p.selectOption('#s-part', 'F');
+await p.waitForTimeout(150);
+check('and what was typed survives the round trip',
+  (await p.locator('[data-row] [data-opt]').nth(0).inputValue()) === 'Reply 1' &&
+  (await p.locator('[data-row] [data-opt]').nth(2).inputValue()) === 'Reply 3',
+  await p.locator('[data-row] [data-opt]').nth(0).inputValue());
+
+/* ---- 5. Part G is written three questions to a passage ----
+   Each of its three questions is asked about one recording. Written one at a
+   time, every item became its own group, and the paper played the passage over
+   again before each question. */
+await p.selectOption('#s-part', 'G');
+await p.waitForTimeout(200);
+check('Part G numbers its rows by passage and question',
+  (await p.locator('[data-row] [data-num]').first().textContent()).trim() === '1.1',
+  await p.locator('[data-row] [data-num]').first().textContent());
+check('and says how many questions go with each recording',
+  (await p.textContent('#c-group-note')).includes('3 questions about each recording'),
+  await p.textContent('#c-group-note'));
+check('and asks for a spoken question on the row',
+  await p.locator('[data-row] [data-qaudio-row]').first().isVisible());
+await p.click('#c-add');
+await p.click('#c-add');
+await p.waitForTimeout(150);
+check('The passage is attached to the first question of a group and no other',
+  (await p.locator('[data-row] [data-audio-row]').nth(0).isVisible()) &&
+  !(await p.locator('[data-row] [data-audio-row]').nth(1).isVisible()) &&
+  !(await p.locator('[data-row] [data-audio-row]').nth(2).isVisible()));
+check('and the first slot is named for what it holds there',
+  (await p.locator('[data-row] [data-audio-label]').first().textContent()).trim() === 'Attach passage');
+/* A fourth item is half a passage, and the server says so rather than guessing. */
+await p.click('#c-add');
+await p.waitForTimeout(150);
+check('A batch that does not fill its last recording is called out while typing',
+  (await p.textContent('#c-group-note')).includes('add 2 more'),
+  await p.textContent('#c-group-note'));
+for (let k = 0; k < 4; k++) {
+  await p.locator('[data-row]').nth(k).locator('[data-prompt]').fill('Probe G question ' + (k + 1) + '?');
+}
+await p.click('#s-save');
+await p.waitForTimeout(400);
+check('and the server refuses it too, rather than writing a fragment',
+  (await p.textContent('#s-err-text')).includes('3 questions about each recording'),
+  await p.textContent('#s-err-text'));
+await p.locator('[data-row]').nth(3).locator('[data-drop]').click();
+await p.waitForTimeout(150);
+await p.click('#s-save');
+await p.waitForTimeout(1600);
+const gGroups = await p.evaluate(async id => {
+  const g = await (await fetch('/api/admin/tests/' + id, { credentials: 'same-origin' })).json();
+  const sec = (g.sections || []).find(s => s.part === 'G');
+  const ids = (sec ? sec.items : []).map(i => i.questionId);
+  const bank = await (await fetch('/api/admin/questions?part=G&limit=200', { credentials: 'same-origin' })).json();
+  return (bank.items || []).filter(x => ids.includes(x.id)).map(x => x.groupKey);
+}, testId);
+check('Three questions written together share one group key',
+  gGroups.length === 3 && gGroups[0] && new Set(gGroups).size === 1,
+  JSON.stringify(gGroups));
+check('and it is a new key, not one an existing passage already owns',
+  gGroups[0] !== 'g-b1-1' && /^g-[a-z0-9]+-\d+$/.test(gGroups[0] || ''), String(gGroups[0]));
+
 /* Clean up the throwaway paper and the items it created. */
 await p.evaluate(async ([t, id]) => {
   const g = await (await fetch('/api/admin/tests/' + id, { credentials: 'same-origin' })).json();
@@ -285,7 +363,14 @@ await p.evaluate(async ([t, id]) => {
 }, [csrf, testId]);
 
 await b.close();
-check('No console or CSP errors on the builder', errs.length === 0, errs.slice(0, 3).join(' | '));
+/* The four-item Part G batch above is refused by the server on purpose, and the
+   browser logs that 400 as a resource error. It is the only one this run should
+   produce — everything else has to be silent. */
+const refused = errs.filter(e => /status of 400/.test(e));
+const noise = errs.filter(e => !/status of 400/.test(e));
+check('Exactly one network error, the batch the server was meant to refuse',
+  refused.length === 1, refused.length + ': ' + refused.join(' | '));
+check('No console or CSP errors on the builder', noise.length === 0, noise.slice(0, 3).join(' | '));
 
 let bad = 0;
 for (const r of out) {

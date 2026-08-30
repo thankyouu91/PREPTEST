@@ -164,7 +164,10 @@
               <input type="checkbox" id="n-promo" class="toggle mt-1 shrink-0" role="switch">
             </label>
           </div>
-          <p class="help mt-4">Changes are saved the moment you switch one on or off.</p>
+          <p class="help mt-4">Saved to your account the moment you switch one on or off, so the answer is
+            the same on every device. None of these three are being sent yet — what you set here is what we
+            will honour when they start. Sign-in and password emails are not on this list: those are part of
+            keeping the account safe and are always sent.</p>
         </div>
       </section>
 
@@ -310,37 +313,62 @@
       });
     });
 
-    /* --- Notifications --- TODO(backend): PATCH /api/me/notifications */
-    const notif = s.notif || { newTests: true, reminder: true, promo: false };
+    /* --- Notifications ---
+       Stored on the account (PATCH /api/me/notifications), so the answer is the
+       same on every device and can still be read when the mail is eventually
+       sent. The switch is moved only after the server has confirmed it: on a
+       failure it goes back where it was and says why, because a switch that
+       shows "on" while the record says "off" is the one state this screen must
+       never reach. */
+    const notify = PrepState.notify() || { newTests: true, reminder: true, promo: false };
     [['n-newTests','newTests'],['n-reminder','reminder'],['n-promo','promo']].forEach(([id, key]) => {
       const el = PREP.qs('#' + id);
-      el.checked = !!notif[key];
+      el.checked = !!notify[key];
       el.addEventListener('change', () => {
-        const st = PrepState.load();
-        st.notif = st.notif || {};
-        st.notif[key] = el.checked;
-        PrepState.save(st);
-        PrepChrome.toast(el.checked ? 'Notification turned on' : 'Notification turned off');
+        const want = el.checked;
+        el.disabled = true;
+        PrepState.setNotify({ [key]: want }).then(res => {
+          el.disabled = false;
+          if (!res.ok) {
+            el.checked = !want;                       // the record did not change, so neither does the switch
+            PrepChrome.toast(res.error);
+            return;
+          }
+          el.checked = !!res.notify[key];             // what the server stored, not what was clicked
+          PrepChrome.toast(el.checked ? 'Notification turned on' : 'Notification turned off');
+        });
       });
     });
 
-    /* --- Order history --- TODO(backend): GET /api/me/orders */
+    /* --- Order history ---
+       Comes back on the boot request with the rest of the account; there is no
+       second call for it. `demo` marks the seeded fixture rows — nothing sent
+       them to a payment provider, so they must not be shown as if money moved. */
+    const ORDER_STATUS = {
+      paid:     ['badge-ok', 'Paid'],
+      pending:  ['badge-hl', 'Awaiting payment'],
+      failed:   ['badge-danger', 'Not completed'],
+      refunded: ['badge-muted', 'Refunded']
+    };
     const orders = s.orders || [];
     if (!orders.length) {
       PREP.qs('#orders-empty').removeAttribute('hidden');
     } else {
-      PREP.qs('#orders-list').innerHTML = orders.map(o =>
-        '<article class="card p-5 flex flex-wrap items-center gap-4">' +
+      PREP.qs('#orders-list').innerHTML = orders.map(o => {
+        const st = ORDER_STATUS[o.status] || ['badge-muted', o.status || 'Unknown'];
+        const badge = o.demo ? ['badge-muted', 'Demo order'] : st;
+        return '<article class="card p-5 flex flex-wrap items-center gap-4">' +
           '<span class="min-w-0 flex-1">' +
             '<b class="block font-bold">' + PREP.esc(o.name) + '</b>' +
-            '<span class="block text-[13px] text-muted font-medium mt-0.5">Order ' + PREP.esc(o.id) + ' · ' + PREP.fmtDate(o.at) + '</span>' +
+            '<span class="block text-[13px] text-muted font-medium mt-0.5">Order ' + PREP.esc(o.id) + ' · ' + PREP.fmtDate(o.paidAt || o.at) + '</span>' +
             (o.code ? '<code class="inline-block mt-2 text-[13px] font-bold tracking-wider bg-brand-soft rounded-lg px-2.5 py-1">' + PREP.esc(PREP.maskCode(o.code)) + '</code>' : '') +
           '</span>' +
           '<span class="text-right">' +
             '<b class="block font-extrabold">' + PREP.vnd(o.amount) + '</b>' +
-            '<span class="badge badge-muted mt-1.5">Demo order</span>' +
+            '<span class="badge ' + badge[0] + ' mt-1.5">' + PREP.esc(badge[1]) + '</span>' +
           '</span>' +
-        '</article>').join('');
+        '</article>';
+      }).join('');
     }
   });
 </script>

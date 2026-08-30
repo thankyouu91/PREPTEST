@@ -112,6 +112,37 @@ ok(JSON.stringify(r.data.user.interests) === JSON.stringify(['toeic']), 'Stores 
 r = await c.patch('/api/me', { name: 'Not allowed', email: NEW_EMAIL }, { 'X-CSRF-Token': 'wrong-token' });
 ok(r.status === 403, 'Refuses a request with a wrong CSRF token');
 
+console.log('\n\x1b[1m== Which emails this account agrees to receive ==\x1b[0m');
+/* Kept on the account rather than in the browser: the answer has to be the same
+   on a phone as on a laptop, has to survive a cleared cache, and — for the
+   marketing one — has to be producible later with a date on it. */
+r = await c.get('/api/me');
+ok(r.data.user.notify && r.data.user.notify.newTests === true && r.data.user.notify.reminder === true,
+  'A new account has the two service emails on');
+ok(r.data.user.notify.promo === false && r.data.user.notify.setAt === null,
+  'and marketing off, with no consent date, because nobody has consented yet');
+
+r = await c.patch('/api/me/notifications', { promo: true });
+ok(r.status === 200 && r.data.notify.promo === true, 'Marketing can be turned on');
+ok(typeof r.data.notify.setAt === 'string' && !Number.isNaN(Date.parse(r.data.notify.setAt)),
+  'and the moment it was turned on is stamped');
+ok(r.data.notify.newTests === true && r.data.notify.reminder === true,
+  'A patch of one switch leaves the other two where they were');
+
+r = await c.patch('/api/me/notifications', { promo: 'yes' });
+ok(r.status === 400, 'A setting that is not true or false is refused');
+r = await c.patch('/api/me/notifications', {});
+ok(r.status === 400, 'and so is a patch that changes nothing, rather than stamping a date for it');
+r = await c.patch('/api/me/notifications', { newTests: false }, { 'X-CSRF-Token': 'wrong-token' });
+ok(r.status === 403, 'A wrong CSRF token cannot change what somebody agreed to');
+r = await anon.patch('/api/me/notifications', { promo: false });
+ok(r.status === 401, 'and signed out, nobody can change it at all');
+
+r = await c.get('/api/me');
+ok(r.data.user.notify.promo === true && r.data.user.notify.newTests === true,
+  'The refused writes changed nothing; the accepted one survives a fresh read');
+await c.patch('/api/me/notifications', { promo: false });
+
 console.log('\n\x1b[1m== Email verification ==\x1b[0m');
 r = await c.post('/api/auth/verify', { token: 'token-bia' });
 ok(r.status === 400, 'Refuses an invalid verification token');

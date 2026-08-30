@@ -127,6 +127,22 @@ function deliverLink(kind, user, token, req) {
   return (isProd() || mail.enabled()) ? undefined : link;
 }
 
+/* The three emails a learner can turn on or off, and the column each one lives
+   in. One list, used by the reader, the writer and the validator alike, so a
+   fourth preference cannot be added to two of the three and forgotten in the
+   last. */
+const NOTIFY = [
+  ['newTests', 'notify_new_tests'],
+  ['reminder', 'notify_reminder'],
+  ['promo', 'notify_promo']
+];
+
+function notifyOf(u) {
+  const out = { setAt: u.notify_set_at || null };
+  for (const [key, col] of NOTIFY) out[key] = !!u[col];
+  return out;
+}
+
 /** The profile sent to the client — never carries pass_hash */
 async function profileOf(userId) {
   const u = await q.get('SELECT * FROM users WHERE id=?', userId);
@@ -134,7 +150,8 @@ async function profileOf(userId) {
   return {
     username: u.username, email: u.email, name: u.name,
     verified: !!u.verified, interests: jparse(u.interests_json, []),
-    createdAt: u.created_at
+    createdAt: u.created_at,
+    notify: notifyOf(u)
   };
 }
 
@@ -170,9 +187,36 @@ async function accessOf(userId) {
   return { unlockedTestIds: [...testIds], unlockedFamilyIds: [...familyIds], myCodes: codes };
 }
 
+/* A buyer's own order history.
+ *
+ * The code is joined in rather than looked up per row: an order that settled
+ * IS a code, and a receipt that cannot show which one sends the buyer to
+ * support to ask. It is the whole code — this is the person who paid for it,
+ * reading their own history behind their own sign-in; the account screen masks
+ * it on the way to the screen so a shoulder or a screenshot does not carry it.
+ *
+ * `demo` marks the six seeded fixture orders, which are the ones with no
+ * provider: nothing sent them to a gateway, so they must not be shown as if
+ * money moved. A real order always names the provider that took it.
+ *
+ * LIMIT 50 is the screen's limit, not a paging cursor — nobody has more, and if
+ * anybody ever does the older rows are still in the table. */
 async function ordersOf(userId) {
-  return (await q.all('SELECT * FROM orders WHERE user_id=? ORDER BY created_at DESC LIMIT 50', userId))
-    .map(o => ({ id: 'DH' + o.id, packageId: o.package_id, name: o.name, amount: o.amount, at: o.created_at, status: o.status }));
+  const rows = await q.all(
+    `SELECT o.*, c.code AS code FROM orders o
+       LEFT JOIN codes c ON c.id = o.code_id
+      WHERE o.user_id=? ORDER BY o.created_at DESC LIMIT 50`, userId);
+  return rows.map(o => ({
+    id: 'DH' + o.id,
+    packageId: o.package_id,
+    name: o.name,
+    amount: o.amount,
+    at: o.created_at,
+    status: o.status,
+    paidAt: o.paid_at || null,
+    code: o.code || null,
+    demo: !o.provider
+  }));
 }
 
 /* ============================ Registration ============================ */
@@ -734,6 +778,41 @@ router.patch('/me', A.requireUser, A.csrfGuard, async (req, res) => {
   }
   await logUser(req, 'user.profile.update', req.user.username, { changedEmail });
   res.json({ ok: true, user: await profileOf(req.user.id), verifyLink: link });
+});
+
+/* Which emails this account agrees to receive.
+ *
+ * A partial patch: the account screen sends one switch at a time, because that
+ * is how a person flips them, and a whole-object PUT from a screen that loaded
+ * a minute ago would quietly undo whatever another tab changed since.
+ *
+ * Written down rather than kept in the browser because a preference in
+ * localStorage is not a record of anything: it is gone with the cache, absent
+ * on the person's phone, and unreadable by whatever eventually sends the mail.
+ * Marketing consent especially — the only version of "they agreed" that is
+ * worth having is one the server can produce later, with a date on it.
+ *
+ * Logged for the same reason, and the log carries what changed rather than the
+ * whole set, so the audit trail reads as a sequence of decisions. */
+router.patch('/me/notifications', A.requireUser, A.csrfGuard, async (req, res) => {
+  const b = req.body || {};
+  const sets = [], vals = [], changed = {};
+  for (const [key, col] of NOTIFY) {
+    if (!(key in b)) continue;
+    if (typeof b[key] !== 'boolean') return bad(res, 'Each notification setting must be true or false.');
+    sets.push(col + '=?');
+    vals.push(b[key] ? 1 : 0);
+    changed[key] = b[key];
+  }
+  /* An empty patch is a mistake on the caller's side, not a no-op worth
+     stamping notify_set_at for — the date has to mean "they decided". */
+  if (!sets.length) return bad(res, 'Nothing to change.');
+
+  await q.run(`UPDATE users SET ${sets.join(', ')}, notify_set_at=? WHERE id=?`,
+    ...vals, nowISO(), req.user.id);
+  await logUser(req, 'user.notify.update', req.user.username, changed);
+  const u = await q.get('SELECT * FROM users WHERE id=?', req.user.id);
+  res.set('Cache-Control', 'no-store').json({ ok: true, notify: notifyOf(u) });
 });
 
 router.post('/me/password', A.requireUser, A.csrfGuard, async (req, res) => {

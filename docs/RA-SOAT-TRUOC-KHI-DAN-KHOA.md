@@ -8,7 +8,9 @@ của việc chấm + quyền riêng tư, và đường đi thực tế của ng
 **Mọi phát hiện dưới đây đều đã được kiểm chứng lại bằng tay trên chính mã
 nguồn này trước khi sửa.** Cái nào chỉ là suy đoán thì nói rõ là suy đoán.
 
-Cổng `scripts/verify.sh` xanh đủ 45 bước sau khi sửa xong.
+Cổng `scripts/verify.sh` xanh đủ 45 bước sau khi sửa xong — **45 là con số của
+ngày rà soát**; cổng đã dài ra từ đó (58 bước tính đến 2026-08-30), nên đừng lấy
+số này làm mốc, hãy đếm bằng `grep -c '^step ' scripts/verify.sh`.
 
 ---
 
@@ -78,6 +80,11 @@ là kết quả **mong đợi**, trên mọi câu, mãi mãi. Và nó dẫn th�
 
 **Đã sửa.** Ngưỡng 2000, và `stop_reason` cuối cùng cũng được đọc: câu trả lời
 hết chỗ bị từ chối ngay nơi nó đến chứ không được đem đi diễn giải.
+
+> **Đo lại 2026-08-30, sau khi Part D lên 7 tiêu chí.** Con số phải kiểm lại mỗi
+> lần rubric dài ra, vì đây chính là chỗ nó sẽ vỡ. `form` do nền tảng đếm nên mô
+> hình chỉ viết 6 tiêu chí; câu trả lời dài nhất mà khuôn dạng cho phép là **~920
+> token** (B ~540, I ~664, J ~538, G ~286). Ngưỡng 2000 vẫn dư hơn gấp đôi.
 
 ## 4. Cao — một khoá sai làm nhà cung cấp *kia* thu tiền không giới hạn
 
@@ -248,13 +255,26 @@ Rà soát riêng sau khi có yêu cầu: **rubric chấm điểm phải khớp v
 | A | writing | 10 | đáp án | – |
 | B | writing | 3 | AI + rubric | meaning, accuracy, organisation |
 | C | reading | 6 | đáp án | – |
-| D | writing | 2 | AI + rubric | task, register, organisation, accuracy |
+| D | writing | 2 | AI + rubric | content, conventions, **form**, organisation, vocabulary, grammar, spelling |
 | E | listening | 8 | đáp án | – |
 | F | listening | 8 | đáp án | – |
 | G | listening | 6 | AI + rubric | correct |
-| H | speaking | 10 | AI + rubric | content, structure |
+| H | speaking | 10 | **so khớp, không dùng mô hình** (`repeat.js`) | content, structure |
 | I | speaking | 2 | AI + rubric | task, range, accuracy, register |
 | J | speaking | 3 | AI + rubric | events, sequence, point |
+
+> **Part D đổi từ 4 tiêu chí sang 7 (2026-08-30).** Chủ đầu tư gửi rubric **Write
+> Email của PTE Core — của chính Pearson** — nên Part D nay chấm theo đúng bảng
+> đó: 7 tiêu chí trên thang 15 điểm, **có trọng số** (`content` 3, sáu cái còn
+> lại 2). Một tiêu chí duy nhất **được đếm chứ không phán đoán**: `form` là số
+> từ, nền tảng tự đếm và mô hình được dặn đừng chấm nó. Sáu tiêu chí còn lại —
+> `spelling` trong đó — vẫn do mô hình chấm theo mô tả từng mức. Chi tiết đầy đủ
+> ở [`docs/CHAM-DIEM-CHUAN.md`](CHAM-DIEM-CHUAN.md) §3.1.
+>
+> Kéo theo đó, hai luật của nền tảng **nhường chỗ ở riêng Part D**: mắt xích yếu
+> nhất (scheme của Pearson là tổng có trọng số thuần) và cửa độ dài (độ dài đã là
+> một trong bảy tiêu chí). Một luật của Pearson được thêm vào: `content` = 0
+> (lạc đề) → **cả bài 0 điểm**.
 
 Đúng như thiết kế anh/chị nói: **32 câu trắc nghiệm/điền từ chạy bằng đáp án,
 26 câu viết và nói do AI chấm.** Ba chỗ lệch đã sửa:
@@ -278,12 +298,37 @@ Bộ kiểm thử giờ kiểm **cấu trúc** trên chính đề VPET đang ch�
 phần AI chấm đều có tiêu chí mà prompt hỏi và `combine()` nhận, không có tiêu chí
 thừa cho phần không tồn tại, và không có bậc thang nào trong luật độ dài.
 
-`RUBRIC_VERSION` lên `2026-08-vpet-2`. Điểm đã lưu mang theo phiên bản, nên báo
-cáo cũ vẫn nói được nó được chấm bằng luật nào.
+`RUBRIC_VERSION` khi đó lên `2026-08-vpet-2`. **Hiện tại là `2026-08-vpet-5`** —
+xem lịch sử phiên bản trong `server/rubric.js`. Điểm đã lưu mang theo phiên bản
+đã chấm nó, nên báo cáo cũ vẫn nói được nó chấm bằng luật nào, và **không có bài
+nào bị chấm lại** khi luật đổi: hạ điểm một bài đã thi theo luật nó được thông
+báo là điều một điểm số không được làm.
+
+Ba thay đổi lớn sau bản rà soát này:
+
+| Phiên bản | Đổi gì |
+|---|---|
+| `-3` | **Luật chép lại đề.** Dán nguyên đoạn văn Part B vào ô trả lời từng được **10/10 cả ba tiêu chí** — và cả ba con số đều đúng theo định nghĩa của chúng. Nay đo bằng số học (chuỗi 5 từ), trần 3,0. |
+| `-4` | **Part D theo rubric PTE Core của Pearson** (bảng trên), và **thang điểm↔bậc suy ngược từ `bands.js`** — trước đó lời nhắc chỉ ghi "Candidate level: B1" rồi để mô hình tự đoán, nên hai nửa của việc chấm chưa từng khớp nhau ngoài lúc may mắn. |
+| `-5` | **Mọi tiêu chí của mọi phần có mô tả từng mức, ở cả hai cấp đề.** Trước đó chỉ Part D có. `rubric.validate()` chặn rubric thiếu, chạy cả trong test lẫn lúc khởi động máy chủ. |
 
 ## Việc còn treo, tôi không tự quyết
 
-**Chưa có trang chính sách quyền riêng tư.** Liên kết trên landing vẫn là một
-`<span>` ghi "Privacy (being written)". Hướng dẫn trước khi thi giờ đã nói rõ
-bài và giọng nói được gửi đi đâu, nhưng đó không thay thế được một trang chính
-sách.
+~~**Chưa có trang chính sách quyền riêng tư.**~~ **Đã xong (2026-08-30).** Bốn
+trang đã viết và đã nối vào chân trang landing: `/prep/rieng-tu/` (quyền riêng
+tư), `/prep/dieu-khoan/` (điều khoản), `/prep/hoan-tien/` (hoàn tiền) và
+`/prep/bao-mat/` (bảo mật). Không còn `<span>` chết nào trong chân trang.
+
+**Còn lại một việc của chủ máy, không phải của tôi: khối định danh người bán.**
+Trang điều khoản có sẵn bảng bốn dòng — tên đơn vị chủ quản, mã số doanh nghiệp,
+địa chỉ, điện thoại — và cả bốn đang là `(chưa điền)`, đánh dấu bằng
+`data-seller="…"` để tìm cho nhanh. Nghị định 52/2013 về thương mại điện tử buộc
+website bán hàng phải công bố những dòng này, nên đây là việc phải làm **trước
+khi bán thật**, và là việc chỉ chủ đầu tư mới có số liệu để điền.
+
+**Ba email trong phần cài đặt thông báo chưa được gửi.** Từ 2026-08-30 lựa chọn
+của học viên đã lưu trên tài khoản (`users.notify_*`, có mốc thời gian đồng ý),
+API `PATCH /api/me/notifications`, và màn hình nói thẳng rằng chưa có email nào
+trong ba loại đó được gửi. Hệ thống mới chỉ gửi thư giao dịch — xác thực email và
+đặt lại mật khẩu. Khi nào có người viết bộ gửi thư thông báo, ô đồng ý đã có sẵn
+để đọc; điều không được làm là gửi trước rồi hỏi sau.

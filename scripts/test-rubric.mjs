@@ -33,6 +33,9 @@ import { DEMO_PASSWORD, ADMIN_PASSWORD } from './_demo.mjs';
 
 const require = createRequire(import.meta.url);
 const R = require('../server/rubric.js');
+/* For DEFAULTS.model, so the tidy-up at the end puts the provider back to the
+   same place test-ai-marking.mjs does rather than to a string typed twice. */
+const AI = require('../server/ai-marking.js');
 const BASE = process.env.BASE_URL || process.env.BASE || 'http://127.0.0.1:3000';
 
 let pass = 0, fail = 0;
@@ -860,6 +863,22 @@ try {
   fail++;
   console.log('\n✗ The suite threw: ' + (e && e.stack ? e.stack : e));
 } finally {
+  /* Take the stub key back out, the way test-ai-marking.mjs does.
+   *
+   * Closing the socket was not enough, and the gap only shows on the SECOND run
+   * of the gate against the same database. This suite is the last one to install
+   * a marker, so its key outlived the run; the next run reached test-exam.mjs —
+   * which is 27 steps earlier and assumes nothing is configured — with a live
+   * key and a dead stub behind it. The background sweeper marked that paper's
+   * writing and speaking against the no-answer floor, so "unfinished marking
+   * leaves the overall blank" saw an overall of 2.5 and a paper with nothing
+   * pending. Nothing was wrong with the product; the gate had poisoned itself
+   * and could only be trusted once per database. */
+  try {
+    await admin.req('PUT', '/api/admin/ai', {
+      apiKey: '', sttApiKey: '', baseUrl: 'https://api.anthropic.com', model: AI.DEFAULTS.model
+    });
+  } catch (e) { /* tidy-up */ }
   stub.close();
 }
 

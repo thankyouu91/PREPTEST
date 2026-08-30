@@ -1017,19 +1017,70 @@ async function readInlineQuestions(list, ctx) {
     }
     rows.push(d);
   }
-  return { rows };
+
+  /* Parts whose items share one recording — Part G, and only Part G today — are
+     written in runs of the published group size. Without this every typed item
+     became a group of one, so a Part G paper played six passages instead of two
+     and the candidate heard each question's passage all over again.
+     A batch that does not divide is refused rather than rounded: three items
+     into a part that groups in threes is one passage, four is a passage and a
+     fragment, and there is no honest guess about which item the fragment goes
+     with. `sharesAudio` is narrow on purpose — Part C groups on the clock only,
+     because each of its items carries its own copy of the passage. */
+  const sec = ctx.part ? EXAM_FORMATS.sectionOfPart(ctx.familyId, ctx.part) : null;
+  const size = sec && sec.sharesAudio ? sec.group : 1;
+  if (size > 1) {
+    if (rows.length % size) {
+      return { err: 'Part ' + ctx.part + ' asks ' + size + ' questions about each recording, so items are '
+        + 'written ' + size + ' at a time. This batch has ' + rows.length + '. '
+        + 'Add ' + (size - (rows.length % size)) + ' more, or remove ' + (rows.length % size) + '.' };
+    }
+    rows.forEach((d, i) => { d.groupIndex = Math.floor(i / size); });
+  }
+  return { rows, groupSize: size };
+}
+
+/* The next free group key for a part at a level, in the shape the bank already
+   uses: g-b1-1, g-b1-2, … Minted here rather than typed by the operator because
+   a typed key that happens to match an existing one does not fail — it quietly
+   files the new questions under somebody else's passage, and the first sign is
+   a candidate hearing a recording that has nothing to do with the question. */
+async function nextGroupKey(part, level, alsoTaken) {
+  const prefix = part.toLowerCase() + '-' + String(level).toLowerCase() + '-';
+  const taken = new Set((await q.all(
+    'SELECT group_key FROM questions WHERE group_key LIKE ?', prefix + '%')).map(r => r.group_key));
+  /* `alsoTaken` is what this same batch has already minted. Nothing has been
+     INSERTed yet when the keys are handed out, so without it two passages in one
+     batch would both be told the same key is free and end up as one group of
+     six. */
+  let n = 1;
+  while (taken.has(prefix + n) || (alsoTaken && alsoTaken.has(prefix + n))) n++;
+  return prefix + n;
 }
 
 /** Insert a validated batch into the bank and attach it to a part, in order.
     Call inside tx(): a half-written part is worse than no part at all. */
 async function writeInlineQuestions(rows, sid, adminId) {
   let sort = (await q.val('SELECT COALESCE(MAX(sort),-1) s FROM section_items WHERE section_id=?', sid)) + 1;
+  /* One key per run of items that share a recording, minted before the loop so
+     the three questions on one passage carry the same one. readInlineQuestions()
+     stamped groupIndex; a part that does not group leaves it undefined and every
+     row is written with a NULL group_key, exactly as before. */
+  const keys = new Map(), minted = new Set();
+  for (const d of rows) {
+    if (d.groupIndex === undefined || keys.has(d.groupIndex)) continue;
+    const key = await nextGroupKey(d.part, d.level, minted);
+    minted.add(key);
+    keys.set(d.groupIndex, key);
+  }
   const ids = [];
   for (const d of rows) {
     const r = await q.run(
-      `INSERT INTO questions (family_id,skill,level,type,part,prompt,options_json,answer,explanation,tags_json,status,created_at,created_by)
-       VALUES (?,?,?,?,?,?,?,?,?,?,'active',?,?)`,
-      d.familyId, d.skill, d.level, d.type, d.part, d.prompt, JSON.stringify(d.options), d.answer,
+      `INSERT INTO questions (family_id,skill,level,type,part,group_key,prompt,options_json,answer,explanation,tags_json,status,created_at,created_by)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,'active',?,?)`,
+      d.familyId, d.skill, d.level, d.type, d.part,
+      d.groupIndex === undefined ? null : keys.get(d.groupIndex),
+      d.prompt, JSON.stringify(d.options), d.answer,
       d.explanation, JSON.stringify(d.tags), nowISO(), adminId);
     const qid = Number(r.lastInsertRowid);
     await q.run('INSERT INTO section_items (section_id,question_id,sort) VALUES (?,?,?)', sid, qid, sort++);
@@ -2518,11 +2569,17 @@ router.get('/catalog', async (req, res) => {
          bank editor rendered four for every part: Part F takes THREE — the guide
          says "You will see three possible answers" — so a Part F item was
          authored with a fourth option the exam will never display. */
+      /* `group` and `sharesAudio` together say how the part's items are written:
+         Part G asks three questions about one recording, so it is authored three
+         at a time and only the first of each three carries the passage. The
+         builder needs both numbers to lay the rows out that way, and the API
+         refuses a batch that does not divide by the same number. */
       return {
         part: letter, name: sec.name || letter, skill: sec.skill || '',
         types: sec.types || [], type: sec.type || '',
         choices: sec.choices || null, minWords: sec.minWords || null,
-        needsAudio: !!sec.needsAudio
+        needsAudio: !!sec.needsAudio,
+        group: sec.group || 1, sharesAudio: !!sec.sharesAudio
       };
     })
   }));

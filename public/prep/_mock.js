@@ -379,11 +379,11 @@ const PrepApi = {
 /* ============================================================
    PrepState - student state
    ------------------------------------------------------------
-   Identity, entitlements, codes and orders come from GET /api/me.
+   Identity, entitlements, codes, orders and notification preferences all come
+   from GET /api/me.
    What has NO API yet still sits in localStorage, per account:
      · seenTestIds - which test structures have been looked at (the home checklist)
-     · notif       - notification preferences
-   // TODO(backend): move seenTestIds and notif to a user-state API
+   // TODO(backend): move seenTestIds to a user-state API
 
    fetch() goes to the network (once per page); load() reads the merged copy, synchronously.
    ============================================================ */
@@ -402,8 +402,7 @@ const PrepState = {
     const box = this._allLocal()[account];
     return Object.assign({
       seenTestIds: [], generatedCodes: {}, extraCodes: [],
-      extraTestIds: [], extraFamilyIds: [], extraOrders: [],
-      notif: { newTests: true, reminder: true, promo: false }
+      extraTestIds: [], extraFamilyIds: [], extraOrders: []
     }, box || {});
   },
   _saveLocal(account, patch) {
@@ -448,7 +447,9 @@ const PrepState = {
       orders: (s.orders || []).concat(L.extraOrders),
       seenTestIds: L.seenTestIds,
       generatedCodes: L.generatedCodes,
-      notif: L.notif
+      /* Server-owned, like the entitlement: the browser reads it here and
+         writes it through setNotify(), never by editing the merged copy. */
+      notify: s.user.notify || { newTests: true, reminder: true, promo: false, setAt: null }
     };
   },
 
@@ -486,10 +487,25 @@ const PrepState = {
     if (!s || !s.account) return;
     this._saveLocal(s.account, {
       seenTestIds: s.seenTestIds || [],
-      generatedCodes: s.generatedCodes || {},
-      notif: s.notif || undefined
+      generatedCodes: s.generatedCodes || {}
     });
     this._merged = s;
+  },
+
+  /** Which emails this account has agreed to receive. */
+  notify() {
+    return (this._merged && this._merged.notify) || null;
+  },
+
+  /* PATCH /api/me/notifications — one switch at a time, which is how a person
+     flips them. The merged copy is updated from what came BACK, not from what
+     was sent: if the write did not land, the screen must not claim it did. */
+  setNotify(patch) {
+    return PrepApi.patch('/api/me/notifications', patch).then(res => {
+      if (!res.ok) return { ok: false, error: PrepApi.err(res, 'That setting could not be saved.') };
+      if (this._merged) this._merged.notify = res.data.notify;
+      return { ok: true, notify: res.data.notify };
+    });
   },
 
   /** Forget what is held in memory (used on sign-out) */

@@ -248,6 +248,7 @@
     const html =
       '<div class="mt-1">' +
         '<div id="c-list" class="grid gap-2.5"></div>' +
+        '<p class="help mt-2" id="c-group-note" hidden></p>' +
         '<button type="button" id="c-add" class="btn btn-soft btn-sm mt-2.5">Add a question</button>' +
       '</div>';
 
@@ -266,10 +267,21 @@
      * is exactly what was reported. Two controls that mean different things do
      * not belong under one label.
      */
+    /* How many options this part shows. Four unless the blueprint says
+       otherwise, and Part F says three — "You will see three possible answers".
+       Read from the part rather than hardcoded because the API refuses an item
+       with the wrong number now, and a form that can only produce four boxes for
+       a three-option part is a form the operator cannot get past. */
+    function choiceCount() {
+      const p = ctx.part && FAM_PARTS ? FAM_PARTS.find(x => x.part === ctx.part) : null;
+      return (p && p.choices) || 4;
+    }
+
     function answerBox(key, type) {
       if (type === 'mcq') {
+        const n = choiceCount();
         return '<div class="grid gap-1.5 mt-2">' +
-          [0, 1, 2, 3].map(i =>
+          Array.from({ length: n }, (_, i) => i).map(i =>
             '<div class="flex items-center gap-2.5">' +
               '<input type="radio" name="ans-' + key + '" data-ans="' + i + '" id="ans-' + key + '-' + i + '" ' +
                 'class="w-4 h-4 accent-[color:var(--color-accent)] shrink-0 cursor-pointer" ' +
@@ -288,10 +300,45 @@
       return '<p class="help mt-2">Marked by the AI examiner, so it takes no answer key.</p>';
     }
 
+    /* How many items share one recording. Part G is three questions about one
+       passage; every other part is one item at a time. */
+    function groupSize() {
+      const p = ctx.part && FAM_PARTS ? FAM_PARTS.find(x => x.part === ctx.part) : null;
+      return (p && p.sharesAudio && p.group) || 1;
+    }
+
+    /** The first item of each group is the one that carries the shared recording. */
+    function isGroupHead(i) { return i % groupSize() === 0; }
+
     function renumber() {
-      AD.qsa('[data-row]', listEl).forEach((r, i) => {
-        r.querySelector('[data-num]').textContent = String(i + 1);
+      const size = groupSize();
+      const rows = AD.qsa('[data-row]', listEl);
+      rows.forEach((r, i) => {
+        /* On a grouped part the number says which passage as well as which
+           question, because "6" on its own tells the operator nothing about
+           which recording it belongs to. */
+        r.querySelector('[data-num]').textContent =
+          size > 1 ? (Math.floor(i / size) + 1) + '.' + (i % size + 1) : String(i + 1);
+        syncAudio(r, i);
       });
+      /* Said once, under the rows, rather than repeated on each: the server
+         refuses a batch that does not divide, and being told why after typing
+         eight items is worse than being told while typing them. */
+      const note = listEl.parentElement.querySelector('#c-group-note');
+      if (note) {
+        const left = rows.length % size;
+        note.hidden = size < 2;
+        /* Built with AD.t rather than left to the dictionary pass in i18n.js:
+           that matches whole text nodes against fixed keys, and this sentence
+           carries the part letter and two counts. */
+        note.textContent = size < 2 ? '' : AD.t(
+          'Part ' + ctx.part + ' asks ' + size + ' questions about each recording. Attach the passage to '
+            + 'the first question of each ' + size + ', and a spoken question to every one of them.'
+            + (rows.length && left ? ' This batch has ' + rows.length + ' — add ' + (size - left) + ' more to finish the last recording.' : ''),
+          'Phần ' + ctx.part + ' hỏi ' + size + ' câu cho mỗi bài nghe. Đính kèm bài nghe vào câu đầu của '
+            + 'mỗi nhóm ' + size + ' câu, và đính kèm câu hỏi đọc thành tiếng cho từng câu.'
+            + (rows.length && left ? ' Đợt này có ' + rows.length + ' câu — thêm ' + (size - left) + ' câu nữa cho đủ bài nghe cuối.' : ''));
+      }
     }
 
     function addRow() {
@@ -338,7 +385,7 @@
       listEl.appendChild(row);
       row.querySelector('[data-drop]').addEventListener('click', () => { row.remove(); renumber(); });
       row.querySelector('[data-type]').addEventListener('change', e => {
-        row.querySelector('[data-answers]').innerHTML = answerBox(key, e.target.value);
+        redrawAnswers(row, e.target.value);       // keeps the options if they come back
       });
       for (const [input, name] of [['[data-audio]', '[data-audio-name]'],
                                   ['[data-qaudio]', '[data-qaudio-name]']]) {
@@ -348,15 +395,23 @@
             el.files && el.files[0] ? el.files[0].name : 'no file';
         });
       }
-      syncAudio(row);
-      renumber();
+      renumber();          // places the row, numbers it, and shows the slots its position earns
       row.querySelector('[data-prompt]').focus();
     }
 
-    function syncAudio(row) {
+    function syncAudio(row, index) {
       const on = AUDIO_SKILLS.includes(ctx.skill);
-      row.querySelector('[data-audio-row]').hidden = !on;
-      if (!on) row.querySelector('[data-audio]').value = '';
+      const size = groupSize();
+      /* On a grouped part the shared recording belongs to the first item of the
+         group and to no other. Hiding the slot on the rest is the honest version
+         of what the server already enforces — a second passage in one group is
+         refused — and it saves the operator from picking a file that is going to
+         be rejected. `index` is unknown until the row is placed, so a fresh row
+         is laid out by renumber() a moment later. */
+      const i = index === undefined ? AD.qsa('[data-row]', listEl).indexOf(row) : index;
+      const head = size < 2 || i < 0 || isGroupHead(i);
+      row.querySelector('[data-audio-row]').hidden = !on || !head;
+      if (!on || !head) row.querySelector('[data-audio]').value = '';
 
       /* Only Part G asks its questions out loud, so only Part G gets the second
          slot — offering it everywhere would invite a recording nothing plays. */
@@ -370,10 +425,28 @@
         spoken ? 'Attach passage' : 'Attach MP3';
     }
 
+    /* Redraw a row's answer box without losing what is in it.
+     *
+     * The options are stashed on the row first and written back after, which is
+     * what makes it safe to redraw at all: moving a typed item from Part C to
+     * Part F drops the box for a fourth option that part does not have, and
+     * moving it back must put the fourth option back rather than an empty box.
+     * The stash keeps the value even while its box is gone — the alternative is
+     * an operator who tries Part F, changes their mind, and silently loses the
+     * option they typed. The chosen answer is restored by position when that
+     * position still exists. */
+    function redrawAnswers(row, type) {
+      const stash = row._opts || (row._opts = []);
+      AD.qsa('[data-opt]', row).forEach((el, i) => { if (el.value.trim()) stash[i] = el.value; });
+      const wasIdx = AD.qsa('[data-ans]', row).findIndex(x => x.checked);
+      row.querySelector('[data-answers]').innerHTML = answerBox(row.getAttribute('data-row'), type);
+      AD.qsa('[data-opt]', row).forEach((el, i) => { if (stash[i]) el.value = stash[i]; });
+      const ans = AD.qsa('[data-ans]', row);
+      if (wasIdx >= 0 && ans[wasIdx]) ans[wasIdx].checked = true;
+    }
+
     /* The skill or the part changed under rows that are already typed. Keep the
-       text, and move the type only if the new part will not take the old one —
-       redrawing the answer box on every context change would throw away four
-       options somebody had already written. */
+       text, and move the type only if the new part will not take the old one. */
     function setContext(next) {
       ctx = Object.assign({}, ctx, next);
       if (!listEl) return;
@@ -384,11 +457,14 @@
         const keep = types.includes(before) ? before : types[0];
         sel.innerHTML = types.map(t => '<option value="' + t + '"' + (t === keep ? ' selected' : '') + '>' +
           AD.esc(AD.TYPE_LABEL[t] || t) + '</option>').join('');
-        if (keep !== before) {
-          row.querySelector('[data-answers]').innerHTML = answerBox(row.getAttribute('data-row'), keep);
-        }
-        syncAudio(row);
+        /* Redrawn when the type changed, and also when the new part shows a
+           different number of options: moving a typed item from Part C to Part F
+           keeps the type `mcq`, so without the second test the row would still
+           be offering four boxes for a three-option part. */
+        const shown = AD.qsa('[data-opt]', row).length;
+        if (keep !== before || (keep === 'mcq' && shown !== choiceCount())) redrawAnswers(row, keep);
       });
+      renumber();          // relabels the rows and lays out the audio slots for the new part
     }
 
     function mount(root, next) {

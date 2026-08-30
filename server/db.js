@@ -822,6 +822,21 @@ addColumnIfMissing('users', 'google_sub', 'TEXT');
 addColumnIfMissing('users', 'phone', 'TEXT');
 addIndex('CREATE UNIQUE INDEX IF NOT EXISTS idx_users_google_sub ON users (google_sub)');
 
+/* Which emails a learner agrees to receive. Columns rather than a JSON blob
+   because the question the eventual mailer asks is "who wants this one", and
+   that has to be a WHERE clause — a preference nobody can select on is a
+   preference nobody will honour.
+   The defaults match what the account screen has always shown when there was
+   nowhere to store the answer: the two service emails on, marketing off. Off by
+   default is not a style choice — consent to marketing has to be given, and a
+   column that starts at 1 records a consent the person never gave.
+   notify_set_at is when they last decided. Kept because "did this address opt
+   in, and when" is the only defence when someone says they never did. */
+addColumnIfMissing('users', 'notify_new_tests', 'INTEGER NOT NULL DEFAULT 1');
+addColumnIfMissing('users', 'notify_reminder', 'INTEGER NOT NULL DEFAULT 1');
+addColumnIfMissing('users', 'notify_promo', 'INTEGER NOT NULL DEFAULT 0');
+addColumnIfMissing('users', 'notify_set_at', 'TEXT');
+
 /* A code now carries a subscription plan rather than a list of tests: what a
    buyer picks is how long they practise and how much of the platform they get.
    The access window is stamped at redemption, so a code bought in January and

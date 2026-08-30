@@ -178,6 +178,15 @@ function vpetSections() {
     choices: CHOICES[part] || null,
     plays: PLAYS[part] || null,
     minWords: MIN_WORDS[part] || null,
+    /* How many items share one stimulus, straight from the timing table so the
+       number is not written twice. `sharesAudio` is the narrower question the
+       bank actually asks: do these items share one RECORDING, and therefore one
+       group_key row-to-row? Part C groups two questions on a passage as well,
+       but each of its items carries that passage in its own prompt, so it is a
+       fact about the clock and nothing else. Part G is the only part where the
+       stimulus is a file that exists once. */
+    group: (vpetTiming()[part] || {}).group || 1,
+    sharesAudio: !!needsAudio && ((vpetTiming()[part] || {}).group || 1) > 1,
     seconds: partSeconds(part, items),
     /* Kept because the database column, the admin screen and the study pack all
        speak minutes. Derived, never typed: rounding is display only and the
