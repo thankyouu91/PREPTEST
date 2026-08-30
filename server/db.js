@@ -849,6 +849,24 @@ addColumnIfMissing('questions', 'audio_at', 'TEXT');
    every boot or never notice a change. */
 addColumnIfMissing('questions', 'audio_sha', 'TEXT');
 
+/* Part G's spoken QUESTIONS, which are a second recording per item.
+ *
+ * `audio_key` is the item's stimulus — Part E's sentence, Part H's sentence,
+ * Part J's story, and for Part G the passage its whole group shares. That left
+ * Part G's three questions with no recording of their own, so the passage
+ * played and then the candidate READ the questions off the screen. The real
+ * part asks them out loud: a passage, then question one, answer, question two,
+ * answer, question three, answer. Reading them instead quietly turns a
+ * listening item into a reading one.
+ *
+ * A second slot rather than a second row: the paper is 58 items and a passage
+ * is not one of them. Only Part G fills these today, and nothing else has to
+ * know they exist. */
+addColumnIfMissing('questions', 'question_audio_key', 'TEXT');
+addColumnIfMissing('questions', 'question_audio_bytes', 'INTEGER');
+addColumnIfMissing('questions', 'question_audio_at', 'TEXT');
+addColumnIfMissing('questions', 'question_audio_sha', 'TEXT');
+
 /* Part practice for the written and spoken parts (B, D and I).
    A drill is no longer always six machine-marked items: parts B and D are
    e-mails and part I is spoken, and those go to the marker rather than to an

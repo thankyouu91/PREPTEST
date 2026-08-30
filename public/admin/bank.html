@@ -285,7 +285,20 @@
         '<div id="q-mcq">' +
           '<p class="label">Options (mark the correct one)</p>' +
           '<div class="grid gap-2" id="q-options"></div>' +
+          '<p class="help mt-1.5" id="q-opt-help"></p>' +
         '</div>' +
+        /* The answer key for a typed item — Part A's missing word, Part E's
+           dictated sentence. There was NO field for it: the save handler sent
+           `answer: ''` for anything that was not multiple choice, so a Part E
+           item could be written, given a recording, and saved with no key at
+           all. Every candidate who typed the sentence perfectly was then marked
+           wrong, and the operator had nowhere to put the answer they had
+           already worked out. */
+        '<div id="q-key-box"><label class="label" for="q-key">Answer key</label>' +
+          '<input class="input" id="q-key" value="' + AD.esc(d.answer || '') + '" ' +
+            'placeholder="the word or sentence that counts as correct">' +
+          '<p class="help mt-1.5">Case, outer punctuation and extra spaces are ignored when marking. ' +
+          'Separate equally correct spellings with <b>|</b> — <code>color | colour</code> accepts either.</p></div>' +
         '<div><label class="label" for="q-exp">Explanation <span class="font-medium text-muted">(optional)</span></label>' +
           '<textarea class="input" id="q-exp" rows="2">' + AD.esc(d.explanation) + '</textarea></div>' +
         '<div class="banner banner-error" id="q-err"><span id="q-err-text"></span></div>' +
@@ -323,9 +336,27 @@
       syncType();
     }
 
+    /** How many options this part publishes, or 4 when the part sets none. */
+    function choiceCount() {
+      const p2 = partsOf(famEl.value).find(x => x.part === partEl.value);
+      return (p2 && p2.choices) || 4;
+    }
+
     function renderOptions() {
-      const opts = (d.options && d.options.length ? d.options : ['', '', '', '']).slice(0, 6);
-      while (opts.length < 4) opts.push('');
+      /* The count comes from the blueprint, not from a constant here. Part F
+         publishes THREE — "You will see three possible answers" — and this used
+         to render four for every part, so a Part F item was authored with a
+         fourth option the exam would never display. */
+      const want = choiceCount();
+      const opts = (d.options && d.options.length ? d.options : []).slice(0, Math.max(want, 6));
+      while (opts.length < want) opts.push('');
+      const help = mm.el.querySelector('#q-opt-help');
+      const p2 = partsOf(famEl.value).find(x => x.part === partEl.value);
+      if (help) {
+        help.textContent = p2 && p2.choices
+          ? 'Part ' + p2.part + ' shows ' + p2.choices + ' options. Fill all of them.'
+          : '';
+      }
       optWrap.innerHTML = opts.map((o, i) =>
         '<label class="flex items-center gap-2.5">' +
           '<input type="radio" name="ans" class="w-4 h-4 accent-[color:var(--color-accent)] shrink-0" ' +
@@ -335,11 +366,15 @@
     }
     function syncType() {
       mcqBox.hidden = typeEl.value !== 'mcq';
+      /* Only a typed item has a key to enter. An essay or a spoken answer is
+         marked against the rubric, and offering a box for an answer nothing
+         will ever compare against is worse than offering none. */
+      mm.el.querySelector('#q-key-box').hidden = typeEl.value !== 'gap';
     }
-    renderOptions(); syncType(); renderParts();
+    renderParts(); renderOptions(); syncType();
     typeEl.addEventListener('change', syncType);
-    famEl.addEventListener('change', renderParts);
-    partEl.addEventListener('change', syncFromPart);
+    famEl.addEventListener('change', () => { renderParts(); renderOptions(); });
+    partEl.addEventListener('change', () => { syncFromPart(); renderOptions(); });
 
     mm.el.querySelector('#q-save').addEventListener('click', async () => {
       const err = mm.el.querySelector('#q-err');
@@ -356,7 +391,12 @@
         prompt: mm.el.querySelector('#q-prompt').value,
         explanation: mm.el.querySelector('#q-exp').value,
         options: typeEl.value === 'mcq' ? options : [],
-        answer: typeEl.value === 'mcq' ? (ansIdx >= 0 ? allOpts[ansIdx] : '') : '',
+        /* A typed item's key comes from its own field. Essays and spoken answers
+           genuinely have none — they go to the rubric — so those still send an
+           empty string rather than whatever was last in the box. */
+        answer: typeEl.value === 'mcq'
+          ? (ansIdx >= 0 ? allOpts[ansIdx] : '')
+          : (typeEl.value === 'gap' ? mm.el.querySelector('#q-key').value.trim() : ''),
         tags: d.tags || []
       };
       try {

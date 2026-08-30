@@ -454,16 +454,16 @@ const PrepRunner = {
 
   phaseBody(p, it, phase) {
     if (phase === 'read') {
-      return '<p class="text-[15px] leading-relaxed mt-4">' + PREP.esc(it.prompt) + '</p>' +
+      return '<p class="text-[15px] leading-relaxed whitespace-pre-wrap mt-4">' + PREP.esc(it.prompt) + '</p>' +
         '<p class="text-[13px] text-muted font-semibold mt-4">' +
           'The passage disappears when the time runs out. You cannot get it back.</p>';
     }
     if (phase === 'listen') {
-      return '<p class="text-[15px] leading-relaxed mt-4">' + PREP.esc(it.prompt) + '</p>' +
+      return '<p class="text-[15px] leading-relaxed whitespace-pre-wrap mt-4">' + PREP.esc(it.prompt) + '</p>' +
         '<p class="text-[13px] text-muted font-semibold mt-3">Playing once. There is no replay.</p>';
     }
     if (phase === 'think') {
-      return '<p class="text-[15px] leading-relaxed mt-4">' + PREP.esc(it.prompt) + '</p>' +
+      return '<p class="text-[15px] leading-relaxed whitespace-pre-wrap mt-4">' + PREP.esc(it.prompt) + '</p>' +
         '<p class="text-[13px] text-muted font-semibold mt-3">' +
           'You will hear a beep, and then your time to answer begins.</p>';
     }
@@ -471,7 +471,7 @@ const PrepRunner = {
       /* The prompt stays up for a spoken answer. Part B hides its passage because
          remembering it IS the task; nothing about repeating a sentence or
          retelling a story is helped by taking the question away. */
-      return '<p class="text-[15px] leading-relaxed mt-4">' + PREP.esc(it.prompt) + '</p>' +
+      return '<p class="text-[15px] leading-relaxed whitespace-pre-wrap mt-4">' + PREP.esc(it.prompt) + '</p>' +
         '<p class="flex flex-wrap items-center gap-2.5 mt-4">' +
           '<span class="badge badge-danger" data-rec-live>Recording</span>' +
           '<span class="text-[13px] font-semibold text-muted" data-rec-state="' + it.questionId + '">' +
@@ -669,7 +669,7 @@ const PrepRunner = {
     return '<article class="card p-5" data-item="' + it.questionId + '">' +
       '<p class="flex gap-2.5">' +
         '<span class="w-6 shrink-0 text-[13px] font-bold text-muted">' + (i + 1) + '</span>' +
-        '<span class="text-[15px] leading-relaxed">' + PREP.esc(it.prompt) + '</span>' +
+        '<span class="text-[15px] leading-relaxed whitespace-pre-wrap">' + PREP.esc(it.prompt) + '</span>' +
       '</p>' + audio + body +
     '</article>';
   },

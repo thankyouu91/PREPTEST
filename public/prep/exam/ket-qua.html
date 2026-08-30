@@ -233,8 +233,12 @@
             '<li class="flex items-start gap-3 py-2.5 border-b border-line last:border-0">' +
               '<span class="w-6 shrink-0 text-[13px] font-bold text-muted pt-0.5">' + (i + 1) + '</span>' +
               '<span class="min-w-0 flex-1">' +
-                '<span class="block text-[14px] leading-snug">' + PREP.esc(it.prompt) + '</span>' +
-                '<span class="block text-[13px] text-muted font-medium mt-1">' +
+                /* pre-wrap on both: an authored prompt and a candidate's e-mail
+                   are written in paragraphs, and collapsing them here turns a
+                   Part D answer into one unreadable run of text on the very
+                   screen somebody reads to see what they wrote. */
+                '<span class="block text-[14px] leading-snug whitespace-pre-wrap">' + PREP.esc(it.prompt) + '</span>' +
+                '<span class="block text-[13px] text-muted font-medium mt-1 whitespace-pre-wrap">' +
                   (it.hasRecording ? 'Recorded' : (it.given ? 'You answered: ' + PREP.esc(it.given) : 'Left blank')) +
                 '</span>' +
                 feedback(it) +

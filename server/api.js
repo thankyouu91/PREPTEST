@@ -420,6 +420,19 @@ async function readQuestion(body) {
     if (options.length < 2) return { err: 'A multiple-choice item needs at least two options.' };
     if (!options.includes(answer)) return { err: 'The answer must be one of the options entered.' };
   }
+  /* A typed item with no key is not an incomplete item, it is a WRONG one: it
+     goes into a paper, a candidate types the right sentence, and markItem()
+     finds no key and scores zero. Nothing downstream can tell that apart from a
+     candidate who got it wrong, which is why this is refused at the door rather
+     than reported later.
+     It was possible to save one until now — the bank editor had no field for a
+     key at all and sent an empty string for everything that was not multiple
+     choice, so every Part A and Part E item written through the screen was born
+     unmarkable. */
+  if (type === 'gap' && !answer) {
+    return { err: 'A typed item needs an answer key, or every candidate is marked wrong. '
+      + 'Separate equally correct spellings with | — for example: color | colour' };
+  }
   const tags = Array.isArray(body.tags) ? body.tags.map(t => str(t, 30)).filter(Boolean).slice(0, 10) : [];
 
   /* The lettered part, for families whose format has a part table. Validated
@@ -2425,13 +2438,22 @@ router.get('/catalog', async (req, res) => {
        rather than carrying its own copy of the VPET table. */
     parts: EXAM_FORMATS.partsOf(f.id).map(letter => {
       const sec = EXAM_FORMATS.sectionOfPart(f.id, letter) || {};
-      /* `type` is the blueprint's own words for what the part asks of a student
-         — "Type the missing word", "Read, then rewrite from memory". The builder
-         used to make an operator retype that into a free-text box for every
-         part; it is written down here already, so it is sent along. */
+      /* Everything about a part that a screen would otherwise have to keep its
+         own copy of.
+
+         `type` is the blueprint's own words for what the part asks of a student
+         — "Type the missing word", "Read, then rewrite from memory" — which the
+         builder used to make an operator retype for every part.
+
+         `choices` is how many options the part shows, and it is here because the
+         bank editor rendered four for every part: Part F takes THREE — the guide
+         says "You will see three possible answers" — so a Part F item was
+         authored with a fourth option the exam will never display. */
       return {
         part: letter, name: sec.name || letter, skill: sec.skill || '',
-        types: sec.types || [], type: sec.type || ''
+        types: sec.types || [], type: sec.type || '',
+        choices: sec.choices || null, minWords: sec.minWords || null,
+        needsAudio: !!sec.needsAudio
       };
     })
   }));
