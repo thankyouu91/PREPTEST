@@ -60,12 +60,19 @@ function playsFor(familyId, part) {
    beginning and an end that somebody has to be told about. */
 /* G is here for the same reason as the rest: the answer is a recording, so the
    item needs a clock of its own and a microphone that opens by itself.
-   It reaches the right shape without any group-aware code in the runner, and
-   that is worth saying out loud because it looks like luck. Only the FIRST
-   question of a Part G group carries audio - the passage is played once for all
-   three - so the paced flow gives that item a listening phase and gives the
-   other two nothing to listen to and a speaking window straight away. Which is
-   exactly what the guide describes: one passage, then three answers. */
+
+   It used to reach its shape by accident, and the accident was wrong. Only the
+   FIRST question of a Part G group carried audio — the passage, played once for
+   all three — so the paced flow gave that item a listening phase and gave the
+   other two nothing to listen to and a speaking window straight away. That
+   looked like the guide's "one passage, then three answers", and it was not:
+   the guide says "There will be three questions about the passage", and those
+   questions are ASKED. A candidate reading them off the screen instead is
+   sitting a reading item with a listening item's name on it.
+
+   Each question now carries its own recording in `question_audio_key`, so every
+   item of the group has a listening phase: the first plays the passage and then
+   its question, the other two play just theirs. */
 const SPOKEN_PARTS = ['G', 'H', 'I', 'J'];
 
 /**
@@ -190,7 +197,8 @@ async function attemptState(att) {
        items, so mapping it alone would put promises on the response. */
     parts: await Promise.all(parts.map(async p => {
       const items = await q.all(
-        `SELECT si.sort, qs.id, qs.prompt, qs.type, qs.options_json, qs.audio_key
+        `SELECT si.sort, qs.id, qs.prompt, qs.type, qs.options_json, qs.audio_key,
+                qs.question_audio_key
            FROM section_items si JOIN questions qs ON qs.id = si.question_id
           WHERE si.section_id=? ORDER BY si.sort, si.id`, p.section_id);
       const open = partOpen(p);
@@ -233,6 +241,12 @@ async function attemptState(att) {
             options: JSON.parse(it.options_json || '[]'),
             hasAudio: !!it.audio_key,
             replaysLeft: it.audio_key ? Math.max(0, plays - used) : null,
+            /* Part G asks its three questions out loud. The passage is the
+               group's, played once at the top; this is the item's own question,
+               played when its turn comes. Absent on every other part. */
+            hasQuestionAudio: !!it.question_audio_key,
+            questionPlaysLeft: it.question_audio_key
+              ? Math.max(0, plays - (saved ? saved.question_replays_used || 0 : 0)) : null,
             answer: saved ? saved.answer : '',
             hasRecording: !!(saved && saved.audio_key)
           };
@@ -463,7 +477,7 @@ router.patch('/attempts/:id/answers', A.requireUser, A.csrfGuard, async (req, re
  * courtesy display; a candidate with the network tab open would otherwise have
  * a dictation on loop.
  */
-router.get('/attempts/:id/items/:questionId/audio', A.requireUser, async (req, res) => {
+router.get('/attempts/:id/items/:questionId/:slot(audio|question-audio)', A.requireUser, async (req, res) => {
   const att = await ownAttempt(req);
   if (!att) return res.status(404).json({ error: 'No such sitting.' });
   if (att.status !== 'in_progress') return res.status(403).json({ error: 'This sitting has been handed in.' });
@@ -473,11 +487,20 @@ router.get('/attempts/:id/items/:questionId/audio', A.requireUser, async (req, r
   if (!item) return res.status(404).json({ error: 'That question is not part of this sitting.' });
   if (!partOpen(item)) return res.status(403).json({ error: 'Time is up for this part.' });
 
-  const qs = await q.get('SELECT audio_key FROM questions WHERE id=?', questionId);
-  if (!qs || !qs.audio_key) return res.status(404).json({ error: 'This item has no audio file.' });
+  /* Which of the item's two recordings this is. `audio` is the stimulus — the
+     sentence, the story, or for Part G the passage the group shares. `question-
+     audio` is Part G's own question, asked out loud. They count separately:
+     hearing question two must not spend the single play of the passage it is
+     asking about. */
+  const isQuestion = req.params.slot === 'question-audio';
+  const col = isQuestion ? 'question_audio_key' : 'audio_key';
+  const counter = isQuestion ? 'question_replays_used' : 'replays_used';
+
+  const qs = await q.get(`SELECT ${col} k FROM questions WHERE id=?`, questionId);
+  if (!qs || !qs.k) return res.status(404).json({ error: 'This item has no audio file.' });
 
   const row = await q.get('SELECT * FROM attempt_answers WHERE attempt_id=? AND question_id=?', att.id, questionId);
-  const used = row ? row.replays_used : 0;
+  const used = row ? (row[counter] || 0) : 0;
   const test = await q.get('SELECT family_id FROM tests WHERE id=?', att.test_id);
   const sec = await q.get('SELECT part FROM sections WHERE id=?', item.section_id);
   const plays = playsFor(test && test.family_id, sec && sec.part);
@@ -492,7 +515,7 @@ router.get('/attempts/:id/items/:questionId/audio', A.requireUser, async (req, r
 
   let file;
   try {
-    file = await storage.get(qs.audio_key);
+    file = await storage.get(qs.k);
   } catch (e) {
     console.error('[exam] audio read failed', e);
     return res.status(502).json({ error: 'The audio file could not be read.' });
@@ -502,9 +525,9 @@ router.get('/attempts/:id/items/:questionId/audio', A.requireUser, async (req, r
   disk failure costs the candidate a replay for the system's mistake. */
   const at = nowISO();
   await q.run(
-    `INSERT INTO attempt_answers (attempt_id,question_id,section_id,replays_used,updated_at)
+    `INSERT INTO attempt_answers (attempt_id,question_id,section_id,${counter},updated_at)
      VALUES (?,?,?,1,?)
-     ON CONFLICT(attempt_id,question_id) DO UPDATE SET replays_used = replays_used + 1, updated_at=excluded.updated_at`,
+     ON CONFLICT(attempt_id,question_id) DO UPDATE SET ${counter} = ${counter} + 1, updated_at=excluded.updated_at`,
     att.id, questionId, item.section_id, at);
 
   res.set('Content-Type', 'audio/mpeg')

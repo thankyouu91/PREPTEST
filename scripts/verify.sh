@@ -262,6 +262,9 @@ node scripts/test-exam.mjs || fail=1
 step "The exam screen (Part B hides its passage)"
 node scripts/test-exam-ui.mjs || fail=1
 
+step "The exam audio queue (each recording asked for once, however it fails)"
+node scripts/test-exam-audio-queue.mjs || fail=1
+
 # Also a browser, and for the same reason: whether the chip rail can be dragged
 # is invisible to every request the server sees.
 step "The self-study chip rail (arrows, dragging, and not opening a lesson by accident)"

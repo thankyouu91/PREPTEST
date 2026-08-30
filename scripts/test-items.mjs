@@ -158,6 +158,40 @@ try {
     'No recording is out of date with the words it should say',
     stale.map(i => i.key).join(', ') + ' — run `npm run audio:vpet`');
 
+  /* Part G asks its three questions OUT LOUD.
+   *
+   * "You will hear a passage about an everyday or workplace situation. There
+   * will be three questions about the passage." The passage is the group's, cut
+   * once; each question is its own recording. Without them the passage played
+   * and the candidate then READ the questions off the screen, which quietly
+   * turns a listening item into a reading one — and nothing in a count of files
+   * or a count of items would ever show it.
+   *
+   * So a Part G group is FOUR recordings: one passage, three questions. */
+  const gItems = items.filter(i => i.part === 'G');
+  const missingQ = gItems.filter(i => !existsSync(new URL(i.key + '-q.mp3', audioDir)));
+  ok(gItems.length > 0 && missingQ.length === 0,
+    'Every Part G question has its own recording, so the questions are heard rather than read',
+    missingQ.map(i => i.key).join(', ') + ' — run `npm run audio:vpet`');
+
+  const qStale = gItems.filter(i => {
+    const m = manifest[i.key + '-q'];
+    return !m || m.hash !== createHash('sha256').update(i.prompt, 'utf8').digest('hex').slice(0, 16);
+  });
+  ok(qStale.length === 0,
+    'and each says the question the item actually asks',
+    qStale.map(i => i.key).join(', ') + ' — run `npm run audio:vpet`');
+
+  /* The passage stays one per group. Four files per group means one passage and
+     three questions, not four passages. */
+  const gGroups = {};
+  for (const i of gItems) if (i.group) (gGroups[i.group] = gGroups[i.group] || []).push(i);
+  const wrongPassage = Object.keys(gGroups).filter(g =>
+    gGroups[g].filter(i => existsSync(new URL(i.key + '.mp3', audioDir))).length !== 1);
+  ok(wrongPassage.length === 0,
+    'while the passage is still cut once for the whole group',
+    wrongPassage.join(', '));
+
   /* What grouping has to guarantee, and what nothing else checks.
      A group is a passage plus the questions about it. If the item carrying the
      recording is not the FIRST of its group, the runner - which plays audio in

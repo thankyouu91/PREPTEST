@@ -386,13 +386,38 @@ const { rows } = await import('../server/data/vpet-items-audio.js').then(m => m.
  * The items that get no file also get no audio_key, which is what stops the
  * browser offering a second and third play of something the exam plays once. */
 const seenGroup = new Set();
-const items = rows().filter(r => {
+const all = rows();
+const items = all.filter(r => {
   if (!r.say) return false;
   if (!r.group) return true;
   if (seenGroup.has(r.group)) return false;
   seenGroup.add(r.group);
   return true;
 });
+
+/* And Part G's questions, which are asked OUT LOUD.
+ *
+ * "You will hear a passage about an everyday or workplace situation. There will
+ * be three questions about the passage." The passage above is the group's, cut
+ * once; each of the three questions is its own recording, because a question a
+ * candidate reads off the screen is a reading item wearing a listening item's
+ * clothes.
+ *
+ * Rendered from the item's own `prompt` — the question is already written down,
+ * and a second copy of it under another name is a second thing to keep in step.
+ * The key is the item's with `-q` on the end, which is what server/db.js's
+ * attachBankAudio() looks for and what the manifest records. */
+const questions = all
+  .filter(r => r.part === 'G' && r.prompt)
+  .map(r => ({
+    key: r.key + '-q',
+    part: r.part,
+    say: r.prompt,
+    /* Not a group member: each question is its own file and all three are
+       fetched. `group` is what makes the filter above keep only the first. */
+    group: null
+  }));
+items.push(...questions);
 
 fs.mkdirSync(OUT_DIR, { recursive: true });
 fs.mkdirSync(path.dirname(TMP), { recursive: true });

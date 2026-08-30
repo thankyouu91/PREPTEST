@@ -301,6 +301,12 @@ const PrepRunner = {
 
   stopPace() {
     if (this.pace && this.pace.timer) clearInterval(this.pace.timer);
+    /* And silence whatever is sounding. Leaving it playing means a question
+       still being asked while the next item's microphone is open, which puts
+       the question inside the candidate's own answer. */
+    if (this.pace && this.pace.playing) {
+      try { this.pace.playing.pause(); } catch (e) { /* already gone */ }
+    }
     this.pace = null;
   },
 
@@ -322,7 +328,11 @@ const PrepRunner = {
   /** The phase an item opens in: read it, hear it, think about it, or answer. */
   firstPhase(p, it) {
     if (p.pacing.read) return 'read';
-    if (it && it.hasAudio) return 'listen';
+    /* Either recording puts the item in the listen phase. Part G's second and
+       third items carry no passage — the group's first one has it — but they do
+       carry their own spoken question, and without this they skipped straight
+       to the answer window with nothing asked. */
+    if (it && (it.hasAudio || it.hasQuestionAudio)) return 'listen';
     if (p.pacing.think) return 'think';
     return 'answer';
   },
@@ -505,11 +515,58 @@ const PrepRunner = {
       this.pace.endsAt = 0;
       this.renderPaced(p);
     };
-    const url = '/api/attempts/' + this.attempt.id + '/items/' + it.questionId + '/audio';
-    const audio = new Audio(url);
-    audio.addEventListener('ended', done);
-    audio.addEventListener('error', done);
-    audio.play().catch(() => done());
+
+    /* An item can have two recordings and Part G is the reason.
+     *
+     * A Part G group is one passage and three questions, and the questions are
+     * ASKED out loud — "You will hear a passage. There will be three questions
+     * about the passage." Reading them off the screen instead quietly turns a
+     * listening item into a reading one, which is not what the part measures.
+     *
+     * So the listen phase plays, in order, whatever this item actually has: the
+     * passage where it carries one (the first item of a group), then its own
+     * question. Every other part has exactly one of the two and the sequence is
+     * a single play, exactly as before. */
+    const base = '/api/attempts/' + this.attempt.id + '/items/' + it.questionId + '/';
+    const queue = [];
+    if (it.hasAudio) queue.push(base + 'audio');
+    if (it.hasQuestionAudio) queue.push(base + 'question-audio');
+    if (!queue.length) return done();
+
+    /* `playing` is the element currently sounding, so a phase that ends early —
+       the part's clock running out — does not leave a question talking into the
+       microphone that opens next. */
+    const playNext = i => {
+      if (i >= queue.length) return done();
+      const audio = new Audio(queue[i]);
+      this.pace.playing = audio;
+
+      /* Once, whichever way this recording ends.
+       *
+       * A media resource that fails to load fires `error` at the element AND
+       * rejects the pending play() promise — the spec's media-source-failure
+       * steps do both — so an unguarded handler advanced the queue TWICE. On a
+       * Part G item that meant the spoken question was fetched twice: the first
+       * fetch played, the second met the 429 that "plays once" returns, and the
+       * queue ran off the end into the answer window while the first was still
+       * sounding. The candidate's own recording then contained the question
+       * being asked. It took an ordinary page reload to trigger — the passage
+       * had already been played, so its 429 started the whole chain. */
+      let moved = false;
+      const next = () => {
+        if (moved) return;
+        moved = true;
+        if (this.pace && this.pace.playing === audio) this.pace.playing = null;
+        playNext(i + 1);
+      };
+
+      audio.addEventListener('ended', next);
+      /* An error moves to the NEXT recording rather than ending the phase: a
+         missing passage must not also swallow the question that follows it. */
+      audio.addEventListener('error', next);
+      audio.play().catch(next);
+    };
+    playNext(0);
   },
 
   /**

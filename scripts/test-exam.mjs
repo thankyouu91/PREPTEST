@@ -103,7 +103,11 @@ try {
     r = await admin.req('POST', '/api/admin/questions', {
       familyId: 'vpet', skill: 'listening', level: 'B1', type: 'mcq', part: 'F',
       prompt: 'Engine test listening item ' + i + ' — pick the natural reply.',
-      options: ['Yes, of course.', 'It is blue.', 'At six.', 'By bus.'],
+      /* THREE options, because Part F shows three: "You will see three possible
+         answers". This fixture had four, which is the same fault the bank editor
+         had — and it went unnoticed here for the same reason it did there,
+         because nothing refused it. readQuestion() does now. */
+      options: ['Yes, of course.', 'It is blue.', 'At six.'],
       answer: 'Yes, of course.'
     });
     ok(r.status === 201, 'Creates listening item ' + (i + 1), 'status ' + r.status);
@@ -168,8 +172,9 @@ try {
   const raw = JSON.stringify(att);
   ok(!/"answer":"Yes, of course\."/.test(raw), 'The correct answer is NOT in what the browser receives');
   ok(!/explanation/.test(raw), 'Nor is the explanation');
-  ok(pF.items.every(i => Array.isArray(i.options) && i.options.length === 4),
-    'The options are still sent (they have to be rendered)');
+  ok(pF.items.every(i => Array.isArray(i.options) && i.options.length === 3),
+    'The options are still sent, all three of them (they have to be rendered)',
+    JSON.stringify(pF.items.map(i => (i.options || []).length)));
 
   /* Opening another paper while one is unfinished must be blocked, or the one in progress vanishes */
   r = await student.req('POST', '/api/attempts', { testId: 'vpet-b1-01' });

@@ -1312,5 +1312,329 @@
     "words": 75,
     "seconds": 24.92,
     "engine": "piper/en_US-amy-medium"
+  },
+  "vpet-g-01-q": {
+    "hash": "f4ff26c36b7a5d65",
+    "voice": "piper en_US-amy-medium x1.05",
+    "bytes": 17762,
+    "part": "G",
+    "words": 5,
+    "seconds": 2.22,
+    "engine": "piper/en_US-amy-medium"
+  },
+  "vpet-g-02-q": {
+    "hash": "683d4ce95fc41f39",
+    "voice": "piper en_US-amy-medium x1.05",
+    "bytes": 19225,
+    "part": "G",
+    "words": 6,
+    "seconds": 2.4,
+    "engine": "piper/en_US-amy-medium"
+  },
+  "vpet-g-03-q": {
+    "hash": "fce79529c0f2c278",
+    "voice": "piper en_US-amy-medium x1.05",
+    "bytes": 15254,
+    "part": "G",
+    "words": 4,
+    "seconds": 1.91,
+    "engine": "piper/en_US-amy-medium"
+  },
+  "vpet-g-04-q": {
+    "hash": "c557041ef684c41d",
+    "voice": "piper en_US-amy-medium x1.05",
+    "bytes": 19852,
+    "part": "G",
+    "words": 7,
+    "seconds": 2.48,
+    "engine": "piper/en_US-amy-medium"
+  },
+  "vpet-g-05-q": {
+    "hash": "553553fc57fa7fd8",
+    "voice": "piper en_US-amy-medium x1.05",
+    "bytes": 19016,
+    "part": "G",
+    "words": 6,
+    "seconds": 2.38,
+    "engine": "piper/en_US-amy-medium"
+  },
+  "vpet-g-06-q": {
+    "hash": "c6b98d4cccf68fab",
+    "voice": "piper en_US-amy-medium x1.05",
+    "bytes": 24031,
+    "part": "G",
+    "words": 9,
+    "seconds": 3,
+    "engine": "piper/en_US-amy-medium"
+  },
+  "vpet-g-07-q": {
+    "hash": "50ec25145cf34ea9",
+    "voice": "piper en_US-amy-medium x1.05",
+    "bytes": 22568,
+    "part": "G",
+    "words": 8,
+    "seconds": 2.82,
+    "engine": "piper/en_US-amy-medium"
+  },
+  "vpet-g-08-q": {
+    "hash": "924c50e7e5401f25",
+    "voice": "piper en_US-amy-medium x1.05",
+    "bytes": 17971,
+    "part": "G",
+    "words": 6,
+    "seconds": 2.25,
+    "engine": "piper/en_US-amy-medium"
+  },
+  "vpet-g-09-q": {
+    "hash": "7f56798ca967b694",
+    "voice": "piper en_US-amy-medium x1.05",
+    "bytes": 14627,
+    "part": "G",
+    "words": 5,
+    "seconds": 1.83,
+    "engine": "piper/en_US-amy-medium"
+  },
+  "vpet-g-10-q": {
+    "hash": "ea60a6809fe8f668",
+    "voice": "piper en_US-amy-medium x1.05",
+    "bytes": 20270,
+    "part": "G",
+    "words": 7,
+    "seconds": 2.53,
+    "engine": "piper/en_US-amy-medium"
+  },
+  "vpet-g-11-q": {
+    "hash": "a593ee68a864bab3",
+    "voice": "piper en_US-amy-medium x1.05",
+    "bytes": 18180,
+    "part": "G",
+    "words": 6,
+    "seconds": 2.27,
+    "engine": "piper/en_US-amy-medium"
+  },
+  "vpet-g-12-q": {
+    "hash": "a3503353825ea23d",
+    "voice": "piper en_US-amy-medium x1.05",
+    "bytes": 21105,
+    "part": "G",
+    "words": 7,
+    "seconds": 2.64,
+    "engine": "piper/en_US-amy-medium"
+  },
+  "vpet-g-13-q": {
+    "hash": "7aa6aef371b3dfce",
+    "voice": "piper en_US-amy-medium x1.05",
+    "bytes": 16926,
+    "part": "G",
+    "words": 5,
+    "seconds": 2.12,
+    "engine": "piper/en_US-amy-medium"
+  },
+  "vpet-g-14-q": {
+    "hash": "a2ea95a07f84c2db",
+    "voice": "piper en_US-amy-medium x1.05",
+    "bytes": 24867,
+    "part": "G",
+    "words": 9,
+    "seconds": 3.11,
+    "engine": "piper/en_US-amy-medium"
+  },
+  "vpet-g-15-q": {
+    "hash": "db3bb23b60c377a6",
+    "voice": "piper en_US-amy-medium x1.05",
+    "bytes": 18180,
+    "part": "G",
+    "words": 6,
+    "seconds": 2.27,
+    "engine": "piper/en_US-amy-medium"
+  },
+  "vpet-g-16-q": {
+    "hash": "5d80b5bdcd3a6ef0",
+    "voice": "piper en_US-amy-medium x1.05",
+    "bytes": 25494,
+    "part": "G",
+    "words": 8,
+    "seconds": 3.19,
+    "engine": "piper/en_US-amy-medium"
+  },
+  "vpet-g-17-q": {
+    "hash": "68970752db90cb54",
+    "voice": "piper en_US-amy-medium x1.05",
+    "bytes": 23404,
+    "part": "G",
+    "words": 8,
+    "seconds": 2.93,
+    "engine": "piper/en_US-amy-medium"
+  },
+  "vpet-g-18-q": {
+    "hash": "e6c8f896b3cb37c7",
+    "voice": "piper en_US-amy-medium x1.05",
+    "bytes": 21314,
+    "part": "G",
+    "words": 6,
+    "seconds": 2.66,
+    "engine": "piper/en_US-amy-medium"
+  },
+  "vpet-g-19-q": {
+    "hash": "dc772f51d8871c09",
+    "voice": "piper en_US-amy-medium x1.05",
+    "bytes": 17553,
+    "part": "G",
+    "words": 7,
+    "seconds": 2.19,
+    "engine": "piper/en_US-amy-medium"
+  },
+  "vpet-g-20-q": {
+    "hash": "5587f7bca99ecac3",
+    "voice": "piper en_US-amy-medium x1.05",
+    "bytes": 21105,
+    "part": "G",
+    "words": 6,
+    "seconds": 2.64,
+    "engine": "piper/en_US-amy-medium"
+  },
+  "vpet-g-21-q": {
+    "hash": "43d59a8b113fdc57",
+    "voice": "piper en_US-amy-medium x1.05",
+    "bytes": 20479,
+    "part": "G",
+    "words": 8,
+    "seconds": 2.56,
+    "engine": "piper/en_US-amy-medium"
+  },
+  "vpet-g-22-q": {
+    "hash": "67ff63387e064ea7",
+    "voice": "piper en_US-amy-medium x1.05",
+    "bytes": 16090,
+    "part": "G",
+    "words": 6,
+    "seconds": 2.01,
+    "engine": "piper/en_US-amy-medium"
+  },
+  "vpet-g-23-q": {
+    "hash": "c4e40a88720ec77e",
+    "voice": "piper en_US-amy-medium x1.05",
+    "bytes": 28211,
+    "part": "G",
+    "words": 11,
+    "seconds": 3.53,
+    "engine": "piper/en_US-amy-medium"
+  },
+  "vpet-g-24-q": {
+    "hash": "2e3e318ddb033940",
+    "voice": "piper en_US-amy-medium x1.05",
+    "bytes": 15254,
+    "part": "G",
+    "words": 5,
+    "seconds": 1.91,
+    "engine": "piper/en_US-amy-medium"
+  },
+  "vpet-g-25-q": {
+    "hash": "def68c1cf08ae05c",
+    "voice": "piper en_US-amy-medium x1.05",
+    "bytes": 22777,
+    "part": "G",
+    "words": 8,
+    "seconds": 2.85,
+    "engine": "piper/en_US-amy-medium"
+  },
+  "vpet-g-26-q": {
+    "hash": "a9f1cb4c34894e07",
+    "voice": "piper en_US-amy-medium x1.05",
+    "bytes": 17135,
+    "part": "G",
+    "words": 6,
+    "seconds": 2.14,
+    "engine": "piper/en_US-amy-medium"
+  },
+  "vpet-g-27-q": {
+    "hash": "e7d892714a4f2419",
+    "voice": "piper en_US-amy-medium x1.05",
+    "bytes": 20688,
+    "part": "G",
+    "words": 7,
+    "seconds": 2.59,
+    "engine": "piper/en_US-amy-medium"
+  },
+  "vpet-g-28-q": {
+    "hash": "cd42c30ddc5f1fee",
+    "voice": "piper en_US-amy-medium x1.05",
+    "bytes": 20270,
+    "part": "G",
+    "words": 6,
+    "seconds": 2.53,
+    "engine": "piper/en_US-amy-medium"
+  },
+  "vpet-g-29-q": {
+    "hash": "2d7ae8056d05aff2",
+    "voice": "piper en_US-amy-medium x1.05",
+    "bytes": 20688,
+    "part": "G",
+    "words": 6,
+    "seconds": 2.59,
+    "engine": "piper/en_US-amy-medium"
+  },
+  "vpet-g-30-q": {
+    "hash": "be753b387f562979",
+    "voice": "piper en_US-amy-medium x1.05",
+    "bytes": 21523,
+    "part": "G",
+    "words": 8,
+    "seconds": 2.69,
+    "engine": "piper/en_US-amy-medium"
+  },
+  "vpet-g-31-q": {
+    "hash": "06ab4a469392a0ca",
+    "voice": "piper en_US-amy-medium x1.05",
+    "bytes": 17553,
+    "part": "G",
+    "words": 5,
+    "seconds": 2.19,
+    "engine": "piper/en_US-amy-medium"
+  },
+  "vpet-g-32-q": {
+    "hash": "c60294376fa0b240",
+    "voice": "piper en_US-amy-medium x1.05",
+    "bytes": 17762,
+    "part": "G",
+    "words": 6,
+    "seconds": 2.22,
+    "engine": "piper/en_US-amy-medium"
+  },
+  "vpet-g-33-q": {
+    "hash": "1eb1249ebc49c452",
+    "voice": "piper en_US-amy-medium x1.05",
+    "bytes": 19643,
+    "part": "G",
+    "words": 7,
+    "seconds": 2.46,
+    "engine": "piper/en_US-amy-medium"
+  },
+  "vpet-g-34-q": {
+    "hash": "fd57be6f5f9f17d9",
+    "voice": "piper en_US-amy-medium x1.05",
+    "bytes": 17553,
+    "part": "G",
+    "words": 5,
+    "seconds": 2.19,
+    "engine": "piper/en_US-amy-medium"
+  },
+  "vpet-g-35-q": {
+    "hash": "ba9952569dfeadda",
+    "voice": "piper en_US-amy-medium x1.05",
+    "bytes": 22150,
+    "part": "G",
+    "words": 8,
+    "seconds": 2.77,
+    "engine": "piper/en_US-amy-medium"
+  },
+  "vpet-g-36-q": {
+    "hash": "0d4719e3b3a94b04",
+    "voice": "piper en_US-amy-medium x1.05",
+    "bytes": 19852,
+    "part": "G",
+    "words": 6,
+    "seconds": 2.48,
+    "engine": "piper/en_US-amy-medium"
   }
 }

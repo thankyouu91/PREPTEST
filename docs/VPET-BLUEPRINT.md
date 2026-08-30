@@ -120,15 +120,38 @@ bẫy cần tránh**.
 ### Phần F - Response Selection (8 câu, `listening`/`mcq`, **cần audio**)
 - **Làm gì:** nghe một lời thoại, chọn câu **đáp lại tự nhiên nhất**.
 - **Đo:** phản xạ hội thoại và chức năng ngôn ngữ.
-- **Soạn:** 4 phương án, tất cả đều **đúng ngữ pháp**; cái sai là sai *chức năng*
-  (trả lời lệch câu hỏi, sai thì, sai mức lịch sự).
+- **Soạn:** ⚠️ **BA phương án, không phải bốn.** Hướng dẫn thi ghi nguyên văn
+  *"You will see three possible answers"*. Blueprint đặt `choices: 3` cho phần F
+  (`server/data/exam-formats.js`), và màn hình soạn đề dựng đúng số ô đó — trước
+  đây nó luôn dựng 4 ô cho mọi phần, nên người soạn viết ra một phương án thứ tư
+  mà đề **không bao giờ hiển thị**, và item nhìn vẫn như đã xong.
+- Cả ba phương án phải **đúng ngữ pháp**; cái sai là sai *chức năng* (trả lời
+  lệch câu hỏi, sai thì, sai mức lịch sự).
 - **Bẫy:** làm nhiễu bằng lỗi ngữ pháp - thí sinh loại được mà không cần nghe.
 
-### Phần G - Passage Comprehension (6 câu, `listening`/`mcq`, **cần audio**)
-- **Làm gì:** nghe đoạn nói dài hơn, trả lời câu hỏi hiểu nội dung.
-- **Đo:** nghe lấy ý chính và chi tiết có chọn lọc.
-- **Soạn:** giống phần C nhưng đầu vào là audio. Câu hỏi **không được** giải
-  được chỉ bằng đọc transcript của phương án.
+### Phần G - Passage Comprehension (6 câu, `listening`/`speaking`, **cần audio**)
+- **Làm gì:** nghe một đoạn nói, rồi **trả lời bằng miệng** ba câu hỏi về đoạn đó.
+- **Đo:** nghe lấy ý chính và chi tiết có chọn lọc. Chấm bằng rubric từ bản ghi
+  âm, **không** phải trắc nghiệm — xem `docs/CHAM-DIEM-CHUAN.md` §3.2.
+- **Cấu trúc:** **2 đoạn × 3 câu hỏi**. Ba item cùng một `group`, đoạn nghe phát
+  **một lần** cho cả ba.
+- ⚠️ **Mỗi nhóm cần BỐN file mp3:**
+
+  | File | Thuộc về | Ghi chú |
+  |---|---|---|
+  | `<key>.mp3` | **item đầu tiên** của nhóm | đoạn nghe, phát một lần cho cả nhóm |
+  | `<key>-q.mp3` | **từng item** trong nhóm | câu hỏi của chính item đó, đọc thành tiếng |
+
+  Hướng dẫn thi ghi *"You will hear a passage… There will be three questions
+  about the passage"* — **câu hỏi được ĐỌC LÊN**, không phải đọc trên màn hình.
+  Trước đây chỉ có đoạn nghe: đoạn phát xong rồi thí sinh **đọc** ba câu hỏi
+  bằng mắt, tức là một item nghe bị biến âm thầm thành một item đọc.
+- Trong CSDL: cột `audio_key` giữ đoạn nghe (chỉ item đầu nhóm có), cột
+  `question_audio_key` giữ câu hỏi (cả ba item đều có). Hai cột đếm lượt phát
+  **riêng biệt** — nghe câu hỏi số hai không được tiêu mất lượt phát duy nhất
+  của đoạn văn.
+- **Soạn:** câu hỏi **không được** trả lời được nếu chưa nghe đoạn. Đáp án là
+  *"một cụm ngắn hoặc một câu rất ngắn"* theo đúng hướng dẫn thi.
 - **Bẫy:** hỏi chi tiết vụn xuất hiện đúng một lần → thành bài kiểm tra trí nhớ.
 
 ### Phần H - Repeat (10 câu, `speaking`/`speaking`, **cần audio**)
@@ -169,7 +192,12 @@ làm phẳng thành đúng shape mà seed chèn vào bảng `questions`:
   level: 'B2',             // A1..C2
   prompt: '…đoạn văn…\n\n…câu hỏi…',
   options: ['…', '…', '…', '…'],   // chỉ mcq; các type khác để []
+                                    // SỐ Ô theo `choices` của phần: C=4, F=3
   answer: '…',                      // mcq + gap; essay/speaking để ''
+                                    // gap: cách các lối viết đều đúng bằng "|"
+                                    //      'color | colour' chấp nhận cả hai
+  say: '…',                         // chỉ phần cần audio: chữ đem đi thu
+  group: 'g-b1-1',                  // chỉ phần G: ba câu hỏi chung một đoạn
   explanation: '…',                 // vì sao đáp án đúng VÀ vì sao nhiễu sai
   tags: ['vpet', 'part-c'],         // rows() tự sinh
   source: SOURCE, licence: LICENCE  // rows() tự sinh
@@ -198,6 +226,25 @@ rơi vào vùng cấm; phải viết thêm 6 item B2 nữa cho đủ 12. Kiểm 
 `No part sits between shallow and deep at any level`.
 
 **Nghĩa là:** thêm học liệu nên thêm **theo lô đủ lớn**, đừng thêm lắt nhắt.
+
+### 5.1b. Bốn luật soạn đề mà màn hình nay ép, chứ không còn nhắc suông
+
+Bốn thứ này từng để người soạn tự nhớ, và cả bốn đều đã sinh ra item hỏng mà
+nhìn vẫn như đã xong. Nay mã chặn từ đầu — ghi ở đây để lần sau xây thêm thì
+biết vì sao.
+
+| # | Luật | Chuyện đã xảy ra |
+|---|---|---|
+| 1 | **Item gõ chữ (`gap`) BẮT BUỘC có đáp án.** Server từ chối nếu thiếu. | Màn hình soạn đề **không có ô đáp án** cho item không phải trắc nghiệm — nó gửi `answer: ''`. Mọi item phần A và phần E viết qua màn hình đó đều ra đời **không có đáp án**, và `markItem()` cho 0 điểm dù thí sinh gõ đúng nguyên văn. |
+| 2 | **Số phương án theo `choices` của phần.** C=4, F=3. | Màn hình luôn dựng 4 ô. Phần F chỉ hiện 3 → phương án thứ tư không bao giờ được thấy. |
+| 3 | **Xuống dòng trong `prompt` được giữ nguyên.** | Đề bài và bài làm đều hiển thị trong thẻ nuốt ký tự xuống dòng: một tình huống hai đoạn ra thành một khối chữ liền, và email của thí sinh trên màn kết quả cũng vậy. |
+| 4 | **Phần G cần 4 file mp3 mỗi nhóm.** | Chỉ có đoạn nghe. Ba câu hỏi phải đọc bằng mắt. |
+
+**Đáp án nhiều lối viết:** dùng dấu `|` để liệt kê các cách viết đều đúng —
+`color | colour`, `theatre|theater`. Khi chấm, hệ thống bỏ qua hoa/thường, dấu
+câu ở hai đầu và khoảng trắng thừa, nên khoảng trắng quanh dấu `|` không sao.
+Đây **không phải** chỗ liệt kê hai đáp án khác nhau, chỉ là hai cách viết của
+cùng một đáp án.
 
 ### 5.2. Generator chọn câu như thế nào
 

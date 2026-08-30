@@ -867,6 +867,12 @@ addColumnIfMissing('questions', 'question_audio_bytes', 'INTEGER');
 addColumnIfMissing('questions', 'question_audio_at', 'TEXT');
 addColumnIfMissing('questions', 'question_audio_sha', 'TEXT');
 
+/* Playing Part G's spoken question must not spend the passage's single play.
+   `replays_used` counts the stimulus; this counts the question, so the two
+   budgets are independent and a candidate who hears question two has not
+   thereby used up the passage they are answering about. */
+addColumnIfMissing('attempt_answers', 'question_replays_used', 'INTEGER NOT NULL DEFAULT 0');
+
 /* Part practice for the written and spoken parts (B, D and I).
    A drill is no longer always six machine-marked items: parts B and D are
    e-mails and part I is spoken, and those go to the marker rather than to an
@@ -1601,33 +1607,49 @@ async function attachBankAudio() {
      warning telling an operator to run `npm run audio:vpet`, which will not
      produce them, about a state that is correct. */
   const seenGroup = new Set();
-  const items = require('./data/vpet-items').rows().filter(r => {
+  const bank = require('./data/vpet-items').rows();
+  const items = bank.filter(r => {
     if (!r.say) return false;
     if (!r.group) return true;
     if (seenGroup.has(r.group)) return false;
     seenGroup.add(r.group);
     return true;
   });
+  /* Part G's spoken questions, one per item — see slotFor() below. */
+  for (const r of bank) {
+    if (r.part === 'G' && r.prompt) items.push({ key: r.key + '-q', part: r.part });
+  }
   let attached = 0, missing = 0, failed = 0;
+
+  /* Part G's questions are recorded as `<item key>-q.mp3` and belong in the
+     item's SECOND audio slot, so the passage and the question can be played one
+     after the other without either spending the other's single play. */
+  const slotFor = key => key.endsWith('-q')
+    ? { ext: key.slice(0, -2), key: 'question_audio_key', bytes: 'question_audio_bytes',
+        at: 'question_audio_at', sha: 'question_audio_sha' }
+    : { ext: key, key: 'audio_key', bytes: 'audio_bytes', at: 'audio_at', sha: 'audio_sha' };
 
   for (const it of items) {
     const file = path.join(dir, it.key + '.mp3');
     if (!fs.existsSync(file)) { missing++; continue; }
 
+    const slot = slotFor(it.key);
     const buf = fs.readFileSync(file);
     const sha = crypto.createHash('sha256').update(buf).digest('hex').slice(0, 16);
-    const row = await q.get('SELECT id, audio_key, audio_sha FROM questions WHERE ext_key=?', it.key);
+    const row = await q.get(
+      `SELECT id, ${slot.key} k, ${slot.sha} sha FROM questions WHERE ext_key=?`, slot.ext);
     if (!row) { missing++; continue; }
-    if (row.audio_key && row.audio_sha === sha) continue;
+    if (row.k && row.sha === sha) continue;
 
     try {
       const put = await storage.put(buf, 'audio/mpeg');
-      await q.run('UPDATE questions SET audio_key=?, audio_bytes=?, audio_at=?, audio_sha=? WHERE id=?',
+      await q.run(
+        `UPDATE questions SET ${slot.key}=?, ${slot.bytes}=?, ${slot.at}=?, ${slot.sha}=? WHERE id=?`,
         put.key, put.bytes, nowISO(), sha, row.id);
       /* Only after the new one is safely recorded, so a crash in between leaves a
          stray object rather than a question pointing at nothing. */
-      if (row.audio_key && row.audio_key !== put.key) {
-        try { await storage.remove(row.audio_key); } catch (e) { /* an orphan is not worth failing over */ }
+      if (row.k && row.k !== put.key) {
+        try { await storage.remove(row.k); } catch (e) { /* an orphan is not worth failing over */ }
       }
       attached++;
     } catch (e) {

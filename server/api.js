@@ -373,7 +373,8 @@ router.get('/admin/questions', roles.requireCap('bank.read'), async (req, res) =
   const total = await q.val('SELECT COUNT(*) c ' + sql, ...args);
   const rows = await q.all(
     `SELECT id, family_id, skill, level, type, part, group_key, ext_key, prompt, options_json, answer, explanation, tags_json, status, created_at,
-            audio_key, audio_bytes, audio_at
+            audio_key, audio_bytes, audio_at,
+            question_audio_key, question_audio_bytes, question_audio_at
        ${sql} ORDER BY id DESC LIMIT ? OFFSET ?`, ...args, limit, offset);
 
   res.json({
@@ -397,7 +398,12 @@ router.get('/admin/questions', roles.requireCap('bank.read'), async (req, res) =
       explanation: r.explanation, tags: jparse(r.tags_json, []), status: r.status, createdAt: r.created_at,
       /* The key itself never leaves the server - the browser only needs to know
          whether a file is attached, and how big it is. */
-      hasAudio: !!r.audio_key, audioBytes: r.audio_bytes || 0, audioAt: r.audio_at || null
+      hasAudio: !!r.audio_key, audioBytes: r.audio_bytes || 0, audioAt: r.audio_at || null,
+      /* Part G's spoken question — a second recording on the same item, so the
+         three questions are asked out loud rather than read off the screen. */
+      hasQuestionAudio: !!r.question_audio_key,
+      questionAudioBytes: r.question_audio_bytes || 0,
+      questionAudioAt: r.question_audio_at || null
     }))
   });
 });
@@ -456,6 +462,17 @@ async function readQuestion(body) {
     if (sec && Array.isArray(sec.types) && sec.types.length && !sec.types.includes(type)) {
       return { err: 'Part ' + part + ' only takes the item types: ' + sec.types.join(', ') + '.' };
     }
+    /* And however many options the part publishes, exactly. Part F shows three —
+       "You will see three possible answers" — so a fourth is a distractor the
+       exam never displays and nobody can choose, on an item that looks finished.
+       Checked here as well as in the editor because the editor is not the only
+       way in: the CSV importer, the JSON tab and the write-into-a-part screen
+       all arrive through readQuestion(). */
+    if (sec && type === 'mcq' && sec.choices && options.length !== sec.choices) {
+      return { err: 'Part ' + part + ' shows ' + sec.choices + ' options, and this item has '
+        + options.length + '. The exam would never display the ' + (options.length > sec.choices
+          ? 'extra one' + (options.length - sec.choices > 1 ? 's' : '') : 'missing one' + '') + '.' };
+    }
   }
 
   return {
@@ -510,10 +527,54 @@ router.post('/admin/questions/:id/status', roles.requireCap('bank.publish'), asy
    Both routes sit under the router-wide requireAdmin + csrfGuard. */
 const audioBody = express.raw({ type: storage.ACCEPTED_MIME, limit: storage.MAX_BYTES });
 
-router.post('/admin/questions/:id/audio', roles.requireCap('bank.write'), audioBody, async (req, res) => {
+/* Two recordings can hang off one question, and the three routes are the same
+   three routes twice over, so the slot is a parameter rather than a copy:
+
+     `audio`           the item's stimulus — Part E's sentence, Part H's
+                       sentence, Part J's story, and for Part G the passage the
+                       item's whole group shares.
+     `question-audio`  the item's own question, spoken. Part G only, where the
+                       three questions are ASKED out loud rather than read off
+                       the screen.
+
+   A table of column names rather than three more route bodies differing by one
+   identifier each: the copy that drifts is the one nobody is looking at. */
+const AUDIO_SLOTS = {
+  'audio': { key: 'audio_key', bytes: 'audio_bytes', at: 'audio_at', label: 'audio' },
+  'question-audio': { key: 'question_audio_key', bytes: 'question_audio_bytes',
+    at: 'question_audio_at', label: 'question audio' }
+};
+const slotOf = req => AUDIO_SLOTS[req.params.slot] || AUDIO_SLOTS.audio;
+
+async function putSlot(req, res) {
+  const slot = slotOf(req);
   const id = int(req.params.id, 0);
-  const row = await q.get('SELECT id, audio_key FROM questions WHERE id=?', id);
+  const row = await q.get(
+    `SELECT id, group_key, ${slot.key} k FROM questions WHERE id=?`, id);
   if (!row) return res.status(404).json({ error: 'No such question.' });
+
+  /* One stimulus per group, and the exam depends on it.
+   *
+   * A Part G group is one passage and three questions: the passage belongs to
+   * the group and plays once, at the top. The screen offers a passage control
+   * on all three items, so attaching a second one was a click away — and the
+   * runner would then play a passage again in the middle of the group, after
+   * the candidate had already answered about the first.
+   *
+   * Refused here rather than in the browser, because the invariant is the
+   * exam's and not the screen's, and because nothing else checks it:
+   * scripts/test-items.mjs asserts one passage per group against the item bank
+   * FILE, which an upload does not touch. */
+  if (slot.key === 'audio_key' && row.group_key && !row.k) {
+    const taken = await q.get(
+      'SELECT id FROM questions WHERE group_key=? AND id<>? AND audio_key IS NOT NULL',
+      row.group_key, id);
+    if (taken) {
+      return bad(res, 'These questions share one passage, and it is already attached to '
+        + 'another of them. Replace it there, or remove it first — a group with two '
+        + 'passages plays the second one in the middle of the group.');
+    }
+  }
 
   const buf = Buffer.isBuffer(req.body) ? req.body : null;
   const why = storage.validate(buf, req.get('content-type'));
@@ -523,24 +584,26 @@ router.post('/admin/questions/:id/audio', roles.requireCap('bank.write'), audioB
     const saved = await storage.put(buf, req.get('content-type'));
     /* Replacing an existing file: write the new key first, then drop the old
        one. If the delete fails the row still points at a file that exists. */
-    const old = row.audio_key;
-    await q.run('UPDATE questions SET audio_key=?, audio_bytes=?, audio_at=? WHERE id=?',
+    const old = row.k;
+    await q.run(`UPDATE questions SET ${slot.key}=?, ${slot.bytes}=?, ${slot.at}=? WHERE id=?`,
       saved.key, saved.bytes, nowISO(), id);
     if (old && old !== saved.key) await storage.remove(old).catch(() => {});
-    await audit(req, 'question.audio.upload', 'questions/' + id, { bytes: saved.bytes, driver: saved.driver });
+    await audit(req, 'question.audio.upload', 'questions/' + id,
+      { bytes: saved.bytes, driver: saved.driver, slot: slot.label });
     res.status(201).json({ ok: true, bytes: saved.bytes, driver: saved.driver });
   } catch (e) {
     if (e.code === 'INVALID_AUDIO') return bad(res, e.message);
     console.error('[audio] upload failed', e);
     res.status(502).json({ error: 'The audio file could not be saved. Check the storage configuration.' });
   }
-});
+}
 
-router.get('/admin/questions/:id/audio', roles.requireCap('bank.read'), async (req, res) => {
-  const row = await q.get('SELECT audio_key, audio_bytes FROM questions WHERE id=?', int(req.params.id, 0));
-  if (!row || !row.audio_key) return res.status(404).json({ error: 'This question has no audio file.' });
+async function getSlot(req, res) {
+  const slot = slotOf(req);
+  const row = await q.get(`SELECT ${slot.key} k FROM questions WHERE id=?`, int(req.params.id, 0));
+  if (!row || !row.k) return res.status(404).json({ error: 'This question has no ' + slot.label + ' file.' });
   try {
-    const file = await storage.get(row.audio_key);
+    const file = await storage.get(row.k);
     res.set('Content-Type', 'audio/mpeg')
       .set('Content-Length', String(file.body.length))
       /* Exam audio must not sit in a shared cache: it is answer material. */
@@ -550,18 +613,25 @@ router.get('/admin/questions/:id/audio', roles.requireCap('bank.read'), async (r
     console.error('[audio] read failed', e);
     res.status(502).json({ error: 'The audio file could not be read.' });
   }
-});
+}
 
-router.delete('/admin/questions/:id/audio', roles.requireCap('bank.write'), async (req, res) => {
+async function delSlot(req, res) {
+  const slot = slotOf(req);
   const id = int(req.params.id, 0);
-  const row = await q.get('SELECT audio_key FROM questions WHERE id=?', id);
+  const row = await q.get(`SELECT ${slot.key} k FROM questions WHERE id=?`, id);
   if (!row) return res.status(404).json({ error: 'No such question.' });
-  if (!row.audio_key) return res.json({ ok: true });
-  await q.run('UPDATE questions SET audio_key=NULL, audio_bytes=NULL, audio_at=NULL WHERE id=?', id);
-  await storage.remove(row.audio_key).catch(() => {});
-  await audit(req, 'question.audio.delete', 'questions/' + id, {});
+  if (!row.k) return res.json({ ok: true });
+  await q.run(`UPDATE questions SET ${slot.key}=NULL, ${slot.bytes}=NULL, ${slot.at}=NULL WHERE id=?`, id);
+  await storage.remove(row.k).catch(() => {});
+  await audit(req, 'question.audio.delete', 'questions/' + id, { slot: slot.label });
   res.json({ ok: true });
-});
+}
+
+/* The old paths — /questions/:id/audio — are the `audio` slot and keep working
+   exactly as they did; nothing that already calls them has to change. */
+router.post('/admin/questions/:id/:slot(audio|question-audio)', roles.requireCap('bank.write'), audioBody, putSlot);
+router.get('/admin/questions/:id/:slot(audio|question-audio)', roles.requireCap('bank.read'), getSlot);
+router.delete('/admin/questions/:id/:slot(audio|question-audio)', roles.requireCap('bank.write'), delSlot);
 
 /** Bulk import questions (pasted JSON, or CSV already split up on the client) */
 router.post('/admin/questions/bulk', roles.requireCap('bank.write'), async (req, res) => {
@@ -938,11 +1008,10 @@ async function readInlineQuestions(list, ctx) {
       tags: raw.tags
     });
     if (d.err) return { err: 'Item ' + (i + 1) + ': ' + d.err, index: i };
-    /* A gap fill is marked by comparing text to the answer key, so one with no
-       key scores zero for every candidate and says so only in a per-item note
-       nobody reads. readQuestion lets it through because the CSV importer has
-       always allowed the key to be filled in later; typed here, in a form with
-       the field on screen, an empty key is a mistake every time. */
+    /* readQuestion() refuses a keyless gap item for every caller now, so this
+       is unreachable and kept only to say which ITEM of the batch was at fault:
+       the shared message names no index, and "a gap-fill item needs an answer
+       key" is no use against forty pasted rows. */
     if (d.type === 'gap' && !d.answer) {
       return { err: 'Item ' + (i + 1) + ': a gap-fill item needs an answer key.', index: i };
     }

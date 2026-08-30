@@ -129,7 +129,8 @@ Ký hiệu: ✅ đúng · ⚠️ đúng một phần · ❌ chưa làm
 |---|---|
 | 6 câu, có bản ghi | ✅ |
 | **Trả lời bằng miệng** | ✅ đã sửa 2026-08-21 — ghi âm, chấm bằng rubric |
-| **2 đoạn × 3 câu hỏi**, đoạn nghe một lần cho cả ba | ✅ đã sửa 2026-08-21 — rút theo nguyên nhóm, audio chỉ ở câu đầu |
+| **2 đoạn × 3 câu hỏi**, đoạn nghe một lần cho cả ba | ✅ đã sửa 2026-08-21 — rút theo nguyên nhóm, đoạn nghe chỉ ở câu đầu |
+| **Ba câu hỏi được ĐỌC LÊN** | ✅ đã sửa 2026-08-30 — mỗi item có bản ghi câu hỏi riêng (`question_audio_key`); trước đó thí sinh phải đọc câu hỏi bằng mắt |
 | Nghe một lần | ✅ |
 
 ---

@@ -171,44 +171,79 @@
     }
   }
 
-  /* VPET plays audio in parts E, F, G, H and J, so listening and speaking
-     items can carry one MP3 each. Other skills never need sound, so the
-     control only appears where it makes sense. */
-  const NEEDS_AUDIO = ['listening', 'speaking'];
-
-  function audioBlock(i) {
-    if (!NEEDS_AUDIO.includes(i.skill)) return '';
-    const kb = i.audioBytes ? Math.max(1, Math.round(i.audioBytes / 1024)) : 0;
+  /**
+   * One item's recordings — one row per slot, because an item can have two.
+   *
+   * `audio`          the stimulus: Part E's sentence, Part H's sentence, Part
+   *                  J's story, and on Part G the passage the item's whole
+   *                  group shares, which is why only the FIRST item of a group
+   *                  carries one.
+   * `question-audio` Part G only: the item's own question, asked out loud.
+   *                  "You will hear a passage. There will be three questions
+   *                  about the passage" — a candidate who reads them off the
+   *                  screen instead is sitting a reading item.
+   *
+   * So a Part G group is four files: the passage on item one, and a question on
+   * each of the three.
+   */
+  function audioRow(i, slot, label, has, bytes, at, hint) {
+    const kb = bytes ? Math.max(1, Math.round(bytes / 1024)) : 0;
     /* Cache-bust on the upload timestamp: replacing a file must not leave the
        browser playing the old one. */
-    const src = '/api/admin/questions/' + i.id + '/audio?v=' + encodeURIComponent(i.audioAt || '');
-    return '<span class="block mt-2.5 pt-2.5 border-t border-line">' +
-      (i.hasAudio
-        ? '<span class="flex flex-wrap items-center gap-2">' +
+    const src = '/api/admin/questions/' + i.id + '/' + slot + '?v=' + encodeURIComponent(at || '');
+    const tag = slot + ':' + i.id;
+    return '<span class="block mt-2">' +
+      '<span class="block text-[12px] font-bold uppercase tracking-wide text-muted">' + label +
+        (hint ? ' <span class="font-medium normal-case tracking-normal">· ' + hint + '</span>' : '') +
+      '</span>' +
+      (has
+        ? '<span class="flex flex-wrap items-center gap-2 mt-1">' +
             '<audio controls preload="none" class="h-9 max-w-full" src="' + src + '"></audio>' +
             '<span class="badge badge-muted">MP3 · ' + kb + ' KB</span>' +
             '<label class="btn btn-ghost btn-sm cursor-pointer">Replace' +
-              '<input type="file" accept="audio/mpeg" class="sr-only" data-audio-file="' + i.id + '">' +
+              '<input type="file" accept="audio/mpeg" class="sr-only" data-audio-file="' + tag + '">' +
             '</label>' +
-            '<button type="button" class="btn btn-ghost btn-sm" data-audio-del="' + i.id + '">Remove</button>' +
+            '<button type="button" class="btn btn-ghost btn-sm" data-audio-del="' + tag + '">Remove</button>' +
           '</span>'
-        : '<span class="flex flex-wrap items-center gap-2">' +
+        : '<span class="flex flex-wrap items-center gap-2 mt-1">' +
             '<span class="badge badge-hl">No audio</span>' +
             '<label class="btn btn-ghost btn-sm cursor-pointer">Attach MP3' +
-              '<input type="file" accept="audio/mpeg" class="sr-only" data-audio-file="' + i.id + '">' +
+              '<input type="file" accept="audio/mpeg" class="sr-only" data-audio-file="' + tag + '">' +
             '</label>' +
           '</span>') +
     '</span>';
   }
 
-  /* Wired once per render, same as the edit and retire buttons. */
+  /* VPET plays audio in parts E, F, G, H and J, so listening and speaking
+     items can carry sound. Other skills never need it, so the control only
+     appears where it makes sense. */
+  const NEEDS_AUDIO = ['listening', 'speaking'];
+
+  function audioBlock(i) {
+    if (!NEEDS_AUDIO.includes(i.skill)) return '';
+    const isG = i.part === 'G';
+    return '<span class="block mt-2.5 pt-2.5 border-t border-line">' +
+      audioRow(i, 'audio', isG ? 'Passage' : 'Recording',
+        i.hasAudio, i.audioBytes, i.audioAt,
+        isG ? 'one per group, on the first question' : '') +
+      /* Only Part G asks its questions out loud, so only Part G is offered the
+         second slot. Showing it everywhere would invite a recording nothing
+         will ever play. */
+      (isG ? audioRow(i, 'question-audio', 'Spoken question',
+        i.hasQuestionAudio, i.questionAudioBytes, i.questionAudioAt, 'this question, read aloud') : '') +
+    '</span>';
+  }
+
+  /* Wired once per render, same as the edit and retire buttons. The tag carries
+     the slot as well as the id, so one handler serves both rows. */
   function bindAudio() {
+    const split = v => { const [slot, id] = String(v).split(':'); return { slot, id }; };
     AD.qsa('[data-audio-file]').forEach(inp => inp.addEventListener('change', async () => {
       const file = inp.files && inp.files[0];
       if (!file) return;
-      const id = inp.getAttribute('data-audio-file');
+      const { slot, id } = split(inp.getAttribute('data-audio-file'));
       try {
-        await AD.upload('/admin/questions/' + id + '/audio', file);
+        await AD.upload('/admin/questions/' + id + '/' + slot, file);
         AD.toast('Audio attached');
         load();
       } catch (e) {
@@ -217,8 +252,8 @@
       }
     }));
     AD.qsa('[data-audio-del]').forEach(b => b.addEventListener('click', async () => {
-      const id = b.getAttribute('data-audio-del');
-      try { await AD.del('/admin/questions/' + id + '/audio'); AD.toast('Audio removed'); load(); }
+      const { slot, id } = split(b.getAttribute('data-audio-del'));
+      try { await AD.del('/admin/questions/' + id + '/' + slot); AD.toast('Audio removed'); load(); }
       catch (e) { AD.toast(e.message, 'error'); }
     }));
   }
@@ -475,10 +510,22 @@
       if (options.length < 2) return { error: 'A multiple-choice item needs at least two options.' };
       if (!options.includes(answer)) return { error: 'The answer must match one of the options.' };
     }
+    /* A typed item needs its key too, and this used to drop it: `dap_an` was
+       read, then thrown away for everything that was not multiple choice. Every
+       Part A and Part E row in a CSV therefore arrived with no answer, which the
+       server now — rightly — refuses, and the operator was told to supply a key
+       they had already filled in. Checked here as well as on the server so the
+       row is named in the preview rather than rejected one at a time. */
+    if (type === 'gap' && !answer) {
+      return { error: 'A typed item needs an answer in "dap_an". '
+        + 'Separate equally correct spellings with | — for example: color | colour' };
+    }
     return {
       item: { familyId, skill, level, type, part, prompt,
               options: type === 'mcq' ? options : [],
-              answer: type === 'mcq' ? answer : '',
+              /* mcq and gap both carry a key; an essay or a spoken answer goes
+                 to the rubric and genuinely has none. */
+              answer: type === 'mcq' || type === 'gap' ? answer : '',
               explanation: get('giai_thich'), tags: ['csv import'] }
     };
   }
