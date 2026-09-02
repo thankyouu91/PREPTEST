@@ -717,7 +717,7 @@ const PrepRunner = {
       ? '<div class="flex flex-wrap items-center gap-2.5 mt-3">' +
           '<button type="button" class="btn btn-soft btn-sm" data-play="' + it.questionId + '"' +
             (it.replaysLeft <= 0 ? ' disabled' : '') + '>' +
-            PREP.icon('play', 'w-4 h-4') + '<span>Nghe</span></button>' +
+            PREP.icon('play', 'w-4 h-4') + '<span>Listen</span></button>' +
           '<span class="text-[13px] font-semibold text-muted" data-plays="' + it.questionId + '">' +
             PREP.esc(this.playLabel(p, it.replaysLeft)) + '</span>' +
         '</div>'
@@ -839,7 +839,7 @@ const PrepRunner = {
     this.renderParts();
   },
 
-  /* ---------- Nghe ---------- */
+  /* ---------- Listening ---------- */
 
   async play(questionId) {
     const btn = PREP.qs('[data-play="' + questionId + '"]');
@@ -875,13 +875,27 @@ const PrepRunner = {
       return;
     }
 
+    /* Played through a blob URL, which the document's CSP has to allow
+       (media-src blob: in server.js). It did not, once: every one of these
+       plays was refused after the replay had been spent, and the screen — no
+       error handler, a caption still reading "plays once" — said nothing. */
     const src = URL.createObjectURL(blob);
     const audio = new Audio(src);
     audio.addEventListener('ended', () => {
       URL.revokeObjectURL(src);
       btn.disabled = left <= 0;
     });
-    audio.play().catch(() => { label.textContent = 'The browser blocked autoplay'; btn.disabled = false; });
+    /* Whichever way it fails, say so and give the button back: the server has
+       counted the play, but a locked button under a silent screen is the one
+       state that tells the candidate nothing at all. */
+    const failed = why => {
+      URL.revokeObjectURL(src);
+      label.textContent = why;
+      btn.disabled = false;
+    };
+    audio.addEventListener('error', () => failed('Cannot play this'));
+    audio.play().catch(e => failed(e && e.name === 'NotAllowedError'
+      ? 'The browser blocked autoplay' : 'Cannot play this'));
   },
 
   /* ---------- Recording ---------- */

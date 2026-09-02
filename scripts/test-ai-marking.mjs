@@ -96,7 +96,20 @@ const stub = http.createServer((req, res) => {
   req.on('end', () => {
     const raw = Buffer.concat(chunks);
     const body = raw.toString('latin1');
-    seen.push({ url: req.url, headers: req.headers, body });
+    /* What a transcription upload SAID it was, and what it actually is. A
+       service of this kind decides the container by the filename's extension,
+       so the two have to agree: a WebM sent as answer.mp3 is an "invalid file
+       format" from a real provider. This stub used to accept anything, which is
+       exactly why the drill path could get it wrong for months. */
+    const part = /filename="answer\.(\w+)"\r\nContent-Type: ([^\r\n]+)\r\n\r\n/.exec(body);
+    const at = part ? part.index + part[0].length : -1;
+    const head4 = at >= 0 ? raw.slice(at, at + 4) : Buffer.alloc(0);
+    const actual = head4.length < 4 ? null
+      : (head4[0] === 0x1A && head4[1] === 0x45) ? 'webm'
+      : head4.toString('latin1') === 'OggS' ? 'ogg'
+      : (head4.toString('latin1', 0, 3) === 'ID3' || (head4[0] === 0xFF && (head4[1] & 0xE0) === 0xE0)) ? 'mp3'
+      : 'unknown';
+    seen.push({ url: req.url, headers: req.headers, body, filename: part && part[1], mime: part && part[2], actual });
     const reply = (code, obj) => {
       res.writeHead(code, { 'content-type': 'application/json' });
       res.end(JSON.stringify(obj));
@@ -761,6 +774,99 @@ try {
   ok(notes.some(n => /transcript/i.test(n)),
     'The result the candidate reads carries that note, rather than dropping it',
     JSON.stringify(notes.slice(0, 2)).slice(0, 160));
+
+  /* The exam path sniffs the bytes before it names the file. */
+  const lastStt = seen.filter(s => /transcriptions/.test(s.url)).pop();
+  ok(lastStt && lastStt.filename === 'mp3' && lastStt.actual === 'mp3',
+    'An MP3 recording goes to the service as answer.mp3, which is what it is',
+    JSON.stringify(lastStt && { filename: lastStt.filename, mime: lastStt.mime, actual: lastStt.actual }));
+
+  /* ---------------------------------------------------------------- *
+   * A spoken drill, which used to send its recording with no type at all
+   * ---------------------------------------------------------------- */
+  head('A spoken drill sends the recording as what it is');
+
+  /* storage.get() returns bytes and nothing else, and the drill path handed
+     `file.mime` — always undefined — to the transcriber, so every WebM a browser
+     records went up as answer.mp3. The exam path sniffed; the drill path did
+     not; the stub above could not tell. */
+  const webm = Buffer.alloc(2048);
+  webm[0] = 0x1A; webm[1] = 0x45; webm[2] = 0xDF; webm[3] = 0xA3;
+  const dr = await student.req('POST', '/api/drills', { part: 'I' });
+  ok(dr.status === 201 && dr.data.mode === 'spoken', 'A Part I drill opens as a spoken one',
+    dr.status + ' ' + JSON.stringify(dr.data).slice(0, 120));
+  if (dr.status === 201) {
+    const item = dr.data.items[0];
+    const upd = await student.raw('/api/drills/' + dr.data.drillId + '/items/' + item.questionId + '/recording',
+      webm, 'audio/webm');
+    ok(upd.status === 201 || upd.status === 200, 'A WebM recording is uploaded', 'status ' + upd.status + ' ' + JSON.stringify(upd.data));
+    heard = 'I would tell the customer the delivery is delayed and offer to send it on Wednesday.';
+    const before = seen.length;
+    const sub = await student.req('POST', '/api/drills/' + dr.data.drillId + '/submit',
+      { answers: dr.data.items.map(i => ({ questionId: i.questionId, answer: 'recorded' })) });
+    const stt = seen.slice(before).filter(s => /transcriptions/.test(s.url));
+    ok(stt.length === 1, 'The drill asked the service for one transcription', String(stt.length));
+    ok(stt[0] && stt[0].filename === 'webm' && /webm/.test(stt[0].mime || '') && stt[0].actual === 'webm',
+      'Named by what the bytes are — answer.webm, audio/webm — not answer.mp3',
+      JSON.stringify(stt[0] && { filename: stt[0].filename, mime: stt[0].mime, actual: stt[0].actual }));
+    ok(sub.status === 200 && (sub.data.detail || []).some(x => x.heard),
+      'And the drill is marked from what was heard', JSON.stringify(sub.data).slice(0, 200));
+  }
+
+  /* ---------------------------------------------------------------- *
+   * A Part H item written on the bank screen is compared, not sent to a model
+   * ---------------------------------------------------------------- */
+  head('A Part H item written by an administrator is marked by comparison');
+
+  /* The sentence a Part H item asks for was looked up in the authored file by
+     ext_key, and an item written through the bank screen has no ext_key: its
+     transcript went to a paid model call instead of the free comparison, and a
+     Part G or J item was judged without the passage. The row carries the
+     script now, and the marker reads the row first. */
+  r = await admin.req('POST', '/api/admin/questions', {
+    familyId: 'vpet', skill: 'speaking', level: 'B1', type: 'speaking', part: 'H',
+    prompt: 'Authored Part H: listen, then say the sentence back exactly.',
+    script: 'The train leaves at six tomorrow morning.'
+  });
+  ok(r.status === 201, 'An administrator writes a Part H item with its transcript', JSON.stringify(r.data));
+  const authoredH = r.data && r.data.id;
+  r = await admin.raw('/api/admin/questions/' + authoredH + '/audio', mp3, 'audio/mpeg');
+  ok(r.status === 201 || r.status === 200, 'With a recording attached', 'status ' + r.status);
+  r = await admin.req('POST', '/api/admin/tests', { familyId: 'vpet', title: 'Authored Part H paper', level: 'B1', durationMin: 5 });
+  const hPaper = r.data && r.data.id;
+  r = await admin.req('POST', '/api/admin/tests/' + hPaper + '/sections',
+    { name: 'Part H - Repeat', skill: 'speaking', type: 'Recording', minutes: 0, part: 'H' });
+  const hSec = r.data && r.data.id;
+  await admin.req('POST', '/api/admin/sections/' + hSec + '/items', { questionIds: [authoredH] });
+  r = await admin.req('POST', '/api/admin/tests/' + hPaper + '/status', { status: 'published' });
+  ok(r.status === 200, 'On a paper of its own', JSON.stringify(r.data));
+
+  r = await student.req('POST', '/api/attempts', { testId: hPaper });
+  const attH = r.data && r.data.attempt;
+  ok(!!attH, 'The student sits it', JSON.stringify(r.data).slice(0, 120));
+  if (attH) {
+    const pHH = attH.parts[0];
+    await student.req('POST', '/api/attempts/' + attH.id + '/parts/' + pHH.sectionId + '/start');
+    await student.raw('/api/attempts/' + attH.id + '/items/' + authoredH + '/recording', mp3, 'audio/mpeg');
+    await student.req('POST', '/api/attempts/' + attH.id + '/submit');
+    heard = 'The train leaves at six tomorrow morning';
+    const modelCallsBefore = seen.filter(s => !/transcriptions/.test(s.url)).length;
+    await admin.req('POST', '/api/admin/attempts/' + attH.id + '/mark', {});
+    const modelCallsAfter = seen.filter(s => !/transcriptions/.test(s.url)).length;
+    const rowH = await q.get(
+      'SELECT earned, max_score, mark_note FROM attempt_answers WHERE attempt_id=? AND question_id=?',
+      attH.id, authoredH);
+    ok(modelCallsAfter === modelCallsBefore,
+      'No model was asked: the transcript was compared with the transcript on the row',
+      (modelCallsAfter - modelCallsBefore) + ' model call(s)');
+    ok(rowH && rowH.earned != null && rowH.earned >= 0.9 * (rowH.max_score || 1),
+      'And saying the sentence back word for word earns the marks', JSON.stringify(rowH));
+    const crit = await q.all('SELECT criterion FROM rubric_scores WHERE attempt_id=? AND question_id=?', attH.id, authoredH);
+    ok(crit.some(c => c.criterion === 'content') && crit.some(c => c.criterion === 'structure'),
+      "Under Part H's two criteria, the same as an authored item", JSON.stringify(crit));
+  }
+  await admin.req('POST', '/api/admin/tests/' + hPaper + '/status', { status: 'archived' });
+  await admin.req('POST', '/api/admin/questions/' + authoredH + '/status', { status: 'retired' });
 
   /* Put the transcription service away again so the later sections behave as
      they did before this one ran. */

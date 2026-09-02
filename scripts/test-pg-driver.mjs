@@ -56,6 +56,18 @@ ok(toDollars(doubled).text === "SELECT 'it''s fine' AS a WHERE b=$1",
 ok(toDollars('SELECT "odd?column" FROM t WHERE a=?').text === 'SELECT "odd?column" FROM t WHERE a=$1',
   'A double-quoted identifier is a literal too');
 
+/* An apostrophe inside a comment is not a quote. Two queries in this codebase
+   carry one ("the learner's own"); the scanner used to read it as the start of
+   a literal that ran to the next apostrophe, and every ? inside that stretch
+   went to Postgres as a literal question mark. */
+const commented = "SELECT a /* the learner's own */ FROM t WHERE b=? AND c=? -- can't be null\nAND d=?";
+const done = toDollars(commented);
+ok(done.count === 3, 'Placeholders after a commented apostrophe are still numbered', String(done.count));
+ok(done.text === "SELECT a /* the learner's own */ FROM t WHERE b=$1 AND c=$2 -- can't be null\nAND d=$3",
+  'and the comments themselves are copied through untouched', done.text);
+ok(toDollars("SELECT '--not a comment?' AS a WHERE b=?").text === "SELECT '--not a comment?' AS a WHERE b=$1",
+  'A comment marker inside a literal is still just a literal');
+
 ok(/ON CONFLICT DO NOTHING$/.test(orIgnore('INSERT OR IGNORE INTO t (a) VALUES (?)')),
   'INSERT OR IGNORE moves to the end as ON CONFLICT DO NOTHING',
   orIgnore('INSERT OR IGNORE INTO t (a) VALUES (?)'));

@@ -177,11 +177,17 @@
        different facts and the second one is the more useful of the pair. */
     const ceilingNote = PREP.qs('#r-ceiling');
     let ceilingText = '';
+    /* Both carry a number, so neither can be a dictionary entry for i18n.js;
+       PREP.t picks the language here. The floor note comes from server/bands.js
+       in both languages for the same reason. */
     if (b && b.atCeiling) {
-      ceilingText = 'Đây là mức cao nhất đề Cấp ' + r.vpetLevel + ' đo được'
-        + (r.vpetLevel === 1 ? ' — làm đề Cấp 2 để biết trình độ thật cao đến đâu.' : '.');
+      ceilingText = PREP.t(
+        'This is the highest a Level ' + r.vpetLevel + ' paper can measure'
+          + (r.vpetLevel === 1 ? ' — sit a Level 2 paper to find out how much higher you go.' : '.'),
+        'Đây là mức cao nhất đề Cấp ' + r.vpetLevel + ' đo được'
+          + (r.vpetLevel === 1 ? ' — làm đề Cấp 2 để biết trình độ thật cao đến đâu.' : '.'));
     } else if (b && b.atFloor) {
-      ceilingText = b.note || '';
+      ceilingText = PREP.t(b.note || '', b.noteVi || b.note || '');
     }
     ceilingNote.textContent = ceilingText;
     ceilingNote.hidden = !ceilingText;
@@ -201,6 +207,7 @@
 
     /* ---- Mark per skill ---- */
     const SKILL_ORDER = ['listening', 'reading', 'writing', 'speaking'];
+    const rawMarks = s => (Math.round((s.rawEarned || 0) * 10) / 10) + '/' + (s.rawMax || 0);
     const skills = (r.skills || []).slice().sort(
       (a, b) => SKILL_ORDER.indexOf(a.skill) - SKILL_ORDER.indexOf(b.skill));
     if (skills.length) {
@@ -213,7 +220,12 @@
               '<p class="text-[13px] font-medium text-muted mt-1">Marked against a rubric, follows later</p>'
             : '<p class="mt-1.5"><b class="text-3xl font-extrabold tracking-tight">' + PREP.score(s.score) + '</b>' +
               '<span class="text-[13px] font-semibold text-muted"> / 10</span></p>' +
-              '<p class="text-[13px] font-medium text-muted mt-1">' + s.rawEarned + '/' + s.rawMax + ' correct</p>') +
+              /* "marks", not "correct": a rubric-marked item earns a fraction
+                 of one, so Writing's raw line is 1.4 out of 3 and there is no
+                 count of correct answers behind it. Rounded to a decimal for
+                 the same reason. */
+              '<p class="text-[13px] font-medium text-muted mt-1">' +
+                PREP.t(rawMarks(s) + ' marks', rawMarks(s) + ' điểm') + '</p>') +
         '</article>').join('');
       PREP.qs('#r-skills-box').removeAttribute('hidden');
     }

@@ -19,7 +19,7 @@
  * product actually has.
  */
 import { createRequire } from 'node:module';
-import { spawnSync } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
@@ -316,6 +316,53 @@ try {
     'And what is on disk afterwards is the backup, not the padded file it replaced',
     cliUsers + ' users, ' + fs.statSync(keep).size + ' bytes vs ' + marked);
   ok(/giữ ở/.test(real.stdout), 'And it says where the previous database was kept');
+
+  head('The command line will not restore under a running server');
+
+  /* restore() renames the live file aside and copies the archive in — and a
+     server that still holds the old descriptor keeps writing to the file that
+     was moved. So a `node server.js` holding the target open must stop the
+     restore, and only --force may override it. A stand-in server: node,
+     running a file called server.js, with the target open. That is exactly
+     what scripts/_live-servers.js looks for in /proc, and it is on Linux only,
+     so elsewhere this section says so and moves on. */
+  if (fs.existsSync('/proc/self/fd')) {
+    const held = freshDb('held.sqlite');
+    const fakeDir = path.join(ROOT, 'fake-server');
+    fs.mkdirSync(fakeDir, { recursive: true });
+    fs.writeFileSync(path.join(fakeDir, 'server.js'),
+      "const { DatabaseSync } = require('node:sqlite');\n" +
+      "const db = new DatabaseSync(process.argv[2]);\n" +
+      "db.prepare('SELECT 1').get();\n" +
+      'setInterval(() => {}, 1000);\n');
+    const child = spawn(process.execPath, [path.join(fakeDir, 'server.js'), held], { stdio: 'ignore' });
+    try {
+      const { serversHolding } = require('../scripts/_live-servers.js');
+      let holders = [];
+      for (let i = 0; i < 40 && !holders.length; i++) {
+        await new Promise(r => setTimeout(r, 100));
+        holders = serversHolding(held);
+      }
+      ok(holders.length === 1 && String(holders[0].pid) === String(child.pid),
+        'The stand-in server is seen holding the file', JSON.stringify(holders.map(h => h.pid)));
+
+      const refused = spawnSync(process.execPath,
+        ['scripts/backup.mjs', 'restore', cliMade.name, '--yes', '--into', held],
+        { env: process.env, encoding: 'utf8', timeout: 60000 });
+      ok(refused.status === 1, 'restore --yes is refused while a server holds the file', String(refused.status));
+      ok(/đang mở/.test(refused.stderr) && new RegExp(String(child.pid)).test(refused.stderr),
+        'And names the process', quiet(refused.stderr).slice(0, 200));
+
+      const forced = spawnSync(process.execPath,
+        ['scripts/backup.mjs', 'restore', cliMade.name, '--yes', '--force', '--into', held],
+        { env: process.env, encoding: 'utf8', timeout: 60000 });
+      ok(forced.status === 0, 'With --force it goes ahead', String(forced.status) + ' ' + quiet(forced.stderr).slice(0, 200));
+    } finally {
+      child.kill('SIGKILL');
+    }
+  } else {
+    console.log('   (no /proc here — the running-server guard cannot be exercised on this platform)');
+  }
 
   const check = spawnSync(process.execPath, ['scripts/backup.mjs', 'check'],
     { env: process.env, encoding: 'utf8', timeout: 60000 });

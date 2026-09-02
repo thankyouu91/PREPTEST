@@ -79,6 +79,27 @@ try {
     'API responses are not indexable');
   ok(!(asset.headers.get('content-security-policy') || '').includes("default-src 'none'"),
     'A static file does not pick up the API CSP');
+  /* The exam runner plays a fetched recording through a blob URL, and CSP3's
+     'self' does not cover blob:. Without this source every Listen click on a
+     part without a letter was refused after the replay had been spent. */
+  ok(/media-src 'self' blob:/.test(csp),
+    "The document CSP lets the runner play a blob: recording (media-src 'self' blob:)", csp);
+
+  head('A request that must not become a 500');
+
+  /* A cookie this server never set, holding a stray percent sign. The jar is
+     shared with whatever else lives on the domain, and decodeURIComponent
+     throws on it — which used to take every page down for that browser. */
+  const badJar = await fetch(BASE + '/prep/landing/', { headers: { Cookie: 'other_app=%E0%A4%A; prep_lang=vi' } });
+  ok(badJar.status === 200, 'A malformed cookie from another application is skipped, not a 500', String(badJar.status));
+  const badApi = await fetch(BASE + '/api/catalog', { headers: { Cookie: 'x=%zz' } });
+  ok(badApi.status === 200, 'And the API answers the same request', String(badApi.status));
+
+  /* The API answers JSON everywhere else; an unknown path under it did not. */
+  const nope = await fetch(BASE + '/api/no-such-thing', { headers: { Accept: 'application/json' } });
+  ok(nope.status === 404 && /json/.test(nope.headers.get('content-type') || ''),
+    'An unknown /api path is a JSON 404', nope.status + ' ' + nope.headers.get('content-type'));
+  ok((await nope.json().catch(() => ({}))).error === 'Not found', 'with an error field a client can read');
 
   head('Write limit');
 

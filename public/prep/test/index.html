@@ -24,7 +24,9 @@
   <script src="/i18n.js"></script>
 </head>
 <body class="bg-surface text-ink">
-<div id="app" data-active="library" class="min-h-[100dvh]">
+<!-- "home": the papers live on the home page now, and "library" was not a
+     navigation key at all, so no entry lit up on this screen. -->
+<div id="app" data-active="home" class="min-h-[100dvh]">
   <main id="main">
     <div class="max-w-shell mx-auto px-4 sm:px-6 lg:px-10 pb-6">
 
@@ -198,7 +200,9 @@
             '<p class="flex items-center gap-2.5 font-extrabold"><span class="w-9 h-9 rounded-full bg-accent-soft text-accent-strong inline-flex items-center justify-center">' + PREP.icon('unlock', 'w-5 h-5') + '</span>You have unlocked this test</p>' +
             '<p class="text-muted text-[14px] leading-relaxed mt-3">Status: <b class="text-ink">not started</b>. Your marks and progress are kept here after every sitting.</p>' +
             '<button type="button" id="start" class="btn btn-primary btn-lg w-full mt-5">' + PREP.icon('play', 'w-5 h-5') + 'Start the test</button>' +
-            '<button type="button" class="btn btn-ghost btn-md w-full mt-2.5 opacity-55 cursor-not-allowed" aria-disabled="true">Practise part by part <span class="badge badge-muted ms-1.5">coming soon</span></button>';
+            /* A real link: part practice has existed since block 4, and this
+               button went on saying "coming soon" beside it. */
+            '<a href="/prep/luyen/" class="btn btn-ghost btn-md w-full mt-2.5">Practise part by part</a>';
           /* Engine seam: // TODO(backend/exam-engine) - replace the overlay with navigation into the sitting */
           /* The sitting engine exists now: this button opens a real attempt rather
              than the "coming soon" panel. A paper with no items keeps the old
@@ -221,10 +225,17 @@
         PREP.qsa('[data-close]', modal).forEach(b => b.addEventListener('click', () => modal.classList.remove('show')));
         modal.addEventListener('click', e => { if (e.target === modal) modal.classList.remove('show'); });
         document.addEventListener('keydown', e => { if (e.key === 'Escape') modal.classList.remove('show'); });
-        PREP.qs('#notify-me').addEventListener('click', () => {
+        PREP.qs('#notify-me').addEventListener('click', async () => {
           modal.classList.remove('show');
-          PrepChrome.toast('We will email you when the paper is released');
-          /* TODO(backend): POST /api/notify-me { testId } */
+          /* The account already carries this preference (Profile →
+             Notifications, "New papers released"); switching it on IS the
+             promise, and the promise is made only once the server has stored
+             it. This used to toast "we will email you" over a TODO. */
+          const res = await PrepState.setNotify({ newTests: true });
+          PrepChrome.toast(res.ok
+            ? PREP.t('Noted. You will be emailed when a new paper is released.',
+                     'Đã ghi nhận. Bạn sẽ được báo qua email khi có đề mới.')
+            : res.error, res.ok ? undefined : 'error');
         });
       }
     });

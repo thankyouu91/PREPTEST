@@ -107,6 +107,12 @@ function cspFor(nonce) {
     `style-src 'self' 'nonce-${nonce}'`,
     "font-src 'self'",
     "img-src 'self' data:",
+    /* The exam runner fetches a recording first — that is how it reads the 429
+       a spent replay answers with — and then plays the bytes through
+       URL.createObjectURL. Under CSP3 'self' does not match blob:, so without
+       this line Chromium refused every one of those plays ("Refused to load
+       media from 'blob:…'") after the replay had already been counted. */
+    "media-src 'self' blob:",
     "connect-src 'self'",
     "form-action 'self'",
   ].join('; ');
@@ -424,9 +430,13 @@ app.use((req, res, next) => {
 });
 app.use(express.static(PUB, { index: false }));
 
-app.use((req, res) =>
-  res.status(404).type('text').send('404 - không tìm thấy. Về trang chủ: /prep/landing/')
-);
+app.use((req, res) => {
+  /* The API answers JSON everywhere else — every route's own refusals, and the
+     error handler below — so an unknown /api path must not be the one reply a
+     client is handed as text/plain and a Vietnamese sentence to JSON.parse. */
+  if (req.path.startsWith('/api/')) return res.status(404).json({ error: 'Not found' });
+  res.status(404).type('text').send('404 - không tìm thấy. Về trang chủ: /prep/landing/');
+});
 
 /* The end of the chain, and the reason server/async-route.js has somewhere to
    send a rejected handler. Four arguments on purpose: that is how Express tells

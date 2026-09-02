@@ -275,6 +275,9 @@
                 : '<span class="badge badge-hl">No part</span>')
             : '') +
           (i.status === 'retired' ? '<span class="badge badge-hl">Withdrawn</span>' : '') +
+          /* A heard item with nothing for the marker to compare against is
+             marked blind; say so where the operator can fix it. */
+          (NEEDS_AUDIO.includes(i.skill) && !i.script ? '<span class="badge badge-hl">No transcript</span>' : '') +
         '</span>' +
         '<span class="block text-[14px] leading-snug">' + AD.esc(i.prompt) + '</span>' +
         (i.options && i.options.length
@@ -336,6 +339,22 @@
           'Separate equally correct spellings with <b>|</b> — <code>color | colour</code> accepts either.</p></div>' +
         '<div><label class="label" for="q-exp">Explanation <span class="font-medium text-muted">(optional)</span></label>' +
           '<textarea class="input" id="q-exp" rows="2">' + AD.esc(d.explanation) + '</textarea></div>' +
+        /* What the recording says. The marker reads it and nothing else does:
+           a Part H answer is scored by comparing the transcript with this
+           sentence, and a Part G or J answer is judged against this passage.
+           There was no field for it, so every Part G, H and J item written on
+           this screen was marked with nothing to compare against — H went to a
+           paid model call, G and J were judged blind. */
+        '<div id="q-script-box" hidden><label class="label" for="q-script">Transcript ' +
+            '<span class="font-medium text-muted">(what the recording says)</span></label>' +
+          '<textarea class="input" id="q-script" rows="3">' + AD.esc(d.script || '') + '</textarea>' +
+          '<p class="help mt-1.5">Read by the marker only: Part H is scored against this sentence, ' +
+            'Part G and J against this passage. Never shown to the candidate.</p></div>' +
+        '<div id="q-model-box" hidden><label class="label" for="q-model">Model answer ' +
+            '<span class="font-medium text-muted">(Part G)</span></label>' +
+          '<input class="input" id="q-model" value="' + AD.esc(d.modelAnswer || '') + '" ' +
+            'placeholder="a short correct reply — e.g. Eight.">' +
+          '<p class="help mt-1.5">A reference for the marker, never compared word for word.</p></div>' +
         '<div class="banner banner-error" id="q-err"><span id="q-err-text"></span></div>' +
         '<div class="flex gap-2.5"><button type="button" id="q-save" class="btn btn-primary btn-md flex-1">' +
           (isNew ? 'Add to the bank' : 'Save changes') + '</button>' +
@@ -405,10 +424,17 @@
          marked against the rubric, and offering a box for an answer nothing
          will ever compare against is worse than offering none. */
       mm.el.querySelector('#q-key-box').hidden = typeEl.value !== 'gap';
+      /* The transcript belongs to the parts that are heard; the model answer
+         to Part G alone, which is the one part whose spoken answer has a short
+         right reply. */
+      const heard = NEEDS_AUDIO.includes(skillEl.value);
+      mm.el.querySelector('#q-script-box').hidden = !heard;
+      mm.el.querySelector('#q-model-box').hidden = !(heard && !partBox.hidden && partEl.value === 'G');
     }
     renderParts(); renderOptions(); syncType();
     typeEl.addEventListener('change', syncType);
-    famEl.addEventListener('change', () => { renderParts(); renderOptions(); });
+    skillEl.addEventListener('change', syncType);
+    famEl.addEventListener('change', () => { renderParts(); renderOptions(); syncType(); });
     partEl.addEventListener('change', () => { syncFromPart(); renderOptions(); });
 
     mm.el.querySelector('#q-save').addEventListener('click', async () => {
@@ -432,6 +458,8 @@
         answer: typeEl.value === 'mcq'
           ? (ansIdx >= 0 ? allOpts[ansIdx] : '')
           : (typeEl.value === 'gap' ? mm.el.querySelector('#q-key').value.trim() : ''),
+        script: mm.el.querySelector('#q-script').value.trim(),
+        modelAnswer: mm.el.querySelector('#q-model').value.trim(),
         tags: d.tags || []
       };
       try {

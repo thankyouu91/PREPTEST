@@ -213,11 +213,22 @@ function score(expected, heard) {
  * answer would be…" when the bank item carries a model answer, which is right
  * for Part G and would silently corrupt the comparison here the day somebody
  * adds a model answer to an H item. This wants the sentence and nothing else.
+ *
+ * Takes the question row — `{ ext_key, part, script }` — or, for the older
+ * callers, a bare ext_key.
  */
-function sentenceFor(extKey) {
-  if (!extKey) return null;
+function sentenceFor(row) {
+  if (!row) return null;
+  const r = typeof row === 'string' ? { ext_key: row } : row;
+  if (r.part && r.part !== 'H') return null;
+  /* The row first. An item written on the bank screen has no ext_key and no
+     line in the authored file; what it has is `script`, the sentence the
+     administrator typed beside the recording, and that is the only copy. */
+  const own = String(r.script || '').trim();
+  if (own) return own;
+  if (!r.ext_key) return null;
   try {
-    const hit = require('./data/vpet-items').rows().find(r => r.key === extKey);
+    const hit = require('./data/vpet-items').rows().find(x => x.key === r.ext_key);
     return hit && hit.part === 'H' && hit.say ? hit.say : null;
   } catch (e) { return null; }
 }

@@ -223,7 +223,9 @@ async function weekly(userId, partWeights) {
       titleEn: 'Sit a full paper — ' + en + ' ' + (missing.length > 1 ? 'have' : 'has') + ' not been measured',
       titleVi: 'Làm một bài đầy đủ — phần ' + vi + ' chưa được đo',
       score: null, confident: false, reason: 'notMeasured',
-      href: '/prep/thu-vien/',
+      /* The papers are listed on the home page; the library it used to point
+         at is gone and only survives as a redirect. */
+      href: '/prep/',
       /* Above any part: an unmeasured skill is a hole in the report the whole
          plan is built from, and it stays a hole until a paper is sat. The
          placement deliberately does not sample these — see server/placement.js

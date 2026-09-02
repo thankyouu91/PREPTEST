@@ -30,8 +30,13 @@ function verifyPassword(pw, stored) {
   if (!stored) return false;
   const [alg, N, r, p, saltB64, keyB64] = String(stored).split('$');
   if (alg !== 'scrypt') return false;
-  const salt = Buffer.from(saltB64, 'base64');
-  const expected = Buffer.from(keyB64, 'base64');
+  const salt = Buffer.from(saltB64 || '', 'base64');
+  const expected = Buffer.from(keyB64 || '', 'base64');
+  /* A stored hash whose key segment is empty asks scryptSync for a zero-length
+     key, and timingSafeEqual of two empty buffers is true — so a row somebody
+     blanked by hand would accept every password. Nothing this module writes is
+     shorter than SCRYPT.keylen; nothing shorter is a hash. */
+  if (expected.length < 32 || !salt.length) return false;
   let actual;
   try {
     actual = crypto.scryptSync(pw, salt, expected.length, { N: +N, r: +r, p: +p });
@@ -47,7 +52,13 @@ function parseCookies(req) {
   for (const part of raw.split(';')) {
     const i = part.indexOf('=');
     if (i < 0) continue;
-    out[part.slice(0, i).trim()] = decodeURIComponent(part.slice(i + 1).trim());
+    /* One bad pair must not take the request down. decodeURIComponent throws
+       on a stray percent sign, and the jar is shared with whatever else lives
+       on the domain — another application's cookie, or one edited by hand —
+       so without this every page answered 500 to that browser, for a value
+       this server never set and never reads. */
+    try { out[part.slice(0, i).trim()] = decodeURIComponent(part.slice(i + 1).trim()); }
+    catch (e) { /* not ours, and not worth an outage */ }
   }
   return out;
 }

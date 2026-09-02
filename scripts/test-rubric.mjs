@@ -1403,6 +1403,14 @@ head('Nothing handed in is nothing, not four out of ten');
     'the bank carries the exact sentence a Part H item asks for', JSON.stringify(say));
   ok(RP.sentenceFor('vpet-g-01') === null,
     'and refuses to hand one back for a part that is not H — G answers are free-form');
+  /* The row first: an item written on the bank screen has no ext_key and
+     carries its sentence in `script`. */
+  ok(RP.sentenceFor({ part: 'H', ext_key: null, script: ' Please close the window. ' }) === 'Please close the window.',
+    'a question row with a script of its own answers with that script');
+  ok(RP.sentenceFor({ part: 'H', ext_key: 'vpet-h-03', script: '' }) === say,
+    'and one without falls back to the authored file by ext_key');
+  ok(RP.sentenceFor({ part: 'J', ext_key: null, script: 'A whole story.' }) === null,
+    'while a row for another part is refused whatever it carries');
 
   const rp = (heard, want) => {
     const v = RP.score(say, heard);
@@ -1456,7 +1464,7 @@ head('Nothing handed in is nothing, not four out of ten');
     String(lvl1(10).gse));
   ok(['C1', 'C2', 'B2', 'B2+'].every(c => lvl1(10).cefr !== c),
     'no mark on a Level 1 paper can reach B2 or above');
-  ok(lvl1(0).cefr === 'dưới A1', 'and the bottom is below A1, which Level 1 can genuinely see',
+  ok(lvl1(0).cefr === 'below A1', 'and the bottom is below A1, which Level 1 can genuinely see',
     lvl1(0).cefr);
 
   ok(lvl2(10).cefr === 'C2', 'ten out of ten on a Level 2 paper is C2', lvl2(10).cefr);
@@ -1464,8 +1472,11 @@ head('Nothing handed in is nothing, not four out of ten');
   ok(lvl2(1).atFloor === true && lvl2(1).cefr === null,
     'a mark at the floor of Level 2 reports a ceiling, not a level',
     JSON.stringify(lvl2(1).cefr));
-  ok(String(lvl2(1).note || '').includes('Cấp 1'),
-    'and names the easier paper, because Level 2 cannot tell them apart down there');
+  /* In both languages: the sentence carries a value, so i18n.js cannot look it
+     up whole and the result screen has to be handed both. */
+  ok(String(lvl2(1).note || '').includes('Level 1') && String(lvl2(1).noteVi || '').includes('Cấp 1'),
+    'and names the easier paper, in English and in Vietnamese, because Level 2 cannot tell them apart down there',
+    JSON.stringify([lvl2(1).note, lvl2(1).noteVi]));
   ok(lvl2(5).cefr === 'B2+', 'the middle of Level 2 is B2+', lvl2(5).cefr);
 
   /* Monotonic: a better paper never reports a lower level. */

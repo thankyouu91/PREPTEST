@@ -59,7 +59,10 @@ const EXTENSION = 'mp3';
    Sniffed on content like everything else, never on the declared type. */
 const RECORDING_MIME = ['audio/webm', 'audio/ogg', 'audio/mp4', 'audio/mpeg', 'audio/mp3'];
 
-const DISK_ROOT = process.env.AUDIO_DIR || path.join(process.cwd(), 'data', 'uploads', 'audio');
+/* Relative to this file, like DATA_DIR in server/db.js, and not to the working
+   directory: a server started from another folder would otherwise open the
+   database in one place and look for its recordings in another. */
+const DISK_ROOT = process.env.AUDIO_DIR || path.join(__dirname, '..', 'data', 'uploads', 'audio');
 /* Read at call time like gcs() and s3() below, and for a second reason as well
    as the test one: server/secrets.js merges Secrets Manager values into the
    environment during boot, which happens after this module has been required.
@@ -126,6 +129,26 @@ function looksLikeRecording(buf) {
   if (buf[0] === 0x4F && buf[1] === 0x67 && buf[2] === 0x67 && buf[3] === 0x53) return true;   // "OggS"
   if (buf.slice(4, 8).toString('latin1') === 'ftyp') return true;                              // MP4/M4A
   return false;
+}
+
+/**
+ * Which container a recording actually is, from its first bytes.
+ *
+ * The same four signatures looksLikeRecording() accepts, named. `get()` hands
+ * back bytes and nothing else — a stored recording carries no type, and the
+ * declared one at upload time was never trusted — so whoever sends those bytes
+ * to a transcription service has to work the type out again here. The service
+ * decides by the filename's extension, and a WebM sent as `answer.mp3` is
+ * refused as an invalid format; the exam path sniffed and the drill path did
+ * not, until this moved here to be shared.
+ */
+function sniffMime(buf) {
+  const b = Buffer.isBuffer(buf) ? buf : Buffer.from(buf || []);
+  if (b.length >= 4 && b[0] === 0x1A && b[1] === 0x45 && b[2] === 0xDF && b[3] === 0xA3) return 'audio/webm';
+  if (b.length >= 4 && b.slice(0, 4).toString('latin1') === 'OggS') return 'audio/ogg';
+  if (b.length >= 12 && b.slice(4, 8).toString('latin1') === 'ftyp') return 'audio/mp4';
+  if (looksLikeMp3(b)) return 'audio/mpeg';
+  return 'audio/webm';
 }
 
 /** Reject anything we would not want to store, with a reason worth showing. */
@@ -427,7 +450,7 @@ async function remove(key) {
 }
 
 module.exports = {
-  MAX_BYTES, ACCEPTED_MIME, RECORDING_MIME, EXTENSION,
+  MAX_BYTES, ACCEPTED_MIME, RECORDING_MIME, EXTENSION, sniffMime,
   put, putRecording, get, remove,
   validate, looksLikeMp3, safeKey, newKey,
   /* Also the way a caller asks "would this work?", since it throws for a driver

@@ -95,7 +95,9 @@ try {
 
   /* The property that decides whether the second plan gets read: nothing in the
      first one may be a dead end. */
-  ok(p1.data.plan.every(x => /^\/prep\/[a-z-]+\/$/.test(x.href)),
+  /* The home page counts: the papers are listed there, and "sit a paper"
+     points at it now that the library it used to name is a redirect. */
+  ok(p1.data.plan.every(x => /^\/prep\/(?:[a-z-]+\/)?$/.test(x.href)),
     'Every item points at a real route',
     JSON.stringify(p1.data.plan.map(x => x.href)));
   ok(new Set(p1.data.plan.map(x => x.key)).size === p1.data.plan.length,

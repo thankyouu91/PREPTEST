@@ -67,7 +67,11 @@ const GSE_CEFR = [
   { min: 36, cefr: 'A2+' },
   { min: 30, cefr: 'A2' },
   { min: 22, cefr: 'A1' },
-  { min: 10, cefr: 'dưới A1' }
+  /* English, like every other label the screens print: the interface is
+     authored in English and i18n.js translates whole text nodes, so this one
+     is in its dictionary ('dưới A1'). A Vietnamese literal here stayed
+     Vietnamese with the language switched to English. */
+  { min: 10, cefr: 'below A1' }
 ];
 
 /**
@@ -110,7 +114,7 @@ function vpetLevelOf(testLevel) {
  * paper measures perfectly well, and jumping a candidate straight from "not
  * measured" to B2.
  *
- * Level 1 needs no equivalent. Its lowest band is "dưới A1", which is a true
+ * Level 1 needs no equivalent. Its lowest band is "below A1", which is a true
  * and complete answer — there is no easier paper to send anybody to.
  */
 function atFloorOf(gse, low) {
@@ -128,7 +132,7 @@ const round1 = n => Math.round(n * 10) / 10;
 
 function cefrOfGse(gse) {
   const hit = GSE_CEFR.find(r => gse >= r.min);
-  return hit ? hit.cefr : 'dưới A1';
+  return hit ? hit.cefr : 'below A1';
 }
 
 /**
@@ -162,7 +166,14 @@ function bandFor(score, opts) {
     return {
       cefr: null, band: null, gse, vpetLevel: 2, ceiling: range.to,
       atFloor: true, mostThis: range.from,
-      note: 'Đề Cấp 2 chỉ đo được từ ' + range.from + ' trở lên, và kết quả này ở '
+      /* Both languages, because the sentence carries a value and i18n.js can
+         only translate a text node it can look up whole. The screen picks one
+         with PREP.t(); `note` stays English so an older reader still gets a
+         sentence rather than nothing. */
+      note: 'A Level 2 paper only measures from ' + range.from + ' up, and this result sits '
+        + 'at that floor — so all it can say is "no higher than ' + range.from + '". '
+        + 'Sit a Level 1 paper to find out exactly where you are.',
+      noteVi: 'Đề Cấp 2 chỉ đo được từ ' + range.from + ' trở lên, và kết quả này ở '
         + 'đúng mức sàn đó — nên nó chỉ nói được "không quá ' + range.from + '". '
         + 'Làm đề Cấp 1 để biết chính xác đang ở đâu.'
     };

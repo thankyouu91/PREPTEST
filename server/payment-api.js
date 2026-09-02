@@ -92,11 +92,16 @@ router.post('/api/checkout', express.json({ limit: '16kb' }), A.requireUser, A.c
   }
 
   const at = nowISO();
-  await q.run(
+  const inserted = await q.run(
     `INSERT INTO orders (user_id, package_id, name, amount, status, provider, created_at)
      VALUES (?,?,?,?,'pending',?,?)`,
     req.user.id, plan.id, plan.name, plan.price, driver.id, at);
-  const orderId = await q.val('SELECT id FROM orders ORDER BY id DESC LIMIT 1');
+  /* The id of the row this request wrote, from the write itself. It used to be
+     read back with `SELECT id FROM orders ORDER BY id DESC LIMIT 1`, and this
+     route runs no transaction — so two buyers checking out in the same moment
+     could each mint a reference onto the other's order. `q.run` hands the id
+     back on both engines. */
+  const orderId = Number(inserted.lastInsertRowid);
   /* The reference is minted after the row exists so it can carry the order id,
      and stored before the buyer leaves, so a notification arriving while they
      are still on the gateway's page finds something to match. */

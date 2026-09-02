@@ -373,6 +373,7 @@ router.get('/admin/questions', roles.requireCap('bank.read'), async (req, res) =
   const total = await q.val('SELECT COUNT(*) c ' + sql, ...args);
   const rows = await q.all(
     `SELECT id, family_id, skill, level, type, part, group_key, ext_key, prompt, options_json, answer, explanation, tags_json, status, created_at,
+            script, model_answer,
             audio_key, audio_bytes, audio_at,
             question_audio_key, question_audio_bytes, question_audio_at
        ${sql} ORDER BY id DESC LIMIT ? OFFSET ?`, ...args, limit, offset);
@@ -396,6 +397,9 @@ router.get('/admin/questions', roles.requireCap('bank.read'), async (req, res) =
       extKey: r.ext_key || null,
       prompt: r.prompt, options: jparse(r.options_json, []), answer: r.answer,
       explanation: r.explanation, tags: jparse(r.tags_json, []), status: r.status, createdAt: r.created_at,
+      /* What the recording says, and Part G's model answer. For the editor and
+         for the marker; a candidate never sees either. */
+      script: r.script || '', modelAnswer: r.model_answer || '',
       /* The key itself never leaves the server - the browser only needs to know
          whether a file is attached, and how big it is. */
       hasAudio: !!r.audio_key, audioBytes: r.audio_bytes || 0, audioAt: r.audio_at || null,
@@ -441,6 +445,16 @@ async function readQuestion(body) {
   }
   const tags = Array.isArray(body.tags) ? body.tags.map(t => str(t, 30)).filter(Boolean).slice(0, 10) : [];
 
+  /* What the recording says, for the parts that are heard. Only the marker
+     reads it: Part H is scored by comparing the transcript with this sentence,
+     Part G and J are judged against this passage or story. An item authored on
+     the bank screen had nowhere to put it, so every such item was marked with
+     nothing to compare against. The model answer is a reference for Part G's
+     marker — see scriptFor() in server/ai-marking-run.js — and never a key. */
+  const heard = skill === 'listening' || skill === 'speaking';
+  const script = heard ? str(body.script, 6000) : '';
+  const modelAnswer = heard ? str(body.modelAnswer, 500) : '';
+
   /* The lettered part, for families whose format has a part table. Validated
      against the blueprint rather than a hardcoded A-J, and cross-checked
      against the skill the part actually tests: a speaking item filed under
@@ -478,7 +492,8 @@ async function readQuestion(body) {
   return {
     familyId, skill, level, type, prompt, options, answer,
     part: part || null,
-    explanation: str(body.explanation, 2000), tags
+    explanation: str(body.explanation, 2000), tags,
+    script: script || null, modelAnswer: modelAnswer || null
   };
 }
 
@@ -486,10 +501,10 @@ router.post('/admin/questions', roles.requireCap('bank.write'), async (req, res)
   const d = await readQuestion(req.body || {});
   if (d.err) return bad(res, d.err);
   const r = await q.run(
-    `INSERT INTO questions (family_id,skill,level,type,part,prompt,options_json,answer,explanation,tags_json,status,created_at,created_by)
-     VALUES (?,?,?,?,?,?,?,?,?,?,'active',?,?)`,
+    `INSERT INTO questions (family_id,skill,level,type,part,prompt,options_json,answer,explanation,tags_json,script,model_answer,status,created_at,created_by)
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,'active',?,?)`,
     d.familyId, d.skill, d.level, d.type, d.part, d.prompt, JSON.stringify(d.options), d.answer,
-    d.explanation, JSON.stringify(d.tags), nowISO(), req.admin.id);
+    d.explanation, JSON.stringify(d.tags), d.script, d.modelAnswer, nowISO(), req.admin.id);
   await audit(req, 'question.create', 'questions/' + r.lastInsertRowid, { family: d.familyId, skill: d.skill, part: d.part });
   res.status(201).json({ id: Number(r.lastInsertRowid) });
 });
@@ -499,10 +514,11 @@ router.put('/admin/questions/:id', roles.requireCap('bank.write'), async (req, r
   if (!await q.val('SELECT 1 FROM questions WHERE id=?', id)) return res.status(404).json({ error: 'No such question.' });
   const d = await readQuestion(req.body || {});
   if (d.err) return bad(res, d.err);
-  await q.run(`UPDATE questions SET family_id=?, skill=?, level=?, type=?, part=?, prompt=?, options_json=?, answer=?, explanation=?, tags_json=?
+  await q.run(`UPDATE questions SET family_id=?, skill=?, level=?, type=?, part=?, prompt=?, options_json=?, answer=?, explanation=?, tags_json=?,
+                                    script=?, model_answer=?
           WHERE id=?`,
     d.familyId, d.skill, d.level, d.type, d.part, d.prompt, JSON.stringify(d.options), d.answer,
-    d.explanation, JSON.stringify(d.tags), id);
+    d.explanation, JSON.stringify(d.tags), d.script, d.modelAnswer, id);
   await audit(req, 'question.update', 'questions/' + id, {});
   res.json({ ok: true });
 });
@@ -658,10 +674,10 @@ router.post('/admin/questions/bulk', roles.requireCap('bank.write'), async (req,
     const at = nowISO();
     for (const d of ok) {
       await q.run(
-        `INSERT INTO questions (family_id,skill,level,type,part,prompt,options_json,answer,explanation,tags_json,status,created_at,created_by)
-         VALUES (?,?,?,?,?,?,?,?,?,?,'active',?,?)`,
+        `INSERT INTO questions (family_id,skill,level,type,part,prompt,options_json,answer,explanation,tags_json,script,model_answer,status,created_at,created_by)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,'active',?,?)`,
         d.familyId, d.skill, d.level, d.type, d.part, d.prompt, JSON.stringify(d.options),
-        d.answer, d.explanation, JSON.stringify(d.tags), at, req.admin.id);
+        d.answer, d.explanation, JSON.stringify(d.tags), d.script, d.modelAnswer, at, req.admin.id);
     }
   });
   await audit(req, 'question.bulk', 'questions', { inserted: ok.length, failed: errors.length });
@@ -1005,7 +1021,9 @@ async function readInlineQuestions(list, ctx) {
       options: raw.options,
       answer: raw.answer,
       explanation: raw.explanation,
-      tags: raw.tags
+      tags: raw.tags,
+      script: raw.script,
+      modelAnswer: raw.modelAnswer
     });
     if (d.err) return { err: 'Item ' + (i + 1) + ': ' + d.err, index: i };
     /* readQuestion() refuses a keyless gap item for every caller now, so this
@@ -1091,12 +1109,12 @@ async function writeInlineQuestions(rows, sid, adminId) {
   const ids = [];
   for (const d of rows) {
     const r = await q.run(
-      `INSERT INTO questions (family_id,skill,level,type,part,group_key,prompt,options_json,answer,explanation,tags_json,status,created_at,created_by)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?,'active',?,?)`,
+      `INSERT INTO questions (family_id,skill,level,type,part,group_key,prompt,options_json,answer,explanation,tags_json,script,model_answer,status,created_at,created_by)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,'active',?,?)`,
       d.familyId, d.skill, d.level, d.type, d.part,
       d.groupIndex === undefined ? null : keys.get(d.groupIndex),
       d.prompt, JSON.stringify(d.options), d.answer,
-      d.explanation, JSON.stringify(d.tags), nowISO(), adminId);
+      d.explanation, JSON.stringify(d.tags), d.script, d.modelAnswer, nowISO(), adminId);
     const qid = Number(r.lastInsertRowid);
     await q.run('INSERT INTO section_items (section_id,question_id,sort) VALUES (?,?,?)', sid, qid, sort++);
     ids.push(qid);
@@ -1223,9 +1241,12 @@ router.post('/admin/sections/:sid/items', roles.requireCap('tests.write'), async
   await tx(async () => {
     let sort = (await q.val('SELECT COALESCE(MAX(sort),-1) s FROM section_items WHERE section_id=?', sid)) + 1;
     for (const qid of ids) {
-      const row = await q.get("SELECT family_id, skill FROM questions WHERE id=? AND status='active'", qid);
-      // Only items from the same exam and the same skill as the part
-      if (!row || row.family_id !== test.family_id || row.skill !== s.skill) { skipped++; continue; }
+      const row = await q.get("SELECT family_id, skill, part FROM questions WHERE id=? AND status='active'", qid);
+      /* Only items from the same exam and the same skill as the part — and,
+         where both carry a letter, the same letter. Skill cannot tell H from
+         J, and the picker's filter is a courtesy the API did not repeat. */
+      if (!row || row.family_id !== test.family_id || row.skill !== s.skill
+          || (s.part && row.part && row.part !== s.part)) { skipped++; continue; }
       const r = await q.run('INSERT OR IGNORE INTO section_items (section_id,question_id,sort) VALUES (?,?,?)', sid, qid, sort++);
       if (r.changes) added++; else skipped++;
     }
@@ -1245,6 +1266,52 @@ router.delete('/admin/items/:itemId', roles.requireCap('tests.write'), async (re
   await audit(req, 'section.items.remove', 'items/' + itemId, {});
   res.json({ ok: true });
 });
+
+/**
+ * Draw `want` items from a pool at random — whole groups or none of them.
+ *
+ * The same rule plannedPaper() applies, and for the same reason: Part G is
+ * three questions about ONE recording that only the first of the three
+ * carries. Taking a slice of a shuffled list splits groups, and the candidate
+ * is asked about a passage that was never played. The generator drew items one
+ * at a time because until now nothing an administrator authored WAS grouped;
+ * every Part G batch written through the composer is, so the split went from
+ * unlikely to routine. A group that will not fit in what is left is skipped and
+ * the next tried, which is why this counts as it goes rather than slicing at
+ * the end — and why the caller must compare the result with `want`.
+ *
+ * Exact-level rows come first, randomised inside each tier, so a level the
+ * paper was built at is preferred without being required. `pool` rows carry
+ * {id, group_key, exact?}; under `strict` every row is exact.
+ *
+ * One function for the generator AND the redraw. The generator had this logic
+ * and the redraw did not: it kept slicing, so redrawing one Part G section was
+ * the one remaining way to build the paper the rule exists to prevent.
+ */
+function drawFromPool(pool, want, strict) {
+  const shuffle = arr => arr.map(v => [Math.random(), v]).sort((a, c) => a[0] - c[0]).map(v => v[1]);
+  const exact = pool.filter(r => strict || r.exact);
+  const other = pool.filter(r => !strict && !r.exact);
+  const byGroup = new Map();
+  for (const r of pool) if (r.group_key) {
+    if (!byGroup.has(r.group_key)) byGroup.set(r.group_key, []);
+    byGroup.get(r.group_key).push(r);
+  }
+  const chosen = [];
+  const taken = new Set();
+  const takenGroups = new Set();
+  for (const r of shuffle(exact).concat(shuffle(other))) {
+    if (chosen.length >= want) break;
+    if (taken.has(r.id)) continue;
+    if (!r.group_key) { taken.add(r.id); chosen.push(r); continue; }
+    if (takenGroups.has(r.group_key)) continue;
+    const members = (byGroup.get(r.group_key) || []).filter(m => !taken.has(m.id));
+    if (chosen.length + members.length > want) continue;
+    takenGroups.add(r.group_key);
+    for (const m of members) { taken.add(m.id); chosen.push(m); }
+  }
+  return chosen;
+}
 
 /** GENERATE a test from a blueprint: drawn at random from the question bank.
  *  body: { familyId, level, title?, blueprint:[{name,skill,type,items,minutes}], strictLevel? }
@@ -1290,48 +1357,19 @@ router.post('/admin/tests/generate', roles.requireCap('tests.write'), async (req
       });
       continue;
     }
-    // Shuffle within the priority groups: exact matches stay first, randomised inside each group
-    const exact = avail.filter(r => strict || r.exact);
-    const other = avail.filter(r => !strict && !r.exact);
-    const shuffle = arr => arr.map(v => [Math.random(), v]).sort((a, c) => a[0] - c[0]).map(v => v[1]);
-    /* Whole groups or none of them — the same rule plannedPaper() applies, and
-       for the same reason: Part G is three questions about ONE recording that
-       only the first of the three carries. Taking a slice of a shuffled list
-       splits groups, and the candidate is asked about a passage that was never
-       played. This path drew items one at a time because until now nothing an
-       administrator authored WAS grouped; every Part G batch written through the
-       composer is, so the split went from unlikely to routine.
-       A group that will not fit in what is left is skipped and the next tried,
-       which is why this counts as it goes rather than slicing at the end. */
-    const byGroup = new Map();
-    for (const r of avail) if (r.group_key) {
-      if (!byGroup.has(r.group_key)) byGroup.set(r.group_key, []);
-      byGroup.get(r.group_key).push(r);
-    }
-    const chosen = [];
-    const takenGroups = new Set();
-    for (const r of shuffle(exact).concat(shuffle(other))) {
-      if (chosen.length >= want) break;
-      if (usedIds.has(r.id)) continue;
-      if (!r.group_key) { usedIds.add(r.id); chosen.push(r); continue; }
-      if (takenGroups.has(r.group_key)) continue;
-      const members = (byGroup.get(r.group_key) || []).filter(m => !usedIds.has(m.id));
-      if (chosen.length + members.length > want) continue;
-      takenGroups.add(r.group_key);
-      for (const m of members) { usedIds.add(m.id); chosen.push(m); }
-    }
+    const chosen = drawFromPool(avail, want, strict);
     /* Counted after the grouping, not before: a part whose remaining items are
        all in groups too big for the gap left is short even though `avail` said
        otherwise, and reporting it here is the difference between a shortage the
        operator can act on and a paper quietly one item light. */
     if (chosen.length < want) {
-      chosen.forEach(r => usedIds.delete(r.id));
       shortages.push({
         section: str(sec.name, 100) || skill, skill, part: part || null,
         need: want, have: chosen.length
       });
       continue;
     }
+    chosen.forEach(r => usedIds.add(r.id));
     picked.push({ sec, part, ids: chosen.map(r => r.id) });
   }
 
@@ -1358,10 +1396,10 @@ router.post('/admin/tests/generate', roles.requireCap('tests.write'), async (req
     /* A loop rather than forEach: each part reads back the id of the row it
        just inserted, so these writes have to stay in order. */
     for (const [i, p] of picked.entries()) {
-      await q.run('INSERT INTO sections (test_id,name,skill,type,minutes,sort,part) VALUES (?,?,?,?,?,?,?)',
+      const made = await q.run('INSERT INTO sections (test_id,name,skill,type,minutes,sort,part) VALUES (?,?,?,?,?,?,?)',
         id, str(p.sec.name, 100) || p.sec.skill, str(p.sec.skill, 20),
         str(p.sec.type, 100) || 'Multiple choice', clamp(int(p.sec.minutes, 0), 0, 600), i, p.part || null);
-      const sid = await q.val('SELECT id FROM sections WHERE test_id=? ORDER BY id DESC LIMIT 1', id);
+      const sid = Number(made.lastInsertRowid);
       for (const [j, qid] of p.ids.entries()) {
         await q.run('INSERT OR IGNORE INTO section_items (section_id,question_id,sort) VALUES (?,?,?)', sid, qid, j);
       }
@@ -1390,15 +1428,19 @@ router.post('/admin/sections/:sid/reshuffle', roles.requireCap('tests.write'), a
   const { sql: poolSql, args: poolArgs } = poolWhere(
     t.family_id, s.skill, blueprint ? blueprint.types : null, s.part || '');
   const pool = await q.all(
-    `SELECT id, (level=?) exact FROM questions WHERE ${poolSql} ORDER BY exact DESC`,
+    `SELECT id, group_key, (level=?) exact FROM questions WHERE ${poolSql} ORDER BY exact DESC`,
     t.level, ...poolArgs);
   if (pool.length < want) {
     return bad(res, 'The bank' + (s.part ? ' for part ' + s.part : '') + ' holds only ' + pool.length +
       ' items, short of the ' + want + ' needed.');
   }
 
-  const shuffle = arr => arr.map(v => [Math.random(), v]).sort((a, c) => a[0] - c[0]).map(v => v[1]);
-  const chosen = shuffle(pool.filter(r => r.exact)).concat(shuffle(pool.filter(r => !r.exact))).slice(0, want);
+  /* Whole groups or none — the generator's rule, see drawFromPool(). */
+  const chosen = drawFromPool(pool, want, false);
+  if (chosen.length < want) {
+    return bad(res, 'The bank' + (s.part ? ' for part ' + s.part : '') + ' can fill only ' + chosen.length
+      + ' of the ' + want + ' items: its items come in groups that do not divide into ' + want + '.');
+  }
   await tx(async () => {
     await q.run('DELETE FROM section_items WHERE section_id=?', sid);
     for (const [i, r] of chosen.entries()) {
@@ -1674,8 +1716,16 @@ router.put('/admin/users/:id', roles.requireCap('users.write'), async (req, res)
   const b = req.body || {};
   const name = str(b.name, 120) || u.name;
   const note = str(b.note, 500);
-  const interests = Array.isArray(b.interests)
-    ? b.interests.map(x => str(x, 20)).filter(familyExists) : jparse(u.interests_json, []);
+  /* One at a time, awaited. This was `.filter(familyExists)` — an async
+     predicate returns a Promise, a Promise is truthy, and the filter kept
+     every string it was handed. */
+  let interests = jparse(u.interests_json, []);
+  if (Array.isArray(b.interests)) {
+    interests = [];
+    for (const x of b.interests.map(v => str(v, 20)).filter(Boolean)) {
+      if (await familyExists(x) && !interests.includes(x)) interests.push(x);
+    }
+  }
   /* Phone is editable so an older account can be brought up to the standard a
      bound code needs: a valid number is normalised and kept; an omitted or empty
      field leaves whatever was there, rather than silently wiping it. */
@@ -1698,7 +1748,12 @@ async function validUnlock(type, ref) {
   if (type === 'family') return await familyExists(ref);
   if (type === 'bundle') {
     const ids = String(ref).split(',').map(s => s.trim()).filter(Boolean);
-    return ids.length >= 2 && ids.every(familyExists);
+    if (ids.length < 2) return false;
+    /* A loop, not `.every(familyExists)`: `every` cannot await, a Promise is
+       truthy, and every combo naming two words passed — including words that
+       are not exam families, which redeem into nothing. */
+    for (const id of ids) if (!await familyExists(id)) return false;
+    return true;
   }
   return false;
 }
@@ -1819,10 +1874,10 @@ router.post('/admin/codes', roles.requireCap('codes.write'), async (req, res) =>
 
   await tx(async () => {
     if (qty > 1) {
-      await q.run('INSERT INTO batches (name,unlock_type,unlock_ref,qty,expires_at,created_at,created_by) VALUES (?,?,?,?,?,?,?)',
+      const made = await q.run('INSERT INTO batches (name,unlock_type,unlock_ref,qty,expires_at,created_at,created_by) VALUES (?,?,?,?,?,?,?)',
         str(b.batchName, 120) || (plan.name + ' batch ' + at.slice(0, 10)),
         type, ref, qty, expiresAt, at, req.admin.id);
-      batchId = await q.val('SELECT id FROM batches ORDER BY id DESC LIMIT 1');
+      batchId = Number(made.lastInsertRowid);
     }
     for (let i = 0; i < qty; i++) {
       let code = makeCode();

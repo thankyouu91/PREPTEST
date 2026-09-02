@@ -938,6 +938,17 @@ addColumnIfMissing('questions', 'source', 'TEXT');
 addColumnIfMissing('questions', 'licence', 'TEXT');
 addIndex('CREATE UNIQUE INDEX IF NOT EXISTS idx_q_ext_key ON questions (ext_key)');
 
+/* What the recording SAYS, on the row.
+   The marker needs it: Part H is scored by comparing the transcript with the
+   sentence the candidate heard, and Parts G and J are judged against the
+   passage or story. Until now that text lived only in the authored file,
+   looked up by ext_key — so an item written on the bank screen, which has no
+   ext_key, was marked with nothing to compare against. `model_answer` is Part
+   G's short correct reply, a reference for the marker and never a key: the
+   `answer` column stays empty on every rubric-marked item, and must. */
+addColumnIfMissing('questions', 'script', 'TEXT');
+addColumnIfMissing('questions', 'model_answer', 'TEXT');
+
 /* A section on a built test remembers which lettered part it is, so re-drawing
    its items later pulls from the same pool the generator used. Reading the
    letter back out of the section name would break the moment an admin renames
@@ -2032,22 +2043,25 @@ function seedVpetItems() {
   const at = nowISO();
   const ins = db.prepare(`INSERT INTO questions
       (ext_key, family_id, skill, level, type, part, group_key, prompt, options_json, answer,
-       explanation, tags_json, source, licence, status, created_at)
-    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?, 'active', ?)
+       explanation, tags_json, source, licence, script, model_answer, status, created_at)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?, 'active', ?)
     ON CONFLICT(ext_key) DO UPDATE SET
       skill=excluded.skill, level=excluded.level, type=excluded.type,
       part=excluded.part, group_key=excluded.group_key, prompt=excluded.prompt,
       options_json=excluded.options_json,
       answer=excluded.answer, explanation=excluded.explanation,
-      tags_json=excluded.tags_json, source=excluded.source, licence=excluded.licence`);
+      tags_json=excluded.tags_json, source=excluded.source, licence=excluded.licence,
+      script=excluded.script, model_answer=excluded.model_answer`);
 
   let n = 0;
   txSync(() => {
     for (const r of rows) {
       const before = qs.val('SELECT 1 FROM questions WHERE ext_key=?', r.key);
+      /* `say` and `modelAnswer` travel to the row, so the marker reads the
+         same text for an authored item as for one written on the screen. */
       ins.run(r.key, 'vpet', r.skill, r.level, r.type, r.part, r.group || null, r.prompt,
         JSON.stringify(r.options), r.answer, r.explanation,
-        JSON.stringify(r.tags), r.source, r.licence, at);
+        JSON.stringify(r.tags), r.source, r.licence, r.say || null, r.modelAnswer || null, at);
       if (!before) n++;
     }
   });

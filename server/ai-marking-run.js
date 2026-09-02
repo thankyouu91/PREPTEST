@@ -172,7 +172,7 @@ async function pending(attemptId) {
        leaves a marker there, and the second one turns it into a zero. */
     `SELECT aa.id, aa.answer, aa.audio_key, aa.mark_note,
             si.question_id, ap.section_id,
-            qs.prompt, qs.type, qs.level, qs.part, qs.ext_key,
+            qs.prompt, qs.type, qs.level, qs.part, qs.ext_key, qs.script, qs.model_answer,
             t.level paper_level, t.family_id family
        FROM attempt_parts ap
        JOIN section_items si ON si.section_id = ap.section_id
@@ -283,15 +283,11 @@ async function words(row, tries, ctx) {
   return { text };
 }
 
-/** What kind of audio this actually is, from its first bytes. */
-function sniffMime(buf) {
-  const b = Buffer.isBuffer(buf) ? buf : Buffer.from(buf || []);
-  if (b.length >= 4 && b[0] === 0x1A && b[1] === 0x45 && b[2] === 0xDF && b[3] === 0xA3) return 'audio/webm';
-  if (b.length >= 4 && b.slice(0, 4).toString('latin1') === 'OggS') return 'audio/ogg';
-  if (b.length >= 12 && b.slice(4, 8).toString('latin1') === 'ftyp') return 'audio/mp4';
-  if (b.length >= 3 && (b.slice(0, 3).toString('latin1') === 'ID3' || (b[0] === 0xFF && (b[1] & 0xE0) === 0xE0))) return 'audio/mpeg';
-  return 'audio/webm';
-}
+/* What kind of audio a recording actually is, from its first bytes. It lived
+   here, and only here, which is how the drill path came to send its
+   recordings with no type at all — see server/storage.js, where it lives now
+   beside the code that stores those bytes. */
+const sniffMime = storage.sniffMime;
 
 /** Mark one item and write the result down. Returns 'marked' | 'skipped' | 'failed'. */
 async function markRow(attemptId, row, tries, userId) {
@@ -327,7 +323,7 @@ async function markRow(attemptId, row, tries, userId) {
     heard = w.text;
     /* What the recording said, so the model can compare against it. Only parts
        whose bank item carries a script have one. */
-    source = await scriptFor(row.ext_key);
+    source = await scriptFor(row);
   } else if (!String(row.answer || '').trim()) {
     await q.run('UPDATE attempt_answers SET earned=0, max_score=1, mark_note=?, mark_caps=NULL, marked_at=? WHERE id=?',
       'Left blank', nowISO(), rowId);
@@ -353,7 +349,7 @@ async function markRow(attemptId, row, tries, userId) {
    *
    * `source` is null when the bank item has no script, and then this falls
    * through to the model rather than guessing. */
-  const sentence = row.part === 'H' ? repeat.sentenceFor(row.ext_key) : null;
+  const sentence = row.part === 'H' ? repeat.sentenceFor(row) : null;
   if (sentence && heard) {
     verdict = repeat.score(sentence, heard);
   } else {
@@ -498,12 +494,28 @@ async function markRow(attemptId, row, tries, userId) {
  * and a marker judging it from sixty words of passage alone is doing avoidable
  * work with avoidable variance. Given as a reference, not as a key: the rubric
  * asks whether the candidate's answer means the same, not whether it matches.
+ *
+ * The row first, the authored file second. This read the file alone, by
+ * ext_key — and an item written on the bank screen has no ext_key, so every
+ * Part G, H and J item an administrator authored was marked with `source`
+ * null: H went to a paid model call instead of the comparison, G and J were
+ * judged without the passage the candidate heard. `questions.script` and
+ * `questions.model_answer` are what the screen writes and the seed copies in
+ * from `say`/`modelAnswer`; the file stays as the fallback for a database
+ * seeded before those columns existed.
  */
-async function scriptFor(extKey) {
-  if (!extKey) return null;
+async function scriptFor(row) {
+  if (!row) return null;
+  const r = typeof row === 'string' ? { ext_key: row } : row;
+  const own = String(r.script || '').trim();
+  if (own) {
+    const model = String(r.model_answer || '').trim();
+    return model ? own + '\n\nA correct short answer would be: ' + model : own;
+  }
+  if (!r.ext_key) return null;
   try {
     const rows = require('./data/vpet-items').rows();
-    const hit = rows.find(r => r.key === extKey);
+    const hit = rows.find(x => x.key === r.ext_key);
     if (!hit || !hit.say) return null;
     return hit.modelAnswer
       ? hit.say + '\n\nA correct short answer would be: ' + hit.modelAnswer
@@ -521,8 +533,10 @@ async function scriptFor(extKey) {
  * seen a mark that is obviously off.
  */
 async function clearRubricMarks(attemptId) {
+  /* mark_caps goes too. Left behind, the result screen showed a cap under
+     "Awaiting marking" — an explanation for a mark that no longer existed. */
   const r = await q.run(
-    `UPDATE attempt_answers SET earned=NULL, max_score=NULL, mark_note=NULL, marked_at=NULL
+    `UPDATE attempt_answers SET earned=NULL, max_score=NULL, mark_note=NULL, mark_caps=NULL, marked_at=NULL
       WHERE attempt_id=? AND question_id IN (
         SELECT id FROM questions WHERE type IN ('essay','speaking'))`, attemptId);
   return r.changes || 0;
@@ -643,7 +657,7 @@ async function run(attemptId, opts) {
   let restore = null;
   if (opts && opts.force) {
     restore = await q.all(
-      `SELECT id, earned, max_score, mark_note, marked_at FROM attempt_answers
+      `SELECT id, earned, max_score, mark_note, mark_caps, marked_at FROM attempt_answers
         WHERE attempt_id=? AND earned IS NOT NULL AND question_id IN (
           SELECT id FROM questions WHERE type IN ('essay','speaking'))`, attemptId);
     await clearRubricMarks(attemptId);
@@ -708,8 +722,8 @@ async function run(attemptId, opts) {
   /* The pass replaced nothing, so put back what the clear above took. */
   if (restore && restore.length && marked === 0) {
     for (const r of restore) {
-      await q.run('UPDATE attempt_answers SET earned=?, max_score=?, mark_note=?, marked_at=? WHERE id=?',
-        r.earned, r.max_score, r.mark_note, r.marked_at, r.id);
+      await q.run('UPDATE attempt_answers SET earned=?, max_score=?, mark_note=?, mark_caps=?, marked_at=? WHERE id=?',
+        r.earned, r.max_score, r.mark_note, r.mark_caps, r.marked_at, r.id);
     }
     restored = restore.length;
     console.warn('[ai] attempt ' + attemptId + ': the forced re-mark could not mark anything, so its '

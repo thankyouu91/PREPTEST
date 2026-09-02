@@ -613,6 +613,7 @@
     'This test does not exist, or it has been taken out of the library.':
       'Bài thi không tồn tại, hoặc đã được gỡ khỏi thư viện.',
     'This test is coming soon': 'Bài thi sắp có',
+    'Practise part by part': 'Luyện theo từng phần',
     'The writing team is still finishing the paper. When it is released it opens in your account automatically.':
       'Đội soạn đề đang hoàn thiện. Khi phát hành, đề sẽ tự mở trong tài khoản của bạn.',
 
@@ -633,6 +634,10 @@
     'words - the minimum is met': 'từ - đã đủ mức tối thiểu',
     'Plays once - no replay': 'Phát một lần - không nghe lại',
     'Already played': 'Đã phát',
+    'Listen': 'Nghe',
+    'Cannot play this': 'Không phát được bản ghi này',
+    'The browser blocked autoplay': 'Trình duyệt chặn tự động phát',
+    'Connection lost': 'Mất kết nối',
     'This part has no questions yet, so there is nothing to sit. It is on the paper because the exam has it - your result will not count it.':
       'Phần này chưa có câu hỏi nào nên chưa làm được. Nó vẫn nằm trên đề vì kỳ thi thật có phần này - kết quả của bạn sẽ không tính phần này.',
     'Hand in': 'Nộp bài',
@@ -651,6 +656,9 @@
     'Test result': 'Kết quả bài thi',
     'Overall': 'Tổng thể',
     'Band': 'Bậc',
+    /* Mức thấp nhất của thang GSE, do server/bands.js trả về bằng tiếng Anh
+       như mọi nhãn khác; hiện ở ô "Bậc" và ở vòng tiến độ trang chủ. */
+    'below A1': 'dưới A1',
     'out of 10': 'trên 10',
     'Mark per skill': 'Điểm từng kỹ năng',
     'The part-by-part breakdown': 'Phân tích từng phần',

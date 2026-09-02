@@ -310,7 +310,10 @@ async function backup(opts) {
   const o = opts || {};
   const dbPath = o.db || process.env.PREP_DB || path.join(__dirname, '..', 'data', 'prep.sqlite');
   const name = snapshotName(o.when);
-  const work = path.join(o.workDir || fs.mkdtempSync(path.join(os.tmpdir(), 'prep-bk-')), 'snap.sqlite');
+  /* A directory made here is removed here; one the caller lent is theirs to
+     keep. The `finally` used to remove whichever it was. */
+  const ownDir = o.workDir ? null : fs.mkdtempSync(path.join(os.tmpdir(), 'prep-bk-'));
+  const work = path.join(o.workDir || ownDir, 'snap.sqlite');
 
   try {
     const info = snapshot(dbPath, work);
@@ -325,7 +328,8 @@ async function backup(opts) {
       users: info.users, attempts: info.attempts, tables: info.tables, pruned
     };
   } finally {
-    fs.rmSync(path.dirname(work), { recursive: true, force: true });
+    if (ownDir) fs.rmSync(ownDir, { recursive: true, force: true });
+    else fs.rmSync(work, { force: true });
   }
 }
 

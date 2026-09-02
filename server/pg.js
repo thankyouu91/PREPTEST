@@ -79,7 +79,8 @@ pgLib.types.setTypeParser(1700, v => (v === null ? null : Number(v)));  // numer
  * literal question mark in data, and renumbering it produces a statement that
  * either errors or — worse — silently binds a parameter into the middle of a
  * LIKE pattern. So this walks the text, and the only state it needs is whether
- * it is inside a quoted run.
+ * it is inside a quoted run — or a comment, which is skipped whole for the
+ * reason given beside the code.
  *
  * Both quoting styles are handled because both appear in this codebase: single
  * quotes for values and double quotes for the odd identifier. SQL escapes a
@@ -95,6 +96,26 @@ function toDollars(sql) {
     if (quote) {
       out += c;
       if (c === quote) quote = null;
+      continue;
+    }
+    /* Comments are copied through untouched. An apostrophe inside one — "the
+       learner's own", which two queries in this codebase carry — is not a
+       quote, and reading it as one flipped the scanner into a literal that ran
+       to the next apostrophe in the statement, swallowing every placeholder in
+       between. It balanced by luck until now: each comment happened to hold an
+       even number of them, and every `?` happened to come first. */
+    if (c === '-' && sql[i + 1] === '-') {
+      const nl = sql.indexOf('\n', i);
+      const stop = nl < 0 ? sql.length : nl;
+      out += sql.slice(i, stop);
+      i = stop - 1;
+      continue;
+    }
+    if (c === '/' && sql[i + 1] === '*') {
+      const close = sql.indexOf('*/', i + 2);
+      const stop = close < 0 ? sql.length : close + 2;
+      out += sql.slice(i, stop);
+      i = stop - 1;
       continue;
     }
     if (c === "'" || c === '"') { quote = c; out += c; continue; }

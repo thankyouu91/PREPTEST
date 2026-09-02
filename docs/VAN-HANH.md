@@ -370,6 +370,12 @@ pm2 start preptest
 > bản lưu vào chỗ của nó — tiến trình Node đang chạy vẫn giữ inode cũ, nên nó
 > tiếp tục phục vụ dữ liệu cũ và ghi vào cái tệp đã bị đẩy sang bên, rồi lần
 > khởi động sau vứt hết những gì nó vừa ghi.
+>
+> Từ 2026-09-02 lệnh tự kiểm điều này: nó quét `/proc` (cùng cách
+> `scripts/accounts.js` tìm CSDL server đang mở) và **từ chối** khi còn một
+> `node server.js` giữ đúng tệp đó, in ra pid. Quên `pm2 stop` thì không mất gì
+> — chỉ phải chạy lại. `--force` đè qua kiểm tra này; chỉ dùng khi biết chắc
+> tiến trình đang giữ tệp không phải server thật.
 
 `set -a; . /etc/vpet-prep.env; set +a` **không được bỏ**. Thiếu nó thì
 `BACKUP_DRIVER` không có và lệnh sẽ âm thầm ghi vào `disk` — tức là chụp bản sao

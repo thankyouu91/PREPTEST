@@ -1299,7 +1299,7 @@ Chạy lại chỉ cập nhật chứ không nhân đôi. Các bảng lấy từ
 | `/prep/xac-thuc-email/` | `public/prep/auth/xac-thuc-email.html` | Công khai (mở được từ email) |
 | `/prep/dat-lai-mat-khau/` | `public/prep/auth/dat-lai-mat-khau.html` | Công khai (cần token trong liên kết) |
 | `/prep/` (dashboard) | `public/prep/index.html` | Cần đăng nhập |
-| `/prep/thu-vien/` | `public/prep/library/index.html` | Cần đăng nhập |
+| `/prep/thu-vien/` | — (đã bỏ; 301 về `/prep/`, các đề nằm trên trang chủ) | — |
 | `/prep/mua-code/` | `public/prep/codes/mua-code.html` | Cần đăng nhập |
 | `/prep/nhap-code/` | `public/prep/codes/nhap-code.html` | Cần đăng nhập |
 | `/prep/code-cua-toi/` | `public/prep/codes/code-cua-toi.html` | Cần đăng nhập |
@@ -1405,7 +1405,7 @@ Tài khoản demo `student` được đặt sẵn mật khẩu ở môi trườn
 
 ### Guard phía server
 
-Trang cần đăng nhập (`/prep/`, `/prep/thu-vien/`, `/prep/mua-code/`, `/prep/nhap-code/`,
+Trang cần đăng nhập (`/prep/`, `/prep/luyen/`, `/prep/mua-code/`, `/prep/nhap-code/`,
 `/prep/code-cua-toi/`, `/prep/bai-thi/:id/`, `/prep/tai-khoan/`) đi qua `studentPage()`: chưa có
 phiên thì redirect 302 về `/prep/dang-nhap/?next=…` ngay ở tầng HTTP, không để lộ khung trang rồi
 mới kiểm ở client. Ngược lại `guestPage()` đưa người đã đăng nhập từ màn đăng ký / đăng nhập /

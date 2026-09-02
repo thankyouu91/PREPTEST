@@ -235,6 +235,35 @@ try {
     'A part with some evidence but not enough reads as provisional',
     JSON.stringify(prov.map(x => x.part + ':' + x.reason)));
 
+  head('A sitting is four skills, not five');
+
+  /* attempt_scores holds an 'overall' row beside the four skills — the marker's
+     own mean. sittings() took it too, so `skills` carried a fifth key and the
+     per-sitting mean was a mean of a mean. Written straight into the tables the
+     report reads, with an overall row deliberately far from the skills' mean
+     so the difference shows. */
+  const now = new Date().toISOString();
+  const att = await q.run(
+    `INSERT INTO attempts (user_id, test_id, status, started_at, submitted_at, updated_at)
+     VALUES (?, 'vpet-b1-01', 'submitted', ?, ?, ?)`, uid, now, now, now);
+  const attId = Number(att.lastInsertRowid);
+  for (const [skill, scaled] of [['listening', 6], ['reading', 8], ['writing', 7], ['speaking', 5], ['overall', 9.5]]) {
+    await q.run(
+      `INSERT INTO attempt_scores (attempt_id, skill, raw_earned, raw_max, scaled, method, pending, at)
+       VALUES (?, ?, 0, 0, ?, 'test', 0, ?)`, attId, skill, scaled, now);
+  }
+  const sits = await R.sittings(uid);
+  const mine = sits.find(s => s.attemptId === attId);
+  ok(!!mine, 'The sitting is listed', JSON.stringify(sits.map(s => s.attemptId)));
+  ok(mine && JSON.stringify(Object.keys(mine.skills).sort()) === JSON.stringify(['listening', 'reading', 'speaking', 'writing']),
+    'With exactly the four skills, and no overall key among them', mine && JSON.stringify(Object.keys(mine.skills)));
+  ok(mine && mine.overall === 6.5,
+    'And its mean is the mean of the four skills, not of five rows', mine && String(mine.overall));
+  const viaApi = await me.req('GET', '/api/me/report');
+  const apiSit = ((viaApi.data && viaApi.data.sittings) || []).find(s => s.attemptId === attId);
+  ok(apiSit && apiSit.overall === 6.5 && !('overall' in apiSit.skills),
+    'The same over the API the dashboard reads', JSON.stringify(apiSit));
+
   head('It refuses what it should');
 
   const anon = client();

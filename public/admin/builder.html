@@ -380,7 +380,21 @@
           '<span class="btn btn-ghost btn-sm cursor-pointer">Attach spoken question</span>' +
           '<input type="file" accept="audio/mpeg" class="sr-only" data-qaudio>' +
           '<span data-qaudio-name>no file</span>' +
-        '</label>';
+        '</label>' +
+        /* What the recording says, beside the recording itself. The marker
+           compares a Part H answer with this sentence and judges a Part G or J
+           answer against this passage; an item written here without it is
+           marked with nothing to compare against. On a grouped part the
+           passage is typed once, on the group's first row, and read() copies
+           it to the rows that share the recording. */
+        '<div data-script-row hidden>' +
+          '<textarea class="input mt-2 py-1.5 text-[13px]" rows="2" data-script ' +
+            'placeholder="Transcript — what the recording says (read by the marker only)" aria-label="Transcript"></textarea>' +
+        '</div>' +
+        '<div data-model-row hidden>' +
+          '<input class="input mt-1.5 py-1.5 text-[13px]" data-model ' +
+            'placeholder="Model answer — a short correct reply, e.g. Eight." aria-label="Model answer">' +
+        '</div>';
 
       listEl.appendChild(row);
       row.querySelector('[data-drop]').addEventListener('click', () => { row.remove(); renumber(); });
@@ -443,6 +457,15 @@
          passage the question is about, not the item's own sound. */
       row.querySelector('[data-audio-label]').textContent =
         spoken ? 'Attach passage' : 'Attach MP3';
+
+      /* The transcript follows the recording slot: on a grouped part it is the
+         passage and belongs to the first row; elsewhere every row has its own.
+         The model answer is Part G's alone. */
+      row.querySelector('[data-script-row]').hidden = !on || !head;
+      row.querySelector('[data-model-row]').hidden = !spoken;
+      row.querySelector('[data-script]').placeholder = spoken
+        ? 'Transcript of the passage — what the recording says (read by the marker only)'
+        : 'Transcript — what the recording says (read by the marker only)';
     }
 
     /* Redraw a row's answer box without losing what is in it.
@@ -506,7 +529,8 @@
 
     /** What was typed, plus the row element for each — so an error can point at one. */
     function read() {
-      return AD.qsa('[data-row]', listEl).map(row => {
+      const size = groupSize();
+      const out = AD.qsa('[data-row]', listEl).map(row => {
         const type = row.querySelector('[data-type]').value;
         const opts = AD.qsa('[data-opt]', row).map(i => i.value.trim());
         const ansIdx = AD.qsa('[data-ans]', row).findIndex(x => x.checked);
@@ -518,6 +542,8 @@
           prompt: row.querySelector('[data-prompt]').value.trim(),
           options: type === 'mcq' ? opts.filter(Boolean) : [],
           answer: type === 'mcq' ? (ansIdx >= 0 ? opts[ansIdx] : '') : (keyEl ? keyEl.value.trim() : ''),
+          script: row.querySelector('[data-script]').value.trim(),
+          modelAnswer: row.querySelector('[data-model]').value.trim(),
           file: (fileEl && fileEl.files && fileEl.files[0]) || null,
           questionFile: (() => {
             const el = row.querySelector('[data-qaudio]');
@@ -525,6 +551,15 @@
           })()
         };
       });
+      /* One passage, three questions: the rows that share the recording share
+         its transcript too, so the marker reads the passage for each of them
+         the way the authored bank carries `say` on every item of a group. */
+      if (size > 1) {
+        out.forEach((it, i) => {
+          if (!isGroupHead(i) && !it.script) it.script = out[Math.floor(i / size) * size].script;
+        });
+      }
+      return out;
     }
 
     /* Checked here as well as on the server, so a typo comes back on the row that
@@ -702,7 +737,8 @@
           type: describePart(partEl ? partEl.value : '', typed),
           minutes: +mm.el.querySelector('#s-min').value || 0,
           part: partEl ? partEl.value : '',
-          questions: typed.map(t => ({ type: t.type, prompt: t.prompt, options: t.options, answer: t.answer }))
+          questions: typed.map(t => ({ type: t.type, prompt: t.prompt, options: t.options, answer: t.answer,
+            script: t.script, modelAnswer: t.modelAnswer }))
         });
         await uploadComposerAudio(typed, r.questionIds || []);
         mm.close();
@@ -779,7 +815,8 @@
       saveBtn.disabled = true;
       try {
         const r = await AD.post('/admin/sections/' + sid + '/questions', {
-          questions: typed.map(t => ({ type: t.type, prompt: t.prompt, options: t.options, answer: t.answer }))
+          questions: typed.map(t => ({ type: t.type, prompt: t.prompt, options: t.options, answer: t.answer,
+            script: t.script, modelAnswer: t.modelAnswer }))
         });
         await uploadComposerAudio(typed, r.questionIds || []);
         mm.close();

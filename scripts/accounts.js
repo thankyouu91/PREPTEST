@@ -469,50 +469,10 @@ async function doctor() {
     : '\nNo active lockouts.');
 }
 
-/** Every `node server.js` on this machine, with what /proc will tell us. */
-function liveServers() {
-  const out = [];
-  let pids;
-  try { pids = fs.readdirSync('/proc').filter(n => /^\d+$/.test(n)); }
-  catch (e) { return out; }                       // not Linux; nothing to read
-
-  for (const pid of pids) {
-    let argv = [];
-    try { argv = fs.readFileSync('/proc/' + pid + '/cmdline', 'utf8').split('\0').filter(Boolean); }
-    catch (e) { continue; }
-    /* argv[0] has to BE node. Matching the whole command line instead catches
-       the shell that launched it — its -c argument contains "server.js" too —
-       and reports a wrapper as a second server. */
-    if (!argv.length || !/^node(js)?$/.test(argv[0].split('/').pop())) continue;
-    if (!argv.slice(1).some(a => /(^|\/)server\.js$/.test(a))) continue;
-
-    const env = {};
-    try {
-      for (const pair of fs.readFileSync('/proc/' + pid + '/environ', 'utf8').split('\0')) {
-        const i = pair.indexOf('=');
-        if (i > 0) env[pair.slice(0, i)] = pair.slice(i + 1);
-      }
-    } catch (e) { /* another user's process; needs sudo */ }
-
-    let cwd = '';
-    try { cwd = fs.readlinkSync('/proc/' + pid + '/cwd'); } catch (e) { /* same */ }
-
-    /* The open file descriptors are the part that cannot be argued with: this
-       is the file the process is really writing to, whatever the configuration
-       appears to say. */
-    const dbFiles = [];
-    try {
-      for (const fd of fs.readdirSync('/proc/' + pid + '/fd')) {
-        let target = '';
-        try { target = fs.readlinkSync('/proc/' + pid + '/fd/' + fd); } catch (e) { continue; }
-        if (/\.sqlite$/.test(target) && !dbFiles.includes(target)) dbFiles.push(target);
-      }
-    } catch (e) { /* same */ }
-
-    out.push({ pid, cwd, env, dbFiles });
-  }
-  return out;
-}
+/* Every `node server.js` on this machine, with what /proc will tell us. It
+   lived here; scripts/backup.mjs needs the same answer before it restores over
+   a file, so it moved to scripts/_live-servers.js and both read one copy. */
+const { liveServers } = require('./_live-servers.js');
 
 const COMMANDS = {
   'doctor': doctor,

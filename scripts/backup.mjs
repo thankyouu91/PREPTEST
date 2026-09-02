@@ -19,15 +19,24 @@
  *   node scripts/backup.mjs list               # what exists, newest first
  *   node scripts/backup.mjs check              # is the situation healthy? (exit 1 if not)
  *   node scripts/backup.mjs verify <name>      # unpack and check, touch nothing
- *   node scripts/backup.mjs restore <name> --yes [--into <path>]
+ *   node scripts/backup.mjs restore <name> --yes [--into <path>] [--force]
  *   node scripts/backup.mjs restore latest --yes
+ *
+ *   `--force` restores over a file a running server still has open. Without it
+ *   the command refuses, because the server would keep writing to the file
+ *   that was moved aside.
  *
  * Configure with BACKUP_DRIVER (disk|s3), BACKUP_DIR, BACKUP_BUCKET,
  * BACKUP_PREFIX, BACKUP_KEEP_DAYS, AWS_REGION and an AWS credential.
  */
 import { createRequire } from 'node:module';
+import { fileURLToPath } from 'node:url';
 const require = createRequire(import.meta.url);
 const B = require('../server/backup.js');
+const { serversHolding } = require('./_live-servers.js');
+
+/* The same default server/backup.js restores into, resolved the same way. */
+const DEFAULT_DB = fileURLToPath(new URL('../data/prep.sqlite', import.meta.url));
 
 const argv = process.argv.slice(2);
 const cmd = argv[0] || 'help';
@@ -101,6 +110,18 @@ try {
       console.log('Chạy lại kèm --yes để làm thật.');
       process.exit(0);
     }
+    /* Not under a running server. restore() renames the live file aside and
+       copies the archive in, but the server keeps its descriptor on the file
+       that was moved: every write from then until a restart lands in the old
+       file, and the restore "worked" while losing the next hour of work. The
+       operator has to stop the server first — or say, in so many words, that
+       they know what they are doing. */
+    const target = opt('into') || process.env.PREP_DB || DEFAULT_DB;
+    const holders = serversHolding(target);
+    if (holders.length && !flag('force')) {
+      die(`server đang mở ${target} (pid ${holders.map(s => s.pid).join(', ')}). `
+        + 'Dừng server trước rồi phục hồi, hoặc thêm --force nếu đã chắc chắn.');
+    }
     const r = await B.restore(name, { into: opt('into') });
     console.log(`✓ đã phục hồi ${name} → ${r.into}`);
     console.log(`  ${r.tables} bảng · ${r.users} tài khoản · ${r.attempts} lần làm bài`);
@@ -116,6 +137,7 @@ try {
   verify <tên>              giải nén và kiểm, không đụng gì
   restore <tên|latest>      xem trước; thêm --yes để làm thật
                             --into <đường dẫn> để phục hồi ra chỗ khác
+                            --force để đè lên tệp mà server đang mở (dừng server thì hơn)
 
 Cấu hình: BACKUP_DRIVER=disk|s3 · BACKUP_DIR · BACKUP_BUCKET · BACKUP_PREFIX
           BACKUP_KEEP_DAYS · AWS_REGION`);

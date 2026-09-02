@@ -240,10 +240,13 @@ async function sittings(userId) {
   rows.total = total;
   if (!rows.length) { const e = []; e.total = 0; return e; }
 
+  /* The four skills only. attempt_scores also holds an 'overall' row — the
+     marker's own mean — and taking it too made `skills` carry a fifth key and
+     the mean below a mean of a mean. */
   const scores = await q.all(
     `SELECT s.attempt_id, s.skill, s.scaled, s.pending
        FROM attempt_scores s JOIN attempts a ON a.id = s.attempt_id
-      WHERE a.user_id = ?`, userId);
+      WHERE a.user_id = ? AND s.skill <> 'overall'`, userId);
   const byAttempt = new Map();
   for (const s of scores) {
     if (!byAttempt.has(s.attempt_id)) byAttempt.set(s.attempt_id, {});

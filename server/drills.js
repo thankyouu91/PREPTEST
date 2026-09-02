@@ -366,8 +366,16 @@ async function suggest(userId, weights, limit, targetPaper) {
  * The blueprint is read from `server/data/exam-formats.js` rather than typed
  * out again here, so a change to the paper reaches this screen on its own.
  */
-async function overview(userId, weights) {
+async function overview(userId, weights, targetPaper) {
   const ab = await ability.abilityOf(userId);
+
+  /* The paper being worked toward caps the drill level, exactly as suggest()
+     is told it by server/plan.js. This screen's per-part level was computed
+     without it, so the practise page could offer C1 material to a learner the
+     plan beside it had just told to sit Level 1. Asked here when the caller
+     did not say, so both screens read one answer. */
+  const target = targetPaper !== undefined ? targetPaper
+    : (await require('./level-advice').recommendLevel(userId)).level;
 
   const have = await availableByPart();
 
@@ -409,7 +417,7 @@ async function overview(userId, weights) {
       /* How many items a drill of this part holds, so the card can say
          "1 e-mail" rather than implying six of them. */
       drillSize: SIZE_BY_MODE[mode] || DEFAULT_SIZE,
-      level: levelFor(ab, part),
+      level: levelFor(ab, part, undefined, target),
       score: est ? est.score : null,
       confident: est ? est.confident : false,
       n: est ? est.n : 0,
@@ -569,7 +577,8 @@ async function submitMarked(userId, d, answers) {
         /* ext_key comes along so a Part H drill can be marked by comparison
            against the sentence the candidate heard, the same way a real paper's
            Part H is. See the note at the markOne call below. */
-        `SELECT id, part, type, level, prompt, ext_key FROM questions WHERE id IN (${ids.map(() => '?').join(',')})`,
+        `SELECT id, part, type, level, prompt, ext_key, script, model_answer
+           FROM questions WHERE id IN (${ids.map(() => '?').join(',')})`,
         ...ids)
     : [];
 
@@ -644,7 +653,12 @@ async function submitMarked(userId, d, answers) {
            silently never applies, and the ledger row that is supposed to say
            who spent the money says NULL. A practice drill is the cheapest way
            to make these calls and was the one path that skipped the meter. */
-        heard = await ai.transcribe(file.body || file, file.mime, { userId });
+        /* The type comes from the bytes, as it does on a real paper. storage
+           hands back `{ body }` and nothing else, so `file.mime` was always
+           undefined, the multipart went out as `answer.mp3`, and a service
+           that decides by extension refused every WebM a browser records. */
+        const bytes = file.body || file;
+        heard = await ai.transcribe(bytes, storage.sniffMime(bytes), { userId });
       } catch (e) {
         console.warn('[drill] transcription failed: ' + ai.scrub(e && e.message));
         if (e && e.budget) stopped = e.budget.en;
@@ -668,7 +682,7 @@ async function submitMarked(userId, d, answers) {
        being paid to have an opinion about. Same scorer, same two criteria, so a
        drill mark and a paper mark mean the same thing — which is the point of
        drills going down the real road at all. */
-    const sentence = row.part === 'H' ? repeat.sentenceFor(row.ext_key) : null;
+    const sentence = row.part === 'H' ? repeat.sentenceFor(row) : null;
     if (sentence && heard) {
       verdict = repeat.score(sentence, heard);
     } else {

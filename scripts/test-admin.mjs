@@ -292,6 +292,57 @@ const run = async () => {
   const after = await call('GET', '/api/admin/tests/' + autoTest.id);
   check('A redraw keeps the item count', after.data.sections[0].items.length === 10);
 
+  /* ---- The part letter is enforced when attaching, and a redraw keeps groups whole ---- */
+  {
+    r = await call('POST', '/api/admin/tests', {
+      familyId: 'vpet', title: 'Part letter test paper', level: 'B1', durationMin: 10
+    });
+    const letterTest = r.data && r.data.id;
+    r = await call('POST', '/api/admin/tests/' + letterTest + '/sections', {
+      name: 'Part J - Story Retellings', skill: 'speaking', type: 'Recording', minutes: 3, part: 'J'
+    });
+    const secJ = r.data && r.data.id;
+    const bankH = (await call('GET', '/api/admin/questions?family=vpet&part=H&status=active&limit=1')).data;
+    const bankJ = (await call('GET', '/api/admin/questions?family=vpet&part=J&status=active&limit=1')).data;
+    r = await call('POST', '/api/admin/sections/' + secJ + '/items', { questionIds: bankH.items.map(i => i.id) });
+    check('A Part H item is not attached to a Part J section — same skill, wrong letter',
+      r.status === 200 && r.data.added === 0 && r.data.skipped === 1, JSON.stringify(r.data));
+    r = await call('POST', '/api/admin/sections/' + secJ + '/items', { questionIds: bankJ.items.map(i => i.id) });
+    check('While a Part J item is', r.status === 200 && r.data.added === 1, JSON.stringify(r.data));
+
+    /* Part G is three questions about ONE recording. A redraw that takes any
+       three G items asks about passages that were never played. */
+    r = await call('POST', '/api/admin/tests/' + letterTest + '/sections', {
+      name: 'Part G - Passage Comprehension', skill: 'listening', type: 'Multiple choice', minutes: 4, part: 'G'
+    });
+    const secG = r.data && r.data.id;
+    const bankG = (await call('GET', '/api/admin/questions?family=vpet&part=G&status=active&limit=200')).data;
+    const groupOf = new Map(bankG.items.map(i => [i.id, i.groupKey]));
+    const byGroup = new Map();
+    for (const i of bankG.items) {
+      if (!i.groupKey) continue;
+      if (!byGroup.has(i.groupKey)) byGroup.set(i.groupKey, []);
+      byGroup.get(i.groupKey).push(i.id);
+    }
+    const whole = [...byGroup.values()].find(ids => ids.length === 3) || [];
+    check('The bank holds at least one whole Part G group to test with', whole.length === 3
+      && byGroup.size >= 2, byGroup.size + ' groups');
+    r = await call('POST', '/api/admin/sections/' + secG + '/items', { questionIds: whole });
+    check('A whole group attaches', r.status === 200 && r.data.added === 3, JSON.stringify(r.data));
+    let allWhole = true;
+    for (let round = 0; round < 4 && allWhole; round++) {
+      r = await call('POST', '/api/admin/sections/' + secG + '/reshuffle');
+      const drawn = (await call('GET', '/api/admin/tests/' + letterTest)).data.sections
+        .find(s => s.id === secG).items.map(i => groupOf.get(i.questionId));
+      if (r.status !== 200 || drawn.length !== 3 || new Set(drawn).size !== 1 || drawn.some(g => !g)) {
+        allWhole = false;
+        console.log('   redraw ' + round + ' → ' + JSON.stringify(drawn) + ' status ' + r.status);
+      }
+    }
+    check('Redrawing a Part G section keeps its three questions on ONE recording, every time', allWhole);
+    await call('DELETE', '/api/admin/tests/' + letterTest);
+  }
+
   /* 10. Issue a batch of codes + revoke + export CSV */
   r = await call('POST', '/api/admin/codes', {
     planId: 'plus-6m', unlockType: 'family', unlockRef: 'toeic', qty: 5,
@@ -310,6 +361,12 @@ const run = async () => {
 
   r = await call('POST', '/api/admin/codes', { planId: 'plus-6m', unlockType: 'bundle', unlockRef: 'ielts', qty: 1 });
   check('Refuses a combo naming only one family', r.status === 400, 'status ' + r.status);
+  /* `every(familyExists)` with an async predicate let this one through: a
+     Promise is truthy, so any two words made a valid combo. */
+  r = await call('POST', '/api/admin/codes', { planId: 'plus-6m', unlockType: 'bundle', unlockRef: 'ielts,no-such-family', qty: 1 });
+  check('Refuses a combo naming a family that does not exist', r.status === 400, 'status ' + r.status);
+  r = await call('POST', '/api/admin/codes', { planId: 'plus-6m', unlockType: 'bundle', unlockRef: 'ielts,toeic', qty: 1 });
+  check('While a combo of two real families is issued', r.status === 201, 'status ' + r.status);
 
   /* A code with no plan unlocks nothing once redeemed, so it has to be refused at
      issue time — let one through and the mistake surfaces with a buyer holding it. */
@@ -330,6 +387,40 @@ const run = async () => {
   });
   check('Creates a VPET item tagged part A', r.status === 201, 'status ' + r.status);
   const partAId = r.data.id;
+
+  /* What the recording says travels with the item. The bank screen had no
+     field for it, so every Part H item written there was marked with nothing
+     to compare the transcript against. */
+  const stamp = 'Script test ' + Date.now().toString(36);
+  r = await call('POST', '/api/admin/questions', {
+    familyId: 'vpet', skill: 'speaking', level: 'B1', type: 'speaking', part: 'H',
+    prompt: stamp + ': listen, then say the sentence back exactly.',
+    script: 'The train leaves at six tomorrow morning.'
+  });
+  check('Creates a Part H item carrying its transcript', r.status === 201, 'status ' + r.status);
+  const scriptId = r.data.id;
+  let found = (await call('GET', '/api/admin/questions?q=' + encodeURIComponent(stamp))).data.items.find(i => i.id === scriptId);
+  check('The transcript comes back on the bank list', found && found.script === 'The train leaves at six tomorrow morning.',
+    JSON.stringify(found && found.script));
+  r = await call('PUT', '/api/admin/questions/' + scriptId, {
+    familyId: 'vpet', skill: 'speaking', level: 'B1', type: 'speaking', part: 'H',
+    prompt: stamp + ': listen, then say the sentence back exactly.',
+    script: 'The train leaves at seven.', modelAnswer: 'ignored on H, kept on G'
+  });
+  found = (await call('GET', '/api/admin/questions?q=' + encodeURIComponent(stamp))).data.items.find(i => i.id === scriptId);
+  check('And an edit replaces it', r.status === 200 && found && found.script === 'The train leaves at seven.',
+    JSON.stringify(found && found.script));
+  r = await call('POST', '/api/admin/questions', {
+    familyId: 'vpet', skill: 'reading', level: 'B1', type: 'mcq', part: 'C',
+    prompt: stamp + ' reading: which statement is true?', options: ['A', 'B', 'C', 'D'], answer: 'A',
+    script: 'A reading item is not heard'
+  });
+  const readId = r.data.id;
+  found = (await call('GET', '/api/admin/questions?q=' + encodeURIComponent(stamp))).data.items.find(i => i.id === readId);
+  check('A transcript sent for a part that is read, not heard, is dropped', found && !found.script,
+    JSON.stringify(found && found.script));
+  await call('POST', '/api/admin/questions/' + scriptId + '/status', { status: 'retired' });
+  await call('POST', '/api/admin/questions/' + readId + '/status', { status: 'retired' });
 
   r = await call('POST', '/api/admin/questions', {
     familyId: 'vpet', skill: 'writing', level: 'B1', type: 'essay', part: 'D',
@@ -719,6 +810,14 @@ const run = async () => {
   check('An administrator can set the phone on an account', r.status === 200, 'status ' + r.status);
   const withPhone = (await call('GET', '/api/admin/users/' + madeId)).data;
   check('The phone comes back normalised', withPhone.user.phone === '0987654321', withPhone.user.phone);
+  /* Interests are exam families. `.filter(familyExists)` with an async predicate
+     kept everything it was given, so a made-up family landed in the profile. */
+  r = await call('PUT', '/api/admin/users/' + madeId, { interests: ['vpet', 'no-such-family', 'vpet'] });
+  const withInterests = (await call('GET', '/api/admin/users/' + madeId)).data;
+  check('Only real exam families are kept as interests, once each',
+    r.status === 200 && JSON.stringify(withInterests.user.interests) === JSON.stringify(['vpet']),
+    JSON.stringify(withInterests.user.interests));
+
   r = await call('PUT', '/api/admin/users/' + madeId, { phone: '12' });
   check('A malformed phone is refused on edit', r.status === 400, 'status ' + r.status);
   r = await call('POST', '/api/admin/codes', { planId: 'plus-6m', unlockType: 'family', unlockRef: 'vpet', qty: 1, userId: madeId, reserve: true });

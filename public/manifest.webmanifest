@@ -18,7 +18,7 @@
     { "src": "/icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ],
   "shortcuts": [
-    { "name": "Thư viện đề thi", "url": "/prep/thu-vien/" },
+    { "name": "Luyện theo phần", "url": "/prep/luyen/" },
     { "name": "Khu tự học", "url": "/prep/hoc/thi/" }
   ]
 }

@@ -265,6 +265,12 @@ node scripts/test-exam-ui.mjs || fail=1
 step "The exam audio queue (each recording asked for once, however it fails)"
 node scripts/test-exam-audio-queue.mjs || fail=1
 
+# A real Chromium under the real CSP, because the audio-queue step uses a fake
+# Audio and the engine step only counts replays: neither could tell that the
+# fetched recording was refused by the document's policy and nothing played.
+step "The exam screen plays what it fetched (Listen on a part without a letter)"
+node scripts/test-exam-play.mjs || fail=1
+
 # Also a browser, and for the same reason: whether the chip rail can be dragged
 # is invisible to every request the server sees.
 step "The self-study chip rail (arrows, dragging, and not opening a lesson by accident)"
