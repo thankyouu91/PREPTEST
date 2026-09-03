@@ -52,11 +52,16 @@ function parseCookies(req) {
   for (const part of raw.split(';')) {
     const i = part.indexOf('=');
     if (i < 0) continue;
-    /* One bad pair must not take the request down. decodeURIComponent throws
+    /* One bad pair must not take the process down. decodeURIComponent throws
        on a stray percent sign, and the jar is shared with whatever else lives
-       on the domain — another application's cookie, or one edited by hand —
-       so without this every page answered 500 to that browser, for a value
-       this server never set and never reads. */
+       on the domain — another application's cookie, or one edited by hand.
+       Measured on 58912e2, the version before this try: ensureCsrfCookie()
+       calls this from inside the HTML file-read callback, outside anything
+       Express catches, so the URIError became an uncaughtException —
+       "[lifecycle] FATAL uncaughtException: URI malformed", exit 1, every open
+       connection dropped. One browser carrying a stale cookie from another
+       application on the domain was a restart per page view, for a value this
+       server never set and never reads. */
     try { out[part.slice(0, i).trim()] = decodeURIComponent(part.slice(i + 1).trim()); }
     catch (e) { /* not ours, and not worth an outage */ }
   }

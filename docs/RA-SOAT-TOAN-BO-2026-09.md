@@ -131,7 +131,7 @@ xếp lớp, tách từ trong `repeat.js`.
 
 | Mức | Chỗ | Vấn đề | Xử lý |
 |---|---|---|---|
-| P2 | `auth.js parseCookies()` | `decodeURIComponent` ném lỗi với cookie hỏng (một ứng dụng khác trên cùng tên miền, cookie sửa tay) → **mọi** trang trả 500 cho trình duyệt đó. | **Đã sửa**: bỏ qua cặp hỏng, có test. |
+| P2 → **P1** | `auth.js parseCookies()` | `decodeURIComponent` ném lỗi với cookie hỏng (một ứng dụng khác trên cùng tên miền, cookie sửa tay). Vòng một ghi "mọi trang trả 500 cho trình duyệt đó"; **đo lại lúc nghiệm thu thì nặng hơn**: lỗi ném trong callback đọc tệp, ngoài tầm bắt của Express → `uncaughtException` → **cả tiến trình chết**, một yêu cầu không cần tài khoản là đủ — xem §7.1. | **Đã sửa**: bỏ qua cặp hỏng, có test. |
 | P3 | `auth.js verifyPassword()` | Chuỗi băm có phần khoá rỗng → `scryptSync(…, 0)` trả buffer rỗng, `timingSafeEqual(rỗng, rỗng)` là true → mật khẩu nào cũng đúng. Cần một hàng bị sửa tay mới tới được; một dòng chặn. | **Đã sửa**: từ chối khoá ngắn hơn 32 byte. |
 
 Đã xem, không có gì: `TRUST_PROXY`, cookie Secure theo chính yêu cầu đang xét,
@@ -293,5 +293,163 @@ trả về không đổi (`test-admin` giữ).
   chưa rõ vì sao, không ảnh hưởng chạy. Ghi để có người nhìn lại.
 - Mọi ghi chú giao diện tiếng Anh/Việt còn lại đều đi qua `i18n.js` hoặc
   `PREP.t`; không thấy chuỗi cứng nào khác ngoài các mục đã sửa.
-- Bảng `BLOCKS.md` không đổi: không block nào bị "mở lại" theo nghĩa của tệp đó
-  — không có thay đổi thiết kế, chỉ có sửa lỗi kèm test.
+- Bảng trạng thái trong `BLOCKS.md` không đổi: không block nào bị "mở lại"
+  theo nghĩa của tệp đó — không có thay đổi thiết kế, chỉ có sửa lỗi kèm test.
+  Bảng hiệu năng có thêm hàng nghiệm thu, xem §7.4.
+
+## 7. Nghiệm thu — 2026-09-03
+
+Hai commit của đợt này (`b359de7`, `1877c0e`) đã đẩy lên nhánh mặc định, tức là
+đã lên production. Nghiệm thu chạy **sau** đó, trên đúng cây mã đã đẩy, theo sáu
+điều kiện khóa của `docs/KE-HOACH-XAY.md` §1.2 — đợt này không khóa block mới,
+nhưng đó là bộ tiêu chí duy nhất trong repo kiểm được bằng lệnh, nên dùng nó.
+Máy nghiệm thu là container 4 nhân của phiên làm việc, không phải máy production.
+
+### 7.1 Điều kiện 2 — từng bộ kiểm mới đã đỏ trên mã cũ
+
+Cách làm: với mỗi chỗ sửa, trả **đúng các tệp mà chỗ sửa đó chạm** về phiên bản
+trước khi sửa (`git show <commit>:<tệp> > <tệp>`), khởi động lại server, chạy bộ
+kiểm canh chỗ đó, ghi lại từng dòng ✗, rồi `git checkout` trả tệp về HEAD. Cuối
+cùng chạy lại cả tám bộ trên HEAD: **tám bộ xanh, cây làm việc sạch**.
+
+| Tệp trả về mã cũ | Bộ kiểm | Đỏ | Phép kiểm đã đỏ, và mã cũ trả lời gì |
+|---|---|---|---|
+| `server/pg.js` @ `58912e2` | `test-pg-driver` | 2 | placeholder sau dấu nháy trong chú thích vẫn được đánh số (cũ: đếm ra 1); chú thích được chép nguyên |
+| `scripts/backup.mjs` @ `58912e2` | `test-backup` | 2 | `restore --yes` bị từ chối khi một server đang giữ tệp (cũ: đi tiếp); và nêu tên tiến trình |
+| `scripts/accounts.js` @ `b359de7` | `test-accounts` | 1 | không có `PREP_DB` vẫn tới được bảng lệnh (cũ: `ReferenceError: Cannot access 'liveServers' before initialization`) |
+| `server.js`, `server/auth.js` @ `58912e2` | `test-security` | 2 | CSP có `media-src 'self' blob:` (cũ: không có chỉ thị đó); và một dòng `fetch failed` — xem dưới |
+| như trên | `test-exam-play` | 1 | cả bộ ném `fetch failed` — xem dưới |
+| `server/drills.js`, `server/ai-marking-run.js`, `server/repeat.js` @ `58912e2` | `test-ai-marking` | 4 | tệp gửi đi đặt tên theo byte thật (cũ: `filename=mp3` cho `audio/webm`); Part H tự soạn không gọi mô hình (cũ: 1 lần gọi); nói lại nguyên câu được trọn điểm (cũ: 0,75 qua mô hình); hai tiêu chí `content`/`structure` (cũ: `[]`) |
+| `server/api.js`, `server/report.js`, `server/plan.js` @ `58912e2` | `test-admin` | 6 | câu Part H không gắn được vào phần Part J (cũ: `added:1`); rút lại Part G giữ trọn nhóm ba câu (cũ: tách nhóm); combo nêu họ đề không có bị từ chối (cũ: 201); lời thoại có trên danh sách ngân hàng, và sửa thì thay (cũ: mất); sở thích chỉ giữ họ đề thật, mỗi họ một lần (cũ: `["vpet","no-such-family","vpet"]`) |
+| như trên | `test-report` | 3 | `sittings()` đúng bốn kỹ năng (cũ: thêm khoá `overall` thứ năm); trung bình của bốn (cũ: 7,1 thay vì 6,5); cùng điều đó qua API |
+| như trên | `test-plan` | 1 | mục luyện mang chữ cái phần trong đường dẫn (cũ: `/prep/luyen/` trơn) |
+
+Tổng: **22 dòng đỏ trên mã cũ, 0 trên HEAD**; 20 dòng là phép kiểm nhắm tới, hai
+dòng `fetch failed` nói ở đoạn sau. Bảng trên chép từ `red-check.log` của phiên
+nghiệm thu, không chép từ trí nhớ.
+
+Hai dòng `fetch failed` hoá ra là điều đáng ghi nhất của bảng. Trả riêng
+`server.js` + `server/auth.js` về `58912e2` rồi gửi đúng cookie mà `test-security`
+gửi (`other_app=%E0%A4%A`) cho thấy: server cũ **không trả 500 — nó chết**.
+`parseCookies()` ném `URIError: URI malformed` từ trong `ensureCsrfCookie()`, mà
+hàm đó chạy trong callback đọc tệp HTML (`FSReqCallback.oncomplete`), ngoài tầm
+bắt của Express, nên thành `uncaughtException`: log ghi
+`[lifecycle] FATAL uncaughtException: URI malformed`, tiến trình thoát mã 1, mọi
+kết nối đang mở bị cắt. Trên production PM2 sẽ dựng lại, nhưng mỗi trình duyệt
+mang một cookie hỏng từ ứng dụng khác trên cùng miền là **một lần khởi động lại
+cho mỗi lượt xem trang**, và bất kỳ ai cũng gây được bằng một yêu cầu — không
+cần tài khoản. Vòng một ghi lỗi này là "mọi trang trả 500 cho trình duyệt đó" —
+nhẹ hơn sự thật; lời ghi trong tài liệu này và chú thích trong `server/auth.js`
+đã sửa trong commit nghiệm thu. Bản sửa của `b359de7` chặn đúng chỗ đó và đã lên
+production; HEAD trả 200 cho cùng cookie ở cả trang HTML lẫn `/api/catalog`.
+
+### 7.2 Điều kiện 5 — không thêm dependency
+
+`package.json` tại HEAD: `express` và `pg` — **đúng như tại `58912e2`**. `pg` vào
+từ các lát PostgreSQL ghi ở `docs/ROADMAP.md`, trước đợt này; hai commit này không
+thêm gói nào.
+
+### 7.3 Production — chưa kiểm được từ đây, và kiểm thế nào
+
+Phiên này không với tới `https://vpetprep.vn`: proxy của sandbox trả
+`CONNECT tunnel failed, response 502`, và connector AWS đã hết hạn token (cấp lại
+trong phần Connectors của claude.ai; không làm được từ trong phiên). Nên
+production **chưa được nghiệm thu bằng lệnh** trong đợt này. Bốn phép kiểm cho
+người vận hành, mỗi phép chừng một phút, rẻ trước đắt sau:
+
+1. Từ máy bất kỳ:
+   `curl -sI https://vpetprep.vn/prep/landing/ | grep -i content-security-policy`
+   phải chứa `media-src 'self' blob:` (trên máy nghiệm thu header này có ở cả
+   GET lẫn HEAD). Thiếu chỉ thị đó nghĩa là bản mới chưa lên, và nút Nghe ở phần
+   không chữ cái vẫn câm. Với §1.1 phép kiểm này là đủ: đó chính là điều kiện
+   để trình duyệt cho phát `blob:`, phần còn lại của đường phát không đổi.
+2. Nếu có đề với phần "- no part -" (trình xây đề cho phép; mọi họ đề không phải
+   VPET đều đi đường này): đăng nhập học viên, mở đề, bấm Nghe — phải có tiếng,
+   và lượt nghe trừ đúng một.
+3. Quản trị → Ngân hàng câu hỏi: câu Part G/H/J chưa có lời thoại mang nhãn
+   **No transcript** trên danh sách; mở một câu, có ô **Transcript (what the
+   recording says)** và với Part G thêm **Model answer**; sửa, lưu, mở lại còn
+   nguyên. Đây là §1.2.
+4. Trên máy chủ, trong thư mục ứng dụng: `node scripts/accounts.js list` mà
+   **không** đặt `PREP_DB` phải in danh sách tài khoản, không phải
+   `ReferenceError`. Đây là §5.1. Cùng lúc xem log PM2 của lần khởi động đầu sau
+   khi triển khai: hai cột `questions.script` và `questions.model_answer` được
+   thêm tự động lúc khởi động, không có dòng lỗi nào.
+
+### 7.4 Điều kiện 3 — hiệu năng, đo đúng thang và so đúng cách
+
+`node scripts/loadprobe.mjs` với thang gốc `1,10,25,50,100,200`, 5 giây mỗi mức,
+server một tiến trình. Lần đo đầu: HEAD trên CSDL đang dùng của phiên (đã qua
+cổng và vòng kiểm đỏ; 13 đề, 2 phát hành, WAL 4 MB), hai lần liền nhau:
+
+| | `/healthz` | tệp tĩnh | `/prep/landing/` | `/api/catalog` |
+|---|---|---|---|---|
+| HEAD, lần 1 | 7.512 | 3.231 | 3.254 | 1.210 |
+| HEAD, lần 2 | 8.257 | 3.331 | 3.245 | 1.207 |
+| hàng block 8 trong `BLOCKS.md` (2026-08-23) | 7.859 | 3.102 | 2.917 | 1.501 |
+
+`/api/catalog` đọc ra **−19%** so với hàng gần nhất — quá ngưỡng 15% nếu tin phép
+so đó. Không tin được: hàng block 8 đo trên container của ngày 23-08 và một
+`data/prep.sqlite` khác, mà `BLOCKS.md` đã ghi từ block 7 rằng số tuyệt đối giữa
+hai container không so được. Hai lần HEAD trùng nhau tới 0,3% ở tuyến đó, nên
+cũng không phải nhiễu. Cách duy nhất quy được cho mã là **một cặp A/B trên cùng
+máy, cùng dữ liệu**: `git worktree` của `58912e2` (trước cả hai commit) và HEAD,
+mỗi bên một bản `VACUUM INTO` của cùng CSDL, cổng riêng, đo lần lượt
+cũ → mới → cũ (kẹp giữa để triệt trôi theo thời gian), cùng thang, cùng máy:
+
+| | `/healthz` | tệp tĩnh | `/prep/landing/` | `/api/catalog` |
+|---|---|---|---|---|
+| `58912e2`, lần 1 | 10.090 | 3.476 | 3.445 | 1.290 |
+| **HEAD** | **9.705** | **3.376** | **3.383** | **1.287** |
+| `58912e2`, lần 2 | 8.820 | 3.250 | 3.418 | 1.279 |
+| HEAD so với trung bình hai lần cũ | +2,6% | +0,4% | −1,4% | +0,2% |
+
+HEAD nằm **giữa hai lần đo của chính mã cũ** ở cả bốn tuyến. Không có hồi quy
+để truy: tuyến `/api/catalog` không đổi một dòng trong diff, và trên đường chung
+của mọi request hai commit chỉ thêm một chỉ thị CSP và một `try` quanh
+`decodeURIComponent`. **Điều kiện 3 đạt.** Hai hàng tương ứng đã vào bảng hiệu
+năng của `docs/BLOCKS.md`, ghi rõ là cặp.
+
+Hai điều ghi lại cho lần đo sau. Một: hai lần chạy **cùng một mã** cách nhau bốn
+phút chênh 13% ở `/healthz` (10.090 và 8.820) — trên container này sai số không
+phải ±4,5% như đo ở block 3, và một lần đo đơn không phân biệt được thay đổi
+10% ở tuyến rẻ nhất; muốn kết luận thì kẹp A/B như trên, đừng so cột dọc giữa
+hai ngày. Hai: cùng dữ liệu, tệp `VACUUM INTO` (gọn, không WAL) cho `/api/catalog`
+cao hơn CSDL đang chạy khoảng 6% (1.279–1.290 so với 1.207–1.210) — chưa truy
+nguyên nhân, chỉ ghi để không ai đem hai loại tệp ra so với nhau.
+
+### 7.5 Điều kiện 1 và 4 — cổng chạy lại trên đúng cây mã này
+
+`bash scripts/verify.sh` chạy lại **sau** thay đổi mã duy nhất của commit nghiệm
+thu (một chú thích trong `server/auth.js`) và trước khi commit — các tệp `docs/`
+được viết trong lúc cổng chạy và sau đó, cổng không đọc chúng:
+
+- **60 bước, xanh trọn**, `exit 0`, **3.431 phép kiểm ✓, 0 ✗**, **557 giây**
+  trên máy nghiệm thu (vòng hai là 565 giây, cũng 60 bước).
+- Ba bước nặng nhất: kiểm giao diện (tràn, tương phản, CSP) 204 s; ảnh chụp
+  nghiệm thu 118 s; liên kết và điều hướng 62 s.
+- Điều kiện 4: bước "Acceptance screenshots" chụp lại **104 ảnh** (desktop và
+  mobile, mọi trang, vào `docs/screenshots/` — thư mục nằm trong `.gitignore`)
+  lúc 04:01–04:02 ngày nghiệm thu; bộ trước đó là 86 ảnh ngày 20-08. Ảnh không
+  vào Git, nên "ảnh mới" nghĩa là bước đó chạy và xanh, đúng như §1.2 định nghĩa.
+- Cổng không đụng tệp nào Git theo dõi: `git status` sau cổng chỉ còn ba tệp
+  của chính commit này.
+
+### 7.6 Kết luận
+
+| # | Điều kiện | Kết quả |
+|---|---|---|
+| 1 | Cổng xanh | ✅ 60 bước, 3.431 phép kiểm, 557 s — §7.5 |
+| 2 | Test riêng, đã từng đỏ | ✅ 22 dòng đỏ trên mã cũ, 0 trên HEAD — §7.1 |
+| 3 | Hiệu năng không tụt >15%, đúng thang | ✅ cặp A/B cùng máy, cùng dữ liệu: HEAD nằm giữa hai lần đo của mã cũ — §7.4 |
+| 4 | Ảnh chụp mới | ✅ 104 ảnh chụp lại trong bước cổng — §7.5 |
+| 5 | Không thêm dependency | ✅ `express`, `pg`, như `58912e2` — §7.2 |
+| 6 | Ghi vào `BLOCKS.md` | ✅ hai hàng 2026-09-03, đọc theo cặp |
+
+**Nghiệm thu đạt trên máy nghiệm thu.** Còn một việc không làm được từ đây và
+phải có người làm: bốn phép kiểm production ở §7.3 — phép 1 chạy từ bất kỳ máy
+nào, mười giây. Một điều đáng nói ngoài sáu điều kiện: lỗi cookie hỏng của mã cũ
+là lỗi **sập tiến trình bằng một yêu cầu**, nặng hơn mức "P2, trang 500" mà vòng
+một ghi; nó đã được sửa từ `b359de7`, và đó là lý do phép kiểm 1 ở §7.3 nên chạy
+ngay — header CSP mới và bản sửa cookie cùng một commit, thiếu cái này là thiếu
+cả cái kia.

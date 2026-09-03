@@ -83,6 +83,22 @@ không qua HTTP — vì đó mới là trần thật của đường ghi.
 | 2026-08-23 | block 7 · **1 tiến trình** (mặc định) | 4 nhân, đĩa cục bộ | 7.661 req/s | 3.158 req/s | 2.945 req/s | 1.555 req/s | 37.990/s (`NORMAL`) |
 | 2026-08-23 | block 7 · **4 worker** (`WEB_CONCURRENCY=auto`) | 4 nhân, đĩa cục bộ | **10.346 req/s** | **4.183 req/s** | **4.724 req/s** | **4.729 req/s** | 37.990/s (`NORMAL`) |
 | 2026-08-23 | block 8 · 1 tiến trình | 4 nhân, đĩa cục bộ | 7.859 req/s | 3.102 req/s | 2.917 req/s | 1.501 req/s | 37.990/s (`NORMAL`) |
+| 2026-09-03 | `58912e2` — mã **trước** đợt rà soát, mốc A/B (trung bình hai lần) | 4 nhân, container 2026-09-03 | 9.455 req/s | 3.363 req/s | 3.432 req/s | 1.285 req/s | 37.990/s (`NORMAL`) |
+| 2026-09-03 | `1877c0e` rà soát toàn bộ + liên kết · nghiệm thu | 4 nhân, container 2026-09-03 | 9.705 req/s | 3.376 req/s | 3.383 req/s | 1.287 req/s | 37.990/s (`NORMAL`) |
+
+**Hai hàng 2026-09-03 đọc theo cặp, như hai hàng block 7.** Đợt rà soát toàn bộ
+(`b359de7` + `1877c0e`, xem `docs/RA-SOAT-TOAN-BO-2026-09.md` §7.4) không khóa
+block mới, nhưng hai commit chạm `server.js` và mười bốn tệp trong `server/`, nên
+điều kiện 3 vẫn phải kiểm. HEAD đo trên CSDL đang dùng của phiên cho
+`/api/catalog` 1.210 req/s — **−19%** so với hàng block 8, quá ngưỡng nếu tin
+phép so. Không tin được: hàng block 8 là container khác và CSDL khác. Cách so
+duy nhất quy được cho mã là cặp A/B trên cùng máy, cùng bản `VACUUM INTO` của
+cùng CSDL, đo cũ → mới → cũ: HEAD nằm giữa hai lần đo của chính mã cũ ở cả bốn
+tuyến (so với trung bình: `/healthz` +2,6%, tệp tĩnh +0,4%, `/prep/landing/`
+−1,4%, `/api/catalog` +0,2%). Không route nào tụt. Ghi thêm: hai lần chạy cùng
+mã cũ chênh 13% ở `/healthz` (10.090 và 8.820), nên trên container này sai số
+của một lần đo lớn hơn ±4,5% của block 3 — muốn kết luận thì kẹp A/B, đừng so
+cột dọc giữa hai ngày.
 
 Hàng mở lại block 4, so với **đường cơ sở**: `/healthz` +3,8%, tệp tĩnh −3,7%,
 `/prep/landing/` +84%, `/api/catalog` +5,9%. Không route nào quá ngưỡng 15%.
