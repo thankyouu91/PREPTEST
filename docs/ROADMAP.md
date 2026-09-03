@@ -107,6 +107,16 @@ rather than a separate no-go queue.
 >   chờ khóa sẽ chặn cả event loop của worker đó
 > - [ ] **Block 8 — Chống lạm dụng và DDoS.** CloudFront/WAF ở biên; token bucket
 >   cho `/api/*`; trần chi AI theo ngày và theo tài khoản; trần xem đề/giờ
+> - [ ] **Block 9 — Nhóm câu hỏi (reading, listening, speaking) và đường nhập tay.**
+>   ⬜ phương án ở `docs/KE-HOACH-NHOM-CAU-HOI.md`, từ một vòng rà soát có bằng
+>   chứng ngày 2026-09-03: nhóm chỉ là một quy ước theo vị trí quanh `group_key`
+>   của phần G, nên câu G soạn ở ngân hàng không thuộc nhóm nào, đính và gỡ câu
+>   vào phần làm vỡ nhóm mà không ai báo, phần C hiện 26 đoạn văn cho 26 câu thay
+>   vì ba đoạn hai câu, luyện Part G chỉ luyện 12 trong 37 câu, và phần thêm tay
+>   không bao giờ có `seconds`. Giai đoạn 0 (1–2 buổi) chặn thiệt hại không đổi
+>   lược đồ; giai đoạn 1 (3–4 buổi) dựng bảng `question_groups` dùng chung cho mọi
+>   kỹ năng và mọi họ đề; giai đoạn 2 (2–3 buổi) là màn hình quản trị và nhập
+>   hàng loạt theo nhóm. Bốn điều cần chủ đầu tư quyết ở §7 của tài liệu đó
 >
 > **Đo trước, hứa sau.** Đường cơ sở đã đo bằng traffic thật, không phải ước
 > lượng: `/api/catalog` chạm trần **~1.150 req/s** và giữ nguyên con số đó từ 25
