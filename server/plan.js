@@ -156,7 +156,10 @@ async function weekly(userId, partWeights) {
       titleEn: 'Practise Part ' + r.part,
       titleVi: 'Luyện Part ' + r.part,
       score: r.score, confident: r.confident, reason: r.reason,
-      href: '/prep/luyen/',
+      /* Straight into the part named on the line. The practise screen used to
+         be handed the bare page, and "Practise Part H" landed a learner on a
+         grid of ten with the letter to find again. */
+      href: '/prep/luyen/?part=' + encodeURIComponent(r.part),
       /* suggest() hands them back already ranked, so position IS the priority.
          Scaled to sit just under an unmeasured whole skill and around a weak
          grammar topic — the ordering between the three kinds is the only thing
@@ -181,7 +184,9 @@ async function weekly(userId, partWeights) {
       confident: t.confident,
       reason: t.score === null ? 'notMeasured'
         : (!t.confident ? 'provisional' : (t.score < 5 ? 'weakest' : 'belowTarget')),
-      href: '/prep/on-tap/',
+      /* The topic and the level it was ranked at, so the revision screen opens
+         the set the plan meant rather than its picker. */
+      href: '/prep/on-tap/?topic=' + encodeURIComponent(t.slug) + '&level=' + encodeURIComponent(level),
       /* Where this topic is TAUGHT, alongside where it is practised.
          `href` is the revision screen, which hands out gap sentences — the
          right place for somebody who knows the rule and needs the reps, and the

@@ -228,7 +228,63 @@ mới đã **từng đỏ** trên mã cũ trước khi sửa — nút Nghe dư�
 `answer.mp3` cho bản ghi WebM, và câu Part H tự soạn phải gọi mô hình — đúng
 điều kiện khóa thứ hai của `docs/KE-HOACH-XAY.md` §1.2.
 
-## 5. Để lại, và vì sao
+## 5. Vòng hai — liên kết giữa các màn hình và vận hành
+
+Yêu cầu tiếp theo của chủ đầu tư: *"tiếp tục kiểm tra và chỉnh sửa để vận hành
+trơn tru và có tính liên kết tốt hơn."* Vòng này không đọc lại từng tệp; nó đi
+theo **đường tay của người dùng** — từ màn này bấm sang màn kia — và hỏi mỗi
+bước có đến nơi không.
+
+### 5.1 Một lỗi của chính vòng một, tìm ra trước khi có ai gặp
+
+`scripts/accounts.js` sau vòng một gọi `liveServers()` ở đầu tệp nhưng khai báo
+nó bằng `const` ở cuối tệp — `function` được hoist, `const` thì không — nên **mọi
+lệnh không đặt `PREP_DB`** (đúng cách người vận hành gõ trên máy chủ) chết ngay
+với `ReferenceError`. Cổng vẫn xanh vì mọi chỗ trong cổng gọi công cụ này đều
+đặt `PREP_DB`, tức là không chỗ nào đi qua khối mã hỏng. **Đã sửa**, và
+`test-accounts.js` có thêm một phép kiểm chạy công cụ **không có** `PREP_DB`.
+
+### 5.2 Bộ kiểm tra liên kết — `scripts/test-links.mjs`, bước cổng mới
+
+Mở **mọi** trang (12 trang khách, 24 trang học viên, 8 trang quản trị) trong
+Chromium thật, đúng phiên của trang đó, và kiểm bốn điều: mọi liên kết nội bộ
+nhìn thấy được trả 200 trong phiên đó (hoặc đúng lượt chuyển hướng đăng nhập mà
+guard dự định), mọi neo `#id` có phần tử thật, thanh điều hướng **sáng đúng một
+mục** và khoá `data-active` của trang là khoá chrome biết, không có lỗi console,
+không có chữ `undefined`/`NaN`/`null` lộ ra. Lần chạy đầu tìm được:
+
+| Chỗ | Vấn đề | Xử lý |
+|---|---|---|
+| `exam/index.html`, `ket-qua.html` | `data-active` là `library`/`progress` — hai khoá không còn tồn tại, nên khi làm bài và xem kết quả **không mục nào sáng**. | Về `home`. |
+| Trang chủ, màn làm bài | Chữ vẫn bảo người học "vào thư viện" — thư viện đã bỏ. | Sửa chữ, cả từ điển VI. |
+| Tổng quan admin | `Doanh thu`, `orders`, `urgent`, "Against the previous…" là chữ cứng lẫn hai ngôn ngữ. | `AD.t` cho từng chuỗi. |
+
+### 5.3 Kế hoạch dẫn tới đúng chỗ
+
+`server/plan.js` nói "Luyện Part H" nhưng liên kết chỉ là `/prep/luyen/` — người
+học rơi vào lưới mười phần và phải tự tìm chữ H; "Ôn thì hiện tại hoàn thành"
+cũng chỉ mở màn chọn chủ đề. Giờ kế hoạch đưa `?part=H` và `?topic=…&level=…`,
+và hai màn ấy mở **thẳng vào** phần/bộ câu được nêu (chỉ một lần — bấm "Chọn
+phần khác" thì lại là lưới). Chủ đề mà máy chủ không mở được rơi về màn chọn,
+không phải màn lỗi.
+
+### 5.4 Khép vòng bài giảng ↔ luyện
+
+Bài giảng ngữ pháp có phần "Practice" hiện đáp án nhưng không dẫn đi đâu; màn ôn
+tập không dẫn về bài giảng. Giờ mỗi điểm ngữ pháp mở ra có nút **"Luyện nó trong
+câu"** mở đúng bộ câu của chủ đề đó, và màn chọn chủ đề có **"Đọc bài giảng"**
+cạnh chủ đề có bài (cùng bảng `study-map` mà kế hoạch dùng, qua
+`/api/revision/topics`). Vòng kế hoạch → bài giảng → luyện → kế hoạch đã kín cả
+hai chiều, và `test-links.mjs` đi trọn vòng đó.
+
+### 5.5 Vận hành: tổng quan admin bớt 270 truy vấn
+
+`GET /api/admin/reports` chạy **ba truy vấn cho mỗi ngày** của kỳ báo cáo — 270
+lượt ở kỳ 90 ngày, trên chính tiến trình đang phục vụ học viên, mỗi lần bấm chip
+kỳ. Thay bằng ba truy vấn gộp theo ngày, điền ngày trống ở phía ứng dụng, hình
+trả về không đổi (`test-admin` giữ).
+
+## 6. Để lại, và vì sao
 
 - `level-advice.js` ghi cứng `vpet-b1-01`/`vpet-c1-01`: đổi tên đề là việc có
   chủ ý, và `test-paper.mjs` đỏ ngay khi đề đó không còn phát hành. Không đáng

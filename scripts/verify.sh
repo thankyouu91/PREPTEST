@@ -271,6 +271,12 @@ node scripts/test-exam-audio-queue.mjs || fail=1
 step "The exam screen plays what it fetched (Listen on a part without a letter)"
 node scripts/test-exam-play.mjs || fail=1
 
+# Every link on every screen, in the session it is for, and the plan's links
+# landing on the part or topic they name. The per-page suites prove each page;
+# this is the only one that proves the handing over between them.
+step "Links and navigation (every page, every session, the plan's deep links)"
+node scripts/test-links.mjs || fail=1
+
 # Also a browser, and for the same reason: whether the chip rail can be dragged
 # is invisible to every request the server sees.
 step "The self-study chip rail (arrows, dragging, and not opening a lesson by accident)"

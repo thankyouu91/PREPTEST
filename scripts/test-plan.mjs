@@ -97,9 +97,19 @@ try {
      first one may be a dead end. */
   /* The home page counts: the papers are listed there, and "sit a paper"
      points at it now that the library it used to name is a redirect. */
-  ok(p1.data.plan.every(x => /^\/prep\/(?:[a-z-]+\/)?$/.test(x.href)),
+  ok(p1.data.plan.every(x => /^\/prep\/(?:[a-z-]+\/)?(?:\?[A-Za-z0-9=&%._-]+)?$/.test(x.href)),
     'Every item points at a real route',
     JSON.stringify(p1.data.plan.map(x => x.href)));
+  /* And at the exact thing it names: a part, or a topic at a level. The screens
+     open straight into these; a bare page would leave the learner to find the
+     letter again on a grid of ten. */
+  ok(p1.data.plan.filter(x => x.kind === 'drill').every(x => x.href === '/prep/luyen/?part=' + x.part),
+    'A practise item carries its part in the link',
+    JSON.stringify(p1.data.plan.filter(x => x.kind === 'drill').map(x => x.href)));
+  ok(p1.data.plan.filter(x => x.kind === 'revision').every(x =>
+      x.href === '/prep/on-tap/?topic=' + encodeURIComponent(x.topic) + '&level=' + encodeURIComponent(x.level)),
+    'A revision item carries its topic and level in the link',
+    JSON.stringify(p1.data.plan.filter(x => x.kind === 'revision').map(x => x.href)));
   ok(new Set(p1.data.plan.map(x => x.key)).size === p1.data.plan.length,
     'No item repeats another', JSON.stringify(p1.data.plan.map(x => x.key)));
 

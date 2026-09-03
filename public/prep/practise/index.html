@@ -365,6 +365,22 @@ PREP.boot({ auth: true }).then(async () => {
         '<span class="text-muted">' + PREP.esc(d.level) + '</span>' +
         '<b class="ms-auto tabular-nums">' + d.earned + '/' + d.max + '</b>' +
       '</li>').join('');
+
+    /* Arrived from the plan — "Practise Part H" — or from any link that names
+       a part: open that part rather than landing on the grid with the letter
+       to find again. Once only, so "Choose a part" afterwards shows the grid
+       instead of bouncing straight back in. A part that cannot be drilled says
+       so and leaves the grid up, which is where the reason is written. */
+    const wanted = String(new URLSearchParams(location.search).get('part') || '').toUpperCase();
+    if (wanted && !loadPick.followed) {
+      loadPick.followed = true;
+      const hit = parts.find(x => x.part === wanted);
+      if (hit && hit.drillable) return begin(hit.part);
+      if (hit) {
+        PrepChrome.toast(PREP.t('Part ' + hit.part + ' cannot be practised on its own yet.',
+                                'Part ' + hit.part + ' chưa luyện riêng được.'), 'error');
+      }
+    }
     show('pick');
   }
 

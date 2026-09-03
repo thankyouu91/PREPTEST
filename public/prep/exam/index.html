@@ -24,7 +24,9 @@
   <script src="/i18n.js"></script>
 </head>
 <body class="bg-surface text-ink">
-<div id="app" data-active="library" class="min-h-[100dvh]">
+<!-- "home": the papers are listed there, and "library" was not a navigation
+     key, so no entry lit while a paper was being sat. -->
+<div id="app" data-active="home" class="min-h-[100dvh]">
   <main id="main">
     <div class="max-w-shell mx-auto px-4 sm:px-6 lg:px-10 pb-6">
 
@@ -40,7 +42,7 @@
           <svg viewBox="0 0 24 24" class="w-7 h-7" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="m5 3 14 9-14 9V3Z"/></svg>
         </span>
         <h2 class="font-extrabold text-lg tracking-tight mt-4">You have no test in progress</h2>
-        <p id="none-why" class="text-muted text-[15px] mt-1.5">Pick a test in the library and press Start.</p>
+        <p id="none-why" class="text-muted text-[15px] mt-1.5">Pick a paper on the home page and press Start.</p>
         <div class="grid gap-2.5 mt-6 max-w-xs mx-auto">
           <a href="/prep/" class="btn btn-primary btn-md w-full">Go to my papers</a>
           <a id="none-alt" href="/prep/" class="btn btn-ghost btn-md w-full">Back to home</a>

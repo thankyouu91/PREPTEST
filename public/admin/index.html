@@ -176,7 +176,7 @@
     }
 
     const nhan = KY[days];
-    AD.qs('#period-note').textContent = 'Against the previous ' + nhan;
+    AD.qs('#period-note').textContent = AD.t('Against the previous ' + nhan, 'So với ' + nhan + ' trước đó');
 
     const famRows = d.byFamily.map(f =>
       '<tr class="border-b border-line last:border-0">' +
@@ -197,10 +197,10 @@
       ? '<ul class="grid gap-2.5">' + d.revenueByPackage.map(g =>
           '<li class="flex items-center gap-3 text-[14px]">' +
             '<span class="min-w-0 flex-1 truncate font-semibold">' + AD.esc(g.name) + '</span>' +
-            '<span class="text-muted font-semibold shrink-0">' + g.orders + ' orders</span>' +
+            '<span class="text-muted font-semibold shrink-0">' + AD.t(g.orders + ' orders', g.orders + ' đơn') + '</span>' +
             '<b class="shrink-0 w-24 text-right">' + AD.vnd(g.amount) + '</b>' +
           '</li>').join('') + '</ul>'
-      : '<p class="text-[14px] text-muted">No orders in the last ' + nhan + '.</p>';
+      : '<p class="text-[14px] text-muted">' + AD.t('No orders in the last ' + nhan + '.', 'Không có đơn nào trong ' + nhan + ' qua.') + '</p>';
 
     const recent = d.recent.length
       ? '<ul class="grid gap-3">' + d.recent.map(r =>
@@ -243,7 +243,7 @@
           '<section class="card p-6" aria-labelledby="h-todo">' +
             '<div class="flex flex-wrap items-baseline gap-2 mb-4">' +
               '<h2 id="h-todo" class="text-lg font-extrabold tracking-tight">What needs doing</h2>' +
-              (soKhan ? '<span class="badge badge-danger">' + soKhan + ' urgent</span>' : '') +
+              (soKhan ? '<span class="badge badge-danger">' + AD.t(soKhan + ' urgent', soKhan + ' gấp') + '</span>' : '') +
             '</div>' + todoList(d.todo) +
           '</section>' +
 
@@ -270,8 +270,8 @@
               '<h2 id="h-chart" class="text-lg font-extrabold tracking-tight">' + AD.t('Activity over ', 'Hoạt động trong ') + nhan + '</h2>' +
               '<div class="ms-auto flex gap-1.5" role="group" aria-label="Choose a metric">' +
                 '<button type="button" class="chip" data-metric="users" aria-pressed="true">' + AD.t('Students', 'Học viên') + ' (' + tongUsers + ')</button>' +
-                '<button type="button" class="chip" data-metric="redeems" aria-pressed="false">Code (' + tongRedeems + ')</button>' +
-                '<button type="button" class="chip" data-metric="revenue" aria-pressed="false">Doanh thu</button>' +
+                '<button type="button" class="chip" data-metric="redeems" aria-pressed="false">' + AD.t('Codes', 'Mã') + ' (' + tongRedeems + ')</button>' +
+                '<button type="button" class="chip" data-metric="revenue" aria-pressed="false">' + AD.t('Revenue', 'Doanh thu') + '</button>' +
               '</div>' +
             '</div>' +
             '<div id="chart" class="mt-5"></div>' +

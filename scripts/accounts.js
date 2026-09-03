@@ -65,6 +65,15 @@
 'use strict';
 
 const fs = require('fs');
+/* Every `node server.js` on this machine, with what /proc will tell us. It
+   lived here as a function declaration; scripts/backup.mjs needs the same
+   answer before it restores over a file, so it moved to
+   scripts/_live-servers.js and both read one copy. Required HERE, above the
+   block that calls it: a `const` is not hoisted the way the function was, and
+   the first version of this move left the require at the bottom of the file —
+   which made every command without PREP_DB die on a ReferenceError before it
+   did anything, exactly the way an operator runs it on the server. */
+const { liveServers } = require('./_live-servers.js');
 
 /* ---------------------------------------------------------------------------
  * Which database, decided BEFORE server/db.js is loaded.
@@ -468,11 +477,6 @@ async function doctor() {
       '\n  Clear them with:  node scripts/accounts.js unlock'
     : '\nNo active lockouts.');
 }
-
-/* Every `node server.js` on this machine, with what /proc will tell us. It
-   lived here; scripts/backup.mjs needs the same answer before it restores over
-   a file, so it moved to scripts/_live-servers.js and both read one copy. */
-const { liveServers } = require('./_live-servers.js');
 
 const COMMANDS = {
   'doctor': doctor,

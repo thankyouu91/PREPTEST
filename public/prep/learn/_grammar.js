@@ -114,6 +114,13 @@ const PrepGrammar = {
               '<h4 class="font-extrabold text-[15px] tracking-tight">Practice</h4>' +
               '<button type="button" class="btn btn-ghost btn-sm" data-reveal="' + PREP.esc(p.slug) + '">' +
                 'Show every answer</button>' +
+              /* The same sentences, marked: the revision screen draws its sets
+                 from exactly these practice items, so a reader who has just
+                 understood the rule can go and produce it rather than read the
+                 answers. This closes the loop the plan opens from the other
+                 side — plan → lesson → practice → plan. */
+              '<a class="btn btn-soft btn-sm" href="/prep/on-tap/?topic=' + encodeURIComponent(p.slug) +
+                '&level=' + encodeURIComponent(p.level) + '">Practise it in sentences</a>' +
             '</div>' +
             '<ol class="grid gap-2 mt-2.5">' + d.practice.map((x, i) =>
               '<li class="rounded-xl border border-line px-3.5 py-3">' +

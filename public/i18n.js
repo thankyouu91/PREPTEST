@@ -483,8 +483,8 @@
     'You have not unlocked any tests yet': 'Bạn chưa mở khóa bài thi nào',
     'Unlock a test to start tracking how your practice is going.':
       'Mở khóa một bài thi để bắt đầu theo dõi tiến độ luyện tập.',
-    'Enter a code you already have to unlock one now, or browse the library and pick a test that matches the exam you are aiming at.':
-      'Nhập mã bạn đang có để mở khóa ngay, hoặc xem thư viện và chọn bài thi khớp với kỳ thi bạn nhắm tới.',
+    'Enter a code you already have to unlock one now, or see the plans and pick the term that fits how long you are preparing.':
+      'Nhập mã bạn đang có để mở khóa ngay, hoặc xem các gói và chọn kỳ hạn hợp với thời gian bạn ôn.',
     'Part-by-part marks and the four-skill breakdown appear here after your first hand-in. The papers are still being written; we will tell you when one opens.':
       'Điểm từng phần và bảng phân tích bốn kỹ năng sẽ hiện ở đây sau lần nộp bài đầu tiên. Đề vẫn đang được soạn; chúng tôi sẽ báo khi có đề mở.',
     'Verify your email to protect your account': 'Xác thực email để bảo vệ tài khoản',
@@ -645,7 +645,7 @@
     'Handed in': 'Đã nộp bài',
     'Go back and carry on': 'Quay lại làm tiếp',
     'You have no test in progress': 'Bạn không có bài thi nào đang làm',
-    'Pick a test in the library and press Start.': 'Chọn một bài trong thư viện và bấm Bắt đầu.',
+    'Pick a paper on the home page and press Start.': 'Chọn một đề ở trang chủ và bấm Bắt đầu.',
     'Pick another test': 'Chọn bài khác',
     'Go to the library': 'Vào thư viện',
     'See the result': 'Xem kết quả',
@@ -884,6 +884,11 @@
     'This cannot start right now': 'Chưa bắt đầu được',
     'Go to my account': 'Về trang tài khoản',
     'Revise by using it': 'Ôn bằng cách dùng',
+    /* Bài giảng ngữ pháp dẫn sang màn ôn tập của đúng chủ đề đó. */
+    'Practise it in sentences': 'Luyện nó trong câu',
+    'Practice': 'Luyện tập',
+    'Show every answer': 'Hiện mọi đáp án',
+    'Hide the answers': 'Ẩn đáp án',
     'Fill the right form into real sentences, then write one of your own. No multiple choice — picking the right answer from a list is a different skill from producing it, and the exam tests the second.':
       'Điền đúng dạng vào câu thật, rồi tự viết một câu. Không có trắc nghiệm — chọn đúng trong bốn đáp án là một kỹ năng khác với tự viết ra, và bài thi kiểm tra cái thứ hai.',
     'Enter for next': 'Enter để sang câu',

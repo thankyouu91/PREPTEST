@@ -127,6 +127,24 @@ try {
   ok(/Admin accounts \(1\)/.test(listOutput), 'The "list" command lists administrators');
   ok(!listOutput.includes(DEMO_PW), 'The "list" command does NOT print a password');
 
+  /* 7b. And it starts at all WITHOUT PREP_DB — which is how an operator runs it.
+     Every other call in this file sets PREP_DB, and that skipped the block at
+     the top of accounts.js that looks for a running server; a ReferenceError in
+     that block shipped green because nothing here ever took that path. An
+     unknown command is used so the tool loads, runs its top-level code, and
+     stops before touching any account. */
+  let bare = { status: 0, stderr: '' };
+  try {
+    execFileSync(process.execPath, [path.join('scripts', 'accounts.js'), 'no-such-command'], {
+      cwd: ROOT, encoding: 'utf8',
+      env: Object.fromEntries(Object.entries({ ...process.env, NODE_ENV: 'test' }).filter(([k]) => k !== 'PREP_DB')),
+      stdio: ['ignore', 'pipe', 'pipe']
+    });
+  } catch (e) { bare = { status: e.status, stderr: String(e.stderr || '') }; }
+  ok(bare.status === 1 && /Unknown command/.test(bare.stderr) && !/ReferenceError|TypeError/.test(bare.stderr),
+    'Without PREP_DB the tool still starts and reaches the command table',
+    'exit ' + bare.status + ' ' + bare.stderr.split('\n').filter(l => !/Experimental|trace-warnings/.test(l)).join(' ').slice(0, 200));
+
   /* 8. Administrator password lost → it can be reset */
   runNode("const A=require('./server/auth'),{q}=require('./server/db');" +
     "await q.run('UPDATE admins SET pass_hash=? WHERE username=?', A.hashPassword('NobodyKnows999'), 'admin');");

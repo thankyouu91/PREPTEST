@@ -31,6 +31,7 @@ const placement = require('./placement');
 const storage = require('./storage');
 const drills = require('./drills');
 const revision = require('./revision');
+const studyMap = require('./study-map');
 const plan = require('./plan');
 const report = require('./report');
 const EXAM_FORMATS = require('./data/exam-formats');
@@ -716,8 +717,16 @@ router.post('/drills/:id/submit', A.requireUser, A.csrfGuard, async (req, res) =
    exam tests the second. server/revision.js carries the reasoning. */
 
 router.get('/revision/topics', A.requireUser, async (req, res) => {
-  res.set('Cache-Control', 'no-store')
-     .json(await revision.topics(req.user.id, req.query.level));
+  const out = await revision.topics(req.user.id, req.query.level);
+  /* Where each topic is TAUGHT, beside where it is practised — the pairing
+     server/plan.js already makes, so the picker can offer the lesson to
+     somebody who does not know the rule yet rather than only a set of gaps.
+     Null when the group has no lesson written, and the screen draws nothing. */
+  out.topics = out.topics.map(t => {
+    const lesson = studyMap.BY_GROUP[t.group];
+    return Object.assign({}, t, { lesson: lesson ? { href: lesson.href, en: lesson.en, vi: lesson.vi } : null });
+  });
+  res.set('Cache-Control', 'no-store').json(out);
 });
 
 router.get('/revision', A.requireUser, async (req, res) => {

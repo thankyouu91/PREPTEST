@@ -227,15 +227,30 @@ router.get('/admin/reports', roles.requireCap('reports.read'), async (req, res) 
     orders30: await q.val("SELECT COUNT(*) c FROM orders WHERE created_at >= ?", d30)
   };
 
-  // A daily series across the chosen window: new users, codes activated, revenue
+  /* A daily series across the chosen window: new users, codes activated,
+     revenue. Three grouped queries rather than three per day: at 90 days the
+     loop was 270 round trips for one screen, every time the period chip was
+     pressed, on the one process that also serves the learners. The days with
+     nothing in them are filled in here, because a chart wants every day. */
+  const firstDay = new Date(Date.now() - (days - 1) * 86400000).toISOString().slice(0, 10);
+  const perDay = (rows, key) => new Map(rows.map(r => [r.day, Number(r[key]) || 0]));
+  const usersByDay = perDay(await q.all(
+    `SELECT substr(created_at,1,10) day, COUNT(*) c FROM users
+      WHERE substr(created_at,1,10) >= ? GROUP BY substr(created_at,1,10)`, firstDay), 'c');
+  const redeemsByDay = perDay(await q.all(
+    `SELECT substr(redeemed_at,1,10) day, COUNT(*) c FROM codes
+      WHERE redeemed_at IS NOT NULL AND substr(redeemed_at,1,10) >= ? GROUP BY substr(redeemed_at,1,10)`, firstDay), 'c');
+  const revenueByDay = perDay(await q.all(
+    `SELECT substr(created_at,1,10) day, COALESCE(SUM(amount),0) s FROM orders
+      WHERE status='paid' AND substr(created_at,1,10) >= ? GROUP BY substr(created_at,1,10)`, firstDay), 's');
   const series = [];
   for (let i = days - 1; i >= 0; i--) {
     const day = new Date(Date.now() - i * 86400000).toISOString().slice(0, 10);
     series.push({
       day,
-      users: await q.val('SELECT COUNT(*) c FROM users WHERE substr(created_at,1,10)=?', day),
-      redeems: await q.val('SELECT COUNT(*) c FROM codes WHERE substr(redeemed_at,1,10)=?', day),
-      revenue: await q.val("SELECT COALESCE(SUM(amount),0) s FROM orders WHERE status='paid' AND substr(created_at,1,10)=?", day)
+      users: usersByDay.get(day) || 0,
+      redeems: redeemsByDay.get(day) || 0,
+      revenue: revenueByDay.get(day) || 0
     });
   }
 

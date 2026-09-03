@@ -154,6 +154,16 @@ PREP.boot({ auth: true }).then(async () => {
         : PREP.t('Now ' + x.score + '/10', 'Hiện ' + x.score + '/10')
           + (x.confident ? '' : PREP.t(' (estimate)', ' (ước lượng)'));
       left.append(h, sub);
+      /* Where the topic is taught, for somebody who does not know the rule
+         yet: a set of gap sentences is the wrong first meeting with it. The
+         plan makes the same offer; this is the picker making it too. */
+      if (x.lesson && x.lesson.href) {
+        const lesson = document.createElement('a');
+        lesson.className = 'block text-[13px] font-bold text-brand-strong hover:underline mt-1';
+        lesson.href = x.lesson.href;
+        lesson.textContent = PREP.t('Read the lesson: ', 'Đọc bài giảng: ') + PREP.t(x.lesson.en, x.lesson.vi);
+        left.appendChild(lesson);
+      }
       const go = document.createElement('button');
       go.type = 'button';
       go.className = 'btn btn-primary btn-md ms-auto shrink-0';
@@ -162,18 +172,34 @@ PREP.boot({ auth: true }).then(async () => {
       li.append(left, go);
       list.appendChild(li);
     }
+
+    /* Arrived from the plan — "Revise the present perfect" — or from a lesson,
+       with the topic in the address: open that set rather than the picker.
+       Asked of the server directly, not looked up in the list above: the
+       picker shows the six topics most worth a learner's time at this level,
+       and a lesson can name any of the others. Once only, so "Choose a topic"
+       afterwards is the picker again; a topic the server will not start (no
+       such topic, nothing written for it yet) falls back to the list. */
+    const wanted = new URLSearchParams(location.search).get('topic');
+    if (wanted && !loadPick.followed) {
+      loadPick.followed = true;
+      if (await begin(wanted, true)) return;
+    }
     show('pick');
   }
 
-  async function begin(topic) {
+  /* `quiet` is for a topic named in the address: a set that cannot be started
+     then falls back to the picker rather than an error screen. */
+  async function begin(topic, quiet) {
     show('loading');
     lastTopic = topic;
     const r = await PrepApi.post('/api/revision', { topic: topic, level: level });
-    if (!r.ok) return oops(PrepApi.err(r));
+    if (!r.ok) { if (!quiet) oops(PrepApi.err(r)); return false; }
     set = r.data; items = r.data.items; at = 0; answers = [];
     PREP.qs('#k-topic').textContent = PREP.t(r.data.topicEn, r.data.topicVi) + ' · ' + r.data.level;
     show('run');
     render();
+    return true;
   }
 
   function render() {
@@ -305,7 +331,10 @@ PREP.boot({ auth: true }).then(async () => {
   PREP.qs('#m-again').addEventListener('click', () => begin(lastTopic));
   PREP.qs('#m-back').addEventListener('click', () => loadPick(level));
 
-  loadPick();
+  /* The level the plan ranked the topic at, when it says; the account's own
+     level otherwise. */
+  const askedLevel = new URLSearchParams(location.search).get('level');
+  loadPick(/^(A1|A2|B1|B2|C1|C2)$/.test(askedLevel || '') ? askedLevel : undefined);
 });
 </script>
 </body>
