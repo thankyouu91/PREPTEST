@@ -1304,6 +1304,188 @@ const run = async () => {
   check('An unauthenticated request is refused', anon.status === 401 || anon.status === 403,
     'status ' + anon.status);
 
+  /* ==================================================================== *
+   * 16d. Entering questions by hand
+   *
+   * Every check here stands for something that was measured going wrong on the
+   * paths an operator actually uses — the sample file, the add-a-part dialog,
+   * the item picker, the withdraw button — rather than on the generator, which
+   * has been careful about all of it for weeks. The theme is the same one
+   * throughout: a question that shares a recording with two others is not an
+   * item, it is a third of one, and every hand path treated it as an item.
+   * ==================================================================== */
+  {
+    /* Small enough to keep here: the file has to be read exactly as the bank
+       screen reads it, and importing a CSV parser would test somebody else's. */
+    const parseCSV = text => {
+      const rows = []; let row = [], field = '', quoted = false;
+      text = text.replace(/^﻿/, '');
+      for (let i = 0; i < text.length; i++) {
+        const c = text[i], n = text[i + 1];
+        if (quoted) {
+          if (c === '"' && n === '"') { field += '"'; i++; }
+          else if (c === '"') quoted = false;
+          else field += c;
+        } else if (c === '"') quoted = true;
+        else if (c === ',') { row.push(field); field = ''; }
+        else if (c === '\r') { /* handled at \n */ }
+        else if (c === '\n') { row.push(field); rows.push(row); row = []; field = ''; }
+        else field += c;
+      }
+      if (field.length || row.length) { row.push(field); rows.push(row); }
+      return rows.filter(r2 => r2.some(cell => cell.trim() !== ''));
+    };
+
+    /* -- The sample file has to survive its own importer --
+       It did not: one row was a typed item with no key, which the server
+       refuses, and two rows left the part blank on an exam that has a part
+       table, so they landed in the bank drawable by nothing. */
+    r = await call('GET', '/api/admin/questions/template.csv');
+    const csvRows = parseCSV(String(r.data));
+    const head2 = csvRows[0];
+    const sample = csvRows.slice(1).map(cells => {
+      const g = name => (cells[head2.indexOf(name)] || '').trim();
+      return {
+        familyId: g('ky_thi'), skill: g('ky_nang'), level: g('do_kho'), type: g('dang_cau'),
+        part: g('phan_thi'), prompt: g('noi_dung'),
+        options: ['phuong_an_1', 'phuong_an_2', 'phuong_an_3', 'phuong_an_4'].map(g).filter(Boolean),
+        answer: g('dap_an'), explanation: g('giai_thich'),
+        script: g('loi_thoai'), modelAnswer: g('dap_an_mau')
+      };
+    });
+    check('The sample CSV carries a column for the transcript and the model answer',
+      head2.includes('loi_thoai') && head2.includes('dap_an_mau'), head2.join(','));
+    check('Every sample row names its part', sample.length > 0 && sample.every(x => x.part),
+      JSON.stringify(sample.map(x => x.part)));
+
+    /* The dry run is what the screen's preview now asks, so this is also the
+       check that the preview and the import agree. */
+    r = await call('POST', '/api/admin/questions/bulk', { items: sample, dryRun: true });
+    check('The importer accepts its own sample file, every row',
+      r.status === 200 && r.data.failed === 0 && r.data.valid === sample.length,
+      JSON.stringify(r.data && r.data.errors));
+    r = await call('GET', '/api/admin/questions?family=vpet&tags=probe&limit=1');
+    check('A dry run writes nothing',
+      (await call('POST', '/api/admin/questions/bulk', { items: sample, dryRun: true })).data.valid === sample.length
+        && r.status === 200, 'the dry run must not insert');
+
+    /* -- A question that belongs to a recording cannot be born alone -- */
+    r = await call('POST', '/api/admin/questions', {
+      familyId: 'vpet', skill: 'listening', level: 'B1', type: 'speaking', part: 'G',
+      prompt: 'A lone Part G question, which belongs to no recording.', script: 'x'
+    });
+    check('A lone Part G item is refused, and the refusal says where to write it',
+      r.status === 400 && /test builder/i.test(String(r.data && r.data.error)),
+      r.status + ' ' + String(r.data && r.data.error).slice(0, 90));
+
+    /* -- The part's clock is the exam's, not the dialog's default -- */
+    r = await call('POST', '/api/admin/tests',
+      { familyId: 'vpet', title: 'Hand-entry probe paper', level: 'B1', durationMin: 30 });
+    const handId = r.data.id;
+    r = await call('POST', '/api/admin/tests/' + handId + '/sections',
+      { name: 'Part F', skill: 'listening', minutes: 30, part: 'F' });
+    const secF = r.data.id;
+    check('A part added by hand runs the exam\'s window, not the 30 minutes the box offered',
+      r.data.seconds === 152, 'seconds ' + r.data.seconds);
+
+    /* -- The picker offers what the part can hold -- */
+    r = await call('GET', '/api/admin/questions?family=vpet&skill=listening&part=F&status=active&limit=200');
+    check('The bank can be asked for one part, so the picker stops offering E and G for an F part',
+      r.data.items.length > 0 && r.data.items.every(i => i.part === 'F'),
+      [...new Set(r.data.items.map(i => i.part))].join(','));
+    const anE = (await call('GET', '/api/admin/questions?family=vpet&part=E&limit=1')).data.items[0];
+    r = await call('POST', '/api/admin/sections/' + secF + '/items', { questionIds: [anE.id] });
+    check('A wrong pick comes back with the reason, not just a count',
+      r.data.added === 0 && r.data.skippedItems && /Part E/.test(r.data.skippedItems[0].why),
+      JSON.stringify(r.data.skippedItems));
+
+    /* -- Whole groups, in and out -- */
+    const gBank = await call('GET', '/api/admin/questions?family=vpet&part=G&status=active&limit=200');
+    const byKey = new Map();
+    for (const i of gBank.data.items) {
+      if (!i.groupKey) continue;
+      if (!byKey.has(i.groupKey)) byKey.set(i.groupKey, []);
+      byKey.get(i.groupKey).push(i);
+    }
+    const whole = [...byKey.values()].find(g => g.length === 3);
+    check('The bank tells a screen which recording a question belongs to, and whether the group is whole',
+      !!whole && whole.every(i => i.groupCount === 3 && i.groupNeed === 3),
+      whole ? JSON.stringify(whole.map(i => i.groupKey + ':' + i.groupCount + '/' + i.groupNeed)) : 'no group of three');
+
+    r = await call('POST', '/api/admin/tests/' + handId + '/sections',
+      { name: 'Part G', skill: 'listening', part: 'G' });
+    const secG = r.data.id;
+    const tail = whole.find(i => !i.hasAudio) || whole[1];
+    r = await call('POST', '/api/admin/sections/' + secG + '/items', { questionIds: [tail.id] });
+    check('Choosing one question of a group attaches the whole recording it belongs to',
+      r.data.added === 3 && r.data.pulledIn === 2, JSON.stringify(r.data));
+
+    let detail = (await call('GET', '/api/admin/tests/' + handId)).data.sections.find(s => s.id === secG);
+    check('And exactly one of the three carries the recording',
+      detail.items.length === 3 && detail.items.filter(i => i.hasAudio).length === 1,
+      JSON.stringify(detail.items.map(i => i.questionId + (i.hasAudio ? '*' : ''))));
+    check('The part\'s window follows the count of what is in it',
+      detail.seconds === 90, 'seconds ' + detail.seconds);
+
+    r = await call('DELETE', '/api/admin/items/' + detail.items[1].itemId);
+    check('Removing one question of a group removes the group, not a hole in the middle of it',
+      r.data.removed === 3, JSON.stringify(r.data));
+    detail = (await call('GET', '/api/admin/tests/' + handId)).data.sections.find(s => s.id === secG);
+    check('So the part is empty rather than holding a passage nobody asks about',
+      detail.items.length === 0, String(detail.items.length));
+
+    /* -- Withdrawing and re-levelling move the group too -- */
+    r = await call('POST', '/api/admin/questions/' + whole[0].id + '/status', { status: 'retired' });
+    check('Withdrawing one question of a group withdraws the group', r.data.changed === 3, JSON.stringify(r.data));
+    /* The two piles that stop a part being drawn, and neither was findable
+       before: a group missing one of its questions, and a question in a grouped
+       part belonging to no recording. Withdrawing a group WHOLE is a normal act
+       and must not read as three broken ones — which is exactly what the first
+       version of the filter did. */
+    r = await call('GET', '/api/admin/questions?family=vpet&group=incomplete&limit=50');
+    check('A group withdrawn whole is not reported as a group left short',
+      r.status === 200 && r.data.total === 0, 'reported short: ' + r.data.total);
+    await call('POST', '/api/admin/questions/' + whole[0].id + '/status', { status: 'active' });
+    r = await call('GET', '/api/admin/questions?family=vpet&group=incomplete&limit=50');
+    check('And with the group back, still nothing short — the bank can be asked the question at all',
+      r.status === 200 && r.data.total === 0 && r.data.items.every(i => i.groupCount < i.groupNeed),
+      'short: ' + r.data.total);
+    r = await call('GET', '/api/admin/questions?family=vpet&group=none&limit=50');
+    check('No question sits in a grouped part belonging to no recording',
+      r.status === 200 && r.data.items.every(i => !i.groupNeed),
+      JSON.stringify(r.data.items.slice(0, 3).map(i => i.part + ':' + i.id)));
+
+    const one = whole[1];
+    r = await call('PUT', '/api/admin/questions/' + one.id, {
+      familyId: 'vpet', skill: 'listening', level: 'B2', type: 'speaking', part: 'G',
+      prompt: one.prompt, options: [], answer: '', explanation: one.explanation,
+      script: one.script, modelAnswer: one.modelAnswer
+    });
+    check('Changing the level of one question moves every question on that recording',
+      r.data.groupMoved === 2, JSON.stringify(r.data));
+    const after = (await call('GET', '/api/admin/questions?family=vpet&part=G&limit=200')).data.items
+      .filter(i => i.groupKey === one.groupKey);
+    check('So a group is never half at one level and half at another',
+      new Set(after.map(i => i.level)).size === 1, JSON.stringify(after.map(i => i.level)));
+    await call('PUT', '/api/admin/questions/' + one.id, {
+      familyId: 'vpet', skill: 'listening', level: whole[0].level, type: 'speaking', part: 'G',
+      prompt: one.prompt, options: [], answer: '', explanation: one.explanation,
+      script: one.script, modelAnswer: one.modelAnswer
+    });
+
+    /* -- A part put under the wrong letter can be moved, while it is empty -- */
+    r = await call('PUT', '/api/admin/sections/' + secG, { part: 'E' });
+    check('An empty part can be moved to the letter it should have had', r.data.part === 'E',
+      r.status + ' ' + JSON.stringify(r.data));
+    await call('POST', '/api/admin/sections/' + secG + '/items', { questionIds: [anE.id] });
+    r = await call('PUT', '/api/admin/sections/' + secG, { part: 'F' });
+    check('A part holding items refuses the move rather than mislabelling them',
+      r.status === 400 && /Remove them/.test(String(r.data && r.data.error)),
+      r.status + ' ' + String(r.data && r.data.error).slice(0, 80));
+
+    await call('DELETE', '/api/admin/tests/' + handId);
+  }
+
   /* 17. Signing out kills the session */
   r = await call('POST', '/api/admin/logout');
   check('Signs out', r.status === 200);

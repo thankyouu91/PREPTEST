@@ -431,6 +431,37 @@ try {
       'A process that lost its whole environment still issues Secure cookies over TLS',
       stripped.slice(0, 90));
     sec.resetWarnings();
+
+    /* ---- The same missing variable, against a much worse outcome ----
+     *
+     * `POST /api/auth/forgot` answers an ANONYMOUS caller. Where no mail service
+     * is configured it used to hand back the reset link itself, held off by
+     * NODE_ENV alone — the one variable this deployment has already lost once.
+     * With it gone, anyone who knew a learner's e-mail address could take the
+     * account in a single request. The request now gets a vote, exactly as it
+     * does for the cookie. */
+    const auth = require_('../server/auth.js');
+    ok(auth.publicDeployment({ headers: { host: 'vpetprep.vn' } }) === true,
+      'A registered hostname is a real deployment, whatever the environment says');
+    ok(auth.publicDeployment({ headers: { 'x-forwarded-proto': 'https', host: 'localhost:3000' } }) === true,
+      'and so is anything that arrived over TLS');
+    ok(withEnv_({ NODE_ENV: undefined }, () =>
+      auth.publicDeployment({ headers: { host: 'localhost:3000' } })) === false,
+      'A laptop on localhost is not, so the links a dev build needs still appear');
+    ok(withEnv_({ NODE_ENV: undefined }, () =>
+      auth.publicDeployment({ headers: { host: '127.0.0.1:3000' } })) === false,
+      'nor is the loopback address');
+    ok(withEnv_({ NODE_ENV: 'production' }, () =>
+      auth.publicDeployment({ headers: { host: 'localhost:3000' } })) === true,
+      'and NODE_ENV still decides on its own when it is there');
+
+    sec.resetWarnings();
+    const leaking = withEnv_({ AUTH_DEV_LINKS: '1', NODE_ENV: undefined }, () =>
+      say(() => sec.checkDeployment({ headers: { host: 'vpetprep.vn' }, secure: false })));
+    ok(/take their account/.test(leaking),
+      'Forcing the links on for a real deployment is reported, and named as an account takeover',
+      leaking.slice(0, 90));
+    sec.resetWarnings();
   }
 
   head('Per-endpoint guard table');

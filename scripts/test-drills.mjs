@@ -428,6 +428,72 @@ try {
     }
   }
 
+  head('A part whose questions share one recording drills as a group');
+
+  /* Part G is one passage and three questions about it, and only the first of
+     the three stores the passage. Drawing rows one at a time therefore drew
+     ONLY the row that stores it — 12 of the part's 36 questions were reachable,
+     the other 24 could not be practised at all — and the one that was drawn
+     arrived without its two siblings, so "listen, then answer three questions"
+     came out as "listen, then answer one". */
+  {
+    const size = 3;
+    const wholeGroups = await q.val(
+      `SELECT COALESCE(SUM(n), 0) FROM (
+         SELECT COUNT(*) n FROM questions
+          WHERE status='active' AND part='G' AND group_key IS NOT NULL
+          GROUP BY group_key
+         HAVING COUNT(*) = ?
+            AND SUM(CASE WHEN audio_key IS NOT NULL THEN 1 ELSE 0 END) = 1) t`, size);
+    const heads = await q.val(
+      "SELECT COUNT(*) c FROM questions WHERE status='active' AND part='G' AND audio_key IS NOT NULL");
+    const avail = await D.availableByPart();
+    ok((avail.get('G') || 0) === wholeGroups && wholeGroups > heads,
+      'The number of Part G items offered is the questions in whole groups, not the count of passages',
+      'offered ' + avail.get('G') + ', whole groups hold ' + wholeGroups + ', passages ' + heads);
+
+    const g = await me.req('POST', '/api/drills', { part: 'G' });
+    if (g.status === 201) {
+      const its = g.data.items;
+      const keys = [...new Set(its.map(i => i.groupKey))];
+      ok(its.length % size === 0 && its.length >= size,
+        'A Part G drill comes in whole passages', its.length + ' items');
+      ok(keys.length > 0 && keys.every(k => k) && keys.every(k => its.filter(i => i.groupKey === k).length === size),
+        'Every passage in it brings all ' + size + ' of its questions',
+        JSON.stringify(keys.map(k => k + ':' + its.filter(i => i.groupKey === k).length)));
+      ok(keys.every(k => its.filter(i => i.groupKey === k && i.hasAudio).length === 1),
+        'And exactly one question of each passage stores the recording',
+        JSON.stringify(keys.map(k => its.filter(i => i.groupKey === k && i.hasAudio).length)));
+
+      /* The two later questions have no recording of their own, and the screen
+         still has to be able to play the passage they are about — the server
+         resolves it from the group. Without this they were silent, which is why
+         they were never drawn. */
+      const later = its.find(i => !i.hasAudio);
+      const a = await fetch(BASE + '/api/drills/' + g.data.drillId + '/items/' + later.questionId + '/audio',
+        { headers: { Cookie: me.cookie() } });
+      ok(a.status === 200 && /audio/.test(a.headers.get('content-type') || ''),
+        'A question that does not store the passage can still play the one its group shares',
+        a.status + ' ' + a.headers.get('content-type'));
+
+      /* And its own question, read aloud, which is a second recording on the
+         same item: hearing it must not be the same fetch as hearing the passage. */
+      if (later.hasQuestionAudio) {
+        const qa = await fetch(BASE + '/api/drills/' + g.data.drillId + '/items/' + later.questionId + '/question-audio',
+          { headers: { Cookie: me.cookie() } });
+        const passage = await fetch(BASE + '/api/drills/' + g.data.drillId + '/items/' + later.questionId + '/audio',
+          { headers: { Cookie: me.cookie() } });
+        const qBytes = Buffer.from(await qa.arrayBuffer());
+        const pBytes = Buffer.from(await passage.arrayBuffer());
+        ok(qa.status === 200 && qBytes.length > 0 && !qBytes.equals(pBytes),
+          'The spoken question is a different recording from the passage, not the same bytes twice',
+          qa.status + ' question ' + qBytes.length + 'B, passage ' + pBytes.length + 'B');
+      }
+    } else {
+      ok(false, 'A Part G drill opens', String(g.status) + ' ' + JSON.stringify(g.data).slice(0, 120));
+    }
+  }
+
   /* Any part that IS blocked has to be blocked for a true reason. */
   for (const x of all.filter(v => v.blocked === 'needsAudio')) {
     const withAudio = await q.val(

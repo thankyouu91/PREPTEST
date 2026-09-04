@@ -381,6 +381,23 @@ router.get('/admin/questions', roles.requireCap('bank.read'), async (req, res) =
      to work through before a VPET test can be generated at all. */
   if (req.query.part === 'none') where.push('part IS NULL');
   else if (req.query.part) add('part = ?', str(req.query.part, 2).toUpperCase());
+  /* The two piles an operator has to work through on a part that groups, and
+     neither was findable before: an item in such a part belonging to no
+     recording, and a group missing one of its questions. Both are invisible on
+     a list sorted by id — the members sit pages apart — and both stop the
+     generator drawing the part at all. */
+  if (req.query.group === 'none') where.push("group_key IS NULL AND part IS NOT NULL AND status='active'");
+  else if (req.query.group === 'incomplete') {
+    /* `status='active'` on the row as well as on the count, or a group that was
+       withdrawn WHOLE — which is a perfectly good thing to do — reads as three
+       broken ones. Short means some of it is still in use and the rest is not. */
+    where.push(`group_key IS NOT NULL AND status='active' AND (
+      SELECT COUNT(*) FROM questions g WHERE g.group_key = questions.group_key AND g.status='active'
+    ) < ?`);
+    /* Three is the only group size any live blueprint publishes (VPET G). Taken
+       from the blueprint rather than written here the day a second one lands. */
+    args.push(groupSizeOf('vpet', 'G'));
+  }
 
   const limit = clamp(int(req.query.limit, 30), 1, 200);
   const offset = clamp(int(req.query.offset, 0), 0, 1e6);
@@ -390,7 +407,9 @@ router.get('/admin/questions', roles.requireCap('bank.read'), async (req, res) =
     `SELECT id, family_id, skill, level, type, part, group_key, ext_key, prompt, options_json, answer, explanation, tags_json, status, created_at,
             script, model_answer,
             audio_key, audio_bytes, audio_at,
-            question_audio_key, question_audio_bytes, question_audio_at
+            question_audio_key, question_audio_bytes, question_audio_at,
+            (SELECT COUNT(*) FROM questions g
+              WHERE g.group_key = questions.group_key AND g.status='active') group_count
        ${sql} ORDER BY id DESC LIMIT ? OFFSET ?`, ...args, limit, offset);
 
   res.json({
@@ -404,6 +423,12 @@ router.get('/admin/questions', roles.requireCap('bank.read'), async (req, res) =
          recording - or the other two look like items somebody forgot to
          attach audio to. */
       groupKey: r.group_key || null,
+      /* How many of the group are still in use, and how many the blueprint says
+         there should be. The screen needs both to say "2 of 3" on a group
+         somebody has broken; without them a broken group looks like an ordinary
+         item and is found by a candidate rather than by an operator. */
+      groupCount: r.group_key ? r.group_count : null,
+      groupNeed: groupSizeOf(r.family_id, r.part) > 1 ? groupSizeOf(r.family_id, r.part) : null,
       /* The authoring key — `vpet-g-07` — which is what every script, the item
          bank file and the audio manifest call this item. Not a secret, and it
          is the only name that lets an administrator (or a failing check) match
@@ -427,7 +452,66 @@ router.get('/admin/questions', roles.requireCap('bank.read'), async (req, res) =
   });
 });
 
-async function readQuestion(body) {
+/* ==================== One group is one unit ====================
+ *
+ * A part whose items share a recording — Part G today, TOEIC Part 3 and an
+ * IELTS passage tomorrow — is not a bag of questions that happen to be near
+ * each other. Three questions hang off one passage, and only the first of the
+ * three carries it. The generator and the redraw have known that since
+ * drawFromPool(); every path an operator reaches by HAND did not, so a group
+ * could be half-attached, half-removed, half-retired or half-relevelled, and
+ * nothing said a word. The result is a candidate asked about a passage that
+ * was never played — which reads as a content mistake for weeks.
+ *
+ * The three helpers below are what those paths now go through. They are
+ * deliberately keyed on `group_key` rather than on any screen's idea of a
+ * group: the key is the only thing the exam, the generator and the bank all
+ * already agree on.
+ */
+
+/** Every question sharing this key, in the order they were written. */
+async function groupMembers(groupKey, activeOnly) {
+  if (!groupKey) return [];
+  return await q.all(
+    'SELECT id, family_id, skill, level, part, status, group_key FROM questions WHERE group_key=?'
+      + (activeOnly ? " AND status='active'" : '') + ' ORDER BY id', groupKey);
+}
+
+/** How many questions the blueprint says share one recording in this part. 1 = not grouped. */
+function groupSizeOf(familyId, part) {
+  const sec = part ? EXAM_FORMATS.sectionOfPart(familyId, part) : null;
+  return sec && sec.sharesAudio ? (sec.group || 1) : 1;
+}
+
+/**
+ * Put the part's clock back on what the exam actually allows.
+ *
+ * `sections.seconds` is the only column that can hold a VPET window — Part A is
+ * 25 seconds an item, Part F 15 — and until now only the seed ever wrote it.
+ * A part added by hand kept the dialog's default of 30 minutes, and a generated
+ * one kept a rounded number of minutes, so a 152-second Part F ran for half an
+ * hour. The window belongs to the exam, not to whoever typed the part, so for a
+ * section carrying a blueprint letter it is derived here and re-derived
+ * whenever the item count changes. A section with no letter keeps the minutes
+ * it was given: nothing knows better than the operator what it should be.
+ */
+async function syncSectionWindow(sid) {
+  const s = await q.get('SELECT id, test_id, part FROM sections WHERE id=?', sid);
+  if (!s || !s.part) return null;
+  const t = await q.get('SELECT family_id FROM tests WHERE id=?', s.test_id);
+  const bp = t ? EXAM_FORMATS.sectionOfPart(t.family_id, s.part) : null;
+  if (!bp) return null;
+  const have = await q.val('SELECT COUNT(*) c FROM section_items WHERE section_id=?', sid);
+  /* An empty part is priced at the blueprint's own item count, so the number on
+     screen is the one the finished part will run for rather than zero. */
+  const seconds = EXAM_FORMATS.partSeconds(s.part, have || bp.items);
+  await q.run('UPDATE sections SET seconds=?, minutes=? WHERE id=?',
+    seconds, Math.round(seconds / 60), sid);
+  return seconds;
+}
+
+async function readQuestion(body, opts) {
+  opts = opts || {};
   const familyId = str(body.familyId, 20);
   const skill = str(body.skill, 20);
   const level = str(body.level, 5).toUpperCase();
@@ -502,6 +586,19 @@ async function readQuestion(body) {
         + options.length + '. The exam would never display the ' + (options.length > sec.choices
           ? 'extra one' + (options.length - sec.choices > 1 ? 's' : '') : 'missing one' + '') + '.' };
     }
+    /* And a part whose questions share one recording is written a group at a
+       time, or not at all. `opts.grouped` is how the two callers that CAN mint
+       a key say so: the builder's composer, which writes the whole group in one
+       request, and an edit to an item that already belongs to one. Everything
+       else — the bank screen's Add, the CSV importer, the JSON tab — would
+       produce a question belonging to no recording, which no screen shows and
+       no draw can use. It was accepted until now, and the item looked finished. */
+    const size = groupSizeOf(familyId, part);
+    if (size > 1 && !opts.grouped) {
+      return { err: 'Part ' + part + ' asks ' + size + ' questions about one recording, so its items '
+        + 'are written ' + size + ' at a time in the test builder. One on its own would belong to no '
+        + 'recording: open the paper, add Part ' + part + ', and type the ' + size + ' questions there.' };
+    }
   }
 
   return {
@@ -526,16 +623,41 @@ router.post('/admin/questions', roles.requireCap('bank.write'), async (req, res)
 
 router.put('/admin/questions/:id', roles.requireCap('bank.write'), async (req, res) => {
   const id = int(req.params.id, 0);
-  if (!await q.val('SELECT 1 FROM questions WHERE id=?', id)) return res.status(404).json({ error: 'No such question.' });
-  const d = await readQuestion(req.body || {});
+  const before = await q.get('SELECT id, group_key, family_id, skill, level, part FROM questions WHERE id=?', id);
+  if (!before) return res.status(404).json({ error: 'No such question.' });
+  /* An item that ALREADY belongs to a group may be edited: the refusal in
+     readQuestion() is about creating a lone one, not about fixing the wording
+     of one that exists. */
+  const d = await readQuestion(req.body || {}, { grouped: !!before.group_key });
   if (d.err) return bad(res, d.err);
-  await q.run(`UPDATE questions SET family_id=?, skill=?, level=?, type=?, part=?, prompt=?, options_json=?, answer=?, explanation=?, tags_json=?,
-                                    script=?, model_answer=?
-          WHERE id=?`,
-    d.familyId, d.skill, d.level, d.type, d.part, d.prompt, JSON.stringify(d.options), d.answer,
-    d.explanation, JSON.stringify(d.tags), d.script, d.modelAnswer, id);
-  await audit(req, 'question.update', 'questions/' + id, {});
-  res.json({ ok: true });
+
+  /* Four fields decide which pool a question sits in, and a group sits in one
+     pool or it is not a group. Changing the level of one member left g-b1-1
+     holding two B1 questions and one B2: a strict-level draw then took two
+     thirds of a passage's questions, and drawFromPool() skipped the group
+     entirely, reporting a shortage the bank did not have. So a change to any of
+     the four applies to every member, in one transaction, and the answer says
+     how many rows moved. The wording, options, transcript and model answer stay
+     the item's own. */
+  const moved = ['family_id', 'skill', 'level', 'part'].some((col, i) =>
+    before[col] !== [d.familyId, d.skill, d.level, d.part][i]);
+  const members = moved ? await groupMembers(before.group_key) : [];
+
+  await tx(async () => {
+    await q.run(`UPDATE questions SET family_id=?, skill=?, level=?, type=?, part=?, prompt=?, options_json=?, answer=?, explanation=?, tags_json=?,
+                                      script=?, model_answer=?
+            WHERE id=?`,
+      d.familyId, d.skill, d.level, d.type, d.part, d.prompt, JSON.stringify(d.options), d.answer,
+      d.explanation, JSON.stringify(d.tags), d.script, d.modelAnswer, id);
+    for (const m of members) {
+      if (m.id === id) continue;
+      await q.run('UPDATE questions SET family_id=?, skill=?, level=?, part=? WHERE id=?',
+        d.familyId, d.skill, d.level, d.part, m.id);
+    }
+  });
+  await audit(req, 'question.update', 'questions/' + id,
+    members.length > 1 ? { group: before.group_key, alsoMoved: members.length - 1 } : {});
+  res.json({ ok: true, group: before.group_key || null, groupMoved: Math.max(0, members.length - 1) });
 });
 
 /** Withdraw or reinstate a question (never a hard delete, so old tests keep their content) */
@@ -543,10 +665,22 @@ router.post('/admin/questions/:id/status', roles.requireCap('bank.publish'), asy
   const id = int(req.params.id, 0);
   const status = str(req.body && req.body.status, 20);
   if (!['active', 'retired'].includes(status)) return bad(res, 'That status is not valid.');
-  const r = await q.run('UPDATE questions SET status=? WHERE id=?', status, id);
-  if (!r.changes) return res.status(404).json({ error: 'No such question.' });
-  await audit(req, 'question.status', 'questions/' + id, { status });
-  res.json({ ok: true });
+  const row = await q.get('SELECT id, group_key FROM questions WHERE id=?', id);
+  if (!row) return res.status(404).json({ error: 'No such question.' });
+
+  /* Withdrawing one question of a group leaves the other two asking about a
+     recording the draw can no longer supply in full — measured: g-b1-1 went to
+     two active members, and a part needing three either skipped the group or
+     came up an item short. A group is withdrawn and reinstated together, and
+     the answer says how many so the screen can say it too. */
+  const members = row.group_key ? await groupMembers(row.group_key) : [];
+  const ids = members.length ? members.map(m => m.id) : [id];
+  await tx(async () => {
+    for (const qid of ids) await q.run('UPDATE questions SET status=? WHERE id=?', status, qid);
+  });
+  await audit(req, 'question.status', 'questions/' + id,
+    { status, group: row.group_key || null, changed: ids.length });
+  res.json({ ok: true, changed: ids.length, group: row.group_key || null });
 });
 
 /* ==================== Question audio (VPET parts E, F, G, H, J) ====================
@@ -678,6 +812,18 @@ router.post('/admin/questions/bulk', roles.requireCap('bank.write'), async (req,
     const d = await readQuestion(raw || {});
     if (d.err) errors.push({ row: i + 1, error: d.err }); else ok.push(d);
   }
+
+  /* Check without writing. The bank screen's CSV preview carries its own copy of
+     the rules — which family ids exist, which levels, that a typed item needs a
+     key — and a second copy of a rule is a copy that drifts: the preview passed
+     rows the server then refused, and the operator saw "Imported 40 items. The
+     server refused 7" with no way to learn which seven. The preview asks here
+     instead, so what it shows is what will happen. Nothing is inserted, so this
+     is also how a check can validate the sample file the screen hands out
+     without leaving four rows in the bank. */
+  if (req.body.dryRun === true || req.body.dryRun === 'true') {
+    return res.json({ dryRun: true, valid: ok.length, failed: errors.length, errors: errors.slice(0, 100) });
+  }
   if (!ok.length) return res.status(400).json({ error: 'No row was valid.', errors });
 
   /* Through `q` rather than a reused prepared statement off the raw SQLite
@@ -701,18 +847,83 @@ router.post('/admin/questions/bulk', roles.requireCap('bank.write'), async (req,
 
 /** A sample CSV file for bulk question import.
  *  Served from the server (rather than built as a blob on the client) so the CSP stays strict. */
+/**
+ * The sample CSV, generated from the blueprint rather than typed out here.
+ *
+ * The old file was four handwritten lines and it did not survive its own
+ * importer: one row was a typed item with no `dap_an`, which the server refuses
+ * (rightly — a keyless gap item marks every candidate wrong), and two rows left
+ * `phan_thi` empty on a VPET exam, so they landed in the bank labelled "No
+ * part", belonging to no pool and drawable by nothing. An operator's first act
+ * on this screen was to download a file that fails.
+ *
+ * So each row is now built from the part table: the right skill, the right item
+ * type, the right number of options for that part, and a key where the part
+ * takes one. Parts whose questions share a recording are left out and named in
+ * the trailing note — they are written a group at a time in the builder, and a
+ * row here would only be refused. scripts/test-admin.mjs sends this file back
+ * through the importer's own dry run and requires every row to pass.
+ */
 router.get('/admin/questions/template.csv', roles.requireCap('bank.read'), async (req, res) => {
-  const fam = await q.get('SELECT id FROM families ORDER BY sort LIMIT 1');
-  const famId = fam ? fam.id : 'ielts';
-  /* The phan_thi column is blank for an exam with no part table; for VPET it is required,
-     because an item with no letter belongs to no part's pool at all. */
-  const rows = [
-    'ky_thi,ky_nang,do_kho,dang_cau,phan_thi,noi_dung,phuong_an_1,phuong_an_2,phuong_an_3,phuong_an_4,dap_an,giai_thich',
-    `${famId},reading,B1,mcq,,"Choose the word closest in meaning to ""rapid"".",quick,slow,heavy,quiet,quick,"Rapid means fast."`,
-    `${famId},listening,B2,gap,,"Listen and type the missing number: The train leaves at ____.",,,,,,`,
-    'vpet,reading,B1,mcq,C,"Read the passage and choose the correct statement.",A,B,C,D,A,"A VPET item must name its part: C is Reading Comprehension."',
-    'vpet,writing,B1,gap,A,"Type the one missing word: She has lived here ____ 2019.",,,,,since,"Part A is Sentence Completion."'
-  ];
+  const fam = await q.get("SELECT id FROM families WHERE status='ready' ORDER BY sort LIMIT 1")
+    || await q.get('SELECT id FROM families ORDER BY sort LIMIT 1');
+  const famId = fam ? fam.id : 'vpet';
+  const csv = v => {
+    const s = String(v == null ? '' : v);
+    return /[",\r\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+  };
+  const header = ['ky_thi', 'ky_nang', 'do_kho', 'dang_cau', 'phan_thi', 'noi_dung',
+    'phuong_an_1', 'phuong_an_2', 'phuong_an_3', 'phuong_an_4', 'dap_an', 'giai_thich',
+    'loi_thoai', 'dap_an_mau'];
+
+  /* One example per part, in blueprint order. The example text has to clear the
+     server's own floors — five characters of prompt, a key on a typed item, the
+     part's exact option count — because a template that needs editing before it
+     imports teaches the operator nothing about the format. */
+  const EXAMPLES = {
+    gap: { prompt: 'Type the one missing word: She has lived here ____ 2019.', answer: 'since',
+      why: 'One word only, and only one word can fill it.' },
+    mcq: { prompt: 'Read the text, then choose the statement it supports.',
+      why: 'Every wrong option reuses words from the text but gets the relation wrong.' },
+    essay: { prompt: 'Reply to this e-mail in about 150 words. Stay formal, apologise for the delay, '
+        + 'give a new date, and offer one alternative.',
+      why: 'Marked on task, tone and accuracy — the prompt has to name all three.' },
+    speaking: { prompt: 'You have to tell a colleague their report is late. Be polite but clear, '
+        + 'say what is missing, and agree a new deadline.',
+      why: 'A situation with a difficulty in it; without one there is nothing to measure but fluency.' }
+  };
+
+  const rows = [header.join(',')];
+  const skipped = [];
+  for (const letter of EXAM_FORMATS.partsOf(famId)) {
+    const sec = EXAM_FORMATS.sectionOfPart(famId, letter) || {};
+    if (groupSizeOf(famId, letter) > 1) { skipped.push(letter); continue; }
+    const type = (sec.types && sec.types[0]) || 'mcq';
+    const ex = EXAMPLES[type] || EXAMPLES.mcq;
+    const opts = ['', '', '', ''];
+    let answer = '';
+    if (type === 'mcq') {
+      const n = sec.choices || 4;
+      const words = ['The first option', 'The second option', 'The third option', 'The fourth option'];
+      for (let i = 0; i < n; i++) opts[i] = words[i];
+      answer = words[0];
+    } else if (type === 'gap') {
+      answer = ex.answer || 'since';
+    }
+    rows.push([famId, sec.skill || 'reading', 'B1', type, letter, ex.prompt,
+      ...opts, answer, 'Part ' + letter + ' — ' + (sec.name || '') + '. ' + ex.why,
+      /* The transcript column, which the file never had: a heard item without
+         one is marked against nothing, and the operator had to reopen every
+         imported row to type it. Empty on the parts that are not heard. */
+      sec.needsAudio ? 'What the recording says, word for word.' : '',
+      ''].map(csv).join(','));
+  }
+  /* The parts left out are NOT written into the file as a note. This parser has
+     no comment syntax, so a note line comes back as a data row with one cell and
+     is rejected — and the check that keeps this file importable would fail on
+     the file's own explanation of itself. The screen says it instead, where it
+     can also link to the builder. */
+  res.setHeader('X-Parts-Not-Importable', skipped.join(','));
   res.setHeader('Content-Type', 'text/csv; charset=utf-8');
   res.setHeader('Content-Disposition', 'attachment; filename="mau-cau-hoi.csv"');
   res.send('﻿' + rows.join('\r\n'));   // a BOM so Excel opens the accents correctly
@@ -851,15 +1062,20 @@ async function testDetail(id) {
   if (!t) return null;
   const sections = await Promise.all((await q.all('SELECT * FROM sections WHERE test_id=? ORDER BY sort, id', id)).map(async s => {
     const items = await q.all(
-      `SELECT si.id item_id, si.sort, qs.id, qs.prompt, qs.type, qs.level, qs.skill, qs.status, qs.part
+      `SELECT si.id item_id, si.sort, qs.id, qs.prompt, qs.type, qs.level, qs.skill, qs.status, qs.part,
+              qs.group_key, qs.audio_key IS NOT NULL has_audio, qs.question_audio_key IS NOT NULL has_qaudio
          FROM section_items si JOIN questions qs ON qs.id = si.question_id
         WHERE si.section_id=? ORDER BY si.sort, si.id`, s.id);
     return {
       id: s.id, name: s.name, part: s.part || null,
-      skill: s.skill, type: s.type, minutes: s.minutes, sort: s.sort,
+      skill: s.skill, type: s.type, minutes: s.minutes, seconds: s.seconds || null, sort: s.sort,
       items: items.map(i => ({
         itemId: i.item_id, questionId: i.id, prompt: i.prompt,
-        type: i.type, level: i.level, skill: i.skill, status: i.status, part: i.part || null
+        type: i.type, level: i.level, skill: i.skill, status: i.status, part: i.part || null,
+        /* So the builder can draw the group as a group, warn before removing one
+           of them, and show which item of the three carries the recording. */
+        groupKey: i.group_key || null,
+        hasAudio: !!i.has_audio, hasQuestionAudio: !!i.has_qaudio
       }))
     };
   }));
@@ -1039,7 +1255,12 @@ async function readInlineQuestions(list, ctx) {
       tags: raw.tags,
       script: raw.script,
       modelAnswer: raw.modelAnswer
-    });
+    /* This IS the caller allowed to write into a part whose questions share a
+       recording: the batch below is checked to divide by the group size and
+       writeInlineQuestions() mints the key that ties the members together. The
+       refusal in readQuestion() is for every other way in, where the result
+       would be a question belonging to no recording. */
+    }, { grouped: true });
     if (d.err) return { err: 'Item ' + (i + 1) + ': ' + d.err, index: i };
     /* readQuestion() refuses a keyless gap item for every caller now, so this
        is unreachable and kept only to say which ITEM of the batch was at fault:
@@ -1188,9 +1409,13 @@ router.post('/admin/tests/:id/sections', roles.requireCap('tests.write'), async 
     if (batch.rows.length) questionIds = await writeInlineQuestions(batch.rows, sid, req.admin.id);
     await q.run('UPDATE tests SET updated_at=? WHERE id=?', nowISO(), id);
   });
+  /* A lettered part runs the exam's window, not the dialog's default — see
+     syncSectionWindow(). Outside the transaction because it reads back the item
+     count the transaction just wrote. */
+  const seconds = await syncSectionWindow(sid);
   await audit(req, 'section.create', 'tests/' + id,
-    { section: name, part: part || null, written: questionIds.length });
-  res.status(201).json({ id: sid, questionIds });
+    { section: name, part: part || null, written: questionIds.length, seconds });
+  res.status(201).json({ id: sid, questionIds, seconds });
 });
 
 /** Write brand-new items into a part that already exists. */
@@ -1215,6 +1440,7 @@ router.post('/admin/sections/:sid/questions', roles.requireCap('tests.write'), a
     questionIds = await writeInlineQuestions(batch.rows, sid, req.admin.id);
     await q.run('UPDATE tests SET updated_at=? WHERE id=?', nowISO(), s.test_id);
   });
+  await syncSectionWindow(sid);
   await audit(req, 'section.questions.write', 'sections/' + sid,
     { written: questionIds.length, part: s.part || null });
   res.status(201).json({ added: questionIds.length, questionIds });
@@ -1224,12 +1450,37 @@ router.put('/admin/sections/:sid', roles.requireCap('tests.write'), async (req, 
   const sid = int(req.params.sid, 0);
   const s = await q.get('SELECT * FROM sections WHERE id=?', sid);
   if (!s) return res.status(404).json({ error: 'No such part.' });
+  const test = await q.get('SELECT family_id FROM tests WHERE id=?', s.test_id);
   const b = req.body || {};
-  await q.run('UPDATE sections SET name=?, type=?, minutes=? WHERE id=?',
-    str(b.name, 100) || s.name, str(b.type, 100) || s.type, clamp(int(b.minutes, s.minutes), 0, 600), sid);
+
+  /* The letter was settable when the part was created and never again, so a
+     part added under the wrong one — easy, the dialog lists ten — had to be
+     deleted and rebuilt, taking its items with it. It is validated exactly as
+     it is on create, and `part: ''` deliberately clears it. */
+  let part = s.part;
+  if (b.part !== undefined) {
+    const allowed = EXAM_FORMATS.partsOf(test ? test.family_id : '');
+    part = str(b.part, 2).toUpperCase();
+    if (part && !allowed.includes(part)) {
+      return bad(res, 'That part is not valid. This exam has the parts: ' + (allowed.join(', ') || 'none') + '.');
+    }
+    /* Items already in the part belong to the letter they were filed under. Moving
+       the part under them would leave a Part F section holding Part E questions,
+       which is the state the picker fix exists to prevent. */
+    const held = await q.val('SELECT COUNT(*) c FROM section_items WHERE section_id=?', sid);
+    if (held && part !== s.part) {
+      return bad(res, 'This part already holds ' + held + ' items filed under '
+        + (s.part ? 'Part ' + s.part : 'no part') + '. Remove them before changing the letter.');
+    }
+  }
+
+  await q.run('UPDATE sections SET name=?, type=?, minutes=?, part=? WHERE id=?',
+    str(b.name, 100) || s.name, str(b.type, 100) || s.type,
+    clamp(int(b.minutes, s.minutes), 0, 600), part || null, sid);
   await q.run('UPDATE tests SET updated_at=? WHERE id=?', nowISO(), s.test_id);
-  await audit(req, 'section.update', 'sections/' + sid, {});
-  res.json({ ok: true });
+  await syncSectionWindow(sid);
+  await audit(req, 'section.update', 'sections/' + sid, part !== s.part ? { part } : {});
+  res.json({ ok: true, part: part || null });
 });
 
 router.delete('/admin/sections/:sid', roles.requireCap('tests.write'), async (req, res) => {
@@ -1252,34 +1503,86 @@ router.post('/admin/sections/:sid/items', roles.requireCap('tests.write'), async
   if (!ids.length) return bad(res, 'No questions were chosen.');
 
   const test = await q.get('SELECT family_id FROM tests WHERE id=?', s.test_id);
-  let added = 0, skipped = 0;
+
+  /* Whole groups. Choosing one question of a group used to attach exactly that
+     one: measured, a single non-first member of g-b1-1 went in alone, and the
+     part then asked about a passage it had no way to play. The other two are
+     pulled in here, in their own order, before anything is checked — so the
+     operator picks a question and gets the recording it belongs to. */
+  const wanted = [];
+  const seen = new Set();
+  for (const qid of ids) {
+    const row = await q.get('SELECT id, group_key FROM questions WHERE id=?', qid);
+    const members = row && row.group_key ? await groupMembers(row.group_key, true) : [];
+    for (const m of (members.length ? members.map(x => x.id) : [qid])) {
+      if (!seen.has(m)) { seen.add(m); wanted.push(m); }
+    }
+  }
+
+  let added = 0;
+  /* Why each one did not go in. The route answered `{added: 0, skipped: 1}` and
+     nothing else, so an operator who picked a Part E item for a Part F section —
+     which the picker offered them — was told a number and left to guess. */
+  const skippedItems = [];
   await tx(async () => {
     let sort = (await q.val('SELECT COALESCE(MAX(sort),-1) s FROM section_items WHERE section_id=?', sid)) + 1;
-    for (const qid of ids) {
-      const row = await q.get("SELECT family_id, skill, part FROM questions WHERE id=? AND status='active'", qid);
-      /* Only items from the same exam and the same skill as the part — and,
-         where both carry a letter, the same letter. Skill cannot tell H from
-         J, and the picker's filter is a courtesy the API did not repeat. */
-      if (!row || row.family_id !== test.family_id || row.skill !== s.skill
-          || (s.part && row.part && row.part !== s.part)) { skipped++; continue; }
+    for (const qid of wanted) {
+      const row = await q.get('SELECT id, family_id, skill, part, status, prompt FROM questions WHERE id=?', qid);
+      const why =
+        !row ? 'no such question'
+        : row.status !== 'active' ? 'withdrawn from the bank'
+        : row.family_id !== test.family_id ? 'belongs to another exam'
+        : row.skill !== s.skill ? 'is ' + row.skill + ', and this part is ' + s.skill
+        : (s.part && row.part && row.part !== s.part)
+            ? 'is filed under Part ' + row.part + ', and this part is Part ' + s.part
+        : (s.part && !row.part) ? 'has no part letter, so it belongs to no pool'
+        : null;
+      if (why) { skippedItems.push({ id: qid, why, prompt: row ? String(row.prompt).slice(0, 80) : '' }); continue; }
       const r = await q.run('INSERT OR IGNORE INTO section_items (section_id,question_id,sort) VALUES (?,?,?)', sid, qid, sort++);
-      if (r.changes) added++; else skipped++;
+      if (r.changes) added++;
+      else skippedItems.push({ id: qid, why: 'already in this part', prompt: String(row.prompt).slice(0, 80) });
     }
     await q.run('UPDATE tests SET updated_at=? WHERE id=?', nowISO(), s.test_id);
   });
-  await audit(req, 'section.items.add', 'sections/' + sid, { added, skipped });
-  res.json({ added, skipped });
+  await syncSectionWindow(sid);
+  await audit(req, 'section.items.add', 'sections/' + sid, { added, skipped: skippedItems.length });
+  res.json({
+    added, skipped: skippedItems.length, skippedItems,
+    /* How many arrived because they share a recording with something chosen. */
+    pulledIn: Math.max(0, wanted.length - ids.length)
+  });
 });
 
 router.delete('/admin/items/:itemId', roles.requireCap('tests.write'), async (req, res) => {
   const itemId = int(req.params.itemId, 0);
-  const row = await q.get(`SELECT si.id, s.test_id FROM section_items si
-                       JOIN sections s ON s.id = si.section_id WHERE si.id=?`, itemId);
+  const row = await q.get(`SELECT si.id, si.section_id, s.test_id, qu.group_key
+                             FROM section_items si
+                             JOIN sections s ON s.id = si.section_id
+                             JOIN questions qu ON qu.id = si.question_id
+                            WHERE si.id=?`, itemId);
   if (!row) return res.status(404).json({ error: 'No such item in this part.' });
-  await q.run('DELETE FROM section_items WHERE id=?', itemId);
-  await q.run('UPDATE tests SET updated_at=? WHERE id=?', nowISO(), row.test_id);
-  await audit(req, 'section.items.remove', 'items/' + itemId, {});
-  res.json({ ok: true });
+
+  /* The other half of "whole groups". Removing the middle question of a group
+     left the passage on one item, a question about it on another, and a gap
+     between them: the recording still played, in the middle of the group, and
+     the last question asked about something the candidate had heard two items
+     ago. The whole group leaves together. */
+  let removed = 1;
+  await tx(async () => {
+    if (row.group_key) {
+      const r = await q.run(
+        `DELETE FROM section_items WHERE section_id=? AND question_id IN
+           (SELECT id FROM questions WHERE group_key=?)`, row.section_id, row.group_key);
+      removed = r.changes || 1;
+    } else {
+      await q.run('DELETE FROM section_items WHERE id=?', itemId);
+    }
+    await q.run('UPDATE tests SET updated_at=? WHERE id=?', nowISO(), row.test_id);
+  });
+  await syncSectionWindow(row.section_id);
+  await audit(req, 'section.items.remove', 'items/' + itemId,
+    row.group_key ? { group: row.group_key, removed } : {});
+  res.json({ ok: true, removed, group: row.group_key || null });
 });
 
 /**
@@ -1399,6 +1702,7 @@ router.post('/admin/tests/generate', roles.requireCap('tests.write'), async (req
     ' generated ' + level + ' ' + new Date().toISOString().slice(0, 10));
   let id = slug(familyId + '-auto-' + level + '-' + Date.now().toString(36));
   const at = nowISO();
+  const madeSections = [];
 
   await tx(async () => {
     await q.run(`INSERT INTO tests (id,family_id,title,level,duration_min,scoring,guide_json,status,build_mode,created_at,updated_at,created_by)
@@ -1418,8 +1722,16 @@ router.post('/admin/tests/generate', roles.requireCap('tests.write'), async (req
       for (const [j, qid] of p.ids.entries()) {
         await q.run('INSERT OR IGNORE INTO section_items (section_id,question_id,sort) VALUES (?,?,?)', sid, qid, j);
       }
+      madeSections.push(sid);
     }
   });
+
+  /* Every generated part gets the exam's window in seconds, not the blueprint's
+     minutes rounded to the nearest one. Ten roundings do not cancel: Part A's
+     250 seconds became 4 minutes and Part F's 152 became 3, and a generated
+     paper ran nearly four minutes long. */
+  for (const sid of madeSections) await syncSectionWindow(sid);
+  await q.run('UPDATE tests SET duration_min=(SELECT COALESCE(SUM(minutes),0) FROM sections WHERE test_id=?) WHERE id=?', id, id);
 
   await audit(req, 'test.generate', 'tests/' + id, { familyId, level, sections: bp.length, items: usedIds.size });
   res.status(201).json(await testDetail(id));
@@ -1463,6 +1775,7 @@ router.post('/admin/sections/:sid/reshuffle', roles.requireCap('tests.write'), a
     }
     await q.run('UPDATE tests SET updated_at=? WHERE id=?', nowISO(), s.test_id);
   });
+  await syncSectionWindow(sid);
   await audit(req, 'section.reshuffle', 'sections/' + sid, { count: want });
   res.json({ ok: true, count: want });
 });
@@ -2700,6 +3013,10 @@ router.get('/catalog', async (req, res) => {
         types: sec.types || [], type: sec.type || '',
         choices: sec.choices || null, minWords: sec.minWords || null,
         needsAudio: !!sec.needsAudio,
+        /* The window this part runs for, in seconds, so a screen adding one by
+           hand can show what the exam allows instead of asking for a number of
+           minutes nobody knows. Minutes is the rounding; seconds is the fact. */
+        seconds: sec.seconds || null, minutes: sec.minutes || null,
         group: sec.group || 1, sharesAudio: !!sec.sharesAudio
       };
     })

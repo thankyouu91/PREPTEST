@@ -51,6 +51,14 @@
           <select id="f-part" class="input w-auto py-2.5" hidden>
             <option value="">Any part</option>
           </select>
+          <!-- Only shown for an exam that has a part where questions share a
+               recording: everywhere else "grouping" means nothing. -->
+          <label class="sr-only" for="f-group">Filter by grouping</label>
+          <select id="f-group" class="input w-auto py-2.5" hidden>
+            <option value="">Any grouping</option>
+            <option value="incomplete">Groups missing a question</option>
+            <option value="none">Not in a group</option>
+          </select>
           <label class="sr-only" for="f-status">Filter by status</label>
           <select id="f-status" class="input w-auto py-2.5">
             <option value="active">In use</option>
@@ -82,7 +90,16 @@
   let families = [];
   try { families = (await AD.get('/catalog')).families; } catch (e) {}
 
-  const state = { family: '', skill: '', level: '', type: '', part: '', status: 'active', q: '', offset: 0, limit: 25 };
+  const state = { family: '', skill: '', level: '', type: '', part: '', group: '', status: 'active', q: '', offset: 0, limit: 25 };
+
+  /** How many questions share one recording in this part — 1 when they do not. */
+  const groupSizeOf = (famId, part) => {
+    const p = (((families.find(f => f.id === famId) || {}).parts) || []).find(x => x.part === part);
+    return p && p.sharesAudio ? (p.group || 1) : 1;
+  };
+  /** Does this exam have any part at all whose questions share a recording? */
+  const famGroups = famId =>
+    (((families.find(f => f.id === famId) || {}).parts) || []).filter(p => p.sharesAudio && (p.group || 1) > 1);
 
   AD.qs('#fam-chips').innerHTML =
     '<button type="button" class="chip shrink-0" data-f="" aria-pressed="true">Any exam</button>' +
@@ -91,8 +108,13 @@
      exam", VPET's letter A and another family's letter A are not the same thing. */
   function renderPartFilter() {
     const sel = AD.qs('#f-part');
+    const grp = AD.qs('#f-group');
     const fam = families.find(f => f.id === state.family);
     const list = (fam && fam.parts) || [];
+    /* The grouping filter follows the exam, not the part: an operator hunting a
+       broken group does not yet know which part it is in. */
+    grp.hidden = !famGroups(state.family).length;
+    if (grp.hidden && state.group) state.group = '';
     if (!list.length) {
       sel.hidden = true;
       if (state.part) { state.part = ''; }
@@ -113,7 +135,7 @@
     renderPartFilter();
     load();
   });
-  ['skill', 'level', 'type', 'part', 'status'].forEach(k => AD.qs('#f-' + k).addEventListener('change', e => {
+  ['skill', 'level', 'type', 'part', 'group', 'status'].forEach(k => AD.qs('#f-' + k).addEventListener('change', e => {
     state[k] = e.target.value; state.offset = 0; load();
   }));
   renderPartFilter();
@@ -125,7 +147,7 @@
 
   async function load() {
     const p = new URLSearchParams({ limit: state.limit, offset: state.offset });
-    ['family', 'skill', 'level', 'type', 'part', 'status', 'q'].forEach(k => { if (state[k]) p.set(k, state[k]); });
+    ['family', 'skill', 'level', 'type', 'part', 'group', 'status', 'q'].forEach(k => { if (state[k]) p.set(k, state[k]); });
     try {
       const r = await AD.get('/admin/questions?' + p);
       AD.qs('#count').textContent = r.total
@@ -278,6 +300,15 @@
           /* A heard item with nothing for the marker to compare against is
              marked blind; say so where the operator can fix it. */
           (NEEDS_AUDIO.includes(i.skill) && !i.script ? '<span class="badge badge-hl">No transcript</span>' : '') +
+          /* Which recording this question belongs to, and whether the group is
+             whole. Three questions hang off one passage and they sit pages apart
+             on a list ordered by id, so a group missing a member looked like an
+             ordinary item — and a part that cannot be drawn looked like a bank
+             that was full. */
+          (i.groupKey
+            ? '<span class="badge ' + (i.groupNeed && i.groupCount !== i.groupNeed ? 'badge-hl' : 'badge-muted') + '">' +
+                AD.esc(i.groupKey) + ' · ' + i.groupCount + (i.groupNeed ? ' of ' + i.groupNeed : '') + '</span>'
+            : (i.groupNeed ? '<span class="badge badge-hl">Not in a group</span>' : '')) +
         '</span>' +
         '<span class="block text-[14px] leading-snug">' + AD.esc(i.prompt) + '</span>' +
         (i.options && i.options.length
@@ -317,7 +348,7 @@
            set here to match rather than left for the operator to guess. */
         '<div id="q-part-box" hidden><label class="label" for="q-part">Part</label>' +
           '<select class="input" id="q-part"></select>' +
-          '<p class="help mt-1.5">An item with no part belongs to no pool, so generation can never draw it.</p></div>' +
+          '<p class="help mt-1.5" id="q-part-help">An item with no part belongs to no pool, so generation can never draw it.</p></div>' +
         '<div><label class="label" for="q-prompt">Question text</label>' +
           '<textarea class="input" id="q-prompt" rows="3">' + AD.esc(d.prompt) + '</textarea></div>' +
         '<div id="q-mcq">' +
@@ -430,6 +461,25 @@
       const heard = NEEDS_AUDIO.includes(skillEl.value);
       mm.el.querySelector('#q-script-box').hidden = !heard;
       mm.el.querySelector('#q-model-box').hidden = !(heard && !partBox.hidden && partEl.value === 'G');
+
+      /* A part whose questions share one recording is authored a group at a
+         time, in the builder, because the group is what carries the recording.
+         Written here, one item became a group of one: no passage of its own, no
+         siblings, drawable by nothing, and it looked finished. The server
+         refuses it now — this says so before the operator types the question
+         rather than after. An item that ALREADY belongs to a group is being
+         edited, not created, and is left alone. */
+      const size = partBox.hidden ? 1 : groupSizeOf(famEl.value, partEl.value);
+      const lone = size > 1 && !(item && item.groupKey);
+      const help = mm.el.querySelector('#q-part-help');
+      help.textContent = lone
+        ? 'Part ' + partEl.value + ' asks ' + size + ' questions about one recording, so its items are '
+          + 'written ' + size + ' at a time in the test builder — open the paper, add the part, and type them there.'
+        : 'An item with no part belongs to no pool, so generation can never draw it.';
+      help.classList.toggle('text-danger', lone);
+      const save = mm.el.querySelector('#q-save');
+      save.disabled = lone;
+      save.title = lone ? 'Write Part ' + partEl.value + ' in the test builder' : '';
     }
     renderParts(); renderOptions(); syncType();
     typeEl.addEventListener('change', syncType);
@@ -503,7 +553,13 @@
   }
 
   const CSV_COLS = ['ky_thi','ky_nang','do_kho','dang_cau','phan_thi','noi_dung',
-                    'phuong_an_1','phuong_an_2','phuong_an_3','phuong_an_4','dap_an','giai_thich'];
+                    'phuong_an_1','phuong_an_2','phuong_an_3','phuong_an_4','dap_an','giai_thich',
+                    /* What the recording says, and Part G's short model reply.
+                       Both are read by the marker and by nothing else, and
+                       without a column for them every imported listening or
+                       speaking item had to be reopened one at a time to have
+                       them typed in. */
+                    'loi_thoai','dap_an_mau'];
   const SKILL_ALIAS = { nghe:'listening', doc:'reading', viet:'writing', noi:'speaking',
                         listening:'listening', reading:'reading', writing:'writing', speaking:'speaking' };
   const TYPE_ALIAS = { 'trac nghiem':'mcq', 'dien tu':'gap', 'tu luan':'essay', 'ghi am':'speaking',
@@ -554,7 +610,9 @@
               /* mcq and gap both carry a key; an essay or a spoken answer goes
                  to the rubric and genuinely has none. */
               answer: type === 'mcq' || type === 'gap' ? answer : '',
-              explanation: get('giai_thich'), tags: ['csv import'] }
+              explanation: get('giai_thich'),
+              script: get('loi_thoai'), modelAnswer: get('dap_an_mau'),
+              tags: ['csv import'] }
     };
   }
 
@@ -576,9 +634,19 @@
       /* ----- Tab CSV ----- */
       '<div role="tabpanel" id="pn-csv" aria-labelledby="tb-csv" class="grid gap-4 mt-5">' +
         '<div class="card bg-brand-soft border-0 p-4">' +
-          '<p class="text-[13px] leading-relaxed">Columns, in order: <b>ky_thi, ky_nang, do_kho, dang_cau, phan_thi, noi_dung, phuong_an_1..4, dap_an, giai_thich</b>. ' +
+          '<p class="text-[13px] leading-relaxed">Columns, in order: <b>' + CSV_COLS.join(', ') + '</b>. ' +
           'The <b>phan_thi</b> column is the part letter (VPET: A–J); leave it blank for an exam with no part table. ' +
-            'The skill column accepts Vietnamese (nghe, đọc, viết, nói) as well as English.</p>' +
+            'The skill column accepts Vietnamese (nghe, đọc, viết, nói) as well as English. ' +
+            '<b>loi_thoai</b> is what the recording says — the marker reads it and the candidate never sees it — ' +
+            'and <b>dap_an_mau</b> is a short model reply for the parts that take one.</p>' +
+          /* Named here rather than in the file: the parser has no comment
+             syntax, so a note inside the CSV comes back as a rejected row. */
+          (famGroups(state.family || (families[0] || {}).id).length
+            ? '<p class="text-[13px] leading-relaxed mt-2">Part ' +
+              famGroups(state.family || (families[0] || {}).id).map(p2 => AD.esc(p2.part)).join(', ') +
+              ' cannot be imported here: its questions share one recording and are written together in the ' +
+              '<a class="underline font-semibold" href="/admin/de-thi/">test builder</a>.</p>'
+            : '') +
           '<a href="/api/admin/questions/template.csv" class="btn btn-soft btn-sm mt-3">' +
             AD.icon('download', 'w-4 h-4') + 'Download a sample CSV</a>' +
         '</div>' +
@@ -630,7 +698,7 @@
     });
 
     let pending = [];
-    function preview() {
+    async function preview() {
       clearMsg();
       pending = [];
       const raw = mm.el.querySelector('#c-text').value.trim();
@@ -645,10 +713,14 @@
       if (missing.length) { box.innerHTML = ''; showErr('Missing required columns: ' + missing.join(', ')); return; }
 
       const bad = [];
+      /* Which CSV line each surviving row came from, so a rejection can name the
+         line the operator has to open rather than a position in an array they
+         cannot see. */
+      const lineOf = [];
       rows.slice(1).forEach((cells, i) => {
         const r = rowToItem(cells, header);
         if (r.error) bad.push({ row: i + 2, error: r.error, preview: (cells[header.indexOf('noi_dung')] || '').slice(0, 60) });
-        else pending.push(r.item);
+        else { pending.push(r.item); lineOf.push({ line: i + 2, text: (cells[header.indexOf('noi_dung')] || '').slice(0, 60) }); }
       });
 
       if (pending.length > 500) {
@@ -656,6 +728,38 @@
         showErr('The file has ' + pending.length + ' valid rows, over the 500-item limit. Split it up.');
         pending = [];
         return;
+      }
+
+      /* Now ask the server the same question, without writing anything.
+         The checks above are this file's own copy of the rules, and a second
+         copy is a copy that drifts: rows this preview passed were then refused
+         on import, and all the operator got was "Imported 40 items. The server
+         refused 7" — no row numbers, no reasons, and 40 items already in the
+         bank. Everything the server rejects is moved into the rejected list
+         here, named by its line, before anything is imported. */
+      if (pending.length) {
+        box.innerHTML = '<p class="text-[14px] text-muted text-center py-3">Checking the rows against the bank…</p>';
+        try {
+          const dry = await AD.post('/admin/questions/bulk', { items: pending, dryRun: true });
+          const refused = new Map((dry.errors || []).map(e2 => [e2.row - 1, e2.error]));
+          if (refused.size) {
+            const kept = [], keptLines = [];
+            pending.forEach((it, i) => {
+              if (refused.has(i)) {
+                bad.push({ row: lineOf[i].line, error: refused.get(i), preview: lineOf[i].text });
+              } else { kept.push(it); keptLines.push(lineOf[i]); }
+            });
+            pending = kept;
+            lineOf.length = 0; keptLines.forEach(l => lineOf.push(l));
+            bad.sort((a, b) => a.row - b.row);
+          }
+        } catch (e) {
+          /* A dry run that cannot be reached is not a reason to block the
+             import — the real one will apply the same rules — but it IS a
+             reason to say the preview is only half checked. */
+          showErr('The rows could not be checked against the bank (' + AD.esc(e.message) +
+            '). The list below is this page\'s own check only.');
+        }
       }
 
       box.innerHTML =

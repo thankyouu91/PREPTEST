@@ -156,10 +156,36 @@ async function availableByPart() {
   for (const r of counts) {
     if (!typesFor(r.part).includes(r.type)) continue;
     const sec = formats.sectionOfPart('vpet', r.part);
-    const usable = sec && sec.needsAudio ? Math.min(r.c, withAudio.get(r.part) || 0) : r.c;
+    let usable = sec && sec.needsAudio ? Math.min(r.c, withAudio.get(r.part) || 0) : r.c;
+    /* A part whose questions share a recording counts in whole groups, and only
+       the groups that are whole. Counting the recordings alone said Part G had
+       12 practisable items when it has 36 in 12 groups — the number was the
+       count of passages, not of questions — and counting every row said 36 when
+       a half-broken group can drill none of them. */
+    if (sec && sec.sharesAudio && (sec.group || 1) > 1) {
+      usable = await wholeGroupItems(r.part, sec.group);
+    }
     if (usable > 0) have.set(r.part, (have.get(r.part) || 0) + usable);
   }
   return have;
+}
+
+/**
+ * Questions in COMPLETE groups of this part: every member still in use, and
+ * exactly one of them carrying the recording they share.
+ *
+ * A group missing a question, or holding two recordings, cannot be drilled
+ * honestly — the learner would be asked about a passage that never played, or
+ * hear a second one halfway through — so it is not counted and not drawn.
+ */
+async function wholeGroupItems(part, size) {
+  return await q.val(
+    `SELECT COALESCE(SUM(n), 0) FROM (
+       SELECT COUNT(*) n FROM questions
+        WHERE status = 'active' AND part = ? AND group_key IS NOT NULL
+        GROUP BY group_key
+       HAVING COUNT(*) = ?
+          AND SUM(CASE WHEN audio_key IS NOT NULL THEN 1 ELSE 0 END) = 1) t`, part, size) || 0;
 }
 
 /* ------------------------------ Choosing what ------------------------------ */
@@ -252,11 +278,21 @@ async function drawItems(part, level, size, skip) {
      have some, so a drill can never open on a prompt with nothing to hear. */
   const sec = formats.sectionOfPart('vpet', part);
   const audioClause = sec && sec.needsAudio ? ' AND audio_key IS NOT NULL' : '';
+  /* Part G is one passage and three questions about it. Drawing rows one at a
+     time drew only the row carrying the passage — 12 of the part's 36 questions
+     were reachable at all, and the one that was drawn arrived without the two it
+     belongs with, so "listen, then answer three questions" became "listen, then
+     answer one". Whole groups, or none. */
+  const groupSize = sec && sec.sharesAudio ? (sec.group || 1) : 1;
+
+  const COLS = `id, part, type, prompt, options_json, level, explanation,
+                audio_key, question_audio_key, group_key`;
 
   const take = async (lv, ignoreSkip) => {
     if (picked.length >= size) return;
+    if (groupSize > 1) return takeGroups(lv, ignoreSkip);
     const rows = await q.all(
-      `SELECT id, part, type, prompt, options_json, level, explanation, audio_key
+      `SELECT ${COLS}
          FROM questions
         WHERE status = 'active' AND part = ? AND level = ? AND type IN (${holes})${audioClause}
         ORDER BY RANDOM() LIMIT 60`, part, lv, ...kinds);
@@ -265,6 +301,38 @@ async function drawItems(part, level, size, skip) {
       if (picked.some(p => p.id === r.id)) continue;
       if (!ignoreSkip && skip.has(r.id)) continue;
       picked.push(r);
+    }
+  };
+
+  /** The grouped form of `take`: whole passages, in the order they were written. */
+  const takeGroups = async (lv, ignoreSkip) => {
+    const rows = await q.all(
+      `SELECT ${COLS}
+         FROM questions
+        WHERE status = 'active' AND part = ? AND level = ? AND type IN (${holes})
+          AND group_key IS NOT NULL
+        ORDER BY group_key, id`, part, lv, ...kinds);
+    const byGroup = new Map();
+    for (const r of rows) {
+      if (!byGroup.has(r.group_key)) byGroup.set(r.group_key, []);
+      byGroup.get(r.group_key).push(r);
+    }
+    /* Only whole groups with exactly one recording between them — the same test
+       availableByPart() counts on, so the number on the button is the number
+       this can actually draw. */
+    const usable = [...byGroup.values()].filter(g =>
+      g.length === groupSize && g.filter(x => x.audio_key).length === 1);
+    for (const g of usable.sort(() => Math.random() - 0.5)) {
+      if (picked.length >= size) break;
+      if (picked.some(p => p.group_key === g[0].group_key)) continue;
+      if (!ignoreSkip && g.some(x => skip.has(x.id))) continue;
+      /* A group that will not fit in what is left is skipped, not truncated —
+         drawFromPool()'s rule in server/api.js, for the same reason. */
+      if (picked.length + g.length > size) continue;
+      /* The recording first: the passage is played once, at the top of the
+         group, and everything after it is a question about what was heard. */
+      const head = g.filter(x => x.audio_key).concat(g.filter(x => !x.audio_key));
+      picked.push(...head);
     }
   };
 
@@ -439,7 +507,14 @@ function forClient(row) {
        cannot see how far off they are learns about the cap from their mark,
        which is the wrong moment. */
     minWords: sec.minWords || null,
-    hasAudio: !!row.audio_key
+    hasAudio: !!row.audio_key,
+    /* Part G asks its questions out loud, and the passage belongs to the group
+       rather than to any one question. The screen needs both flags to play the
+       passage on the item that carries it and each question on its own item —
+       and `groupKey` to say "question 2 of 3 about this recording" instead of
+       showing three unrelated-looking cards. */
+    hasQuestionAudio: !!row.question_audio_key,
+    groupKey: row.group_key || null
   };
 }
 
@@ -453,7 +528,15 @@ async function start(userId, opts) {
      six e-mails would be forty minutes of writing sold as a ten-minute drill.
      A caller may still ask for fewer or more within the ceiling. */
   const natural = SIZE_BY_MODE[mode] || DEFAULT_SIZE;
-  const size = clampInt(o.size, 1, mode === 'instant' ? MAX_SIZE : natural, natural);
+  let size = clampInt(o.size, 1, mode === 'instant' ? MAX_SIZE : natural, natural);
+  /* Rounded up to whole passages on a part that groups. Asking for five on a
+     part that comes in threes draws three and reports a short drill — the size
+     is a preference, and the group is not divisible. */
+  {
+    const gs = formats.sectionOfPart('vpet', part);
+    const g = gs && gs.sharesAudio ? (gs.group || 1) : 1;
+    if (g > 1 && size % g) size += g - (size % g);
+  }
 
   const ab = await ability.abilityOf(userId);
   const level = /^(A2|B1|B2|C1)$/.test(String(o.level || '')) ? o.level : levelFor(ab, part);
@@ -492,15 +575,30 @@ async function start(userId, opts) {
  * times until they catch it. Carrying the exam's cap over would make the
  * practice worse than useless at exactly the thing it is for.
  */
-async function itemAudio(userId, drillId, questionId) {
+async function itemAudio(userId, drillId, questionId, slot) {
   const d = await q.get('SELECT * FROM drills WHERE id = ? AND user_id = ?', drillId, userId);
   if (!d) return { error: 'not-found' };
   const ids = jparse(d.item_ids_json, []);
   if (!ids.includes(Number(questionId))) return { error: 'not-in-drill' };
-  const row = await q.get('SELECT audio_key FROM questions WHERE id = ?', questionId);
-  if (!row || !row.audio_key) return { error: 'no-audio' };
+  const row = await q.get(
+    'SELECT audio_key, question_audio_key, group_key FROM questions WHERE id = ?', questionId);
+  if (!row) return { error: 'no-audio' };
+
+  /* Two slots, the same two the exam has. `question-audio` is the item's own
+     question read aloud; `audio` is the stimulus — and on a grouped part the
+     stimulus belongs to the GROUP, so an item that carries none falls back to
+     the recording its group shares. Without that fallback the second and third
+     questions of a Part G drill had nothing to play at all, which is why they
+     were never drawn in the first place. */
+  let key = slot === 'question-audio' ? row.question_audio_key : row.audio_key;
+  if (!key && slot !== 'question-audio' && row.group_key) {
+    key = await q.val(
+      `SELECT audio_key FROM questions
+        WHERE group_key = ? AND audio_key IS NOT NULL ORDER BY id LIMIT 1`, row.group_key);
+  }
+  if (!key) return { error: 'no-audio' };
   try {
-    const file = await storage.get(row.audio_key);
+    const file = await storage.get(key);
     return { body: file.body };
   } catch (e) {
     console.error('[drill] audio read failed', e);

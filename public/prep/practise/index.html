@@ -492,18 +492,43 @@ PREP.boot({ auth: true }).then(async () => {
        and J are all "listen, then…", and a drill of one that never plays the
        recording is a prompt with its subject missing. Unlike the exam there is
        no replay limit: practice is repetition. */
-    if (it.hasAudio) {
-      const player = document.createElement('audio');
-      player.controls = true;
-      player.preload = 'none';
-      player.className = 'w-full mb-5';
-      player.src = '/api/drills/' + drill.drillId + '/items/' + it.questionId + '/audio';
-      player.setAttribute('aria-label', PREP.t('Play the recording', 'Nghe bản ghi'));
+    const player = (slot, label) => {
+      const el = document.createElement('audio');
+      el.controls = true;
+      el.preload = 'none';
+      el.className = 'w-full mb-2';
+      el.src = '/api/drills/' + drill.drillId + '/items/' + it.questionId + '/' + slot;
+      el.setAttribute('aria-label', label);
+      const cap = document.createElement('p');
+      cap.className = 'text-[12px] font-bold uppercase tracking-wide text-muted mb-1';
+      cap.textContent = label;
+      box.append(cap, el);
+    };
+
+    /* A grouped part is one recording and several questions about it, so the
+       drill shows the passage on every question of the group rather than only
+       on the one row that happens to store it — the learner is answering about
+       a passage, and taking it away after the first question would make the
+       other two a memory test. The server resolves the group's recording, so
+       the item need not carry one itself. */
+    if (it.groupKey) {
+      const mates = items.filter(x => x.groupKey === it.groupKey);
+      const pos = mates.indexOf(it) + 1;
+      player('audio', PREP.t('The passage', 'Đoạn nghe'));
+      if (it.hasQuestionAudio) player('question-audio', PREP.t('The question', 'Câu hỏi'));
+      const note = document.createElement('p');
+      note.className = 'text-[13px] text-muted mb-4 mt-1';
+      note.textContent = PREP.t(
+        'Question ' + pos + ' of ' + mates.length + ' about this passage. Play both as often as you like — the real exam plays each once.',
+        'Câu ' + pos + '/' + mates.length + ' về đoạn nghe này. Nghe lại bao nhiêu lần cũng được — thi thật mỗi thứ phát một lần.');
+      box.append(note);
+    } else if (it.hasAudio) {
+      player('audio', PREP.t('Play the recording', 'Nghe bản ghi'));
       const hint = document.createElement('p');
-      hint.className = 'text-[13px] text-muted mb-4 -mt-3';
+      hint.className = 'text-[13px] text-muted mb-4 mt-1';
       hint.textContent = PREP.t('Play it as often as you like. The real exam does not allow that.',
                                 'Nghe lại bao nhiêu lần cũng được. Thi thật thì không.');
-      box.append(player, hint);
+      box.append(hint);
     }
 
     /* An e-mail. One box, room to write in it, and a live word count, because

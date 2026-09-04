@@ -11,6 +11,9 @@
 'use strict';
 const crypto = require('crypto');
 const A = require('./auth');
+/* Read lazily inside the check rather than at import: server/mail.js reads the
+   settings table, and this module is required before the schema is ready. */
+const mail = { enabled: () => { try { return require('./mail').enabled(); } catch (e) { return false; } } };
 
 /* ------------------------------ Headers ------------------------------ */
 
@@ -118,6 +121,30 @@ function checkDeployment(req) {
       'A browser will then send the session cookie over plain HTTP too, so anyone on',
       'the network can lift a signed-in session. Nothing here will fail or look wrong.',
       'FORCE_SECURE_COOKIE=0 is what is holding it off — remove it.');
+  }
+
+  /* 4. Password-reset links being handed to whoever asks.
+     AUTH_DEV_LINKS makes `POST /api/auth/forgot` answer with the reset link
+     itself. On a laptop that finishes a flow with no mail service behind it; on
+     a real deployment it is an account takeover for every learner whose e-mail
+     address is known, requested by an anonymous caller in one request. */
+  if (process.env.AUTH_DEV_LINKS === '1' && A.publicDeployment(req)) {
+    warnOnce('auth-dev-links',
+      'AUTH_DEV_LINKS=1 on what looks like a real deployment: password-reset and',
+      'verification links are being RETURNED IN THE RESPONSE to whoever asks for them.',
+      'Anyone who knows a learner\'s e-mail address can take their account in one request.',
+      'Remove AUTH_DEV_LINKS unless this is a laptop.');
+  }
+
+  /* 5. And its opposite, which is quiet in a different way: no mail service, so
+     the link is neither shown nor sent, and a learner who forgets their password
+     has no way back at all. The reset itself works; nothing delivers it. */
+  if (!mail.enabled() && process.env.AUTH_DEV_LINKS !== '1' && A.publicDeployment(req)) {
+    warnOnce('no-mail-service',
+      'no mail service is configured (settings: mail driver), so verification and',
+      'password-reset e-mails are not being delivered to anybody. The links are correctly',
+      'NOT shown in the response — which leaves an administrator resetting passwords by',
+      'hand as the only way back in. Configure SMTP.');
   }
 }
 

@@ -296,6 +296,118 @@ Kèm theo đó là ba test hành vi: `test-ability-isolation.mjs`,
 `test-placement-scope.mjs`, `test-preview-session.mjs`. Cả ba đều đã được chứng
 minh là **đỏ trên mã chưa sửa** trước khi được nhận.
 
+## 5b. Rà bảo mật 2026-09-04 — tấn công thật vào máy chủ đang chạy
+
+Vòng rà này **không đọc mã rồi suy đoán**. Nó dựng hai tài khoản học viên thật,
+một tài khoản quản trị và một khách không phiên, rồi thử đúng những việc kẻ tấn
+công sẽ thử (`sec-probe.mjs` của phiên làm việc, 26 phép thử). Mỗi mục dưới đây
+ghi **kẻ tấn công lấy được gì**, không phải "endpoint trả mã bao nhiêu".
+
+### 5b.1 Một lỗ nghiêm trọng: link đặt lại mật khẩu trả cho người gọi ẩn danh
+
+`POST /api/auth/forgot` **không đòi đăng nhập** — đúng như thiết kế, người quên
+mật khẩu thì vào không được. Khi chưa cấu hình dịch vụ mail, `deliverLink()`
+trả **luôn link đặt lại** trong phần thân trả lời, để bản dùng thử đi hết được
+luồng. Điều kiện chặn duy nhất là `NODE_ENV === 'production'`.
+
+Đó là **một biến môi trường** — và đúng biến ấy đã biến mất một lần trên chính
+máy chủ này ngày 26/08/2026 vì một lỗi quyền tệp (sự cố ghi trong
+`server/auth.js`). Trong khoảng thời gian đó:
+
+> bất kỳ ai biết địa chỉ e-mail của một học viên đều lấy được tài khoản đó bằng
+> **một request**, không cần mật khẩu, không cần đọc được hòm thư.
+
+Đo được, không phải suy luận: gửi `POST /api/auth/forgot` với một địa chỉ có
+thật, máy chủ trả `{"ok":true,"resetLink":"/prep/dat-lai-mat-khau/?token=…"}`.
+Câu chú thích ngay bên trên còn ghi *"Always the same answer: never reveal which
+emails exist"* — nên đây cũng là một máy dò xem địa chỉ nào đã đăng ký.
+
+**Đã sửa.** `A.publicDeployment(req)` hỏi chính request, giống hệt cách
+`cookieIsSecure()` đã được sửa sau sự cố kia — ba tín hiệu độc lập, chỉ cần một:
+
+| Tín hiệu | Ý nghĩa |
+|---|---|
+| `NODE_ENV=production` | như cũ |
+| Request đến qua TLS (`req.secure` hoặc `X-Forwarded-Proto: https`) | có TLS thì không phải máy cá nhân |
+| `Host` là tên miền phải đăng ký mới có (không phải `localhost`, `127.*`, `.local`) | như trên |
+
+Bản dựng cục bộ (`localhost`, `127.0.0.1`) vẫn thấy link, nên bộ kiểm và máy
+người phát triển không đổi. Muốn bật lại trên máy LAN thì đặt `AUTH_DEV_LINKS=1`
+— và `server/security.js` sẽ **kêu to** trên mọi triển khai trông giống thật:
+*"anyone who knows a learner's e-mail address can take their account"*.
+
+Đi kèm một cảnh báo ngược lại, cho tình trạng hiện tại của production: **chưa có
+dịch vụ mail nào được cấu hình**, nên link vừa không hiện vừa không gửi. Đặt lại
+mật khẩu **hiện không đến được ai**; đường duy nhất là quản trị viên đặt lại tay.
+Cấu hình SMTP là việc vận hành cần làm sớm.
+
+Bốn phép kiểm mới trong `scripts/test-security.mjs` canh `publicDeployment()`
+và một canh cảnh báo; tất cả đã được nhìn thấy **đỏ** trên mã cũ.
+
+### 5b.2 Những chỗ đã thử và **không** thủng
+
+Ghi ra đầy đủ, vì một danh sách chỉ có lỗ hổng không cho biết đã tìm ở đâu.
+
+| Thử gì | Kết quả |
+|---|---|
+| Học viên B đọc / nộp / lấy audio drill của học viên A | 404 — `user_id` gác ở mọi truy vấn |
+| Khách không phiên đọc drill | 401 |
+| Học viên gọi 8 endpoint quản trị (báo cáo, người dùng, ngân hàng, phát mã, cài đặt, nhật ký, sao lưu, xuất CSV) | 401/403 ở cả tám |
+| `PATCH /api/me` kèm `role`, `status`, `verified`, `id` | Bỏ qua — chỉ các trường cho phép được ghi |
+| Gọi ghi với CSRF sai / thiếu | 403 cả hai |
+| `GET /api/admin/settings` có lộ khoá API không | Không — chỉ có gợi ý đuôi khoá; khoá được niêm bằng `sealed.js` |
+| Nhật ký thao tác có chứa token phiên / mật khẩu không | Không |
+| Tải tệp HTML đội lốt `audio/mpeg` | 400 — `storage.validate()` ngửi byte thật |
+| Tải `image/gif` vào chỗ audio | 400 |
+| Đề gửi cho trình duyệt có kèm đáp án không | Không — `exam-api.js` không bao giờ serialise `answer`/`explanation` |
+| `forgot` có phân biệt địa chỉ tồn tại / không | Không (sau bản sửa 5b.1) |
+| Cookie phiên bịa | 401 ở mọi route cần phiên; `/api/me` trả `user: null` đúng thiết kế |
+| Header trên `/api/*` | `default-src 'none'`, `nosniff`, `noindex` |
+| SQL động | Mọi chuỗi nội suy vào SQL đều là **tên cột từ bảng hằng** (`AUDIO_SLOTS`, `NOTIFY`) hoặc chuỗi `?` sinh từ độ dài mảng. Không có giá trị người dùng nào vào câu lệnh |
+| Chuyển hướng mở sau đăng nhập | `next` phải bắt đầu bằng `/admin` hoặc `/prep/`; OAuth dùng `safeNext()` chặt hơn (chặn `//`, `\`, ký tự điều khiển) |
+| SSRF qua endpoint AI quản trị tự đặt | Chỉ nhận `https://` (trừ loopback), **không đi theo redirect** vì khoá sẽ đi cùng, và tên model bị chặn ký tự xuống dòng |
+
+### 5b.3 Phương án chống tấn công — bốn lớp, và lớp nào đang trống
+
+Nền tảng chỉ tự bảo vệ được **lớp trong cùng**. Ba lớp còn lại là việc vận hành,
+và ghi ra đây để không ai tưởng "đã có rate limit trong mã" là đã xong.
+
+**Lớp 1 — trong tiến trình (đã có).** Header ở mục 1; trần ghi toàn cục và trần
+đọc ở mục 2; khoá đăng nhập 15 phút; CSRF trên mọi đường ghi; mật khẩu scrypt;
+token phiên chỉ lưu hash; khoá API niêm bằng `TOKEN_ENCRYPTION_KEY`; phân quyền
+theo capability có bảng sinh tự động và test canh; cách ly dữ liệu theo
+`user_id` có `test-tenancy.mjs` canh.
+
+**Lớp 2 — ở biên (CHƯA CÓ, là block 8).** Đây là lớp duy nhất chặn được tấn công
+làm cạn tài nguyên trước khi nó chạm vào Node — mà Node ở đây là **một tiến
+trình đồng bộ**, nên một luồng request rẻ tiền cũng đủ làm nghẽn:
+
+1. CloudFront (hoặc Cloudflare) đứng trước, chỉ mở 80/443 tới nó; EC2 chỉ nhận
+   từ dải IP của CDN — nếu không thì kẻ tấn công gọi thẳng IP máy chủ và mọi
+   luật ở biên thành trang trí.
+2. WAF: bộ luật quản lý (`AWSManagedRulesCommonRuleSet`, `KnownBadInputs`,
+   `AmazonIpReputationList`), cộng ba luật riêng — trần **request/5 phút theo
+   IP** cho `/api/*`, trần chặt hơn cho `/api/auth/*` và `/api/redeem`, và chặn
+   phương thức không dùng (`TRACE`, `TRACK`).
+3. Bot control cho `/api/auth/login` và `/api/auth/register`.
+4. Trần kích thước thân request ở biên (nay chỉ có `express.raw` giới hạn 10 MB
+   ở đường tải audio; mọi đường khác dựa vào mặc định của Express).
+
+**Lớp 3 — máy chủ.** Chỉ 22/80/443 mở; SSH bằng khoá, không mật khẩu, không
+`root`; cập nhật bảo mật tự động; `fail2ban` cho SSH; tiến trình Node chạy dưới
+người dùng riêng không có quyền ghi vào mã nguồn; `data/` chỉ người dùng đó đọc
+ghi được. **Cần kiểm lại từng dòng trên máy thật** — không dòng nào trong đó
+kiểm được từ trong mã nguồn, nên không dòng nào được coi là đã xong.
+
+**Lớp 4 — con người và khoá.** Ba việc đang treo, tất cả đều là việc phải làm
+tay: **xoay Google Client Secret** (đã đi qua chat, coi như lộ), **sao lưu
+`TOKEN_ENCRYPTION_KEY` vào trình quản lý mật khẩu** (bản sao lưu CSDL cố tình
+không chứa nó, nên mất khoá là mất toàn bộ khoá API đã niêm), và **bật 2FA cho
+mọi tài khoản quản trị** (`server/totp.js` đã có, chưa bắt buộc). Thêm: quy trình
+khi nghi bị xâm nhập — `node scripts/accounts.js reset-admin` thu hồi mọi phiên
+quản trị, `dropUserSessions` cho học viên, và `deploy/restore.sh` phục hồi từ S3
+có object-lock.
+
 ## 6. Bảng endpoint → guard → giới hạn ghi
 
 74 route, 43 route ghi. **43/43 route ghi đều có `csrfGuard`**; 35/43 có thêm
@@ -399,7 +511,7 @@ guard đăng nhập, 8 route còn lại là danh sách ở mục 3.
 | GET | `/api/drills` | `requireUser` | n/a (read) |
 | POST | `/api/drills` | `requireUser` + `csrfGuard` | yes |
 | GET | `/api/drills/:id` | `requireUser` | n/a (read) |
-| GET | `/api/drills/:id/items/:questionId/audio` | `requireUser` | n/a (read) |
+| GET | `/api/drills/:id/items/:questionId/:slot(audio\|question-audio)` | `requireUser` | n/a (read) |
 | POST | `/api/drills/:id/items/:questionId/recording` | `requireUser` + `csrfGuard` | yes |
 | POST | `/api/drills/:id/submit` | `requireUser` + `csrfGuard` | yes |
 | GET | `/api/drills/parts` | `requireUser` | n/a (read) |

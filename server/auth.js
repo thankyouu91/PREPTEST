@@ -92,6 +92,35 @@ function arrivedOverTls(req) {
   return String(claimed || '').split(',')[0].trim().toLowerCase() === 'https';
 }
 
+/**
+ * Is this a real deployment serving real people — whatever NODE_ENV says?
+ *
+ * The same question `cookieIsSecure()` asks, and it exists for the same reason:
+ * on 26/08/2026 this deployment lost NODE_ENV to a file-permission mistake and
+ * nothing announced it. A missing variable downgrading a cookie was bad; a
+ * missing variable deciding whether the server hands password-RESET TOKENS to
+ * anonymous callers (see deliverLink() in server/user-api.js) is an account
+ * takeover for every learner whose e-mail address somebody knows.
+ *
+ * So three independent signals, any of which means "not a laptop":
+ *   · NODE_ENV says production;
+ *   · the request demonstrably arrived over TLS;
+ *   · the Host is a name somebody had to register, rather than a loopback one.
+ *
+ * Wrong in the safe direction on a dev box reached by LAN address: links stop
+ * appearing, and AUTH_DEV_LINKS=1 turns them back on deliberately.
+ */
+function publicDeployment(req) {
+  if ((process.env.NODE_ENV || '') === 'production') return true;
+  if (arrivedOverTls(req)) return true;
+  const host = String((req && req.headers && req.headers.host) || '')
+    .replace(/^\[|\]$/g, '').split(':')[0].toLowerCase();
+  if (!host) return false;
+  if (host === 'localhost' || host === '::1' || /^127\./.test(host)) return false;
+  if (host.endsWith('.local') || host.endsWith('.localhost')) return false;
+  return true;
+}
+
 /* Secure on in production, without needing a second switch — and on any request
    that actually came over TLS, whether or not the environment says so.
  *
@@ -692,7 +721,7 @@ async function reportAdminAccounts() {
 
 module.exports = {
   hashPassword, verifyPassword,
-  parseCookies, setCookie, cookieIsSecure, arrivedOverTls,
+  parseCookies, setCookie, cookieIsSecure, arrivedOverTls, publicDeployment,
   createSession, destroySession, currentAdmin, purgeSessions,
   createUserSession, destroyUserSession, dropUserSessions, currentUser, requireUser,
   ensureCsrfCookie, setPreviewFlag,

@@ -125,7 +125,28 @@ function deliverLink(kind, user, token, req) {
     mail.send({ to: user.email, subject: spec.subject, text: spec.body(mail.baseUrl(req) + link) })
       .catch(e => console.error('[mail] delivery failed: ' + (e && e.message)));
   }
-  return (isProd() || mail.enabled()) ? undefined : link;
+  /* WHO IS ALLOWED TO SEE THE LINK.
+   *
+   * Handing the link back in the response is a convenience for a build with no
+   * mail service: the register and forgot screens show it so the flow can be
+   * finished. On `forgot` that convenience is an ACCOUNT TAKEOVER — the caller
+   * is anonymous, the address need not be theirs, and the link carries a live
+   * password-reset token. Anyone who knows a learner's e-mail address could
+   * take the account.
+   *
+   * It was held off by `NODE_ENV === 'production'` alone. That is one variable,
+   * and on 26/08/2026 this very deployment lost NODE_ENV to a file-permission
+   * mistake — the incident recorded in server/auth.js. For three minutes the
+   * only thing between that mistake and every learner's account was that no
+   * attacker was looking. `publicDeployment()` asks the same question of the
+   * request itself: TLS, or a hostname somebody had to register, is enough.
+   *
+   * AUTH_DEV_LINKS=1 forces them on for a dev box reached by LAN address, and
+   * server/security.js says so out loud on every deployment that looks real.
+   */
+  if (process.env.AUTH_DEV_LINKS === '1') return link;
+  if (isProd() || mail.enabled() || A.publicDeployment(req)) return undefined;
+  return link;
 }
 
 /* The three emails a learner can turn on or off, and the column each one lives
@@ -661,9 +682,9 @@ router.post('/drills', A.requireUser, A.csrfGuard, async (req, res) => {
 
 /* The recording a listening or repeat-after-me item plays. No replay limit:
    see drills.itemAudio() for why a drill must not inherit the exam's. */
-router.get('/drills/:id/items/:questionId/audio', A.requireUser, async (req, res) => {
+router.get('/drills/:id/items/:questionId/:slot(audio|question-audio)', A.requireUser, async (req, res) => {
   const out = await drills.itemAudio(req.user.id,
-    parseInt(req.params.id, 10) || 0, parseInt(req.params.questionId, 10) || 0);
+    parseInt(req.params.id, 10) || 0, parseInt(req.params.questionId, 10) || 0, req.params.slot);
   if (out.error === 'not-found') return res.status(404).json({ error: 'No such drill.' });
   if (out.error === 'not-in-drill') {
     return res.status(404).json({ error: 'That question is not part of this drill.' });

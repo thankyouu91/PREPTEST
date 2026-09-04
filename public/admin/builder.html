@@ -106,6 +106,14 @@
     wire();
   }
 
+  /** A window in the unit that reads best: seconds under two minutes, else both. */
+  function window_(sec) {
+    if (!sec) return '—';
+    if (sec < 120) return sec + ' s';
+    const m = Math.floor(sec / 60), r = sec % 60;
+    return r ? m + ' min ' + r + ' s' : m + ' min';
+  }
+
   function sectionCard(s) {
     const rows = s.items.length
       ? s.items.map((it, i) =>
@@ -115,10 +123,18 @@
               '<span class="block text-[14px] leading-snug">' + AD.esc(it.prompt) + '</span>' +
               '<span class="block text-[12px] text-muted font-semibold mt-1">' +
                 AD.esc(AD.TYPE_LABEL[it.type] || it.type) + ' · ' + AD.esc(it.level) +
+                /* Which questions belong to one recording, and which of them
+                   carries it. Three questions about one passage looked like
+                   three unrelated items, so nobody could see that the passage
+                   had ended up on the middle one. */
+                (it.groupKey ? ' · ' + AD.esc(it.groupKey) +
+                  (it.hasAudio ? ' <span class="text-accent-strong">· carries the recording</span>' : '') : '') +
                 (it.status !== 'active' ? ' · <span class="text-danger">item withdrawn</span>' : '') + '</span>' +
             '</span>' +
             '<button type="button" class="p-1.5 rounded-full text-muted hover:text-danger transition shrink-0" ' +
-              'data-del-item="' + it.itemId + '" aria-label="Remove this item from the part">' + AD.icon('x', 'w-4 h-4') + '</button>' +
+              'data-del-item="' + it.itemId + '"' +
+              (it.groupKey ? ' data-del-group="' + AD.esc(it.groupKey) + '"' : '') +
+              ' aria-label="Remove this item from the part">' + AD.icon('x', 'w-4 h-4') + '</button>' +
           '</li>').join('')
       : '<li class="py-6 text-center text-[14px] text-muted">This part has no questions yet.</li>';
 
@@ -130,10 +146,16 @@
           '<b class="block">' + AD.esc(s.name) +
             (s.part ? ' <span class="badge badge-ok align-middle">Part ' + AD.esc(s.part) + '</span>' : '') + '</b>' +
           '<span class="block text-[13px] text-muted font-semibold">' +
-            AD.esc(AD.SKILL_LABEL[s.skill] || s.skill) + ' · ' + AD.esc(s.type) + ' · ' + s.minutes + ' min · ' +
+            AD.esc(AD.SKILL_LABEL[s.skill] || s.skill) + ' · ' + AD.esc(s.type) + ' · ' +
+            /* The window the candidate actually gets. Minutes alone cannot say
+               it — Part F runs 152 seconds and Part A 250 — and a part built by
+               hand used to show the dialog's default of 30 minutes while the
+               exam ran something else entirely. */
+            (s.seconds ? window_(s.seconds) : s.minutes + ' min') + ' · ' +
             s.items.length + ' items</span>' +
         '</span>' +
         '<div class="ms-auto flex flex-wrap gap-2">' +
+          '<button type="button" class="btn btn-ghost btn-sm" data-edit-section="' + s.id + '" aria-label="Edit the part ' + AD.esc(s.name) + '">' + AD.icon('edit', 'w-4 h-4') + '<span class="hidden sm:inline">Part</span></button>' +
           '<button type="button" class="btn btn-soft btn-sm" data-write="' + s.id + '">' + AD.icon('edit', 'w-4 h-4') + 'Write items</button>' +
           '<button type="button" class="btn btn-ghost btn-sm" data-pick="' + s.id + '">' + AD.icon('plus', 'w-4 h-4') + 'Choose items</button>' +
           '<button type="button" class="btn btn-ghost btn-sm" data-shuffle="' + s.id + '">' + AD.icon('shuffle', 'w-4 h-4') + '<span class="hidden sm:inline">Redraw</span></button>' +
@@ -154,10 +176,23 @@
     AD.qsa('[data-write]').forEach(b => b.addEventListener('click', () => writeItems(+b.getAttribute('data-write'))));
     AD.qsa('[data-pick]').forEach(b => b.addEventListener('click', () => pickQuestions(+b.getAttribute('data-pick'))));
     AD.qsa('[data-shuffle]').forEach(b => b.addEventListener('click', () => reshuffle(+b.getAttribute('data-shuffle'))));
+    AD.qsa('[data-edit-section]').forEach(b => b.addEventListener('click', () => editSection(+b.getAttribute('data-edit-section'))));
     AD.qsa('[data-del-section]').forEach(b => b.addEventListener('click', () => delSection(+b.getAttribute('data-del-section'))));
     AD.qsa('[data-del-item]').forEach(b => b.addEventListener('click', async () => {
-      try { await AD.del('/admin/items/' + b.getAttribute('data-del-item')); await load(); }
-      catch (e) { AD.toast(e.message, 'error'); }
+      /* A question that shares a recording cannot leave on its own: the passage
+         would stay with whichever item holds it and the questions around it
+         would ask about something the candidate was never played. Said before
+         it happens, because removing three items on one click is a surprise
+         otherwise. */
+      const group = b.getAttribute('data-del-group');
+      if (group && !await AD.confirm('Remove the whole group?',
+        'These questions share one recording (' + group + '), so they go in and come out together. ' +
+        'All of them will be taken out of this part. The questions stay in the bank.', 'Remove')) return;
+      try {
+        const r = await AD.del('/admin/items/' + b.getAttribute('data-del-item'));
+        if (r && r.removed > 1) AD.toast('Removed ' + r.removed + ' items sharing one recording');
+        await load();
+      } catch (e) { AD.toast(e.message, 'error'); }
     }));
   }
 
@@ -662,8 +697,15 @@
         '<div class="grid grid-cols-2 gap-4">' +
           '<div><label class="label" for="s-skill">Skill</label><select class="input" id="s-skill">' +
             skills.map(s => '<option value="' + s + '">' + AD.SKILL_LABEL[s] + '</option>').join('') + '</select></div>' +
-          '<div><label class="label" for="s-min">Duration (minutes)</label>' +
+          '<div id="s-min-box"><label class="label" for="s-min">Duration (minutes)</label>' +
             '<input class="input" id="s-min" type="number" min="0" max="600" value="30"></div>' +
+          /* The exam's own window, shown instead of the box, for a part that has
+             one. The box defaulted to 30 minutes and the server kept it, so a
+             hand-built Part F ran for half an hour where the exam allows 152
+             seconds — and nothing on this screen ever said otherwise. */
+          '<div id="s-window-box" hidden><span class="label">Time for this part</span>' +
+            '<p class="text-[15px] font-bold" id="s-window"></p>' +
+            '<p class="help mt-1">Set by the exam, not here.</p></div>' +
         '</div>' +
         ((FAM_PARTS && FAM_PARTS.length)
           ? '<div><label class="label" for="s-part">Blueprint part</label><select class="input" id="s-part">' +
@@ -703,12 +745,23 @@
     });
     /* Choosing a part fills in the name and skill from the blueprint - retyping them
     by hand only creates a chance for part A to carry part C's skill. */
+    const syncWindow = () => {
+      const p2 = partEl && FAM_PARTS.find(x => x.part === partEl.value);
+      const box = mm.el.querySelector('#s-window-box');
+      const minBox = mm.el.querySelector('#s-min-box');
+      const has = !!(p2 && p2.seconds);
+      box.hidden = !has;
+      minBox.hidden = has;
+      if (has) mm.el.querySelector('#s-window').textContent = window_(p2.seconds);
+    };
+    syncWindow();
     if (partEl) partEl.addEventListener('change', () => {
       const p2 = FAM_PARTS.find(x => x.part === partEl.value);
       if (p2) {
         if (p2.skill) skillEl.value = p2.skill;
         if (!nameEl.value) nameEl.value = p2.name;
       }
+      syncWindow();
       comp.setContext({ skill: skillEl.value, part: partEl.value });
     });
 
@@ -836,6 +889,63 @@
     });
   }
 
+  /**
+   * Rename a part, or put it under the right blueprint letter.
+   *
+   * The letter was settable once, when the part was created, and never again —
+   * so a part added under the wrong one (the list has ten, and Part E, F and G
+   * are all Listening) had to be deleted and rebuilt from scratch, taking its
+   * items with it. The server refuses the change while the part still holds
+   * items filed under the old letter, so this offers it only on an empty part
+   * and says why when it cannot.
+   */
+  function editSection(sid) {
+    const s = T.sections.find(x => x.id === sid);
+    const canMove = !s.items.length && FAM_PARTS && FAM_PARTS.length;
+    const mm = AD.modal(
+      '<h3 class="text-lg font-extrabold tracking-tight">Edit the part</h3>' +
+      '<div class="grid gap-4 mt-5">' +
+        '<div><label class="label" for="p-name">Part name</label>' +
+          '<input class="input" id="p-name" value="' + AD.esc(s.name) + '"></div>' +
+        (FAM_PARTS && FAM_PARTS.length
+          ? '<div><label class="label" for="p-part">Blueprint part</label>' +
+            '<select class="input" id="p-part"' + (canMove ? '' : ' disabled') + '>' +
+              '<option value="">- no part -</option>' +
+              FAM_PARTS.map(p2 => '<option value="' + AD.esc(p2.part) + '"' +
+                (p2.part === s.part ? ' selected' : '') + '>' + AD.esc(p2.name) + '</option>').join('') +
+            '</select><p class="help mt-1.5">' +
+              (canMove
+                ? 'The letter decides which pool a redraw and the generator use, and the time the part runs for.'
+                : 'This part holds ' + s.items.length + ' items filed under ' +
+                  (s.part ? 'Part ' + AD.esc(s.part) : 'no part') + '. Remove them first to move the part.') +
+            '</p></div>'
+          : '') +
+        (s.part
+          ? '<p class="text-[13px] text-muted">Time for this part: <b>' + window_(s.seconds) + '</b>, set by the exam.</p>'
+          : '<div><label class="label" for="p-min">Duration (minutes)</label>' +
+            '<input class="input" id="p-min" type="number" min="0" max="600" value="' + s.minutes + '"></div>') +
+        '<div class="banner banner-error" id="p-err"><span id="p-err-text"></span></div>' +
+        '<div class="modal-actions"><button type="button" id="p-save" class="btn btn-primary btn-md flex-1">Save</button>' +
+          '<button type="button" data-close class="btn btn-ghost btn-md">Cancel</button></div>' +
+      '</div>');
+    mm.el.querySelector('#p-save').addEventListener('click', async () => {
+      const err = mm.el.querySelector('#p-err');
+      err.classList.remove('show');
+      const partEl = mm.el.querySelector('#p-part');
+      const minEl = mm.el.querySelector('#p-min');
+      const body = { name: mm.el.querySelector('#p-name').value };
+      if (partEl && canMove) body.part = partEl.value;
+      if (minEl) body.minutes = +minEl.value || 0;
+      try {
+        await AD.put('/admin/sections/' + sid, body);
+        mm.close(); AD.toast('Part saved'); await load();
+      } catch (e) {
+        mm.el.querySelector('#p-err-text').textContent = e.message;
+        err.classList.add('show');
+      }
+    });
+  }
+
   async function delSection(sid) {
     const s = T.sections.find(x => x.id === sid);
     if (!await AD.confirm('Delete this part?', 'The part "' + s.name + '" and its ' + s.items.length +
@@ -889,6 +999,12 @@
       const p = new URLSearchParams({
         family: T.familyId, skill: s.skill, status: 'active', limit: '60'
       });
+      /* The part, not just the skill. Skill cannot tell Part E from F from G —
+         all three are listening — so a Part F section was offered every item of
+         all three, the operator picked one, and the server dropped it with
+         `skipped: 1` and no reason. The picker now offers only what the part can
+         actually hold. */
+      if (s.part) p.set('part', s.part);
       if (mm.el.querySelector('#p-q').value.trim()) p.set('q', mm.el.querySelector('#p-q').value.trim());
       if (mm.el.querySelector('#p-level').value) p.set('level', mm.el.querySelector('#p-level').value);
       try {
@@ -906,7 +1022,12 @@
             '<span class="min-w-0">' +
               '<span class="block text-[14px] leading-snug">' + AD.esc(i.prompt) + '</span>' +
               '<span class="block text-[12px] text-muted font-semibold mt-1">' +
-                AD.esc(AD.TYPE_LABEL[i.type] || i.type) + ' · ' + AD.esc(i.level) + '</span>' +
+                AD.esc(AD.TYPE_LABEL[i.type] || i.type) + ' · ' + AD.esc(i.level) +
+                /* Said before the click, not after: choosing one question of a
+                   group brings the other questions about the same recording
+                   with it, because a part cannot hold half a passage. */
+                (i.groupKey ? ' · <span class="text-accent-strong">' + AD.esc(i.groupKey) + ' — adds all ' +
+                  i.groupCount + ' questions on this recording</span>' : '') + '</span>' +
             '</span>' +
           '</label>').join('') +
           (total > free.length ? '<p class="text-[13px] text-muted text-center pt-2">Showing the first ' + free.length + ' items; filter further to narrow it down.</p>' : '');
@@ -930,7 +1051,21 @@
       try {
         const r = await AD.post('/admin/sections/' + sid + '/items', { questionIds: [...chosen] });
         mm.close();
-        AD.toast('Added ' + r.added + ' items' + (r.skipped ? ', skipped ' + r.skipped : ''));
+        AD.toast('Added ' + r.added + ' items' +
+          (r.pulledIn ? ' (' + r.pulledIn + ' came with a shared recording)' : ''));
+        /* Every refusal, in words. A count of skipped items told the operator
+           that something was wrong and nothing about what, so the same wrong
+           pick was made again. */
+        if (r.skippedItems && r.skippedItems.length) {
+          AD.modal('<h3 class="text-lg font-extrabold tracking-tight">' + r.skippedItems.length +
+            ' item' + (r.skippedItems.length === 1 ? '' : 's') + ' did not go in</h3>' +
+            '<div class="grid gap-2 mt-4 max-h-[50vh] overflow-y-auto">' +
+              r.skippedItems.map(x => '<p class="text-[13px] leading-relaxed">' +
+                '<b>' + AD.esc(x.why) + '</b>' +
+                (x.prompt ? ' <span class="text-muted">— ' + AD.esc(x.prompt) + '…</span>' : '') + '</p>').join('') +
+            '</div>' +
+            '<div class="flex justify-end mt-5"><button type="button" data-close class="btn btn-ghost btn-md">Close</button></div>');
+        }
         await load();
       } catch (e) {
         addBtn.disabled = false;
