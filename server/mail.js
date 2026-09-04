@@ -104,11 +104,34 @@ function wrap76(b64) {
  * socket: the protocol conversation and the message body fail in different
  * ways and are worth checking apart.
  */
+/**
+ * The bare address inside a From or To value.
+ *
+ * `MAIL_FROM` is allowed to carry a display name — `VPET Prep <no-reply@x>` is
+ * the form the README has shown all along — and two places must NOT have one:
+ *
+ *   the SMTP envelope, where `MAIL FROM:<VPET Prep <no-reply@x>>` is a syntax
+ *   error and the server answers 5xx;
+ *
+ *   the Message-ID domain, which was built by splitting the whole value on
+ *   `@` and so ended up as `<uuid@x>>` — a stray `>` inside the identifier.
+ *
+ * Both fail at send time, in a log line, long after the settings screen and
+ * the environment file both look correct. The header keeps the display name;
+ * only these two get the address on its own.
+ */
+function addressOf(value) {
+  const s = String(value == null ? '' : value).trim();
+  const m = s.match(/<([^>]*)>\s*$/);
+  return (m ? m[1] : s).trim();
+}
+
 function compose({ from, to, subject, text, date, messageId }) {
   assertHeaderSafe('From', from);
   assertHeaderSafe('To', to);
   assertHeaderSafe('Subject', subject);
-  const id = messageId || '<' + crypto.randomUUID() + '@' + (from.split('@')[1] || 'localhost') + '>';
+  const id = messageId || '<' + crypto.randomUUID() + '@'
+    + (addressOf(from).split('@')[1] || 'localhost') + '>';
   const headers = [
     'From: ' + encodeHeader(from),
     'To: ' + encodeHeader(to),
@@ -293,7 +316,7 @@ async function send({ to, subject, text }) {
   try {
     const cfg = smtpConfig();
     const message = compose({ from, to, subject, text });
-    await smtpSend(message, { from, to }, cfg);
+    await smtpSend(message, { from: addressOf(from), to: addressOf(to) }, cfg);
     logIssued('sent', subject, to);
     return { sent: true, driver: 'smtp' };
   } catch (e) {
@@ -307,7 +330,7 @@ const enabled = () => settings().driver === 'smtp';
 
 module.exports = {
   send, enabled, baseUrl,
-  compose, smtpSend, encodeHeader, assertHeaderSafe, replyIsComplete,
+  compose, smtpSend, encodeHeader, assertHeaderSafe, replyIsComplete, addressOf,
   /* `settings` replaces the old `DRIVER` export, which was a value read once at
      import and so could not answer the question after boot. Nothing consumed it. */
   settings

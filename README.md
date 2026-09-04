@@ -398,8 +398,8 @@ chứa một token dùng một lần — nên **token không bao giờ được 
 | Biến | Mặc định | Việc |
 |---|---|---|
 | `MAIL_DRIVER` | `console` | `console` không gửi gì; `smtp` gửi thật |
-| `PUBLIC_BASE_URL` | suy từ request | gốc URL tuyệt đối đặt trong thư (`https://vpetprep.vn`) |
-| `MAIL_FROM` | — | bắt buộc khi dùng `smtp`, ví dụ `VPET Prep <no-reply@vpetprep.vn>` |
+| `PUBLIC_BASE_URL` | suy từ request | gốc URL tuyệt đối đặt trong thư. **Bắt buộc khi có CDN đứng trước**, nếu không link sẽ trỏ về máy gốc — xem `docs/VAN-HANH.md` §8.3 |
+| `MAIL_FROM` | — | bắt buộc khi dùng `smtp`. Có thể kèm tên hiển thị: `"VPET Prep <no-reply@ten-mien>"` — **nhớ đặt trong dấu nháy** vì tệp env được `source`, mà `<` là chuyển hướng của shell. Gmail đòi địa chỉ này đúng là tài khoản đã đăng nhập |
 | `SMTP_HOST` | — | bắt buộc khi dùng `smtp` |
 | `SMTP_PORT` | `587` | `465` là TLS ngay từ byte đầu; `587` bắt đầu thường rồi STARTTLS |
 | `SMTP_USER`, `SMTP_PASS` | — | bỏ trống nếu relay không cần đăng nhập |
@@ -1405,7 +1405,7 @@ Tài khoản demo `student` được đặt sẵn mật khẩu ở môi trườn
 
 ### Guard phía server
 
-Trang cần đăng nhập (`/prep/`, `/prep/luyen/`, `/prep/mua-code/`, `/prep/nhap-code/`,
+Trang cần đăng nhập (`/prep/`, `/prep/thu-vien/`, `/prep/mua-code/`, `/prep/nhap-code/`,
 `/prep/code-cua-toi/`, `/prep/bai-thi/:id/`, `/prep/tai-khoan/`) đi qua `studentPage()`: chưa có
 phiên thì redirect 302 về `/prep/dang-nhap/?next=…` ngay ở tầng HTTP, không để lộ khung trang rồi
 mới kiểm ở client. Ngược lại `guestPage()` đưa người đã đăng nhập từ màn đăng ký / đăng nhập /

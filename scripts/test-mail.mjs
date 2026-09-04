@@ -145,6 +145,59 @@ try {
       'A line break in ' + label + ' is refused', threw ? threw.code : 'no error thrown');
   }
 
+  head('A From with a display name, which is the form the README shows');
+
+  /* MAIL_FROM is allowed to read "VPET Prep <no-reply@x>". Two places took the
+     whole string as an address: the envelope, where the server sees
+     `MAIL FROM:<VPET Prep <no-reply@x>>` and answers 5xx, and the Message-ID
+     domain, which came out with a stray `>` inside it. Both fail at send time,
+     after everything on screen says the mail is configured — and the README's
+     own example is exactly the shape that triggers them. */
+  ok(mail.addressOf('VPET Prep <no-reply@vpetprep.vn>') === 'no-reply@vpetprep.vn',
+    'The address is taken out of a "Name <addr>" value', mail.addressOf('VPET Prep <no-reply@vpetprep.vn>'));
+  ok(mail.addressOf('no-reply@vpetprep.vn') === 'no-reply@vpetprep.vn',
+    'and a bare address is left exactly as it is');
+  ok(mail.addressOf('  Tên Có Dấu <a@b.co>  ') === 'a@b.co',
+    'including with a display name that is not ASCII', mail.addressOf('  Tên Có Dấu <a@b.co>  '));
+
+  const namedMsg = mail.compose({
+    from: 'VPET Prep <no-reply@vpetprep.vn>', to: 'hocvien@example.com',
+    subject: 'Test', text: 'x'
+  });
+  ok(/^From: .*<no-reply@vpetprep\.vn>/m.test(namedMsg),
+    'The From header keeps the display name — that is what it is for');
+  const idLine = (namedMsg.match(/^Message-ID: (.*)$/m) || [])[1] || '';
+  ok(/^<[^<>]+@[^<>]+>$/.test(idLine),
+    'and the Message-ID holds one address, with no stray angle bracket', idLine);
+
+  /* Through send() rather than smtpSend(), because send() is where the defect
+     was: it passed MAIL_FROM to the envelope untouched. A check that extracts
+     the address itself before handing it over proves nothing — it tests the
+     test. This one sets the environment the way an operator would and lets the
+     module do the whole job. */
+  {
+    const srv2 = fakeSmtp({ authMechanism: 'PLAIN' });
+    const port2 = await srv2.listen();
+    const before = {};
+    const env = {
+      MAIL_DRIVER: 'smtp', SMTP_HOST: '127.0.0.1', SMTP_PORT: String(port2),
+      SMTP_SECURE: '0', SMTP_USER: 'u', SMTP_PASS: 'p',
+      SMTP_ALLOW_PLAINTEXT_AUTH: '1',
+      MAIL_FROM: 'VPET Prep <no-reply@vpetprep.vn>'
+    };
+    for (const k of Object.keys(env)) { before[k] = process.env[k]; process.env[k] = env[k]; }
+    const sent = await mail.send({
+      to: 'hocvien@example.com', subject: 'Đặt lại mật khẩu', text: 'https://x/y?token=T\n'
+    });
+    for (const k of Object.keys(env)) {
+      if (before[k] === undefined) delete process.env[k]; else process.env[k] = before[k];
+    }
+    ok(sent && sent.sent === true, 'send() reports the message as sent', JSON.stringify(sent));
+    const mf = srv2.seen.commands.find(c => c.startsWith('MAIL FROM'));
+    ok(mf === 'MAIL FROM:<no-reply@vpetprep.vn>',
+      'and the envelope carries the address alone — a display name here is a 5xx from Gmail', mf);
+  }
+
   head('Reading a multi-line SMTP reply');
 
   ok(mail.replyIsComplete('250 OK\r\n'), 'A single line ending in "250 " is complete');

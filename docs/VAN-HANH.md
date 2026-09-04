@@ -736,11 +736,49 @@ SPF/DKIM của riêng mình.
 MAIL_DRIVER=smtp
 SMTP_HOST=smtp.gmail.com
 SMTP_PORT=587
-SMTP_USER=<địa-chỉ-gmail>
-SMTP_PASS=<App Password 16 ký tự, không có dấu cách>
-MAIL_FROM=VPET Prep <địa-chỉ-gmail>
+SMTP_USER=vpetprep@gmail.com
+SMTP_PASS="abcdefghijklmnop"
+MAIL_FROM="VPET Prep <vpetprep@gmail.com>"
 PUBLIC_BASE_URL=https://d1tjeiogootdxv.cloudfront.net
 ```
+
+> **Dấu nháy ở hai dòng giữa là bắt buộc, không phải cho gọn.** Tệp này được nạp
+> bằng `set -a; . /etc/vpet-prep.env` — nghĩa là shell **thực thi** nó. Viết
+> `MAIL_FROM=VPET Prep <vpetprep@gmail.com>` thì shell đọc `<` là chuyển hướng đầu
+> vào: dòng đó lỗi, và những biến phía sau **không được đặt** — hỏng lan sang cả
+> `TOKEN_ENCRYPTION_KEY`. App Password Google hiện ra dạng `abcd efgh ijkl mnop`;
+> gõ vào đây **bỏ hết dấu cách**.
+>
+> `MAIL_FROM` **được phép** kèm tên hiển thị: `server/mail.js` tách địa chỉ ra
+> cho phong bì SMTP và cho `Message-ID`, giữ nguyên tên cho header `From`. Trước
+> 04/09/2026 nó không tách, nên lệnh gửi thành
+> `MAIL FROM:<VPET Prep <a@gmail.com>>` và Gmail trả 5xx — đúng cái dạng README
+> vẫn lấy làm ví dụ. `scripts/test-mail.mjs` nay canh chỗ đó.
+
+### 8.2b Mật khẩu tài khoản Google KHÔNG dùng được ở đây
+
+Hỏi ngày 04/09: chủ đầu tư đưa `vpetprep@gmail.com` kèm mật khẩu đăng nhập của
+chính tài khoản đó. Nó **sẽ không chạy**. Google tắt "Less secure app access" từ
+2022, nên `smtp.gmail.com` từ chối mật khẩu tài khoản với
+`535-5.7.8 Username and Password not accepted`. Chỉ hai thứ được chấp nhận:
+**App Password** (16 ký tự, sinh riêng cho từng ứng dụng) hoặc OAuth2 — và
+App Password chỉ hiện ra **sau khi bật Xác minh 2 bước**.
+
+Bốn bước, chừng ba phút:
+
+1. `myaccount.google.com/security` → bật **Xác minh 2 bước**.
+2. `myaccount.google.com/apppasswords` → đặt tên (ví dụ `VPET Prep server`) → tạo.
+3. Google hiện `abcd efgh ijkl mnop` **một lần duy nhất**. Chép ngay.
+4. Điền vào `SMTP_PASS`, **bỏ hết dấu cách**, trong dấu nháy.
+
+> **Và mật khẩu tài khoản đi qua chat thì coi như đã lộ** — đây là mật khẩu của
+> cả tài khoản Google chứ không riêng hòm thư, nên phải đổi. Bật 2FA dù sao cũng
+> là điều kiện bắt buộc của bước trên, nên làm hai việc đó cùng lúc.
+>
+> App Password bản thân nó cũng là **quyền gửi thư đầy đủ dưới danh nghĩa tài
+> khoản này**. Nó thuộc về `/etc/vpet-prep.env` (chmod 600, chủ `root`) hoặc AWS
+> Secrets Manager — **không bao giờ** nằm trong repo, trong ảnh chụp màn hình,
+> hay trong tin nhắn.
 
 ### 8.3 Ba cái bẫy, cả ba đều im lặng
 
