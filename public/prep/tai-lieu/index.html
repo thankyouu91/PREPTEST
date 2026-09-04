@@ -91,6 +91,20 @@
     <div id="load-error" class="mt-6"></div>
   </section>
 
+  <!-- ===== Từ vựng trần =====
+       Ẩn cho tới khi tải được: một mục trống còn tệ hơn không có mục. -->
+  <section id="ceiling-section" hidden class="border-y border-line bg-[color:var(--color-card)]">
+    <div class="max-w-shell mx-auto px-4 sm:px-6 py-12 lg:py-16">
+      <h2 class="text-2xl sm:text-3xl font-extrabold tracking-tight">Từ vựng trần B1+ và C1/C2</h2>
+      <p class="text-[15px] leading-relaxed text-muted mt-3 max-w-[70ch]">
+        Không phải "từ khó". Đây là những từ người chấm đọc là bằng chứng của bậc trên —
+        danh sách ngắn hơn nhiều, và mỗi nhóm nói rõ dùng ở phần nào, vì một từ học mà
+        không có chỗ đặt là một từ không xuất hiện lúc thi.
+      </p>
+      <div id="ceiling" class="grid gap-5 mt-6"></div>
+    </div>
+  </section>
+
   <!-- ===== Lộ trình ôn ===== -->
   <section class="border-y border-line bg-[color:var(--color-card)]">
     <div class="max-w-shell mx-auto px-4 sm:px-6 py-12 lg:py-16">
@@ -131,6 +145,10 @@
   const esc = PREP.esc;
   const qs = s => document.querySelector(s);
   let data = null, level = '1', allOpen = false;
+  /* Cách lấy điểm và mẫu câu nên thuộc, lấy từ server/data/exam-tactics.js —
+     cùng một nguồn với màn Luyện, để hai chỗ không nói khác nhau. Tải song song
+     với bộ tài liệu; thiếu nó thì trang vẫn dựng đủ như cũ. */
+  let TAC = null, CEIL = null;
 
   /* Cấp độ đang xem được nhớ lại ở ?level=, để gửi đường dẫn cho người khác vẫn
      mở đúng cấp độ đó. */
@@ -186,6 +204,7 @@
                   '<span>' + esc(m).replace(/\*\*(.+?)\*\*/g, '<b class="text-ink">$1</b>') + '</span>' +
                 '</li>').join('') + '</ul>'
             : '') +
+          tacticsFor(p.ma) +
         '</div>' +
       '</article>';
     }).join('');
@@ -197,6 +216,56 @@
       const chev = btn.querySelector('[data-chev]');
       if (chev) chev.classList.toggle('rotate-180', open);
     }));
+  }
+
+  /**
+   * Phần này trả lời câu mà bảng blueprint không trả lời: **điểm đến từ đâu**.
+   *
+   * "Mẹo làm bài" ở trên nói nên làm gì. Ba khối dưới đây nói vì sao: cái gì
+   * được cho điểm, cái gì làm mất điểm nhiều nhất, và những câu tiếng Anh cố
+   * định nên thuộc trước khi vào phòng thi — thứ mà người học hỏi nhiều nhất và
+   * tài liệu ôn thường bỏ qua nhất.
+   */
+  function tacticsFor(letter) {
+    const t = TAC && TAC[letter];
+    if (!t) return '';
+    const block = (label, text, tone) =>
+      '<p class="text-[14px] leading-relaxed mt-3"><b class="' + tone + '">' + label + '</b> ' + esc(text) + '</p>';
+    return '<div class="mt-5 pt-4 border-t border-line">' +
+      '<p class="text-[12px] font-bold uppercase tracking-wide text-muted">Cách lấy điểm</p>' +
+      block('Điểm đến từ:', t.earn.vi, 'text-accent-strong') +
+      block('Mất điểm nhiều nhất vì:', t.lose.vi, 'text-danger') +
+      (t.frames || []).map(f =>
+        '<div class="mt-4">' +
+          '<p class="text-[12px] font-bold uppercase tracking-wide text-muted">' + esc(f.use.vi) + '</p>' +
+          '<ul class="grid gap-1 mt-1.5">' +
+            f.say.map(s => '<li class="text-[14px] font-medium">' + esc(s) + '</li>').join('') +
+          '</ul>' +
+        '</div>').join('') +
+    '</div>';
+  }
+
+  /** Từ vựng trần: những từ người chấm đọc là bằng chứng của bậc trên. */
+  function renderCeiling() {
+    const box = qs('#ceiling');
+    if (!box || !CEIL) return;
+    box.innerHTML = CEIL.map(tier =>
+      '<article class="card p-6">' +
+        '<div class="flex flex-wrap items-baseline gap-3">' +
+          '<span class="badge ' + (tier.tier === 'B1+' ? 'badge-ok' : 'badge-hl') + '">' + esc(tier.tier) + '</span>' +
+          '<p class="text-[14px] leading-relaxed flex-1 min-w-[16rem]">' + esc(tier.what.vi) + '</p>' +
+        '</div>' +
+        tier.groups.map(g =>
+          '<div class="mt-5 pt-4 border-t border-line">' +
+            '<p class="font-bold text-[14px] tracking-tight">' + esc(g.name.vi) +
+              ' <span class="font-medium text-muted">· ' + esc(g.where.vi) + '</span></p>' +
+            '<p class="text-[14px] leading-relaxed mt-2">' +
+              g.words.map(w => '<span class="inline-block me-3 font-medium">' + esc(w) + '</span>').join('') +
+            '</p>' +
+          '</div>').join('') +
+      '</article>').join('');
+    const sec = qs('#ceiling-section');
+    if (sec) sec.hidden = false;
   }
 
   function renderRoadmap() {
@@ -236,6 +305,16 @@
 
   /* Nội dung lấy từ cùng một tệp JSON mà scripts/make-vpet-docs.mjs dựng ra bản
      PDF, nên trang này và bản tải về không thể lệch nhau. */
+  fetch('/api/tactics', { headers: { Accept: 'application/json' } })
+    .then(r => (r.ok ? r.json() : null))
+    .then(t => {
+      if (!t) return;
+      TAC = t.parts; CEIL = t.ceiling;
+      renderCeiling();
+      if (data) renderParts();
+    })
+    .catch(() => { /* trang vẫn đầy đủ như trước khi có mục này */ });
+
   fetch('/tai-lieu/guide.json', { headers: { Accept: 'application/json' } })
     .then(r => { if (!r.ok) throw new Error('Máy chủ trả về ' + r.status); return r.json(); })
     .then(d => { data = d; setLevel(level); })

@@ -35,6 +35,7 @@ const studyMap = require('./study-map');
 const plan = require('./plan');
 const report = require('./report');
 const EXAM_FORMATS = require('./data/exam-formats');
+const TACTICS = require('./data/exam-tactics');
 
 /* How much each lettered part is worth in a real VPET paper, read from the
    published blueprint rather than written down again. A second copy of these
@@ -491,6 +492,29 @@ router.post('/auth/reset', A.csrfGuard, async (req, res) => {
 /* Session probe: every page calls this on boot, public pages included.
    Signed out returns 200 with user: null — not an error, and it avoids the browser
    logging a 401 on every guest page. Routes that need authorisation still return 401. */
+/**
+ * How each part is scored, and the English worth learning by heart.
+ *
+ * Deliberately open to a visitor with no account. It is study advice, not
+ * answers — the item bank is nowhere near it — and the study pack that carries
+ * it is the page somebody reads before deciding whether to sign up. Putting it
+ * behind the sign-in would hide the one thing that shows the platform knows the
+ * exam.
+ *
+ * Cached for an hour: it is a constant in a file, and the alternative is every
+ * practice screen re-fetching a fixed document.
+ */
+router.get('/tactics', (req, res) => {
+  const part = String(req.query.part || '').toUpperCase();
+  res.set('Cache-Control', 'public, max-age=3600');
+  if (part) {
+    const one = TACTICS.forPart(part);
+    if (!one) return res.status(404).json({ error: 'No such part.' });
+    return res.json({ part, tactics: one });
+  }
+  res.json({ parts: TACTICS.PARTS, ceiling: TACTICS.CEILING });
+});
+
 router.get('/me', async (req, res) => {
   const user = await A.currentUser(req);
   /* providers rides along on the boot request the pages already make, so the

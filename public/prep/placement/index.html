@@ -99,7 +99,14 @@
           <h3 class="font-extrabold text-lg tracking-tight">What to do first</h3>
           <p class="text-[13px] text-muted mt-1">Three things, chosen from how you just answered. This list changes as you practise.</p>
           <ul id="d-plan" class="grid gap-2.5 mt-4"></ul>
-          <a href="/prep/" class="btn btn-primary btn-md mt-6">Go to my dashboard</a>
+          <!-- Two buttons, because there are two different next steps and the
+               list above named the first one. Sending everybody to the dashboard
+               meant the learner had to find the part again from a screen that
+               does not know what they were just told. -->
+          <div class="flex flex-wrap gap-2.5 mt-6">
+            <a id="d-cta" href="/prep/luyen/" class="btn btn-primary btn-md">Start practising</a>
+            <a id="d-home" href="/prep/" class="btn btn-ghost btn-md">Go to my dashboard</a>
+          </div>
         </div>
       </section>
 
@@ -131,6 +138,14 @@ PREP.boot({ auth: true }).then(async () => {
   const wanted = new URLSearchParams(location.search).get('next');
   const backTo = wanted && /^\/prep\//.test(wanted) && !wanted.startsWith('//')
     ? wanted : '/prep/';
+  /* The path alone, for deciding whether the learner was actually going
+     somewhere. `/prep/?lang=en` is the dashboard — a query string is not an
+     errand to carry on with — and comparing the whole string made every learner
+     who simply opened the app get "Carry on" instead of the part they had just
+     been told to practise. */
+  const backPath = (() => {
+    try { return new URL(backTo, location.origin).pathname; } catch (e) { return backTo; }
+  })();
 
   /* ---- State for the rung on screen ---- */
   let items = [];        // the six of this rung
@@ -334,22 +349,48 @@ PREP.boot({ auth: true }).then(async () => {
     plan.innerHTML = '<li class="skeleton h-10 w-full rounded-xl"></li>';
     const a = await PrepApi.get('/api/me/ability');
     const rows = (a.ok && a.data.roadmap) || [];
+    /* Each row is the way into that part, not a description of it. The list was
+       three inert lines: a learner who had just been told to start with Part A
+       had to go to the dashboard, find Practise, and find Part A again — three
+       screens between being told what to do and being able to do it. The deep
+       link is the one the weekly plan already uses. */
     plan.innerHTML = rows.length
       ? rows.map(r =>
-          '<li class="flex items-center gap-3 py-2.5 border-b border-line last:border-0">' +
-            '<span class="badge badge-muted shrink-0">Part ' + PREP.esc(r.part) + '</span>' +
-            '<span class="text-[14px]">' +
-              (r.confident
-                ? PREP.t('now at ', 'đang ở mức ') + r.score + '/10'
-                : PREP.t('not measured yet — worth a look first', 'chưa đo được — nên làm trước')) +
-            '</span>' +
+          '<li class="border-b border-line last:border-0">' +
+            '<a class="flex items-center gap-3 py-2.5 px-1.5 -mx-1.5 rounded-xl hover:bg-brand-soft transition" ' +
+               'href="/prep/luyen/?part=' + encodeURIComponent(r.part) + '">' +
+              '<span class="badge badge-muted shrink-0">Part ' + PREP.esc(r.part) + '</span>' +
+              '<span class="text-[14px]">' +
+                (r.confident
+                  ? PREP.t('now at ', 'đang ở mức ') + r.score + '/10'
+                  : PREP.t('not measured yet — worth a look first', 'chưa đo được — nên làm trước')) +
+              '</span>' +
+              '<span class="ms-auto shrink-0 text-[13px] font-bold text-brand-strong">' +
+                PREP.t('Practise', 'Luyện') + ' →</span>' +
+            '</a>' +
           '</li>').join('')
       : '<li class="text-[13px] text-muted">' +
           PREP.t('Sit a full paper and a plan appears here.',
                  'Làm một bài đầy đủ là kế hoạch sẽ hiện ở đây.') + '</li>';
 
-    const cta = PREP.qs('#done a');
-    if (backTo !== '/prep/') { cta.href = backTo; }
+    /* Where the big button goes. Somebody sent here mid-journey — the placement
+       is compulsory, so any screen can redirect into it — is returned to what
+       they were doing. Everybody else is offered the first thing on the list
+       above, by name, because "start practising" and "start practising Part A"
+       are a different amount of deciding. */
+    const cta = PREP.qs('#d-cta');
+    const home = PREP.qs('#d-home');
+    if (backPath !== '/prep/') {
+      cta.href = backTo;
+      cta.textContent = PREP.t('Carry on', 'Tiếp tục');
+    } else if (rows.length) {
+      cta.href = '/prep/luyen/?part=' + encodeURIComponent(rows[0].part);
+      cta.textContent = PREP.t('Practise Part ' + rows[0].part + ' now', 'Luyện Part ' + rows[0].part + ' ngay');
+      home.hidden = false;
+    } else {
+      cta.href = '/prep/luyen/';
+      cta.textContent = PREP.t('Start practising', 'Bắt đầu luyện');
+    }
     show('done');
   }
 });

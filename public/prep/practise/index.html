@@ -109,6 +109,17 @@
           <div id="r-bar" class="quiz-bar h-full bg-brand rounded-full"></div>
         </div>
 
+        <!-- How this part is scored, and the English worth having ready. Shut by
+             default: a learner who is here to practise should not have to read
+             anything first, and a learner who does not know what the part
+             rewards has been guessing at it for weeks. -->
+        <details id="r-how" class="card mt-4" hidden>
+          <summary class="px-5 py-3.5 cursor-pointer font-bold text-[14px] tracking-tight">
+            How this part is scored
+          </summary>
+          <div class="px-5 pb-5 grid gap-4" id="r-how-body"></div>
+        </details>
+
         <div class="card p-6 sm:p-8 mt-5">
           <p id="r-prompt" class="text-[17px] sm:text-[18px] font-semibold leading-relaxed"></p>
           <div id="r-answer" class="mt-6"></div>
@@ -397,6 +408,43 @@ PREP.boot({ auth: true }).then(async () => {
     PREP.qs('#r-part').textContent = 'Part ' + r.data.part + ' · ' + r.data.level;
     show('run');
     render();
+    showHow(r.data.part);
+  }
+
+  /**
+   * What this part gives marks for, beside the practice of it.
+   *
+   * A learner can practise Part D for a month and never be told that half the
+   * mark is register, or that the commonest loss is a task the prompt asked for
+   * and the e-mail never mentioned. That is not something more questions teach:
+   * it is one paragraph, and it belongs where the questions are rather than in
+   * a study pack somebody reads once.
+   *
+   * Fetched rather than built in: server/data/exam-tactics.js is read by this
+   * screen and by the study pack, and two copies of the same advice drift.
+   */
+  async function showHow(part) {
+    const box = PREP.qs('#r-how');
+    const body = PREP.qs('#r-how-body');
+    box.hidden = true;
+    body.innerHTML = '';
+    const r = await PrepApi.get('/api/tactics?part=' + encodeURIComponent(part));
+    if (!r.ok || !r.data || !r.data.tactics) return;
+    const t = r.data.tactics;
+    const block = (label, text, tone) =>
+      '<p class="text-[14px] leading-relaxed"><b class="' + tone + '">' + label + '</b> ' + PREP.esc(text) + '</p>';
+    body.innerHTML =
+      block(PREP.t('Marks come from:', 'Điểm đến từ:'), PREP.t(t.earn.en, t.earn.vi), 'text-brand-strong') +
+      block(PREP.t('Most marks are lost by:', 'Mất điểm nhiều nhất vì:'), PREP.t(t.lose.en, t.lose.vi), 'text-danger') +
+      (t.frames || []).map(f =>
+        '<div>' +
+          '<p class="text-[12px] font-bold uppercase tracking-wide text-muted">' +
+            PREP.esc(PREP.t(f.use.en, f.use.vi)) + '</p>' +
+          '<ul class="grid gap-1 mt-1.5">' +
+            f.say.map(s => '<li class="text-[14px] font-medium">' + PREP.esc(s) + '</li>').join('') +
+          '</ul>' +
+        '</div>').join('');
+    box.hidden = false;
   }
 
   /* ---------------- The recorder, for the spoken parts ----------------

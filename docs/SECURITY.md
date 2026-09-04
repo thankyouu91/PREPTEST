@@ -542,6 +542,7 @@ guard đăng nhập, 8 route còn lại là danh sách ở mục 3.
 | POST | `/api/revision` | `requireUser` + `csrfGuard` | yes |
 | POST | `/api/revision/:id/submit` | `requireUser` + `csrfGuard` | yes |
 | GET | `/api/revision/topics` | `requireUser` | n/a (read) |
+| GET | `/api/tactics` | — | n/a (read) |
 | GET | `/auth/google` | — | n/a (read) |
 | GET | `/auth/google/callback` | — | n/a (read) |
 | GET | `/auth/google/classroom` | `requireAdmin` | n/a (read) |

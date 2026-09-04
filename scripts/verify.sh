@@ -277,6 +277,9 @@ node scripts/test-exam-play.mjs || fail=1
 step "Links and navigation (every page, every session, the plan's deep links)"
 node scripts/test-links.mjs || fail=1
 
+step "The new learner's journey (register, placement, what it says, practising it)"
+node scripts/test-journey.mjs || fail=1
+
 # Also a browser, and for the same reason: whether the chip rail can be dragged
 # is invisible to every request the server sees.
 step "The self-study chip rail (arrows, dragging, and not opening a lesson by accident)"
