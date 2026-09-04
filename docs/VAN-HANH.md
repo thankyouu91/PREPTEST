@@ -704,3 +704,86 @@ Sửa: thêm một dòng vào đầu script, ngay trước `pm2 restart`:
 ```
 set -a; . /etc/vpet-prep.env; set +a
 ```
+
+## 8. Gửi email bằng Gmail — làm được ngay, không sửa mã
+
+Hỏi ngày 04/09/2026. Câu trả lời ngắn: **được**, và `server/mail.js` đã hỗ trợ
+sẵn đúng thứ Gmail cần. Module này tự viết trên `node:net` + `node:tls` (không
+thêm dependency), biết STARTTLS ở cổng 587 và TLS ngay từ byte đầu ở 465, biết
+`AUTH PLAIN` và `AUTH LOGIN`, và **từ chối gửi mật khẩu qua kênh chưa mã hoá**
+thay vì âm thầm hạ cấp. Không phải viết thêm dòng nào.
+
+Đây cũng là việc gỡ nốt cảnh báo `no-mail-service` đang in ra log, và là điều
+kiện để tính năng quên mật khẩu thực sự đến được người dùng.
+
+### 8.1 Hai đường, chọn theo việc đã có tên miền hay chưa
+
+| | **App Password** (dùng được hôm nay) | **Workspace SMTP relay** (khi có tên miền) |
+|---|---|---|
+| Host | `smtp.gmail.com` | `smtp-relay.gmail.com` |
+| Cần gì | Một tài khoản Google có **2 bước xác minh**, rồi tạo App Password 16 ký tự | Google Workspace trên tên miền của mình |
+| Gửi từ địa chỉ nào | **Bắt buộc** là chính tài khoản đã đăng nhập (hoặc alias đã xác minh trong "Send mail as") | Bất kỳ địa chỉ nào thuộc tên miền |
+| Trần gửi | ~500 thư/ngày | ~2.000 thư/ngày |
+| Hợp cho | Thư xác thực, đặt lại mật khẩu | Như trên, ở quy mô lớn hơn |
+
+Cả hai đều **không** hợp để gửi thư quảng bá hàng loạt (bảng `users` có cột
+`notify_promo`): việc đó cần một nhà cung cấp chuyên gửi, và một tên miền có
+SPF/DKIM của riêng mình.
+
+### 8.2 Biến môi trường, đặt vào `/etc/vpet-prep.env`
+
+```
+MAIL_DRIVER=smtp
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=<địa-chỉ-gmail>
+SMTP_PASS=<App Password 16 ký tự, không có dấu cách>
+MAIL_FROM=VPET Prep <địa-chỉ-gmail>
+PUBLIC_BASE_URL=https://d1tjeiogootdxv.cloudfront.net
+```
+
+### 8.3 Ba cái bẫy, cả ba đều im lặng
+
+**1. `MAIL_FROM` phải đúng địa chỉ đã đăng nhập.** Gmail không cho gửi hộ một
+địa chỉ lạ: đặt `no-reply@…` của một tên miền chưa xác minh thì hoặc bị từ chối,
+hoặc bị Gmail ghi đè — và cả hai đều chỉ thấy khi thư đã không tới.
+
+**2. `PUBLIC_BASE_URL` bây giờ là bắt buộc, và đây là cái bẫy do CloudFront sinh
+ra.** Không đặt thì `mail.baseUrl()` dựng link từ `Host` của request; sau
+CloudFront, `Host` mà máy gốc nhận được thường là **địa chỉ máy gốc**, nên link
+trong thư sẽ ra `http://54.255.98.192/prep/dat-lai-mat-khau/?token=…` — gửi
+token đặt lại mật khẩu qua HTTP trần, tới đúng cái máy lẽ ra không nên vào thẳng
+được. Đặt biến này là xong; nhưng phải nhớ đặt.
+
+**3. `pm2 restart --update-env` GỘP env, không đọc lại tệp** (mục 1 và
+`docs/BLOCKS.md`). Thêm biến vào tệp rồi restart bình thường thì `MAIL_DRIVER`
+vẫn là `console`, thư vẫn không gửi, và **không có lỗi nào cả**. Phải:
+
+```
+set -a; . /etc/vpet-prep.env; set +a
+pm2 restart preptest --update-env
+pm2 save
+```
+
+### 8.4 Bí mật để ở đâu
+
+App Password là **chìa khoá đầy đủ của hòm thư đó** — ai đọc được thì gửi được
+dưới danh nghĩa mình. Hai việc nên làm: dùng một **tài khoản Google riêng cho
+nền tảng**, không phải tài khoản cá nhân; và nếu được thì để trong AWS Secrets
+Manager (`AWS_SECRETS_ID`, `server/secrets.js` tự nạp vào env lúc khởi động)
+thay vì nằm thẳng trong `/etc/vpet-prep.env`. Tệp env phải `chmod 600` và thuộc
+`root` trong mọi trường hợp.
+
+### 8.5 Kiểm là đã chạy
+
+1. `pm2 logs preptest --lines 50 | grep "\[config\]"` — dòng `no-mail-service`
+   phải **biến mất**.
+2. Xin đặt lại mật khẩu cho một tài khoản thử trên
+   `https://d1tjeiogootdxv.cloudfront.net/prep/quen-mat-khau/`, rồi mở hòm thư.
+3. Bấm link trong thư: phải mở ra `https://d1tjeiogootdxv.cloudfront.net/…`,
+   **không** phải `http://54.255.98.192/…`. Sai là do bẫy số 2 ở trên.
+
+Một hệ quả phụ đáng biết: bật `MAIL_DRIVER=smtp` làm `mail.enabled()` thành
+true, và `deliverLink()` khi đó **không bao giờ** trả link trong response nữa,
+bất kể mọi biến khác. Tức là cấu hình mail cũng khoá vĩnh viễn lỗ ở
+`docs/SECURITY.md` §5b.1 thêm một lớp nữa.
