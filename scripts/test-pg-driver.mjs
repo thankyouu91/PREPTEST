@@ -349,11 +349,20 @@ try {
      * the parts at a database that does NOT exist and requiring the failure to
      * name it: only the parts branch could have produced that. */
     const u = new URL(PG_URL);
+    /* The password is part of "the parts". Leaving it out was invisible against
+       the trust-auth cluster this suite used to start, and a hard red against
+       any cluster that authenticates: CI's service container answered
+       `SASL: SCRAM-SERVER-FIRST-MESSAGE: client password must be a string`
+       before it ever looked at the database name, so the check below could not
+       fail for the reason it was written for. scripts/pg-dev.sh now asks for a
+       password too, so this is exercised here as well. */
+    const dsnPassword = decodeURIComponent(u.password || '');
     const asParts = extra => createPg({
       host: u.hostname,
       port: u.port || 5432,
       database: u.pathname.replace(/^\//, ''),
       user: decodeURIComponent(u.username || ''),
+      password: dsnPassword || undefined,
       ...extra
     });
 
@@ -378,6 +387,20 @@ try {
           'and PGSSLMODE=disable is honoured, which is the only reason it reached a local cluster');
       } finally {
         await parts.close().catch(() => {});
+      }
+
+      /* And it was the password from the OPTIONS that got it in. A cluster with
+         trust auth cannot show this — it accepts anything — so that case says so
+         out loud rather than reporting a pass it did not earn. */
+      const wrongPw = asParts({ password: 'not-the-password' });
+      let pwErr = '';
+      try { await wrongPw.q.val('SELECT 1'); } catch (e) { pwErr = e.message; }
+      await wrongPw.close().catch(() => {});
+      if (!pwErr) {
+        console.log('  · this cluster does not ask for a password, so the option cannot be proved here');
+      } else {
+        ok(/password|authentication/i.test(pwErr),
+          'A wrong password in the options is refused — so the right one is what connected', pwErr);
       }
     } finally {
       if (sslmodeWas === undefined) delete process.env.PGSSLMODE;

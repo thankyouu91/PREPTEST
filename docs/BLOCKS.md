@@ -717,6 +717,52 @@ giao diện vẫn gọi `S.admins.map(...)` mãi tới `b0302e0` mới sửa. Co
    nên nó phải tiếp tục chạy cổng. Một tài liệu mới chưa ai thêm vào danh sách
    sẽ chạy đủ cổng — sai về phía an toàn.
 
+### Cổng đỏ 10 ngày liền vì một mật khẩu bị bỏ rơi — 25/08 → 04/09
+
+Chủ đầu tư mở trang commit trên GitHub và hỏi: *"có rất nhiều commit ko chạy
+được"*. Đúng. **Mọi lần chạy workflow từ `827471c` (25/08) tới `85c453a`
+(04/09) đều đỏ — 56 commit** — và mỗi lần đỏ thì job `To the instance` bị
+**skip**. Tức là **không một dòng mã nào đến máy chủ qua đường ống trong 10
+ngày**. (Máy chủ vẫn mới, vì `/home/ubuntu/vpet-selfupdate.sh` tự `git pull` —
+xem mục 8 ở trên. Đường ống chết mà không ai thấy chính vì cái đó che đi.)
+
+Luôn luôn đúng hai dòng, và đọc được từ log của cả lần 30/08 lẫn lần 04/09:
+
+```
+✗ The parts are actually used — an ambient PG_URL does not override them
+  → SASL: SCRAM-SERVER-FIRST-MESSAGE: client password must be a string
+✗ The suite threw: Error: SASL: SCRAM-SERVER-FIRST-MESSAGE: client password must be a string
+```
+
+`scripts/test-pg-driver.mjs` dựng một pool từ **các mảnh rời** (host, port,
+database, user) thay vì từ DSN, để chứng minh `createPg` thật sự dùng các tham
+số được truyền vào chứ không lặng lẽ nhặt `PG_URL` trong môi trường. Nó tách
+`PG_URL` ra lấy bốn mảnh — **và bỏ quên mảnh thứ năm là mật khẩu**.
+
+Vì sao xanh ở máy mà đỏ ở CI: `scripts/pg-dev.sh` dựng cụm tạm bằng
+`--auth=trust`, **cụm đó không hỏi mật khẩu**, nên thiếu hay không cũng vào
+được. Service container của CI thì có `POSTGRES_PASSWORD` và dùng
+`scram-sha-256`. Và `createPg` cũng có phần lỗi: nhánh "mảnh rời" của nó **bỏ
+qua** `o.password` hoàn toàn — ai truyền mật khẩu vào cũng bị nuốt mất, rồi
+nhận một thông báo không nhắc tới mật khẩu, tham số, máy chủ hay cơ sở dữ liệu
+nào cả.
+
+Ba việc, và việc thứ ba mới là việc đáng kể:
+
+1. `server/pg.js` dùng `o.password` khi được truyền vào (bí mật xoay vòng
+   `DB_PASSWORD_SECRET` vẫn thắng, và nay nói ra khi cả hai cùng được đặt).
+2. `scripts/test-pg-driver.mjs` mang theo mật khẩu trong DSN, và thêm một kiểm
+   mới: mật khẩu **sai** phải bị từ chối — nếu cụm không hỏi mật khẩu thì nó in
+   ra một dòng nói vậy chứ không tính là một kiểm đã qua.
+3. `scripts/pg-dev.sh` nay dựng cụm có **`scram-sha-256`** cho kết nối TCP.
+   Đây là chỗ sửa thật sự: cụm ở máy giờ *xác thực* giống mọi cụm thật và giống
+   CI. Không sửa nó thì lần sau lại có một thứ chỉ đỏ ở CI, và lần này mất 10
+   ngày mới có người nhìn thấy.
+
+> Đo chứ không đoán: dựng cụm `scram-sha-256` tại chỗ, chạy `test-pg-driver`
+> trên mã **cũ** và nhận lại đúng hai dòng đỏ trên, rồi mới sửa. Sau khi sửa:
+> 53/53.
+
 ### Còn lại là một lựa chọn của chủ đầu tư
 
 Ba thứ trên giảm nhiễu, nhưng **không** sửa được nguyên nhân gốc: commit chưa

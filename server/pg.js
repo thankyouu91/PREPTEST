@@ -244,6 +244,16 @@ function createPg(opts) {
     config.port = Number(o.port || process.env.PGPORT || 5432);
     config.database = o.database || process.env.PGDATABASE;
     config.user = o.user || process.env.PGUSER;
+    /* A password passed in the parts is USED. Left out, node-postgres falls back
+       to PGPASSWORD, which is right for a shell and silent for a caller who
+       passed one and had it dropped — and what follows is
+       `SASL: SCRAM-SERVER-FIRST-MESSAGE: client password must be a string`,
+       which names neither the option nor the server nor the database. Every
+       cluster that authenticates hit this; the trust-auth cluster the suite
+       used to start did not, so it was green here and red in CI. */
+    if (o.password !== undefined && o.password !== null && o.password !== '') {
+      config.password = String(o.password);
+    }
     /* TLS on, and VERIFIED. The certificate authority is Amazon's, which is not
        in Node's default trust store — the image carries the RDS root bundle and
        `NODE_EXTRA_CA_CERTS` points at it, which is a whole-process setting and
@@ -269,6 +279,9 @@ function createPg(opts) {
        — and it is said out loud, because the other way round is an incident. */
     if (url && /:\/\/[^@/]*:[^@/]+@/.test(url)) {
       console.warn('[pg] DB_PASSWORD_SECRET is set, so the password in the connection string is ignored.');
+    }
+    if (!url && o.password) {
+      console.warn('[pg] DB_PASSWORD_SECRET is set, so the password passed in the options is ignored.');
     }
   }
 

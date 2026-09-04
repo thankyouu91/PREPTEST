@@ -12,8 +12,18 @@
 set -uo pipefail
 
 PORT="${PG_DEV_PORT:-5433}"
-DATA="${PG_DEV_DATA:-/var/tmp/vpet-pgdata}"
+# A new path on purpose: a cluster left behind by the trust-auth version of this
+# script would be reused as it stands, and the point of the change is that this
+# one asks for a password.
+DATA="${PG_DEV_DATA:-/var/tmp/vpet-pgdata-auth}"
 DBNAME=vpet_verify
+# Not a secret: loopback only, holds nothing, thrown away with the machine. It
+# exists so that the local cluster AUTHENTICATES, the way every real one does —
+# and the way the CI service container does. The trust-auth cluster this used to
+# start made scripts/test-pg-driver.mjs green here and red in CI for months: the
+# check that a pool built from parts connects cannot see a dropped password when
+# the server does not ask for one.
+PASSWORD="${PG_DEV_PASSWORD:-vpet-dev}"
 
 fail() { echo "# pg-dev: $1" >&2; exit 1; }
 
@@ -39,9 +49,16 @@ if ! $AS "$BIN/pg_isready" -q -h 127.0.0.1 -p "$PORT" 2>/dev/null; then
     rm -rf "$DATA"
     if [ -n "$AS" ]; then sudo -n install -d -o postgres -g postgres -m 700 "$DATA" || fail "could not create $DATA"
     else mkdir -p "$DATA"; fi
-    # trust auth on loopback only: this cluster holds nothing and lives minutes.
-    $AS "$BIN/initdb" -D "$DATA" -U postgres --auth=trust >/dev/null 2>&1 \
-      || fail "initdb failed"
+    # Password auth over TCP, trust over the Unix socket so pg_ctl and createdb
+    # below need no credentials. The pwfile is read by initdb and removed here.
+    PWFILE="$(mktemp /var/tmp/vpet-pgpw.XXXXXX)" || fail "could not write a password file"
+    chmod 600 "$PWFILE"; printf '%s\n' "$PASSWORD" > "$PWFILE"
+    [ -n "$AS" ] && chown postgres "$PWFILE" 2>/dev/null
+    $AS "$BIN/initdb" -D "$DATA" -U postgres \
+      --auth-local=trust --auth-host=scram-sha-256 --pwfile="$PWFILE" >/dev/null 2>&1
+    rc=$?
+    rm -f "$PWFILE"
+    [ $rc -eq 0 ] || fail "initdb failed"
   fi
   $AS "$BIN/pg_ctl" -D "$DATA" -l /var/tmp/vpet-pg.log \
     -o "-p $PORT -k /var/tmp -c listen_addresses=127.0.0.1" start >/dev/null 2>&1 \
@@ -56,8 +73,14 @@ $AS "$BIN/pg_isready" -q -h 127.0.0.1 -p "$PORT" 2>/dev/null || fail "the cluste
 
 # A fresh database each time: the schema check drops and rebuilds `public`, and
 # it should never be pointed at something somebody cares about.
-$AS "$BIN/dropdb" -h 127.0.0.1 -p "$PORT" -U postgres --if-exists "$DBNAME" >/dev/null 2>&1
-$AS "$BIN/createdb" -h 127.0.0.1 -p "$PORT" -U postgres "$DBNAME" >/dev/null 2>&1 \
+#
+# Over the SOCKET, not 127.0.0.1: TCP now wants a password, and dropdb would sit
+# waiting for one at a prompt nobody is watching — the whole script hangs, with
+# the cluster up and no output. The socket is trust, and putting the password in
+# the environment of a `sudo` command line would publish it in `ps` anyway.
+SOCK=/var/tmp
+$AS "$BIN/dropdb" -h "$SOCK" -p "$PORT" -U postgres --if-exists "$DBNAME" >/dev/null 2>&1
+$AS "$BIN/createdb" -h "$SOCK" -p "$PORT" -U postgres "$DBNAME" >/dev/null 2>&1 \
   || fail "could not create the $DBNAME database"
 
-echo "export PG_URL=postgres://postgres@127.0.0.1:$PORT/$DBNAME"
+echo "export PG_URL=postgres://postgres:$PASSWORD@127.0.0.1:$PORT/$DBNAME"
