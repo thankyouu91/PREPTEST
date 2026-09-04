@@ -257,6 +257,28 @@ try {
     ok(!/^set -uo/m.test(h.out), 'And stops where the code starts');
     const u = run(['--nonsense']);
     ok(u.code !== 0 && /Không hiểu tham số/.test(u.err), 'An argument it does not know is refused, not ignored');
+
+    // What actually happened on the first real run: the leading `--` did not
+    // survive the paste, so bash handed over `user` and the script only said
+    // it did not understand it.
+    for (const bare of ['user', 'restart', 'check']) {
+      const b = run([bare]);
+      ok(b.code !== 0 && new RegExp('ý bạn là `--' + bare + '`').test(b.err),
+        `A bare \`${bare}\` is answered with "did you mean --${bare}"`, b.err.trim());
+    }
+  }
+
+  head('--test says the useful thing when there is nothing to test yet');
+  {
+    const f = envPath('untouched.env');
+    seed(f, NORMAL);   // MAIL_DRIVER is not set at all, so the driver is console
+    const r = run(['--env-file', f, '--test', 'somebody@example.com']);
+    ok(r.code === 3, 'It stops instead of pretending to send', String(r.code));
+    ok(/MAIL_DRIVER=console/.test(r.err + r.out), 'Naming the reason');
+    ok(!/535|EAUTH/.test(r.err + r.out),
+      'And without the SMTP error hints, which would be noise: nothing was attempted');
+    ok(/--user .* --base-url .* --restart/.test(r.err + r.out),
+      'It prints the write command to run first, on one line');
   }
 
   head('The reminder that the restart is not optional');

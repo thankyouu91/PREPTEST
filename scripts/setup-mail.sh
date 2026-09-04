@@ -78,7 +78,14 @@ while [ $# -gt 0 ]; do
     # to every user on the machine for as long as the process lives.
     --password|--password=*|--pass|--pass=*)
       die "Không nhận mật khẩu trên dòng lệnh — ai cũng đọc được bằng \`ps\`. Dùng lời nhắc, hoặc --password-stdin." ;;
-    *) printf 'Không hiểu tham số: %s\n\n' "$1" >&2; usage 2 ;;
+    # Pasting the multi-line form into a terminal loses the leading `--` often
+    # enough that guessing is worth more than the manual: seen on the first run.
+    *)
+      if printf '%s' "$1" | grep -Eq '^(env-file|user|from|host|port|base-url|app-user|app-name|password-stdin|any-password|check|restart|test|yes|help)$'; then
+        die "Thiếu hai dấu gạch: ý bạn là \`--$1\` chứ?
+   Dán nhiều dòng hay bị mất \`--\`. Gõ lại thành MỘT dòng, không dùng dấu \\ xuống dòng."
+      fi
+      printf 'Không hiểu tham số: %s\n\n' "$1" >&2; usage 2 ;;
   esac
 done
 
@@ -257,8 +264,18 @@ if [ "$MODE" = test ]; then
         .then(r => { console.log(JSON.stringify(r)); process.exit(r.sent ? 0 : 1); });
     ' )
   rc=$?
-  [ $rc -eq 0 ] && ok "gửi được tới $TEST_TO — kiểm hòm thư (cả thư mục spam)"
-  [ $rc -ne 0 ] && warn "chưa gửi được — mã lỗi ở dòng JSON trên; 535 là sai App Password, EAUTH/ETIMEDOUT là chặn cổng 587"
+  if [ $rc -eq 0 ]; then
+    ok "gửi được tới $TEST_TO — kiểm hòm thư (cả thư mục spam)"
+  elif [ $rc -eq 3 ]; then
+    # Nothing was attempted, so the SMTP hints below would be noise.
+    warn "chưa có gì để thử: tệp env vẫn là MAIL_DRIVER=console."
+    warn "Chạy bước ghi cấu hình trước — một dòng, nhớ đủ hai dấu gạch:"
+    u="$(read_value "$ENV_FILE" SMTP_USER)"; [ -n "$u" ] || u="${SMTP_USER_IN:-vpetprep@gmail.com}"
+    b="$(read_value "$ENV_FILE" PUBLIC_BASE_URL)"; [ -n "$b" ] || b="${BASE_URL_IN:-https://d1tjeiogootdxv.cloudfront.net}"
+    printf '\n     sudo bash scripts/setup-mail.sh --user %s --base-url %s --restart\n\n' "$u" "$b"
+  else
+    warn "chưa gửi được — mã lỗi ở dòng JSON trên; 535 là sai App Password, EAUTH/ETIMEDOUT là chặn cổng 587"
+  fi
   exit $rc
 fi
 

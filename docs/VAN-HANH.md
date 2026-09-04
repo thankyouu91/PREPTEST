@@ -807,14 +807,16 @@ sudo -u ubuntu git pull          # người sở hữu bản checkout mới pull
 sudo bash scripts/setup-mail.sh --check
 
 # 2. ghi cấu hình — nó HỎI App Password, gõ vào không hiện ra màn hình
-sudo bash scripts/setup-mail.sh \
-  --user vpetprep@gmail.com \
-  --base-url https://d1tjeiogootdxv.cloudfront.net \
-  --restart
+sudo bash scripts/setup-mail.sh --user vpetprep@gmail.com --base-url https://d1tjeiogootdxv.cloudfront.net --restart
 
 # 3. gửi một thư thật vào hòm thư của mình
 sudo bash scripts/setup-mail.sh --test dia-chi-cua-ban@gmail.com
 ```
+
+> **Lệnh số 2 viết liền MỘT dòng, không cắt bằng dấu `\`.** Lần chạy thật đầu
+> tiên (04/09/2026) dán bản nhiều dòng vào Session Manager và **hai dấu gạch bị
+> mất**: bash nhận `user` chứ không phải `--user`. Script nay đoán ra trường hợp
+> đó và hỏi lại "ý bạn là `--user` chứ?" thay vì chỉ nói không hiểu.
 
 Nó dừng lại thay vì ghi nửa vời khi: mật khẩu không phải 16 ký tự (dấu hiệu gần
 như chắc chắn là đang dùng mật khẩu tài khoản — xem 8.2b), `SMTP_USER` không
@@ -824,7 +826,7 @@ tài khoản đăng nhập (bẫy 1 ở 8.3), và khi `TOKEN_ENCRYPTION_KEY` kh�
 tự. Chạy lại lần hai không đổi gì thêm; nếu tệp **đã** hỏng cú pháp từ trước thì
 nó sửa luôn và nói rõ những biến nào sống lại.
 
-`scripts/test-setup-mail.mjs` (69 kiểm, nằm trong `verify.sh`) canh đúng những
+`scripts/test-setup-mail.mjs` (76 kiểm, nằm trong `verify.sh`) canh đúng những
 điều đó: một tệp có sẵn `TOKEN_ENCRYPTION_KEY` phải nguyên vẹn sau khi sửa,
 `MAIL_FROM` phải giữ được cả tên hiển thị lẫn dấu `<>`, mọi lần từ chối đều
 **không** được động vào tệp, và không có đầu ra nào chứa bí mật.
