@@ -406,6 +406,11 @@ chứa một token dùng một lần — nên **token không bao giờ được 
 | `SMTP_SECURE` | `1` khi cổng 465 | ép TLS ngay từ đầu |
 | `SMTP_ALLOW_PLAINTEXT_AUTH` | `0` | chỉ bật với relay nội bộ bạn tự quản |
 
+Đặt những biến này trên máy chủ bằng `sudo bash scripts/setup-mail.sh` chứ đừng
+mở trình soạn thảo: tệp env cũng giữ `TOKEN_ENCRYPTION_KEY`, và một dấu `<` thiếu
+nháy làm shell không nạp được mọi dòng phía sau. Script sửa bản sao, đối chiếu
+từng giá trị cũ, rồi mới ghi — `docs/VAN-HANH.md` §8.2a.
+
 Driver `smtp` viết bằng `node:net` + `node:tls`, **không thêm dependency**, và
 không gắn với nhà cung cấp nào: SES, SendGrid, Postmark hay Gmail (app password)
 đều nói SMTP. Chưa cấu hình thì driver `console` chạy — ngoài production nó trả

@@ -106,6 +106,11 @@ node scripts/test-accounts.js || fail=1
 step "Outgoing mail (composition, SMTP conversation, no token in the log)"
 node scripts/test-mail.mjs || fail=1
 
+# Not the mail settings — the file they go into. It also holds
+# TOKEN_ENCRYPTION_KEY, which no backup carries, and it is executed by a shell.
+step "Putting the mail settings on the server without breaking the env file"
+node scripts/test-setup-mail.mjs || fail=1
+
 step "Admin second factor (RFC 6238 vectors, enrolment, sign-in)"
 node scripts/test-totp.mjs || fail=1
 

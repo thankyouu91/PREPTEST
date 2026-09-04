@@ -744,16 +744,57 @@ PUBLIC_BASE_URL=https://d1tjeiogootdxv.cloudfront.net
 
 > **Dấu nháy ở hai dòng giữa là bắt buộc, không phải cho gọn.** Tệp này được nạp
 > bằng `set -a; . /etc/vpet-prep.env` — nghĩa là shell **thực thi** nó. Viết
-> `MAIL_FROM=VPET Prep <vpetprep@gmail.com>` thì shell đọc `<` là chuyển hướng đầu
-> vào: dòng đó lỗi, và những biến phía sau **không được đặt** — hỏng lan sang cả
-> `TOKEN_ENCRYPTION_KEY`. App Password Google hiện ra dạng `abcd efgh ijkl mnop`;
-> gõ vào đây **bỏ hết dấu cách**.
+> `MAIL_FROM=VPET Prep <vpetprep@gmail.com>` thì `<` là chuyển hướng đầu vào và
+> `>` ở cuối dòng không có tên tệp đi kèm: **lỗi cú pháp**, và lỗi cú pháp làm
+> việc nạp **dừng ngay tại đó**. Đo thật, không phải suy đoán: mọi biến nằm
+> **sau** dòng hỏng đều không được đặt — kể cả `TOKEN_ENCRYPTION_KEY`, vì khoá đó
+> được *thêm vào cuối tệp*, tức là nằm dưới. App Password Google hiện ra dạng
+> `abcd efgh ijkl mnop`; gõ vào đây **bỏ hết dấu cách**.
 >
 > `MAIL_FROM` **được phép** kèm tên hiển thị: `server/mail.js` tách địa chỉ ra
 > cho phong bì SMTP và cho `Message-ID`, giữ nguyên tên cho header `From`. Trước
 > 04/09/2026 nó không tách, nên lệnh gửi thành
 > `MAIL FROM:<VPET Prep <a@gmail.com>>` và Gmail trả 5xx — đúng cái dạng README
 > vẫn lấy làm ví dụ. `scripts/test-mail.mjs` nay canh chỗ đó.
+
+### 8.2a Đừng sửa tệp bằng tay — `scripts/setup-mail.sh` làm việc đó
+
+Bảy dòng ở trên đọc thì dễ, gõ tay vào một tệp đang giữ `TOKEN_ENCRYPTION_KEY`
+thì không. `scripts/setup-mail.sh` **sửa một bản sao, chứng minh bản sao vẫn đọc
+ra đúng từng giá trị mà bản gốc đọc ra, rồi mới ghi đè** — và giữ bản cũ lại bên
+cạnh. Nó cũng không bao giờ in mật khẩu ra, không nhận mật khẩu trên dòng lệnh
+(ai cũng đọc được bằng `ps`), và không để mật khẩu lọt vào `~/.bash_history`.
+
+Trên máy chủ, ba lệnh:
+
+```bash
+cd /home/ubuntu/PREPTEST && git pull
+
+# 1. xem tệp hiện có gì (chỉ đọc, không in bí mật, chỉ in độ dài)
+sudo bash scripts/setup-mail.sh --check
+
+# 2. ghi cấu hình — nó HỎI App Password, gõ vào không hiện ra màn hình
+sudo bash scripts/setup-mail.sh \
+  --user vpetprep@gmail.com \
+  --base-url https://d1tjeiogootdxv.cloudfront.net \
+  --restart
+
+# 3. gửi một thư thật vào hòm thư của mình
+sudo bash scripts/setup-mail.sh --test dia-chi-cua-ban@gmail.com
+```
+
+Nó dừng lại thay vì ghi nửa vời khi: mật khẩu không phải 16 ký tự (dấu hiệu gần
+như chắc chắn là đang dùng mật khẩu tài khoản — xem 8.2b), `SMTP_USER` không
+giống địa chỉ email, `PUBLIC_BASE_URL` thiếu `https://`, hoặc tệp mới sinh ra
+không hợp lệ về cú pháp. Nó cảnh báo khi `MAIL_FROM` gửi từ một địa chỉ khác với
+tài khoản đăng nhập (bẫy 1 ở 8.3), và khi `TOKEN_ENCRYPTION_KEY` không đủ 44 ký
+tự. Chạy lại lần hai không đổi gì thêm; nếu tệp **đã** hỏng cú pháp từ trước thì
+nó sửa luôn và nói rõ những biến nào sống lại.
+
+`scripts/test-setup-mail.mjs` (64 kiểm, nằm trong `verify.sh`) canh đúng những
+điều đó: một tệp có sẵn `TOKEN_ENCRYPTION_KEY` phải nguyên vẹn sau khi sửa,
+`MAIL_FROM` phải giữ được cả tên hiển thị lẫn dấu `<>`, mọi lần từ chối đều
+**không** được động vào tệp, và không có đầu ra nào chứa bí mật.
 
 ### 8.2b Mật khẩu tài khoản Google KHÔNG dùng được ở đây
 
@@ -814,6 +855,10 @@ thay vì nằm thẳng trong `/etc/vpet-prep.env`. Tệp env phải `chmod 600` 
 
 ### 8.5 Kiểm là đã chạy
 
+0. `sudo bash scripts/setup-mail.sh --check` — in cả **tệp** lẫn **tiến trình
+   đang chạy** (đọc từ `pm2 jlist`) cạnh nhau. Đây là cách duy nhất thấy được bẫy
+   số 3: tệp có `MAIL_DRIVER=smtp` mà tiến trình vẫn `console` nghĩa là restart
+   chưa nạp lại tệp.
 1. `pm2 logs preptest --lines 50 | grep "\[config\]"` — dòng `no-mail-service`
    phải **biến mất**.
 2. Xin đặt lại mật khẩu cho một tài khoản thử trên
