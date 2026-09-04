@@ -349,67 +349,88 @@ production; HEAD trả 200 cho cùng cookie ở cả trang HTML lẫn `/api/cata
 từ các lát PostgreSQL ghi ở `docs/ROADMAP.md`, trước đợt này; hai commit này không
 thêm gói nào.
 
-### 7.3 Production — địa chỉ thật, và kiểm thế nào
+### 7.3 Production — đã nghiệm thu thật, 2026-09-04
 
-> **Đính chính 2026-09-04.** Bản đầu của mục này bảo người vận hành gọi
-> `https://vpetprep.vn`. **Tên miền đó chưa được mua.** Ai làm theo sẽ nhận một
-> lỗi kết nối và rất dễ đọc nhầm thành "bản mới chưa lên". Production thật là
-> **`http://54.255.98.192`** — máy EC2 `testprep-backend` ở ap-southeast-1, đã
-> ghi ở `docs/VAN-HANH.md` §7. Kết luận "proxy chặn production" ở bản trước cũng
-> sai nguyên nhân: tên miền không tồn tại nên không phân giải được.
+> **Mục này đã bị viết sai hai lần trong một ngày; đây là bản dựa trên phản hồi
+> thật của máy chủ.** Bản đầu bảo gọi `https://vpetprep.vn` — tên miền chưa mua,
+> ai làm theo sẽ nhận lỗi kết nối và đọc nhầm thành "bản mới chưa lên". Bản thứ
+> hai sửa địa chỉ thành `http://54.255.98.192` và kết luận production chạy HTTP
+> trần — đúng với lúc đó, **sai ngay sau đó**: chủ đầu tư đã dựng CloudFront.
+> Bài học đã ghi vào cách viết mục này: **chép nguyên header đo được, kèm ngày
+> giờ**, đừng suy ra trạng thái triển khai từ mã nguồn.
 
-Phiên này vẫn không với tới production, nhưng vì lý do khác và đã xác định được:
-gọi thẳng `http://54.255.98.192` thì proxy egress của sandbox trả 503 kèm thông
-báo của Envoy *"upstream connect error … connection timeout"* — bị chặn ở tầng
-mạng của môi trường chạy, không phải lỗi của nền tảng. Connector AWS cấp lại rồi
-vẫn chỉ dùng được nửa không cần thông tin đăng nhập (`list_regions` chạy,
-`run_script` báo token hết hạn), nên cũng không vào được máy qua SSM.
+**Địa chỉ hiện tại: `https://d1tjeiogootdxv.cloudfront.net`** — CloudFront đứng
+trước nginx trên EC2 `testprep-backend` (`54.255.98.192`, ap-southeast-1, xem
+`docs/VAN-HANH.md` §7). Từ phiên làm việc gọi được thẳng, nên đây là lần đầu
+production được nghiệm thu bằng lệnh chứ không phải bằng danh sách giao lại.
 
-Vậy production **chưa được nghiệm thu bằng lệnh**. Năm phép kiểm cho người vận
-hành, rẻ trước đắt sau — phép 0 là phép quan trọng nhất và tốn mười giây:
+**Đo lúc 03:51 ngày 04/09/2026, `GET /prep/landing/`** — nguyên văn:
 
-0. **Trên máy chủ:** `pm2 env 0 | grep -i node_env` (hoặc `printenv NODE_ENV`
-   trong tiến trình đang chạy). Xem §7.3b ngay dưới: nếu **không** phải
-   `production` thì lỗ ở §5b.1 của `docs/SECURITY.md` đã **thực sự mở** trên
-   production cho tới bản vá hôm nay, chứ không phải nguy cơ lý thuyết.
-1. Từ máy bất kỳ:
-   `curl -sI http://54.255.98.192/prep/landing/ | grep -i content-security-policy`
-   phải chứa `media-src 'self' blob:`. Thiếu chỉ thị đó nghĩa là bản mới chưa
-   lên, và nút Nghe ở phần không chữ cái vẫn câm. Với §1.1 phép kiểm này là đủ:
-   đó chính là điều kiện để trình duyệt cho phát `blob:`.
-   Thêm `curl -s http://54.255.98.192/api/tactics | head -c 60` — có nội dung
-   nghĩa là commit ngày 04/09 đã lên.
-2. Nếu có đề với phần "- no part -" (trình xây đề cho phép; mọi họ đề không phải
-   VPET đều đi đường này): đăng nhập học viên, mở đề, bấm Nghe — phải có tiếng,
-   và lượt nghe trừ đúng một.
-3. Quản trị → Ngân hàng câu hỏi: câu Part G/H/J chưa có lời thoại mang nhãn
-   **No transcript** trên danh sách; mở một câu, có ô **Transcript (what the
-   recording says)** và với Part G thêm **Model answer**; sửa, lưu, mở lại còn
-   nguyên. Đây là §1.2.
-4. Trên máy chủ, trong thư mục ứng dụng: `node scripts/accounts.js list` mà
-   **không** đặt `PREP_DB` phải in danh sách tài khoản, không phải
-   `ReferenceError`. Đây là §5.1. Cùng lúc xem log PM2: hai cột
-   `questions.script` và `questions.model_answer` được thêm tự động lúc khởi
-   động, và **không được có** dòng `[config] AUTH_DEV_LINKS`.
+```
+strict-transport-security: max-age=31536000; includeSubDomains
+set-cookie: prep_csrf=…; Path=/; SameSite=Strict; Max-Age=1209600; Secure
+content-security-policy: default-src 'self'; …; media-src 'self' blob:; …
+cache-control: no-store
+x-cache: Miss from cloudfront
+server: nginx/1.28.3 (Ubuntu)
+```
 
-### 7.3b Không có tên miền là một vấn đề bảo mật, không phải việc thương hiệu
+Đọc ra được năm điều, không cần đăng nhập vào máy:
 
-Production phục vụ qua **HTTP trần trên một địa chỉ IP**. Hệ quả không tránh
-được, và không sửa được bằng mã:
+| Kiểm | Kết quả |
+|---|---|
+| §1.1 — CSP có `media-src 'self' blob:` | ✅ **đã lên**. Nút Nghe ở phần không chữ cái phát được |
+| Bản mới nhất đã triển khai chưa | ✅ `/api/tactics` trả 200 kèm nội dung — tức `593a1f9` đã lên |
+| Ứng dụng có "nhìn thấy" TLS không | ✅ có. HSTS chỉ được gửi khi request là HTTPS, và cookie mang `Secure` — nghĩa là `X-Forwarded-Proto: https` **có** tới được Node |
+| Nonce CSP có bị CDN cache lại không | ✅ không. Trang HTML mang `cache-control: no-store`, CloudFront báo `Miss` |
+| Response API | ✅ `default-src 'none'`, `noindex`, `no-store` |
 
-- **Mật khẩu, cookie phiên và bài làm đều đi trên đường truyền ở dạng rõ.** Ai
-  đứng trên đường mạng — cùng Wi-Fi, cùng nhà mạng, cùng máy chủ trung gian —
-  đọc được và dùng lại được phiên đăng nhập. Đây là vấn đề lớn hơn mọi lỗ đã tìm
-  thấy trong đợt rà soát này.
-- **Cookie không mang được `Secure`.** Đặt `Secure` trên site HTTP thì trình
-  duyệt nhận cookie rồi không bao giờ gửi lại: đăng nhập xong lại quay về màn
-  đăng nhập. `server/security.js` cảnh báo đúng tình huống đó — nghĩa là trên máy
-  này `NODE_ENV` gần như chắc chắn **không** phải `production`, vì nếu phải thì
-  đăng nhập đã hỏng.
-- **`Strict-Transport-Security` không được gửi** (đúng: gửi qua HTTP thì vô
-  nghĩa), nên không có gì ép trình duyệt dùng HTTPS về sau.
-- Bản vá §5b.1 vẫn giữ được trên máy này, nhưng **chỉ nhờ tín hiệu tên máy** (IP
-  công cộng ≠ localhost), không nhờ TLS.
+**Lỗ §5b.1 (link đặt lại mật khẩu) đã đóng trên production.** Kiểm bằng hai
+request thật: một địa chỉ không tồn tại và một tài khoản có thật (`student@…`,
+tài khoản mẫu của chính nền tảng). Cả hai trả **đúng `{"ok":true}`** — không có
+`resetLink`, và hai câu trả lời giống hệt nhau nên cũng không còn máy dò xem địa
+chỉ nào đã đăng ký.
+
+Còn ba việc **không** kiểm được từ ngoài, xếp theo mức quan trọng — xem §7.3b.
+
+### 7.3b Ba việc CloudFront chưa tự giải quyết
+
+**1. `TRUST_PROXY` — nhiều khả năng đang sai, và hậu quả thấy được ngay.**
+Mọi request bây giờ đến từ một IP biên của CloudFront. Mặc định `TRUST_PROXY=0`
+nghĩa là `req.ip` là IP biên đó **cho tất cả mọi người** — mà `req.ip` chính là
+khoá của khoá-đăng-nhập-15-phút và của trần ghi toàn cục (mục 2
+`docs/SECURITY.md`). Hệ quả: **một người gõ sai mật khẩu năm lần là khoá cả
+nền tảng**, và trần ghi thành trần dùng chung. `server/security.js` in cảnh báo
+đúng tình huống này ngay khi thấy `X-Forwarded-*`:
+
+```bash
+pm2 logs --lines 200 | grep "TRUST_PROXY"     # có dòng này là đang sai
+```
+
+Đặt bằng **số lượng proxy đứng trước Node**, không phải `true`. Chuỗi hiện tại
+là CloudFront → nginx → Node, nên gần như chắc là `2`; nhưng con số phụ thuộc
+nginx có nối thêm vào `X-Forwarded-For` hay không, nên **phải kiểm chứ đừng
+đoán**: đặt xong, thử đăng nhập sai từ hai mạng khác nhau — chỉ mạng gõ sai bị
+khoá là đúng; cả hai cùng bị khoá là con số còn sai.
+
+**2. Máy gốc có còn vào thẳng được không.** Nếu `54.255.98.192:80` vẫn mở ra
+Internet thì CloudFront là trang trí: kẻ tấn công gọi thẳng máy gốc, không qua
+WAF, không TLS, và cookie phiên lại đi ở dạng rõ. Hai lớp nên có cùng lúc:
+security group **mới** (không sửa group đang có — ràng buộc ở `docs/VAN-HANH.md`
+§7) chỉ cho vào từ prefix list `com.amazonaws.global.cloudfront.origin-facing`,
+và một header bí mật do CloudFront thêm mà nginx bắt buộc phải thấy.
+
+**3. Nhật ký đặt lại mật khẩu, đọc một lần cho yên tâm.** Trước khi có
+CloudFront, site chạy HTTP trần và `NODE_ENV` gần như chắc chắn không phải
+`production` (nếu phải thì `cookieIsSecure()` đã bật `Secure` trên site HTTP và
+đăng nhập đã hỏng). Trong khoảng đó lỗ §5b.1 **có thể đã thực sự mở**. Việc đó
+nay đã đóng, nhưng nên xem lại một lần: mỗi lần xin đặt lại mật khẩu đều được ghi
+`user.reset.request` kèm tên tài khoản. Có bản ghi nào cho tài khoản mà chủ tài
+khoản không hề xin thì đó là dấu hiệu đã bị dùng.
+
+Cuối cùng, hai việc vận hành **vẫn treo** và CloudFront không đụng tới: chưa có
+dịch vụ mail (nên đặt lại mật khẩu vẫn không đến được ai — đúng như cảnh báo
+`no-mail-service` in ra ở log), và Google Client Secret vẫn cần xoay.
 
 Mua tên miền là **điều kiện cần để có chứng chỉ** (Let's Encrypt cấp theo tên,
 không cấp cho IP), và chứng chỉ là điều kiện cần để có cookie `Secure` và HSTS.

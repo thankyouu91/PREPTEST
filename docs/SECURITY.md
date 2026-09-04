@@ -408,33 +408,35 @@ khi nghi bị xâm nhập — `node scripts/accounts.js reset-admin` thu hồi m
 quản trị, `dropUserSessions` cho học viên, và `deploy/restore.sh` phục hồi từ S3
 có object-lock.
 
-### 5b.4 Lớp 0, chưa từng có: production đang chạy HTTP trần
+### 5b.4 Lớp biên đã dựng, và ba việc nó chưa giải quyết
 
-Biết được ngày 04/09, sau khi chủ đầu tư cho hay **chưa mua tên miền**.
-Production là `http://54.255.98.192` (EC2 `testprep-backend`, `docs/VAN-HANH.md`
-§7) — không tên miền, nên không chứng chỉ, nên không TLS.
+Cập nhật 04/09/2026, **đo trên production chứ không suy từ mã**. Địa chỉ hiện tại
+là `https://d1tjeiogootdxv.cloudfront.net` — CloudFront trước nginx trên EC2
+`testprep-backend`. Bản trước của mục này viết "production chạy HTTP trần"; đúng
+với thời điểm đó và đã lạc hậu trong cùng ngày. Nguyên văn header và cách đọc ở
+`docs/RA-SOAT-TOAN-BO-2026-09.md` §7.3.
 
-Đây là vấn đề lớn hơn mọi lỗ liệt kê ở §5b.1 và §5b.2 cộng lại, và **không sửa
-được bằng mã**:
+Ba điều ở "Lớp 2 — ở biên (CHƯA CÓ)" trong bảng §5b.3 nay **đã có**: TLS tới tận
+trình duyệt, một CDN đứng trước máy gốc, và HSTS được gửi thật. Kiểm được từ
+ngoài: HSTS chỉ gửi khi request là HTTPS, cookie mang `Secure`, tức ứng dụng
+**nhìn thấy** TLS — `X-Forwarded-Proto: https` có tới được Node. Trang HTML mang
+`cache-control: no-store` nên nonce CSP không bị CDN cache lại, đúng là điều phải
+kiểm khi đặt CDN trước một ứng dụng phát nonce theo từng request.
 
-| Hệ quả | Nghĩa là gì |
-|---|---|
-| Mật khẩu, cookie phiên, bài làm đi ở dạng rõ | Ai đứng trên đường mạng đọc được và dùng lại được phiên đăng nhập |
-| Cookie không mang được `Secure` | Đặt `Secure` trên site HTTP là đăng nhập xong quay lại màn đăng nhập (cảnh báo số 2 ở `checkDeployment`) |
-| Không gửi được HSTS | Không có gì ép trình duyệt dùng HTTPS về sau |
-| `NODE_ENV` gần như chắc chắn **không** phải `production` | Vì nếu phải thì `cookieIsSecure()` đã bật `Secure` và đăng nhập đã hỏng |
+Lỗ §5b.1 đã kiểm lại **trên chính production**: một địa chỉ không tồn tại và một
+tài khoản có thật đều trả đúng `{"ok":true}`, không kèm link, giống hệt nhau.
 
-Dòng cuối là dòng nặng nhất, vì nó nối thẳng vào §5b.1: `deliverLink()` cũ chỉ
-chặn bằng `NODE_ENV === 'production'`, và cũng chưa có dịch vụ mail. Nếu
-`NODE_ENV` trên máy đó không phải `production` — mà mọi dấu hiệu đều nói vậy —
-thì **link đặt lại mật khẩu đã thực sự được trả cho người gọi ẩn danh trên
-production**, chứ không phải chỉ là nguy cơ nếu biến môi trường biến mất. Bản vá
-hôm nay đóng nó lại nhờ tín hiệu tên máy (IP công cộng ≠ localhost), không nhờ
-TLS. **Một lệnh trên máy chủ xác định dứt điểm**: `pm2 env 0 | grep -i node_env`.
+Ba việc còn lại, không kiểm được từ ngoài và xếp theo mức quan trọng:
 
-Thứ tự việc cần làm, và nó khác thứ tự trong bảng bốn lớp ở trên: mua tên miền →
-trỏ về `54.255.98.192` → chứng chỉ (Let's Encrypt cấp theo tên, không cấp cho
-IP) → `NODE_ENV=production` và `PUBLIC_BASE_URL` → SMTP → rồi mới tới lớp biên.
+| # | Việc | Vì sao gấp |
+|---|---|---|
+| 1 | `TRUST_PROXY` phải bằng **số** proxy đứng trước (CloudFront → nginx → Node, gần như chắc là 2) | Để mặc định 0 thì `req.ip` là IP biên CloudFront cho **mọi** người, mà đó là khoá của khoá-đăng-nhập và trần ghi: một người gõ sai mật khẩu năm lần khoá cả nền tảng. `pm2 logs \| grep TRUST_PROXY` có dòng cảnh báo là đang sai |
+| 2 | Chặn vào thẳng máy gốc `54.255.98.192` | Còn vào thẳng được thì WAF và TLS ở biên là trang trí. Security group **mới** (không sửa group cũ) chỉ nhận từ prefix list `com.amazonaws.global.cloudfront.origin-facing`, cộng một header bí mật CloudFront thêm và nginx bắt buộc |
+| 3 | Đọc nhật ký `user.reset.request` một lần | Trước khi có CloudFront site chạy HTTP trần và `NODE_ENV` gần như chắc không phải `production`, nên lỗ §5b.1 **có thể đã từng mở**. Bản ghi cho tài khoản mà chủ nhân không hề xin là dấu hiệu đã bị dùng |
+
+Và hai việc CloudFront không đụng tới: **chưa có dịch vụ mail** (đặt lại mật khẩu
+vẫn không đến được ai; log in cảnh báo `no-mail-service`), và **xoay Google Client
+Secret**.
 
 ## 6. Bảng endpoint → guard → giới hạn ghi
 
