@@ -408,6 +408,34 @@ khi nghi bị xâm nhập — `node scripts/accounts.js reset-admin` thu hồi m
 quản trị, `dropUserSessions` cho học viên, và `deploy/restore.sh` phục hồi từ S3
 có object-lock.
 
+### 5b.4 Lớp 0, chưa từng có: production đang chạy HTTP trần
+
+Biết được ngày 04/09, sau khi chủ đầu tư cho hay **chưa mua tên miền**.
+Production là `http://54.255.98.192` (EC2 `testprep-backend`, `docs/VAN-HANH.md`
+§7) — không tên miền, nên không chứng chỉ, nên không TLS.
+
+Đây là vấn đề lớn hơn mọi lỗ liệt kê ở §5b.1 và §5b.2 cộng lại, và **không sửa
+được bằng mã**:
+
+| Hệ quả | Nghĩa là gì |
+|---|---|
+| Mật khẩu, cookie phiên, bài làm đi ở dạng rõ | Ai đứng trên đường mạng đọc được và dùng lại được phiên đăng nhập |
+| Cookie không mang được `Secure` | Đặt `Secure` trên site HTTP là đăng nhập xong quay lại màn đăng nhập (cảnh báo số 2 ở `checkDeployment`) |
+| Không gửi được HSTS | Không có gì ép trình duyệt dùng HTTPS về sau |
+| `NODE_ENV` gần như chắc chắn **không** phải `production` | Vì nếu phải thì `cookieIsSecure()` đã bật `Secure` và đăng nhập đã hỏng |
+
+Dòng cuối là dòng nặng nhất, vì nó nối thẳng vào §5b.1: `deliverLink()` cũ chỉ
+chặn bằng `NODE_ENV === 'production'`, và cũng chưa có dịch vụ mail. Nếu
+`NODE_ENV` trên máy đó không phải `production` — mà mọi dấu hiệu đều nói vậy —
+thì **link đặt lại mật khẩu đã thực sự được trả cho người gọi ẩn danh trên
+production**, chứ không phải chỉ là nguy cơ nếu biến môi trường biến mất. Bản vá
+hôm nay đóng nó lại nhờ tín hiệu tên máy (IP công cộng ≠ localhost), không nhờ
+TLS. **Một lệnh trên máy chủ xác định dứt điểm**: `pm2 env 0 | grep -i node_env`.
+
+Thứ tự việc cần làm, và nó khác thứ tự trong bảng bốn lớp ở trên: mua tên miền →
+trỏ về `54.255.98.192` → chứng chỉ (Let's Encrypt cấp theo tên, không cấp cho
+IP) → `NODE_ENV=production` và `PUBLIC_BASE_URL` → SMTP → rồi mới tới lớp biên.
+
 ## 6. Bảng endpoint → guard → giới hạn ghi
 
 74 route, 43 route ghi. **43/43 route ghi đều có `csrfGuard`**; 35/43 có thêm

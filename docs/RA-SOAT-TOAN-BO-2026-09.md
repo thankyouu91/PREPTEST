@@ -349,20 +349,36 @@ production; HEAD trả 200 cho cùng cookie ở cả trang HTML lẫn `/api/cata
 từ các lát PostgreSQL ghi ở `docs/ROADMAP.md`, trước đợt này; hai commit này không
 thêm gói nào.
 
-### 7.3 Production — chưa kiểm được từ đây, và kiểm thế nào
+### 7.3 Production — địa chỉ thật, và kiểm thế nào
 
-Phiên này không với tới `https://vpetprep.vn`: proxy của sandbox trả
-`CONNECT tunnel failed, response 502`, và connector AWS đã hết hạn token (cấp lại
-trong phần Connectors của claude.ai; không làm được từ trong phiên). Nên
-production **chưa được nghiệm thu bằng lệnh** trong đợt này. Bốn phép kiểm cho
-người vận hành, mỗi phép chừng một phút, rẻ trước đắt sau:
+> **Đính chính 2026-09-04.** Bản đầu của mục này bảo người vận hành gọi
+> `https://vpetprep.vn`. **Tên miền đó chưa được mua.** Ai làm theo sẽ nhận một
+> lỗi kết nối và rất dễ đọc nhầm thành "bản mới chưa lên". Production thật là
+> **`http://54.255.98.192`** — máy EC2 `testprep-backend` ở ap-southeast-1, đã
+> ghi ở `docs/VAN-HANH.md` §7. Kết luận "proxy chặn production" ở bản trước cũng
+> sai nguyên nhân: tên miền không tồn tại nên không phân giải được.
 
+Phiên này vẫn không với tới production, nhưng vì lý do khác và đã xác định được:
+gọi thẳng `http://54.255.98.192` thì proxy egress của sandbox trả 503 kèm thông
+báo của Envoy *"upstream connect error … connection timeout"* — bị chặn ở tầng
+mạng của môi trường chạy, không phải lỗi của nền tảng. Connector AWS cấp lại rồi
+vẫn chỉ dùng được nửa không cần thông tin đăng nhập (`list_regions` chạy,
+`run_script` báo token hết hạn), nên cũng không vào được máy qua SSM.
+
+Vậy production **chưa được nghiệm thu bằng lệnh**. Năm phép kiểm cho người vận
+hành, rẻ trước đắt sau — phép 0 là phép quan trọng nhất và tốn mười giây:
+
+0. **Trên máy chủ:** `pm2 env 0 | grep -i node_env` (hoặc `printenv NODE_ENV`
+   trong tiến trình đang chạy). Xem §7.3b ngay dưới: nếu **không** phải
+   `production` thì lỗ ở §5b.1 của `docs/SECURITY.md` đã **thực sự mở** trên
+   production cho tới bản vá hôm nay, chứ không phải nguy cơ lý thuyết.
 1. Từ máy bất kỳ:
-   `curl -sI https://vpetprep.vn/prep/landing/ | grep -i content-security-policy`
-   phải chứa `media-src 'self' blob:` (trên máy nghiệm thu header này có ở cả
-   GET lẫn HEAD). Thiếu chỉ thị đó nghĩa là bản mới chưa lên, và nút Nghe ở phần
-   không chữ cái vẫn câm. Với §1.1 phép kiểm này là đủ: đó chính là điều kiện
-   để trình duyệt cho phát `blob:`, phần còn lại của đường phát không đổi.
+   `curl -sI http://54.255.98.192/prep/landing/ | grep -i content-security-policy`
+   phải chứa `media-src 'self' blob:`. Thiếu chỉ thị đó nghĩa là bản mới chưa
+   lên, và nút Nghe ở phần không chữ cái vẫn câm. Với §1.1 phép kiểm này là đủ:
+   đó chính là điều kiện để trình duyệt cho phát `blob:`.
+   Thêm `curl -s http://54.255.98.192/api/tactics | head -c 60` — có nội dung
+   nghĩa là commit ngày 04/09 đã lên.
 2. Nếu có đề với phần "- no part -" (trình xây đề cho phép; mọi họ đề không phải
    VPET đều đi đường này): đăng nhập học viên, mở đề, bấm Nghe — phải có tiếng,
    và lượt nghe trừ đúng một.
@@ -372,9 +388,33 @@ người vận hành, mỗi phép chừng một phút, rẻ trước đắt sau:
    nguyên. Đây là §1.2.
 4. Trên máy chủ, trong thư mục ứng dụng: `node scripts/accounts.js list` mà
    **không** đặt `PREP_DB` phải in danh sách tài khoản, không phải
-   `ReferenceError`. Đây là §5.1. Cùng lúc xem log PM2 của lần khởi động đầu sau
-   khi triển khai: hai cột `questions.script` và `questions.model_answer` được
-   thêm tự động lúc khởi động, không có dòng lỗi nào.
+   `ReferenceError`. Đây là §5.1. Cùng lúc xem log PM2: hai cột
+   `questions.script` và `questions.model_answer` được thêm tự động lúc khởi
+   động, và **không được có** dòng `[config] AUTH_DEV_LINKS`.
+
+### 7.3b Không có tên miền là một vấn đề bảo mật, không phải việc thương hiệu
+
+Production phục vụ qua **HTTP trần trên một địa chỉ IP**. Hệ quả không tránh
+được, và không sửa được bằng mã:
+
+- **Mật khẩu, cookie phiên và bài làm đều đi trên đường truyền ở dạng rõ.** Ai
+  đứng trên đường mạng — cùng Wi-Fi, cùng nhà mạng, cùng máy chủ trung gian —
+  đọc được và dùng lại được phiên đăng nhập. Đây là vấn đề lớn hơn mọi lỗ đã tìm
+  thấy trong đợt rà soát này.
+- **Cookie không mang được `Secure`.** Đặt `Secure` trên site HTTP thì trình
+  duyệt nhận cookie rồi không bao giờ gửi lại: đăng nhập xong lại quay về màn
+  đăng nhập. `server/security.js` cảnh báo đúng tình huống đó — nghĩa là trên máy
+  này `NODE_ENV` gần như chắc chắn **không** phải `production`, vì nếu phải thì
+  đăng nhập đã hỏng.
+- **`Strict-Transport-Security` không được gửi** (đúng: gửi qua HTTP thì vô
+  nghĩa), nên không có gì ép trình duyệt dùng HTTPS về sau.
+- Bản vá §5b.1 vẫn giữ được trên máy này, nhưng **chỉ nhờ tín hiệu tên máy** (IP
+  công cộng ≠ localhost), không nhờ TLS.
+
+Mua tên miền là **điều kiện cần để có chứng chỉ** (Let's Encrypt cấp theo tên,
+không cấp cho IP), và chứng chỉ là điều kiện cần để có cookie `Secure` và HSTS.
+Nên thứ tự đúng là: mua tên miền → trỏ về `54.255.98.192` → cài chứng chỉ →
+đặt `NODE_ENV=production` và `PUBLIC_BASE_URL` → rồi mới tính lớp biên (block 8).
 
 ### 7.4 Điều kiện 3 — hiệu năng, đo đúng thang và so đúng cách
 
