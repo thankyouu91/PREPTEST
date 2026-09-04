@@ -765,10 +765,43 @@ ra đúng từng giá trị mà bản gốc đọc ra, rồi mới ghi đè** �
 cạnh. Nó cũng không bao giờ in mật khẩu ra, không nhận mật khẩu trên dòng lệnh
 (ai cũng đọc được bằng `ps`), và không để mật khẩu lọt vào `~/.bash_history`.
 
-Trên máy chủ, ba lệnh:
+**Vào máy chủ bằng gì.** EC2 `testprep-backend` (`54.255.98.192`, ap-southeast-1).
+Không cần tệp `.pem`, không cần mở cổng 22: AWS Console → **EC2** → Instances →
+chọn `testprep-backend` → nút **Connect** → thẻ **Session Manager** → **Connect**.
+Ra một cửa sổ dòng lệnh ngay trong trình duyệt. Máy này có sẵn IAM role
+`EC2-SSM-Role` (xem `docs/BLOCKS.md`), tức là đúng thứ Session Manager cần. Vào
+xong gõ `sudo -i` để thành `root`. Ai có khoá riêng thì
+`ssh -i khoa.pem ubuntu@54.255.98.192` cũng ra cùng một chỗ.
+
+> Đừng dùng **Run Command** cho bước nhập mật khẩu: nội dung lệnh gửi qua Run
+> Command được AWS lưu lại. Run Command chỉ hợp với `--check` và với
+> `deploy/survey.sh` — hai thứ không in bí mật.
+
+**Chạy ở thư mục nào.** Repo mô tả **hai** kiểu cài: tài liệu vận hành ghi
+`/home/ubuntu/PREPTEST` + PM2 tên `preptest` chạy dưới người dùng `ubuntu` (khảo
+sát máy thật hồi block 0), còn `deploy/ec2-bootstrap.sh` dựng kiểu khác —
+`/opt/vpet-prep`, người dùng `vpet`, systemd. Đừng đoán, hỏi máy một câu:
 
 ```bash
-cd /home/ubuntu/PREPTEST && git pull
+sudo -u ubuntu pm2 info preptest 2>/dev/null | grep -iE "script path|exec cwd"
+ls -d /home/ubuntu/PREPTEST /opt/vpet-prep 2>/dev/null
+
+# không có pm2 thì hỏi thẳng tiến trình đang chạy:
+sudo ls -l /proc/$(pgrep -f '[s]erver\.js' | head -1)/cwd
+```
+
+Dấu ngoặc trong `'[s]erver\.js'` không thừa: `pgrep -f "server.js"` khớp cả
+dòng lệnh của chính cái shell đang gõ, nên nó tự tìm thấy mình.
+
+Thư mục nào trả lời thì `cd` vào đó. Bên dưới viết theo `/home/ubuntu/PREPTEST`;
+nếu máy trả về `/opt/vpet-prep` thì thay đường dẫn và đổi `-u ubuntu` thành
+`-u vpet`.
+
+Ba lệnh:
+
+```bash
+cd /home/ubuntu/PREPTEST
+sudo -u ubuntu git pull          # người sở hữu bản checkout mới pull được
 
 # 1. xem tệp hiện có gì (chỉ đọc, không in bí mật, chỉ in độ dài)
 sudo bash scripts/setup-mail.sh --check
@@ -791,7 +824,7 @@ tài khoản đăng nhập (bẫy 1 ở 8.3), và khi `TOKEN_ENCRYPTION_KEY` kh�
 tự. Chạy lại lần hai không đổi gì thêm; nếu tệp **đã** hỏng cú pháp từ trước thì
 nó sửa luôn và nói rõ những biến nào sống lại.
 
-`scripts/test-setup-mail.mjs` (64 kiểm, nằm trong `verify.sh`) canh đúng những
+`scripts/test-setup-mail.mjs` (69 kiểm, nằm trong `verify.sh`) canh đúng những
 điều đó: một tệp có sẵn `TOKEN_ENCRYPTION_KEY` phải nguyên vẹn sau khi sửa,
 `MAIL_FROM` phải giữ được cả tên hiển thị lẫn dấu `<>`, mọi lần từ chối đều
 **không** được động vào tệp, và không có đầu ra nào chứa bí mật.
