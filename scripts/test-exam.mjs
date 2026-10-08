@@ -604,6 +604,28 @@ try {
       headers: { 'X-CSRF-Token': await page.evaluate(() => PrepApi.csrf()) }
     });
 
+    /* Trang chi tiết đề: biểu tượng từng phần phải theo KỸ NĂNG mà API trả về,
+       không đoán từ tên phần. Đoán trước, đọc sau là sai ở năm trong mười phần
+       VPET — Dictation và Response Selection là Nghe, còn Passage
+       Comprehension, Repeat và Story Retellings là Nói, mà không tên nào chứa
+       từ khoá, nên cả năm vẽ ra cây bút của phần Viết. Một thí sinh nhìn vào
+       đó để biết phần nào cần tai nghe và phần nào cần micro. */
+    {
+      const BIEU_TUONG = { listening: 'headphones', reading: 'book', speaking: 'mic', writing: 'pen' };
+      const fmt = await (await page.request.get(BASE + '/api/formats/vpet-full')).json();
+      await page.goto(BASE + '/prep/bai-thi/vpet-b1-01/', { waitUntil: 'networkidle' });
+      await page.waitForTimeout(800);
+      const ve = await page.locator('#sections [data-icon]').evaluateAll(
+        els => els.map(e => e.getAttribute('data-icon')));
+      const can = fmt.format.sections.map(s => BIEU_TUONG[s.skill]);
+      ok(ve.length === can.length && ve.every((x, i) => x === can[i]),
+        'Biểu tượng mỗi phần theo đúng kỹ năng phần đó đo',
+        ve.join(',') + ' · cần ' + can.join(','));
+      ok(ve.filter(x => x === 'mic').length === 4,
+        'Bốn phần Nói đều mang micro, kể cả phần không có chữ "speaking" trong tên',
+        String(ve.filter(x => x === 'mic').length));
+    }
+
     ok(uiErrors.length === 0, 'Không có lỗi JavaScript trên màn kết quả', uiErrors.join(' | '));
     await ctx.close();
 

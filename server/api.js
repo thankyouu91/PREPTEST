@@ -1497,8 +1497,14 @@ router.get('/catalog', (req, res) => {
     })
   }));
   const tests = q.all("SELECT * FROM tests WHERE status='published' ORDER BY family_id, id").map(t => {
+    /* `skill` goes out with each part. Without it the test page had to guess
+       the skill from the part's name, and five of VPET's ten names do not hold
+       the word: Dictation and Response Selection are Listening, Passage
+       Comprehension, Repeat and Story Retellings are Speaking. All five drew
+       the Writing pen — on the screen a candidate reads to find out which parts
+       need headphones and which need a microphone. */
     const sections = q.all('SELECT * FROM sections WHERE test_id=? ORDER BY sort, id', t.id).map(s => ({
-      name: s.name, type: s.type, minutes: s.minutes,
+      name: s.name, skill: s.skill, type: s.type, minutes: s.minutes,
       items: q.val('SELECT COUNT(*) c FROM section_items WHERE section_id=?', s.id)
     }));
     /* Two fields, because a level id and the thing a candidate reads are not

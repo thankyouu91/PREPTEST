@@ -256,9 +256,18 @@ const run = async () => {
   {
     const CAN = 24;   // > 10 để phép kiểm bốc lại có chỗ bốc ra bộ khác
     const sanCo = (await call('GET', '/api/admin/questions/availability?family=toeic&level=B1')).data;
+    /* Số đang có nằm trong `availability`, không ở gốc phản hồi. Đọc nhầm một
+       tầng thì `co` luôn bằng 0 và khối này chèn thêm 24 câu MỖI LƯỢT chạy thay
+       vì bù cho đủ — bể phình qua 200 và phép kiểm báo thiếu phía dưới lặng lẽ
+       tắt. Nên chốt luôn hình dạng phản hồi: đổi tên trường thì vỡ ở đây, chứ
+       không vỡ thành một bể rác lớn dần. */
+    const co1 = sanCo && sanCo.availability;
+    check('Báo cáo số câu sẵn có trả về đúng hình dạng đã chờ',
+      !!co1 && typeof (co1.listening || {}).exact === 'number',
+      JSON.stringify(sanCo && Object.keys(sanCo)));
     const them = [];
     for (const skill of ['listening', 'reading']) {
-      const co = sanCo && sanCo[skill] ? sanCo[skill].exact : 0;
+      const co = co1 && co1[skill] ? co1[skill].exact : 0;
       for (let i = co; i < CAN; i++) {
         them.push({
           familyId: 'toeic', skill, level: 'B1', type: 'mcq',
@@ -302,13 +311,20 @@ const run = async () => {
   check('Không bốc trùng câu trong cùng một đề',
     autoTest && dup.size === autoTest.totalItems, dup.size + ' khoá khác nhau');
 
+  /* Báo thiếu: hỏi một kỹ năng mà bể TOEIC không có câu nào. Bản cũ xin 9999
+     câu Nghe, mà trình sinh đề kẹp số câu ở 200 — nên phép kiểm chỉ đúng chừng
+     nào bể Nghe còn dưới 200, và nó tắt lặng lẽ ngay khi bể lớn hơn thế. Kỹ
+     năng rỗng thì thiếu ở mọi kích cỡ bể. */
   r = await call('POST', '/api/admin/tests/generate', {
     familyId: 'toeic', level: 'B1',
-    blueprint: [{ name: 'Listening', skill: 'listening', type: 'Trắc nghiệm', items: 9999, minutes: 20 }]
+    blueprint: [{ name: 'Speaking', skill: 'speaking', type: 'Nói', items: 10, minutes: 20 }]
   });
   check('Báo thiếu câu khi ngân hàng không đủ',
     r.status === 409 && Array.isArray(r.data.shortages) && r.data.shortages.length === 1,
-    'status ' + r.status);
+    'status ' + r.status + ' ' + JSON.stringify(r.data && (r.data.shortages || r.data.error)));
+  check('Báo thiếu nói rõ cần bao nhiêu và đang có bao nhiêu',
+    r.status === 409 && r.data.shortages[0].need === 10 && r.data.shortages[0].have === 0,
+    JSON.stringify(r.data && r.data.shortages && r.data.shortages[0]));
 
   if (autoTest) {
     const truoc = autoSecs[0].items.map(i => i.questionId).sort().join(',');

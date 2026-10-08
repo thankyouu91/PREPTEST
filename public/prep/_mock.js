@@ -368,7 +368,10 @@ const PREP = {
       plus: '<path d="M12 5v14"/><path d="M5 12h14"/>',
       loader: '<path d="M21 12a9 9 0 1 1-6.2-8.6"/>'
     };
-    return '<svg class="' + (cls || 'w-5 h-5') + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + (paths[name] || '') + '</svg>';
+    /* `data-icon` names the glyph. It changes nothing on screen; it is there so
+       a check can read which icon was drawn without comparing path data, and so
+       a wrong icon is legible in the inspector rather than a shape to decode. */
+    return '<svg data-icon="' + name + '" class="' + (cls || 'w-5 h-5') + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + (paths[name] || '') + '</svg>';
   },
 
   /* A little confetti on a successful redeem (respects prefers-reduced-motion) */

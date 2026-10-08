@@ -173,9 +173,17 @@
           '<span class="inline-flex items-center gap-1.5">' + PREP.icon('list', 'w-[18px] h-[18px]') +
             (totalQ ? totalQ + ' questions' : 'paper being written') + '</span>';
 
-        /* The parts */
-        const skillIcon = name => {
-          const n = name.toLowerCase();
+        /* The parts.
+           Read the skill the payload states; only guess from the name when a
+           format omits it. Guessing first was wrong for five of VPET's ten
+           parts: Dictation and Response Selection are Listening, and Passage
+           Comprehension, Repeat and Story Retellings are Speaking, but none of
+           those names holds the word, so all five drew the Writing pen. The
+           fact is in `s.skill` and always was. */
+        const ICONS = { listening: 'headphones', reading: 'book', speaking: 'mic', writing: 'pen' };
+        const skillIcon = s => {
+          if (s.skill && ICONS[s.skill]) return ICONS[s.skill];
+          const n = String(s.name || '').toLowerCase();
           if (n.includes('listen')) return 'headphones';
           if (n.includes('read')) return 'book';
           if (n.includes('speak')) return 'mic';
@@ -183,7 +191,7 @@
         };
         PREP.qs('#sections').innerHTML = test.sections.map(s =>
           '<div class="flex items-center gap-4 py-3.5 border-b border-line last:border-0">' +
-            '<span class="w-10 h-10 rounded-xl bg-brand-soft text-brand-strong inline-flex items-center justify-center shrink-0">' + PREP.icon(skillIcon(s.name), 'w-5 h-5') + '</span>' +
+            '<span class="w-10 h-10 rounded-xl bg-brand-soft text-brand-strong inline-flex items-center justify-center shrink-0">' + PREP.icon(skillIcon(s), 'w-5 h-5') + '</span>' +
             '<span class="min-w-0 flex-1">' +
               '<b class="block font-bold text-[15px]">' + PREP.esc(s.name) + '</b>' +
               '<span class="block text-[13px] text-muted font-medium mt-0.5">' + PREP.esc(s.type) + '</span>' +
