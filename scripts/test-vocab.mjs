@@ -499,8 +499,17 @@ try {
   ok(gop.size === bonLo.reduce((n, l) => n + l.length, 0),
     'Bốn lô liên tiếp không chồng lấn dòng nào',
     gop.size + '/' + bonLo.reduce((n, l) => n + l.length, 0));
-  ok(bonLo[0].length && bonLo[1].length && bonLo[0][0] !== bonLo[1][0],
-    'Lô thứ hai bắt đầu ở dòng khác lô thứ nhất');
+  /* Chỉ hỏi được khi hàng đợi còn đủ sâu. Tới 08/10/2026 nó còn 12 dòng, nên
+     lô ở mốc 40 rỗng và phép kiểm cũ đỏ — nó đang đo một thứ không còn tồn tại
+     chứ không phải bắt được lỗi. Tính rời nhau ở trên mới là điều phải luôn
+     đúng, và nó đúng kể cả khi hàng đợi gần cạn. */
+  if (choDich.length > 40) {
+    ok(bonLo[1].length && bonLo[0][0] !== bonLo[1][0],
+      'Lô thứ hai bắt đầu ở dòng khác lô thứ nhất');
+  } else {
+    ok(bonLo[1].length === 0,
+      'Hàng đợi dịch gần cạn (' + choDich.length + ' dòng) nên lô thứ hai rỗng, đúng như mong đợi');
+  }
 
   /* ---- Vòng soát ----
      Cột thứ sáu ghi lời của người đọc lại. Ba trạng thái, không có trạng thái

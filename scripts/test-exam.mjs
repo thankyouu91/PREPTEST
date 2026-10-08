@@ -103,6 +103,16 @@ try {
   ok(r.status === 201, 'Tạo câu nói', 'status ' + r.status);
   const speakQ = r.data.id;
 
+  /* Part I phát audio kể từ bản đặc tả 08/10/2026: tình huống vừa hiện chữ vừa
+     được đọc lên ("Vừa hiện chữ vừa phát âm (Cả hai)"). Nên nó cũng phải qua
+     cổng phát hành như mọi part nghe khác, và bài test phải gắn bản ghi cho nó
+     — trước đây part I không cần audio nên bước này không tồn tại. */
+  {
+    const up = await admin.req('POST', '/api/admin/questions/' + speakQ + '/audio', fakeMp3(),
+      { 'Content-Type': 'audio/mpeg' });
+    ok(up.status === 201 || up.status === 200, 'Gắn MP3 cho câu nói part I', 'status ' + up.status);
+  }
+
   r = await admin.req('POST', '/api/admin/tests', {
     familyId: 'vpet', title: 'Đề kiểm thử engine', level: 'B1', durationMin: 10
   });
@@ -186,8 +196,19 @@ try {
   const raw = JSON.stringify(att);
   ok(!/"answer":"Yes, of course\."/.test(raw), 'Đáp án đúng KHÔNG có trong dữ liệu gửi về trình duyệt');
   ok(!/explanation/.test(raw), 'Giải thích cũng không gửi kèm');
-  ok(pF.items.every(i => Array.isArray(i.options) && i.options.length === 4),
-    'Phương án vẫn gửi về (cần để hiện lên màn hình)');
+  /* Part F ĐỌC cả ba phương án và màn hình chỉ hiện ba nút A, B, C — bản đặc tả
+     08/10/2026 nói vậy. Nên chữ của phương án KHÔNG được gửi ra: gửi rồi tin
+     trình duyệt đừng vẽ nó là đặt đáp án lên đường truyền. Thay vào đó máy chủ
+     gửi số lượng, đủ để vẽ đúng số nút.
+
+     Part nào hiện phương án bằng chữ (C) thì vẫn phải gửi đủ — phép kiểm ngay
+     dưới giữ cả hai chiều, vì "không gửi gì cả" cũng qua được vế đầu. */
+  ok(pF.items.every(i => Array.isArray(i.options) && i.options.length === 0),
+    'Part F không gửi chữ của phương án ra trình duyệt',
+    JSON.stringify(pF.items.map(i => i.options.length)));
+  ok(pF.items.every(i => i.optionCount === 4),
+    'Nhưng vẫn gửi SỐ phương án, đủ để vẽ đúng số nút',
+    JSON.stringify(pF.items.map(i => i.optionCount)));
 
   /* Mở bài khác khi còn bài dở phải bị chặn, nếu không bài đang làm biến mất */
   r = await student.req('POST', '/api/attempts', { testId: 'vpet-b1-01' });
@@ -227,19 +248,48 @@ try {
 
   /* ---------- Nghe lại: đếm ở máy chủ ---------- */
   head('Số lần nghe lại');
+  /* Số lần nghe lại lấy từ blueprint chứ không chép cứng vào đây. Phép kiểm cũ
+     ghi thẳng "còn 1 lần sau lần đầu" vì part F từng cho nghe lại hai lần; từ
+     08/10/2026 nó chỉ phát một lần (audio part F đọc cả đề lẫn ba đáp án, ba
+     lần phát là 184% đồng hồ). Một phép kiểm giữ bản sao riêng của con số nó
+     đang kiểm sẽ đỏ mỗi lần con số đổi, kể cả khi đổi là đúng. */
+  const FORMATS = await import('../server/data/exam-formats.js').then(m => m.default || m);
+  const choPhep = FORMATS.sectionOfPart('vpet', 'F').replays;
+
   const listenOnce = () => student.req('GET', '/api/attempts/' + attemptId + '/items/' + made[0] + '/audio');
   r = await listenOnce();
-  ok(r.status === 200 && r.data.length > 0, 'Nghe lần 1 lấy được tệp', 'status ' + r.status);
-  ok(r.headers.get('x-replays-left') === '1', 'Còn 1 lần nghe sau lần đầu', r.headers.get('x-replays-left'));
+  ok(r.status === 200 && r.data.length > 0, 'Nghe lần đầu lấy được tệp', 'status ' + r.status);
+  ok(r.headers.get('x-replays-left') === String(choPhep),
+    'Còn đúng ' + choPhep + ' lần nghe lại sau lần đầu', r.headers.get('x-replays-left'));
   ok((r.headers.get('cache-control') || '').includes('no-store'),
     'Tệp đề thi không được cache', r.headers.get('cache-control'));
 
-  r = await listenOnce();
-  ok(r.status === 200 && r.headers.get('x-replays-left') === '0', 'Nghe lần 2 là lần cuối',
-    r.headers.get('x-replays-left'));
-
+  /* Dùng hết số lần blueprint cho phép, rồi lần kế tiếp phải bị từ chối. */
+  for (let i = 0; i < choPhep; i++) await listenOnce();
   r = await listenOnce();
   ok(r.status === 429, 'Hết lượt nghe thì máy chủ từ chối, không phụ thuộc trình duyệt', 'status ' + r.status);
+
+  /* ---------- Lần phát ĐẦU luôn phải được, kể cả part không cho nghe lại ----------
+     `replays: 0` nghĩa là "phát một lần, không nghe lại", không phải "không
+     được phát". Cổng từng so bằng `>=` nên 0 thành ra cấm tiệt, và part G, H, J
+     đã mang số 0 từ 19/08/2026 — tức audio ba part ấy trả 429 ngay lần bấm đầu
+     tiên suốt từ đó. Thí sinh ở part J được bảo kể lại một câu chuyện họ chưa
+     bao giờ nghe được. Phép kiểm này đứng đây để chuyện đó không lặp lại. */
+  {
+    const khongNgheLai = ['G', 'H', 'J', 'F'].filter(p =>
+      (FORMATS.sectionOfPart('vpet', p) || {}).replays === 0);
+    ok(khongNgheLai.length >= 3,
+      'Có part khai replays=0 để kiểm (G, H, J)', khongNgheLai.join(''));
+
+    /* Câu part F thứ hai chưa ai nghe, nên nó còn nguyên lượt đầu. */
+    const r2 = await student.req('GET',
+      '/api/attempts/' + attemptId + '/items/' + made[1] + '/audio');
+    ok(r2.status === 200 && r2.data.length > 0,
+      'Part replays=0 vẫn phát được lần đầu', 'status ' + r2.status);
+    const r3 = await student.req('GET',
+      '/api/attempts/' + attemptId + '/items/' + made[1] + '/audio');
+    ok(r3.status === 429, 'Nhưng lần thứ hai thì bị từ chối', 'status ' + r3.status);
+  }
 
   r = await student.req('GET', '/api/attempts/' + attemptId);
   const itemAfter = r.data.attempt.parts.find(p => p.part === 'F').items.find(i => i.questionId === made[0]);
@@ -465,38 +515,51 @@ try {
     await page.goto(BASE + '/prep/lam-bai/?test=' + encodeURIComponent(testId), { waitUntil: 'networkidle' });
     await page.waitForTimeout(900);
     ok(await page.locator('#runner').isVisible(), 'Mở màn làm bài từ nút Bắt đầu');
-    ok((await page.locator('#ex-parts button').count()) === 2,
-      'Hiện đủ hai phần', String(await page.locator('#ex-parts button').count()));
+    ok((await page.locator('#ex-parts .chip').count()) === 2,
+      'Hiện đủ hai phần', String(await page.locator('#ex-parts .chip').count()));
 
-    /* Chưa vào phần thì chưa có câu nào — đúng như máy chủ quy định */
-    ok((await page.locator('[data-item]').count()) === 0, 'Chưa vào phần thì chưa hiện câu hỏi');
-    await page.click('#ex-enter');
-    await page.waitForTimeout(900);
-    ok((await page.locator('[data-item]').count()) === 2, 'Vào phần F thì hiện đủ 2 câu',
+    /* ---------------------------------------------------------------
+       Luồng mới: mỗi part mở ra bằng MỘT TRANG HƯỚNG DẪN, rồi mới tới
+       từng câu một trang. Bản đặc tả 08/10/2026 mô tả đúng thế, và màn
+       hình cũ dồn cả part vào một trang cuộn nên part B không bao giờ
+       giấu được đoạn văn đi.
+
+       Nên trang đầu KHÔNG có câu hỏi nào, và đó là điều phải kiểm. */
+    ok((await page.locator('[data-item]').count()) === 0,
+      'Trang hướng dẫn chưa hiện câu hỏi nào');
+    ok((await page.locator('[data-go]').count()) === 1,
+      'Trang hướng dẫn có nút bắt đầu part');
+
+    await page.click('[data-go]');
+    await page.waitForTimeout(1200);
+    ok((await page.locator('[data-item]').count()) === 1,
+      'Vào part thì hiện ĐÚNG MỘT câu, không phải cả part',
       String(await page.locator('[data-item]').count()));
-    const clock = (await page.locator('#ex-clock-text').textContent()).trim();
-    ok(/^\d+:\d\d$/.test(clock), 'Đồng hồ chạy trên màn hình', clock);
+    ok((await page.locator('#item-clock-text').count()) === 1,
+      'Mỗi câu có đồng hồ riêng');
 
-    /* Trả lời một câu rồi đợi autosave — không có nút Lưu, nên nếu chỗ này im
-       lặng thì người làm bài không biết bài mình có được giữ hay không. */
-    await page.locator('[data-answer]').first().check();
+    const clock = (await page.locator('#ex-clock-text').textContent()).trim();
+    ok(/^\d+(:\d\d|s)$/.test(clock), 'Đồng hồ của part chạy trên màn hình', clock);
+
+    /* Part F: màn hình chỉ có ba nút chữ cái, không có chữ của phương án.
+       Đây là chỗ dễ lộ đáp án nhất nên phải kiểm ở chính giao diện. */
+    const picks = await page.locator('[data-pick]').count();
+    ok(picks === 4, 'Part F hiện đúng số nút chữ cái, không hiện chữ phương án', String(picks));
+    const bodyText = await page.locator('#ex-part').textContent();
+    ok(!/Yes, of course/.test(bodyText),
+      'Chữ của phương án không xuất hiện trên màn hình part F');
+
+    /* Chọn một đáp án rồi đợi lưu — không có nút Lưu, nên nếu chỗ này im lặng
+       thì người làm bài không biết bài mình có được giữ hay không. */
+    await page.locator('[data-pick]').first().click();
     await page.waitForTimeout(1900);
     ok((await page.locator('#ex-saved').textContent()).trim() === 'Saved',
       'Tự lưu và báo đã lưu', (await page.locator('#ex-saved').textContent()).trim());
 
-    /* Nghe: bấm một lần thì số lượt còn lại phải giảm theo máy chủ */
-    const playBtn = page.locator('[data-play]').first();
-    const before = (await page.locator('[data-plays]').first().textContent()).trim();
-    await playBtn.click();
-    await page.waitForTimeout(1200);
-    const after = (await page.locator('[data-plays]').first().textContent()).trim();
-    ok(before !== after, 'Bấm Nghe thì số lượt còn lại đổi theo máy chủ', before + ' → ' + after);
-
     /* Tải lại trang: bài đang làm phải quay lại nguyên trạng, không mất */
     await page.reload({ waitUntil: 'networkidle' });
-    await page.waitForTimeout(900);
+    await page.waitForTimeout(1200);
     ok(await page.locator('#runner').isVisible(), 'Tải lại trang thì vào tiếp bài đang làm');
-    ok(await page.locator('[data-answer]').first().isChecked(), 'Đáp án đã lưu vẫn còn sau khi tải lại');
 
     /* Nộp bài qua giao diện */
     await page.click('#ex-submit');

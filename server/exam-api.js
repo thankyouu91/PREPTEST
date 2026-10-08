@@ -442,7 +442,20 @@ router.get('/attempts/:id/items/:questionId/audio', A.requireUser, async (req, r
   const fam = q.val(
     'SELECT t.family_id FROM attempts a JOIN tests t ON t.id=a.test_id WHERE a.id=?', att.id);
   const allowed = replaysFor(fam, item.part);
-  if (used >= allowed) {
+  /* `replays` counts plays BEYOND the first, which is what its name says and
+     what the blueprint's notes describe: "G 0 Play once", "E 1 Play twice".
+     The counter below increments on every successful play including the first,
+     so `used` is plays-so-far and the first play must be compared with `>`.
+
+     It was `>=`, which made `replays: 0` mean "cannot be played at all". Parts
+     G, H and J have carried 0 since 19/08/2026, so their audio has been
+     returning 429 on the very first press ever since — a candidate on Part J
+     was told to retell a story they were never able to hear. It surfaced when
+     Part F was moved to 0 and its own test went red on the first play.
+
+     Picking this apart: with 0 the first play passes (0 > 0 is false) and the
+     second is refused; with 1 two plays pass and the third is refused. */
+  if (used > allowed) {
     return res.status(429).json({ error: 'You have used every replay for this item.', replaysLeft: 0 });
   }
 
