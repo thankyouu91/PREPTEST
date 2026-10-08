@@ -38,9 +38,9 @@
  * Written for this platform. Nothing is copied from a published test or a
  * licensed word list. Levels are judged against the CEFR bands docs/LEARNING.md
  * sets out, using NGSL and NAWL (both CC BY-SA) as a reference for how common a
- * word is — consulted, not reproduced. Oxford 3000/5000 and the English
- * Vocabulary Profile were not used at all: both are copyrighted, and
- * docs/LEARNING.md rules them out by name.
+ * word is — consulted, not reproduced.
+ * Oxford 3000/5000 and the English Vocabulary Profile were not used at all:
+ * both are copyrighted, and docs/LEARNING.md rules them out by name.
  *
  * Marking. `gap` answers are compared after trimming, lowercasing and stripping
  * edge punctuation (server/marking.js), and a `|` separates spellings of the

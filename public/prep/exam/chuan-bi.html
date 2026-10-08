@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Before you begin · VPET Prep</title>
+  <meta name="description" content="The three screens that come before a VPET sitting: the hardware check, the speaking tips and the overview of the ten parts.">
+  <meta name="theme-color" content="#1c3d8f">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="preload" href="/fonts/pjs-700-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/fonts/pjs-400-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/tailwind-built.css">
+  <style>body{font-family:'Plus Jakarta Sans',system-ui,sans-serif}</style>
+  <script>
+    (function(){try{
+      var t=localStorage.getItem('prep.theme');
+      if(t==='dark'||(!t&&matchMedia('(prefers-color-scheme: dark)').matches))document.documentElement.classList.add('dark');
+      var tn=localStorage.getItem('prep.tenant');
+      if(tn&&tn!=='default')document.documentElement.setAttribute('data-tenant',tn);
+    }catch(e){}})();
+  </script>
+</head>
+<body class="bg-surface text-ink">
+<div id="app" data-active="library" class="min-h-[100dvh]">
+  <main id="main">
+    <div class="max-w-shell mx-auto px-4 sm:px-6 lg:px-10 pb-10">
+
+      <!-- ============================ 1 · Hardware check ====================
+           Specification §I. Five items to check, and the Start Test button stays
+           shut until the four that can be measured are green. The webcam row is
+           listed as the exam centre runs it; practice does not proctor, and the
+           row says so rather than pretending. -->
+      <section id="scr-hw" class="mt-8">
+        <h1 class="text-2xl font-extrabold tracking-tight">Check your equipment</h1>
+        <p class="text-muted text-[15px] mt-2 max-w-[62ch]">
+          The real test checks your machine before the scored parts begin. Work through
+          these five, then start. Once the test begins it cannot be paused.
+        </p>
+
+        <div class="grid gap-3 mt-6">
+          <!-- Audio -->
+          <div class="card p-5" data-check="audio">
+            <div class="flex flex-wrap items-center gap-3">
+              <span class="dot" data-dot></span>
+              <b class="text-[15px] font-extrabold tracking-tight">Headphones</b>
+              <span class="text-[13px] font-semibold text-muted" data-state>Not checked</span>
+              <button type="button" class="btn btn-ghost btn-sm ms-auto" data-act="audio">Play a sample</button>
+            </div>
+            <p class="text-muted text-[14px] mt-2">You should hear a voice clearly. Set the volume where it is comfortable.</p>
+          </div>
+
+          <!-- Microphone -->
+          <div class="card p-5" data-check="mic">
+            <div class="flex flex-wrap items-center gap-3">
+              <span class="dot" data-dot></span>
+              <b class="text-[15px] font-extrabold tracking-tight">Microphone</b>
+              <span class="text-[13px] font-semibold text-muted" data-state>Not checked</span>
+              <button type="button" class="btn btn-ghost btn-sm ms-auto" data-act="mic">Record a sentence</button>
+            </div>
+            <p class="text-muted text-[14px] mt-2">Say "I am ready to take the test" out loud. We check the microphone picks you up.</p>
+            <div class="meter mt-3" hidden data-meter><span data-bar></span></div>
+          </div>
+
+          <!-- Room noise -->
+          <div class="card p-5" data-check="room">
+            <div class="flex flex-wrap items-center gap-3">
+              <span class="dot" data-dot></span>
+              <b class="text-[15px] font-extrabold tracking-tight">Background noise</b>
+              <span class="text-[13px] font-semibold text-muted" data-state>Not checked</span>
+              <button type="button" class="btn btn-ghost btn-sm ms-auto" data-act="room">Measure the room</button>
+            </div>
+            <p class="text-muted text-[14px] mt-2">Stay completely silent for five seconds. A noisy room makes the speaking parts harder to mark.</p>
+            <div class="meter mt-3" hidden data-meter><span data-bar></span></div>
+          </div>
+
+          <!-- Connection -->
+          <div class="card p-5" data-check="net">
+            <div class="flex flex-wrap items-center gap-3">
+              <span class="dot" data-dot></span>
+              <b class="text-[15px] font-extrabold tracking-tight">Connection</b>
+              <span class="text-[13px] font-semibold text-muted" data-state>Not checked</span>
+              <button type="button" class="btn btn-ghost btn-sm ms-auto" data-act="net">Test the connection</button>
+            </div>
+            <p class="text-muted text-[14px] mt-2">Your answers are saved as you go, so the test needs a steady connection.</p>
+          </div>
+
+          <!-- Webcam: listed, not enforced -->
+          <div class="card p-5 opacity-80" data-check="cam">
+            <div class="flex flex-wrap items-center gap-3">
+              <span class="dot dot-off"></span>
+              <b class="text-[15px] font-extrabold tracking-tight">Webcam</b>
+              <span class="text-[13px] font-semibold text-muted">Not used in practice</span>
+            </div>
+            <p class="text-muted text-[14px] mt-2">
+              The real sitting takes your photograph and watches the room. Practice does not,
+              so nothing here is recorded or sent anywhere.
+            </p>
+          </div>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-3 mt-7">
+          <button type="button" id="hw-next" class="btn btn-primary btn-md" disabled>Continue</button>
+          <span id="hw-left" class="text-[13.5px] font-semibold text-muted"></span>
+        </div>
+      </section>
+
+      <!-- ============================ 2 · Speaking tips =====================
+           Specification §II, in its own words. -->
+      <section id="scr-tips" hidden class="mt-8">
+        <h1 class="text-2xl font-extrabold tracking-tight">Speaking Tips</h1>
+        <p class="text-[15px] mt-2">It is important to speak naturally during the test.</p>
+        <p class="text-muted text-[15px] mt-4">Here are some tips:</p>
+        <ul class="grid gap-3 mt-3 max-w-[62ch]">
+          <li class="card p-4 text-[15px]">Speak at a normal speed like you would during a conversation.</li>
+          <li class="card p-4 text-[15px]">Speak like you are talking to a person on the phone. There is no need to speak too carefully or slowly.</li>
+          <li class="card p-4 text-[15px]">Speak at a normal volume, not too loud or too soft.</li>
+        </ul>
+        <div class="flex items-center gap-3 mt-7">
+          <button type="button" id="tips-next" class="btn btn-primary btn-md">Next</button>
+          <span class="text-[13.5px] font-semibold text-muted">When you are ready, click Next.</span>
+        </div>
+      </section>
+
+      <!-- ============================ 3 · Overview ==========================
+           Specification §III: the ten parts, the task names and the item counts,
+           in a three-column table with alternating rows. Built from the
+           blueprint rather than typed out, so it cannot drift from the exam. -->
+      <section id="scr-over" hidden class="mt-8">
+        <h1 class="text-2xl font-extrabold tracking-tight">Overview</h1>
+        <p class="text-muted text-[15px] mt-2 max-w-[62ch]" id="over-sub"></p>
+        <div class="card overflow-hidden mt-5">
+          <table class="w-full text-[14.5px]">
+            <thead>
+              <tr class="bg-brand-soft text-brand-strong text-start">
+                <th class="py-3 px-4 text-start font-extrabold w-16">Part</th>
+                <th class="py-3 px-4 text-start font-extrabold">Task</th>
+                <th class="py-3 px-4 text-end font-extrabold w-28">Questions</th>
+              </tr>
+            </thead>
+            <tbody id="over-rows"></tbody>
+          </table>
+        </div>
+        <div class="flex flex-wrap items-center gap-3 mt-7">
+          <button type="button" id="over-start" class="btn btn-primary btn-md">Start Test</button>
+          <span class="text-[13.5px] font-semibold text-muted">Once the test begins it cannot be paused.</span>
+        </div>
+      </section>
+
+    </div>
+  </main>
+</div>
+
+<script src="/prep/_mock.js"></script>
+<script src="/prep/_chrome.js"></script>
+<script src="/prep/exam/_chuan-bi.js"></script>
+<script>
+  PREP.boot({ auth: true }).then(() => {
+    PrepChrome.mount({ title: 'Before you begin' });
+    PrepPrecheck.mount();
+  });
+</script>
+</body>
+</html>

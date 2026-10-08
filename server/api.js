@@ -1418,6 +1418,37 @@ router.get('/admin/audit', (req, res) => {
   });
 });
 
+/* =================== THE PUBLISHED EXAM SHAPE (read) ===================
+   What the overview screen shows a candidate before they begin: the parts, the
+   task names and the item counts. Public and unauthenticated on purpose — it is
+   the same information printed in any exam handbook, and the screen that needs
+   it runs before an attempt exists.
+
+   It carries no items, no answers and no scripts. The admin route
+   /api/admin/exam-formats stays where it is for the authoring side. */
+router.get('/formats/:id', (req, res) => {
+  const id = str(req.params.id, 40);
+  const fmt = EXAM_FORMATS.FORMATS.find(f => f.id === id);
+  if (!fmt) return res.status(404).json({ error: 'No such format.' });
+
+  res.set('Cache-Control', 'public, max-age=300').json({
+    format: {
+      id: fmt.id,
+      name: fmt.name,
+      sections: (fmt.sections || []).map(s => ({
+        name: s.name, part: s.part || null, skill: s.skill, type: s.type,
+        items: s.items, minutes: s.minutes,
+        /* The sitting rules, so the instruction page before each part can be
+           built from one source rather than retyped in the client. */
+        seconds: s.seconds || 0, answer: s.answer || '', stimulus: s.stimulus || 'text',
+        pages: s.pages || 1, beep: s.beep || '', say: s.say || '', brief: s.brief || ''
+      })),
+      totalItems: EXAM_FORMATS.totalItems(fmt),
+      totalMinutes: EXAM_FORMATS.totalMinutes(fmt)
+    }
+  });
+});
+
 /* =================== THE PUBLIC CATALOGUE (read) ===================
    The shape matches the student-side mock, so the front end could move to the API
    without rewriting its markup. // TODO(frontend): replace _mock.js with this endpoint */

@@ -369,6 +369,30 @@
   }
   .dark .clock-low { color: color-mix(in srgb, var(--color-danger) 76%, white); }
 
+  /* ---- Đèn trạng thái và thanh mức âm, màn kiểm tra thiết bị ----
+     Bản đặc tả VPET đòi bốn đèn phải xanh thì nút "Start Test" mới mở, nên màu
+     ở đây là thông tin chứ không phải trang trí: người dùng quyết định dựa vào
+     nó. Vì thế mỗi đèn cũng mang chữ bên cạnh — ai không phân biệt được đỏ với
+     xanh vẫn phải biết mình đang thiếu gì. */
+  .dot {
+    @apply inline-block w-2.5 h-2.5 rounded-full shrink-0;
+    background: color-mix(in srgb, var(--color-ink) 22%, transparent);
+  }
+  .dot-ok  { background: var(--color-accent); }
+  .dot-bad { background: var(--color-danger); }
+  .dot-off { background: color-mix(in srgb, var(--color-ink) 14%, transparent); }
+
+  /* Mức âm thanh đang vào mic. Chiều rộng do JS đặt, nên ở đây chỉ là cái máng. */
+  .meter {
+    @apply h-2 rounded-full overflow-hidden;
+    background: color-mix(in srgb, var(--color-ink) 10%, transparent);
+  }
+  .meter > span {
+    @apply block h-full rounded-full transition-[width] duration-75;
+    background: var(--color-accent);
+    width: 0;
+  }
+
   /* Chip của phần đã kết thúc: mờ đi nhưng vẫn bấm xem lại được */
   .chip[data-done] { opacity: .6; }
 

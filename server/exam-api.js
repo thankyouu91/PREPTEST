@@ -118,10 +118,19 @@ function attemptState(att) {
     submittedAt: att.submitted_at,
     parts: parts.map(p => {
       const items = q.all(
-        `SELECT si.sort, qs.id, qs.prompt, qs.passage, qs.type, qs.options_json, qs.audio_key
+        `SELECT si.sort, qs.id, qs.prompt, qs.passage, qs.type, qs.options_json,
+                qs.audio_key, qs.stimulus_key
            FROM section_items si JOIN questions qs ON qs.id = si.question_id
           WHERE si.section_id=? ORDER BY si.sort, si.id`, p.section_id);
       const open = partOpen(p);
+      /* The blueprint entry for this part. The screen needs far more of it than
+         `needsAudio`: the owner's specification puts a clock on every item, says
+         whether the answer is typed, clicked or spoken, whether the stimulus is
+         shown or played or both, whether the item takes one screen or two, and
+         when the beep sounds. None of that reached the candidate before, because
+         the runner only ever asked whether the part had audio. */
+      const bp = (p.part && EXAM_FORMATS.sectionOfPart(
+        test ? test.family_id : null, p.part)) || {};
       return {
         sectionId: p.section_id,
         part: p.part || null,
@@ -136,10 +145,24 @@ function attemptState(att) {
         open,
         /* Whether the blueprint says this part plays audio. The screen needs it
            to tell "this item has no recording" apart from "this item never had
-           one" — part I is spoken but text-prompted, and flagging a missing
-           recording there would send a candidate to their teacher over nothing. */
-        needsAudio: !!(p.part && (EXAM_FORMATS.sectionOfPart(
-          test ? test.family_id : null, p.part) || {}).needsAudio),
+           one" — flagging a missing recording on a text-only part would send a
+           candidate to their teacher over nothing. */
+        needsAudio: !!bp.needsAudio,
+        /* How the part is sat, straight from the specification. */
+        seconds: bp.seconds || 0,
+        readSeconds: bp.readSeconds || 0,
+        thinkSeconds: bp.thinkSeconds || 0,
+        perStimulus: bp.perStimulus || 0,
+        answerMode: bp.answer || '',
+        stimulusMode: bp.stimulus || 'text',
+        pages: bp.pages || 1,
+        split: !!bp.split,
+        spokenOptions: !!bp.spokenOptions,
+        minWords: bp.minWords || 0,
+        beep: bp.beep || '',
+        say: bp.say || '',
+        brief: bp.brief || '',
+        hasExample: !!bp.example,
         items: items.map(it => {
           const saved = byQuestion.get(it.id);
           const used = saved ? saved.replays_used : 0;
@@ -154,8 +177,19 @@ function attemptState(att) {
                see it saved, and ship a comprehension question about a text
                nobody would ever be shown. */
             passage: it.passage || '',
+            /* Which passage or story this item hangs off. Parts C and G put
+               several questions on one piece of material; without this the
+               screen would reprint the passage above every question and restart
+               its clock, which is a different test. */
+            stimulusKey: it.stimulus_key || null,
             type: it.type,
-            options: JSON.parse(it.options_json || '[]'),
+            /* Part F speaks its options and shows three plain letters, so the
+               text must not reach the screen. Sending it and trusting the client
+               not to paint it would put the answer on the wire. */
+            options: bp.spokenOptions ? [] : JSON.parse(it.options_json || '[]'),
+            optionCount: bp.spokenOptions
+              ? JSON.parse(it.options_json || '[]').length
+              : undefined,
             hasAudio: !!it.audio_key,
             replaysLeft: it.audio_key ? Math.max(0, allowed - used) : null,
             answer: saved ? saved.answer : '',

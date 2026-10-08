@@ -246,7 +246,12 @@ if (cookie && csrf) {
     const b = await r.json();
     ok(r.status === 200 && b.parts.length === 10, 'Trả đủ 10 part A–J của VPET');
     const g = b.parts.find(p => p.part === 'G');
-    ok(g && g.needsAudio === true && g.skill === 'listening', 'Part G khai đúng: cần audio, kỹ năng nghe');
+    /* Part G chuyển sang kỹ năng nói ngày 08/10/2026: bản đặc tả của chủ dự án
+       ghi "Nói vào Mic", bảy giây, "a few words or a very short sentence". Nó
+       vẫn phát audio — đoạn văn và câu hỏi đều nghe — nhưng thí sinh trả lời
+       bằng giọng chứ không bấm chọn. */
+    ok(g && g.needsAudio === true && g.skill === 'speaking',
+      'Part G khai đúng: cần audio, kỹ năng nói', g && g.skill);
   }
 
   {
