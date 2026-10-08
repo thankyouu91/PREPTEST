@@ -29,6 +29,9 @@
 'use strict';
 
 const { q, tx, nowISO } = require('./db');
+/* Word alignment, shared with the speaking parts so a dictation mark and a
+   repeat mark mean the same thing by "how much came back". */
+const { wordAccuracy } = require('./marking-guide');
 
 /** Item types a machine can mark outright. The rest wait for a rubric (AI or human). */
 const AUTO_TYPES = ['mcq', 'gap'];
@@ -97,8 +100,40 @@ function markItem(question, answerText) {
      not two different answers. */
   const variants = String(question.answer || '').split('|').map(norm).filter(Boolean);
   if (!variants.length) return { earned: 0, max: 1, note: 'This item has no answer key' };
-  const ok = variants.includes(given);
-  return { earned: ok ? 1 : 0, max: 1, note: ok ? 'Correct' : 'Wrong' };
+  if (variants.includes(given)) return { earned: 1, max: 1, note: 'Correct' };
+
+  /* ---------------------------------------------------------------------
+     A WHOLE-SENTENCE GAP IS MARKED BY THE WORD, NOT ALL OR NOTHING
+
+     Part A asks for one word, and one word is either right or wrong. Part E
+     asks a candidate to type back a whole dictated sentence, and the same
+     exact-match rule turned that into a trap: "The meeting starts at nine
+     thirsty" scored the same as an empty box. Someone who heard seven words
+     of eight learned nothing from the mark, which is the opposite of what a
+     practice platform is for, and it is not how dictation is scored anywhere.
+
+     So a key of more than three words is scored on how much of it came back,
+     using the same word alignment the speaking parts use. Three is the line
+     because a one- or two-word key is a lexical answer — "since", "put off" —
+     where half marks would mean nothing, and any longer key is a sentence.
+
+     Insertions are free, as they are in wordAccuracy: the score measures how
+     much of the target was recovered, not how tidily. Spelling still counts,
+     because a misspelt word does not align with the one it was meant to be. */
+  const words = variants[0].split(/\s+/).filter(Boolean);
+  if (words.length > 3) {
+    /* `match` is already the share of the target that came back, between 0 and
+       1 — not a count. `target` is the word count, and the two are reported
+       together so a candidate reading "5 of 6 words" can check the mark. */
+    const acc = wordAccuracy(variants[0], given);
+    const back = Math.round(acc.match * acc.target * 10) / 10;
+    return {
+      earned: Math.round(acc.match * 100) / 100, max: 1,
+      note: `${back} of ${acc.target} words`
+    };
+  }
+
+  return { earned: 0, max: 1, note: 'Wrong' };
 }
 
 /* ------------------------------------------------------------------ *

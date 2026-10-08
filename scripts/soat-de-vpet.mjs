@@ -28,7 +28,7 @@ const require = createRequire(import.meta.url);
 const { q, jparse } = require('../server/db.js');
 const FORMATS = require('../server/data/exam-formats.js');
 const RUBRICS = require('../server/data/rubrics.js');
-const SCRIPTS = require('../server/data/vpet-scripts.js');
+const ITEMS = require('../server/data/vpet-items.js');
 const { parseScript, BUILD_SPEED } = require('../server/script-markup.js');
 
 const args = process.argv.slice(2);
@@ -48,7 +48,12 @@ const BLUEPRINT = (() => {
       part: m[1],
       name: s.name.replace(/^Part [A-J]\s*-\s*/, ''),
       items: s.items, minutes: s.minutes, skill: s.skill,
-      types: s.types || [], needsAudio: !!s.needsAudio
+      types: s.types || [], needsAudio: !!s.needsAudio,
+      /* Số giây đề bài cho mỗi câu, và các cửa sổ đọc/nghĩ trước khi được trả
+         lời. Chép sang đây chứ không ước lượng lại — xem thoiGianCanThuc(). */
+      seconds: s.seconds || 0, readSeconds: s.readSeconds || 0,
+      thinkSeconds: s.thinkSeconds || 0, perStimulus: s.perStimulus || 0,
+      answer: s.answer || '', stimulus: s.stimulus || '', pages: s.pages || 1
     };
   });
   return out;
@@ -81,7 +86,7 @@ function audioSeconds(part, need) {
   /* Ước tính ở đúng tốc độ Kokoro dựng thật, không phải tốc độ mặc định của
      ElevenLabs — hai con số lệch nhau 4%, và chênh ấy chỉ hiện ra ở kịch bản
      chưa ai dựng, tức đúng lúc tác giả đang cân xem đoạn mới có vừa đồng hồ. */
-  const list = (thuc.length >= need ? thuc : SCRIPTS.allItems()
+  const list = (thuc.length >= need ? thuc : ITEMS.rows()
     .filter(i => i.part === part && i.script)
     .map(i => parseScript(i.script, { speed: BUILD_SPEED }).stats.estimatedMs / 1000))
     .sort((a, b) => b - a)
@@ -109,55 +114,47 @@ const ngheLai = part => {
  * VÌ SAO PHÉP KIỂM CŨ QUÁ YẾU
  *
  * Nó chỉ hỏi "audio có ngắn hơn đồng hồ không". Nhưng nghe xong thí sinh còn
- * phải gõ lại cả câu, đọc bốn phương án, hoặc nói lại chín mươi giây. Một part
- * E có 45 giây audio trong đồng hồ 360 giây trông rất thoải mái, cho tới khi
- * cộng thời gian gõ tám câu vào thì gần chạm trần.
+ * phải gõ lại cả câu, đọc bốn phương án, hoặc nói lại. Một part E có 45 giây
+ * audio trong đồng hồ 360 giây trông rất thoải mái, cho tới khi cộng thời gian
+ * gõ tám câu vào thì gần chạm trần.
  *
- * Các hệ số dưới đây là ƯỚC LƯỢNG THIẾT KẾ, không phải số đo từ thí sinh thật.
- * Chúng cố tình thiên về phía chậm — người gõ chậm và người nghĩ lâu mới là
- * người bị đồng hồ cắt, và họ là người phép kiểm này tồn tại để bảo vệ. Khi có
- * bài làm thật thì thay bằng số đo (docs/ACADEMIC.md §9).
+ * ---------------------------------------------------------------------------
+ * SỐ GIÂY LẤY TỪ ĐỀ BÀI, KHÔNG PHẢI TỪ ĐÂY
+ *
+ * Trước đây hàm này tự giữ số: "J là nghĩ 20 giây rồi nói 90 giây". Nhưng bản
+ * đặc tả của chủ dự án (VPET_test.xlsx) cho J đúng 30 giây kể lại, và phép
+ * kiểm vẫn đo theo 90 — nó báo part J vượt 159% đồng hồ trong khi đề bài thật
+ * không hề đòi chừng ấy. Một phép kiểm giữ bản sao riêng của con số nó đang
+ * kiểm thì sớm muộn cũng kiểm nhầm thứ khác.
+ *
+ * Nên giờ `seconds`, `readSeconds` và `thinkSeconds` đọc thẳng từ blueprint.
+ * Chỉ những gì blueprint KHÔNG nói mới ước lượng ở đây, và chúng cố tình thiên
+ * về phía chậm — người gõ chậm và người nghĩ lâu mới là người bị đồng hồ cắt,
+ * và họ là người phép kiểm này tồn tại để bảo vệ.
  * ---------------------------------------------------------------------------
  */
-function thoiGianCanThuc(part, audio) {
-  const n = audio.list.length;
+function thoiGianCanThuc(part, audio, bp) {
+  const n = audio.list.length || bp.items;
   const tongAudio = audio.total;
+  const moiCau = bp.seconds || 0;
+  const doc = bp.readSeconds || 0;
+  const nghi = bp.thinkSeconds || 0;
 
-  switch (part) {
-    case 'E': {
-      /* Chép chính tả: nghe, rồi GÕ LẠI CẢ CÂU. Phần gõ mới là phần dài, và
-         nó tỉ lệ với độ dài câu chứ không với thời lượng audio. Người học
-         Việt gõ tiếng Anh khoảng 25 từ/phút, tức ~2 ký tự/giây. */
-      const chuTB = 60;                       // ký tự một câu, đo từ kho
-      const go = (chuTB / 2) * n;
-      /* Nghe lại là quyền của thí sinh, và part chép chính tả thì hầu như ai
-         cũng dùng hết. Tính cả. */
-      const r = ngheLai('E');
-      return { can: tongAudio * (1 + r) + go, giaiThich: `nghe ${Math.round(tongAudio)}s ×${1 + r} + gõ ${Math.round(go)}s` };
-    }
-    case 'F': {
-      const chon = 12 * n;                    // đọc 4 phương án rồi chọn
-      const r = ngheLai('F');
-      return { can: tongAudio * (1 + r) + chon, giaiThich: `nghe ${Math.round(tongAudio)}s ×${1 + r} + chọn ${chon}s` };
-    }
-    case 'G': {
-      const chon = 20 * n;                    // đoạn dài hơn, câu hỏi dài hơn
-      const r = ngheLai('G');
-      return { can: tongAudio * (1 + r) + chon, giaiThich: `nghe ${Math.round(tongAudio)}s ×${1 + r} + đọc/chọn ${chon}s` };
-    }
-    case 'H': {
-      /* Nhắc lại: nói lại dài bằng câu vừa nghe, cộng một nhịp lấy hơi. */
-      const noi = tongAudio + 1.5 * n;
-      return { can: tongAudio + noi, giaiThich: `nghe ${Math.round(tongAudio)}s + nói lại ${Math.round(noi)}s` };
-    }
-    case 'J': {
-      /* Chủ dự án chốt 3 phút mỗi bài: nghe + 20 giây nghĩ + 90 giây nói. */
-      const nghi = 20 * n, noi = 90 * n;
-      return { can: tongAudio + nghi + noi, giaiThich: `nghe ${Math.round(tongAudio)}s + nghĩ ${nghi}s + nói ${noi}s` };
-    }
-    default:
-      return { can: tongAudio, giaiThich: `nghe ${Math.round(tongAudio)}s` };
-  }
+  /* Phần không phải audio, tính theo đúng số giây đề bài cho mỗi câu. Với part
+     ra đề theo cụm (C hai câu một bài đọc, G ba câu một đoạn) thì đồng hồ thuộc
+     về cụm, nên chia ra. */
+  const soLuot = bp.perStimulus ? Math.ceil(bp.items / bp.perStimulus) : bp.items;
+  const choPhep = bp.perStimulus ? moiCau * soLuot : moiCau * bp.items;
+  const docNghi = (doc + nghi) * soLuot;
+  const r = ngheLai(part);
+  const nghe = tongAudio * (1 + r);
+
+  const mo = [];
+  if (nghe) mo.push(`nghe ${Math.round(tongAudio)}s${r ? ` ×${1 + r}` : ''}`);
+  if (docNghi) mo.push(`đọc/nghĩ ${Math.round(docNghi)}s`);
+  if (choPhep) mo.push(`làm bài ${Math.round(choPhep)}s`);
+
+  return { can: nghe + docNghi + choPhep, giaiThich: mo.join(' + ') || 'không có đồng hồ riêng' };
 }
 
 const rows = [];
@@ -249,7 +246,7 @@ for (const bp of Object.values(BLUEPRINT)) {
   if (bp.needsAudio) {
     const audio = audioSeconds(bp.part, bp.items);
     const budget = bp.minutes * 60;
-    const { can, giaiThich } = thoiGianCanThuc(bp.part, audio);
+    const { can, giaiThich } = thoiGianCanThuc(bp.part, audio, bp);
     nhipTxt = `${audio.real ? 'đo thật' : 'ước tính'}: ${giaiThich} = ${Math.round(can)}s / đồng hồ ${budget}s ` +
       `(${Math.round(can / budget * 100)}%)`;
 

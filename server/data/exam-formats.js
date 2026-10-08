@@ -80,7 +80,34 @@ function vstepSections() {
  * the part table publishes counts only.
  * ------------------------------------------------------------------ */
 /**
- * The ten VPET parts.
+ * The ten VPET parts, as the owner's specification describes them.
+ *
+ * Source: `VPET_test.xlsx`, supplied 2026-10-08. Every field below that names a
+ * duration, a count, an answer mode or a line of on-screen text comes from that
+ * sheet. Where this file and the sheet disagree, the sheet is right.
+ *
+ * ---------------------------------------------------------------------------
+ * WHAT THE SHEET CHANGED
+ *
+ *   C  3 items -> 6. Three passages, two multiple-choice questions each, four
+ *      options per question, three minutes per passage. The old shape was one
+ *      question per passage.
+ *   G  multiple choice -> spoken short answer. The sheet is explicit: "Nói vào
+ *      Mic", seven seconds, "a few words or a very short sentence", and a beep
+ *      the moment the question finishes. It was built as a listening MCQ, which
+ *      tests the same passage through a different skill.
+ *   I  text-only -> text and audio together. The sheet's stimulus column says
+ *      "Vừa hiện chữ vừa phát âm (Cả hai)".
+ *
+ * ---------------------------------------------------------------------------
+ * ONE CONTRADICTION, RESOLVED FROM THE SHEET ITSELF
+ *
+ * Part I is given two timings. The instruction-page column says ten seconds to
+ * think and sixty to answer; the on-screen line says thirty and forty. The beep
+ * column settles it — "Có tiếng bíp sau khi kết thúc 30 giây suy nghĩ" — so the
+ * thinking window is thirty seconds, and the on-screen line is the one that
+ * matches. The instruction-page text is corrected to agree rather than left to
+ * contradict the clock a candidate is actually given.
  *
  * ---------------------------------------------------------------------------
  * `replays` — HOW MANY TIMES AN AUDIO ITEM MAY BE PLAYED AGAIN
@@ -91,90 +118,165 @@ function vstepSections() {
  * hook that would have let them was never built, so every part silently ran at
  * 2, and one of them could not fit its clock at that number.
  *
- * Part G was at 193% of its six minutes. Six passages of about half a minute,
- * each played three times, is 576 seconds of listening before the candidate
- * has read a single option. The passages were not too long; the allowance was
- * wrong. A comprehension passage played once is the ordinary arrangement, and
- * this repository already says so about IELTS Listening two formats below.
- *
- *   G  0  Play once. A comprehension passage tests what you took in, and at
- *          three plays it becomes a reading test with an audio delivery
- *          mechanism. 193% -> 87% of the clock.
+ *   G  0  The sheet gives seven seconds to answer after a beep that lands the
+ *          instant the question ends. There is no replay in that flow.
  *   E  1  Play twice. Dictation is the one part where a second hearing is the
  *          task rather than a concession, but a third does not fit: eight
- *          sentences also have to be typed. 104% -> 92%.
- *   F  2  Kept. Single short lines, and the part sits at 84% even at three
- *          plays, so there is no reason to take anything away.
+ *          sentences also have to be typed.
+ *   F  0  Play once. This one was set to 2 on the reasoning that the lines are
+ *          short — which was wrong, and the audit said so: part F speaks the
+ *          prompt AND all three responses, about sixteen seconds an item, so
+ *          three plays is 378 seconds of listening inside a 240-second part.
+ *          184% of the clock. The sheet describes no replay control on this
+ *          screen either; it shows three letters and nothing else.
  *   H  0  Repeat what you heard. A replay would be answering the question.
- *   J  0  The item says "you will hear a short story once" and means it.
+ *   J  0  The item says "each story will be spoken once" and means it.
  *
  * Changing a number here changes what a candidate is allowed to do, so it is
  * the owner's to set. These are the values the clock permits; a part whose
  * `replays` and `minutes` disagree is caught by `npm run soat-de`.
+ *
+ * ---------------------------------------------------------------------------
+ * THE FIELDS THE RUNNER READS
+ *
+ *   seconds     the per-item countdown, in seconds. The sheet puts a clock on
+ *               every item; the old build clocked whole parts instead, which is
+ *               a different exam.
+ *   answer      'type' | 'click' | 'speak' — the sheet's "Cách trả lời".
+ *   stimulus    'text' | 'audio' | 'both' — the sheet's "Đề bài chính thức".
+ *   pages       1 or 2. Two means the stimulus and the answer are on separate
+ *               screens and the candidate cannot see one while giving the other
+ *               — the whole point of B, E, G, H, I and J.
+ *   beep        when the tone sounds, in the sheet's own words.
+ *   say         the line spoken and shown at the top of every item page.
+ *   brief       the instruction page read out before the part begins.
  */
 function vpetSections() {
   return [
     {
       name: 'Part A - Sentence Completion', part: 'A', skill: 'writing', type: 'Type the missing word',
       items: 10, minutes: 10, types: ['gap'],
-      parts: [{ label: 'A1-A10', items: 10, note: 'One word missing per sentence; grammar and collocation in context.' }]
+      parts: [{ label: 'A1-A10', items: 10, note: 'One word missing per sentence; grammar and collocation in context.' }],
+      seconds: 25, answer: 'type', stimulus: 'text', pages: 1,
+      beep: 'A tone before each sentence.',
+      say: 'Part A: Sentence Completion. Please type one word that best completes the sentence. You will have 25 seconds for each sentence.',
+      brief: 'Please type one word that best fits the meaning of the sentence. Type only one word. You will have 25 seconds for each sentence. Click "Next" when you are finished.',
+      example: true
     },
     {
       name: 'Part B - Passage Reconstruction', part: 'B', skill: 'writing', type: 'Read, then rewrite from memory',
-      items: 3, minutes: 9, types: ['essay'],
-      parts: [{ label: 'B1-B3', items: 3, note: 'Passage shown for a short time, then hidden; rebuild it in your own words.' }]
+      items: 3, minutes: 6, types: ['essay'],
+      parts: [{ label: 'B1-B3', items: 3, note: 'Passage shown for 30 seconds, then hidden; rebuild it in your own words in 90 seconds.' }],
+      /* 30 s to read, then the passage goes and 90 s to rewrite. `seconds` is
+         the answering window, which is what the countdown on screen shows;
+         `readSeconds` is the first page. */
+      seconds: 90, readSeconds: 30, answer: 'type', stimulus: 'text', pages: 2,
+      beep: 'A tone before each passage.',
+      say: 'Part B: Passage Reconstruction. You will have 30 seconds to read a short passage. After 30 seconds, the passage will disappear and you will have 90 seconds to reconstruct the passage by typing it into the box.',
+      brief: 'You will have 30 seconds to read a paragraph. After 30 seconds, the paragraph will disappear from the screen. Then, you will have 90 seconds to reconstruct the paragraph. Show that you understood the passage by rewriting it in your own words. Your answer will be scored for clear and accurate content, not word-for-word memorization. After 90 seconds, your work will be saved automatically.',
+      example: true
     },
     {
+      /* Three passages, two questions each. The sheet's layout column is
+         explicit: passage on the left, "Hai câu hỏi. 4 lựa chọn cho mỗi câu" on
+         the right, both on one screen, three minutes for the pair. So the
+         countdown belongs to the passage, not to the single question. */
       name: 'Part C - Reading Comprehension', part: 'C', skill: 'reading', type: 'Multiple choice',
-      items: 3, minutes: 6, types: ['mcq'],
-      parts: [{ label: 'C1-C3', items: 3, note: 'Short passages, one question each.' }]
+      items: 6, minutes: 9, types: ['mcq'],
+      parts: [{ label: 'C1-C6', items: 6, note: 'Three passages, two questions each, four options per question.' }],
+      seconds: 180, perStimulus: 2, answer: 'click', stimulus: 'text', pages: 1, split: true,
+      optionCount: 4,
+      beep: 'A tone before each passage.',
+      say: 'Part C: Reading Comprehension. Read the passage and answer the multiple-choice question. Choose the best answer.',
+      brief: 'Read a passage and two questions. Select the best answer to each question. You will have 3 minutes. If you finish early, click "Next".'
     },
     {
       name: 'Part D - E-Mail Writing', part: 'D', skill: 'writing', type: 'Two emails',
       items: 2, minutes: 18, types: ['essay'],
-      parts: [{ label: 'D1-D2', items: 2, note: 'Reply to a prompt in a set register; graded on task, tone and accuracy.' }]
+      parts: [{ label: 'D1-D2', items: 2, note: 'Reply to a situation in at least 100 words, nine minutes each.' }],
+      seconds: 540, minWords: 100, answer: 'type', stimulus: 'text', pages: 1, split: true,
+      beep: 'A tone before each situation.',
+      say: 'Part D: E-mail Writing. Read the situation and write an e-mail in response. You should write at least 100 words. You have 9 minutes.',
+      brief: 'Read a description of a situation and write an email addressing the issues described in the situation. You will have 9 minutes. You must write at least 100 words. You will be able to see how much time is left and how many words you have written. Write in complete sentences. If you do not finish in 9 minutes, everything you have written will be saved automatically and the next item will begin.'
     },
     {
       name: 'Part E - Dictation', part: 'E', skill: 'listening', type: 'Type what you hear',
       items: 8, minutes: 6, types: ['gap'], needsAudio: true, replays: 1,
-      parts: [{ label: 'E1-E8', items: 8, note: 'One sentence per item, played a fixed number of times. Needs audio.' }]
+      parts: [{ label: 'E1-E8', items: 8, note: 'One sentence per item. Listen, then type it exactly. Needs audio.' }],
+      seconds: 25, answer: 'type', stimulus: 'audio', pages: 2,
+      beep: 'A tone before each sentence.',
+      say: 'Part E: Dictation. You will hear a sentence. Please type the sentence exactly as you hear it. You will have 25 seconds.',
+      brief: 'Please type each sentence exactly as you hear it. You will have 25 seconds for each sentence. Pay attention to spelling and punctuation. Click "Next" when you are finished. After 25 seconds, your work will be saved automatically.',
+      example: true
     },
     {
+      /* Nothing is written on screen but "Select the correct response" and three
+         lettered buttons — the prompt and all three options are spoken. That is
+         why `stimulus` is audio and the options carry no text. */
       name: 'Part F - Response Selection', part: 'F', skill: 'listening', type: 'Multiple choice',
-      items: 8, minutes: 4, types: ['mcq'], needsAudio: true, replays: 2,
-      parts: [{ label: 'F1-F8', items: 8, note: 'Hear a prompt, pick the natural reply. Needs audio.' }]
+      items: 8, minutes: 4, types: ['mcq'], needsAudio: true, replays: 0,
+      parts: [{ label: 'F1-F8', items: 8, note: 'Hear a prompt and three spoken replies; choose A, B or C. Needs audio.' }],
+      seconds: 8, answer: 'click', stimulus: 'audio', pages: 1, spokenOptions: true,
+      /* Three, not four. The sheet's layout column says the screen carries
+         "các nút chọn A, B, C" and the brief says "three possible responses". */
+      optionCount: 3,
+      beep: 'A tone before each item.',
+      say: 'Part F: Response Selection. You will hear a question or statement, followed by three possible responses. Choose the best response.',
+      brief: 'You will hear a sentence and then three possible responses. Click the letter A, B or C to choose the correct response. You will have 8 seconds to answer.',
+      example: true
     },
     {
-      name: 'Part G - Passage Comprehension', part: 'G', skill: 'listening', type: 'Multiple choice',
-      items: 6, minutes: 6, types: ['mcq'], needsAudio: true, replays: 0,
-      parts: [{ label: 'G1-G6', items: 6, note: 'Longer spoken passages with comprehension questions. Needs audio.' }]
+      /* Two stories, three questions each, answered aloud in a few words. The
+         sheet says "Nói vào Mic" and seven seconds — not multiple choice, which
+         is how this part had been built. */
+      name: 'Part G - Passage Comprehension', part: 'G', skill: 'speaking', type: 'Say a short answer',
+      items: 6, minutes: 6, types: ['speaking'], needsAudio: true, replays: 0,
+      parts: [{ label: 'G1-G6', items: 6, note: 'Two spoken passages, three questions each. Answer aloud in a few words. Needs audio.' }],
+      seconds: 7, perStimulus: 3, answer: 'speak', stimulus: 'audio', pages: 2,
+      beep: 'A tone the moment the question ends.',
+      say: 'Part G: Passage Comprehension. You will hear a short conversation or monologue, followed by a question. After the beep, please say your answer. You will have 7 seconds.',
+      brief: 'You will hear a story, followed by three questions. When you hear a beep, say your answer. Your answer should be a few words or a very short sentence.',
+      example: true
     },
     {
       name: 'Part H - Repeat', part: 'H', skill: 'speaking', type: 'Say the sentence back',
       items: 10, minutes: 4, types: ['speaking'], needsAudio: true, replays: 0,
-      parts: [{ label: 'H1-H10', items: 10, note: 'Repeat each sentence exactly. Scores pronunciation and fluency. Needs audio.' }]
+      parts: [{ label: 'H1-H10', items: 10, note: 'Repeat each sentence exactly. Scores pronunciation and fluency. Needs audio.' }],
+      seconds: 15, answer: 'speak', stimulus: 'audio', pages: 2,
+      beep: 'A tone the moment the sentence ends.',
+      say: 'Part H: Repeat. You will hear some sentences. Please repeat each sentence exactly as you hear it. Speak after the beep.',
+      brief: 'Please repeat each sentence that you hear.',
+      example: true
     },
     {
+      /* Thirty seconds to think, forty to speak. The instruction page in the
+         sheet says ten and sixty; the beep column and the on-screen line both
+         say thirty, so thirty is what the clock does and the brief is written to
+         match. See the note above this function. */
       name: 'Part I - Speaking Situations', part: 'I', skill: 'speaking', type: 'Respond to a situation',
-      items: 2, minutes: 4, types: ['speaking'],
-      parts: [{ label: 'I1-I2', items: 2, note: 'Speak for up to a minute in the register the situation calls for.' }]
+      items: 2, minutes: 4, types: ['speaking'], needsAudio: true, replays: 0,
+      parts: [{ label: 'I1-I2', items: 2, note: 'Read and hear a business situation, think for 30 seconds, then speak for 40.' }],
+      seconds: 40, thinkSeconds: 30, answer: 'speak', stimulus: 'both', pages: 2,
+      beep: 'A tone after the 30 seconds of thinking time.',
+      say: 'Part I: Speaking Situations. You will read and hear a business situation. You will have 30 seconds to think, and 40 seconds to speak your response after the beep.',
+      brief: 'You will hear and read a description of a situation. You will have 30 seconds to think about your answer. Then you will hear a beep. You will have 40 seconds to answer the question. Please answer as completely as you can.'
     },
     {
-      /* Three minutes per story (owner, 2026-08-11): about 64 s of playback, 20 s
-         to think, 90 s of speaking. The long speaking window is deliberate — part J
-         carries the heaviest weight in the Speaking band, and a 90 s sample is a far
-         steadier basis for a rubric judgement than a 45 s one. See docs/VOICE.md. */
       name: 'Part J - Story Retellings', part: 'J', skill: 'speaking', type: 'Retell what you heard',
-      items: 3, minutes: 9, types: ['speaking'], needsAudio: true, replays: 0,
-      parts: [{ label: 'J1-J3', items: 3, note: 'Listen to a short story, then retell it in your own words. Three minutes per story. Needs audio.' }]
+      items: 3, minutes: 5, types: ['speaking'], needsAudio: true, replays: 0,
+      parts: [{ label: 'J1-J3', items: 3, note: 'Hear a short story once, then retell it in your own words in 30 seconds. Needs audio.' }],
+      seconds: 30, answer: 'speak', stimulus: 'audio', pages: 2,
+      beep: 'A tone the moment the story ends, and another at the end of the 30 seconds.',
+      say: 'Part J: Story Retellings. You will hear a short story. You will have 30 seconds to retell the story in your own words. Speak after the beep.',
+      brief: 'You will hear three brief stories. Each story will be spoken once, followed by a beep. When you hear the beep, you will have 30 seconds to retell the story in English. Try to retell as much of the story as you can, including the situation, characters, actions, and ending. You will hear another beep at the end of 30 seconds.'
     }
   ];
 }
 
 const VPET_GUIDE = [
-  'Ten parts, A to J, 55 items in one sitting. Every part has its own timer.',
-  'Parts E, F, G, H and J play audio. Check your headphones before you start.',
-  'Parts H, I and J record your voice. Speak after the beep and stay in the time shown.',
+  'Ten parts, A to J, 58 items in one sitting. Every item has its own timer.',
+  'Parts E, F, G, H, I and J play audio. Check your headphones before you start.',
+  'Parts G, H, I and J record your voice. Speak after the beep and stay in the time shown.',
   'Reading and Listening are marked automatically; Writing and Speaking are AI scored, then a reviewer can override.'
 ];
 

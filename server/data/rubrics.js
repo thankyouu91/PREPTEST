@@ -585,6 +585,25 @@ const CRITERIA = {
  * ======================================================================== */
 
 const PART_RUBRICS = {
+  G: {
+    part: 'G', name: 'Passage Comprehension', skill: 'speaking',
+    /* The answer is one fact in a few words, inside seven seconds. So content
+       carries most of it: either the candidate caught the thing or did not.
+       Pronunciation earns a share because the answer still has to be
+       understood, and nothing else does — there is no room in seven seconds for
+       range, organisation or development, and scoring them would be scoring
+       noise. This is the same reasoning as part H's missing vocabulary and
+       grammar criteria (docs/ACADEMIC.md §4.3): do not mark what the task gives
+       the candidate no chance to show. */
+    criteria: { content: 70, pronunciation: 30 },
+    /* How many key points an item of this part must carry. Declared here rather
+       than left to the checker's flat constant of six, because six is a
+       judgement about long responses and this part gives seven seconds. An
+       answer of a few words holds one fact; demanding six would force item
+       writers to pad the marking key with things the candidate was never given
+       time to say, and every one of those would score as a miss. */
+    keyPoints: 1
+  },
   H: {
     part: 'H', name: 'Repeat', skill: 'speaking',
     /* No vocabulary or grammar: the item supplies the words, so scoring them
@@ -611,8 +630,12 @@ const PART_RUBRICS = {
   }
 };
 
-/** Speaking parts combine into the skill score with these weights (ACADEMIC §4.2). */
-const SPEAKING_PART_WEIGHTS = { H: 25, I: 30, J: 45 };
+/** Speaking parts combine into the skill score with these weights (ACADEMIC §4.2).
+    Part G joined the speaking skill on 08/10/2026, when the owner's
+    specification made it a spoken short answer rather than multiple choice. It
+    takes the smallest share of the four: six one-fact answers of seven seconds
+    say less about how someone speaks than one 40-second response does. */
+const SPEAKING_PART_WEIGHTS = { G: 15, H: 20, I: 27, J: 38 };
 
 /** Writing: part A is auto-marked, so only B and D carry rubric weight. */
 const WRITING_PART_WEIGHTS = { B: 40, D: 60 };

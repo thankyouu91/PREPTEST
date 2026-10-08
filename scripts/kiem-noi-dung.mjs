@@ -33,8 +33,6 @@ const require = createRequire(import.meta.url);
 const FORMATS = require('../server/data/exam-formats.js');
 const RUBRICS = require('../server/data/rubrics.js');
 const ITEMS = require('../server/data/vpet-items.js');
-const SCRIPTS = require('../server/data/vpet-scripts.js');
-const FORMS = require('../server/data/vpet-forms.js');
 
 const args = process.argv.slice(2);
 const GON = args.includes('--gon');
@@ -46,7 +44,8 @@ const C = { d: '\x1b[2m', b: '\x1b[1m', r: '\x1b[31m', y: '\x1b[33m', g: '\x1b[3
 const BP = {};
 FORMATS.FORMATS.find(f => f.id === 'vpet-full').sections.forEach(s => {
   const m = /^Part ([A-J])\b/.exec(s.name);
-  if (m) BP[m[1]] = { part: m[1], skill: s.skill, types: s.types || [], needsAudio: !!s.needsAudio, items: s.items };
+  if (m) BP[m[1]] = { part: m[1], skill: s.skill, types: s.types || [], needsAudio: !!s.needsAudio,
+    items: s.items, optionCount: s.optionCount || 4 };
 });
 
 /* Ý chính là bắt buộc ở part nào, và cần bao nhiêu ý.
@@ -76,10 +75,13 @@ const SO_Y_TASK = 4;
 
 const CAN_Y_CHINH = {};
 for (const [part, rub] of Object.entries(RUBRICS.PART_RUBRICS)) {
+  /* Thang chấm được phép tự khai số ý chính nó cần. Mặc định vẫn là hằng số
+     chung, nhưng part nào chỉ cho thí sinh vài giây để trả lời thì sáu ý là một
+     đòi hỏi vô nghĩa — xem `keyPoints` ở PART_RUBRICS.G. */
   if (rub.criteria.content) {
-    CAN_Y_CHINH[part] = { toiThieu: SO_Y_CONTENT, trongSo: rub.criteria.content, tieuChi: 'content' };
+    CAN_Y_CHINH[part] = { toiThieu: rub.keyPoints || SO_Y_CONTENT, trongSo: rub.criteria.content, tieuChi: 'content' };
   } else if (rub.criteria.task) {
-    CAN_Y_CHINH[part] = { toiThieu: SO_Y_TASK, trongSo: rub.criteria.task, tieuChi: 'task' };
+    CAN_Y_CHINH[part] = { toiThieu: rub.keyPoints || SO_Y_TASK, trongSo: rub.criteria.task, tieuChi: 'task' };
   }
 }
 
@@ -104,29 +106,18 @@ const TEN_ANH = new Set(('sarah daniel helen grace james thomas emma peter laura
 
 /* ------------------------------------------------------------------ */
 
-const cau = [
-  ...ITEMS.rows().map(r => ({
-    ref: r.key, part: r.part, type: r.type, skill: r.skill, level: r.level,
-    prompt: r.prompt, options: r.options || [], answer: r.answer,
-    keyPoints: r.keyPoints || [], script: '', nguon: 'vpet-items.js'
-  })),
-  ...SCRIPTS.allItems().map(i => ({
-    ref: i.ref, part: i.part, type: i.type, skill: i.skill, level: i.cefr,
-    prompt: i.prompt, options: i.options || [], answer: i.answer,
-    keyPoints: i.keyPoints || [], script: i.script || '', nguon: 'vpet-scripts.js'
-  })),
-  /* Năm bộ đề đầy đủ. Chúng đi qua đúng bộ luật này chứ không có luật riêng —
-     một cổng chặn mà nội dung mới được miễn thì không phải là cổng chặn. */
-  /* `level` ở đây là BẬC CEFR của câu, không phải level của đề.
-     Bộ đề mang cả hai: `level` là Level 1 / Level 2 của bài thi, `cefr` là độ
-     khó của từng câu bên trong dải ấy. Cổng chặn này kiểm câu, nên nó lấy bậc
-     CEFR — lấy nhầm sang level của đề thì cả 275 câu đều "bậc không hợp lệ". */
-  ...FORMS.allItems().map(i => ({
-    ref: i.ref, part: i.part, type: i.type, skill: i.skill, level: i.cefr,
-    prompt: i.prompt, options: i.options || [], answer: i.answer,
-    keyPoints: i.keyPoints || [], script: i.script || '', nguon: 'vpet-forms.js'
-  }))
-];
+/* Một nguồn duy nhất kể từ 08/10/2026.
+   Trước đó nội dung nằm rải ở ba tệp — `vpet-items.js` cho phần không audio,
+   `vpet-scripts.js` cho kịch bản đọc, năm tệp trong `forms/` cho bộ đề cố
+   định — và cổng chặn này phải gộp cả ba lại, mỗi nguồn một hình dạng hàng hơi
+   khác. Bản đặc tả của chủ dự án đổi hình dạng ba part nên cả ba tệp bị bỏ, và
+   `vpet-items.js` giờ mang đủ 58 câu kèm kịch bản đọc ngay trên từng câu. */
+const cau = ITEMS.rows().map(r => ({
+  ref: r.key, part: r.part, type: r.type, skill: r.skill, level: r.level,
+  prompt: r.prompt, options: r.options || [], answer: r.answer,
+  keyPoints: r.keyPoints || [], script: r.script || '',
+  passage: r.passage || '', nguon: 'vpet-items.js'
+}));
 
 const loi = [];
 let dat = 0;
@@ -153,7 +144,11 @@ for (const c of cau) {
 
   /* ---- Theo loại ---- */
   if (c.type === 'mcq') {
-    if (c.options.length !== 4) e.push(`có ${c.options.length} phương án, blueprint đòi 4`);
+    /* Số phương án lấy từ blueprint, không khoá cứng. Part C có bốn lựa chọn,
+       part F có đúng ba nút A, B, C — bản đặc tả nói cả hai, và một cổng chặn
+       khoá cứng số 4 sẽ đánh trượt toàn bộ part F vì nó đúng. */
+    if (c.options.length !== bp.optionCount)
+      e.push(`có ${c.options.length} phương án, blueprint đòi ${bp.optionCount}`);
     if (!c.options.includes(c.answer)) e.push('đáp án không nằm trong các phương án của chính nó');
     if (new Set(c.options).size !== c.options.length) e.push('có phương án trùng nhau');
     if (c.options.some(o => !String(o).trim())) e.push('có phương án rỗng');
@@ -176,7 +171,12 @@ for (const c of cau) {
      không nói thì thí sinh bị trừ điểm vì một yêu cầu chưa ai nói với họ. Part I
      không cần dòng này: nó nêu quan hệ (đồng nghiệp thân, quản lý, quán nhỏ) và
      ở lời nói thì chính quan hệ ấy quy định văn phong. */
-  if (c.part === 'D' && !/\b(tone|register|formal|informal|friendly|civil|polite)\b/i.test(c.prompt)) {
+  /* Soi cả đề bài lẫn tình huống. Từ 08/10/2026 tình huống của part D nằm ở
+     cột `passage` chứ không còn nằm trong `prompt` — bản đặc tả chia màn hình
+     làm hai, tình huống bên trái và ô soạn thảo bên phải — nên một phép kiểm
+     chỉ soi `prompt` sẽ đánh trượt mọi câu D dù văn phong đã ghi rõ. Thí sinh
+     đọc cả hai, nên phép kiểm cũng phải đọc cả hai. */
+  if (c.part === 'D' && !/\b(tone|register|formal|informal|friendly|civil|polite)\b/i.test(c.prompt + ' ' + (c.passage || ''))) {
     e.push('đề bài không nói rõ văn phong, nhưng part D lại chấm văn phong');
   }
 

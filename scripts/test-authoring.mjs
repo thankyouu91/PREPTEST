@@ -642,9 +642,17 @@ console.log('\n\x1b[1m== Rubric · ôn tập cá nhân hoá ==\x1b[0m');
   const secs = F.FORMATS.find(f => f.id === 'vpet-full').sections;
   const audio = secs.filter(s => s.needsAudio);
 
-  ok(audio.length === 5 && audio.every(s => Number.isFinite(s.replays)),
+  /* Sáu part phát audio kể từ bản đặc tả 08/10/2026: E, F, G, H, I, J. Part I
+     vào danh sách vì cột "Đề bài chính thức" của đặc tả ghi "Vừa hiện chữ vừa
+     phát âm (Cả hai)". Phép kiểm cũ khoá cứng con số 5 và đỏ ngay khi đặc tả
+     đổi — nó đang kiểm một con số thay vì kiểm điều nó định kiểm, nên giờ nó
+     hỏi thẳng: part nào phát audio cũng phải tự khai số lần nghe lại. */
+  ok(audio.length >= 5 && audio.every(s => Number.isFinite(s.replays)),
     'Mọi part có audio đều khai rõ số lần nghe lại, không để rơi vào mặc định chung',
     audio.map(s => s.part + '=' + s.replays).join(' '));
+
+  ok(audio.map(s => s.part).join('') === 'EFGHIJ',
+    'Đúng sáu part phát audio như đặc tả liệt kê', audio.map(s => s.part).join(''));
 
   ok(F.sectionOfPart('vpet', 'G').replays === 0 && F.sectionOfPart('vpet', 'E').replays === 1,
     'Part G phát một lần, part E phát hai lần');

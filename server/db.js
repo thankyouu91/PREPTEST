@@ -644,6 +644,12 @@ db.exec('CREATE INDEX IF NOT EXISTS idx_q_part ON questions (family_id, part, st
 addColumnIfMissing('questions', 'ext_key', 'TEXT');
 addColumnIfMissing('questions', 'source', 'TEXT');
 addColumnIfMissing('questions', 'licence', 'TEXT');
+/* Which stimulus an item hangs off. Parts C and G put several questions on one
+   passage — two on each reading text, three on each spoken story — and without
+   this the runner cannot tell "six passages with one question each" from "three
+   passages with two", which is exactly the distinction the owner's spec draws.
+   Null everywhere else, because every other part is one item to one stimulus. */
+addColumnIfMissing('questions', 'stimulus_key', 'TEXT');
 db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_q_ext_key ON questions (ext_key)');
 
 /* A section on a built test remembers which lettered part it is, so re-drawing
@@ -946,7 +952,18 @@ function seed() {
   }
   if (ganLai) console.warn(`[seed] ${ganLai} demo code(s) had their plan reattached.`);
 
-  if (!q.val('SELECT COUNT(*) c FROM questions')) seedQuestions();
+  /* `seedQuestions()` used to fill every family with generated Vietnamese
+     placeholders — 532 of them, no part, no audio, written before the VPET part
+     model existed. The owner's specification (VPET_test.xlsx, 2026-10-08) made
+     them worse than useless: a candidate drawing a paper could be handed
+     "[VPET A2] Nghe đoạn hội thoại…" in the middle of a Part F that is supposed
+     to play audio and show three letters. The bank is now exactly the 58 items
+     that specification describes, and nothing else is generated into it.
+
+     The function is exported but called from nowhere. It is kept because the
+     paper generator still needs some way to be exercised against a bank larger
+     than one paper, and nothing has replaced that yet; it must never run on a
+     boot again. */
   seedVpetItems();
 
   if (!q.val('SELECT COUNT(*) c FROM tests')) {
@@ -1094,13 +1111,16 @@ function seedVpetItems() {
      fresh database and never on an existing one. */
   const ins = db.prepare(`INSERT INTO questions
       (ext_key, family_id, skill, level, type, part, prompt, options_json, answer,
-       explanation, tags_json, key_points_json, source, licence, status, created_at)
-    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?, 'active', ?)
+       explanation, tags_json, key_points_json, passage, stimulus_key, audio_script,
+       source, licence, status, created_at)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?, 'active', ?)
     ON CONFLICT(ext_key) DO UPDATE SET
       skill=excluded.skill, level=excluded.level, type=excluded.type,
       part=excluded.part, prompt=excluded.prompt, options_json=excluded.options_json,
       answer=excluded.answer, explanation=excluded.explanation,
       tags_json=excluded.tags_json, key_points_json=excluded.key_points_json,
+      passage=excluded.passage, stimulus_key=excluded.stimulus_key,
+      audio_script=excluded.audio_script,
       source=excluded.source, licence=excluded.licence`);
 
   let n = 0;
@@ -1109,7 +1129,9 @@ function seedVpetItems() {
       const before = q.val('SELECT 1 FROM questions WHERE ext_key=?', r.key);
       ins.run(r.key, 'vpet', r.skill, r.level, r.type, r.part, r.prompt,
         JSON.stringify(r.options), r.answer, r.explanation,
-        JSON.stringify(r.tags), JSON.stringify(r.keyPoints), r.source, r.licence, at);
+        JSON.stringify(r.tags), JSON.stringify(r.keyPoints),
+        r.passage, r.stimulusKey, r.script,
+        r.source, r.licence, at);
       if (!before) n++;
     }
   });
@@ -1300,4 +1322,4 @@ function seedGrammar() {
 
 seed();
 
-module.exports = { db, q, tx, nowISO, jparse, makeCode, audit, DB_FILE, seedVocab };
+module.exports = { db, q, tx, nowISO, jparse, makeCode, audit, DB_FILE, seedVocab, seedQuestions };
