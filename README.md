@@ -148,7 +148,7 @@ khít.
 
 | Kỳ thi | Trạng thái | Format |
 |---|---|---|
-| **VPET** | **đang xây** | 10 phần A–J, 55 câu — xem bảng dưới |
+| **VPET** | **đang xây** | 10 phần A–J, 58 câu — xem bảng dưới |
 | VEPT | chưa sẵn sàng | 4 kỹ năng chuẩn VSTEP.3-5 — 80 câu, 172 phút |
 | IELTS | chưa sẵn sàng | Academic trọn bài (85 câu, 164 phút) + luyện riêng Nghe / Đọc |
 | TOEIC | chưa sẵn sàng | L&R đầy đủ 200 câu (120 phút), L&R rút gọn 100 câu, Speaking & Writing |
@@ -173,25 +173,36 @@ Cờ đó được **thi hành ở ba chỗ**, không chỉ là nhãn hiển th�
 Bảng "Việc cần làm" ở màn Tổng quan cũng bỏ qua các kỳ thi đang park: chúng
 không có đề đang bán là **đúng ý đồ**, không phải việc cần xử lý.
 
-#### Format VPET — 10 phần, 55 câu
+#### Format VPET — 10 phần, 58 câu
 
 | Phần | Task | Số câu | Kỹ năng | Cần MP3 |
 |---|---|---:|---|---|
 | A | Sentence Completion | 10 | writing | |
 | B | Passage Reconstruction | 3 | writing | |
-| C | Reading Comprehension | 3 | reading | |
+| C | Reading Comprehension | 6 | reading | |
 | D | E-Mail Writing | 2 | writing | |
 | E | Dictation | 8 | listening | có |
 | F | Response Selection | 8 | listening | có |
-| G | Passage Comprehension | 6 | listening | có |
+| G | Passage Comprehension | 6 | **speaking** | có |
 | H | Repeat | 10 | speaking | có |
-| I | Speaking Situations | 2 | speaking | |
+| I | Speaking Situations | 2 | speaking | có |
 | J | Story Retellings | 3 | speaking | có |
 
-Số câu từng phần là **cố định theo bảng chính thức**, không được đổi. Số phút là
-mặc định của nền tảng (tổng 73 phút) vì bảng gốc không công bố thời lượng — admin
-sửa được trên từng đề mà không đụng vào blueprint. Phần Nói (H, I, J) sẽ do AI
-chấm; xem hàng đợi VPET trong [`docs/ROADMAP.md`](docs/ROADMAP.md).
+Số câu từng phần **cố định theo bản đặc tả của chủ dự án** (`VPET_test.xlsx`,
+08/10/2026), không được đổi. Tổng 72 phút.
+
+Ba phần đổi hình dạng hôm ấy, và đổi *hình dạng* chứ không phải nội dung:
+
+- **C** 3 → 6 câu. Ba đoạn đọc, mỗi đoạn hai câu, bốn phương án một câu, ba phút
+  một đoạn. Trước đó mỗi đoạn chỉ một câu.
+- **G** từ trắc nghiệm Nghe thành **Nói** câu trả lời ngắn. Bảng ghi "Nói vào
+  Mic", bảy giây, và một tiếng bíp ngay khi câu hỏi kết thúc. Dựng thành trắc
+  nghiệm Nghe là đo cùng một đoạn văn bằng một kỹ năng khác.
+- **I** từ chỉ hiện chữ thành **vừa hiện chữ vừa phát âm**, theo đúng cột ngữ
+  liệu của bảng.
+
+Bốn phần Nói (G, H, I, J) do AI chấm, trọng số 15 · 20 · 27 · 38; xem
+[`docs/ACADEMIC.md`](docs/ACADEMIC.md).
 
 Mỗi format khai báo tới **từng part**: Part 1 của TOEIC 6 câu mô tả tranh, Part 7
 54 câu đọc hiểu, IELTS Reading Passage 3 khó nhất 14 câu… kèm dạng câu được phép
@@ -222,27 +233,29 @@ chỉ cần viết thêm một object trong `server/storage.js`, chỗ gọi kh�
 
 ### Kịch bản có sẵn cho VPET
 
-`server/data/vpet-scripts.js` chứa kịch bản cho **các part thật sự phát audio**,
-hai bộ — một Level 1 (B1 đổ xuống), một Level 2 (B2 trở lên) — tổng **70 kịch
-bản**: E8 · F8 · G6 · H10 · J3 cho mỗi level.
+Kịch bản đọc nằm ngay trên câu hỏi trong `server/data/vpet-items.js`, cùng một
+tệp với đề bài — **37 kịch bản** cho sáu part thật sự phát audio: E8 · F8 · G6 ·
+H10 · I2 · J3. Không có lệnh nhập riêng: `seedVpetItems()` nạp cả 58 câu lúc
+khởi động, đối chiếu theo `ext_key`, nên chạy lại không sinh bản trùng.
 
-Part I không có ở đây dù cũng là phần nói: blueprint đánh `needsAudio: false`
-cho nó, thí sinh đọc tình huống trên màn hình rồi nói. Viết kịch bản cho part I
-là hiện nút Dựng MP3 ở chỗ không phát gì và trả tiền cho một tệp không ai nghe.
-Bể part I nằm ở `server/data/vpet-items.js`, dạng đề bài chữ, và được nạp sẵn
-lúc khởi động chứ không qua lệnh dưới đây.
+Trước 08/10/2026 kho chia hai tệp theo việc part có phát audio hay không, mỗi
+tệp một lệnh nhập, và part I bị đánh `needsAudio: false`. Bản đặc tả của chủ dự
+án nói khác: cột ngữ liệu của part I là "Vừa hiện chữ vừa phát âm (Cả hai)". Cả
+hai tệp cũ và hai lệnh nhập ấy đã bỏ.
+
+Hai đường dựng MP3, cùng đọc một kịch bản:
 
 ```bash
-node scripts/nhap-kich-ban.js --thu   # xem sẽ nhập gì + hoá đơn ký tự, không ghi
-node scripts/nhap-kich-ban.js         # nhập vào ngân hàng, trạng thái draft
+node scripts/nghe-thu-nhip.mjs        # nghe thử NHỊP, chưa dựng giọng
+node scripts/dung-audio-kokoro.mjs    # Kokoro-82M, chạy tại máy, không khoá
 ```
 
-Chạy được nhiều lần: mỗi câu mang tag `ref:E1-L1`, câu đã có thì bỏ qua. Sửa nội
-dung rồi muốn đẩy xuống thì thêm `--lam-moi` — cờ này cũng huỷ trạng thái đã
-duyệt của câu bị sửa kịch bản, vì tệp MP3 cũ không còn khớp lời đọc mới.
+Hoặc bấm Dựng MP3 trong Quản trị → Ngân hàng câu hỏi, đi qua ElevenLabs — xem
+mục dưới. 37 bản ghi hiện có dựng bằng Kokoro, nên không tốn phí theo ký tự.
 
-Toàn bộ 70 kịch bản tốn khoảng **19 nghìn ký tự** ElevenLabs cho một lần dựng
-hết. Lệnh `--thu` in bảng chi tiết theo từng part trước khi anh tiêu đồng nào.
+Sửa kịch bản là huỷ hiệu lực của bản ghi cũ: tệp MP3 không còn khớp lời đọc, nên
+phải dựng lại và phải có người nghe lại rồi bấm Duyệt. Cổng phát hành đòi điều
+đó, và không lệnh nào tự bật thay được.
 
 **Kiểm tra khi nhận tệp** — đây là chỗ duy nhất nền tảng nhận file từ ngoài:
 

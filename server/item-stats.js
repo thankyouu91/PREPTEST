@@ -40,13 +40,22 @@
 const { q, nowISO, jparse } = require('./db');
 const stats = require('./item-analysis');
 
-/* Which VPET level an item belongs to. The `level` column on `questions`
-   holds a CEFR label, so the exam level lives in the tags — see
-   scripts/nhap-kich-ban.js, which writes `level-1` / `level-2`. */
+/* Which VPET level an item belongs to.
+ *
+ * Derived from the item's CEFR band, because that is the only place the fact
+ * actually lives. It used to be read from a `level-1` / `level-2` tag, which
+ * one importer wrote and nothing else did; when that importer was deleted on
+ * 08/10/2026 the tag stopped being written and every item quietly reported no
+ * level at all. A fact that depends on one writer remembering to stamp it is a
+ * fact waiting to be lost, so it is now computed from the band instead:
+ * Level 1 covers A1–B1+, Level 2 covers B2–C2.
+ *
+ * Returns null for a non-VPET item and for a band outside both ranges — the
+ * caller treats null as "not grouped by level", which is right either way. */
 function vpetLevel(row) {
-  const tags = jparse(row.tags_json, []);
-  const tag = tags.find(t => /^level-\d$/.test(t));
-  return tag ? Number(tag.slice(6)) : null;
+  if (row.family_id && row.family_id !== 'vpet') return null;
+  const id = require('./data/exam-formats').vpetLevelOfCefr(row.level);
+  return id ? Number(id.slice(1)) : null;
 }
 
 /**
@@ -89,7 +98,7 @@ function snapshot({ since } = {}) {
   const rows = q.all(
     `SELECT r.attempt_id, r.question_id, r.answer AS chosen, r.earned, r.max_score,
             qq.skill, qq.part, qq.type, qq.options_json, qq.answer AS key_answer,
-            qq.tags_json, qq.prompt
+            qq.family_id, qq.level, qq.prompt
        FROM attempt_answers r
        JOIN attempts  a  ON a.id = r.attempt_id
        JOIN questions qq ON qq.id = r.question_id

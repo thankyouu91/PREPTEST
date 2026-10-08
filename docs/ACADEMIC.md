@@ -170,10 +170,10 @@ understood nothing.
 
 **Accuracy is not scored on I and J** because there is no reference text. On J
 the equivalent is content coverage, checked against the key points the author
-listed with the story — which is why every story in `server/data/vpet-scripts.js`
+listed with the story — which is why every story in `server/data/vpet-items.js`
 carries six of them.
 
-**Fluency and pronunciation appear on all three** because they are the only two
+**Fluency and pronunciation appear on all four** because they are the only two
 constructs observable across the whole section, and — usefully — the only two
 the deterministic metrics layer can cross-check numerically
 ([`docs/VOICE.md`](VOICE.md) §6.2). A rubric score for fluency that contradicts
@@ -331,8 +331,8 @@ flawed key or an ambiguous distractor rather than a hard item.
 Three fairness questions apply to this platform specifically.
 
 **Content bias.** Items assuming knowledge a Vietnamese learner would not have
-measure background, not English. The scripts in
-`server/data/vpet-scripts.js` were written against this constraint. Once there
+measure background, not English. The items in
+`server/data/vpet-items.js` were written against this constraint. Once there
 is data, differential item functioning can be checked between groups; until
 then it rests on authorial judgement, which is weaker.
 

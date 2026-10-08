@@ -177,7 +177,8 @@ function simulate(soLuot) {
     `SELECT id, type, options_json, answer, part FROM questions
       WHERE family_id='vpet' AND part IS NOT NULL ORDER BY id`);
   if (!items.length) {
-    console.error('\nNgân hàng chưa có câu VPET nào. Chạy node scripts/nhap-kich-ban.js trước.\n');
+    console.error('\nNgân hàng chưa có câu VPET nào. Khởi động server một lần để' +
+      ' seedVpetItems() nạp server/data/vpet-items.js, rồi chạy lại.\n');
     process.exit(1);
   }
 

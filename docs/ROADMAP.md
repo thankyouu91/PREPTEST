@@ -67,20 +67,22 @@ Speaking and audio allocation across the ten parts — how many files to render,
 many clips come back, and how H, I and J combine into the Speaking band — is
 worked out in [`docs/VOICE.md`](VOICE.md) sections 1 and 2.
 
-The official VPET blueprint, already in `server/data/exam-formats.js`, is fixed
-at 55 items and must not be changed:
+The VPET blueprint, in `server/data/exam-formats.js`, is fixed at **58 items**
+by the owner's specification (`VPET_test.xlsx`, 08/10/2026) and must not be
+changed. It was 55 until that sheet arrived; parts C, G and I changed shape —
+see [`docs/BLUEPRINT.md`](BLUEPRINT.md) §1:
 
 | Part | Task | Items | Skill | Needs audio |
 |---|---|---:|---|---|
 | A | Sentence Completion | 10 | writing | |
 | B | Passage Reconstruction | 3 | writing | |
-| C | Reading Comprehension | 3 | reading | |
+| C | Reading Comprehension | 6 | reading | |
 | D | E-Mail Writing | 2 | writing | |
 | E | Dictation | 8 | listening | yes |
 | F | Response Selection | 8 | listening | yes |
-| G | Passage Comprehension | 6 | listening | yes |
+| G | Passage Comprehension | 6 | **speaking** | yes |
 | H | Repeat | 10 | speaking | yes |
-| I | Speaking Situations | 2 | speaking | |
+| I | Speaking Situations | 2 | speaking | **yes** |
 | J | Story Retellings | 3 | speaking | yes |
 
 **Platform before content** (owner, 2026-08-11): build frontend and backend
@@ -93,7 +95,7 @@ platform reasoning around them is what makes them legible; only who picks them
 up has changed. The two items still waiting on a decision or on another branch
 are marked as such and belong to nobody until that clears.
 
-- [x] VPET blueprint: ten lettered parts A-J, 55 items, in `server/data/exam-formats.js`
+- [x] VPET blueprint: ten lettered parts A-J, 58 items, in `server/data/exam-formats.js`
 - [x] Family readiness flag: `families.status` = `ready` / `coming_soon`, VPET ready and the other five parked; served by `GET /api/catalog`
 - [x] MP3 upload in the admin question bank: storage adapter (disk + Supabase driver), raw-body upload behind requireAdmin + CSRF with magic-byte validation, player and replace/remove on each item, and per-part audio coverage in the format readiness report
 - [x] **Google Sign-In** — server-side OAuth 2.0 redirect (`/auth/google`, `/auth/google/callback`), no external script so the CSP is untouched; state + nonce, issuer/audience/expiry checks, open-redirect guard, links onto an existing account by verified email, and stays hidden until `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` are set
@@ -134,7 +136,7 @@ are marked as such and belong to nobody until that clears.
 - [x] **Provider API keys in the dashboard**: two fields under Quản trị → Khoá API, AES-256-GCM at rest with the encryption key outside the database (`APP_SECRET`, or `data/.app-secret` in dev), environment variables taking precedence so Secret Manager can take over without a data change, masked reads, and a Test connection button per provider
 - [x] **ElevenLabs TTS pipeline** ([`docs/VOICE.md`](VOICE.md) §4): pause markup (`,` short · `.` long · `_` a 1.5 s gap, `_2s` for an exact one) in `server/script-markup.js`; `audio_script` / `audio_status` / `audio_voice_id` / `audio_hash` / `key_points_json` / `part` columns; `tts_renders` audit trail; provider adapter asking for `mp3_44100_128` so the bytes go straight into the existing storage adapter; content hashing so an unchanged item never renders twice; free instant preview of pauses, billed characters and estimated duration before any API call; Render / Approve / Unapprove in the question bank. `audioReadyCount()` now requires `audio_status='approved'`, so no form ships with audio nobody has heard
 - [x] **Measurement framework** ([`docs/ACADEMIC.md`](ACADEMIC.md)): the alignment argument, the justification for every weight, per-part content validity, fairness, and a plainly stated list of what cannot yet be claimed — plus 140 can-do descriptors written in-house in `server/data/descriptors.js` so the platform owns its own statements rather than republishing Pearson's or the Council of Europe's. Served at `/admin/framework/*`, and `profile(skill, gse)` returns exactly the shape the candidate report needs
-- [x] **VPET audio scripts**: two complete forms in `server/data/vpet-scripts.js` — one per level, 70 scripts (E8 · F8 · G6 · H10 · J3 each — part I is text-prompted, `needsAudio: false`), written in the pause markup with distractors, answers, explanations and part J key points. `scripts/nhap-kich-ban.js` validates and imports them as drafts, idempotent by `ref:` tag, and prints the ElevenLabs character bill per part before anything is spent
+- [x] **VPET audio scripts**: 37 scripts on the items that need them in `server/data/vpet-items.js` — E8 · F8 · G6 · H10 · I2 · J3, the six parts the owner's specification marks as playing audio — written in the pause markup with distractors, answers, explanations and part J key points. They reach the bank through `seedVpetItems()` at startup, matched on `ext_key`, so editing the file and restarting is the whole import. Superseded the two-file split (`vpet-scripts.js` plus five form files) and its two import commands on 08/10/2026, when the specification changed the shape of parts C, G and I and the bank was rewritten
 - [x] **Item analysis, and the personalised revision it feeds** ([`docs/ACADEMIC.md`](ACADEMIC.md) §5.1 and §9.1): facility, corrected item-rest discrimination, distractor behaviour, Cronbach's alpha and standard error in `server/item-analysis.js`, computed over the exam engine's own `attempt_answers` rather than a second copy of the responses. Nothing is reported as evidence below its sample size, and an extreme facility retires an item only when discrimination is also poor. On top of it, 14 pronunciation targets for Vietnamese speakers ranked by lost meaning rather than by accent, 96 vocabulary entries grouped by exam function, and `server/study-plan.js` joining rubric, descriptors, sounds and words into three things to do this week. `npm run hoc-thuat` holds all of it at 281 checks
 
 ## Hàng đợi

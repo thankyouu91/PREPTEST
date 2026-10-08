@@ -17,10 +17,12 @@ times — and at that point the only thing keeping part C at four options, part 
 with something to mark against, and part A down to a single missing word, is a
 check that **runs**.
 
-It earns this on the five forms already. Writing them, the checker caught four
-passages short of the 50-word target, six dictation sentences outside the
-10–14 word band, and a part E whose average sentence length would not have fit
-its clock — none of which reading the file would have shown.
+It has earned this twice over. On the five forms since deleted, the checker
+caught four passages short of the 50-word target, six dictation sentences
+outside the 10–14 word band, and a part E whose average sentence length would
+not have fit its clock. On the rebuilt bank it caught a part C passage carrying
+one question where the specification wants two — none of which reading the file
+would have shown.
 
 So the rules below come in two kinds, and it is worth knowing which you are
 reading. **Shape** is checked by a program. **Craft** is not, and cannot be.
@@ -62,22 +64,22 @@ What it cannot see is in §9, and it is most of what makes an item good.
 
 | File | Parts | Why |
 |---|---|---|
-| `server/data/vpet-items.js` | A, B, C, D, I | The original bank, no audio. Loaded at startup by `seedVpetItems()`, matched on `ext_key`. |
-| `server/data/vpet-scripts.js` | E, F, G, H, J | The original bank, audio. Imported by `node scripts/nhap-kich-ban.js`. |
-| `server/data/forms/vpet-form-N.js` | **all ten** | One complete paper per file. Imported by `node scripts/nhap-bo-de.js`, which sorts out audio from the blueprint. |
+| `server/data/vpet-items.js` | **all ten** | The whole bank, one paper, 58 items. Loaded at startup by `seedVpetItems()`, matched on `ext_key`. The reading script for an audio part sits on the item itself. |
 
-The split is enforced in both directions. An item in an audio part without a
-script fails; an item in a silent part that carries one also fails, because it
-would show a "Build MP3" button on a part that never plays anything.
+One file, since 08/10/2026. It used to be three — `vpet-items.js` for the silent
+parts, `vpet-scripts.js` for the audio ones, and five form files for complete
+papers — each with its own import command and its own row shape. The owner's
+specification changed the shape of parts C, G and I, so the bank was emptied and
+rewritten; the two extra files and their import commands went with it.
 
-**New material goes in a form file.** Splitting each paper in half by whether a
-part happens to play audio follows the two old import commands, not anything
-about the exam, and at five papers it makes a form impossible to read as a
-form. A form file is one sitting, all ten parts of it.
+The split had been enforced in both directions: an item in an audio part without
+a script failed, and an item in a silent part that carried one failed too. Only
+the first half of that rule survives, because it is the half about the exam. The
+second half was about which file an item lived in, and there is one file now.
 
-**Never put the same item in two files.** They are separate import paths writing
-to one table, and the paper builder would draw whichever copy it happened to
-hit.
+**A part either plays audio or it does not, and the blueprint says which.** An
+item in a part marked `needsAudio` must carry a script; `npm run kiem-noi-dung`
+fails the build otherwise. Six parts play audio: E, F, G, H, I, J.
 
 ---
 
@@ -85,8 +87,8 @@ hit.
 
 | Field | Rule |
 |---|---|
-| key / ref | Unique. `vpet-<part>-<nn>` in `vpet-items.js` (`vpet-b-01`); `<PART><n>-L<level>` in `vpet-scripts.js` (`J1-L1`), where the `-L1` / `-L2` suffix is added by `allItems()` from whichever list the item is in. |
-| level | `A2`, `B1`, `B2` or `C1`. In `vpet-scripts.js` it comes from which list the item is in — level 1 is B1, level 2 is B2. |
+| key | Unique, `vpet-<part>-<nn>` — `vpet-b-01`. It is the `ext_key` the seeder matches on, so changing one on an existing item inserts a second copy rather than updating the first. |
+| level | The item's CEFR band: `A2`, `B1`, `B2` or `C1`. Not the level of the paper — that lives on `tests.level` and is a level id (`L1`, `L2`). Every part spans at least two bands, because a part flat at one band separates nobody. |
 | skill | Must equal the skill the part table declares. Not a free choice. |
 | type | Must be one the part table accepts. |
 | prompt | Real displayed text. Never empty, never a placeholder. |
@@ -99,20 +101,34 @@ hit.
 Counts are per paper. "Pool" is what the bank holds today, and "Plays" is how
 many times an audio item may be heard in total (§5a).
 
-| | Part | Skill | Type | Items | Min | Plays | Pool |
+| | Part | Skill | Type | Items | Min | Plays | Bank |
 |---|---|---|---|---|---|---|---|
-| A | Sentence Completion | writing | gap | 10 | 10 | — | 80 |
-| B | Passage Reconstruction | writing | essay | 3 | 9 | — | 23 |
-| C | Reading Comprehension | reading | mcq | 3 | 6 | — | 23 |
-| D | E-Mail Writing | writing | essay | 2 | 18 | — | 18 |
-| E | Dictation | listening | gap | 8 | 6 | 2 | 56 |
-| F | Response Selection | listening | mcq | 8 | 4 | 3 | 56 |
-| G | Passage Comprehension | listening | mcq | 6 | 6 | **1** | 42 |
-| H | Repeat | speaking | speaking | 10 | 4 | 1 | 70 |
-| I | Speaking Situations | speaking | speaking | 2 | 4 | — | 18 |
-| J | Story Retellings | speaking | speaking | 3 | 9 | 1 | 21 |
+| A | Sentence Completion | writing | gap | 10 | 10 | — | 10 |
+| B | Passage Reconstruction | writing | essay | 3 | 6 | — | 3 |
+| C | Reading Comprehension | reading | mcq | 6 | 9 | — | 6 |
+| D | E-Mail Writing | writing | essay | 2 | 18 | — | 2 |
+| E | Dictation | listening | gap | 8 | 6 | 2 | 8 |
+| F | Response Selection | listening | mcq | 8 | 4 | **1** | 8 |
+| G | Passage Comprehension | **speaking** | speaking | 6 | 6 | **1** | 6 |
+| H | Repeat | speaking | speaking | 10 | 4 | 1 | 10 |
+| I | Speaking Situations | speaking | speaking | 2 | 4 | 1 | 2 |
+| J | Story Retellings | speaking | speaking | 3 | 5 | 1 | 3 |
 
-55 items, 76 minutes.
+58 items, 72 minutes.
+
+**Bank is what is authored today, not a target.** It equals the blueprint in
+every part, which is the one depth the pool rule in §6 forbids: a candidate who
+sits the paper twice meets the same 58 items. The owner's specification was the
+job; filling the pool behind it is not done.
+
+**Part F plays once.** It reads the prompt and all three options aloud — 130
+seconds of audio for a part allowed 240. A replay put it at 184% of its clock,
+so `replays` is 0 there, meaning one play and no repeat.
+
+**Part G is a speaking part.** The specification's answer column says "Nói vào
+Mic", seven seconds, "a few words or a very short sentence", with a beep the
+instant the question ends. Built as a listening multiple-choice — which it was
+until 08/10/2026 — it measured the same passage through a different skill.
 
 ### Part A — Sentence Completion
 
@@ -293,8 +309,8 @@ paper is still marked, the heaviest criterion still returns a number, and that
 number is compared against nothing.
 
 1. **Authored** in the content file.
-2. **Persisted** — `seedVpetItems()` and `nhap-kich-ban.js` both write
-   `key_points_json`, on insert *and* on update.
+2. **Persisted** — `seedVpetItems()` writes `key_points_json`, on insert *and*
+   on update.
 3. **Delivered** — `marking-guide.js` `userPrompt()` puts the list in front of
    the model, labelled by criterion, and on `content` parts asks for the count
    back in `keyPointsCovered` so a band-5 verdict attached to "2 of 6" can be
@@ -359,13 +375,15 @@ disagree, so a change that does not fit says so immediately.
 ### 5b. Building the audio
 
 ```
-node scripts/nhap-bo-de.js --thu         # dry run: what would be imported
-node scripts/nhap-bo-de.js               # import a form file
+node scripts/nghe-thu-nhip.mjs           # hear the PAUSES, before any voice
 node scripts/dung-audio-kokoro.mjs       # render MP3s, whole bank in one batch
 ```
 
+Items reach the table through `seedVpetItems()` at startup, so there is no
+import step: edit `vpet-items.js`, restart, and the bank matches the file.
+
 The renderer loads the model once for the whole run rather than once per item —
-175 items take minutes rather than an hour and a half. `--part=G` and
+the 37 scripts take minutes rather than most of an hour. `--part=G` and
 `--so-cau=N` narrow it while drafting.
 
 Editing a script after its MP3 exists **invalidates the approval** — the file no
@@ -392,50 +410,66 @@ that level draws every item, so a retake is the identical part.
 
 ### Where the bank stands
 
-Every part is now deep at both levels, after the five forms were added.
+**Not deep, and not even one full paper per level.** This is the honest state
+after the 08/10/2026 rebuild, not a target being approached.
 
-| Part | Needs | A2 | B1 | B2 |
-|---|---|---|---|---|
-| A | 10 | 4 | 36 | 40 |
-| B | 3 | — | 11 | 12 |
-| C | 3 | — | 11 | 12 |
-| D | 2 | — | 10 | 8 |
-| E | 8 | — | 32 | 24 |
-| F | 8 | — | 32 | 24 |
-| G | 6 | — | 24 | 18 |
-| H | 10 | — | 40 | 30 |
-| I | 2 | — | 10 | 8 |
-| J | 3 | — | 12 | 9 |
+| Part | Needs | In L1 range | In L2 range |
+|---|---|---|---|
+| A | 10 | 5 | 5 |
+| B | 3 | 1 | 2 |
+| C | 6 | 2 | 4 |
+| D | 2 | 1 | 1 |
+| E | 8 | 5 | 3 |
+| F | 8 | 5 | 3 |
+| G | 6 | 3 | 3 |
+| H | 10 | 6 | 4 |
+| I | 2 | 1 | 1 |
+| J | 3 | 1 | 2 |
+| | **58** | **30** | **28** |
 
-**What this fixed.** Before the forms, every audio part held exactly the
-blueprint count at each level — the one number the rule forbids. Two B1 papers
-generated back to back shared all of E, F, G, H and J: 35 of 55 items, with only
-the order differing. Measured again after: **no part identical, about a quarter
-of items overlapping**, which is what a random draw from a deep pool looks like.
+L1 covers A1–B1+, L2 covers B2–C2. Every part deliberately spans both, because
+a part flat at one band separates nobody — but that same spread means neither
+range holds a full paper.
 
-**Why it had not been visible.** Two checks looked at it and both missed it, in
-different ways. `scripts/test-items.mjs` applies the depth rule per level,
-correctly, but reads `vpet-items.js` and so never saw the five scripted parts.
-`soat-de-vpet.mjs` did see them and summed its pool across levels: part E held
-16 items against a blueprint of 8, twice what is needed, and the column went
-green — but the 16 were 8 at B1 and 8 at B2, and a B1 paper draws only from the
-8. It now counts per level.
+**Two consequences, both live.**
+
+1. `POST /api/admin/tests/generate` at either level returns 409 with a shortage
+   per part. That is correct behaviour and it is new: until 08/10/2026 the level
+   was only a sort key, so a Level 2 paper short of B2 items was topped up with
+   A2 ones and reported complete. An item outside the range measures nothing
+   about the candidate who was handed it.
+2. The paper a candidate actually sits, `vpet-b1-01`, is built by
+   `scripts/dung-de-vpet.mjs`, which assigns all 58 items in key order and does
+   not filter by level. So the sitting works — and a retake is the identical
+   paper, item for item.
+
+**The decision this leaves open.** The paper spans A2–C1 but `tests.level` says
+`L1`, and a level id admits no third value for "both". Either the platform
+offers one ramping paper that reports anywhere on the scale — in which case the
+level field on a VPET paper is the wrong shape — or it keeps the two-level model,
+and each level needs its own paper's worth of items inside its own range. That
+is the owner's call, not a thing to settle in a commit.
+
+**Why the old numbers here were wrong.** This section used to report 4–40 items
+per part per band and conclude "every part is now deep at both levels". Those
+counts came from five form files and a parallel script file, all deleted in the
+rebuild. The table above is generated from the one remaining content file.
 
 ---
 
 ## 7. Adding a batch
 
-A new paper is a new file in `server/data/forms/`, registered in
-`server/data/vpet-forms.js`.
+New material is appended to the per-part lists in
+`server/data/vpet-items.js`.
 
-1. Copy an existing form file and replace its content, following §3 part by
-   part. Give it a new `id` — the id becomes each item's `ext_key` prefix, so
-   two forms sharing one would overwrite each other on import.
+1. Add rows to the part's list, following §3 part by part. Keep the key format
+   and carry on the numbering — the key is the `ext_key` the seeder matches on,
+   so reusing one overwrites the item that already holds it.
 2. `npm run kiem-noi-dung` — fix everything it reports. It groups by fault, so
    eight items with one mistake read as one job rather than eight.
-3. `node scripts/nhap-bo-de.js --thu`, then without `--thu`. Re-running is safe:
-   items match on `ext_key`, so an edit updates rather than duplicates.
-4. `node scripts/dung-audio-kokoro.mjs` for the E, F, G, H and J items.
+3. Restart the server. `seedVpetItems()` inserts the new rows and updates the
+   changed ones; re-running is safe because it matches on `ext_key`.
+4. `node scripts/dung-audio-kokoro.mjs` for the E, F, G, H, I and J items.
 5. `node scripts/soat-de-vpet.mjs` — pool depth per level, audio, marking, and
    whether each part fits its clock.
 6. `SKIP_SHOTS=1 bash scripts/verify.sh` — everything, including steps 2 and 5.

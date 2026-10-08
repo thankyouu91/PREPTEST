@@ -177,7 +177,7 @@ const rows = q.all(
 
 if (!rows.length) {
   console.error(`\nKhông có câu nào có kịch bản đọc${PART ? ' ở part ' + PART : ''}.\n` +
-    `Chạy node scripts/nhap-kich-ban.js trước.\n`);
+    `Khởi động server một lần để seedVpetItems() nạp server/data/vpet-items.js.\n`);
   process.exit(1);
 }
 

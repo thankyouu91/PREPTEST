@@ -295,69 +295,103 @@ if (cookie && csrf) {
 }
 
 /* ================= 4. Nội dung kịch bản VPET =================
-   Kịch bản là nội dung, mà nội dung thì sửa tay. Bộ này chốt các bất biến để
-   một lần sửa không âm thầm làm hỏng cả đề: đủ số câu theo blueprint, đáp án
-   nằm trong phương án, và ký hiệu ngắt nghỉ vẫn phân tích được. */
+   Kịch bản giờ nằm ngay trên câu hỏi trong `server/data/vpet-items.js`, không
+   còn tệp song song `vpet-scripts.js` nữa — bể hai bộ đề 70 kịch bản đã bị xoá
+   cùng 594 câu hỏi khi dựng lại kho theo bản đặc tả của chủ dự án.
+
+   Hình dạng từng câu là việc của test-items.mjs. Bộ này kiểm thứ nó không
+   thấy: ký hiệu ngắt nghỉ còn phân tích được không, và audio có vừa đồng hồ
+   mà chính blueprint cấp cho part ấy không. */
 
 console.log('\n\x1b[1m== Kịch bản audio VPET ==\x1b[0m');
 
 {
-  const { allItems } = require('../server/data/vpet-scripts.js');
-  const items = allItems();
+  const rows = require('../server/data/vpet-items.js').rows();
+  const F = require('../server/data/exam-formats.js');
+  const coAudio = rows.filter(i => i.script && i.script.trim());
 
-  /* Các part thật sự phát audio: E8 F8 G6 H10 J3 = 35 câu mỗi level.
-     Part I nằm ngoài danh sách này dù cũng là phần nói — blueprint đánh
-     `needsAudio: false` cho nó, thí sinh đọc tình huống trên màn hình rồi nói.
-     Viết kịch bản cho part I là hiện nút Dựng MP3 ở chỗ không phát gì và trả
-     tiền ElevenLabs cho một tệp không ai nghe; bể part I do
-     server/data/vpet-items.js giữ, dạng đề bài chữ. */
-  const MONG_DOI = { E: 8, F: 8, G: 6, H: 10, J: 3 };
+  /* Sáu part phát audio: E8 F8 G6 H10 I2 J3 = 37. Part I nằm trong danh sách
+     này — bản đặc tả ghi cột ngữ liệu của nó là "Vừa hiện chữ vừa phát âm (Cả
+     hai)", nên nó có kịch bản. Trước 08/10/2026 nó bị đánh `needsAudio: false`
+     và phần kiểm cũ ở đây còn chốt rằng part I KHÔNG được có kịch bản. */
+  const MONG_DOI = { E: 8, F: 8, G: 6, H: 10, I: 2, J: 3 };
   const dem = {};
-  items.forEach(i => { dem[i.part + i.level] = (dem[i.part + i.level] || 0) + 1; });
+  coAudio.forEach(i => { dem[i.part] = (dem[i.part] || 0) + 1; });
+  const lech = Object.keys(MONG_DOI).concat(Object.keys(dem))
+    .filter((p, i, a) => a.indexOf(p) === i)
+    .filter(p => dem[p] !== MONG_DOI[p])
+    .map(p => `${p} ${dem[p] || 0}/${MONG_DOI[p] || 0}`);
+  ok(lech.length === 0,
+    'Đúng 37 kịch bản, đủ sáu part phát audio (E8 F8 G6 H10 I2 J3)', lech.join(', '));
 
-  let duSo = true;
-  for (const [part, n] of Object.entries(MONG_DOI)) {
-    for (const level of [1, 2]) if (dem[part + level] !== n) duSo = false;
-  }
-  ok(duSo, 'Đủ số câu theo blueprint cho cả hai level (E8 F8 G6 H10 J3)');
-  ok(items.length === 70, 'Tổng 70 kịch bản — 35 câu × 2 level', 'thấy ' + items.length);
-  ok(items.every(i => i.part !== 'I'), 'Không kịch bản nào thuộc part I — part đó không phát audio');
+  const khaiAudio = F.FORMATS.find(f => f.id === 'vpet-full')
+    .sections.filter(s => s.needsAudio).map(s => s.part).join('');
+  ok(Object.keys(MONG_DOI).join('') === khaiAudio,
+    'Part có kịch bản đúng bằng part blueprint khai là phát audio', khaiAudio);
 
-  ok(items.every(i => i.script && i.script.trim()), 'Không kịch bản nào rỗng');
-  ok(new Set(items.map(i => i.ref)).size === items.length, 'Mã tham chiếu không trùng nhau');
-
-  const mcq = items.filter(i => i.type === 'mcq');
-  ok(mcq.every(i => i.options.length >= 2), 'Mọi câu trắc nghiệm có ít nhất 2 phương án');
-  ok(mcq.every(i => i.options.includes(i.answer)), 'Đáp án luôn nằm trong các phương án của chính nó');
-  ok(mcq.every(i => new Set(i.options).size === i.options.length), 'Không có phương án trùng nhau trong cùng một câu');
-
-  const gap = items.filter(i => i.type === 'gap');
-  ok(gap.every(i => i.answer && i.answer.trim()), 'Mọi câu điền từ đều có đáp án');
+  ok(new Set(coAudio.map(i => i.key)).size === coAudio.length, 'Mã tham chiếu không trùng nhau');
 
   /* Part H chấm bằng so khớp từ với chính câu đã đọc, nên đáp án phải bám
      kịch bản chứ không được chép tay thành một bản lệch. */
-  const h = items.filter(i => i.part === 'H');
-  ok(h.every(i => i.answer === i.script), 'Đáp án part H lấy thẳng từ kịch bản, không chép tay');
+  const h = rows.filter(i => i.part === 'H');
+  ok(h.length === 10 && h.every(i => i.answer === i.script),
+    'Đáp án part H lấy thẳng từ kịch bản, không chép tay');
 
   /* Part J chấm coverage theo key points; thiếu key points là không chấm được
      nội dung, chỉ còn chấm được ngôn ngữ. */
-  const j = items.filter(i => i.part === 'J');
-  ok(j.every(i => i.keyPoints.length >= 4), 'Mỗi bài kể chuyện có ít nhất 4 ý chính để chấm coverage');
+  const j = rows.filter(i => i.part === 'J');
+  ok(j.length === 3 && j.every(i => (i.keyPoints || []).length >= 4),
+    'Mỗi bài kể chuyện có ít nhất 4 ý chính để chấm coverage');
+
+  /* Part G gắn ba câu vào một ngữ liệu. Câu đầu của mỗi nhóm đọc cả đoạn rồi
+     đọc câu hỏi, hai câu sau chỉ đọc câu hỏi — nên đoạn văn chỉ được xuất hiện
+     trong kịch bản của câu đầu. Lặp lại ở câu hai là phát lại cả đoạn giữa
+     lúc thí sinh đang bị bấm bảy giây để trả lời. */
+  const nhomG = {};
+  rows.filter(i => i.part === 'G').forEach(i => (nhomG[i.stimulusKey] ||= []).push(i));
+  const lapDoan = Object.values(nhomG).filter(g =>
+    g.slice(1).some(i => i.passage && i.script.includes(i.passage.slice(0, 40))));
+  ok(Object.keys(nhomG).length === 2 && lapDoan.length === 0,
+    'Part G đọc đoạn văn một lần, ở câu đầu của nhóm', lapDoan.map(g => g[0].key).join(', '));
 
   /* Ký hiệu ngắt nghỉ phải phân tích được và không vượt ngưỡng thẻ break —
      vượt ngưỡng thì hệ thống bỏ thẻ, tức là kịch bản mất nhịp tác giả muốn. */
-  const capped = items.filter(i => parseScript(i.script).stats.capped);
+  const capped = coAudio.filter(i => parseScript(i.script).stats.capped);
   ok(capped.length === 0, 'Không kịch bản nào vượt ngưỡng số thẻ ngắt',
-    capped.map(i => i.ref).join(', '));
+    capped.map(i => i.key).join(', '));
 
-  const tongKyTu = items.reduce((n, i) => n + parseScript(i.script).stats.billedChars, 0);
-  ok(tongKyTu > 15000 && tongKyTu < 30000,
-    'Tổng ký tự tính tiền nằm trong khoảng đã dự toán (' + tongKyTu.toLocaleString('en-US') + ')');
+  /* ĐỒNG HỒ. Phép kiểm cũ ở chỗ này đếm ký tự tính tiền ElevenLabs; engine giờ
+     là Kokoro, chạy nội bộ và không tính tiền ký tự, nên con số ấy không còn
+     bảo vệ cái gì. Cái thật sự vỡ được là đồng hồ: audio phát đủ số lần
+     blueprint cho phép, cộng thời gian trả lời, phải nằm trong số phút của
+     part. Part F từng chạy 184% đồng hồ vì nó đọc cả đề lẫn ba phương án mà
+     vẫn được phát lại một lần.
 
-  /* Level 1 đo tới B1, level 2 từ B2 lên — gắn sai bậc là bỏ câu vào kho mà
-     đề của level đó không được phép bốc. */
-  ok(items.filter(i => i.level === 1).every(i => i.cefr === 'B1'), 'Level 1 gắn bậc B1');
-  ok(items.filter(i => i.level === 2).every(i => i.cefr === 'B2'), 'Level 2 gắn bậc B2');
+     Đo từ kịch bản thật, không chép tay con số vào đây: một con số chép tay là
+     đúng cái đã mục khi part F đổi hình dạng. */
+  const chat = [];
+  for (const s of F.FORMATS.find(f => f.id === 'vpet-full').sections.filter(x => x.needsAudio)) {
+    const mine = coAudio.filter(i => i.part === s.part);
+    const audio = mine.reduce((n, i) => n + parseScript(i.script).stats.estimatedMs, 0) / 1000;
+    const traLoi = (s.seconds || 0) * s.items + (s.thinkSeconds || 0) * s.items + (s.readSeconds || 0);
+    const can = audio * (1 + (s.replays || 0)) + traLoi;
+    const co = s.minutes * 60;
+    if (can > co) chat.push(`${s.part} ${Math.round(can)}s/${co}s`);
+  }
+  ok(chat.length === 0,
+    'Mọi part phát audio vừa đồng hồ ở đúng số lần phát nó cho phép', chat.join(', '));
+
+  /* Trong một part, câu phải lên dần độ khó. Kho này cố ý trải A2 tới C1 bên
+     trong từng part — một part phẳng một bậc thì mọi thí sinh qua được hoặc
+     mọi thí sinh trượt, và part ấy không phân biệt được ai với ai. Đây là lý
+     do kho trải cả hai level VPET chứ không bó trong dải của một level. */
+  const phang = [];
+  for (const p of Object.keys(MONG_DOI).concat(['A', 'B', 'C', 'D'])) {
+    const bac = new Set(rows.filter(i => i.part === p).map(i => i.level));
+    if (bac.size < 2) phang.push(p + ':' + [...bac].join('/'));
+  }
+  ok(phang.length === 0, 'Không part nào phẳng một bậc — part nào cũng lên dần độ khó',
+    phang.join(', '));
 }
 
 /* Part A-D và I: bể câu không cần audio giờ do server/data/vpet-items.js
@@ -526,7 +560,7 @@ console.log('\n\x1b[1m== Rubric · ôn tập cá nhân hoá ==\x1b[0m');
     'Hai part gọi tên danh sách theo đúng tiêu chí của mình: content so nội dung, task đếm thành phần');
 
   /* Part H không có ý chính và không cần: bản đối chiếu của nó là câu đã đọc. */
-  const h = require('../server/data/vpet-scripts.js').allItems().find(i => i.part === 'H');
+  const h = rows.find(i => i.part === 'H');
   const nhacH = G.userPrompt('H', h, 'nghe được gì đó');
   ok(nhacH.includes(h.script) && !/key points|elements this task/.test(nhacH),
     'Part H được xem câu gốc thay cho ý chính');
@@ -665,76 +699,11 @@ console.log('\n\x1b[1m== Rubric · ôn tập cá nhân hoá ==\x1b[0m');
   ok(secs.filter(s => !s.needsAudio).every(s => s.replays === undefined),
     'Part không phát audio thì không khai số lần nghe lại');
 
-  /* Đồng hồ phải chịu được số lần phát mà chính blueprint cho phép. Con số dưới
-     đây là thời lượng audio và thời gian làm bài đo từ kho (xem soat-de-vpet). */
-  const dukien = { E: [45, 240], F: [35, 96], G: [192, 120] };
-  const vo = Object.entries(dukien).filter(([p, [a, lam]]) => {
-    const s = F.sectionOfPart('vpet', p);
-    return a * (1 + s.replays) + lam > s.minutes * 60;
-  }).map(([p]) => p);
-  ok(vo.length === 0, 'Mọi part nghe đều vừa đồng hồ ở đúng số lần phát nó cho phép', vo.join(', '));
-}
-
-/* ---- Năm bộ đề đầy đủ ----
-   Kiểm hình dạng từng câu là việc của kiem-noi-dung.mjs. Ở đây kiểm thứ nó
-   không thấy: bộ đề có đủ một lượt thi không, và bể có đủ SÂU THEO BẬC để hai
-   lượt thi khác nhau thật không. */
-{
-  const FORMS = require('../server/data/vpet-forms.js');
-  const F = require('../server/data/exam-formats.js');
-  const bp = {};
-  F.FORMATS.find(f => f.id === 'vpet-full').sections.forEach(s => {
-    const m = /^Part ([A-J])\b/.exec(s.name);
-    if (m) bp[m[1]] = s.items;
-  });
-
-  const all = FORMS.allItems();
-  ok(all.length === 275, 'Năm bộ đề đủ 275 câu', String(all.length));
-
-  const thieu = FORMS.FORMS.filter(form => {
-    const mine = FORMS.itemsOf(form.id);
-    return Object.entries(bp).some(([p, n]) => mine.filter(i => i.part === p).length !== n);
-  }).map(f => f.id);
-  ok(thieu.length === 0, 'Mỗi bộ đề đủ đúng số câu blueprint đòi ở cả mười part', thieu.join(', '));
-
-  ok(all.filter(i => i.script).length === 175, 'Đúng 175 câu cần dựng audio',
-    String(all.filter(i => i.script).length));
-
-  /* Part E và H lấy đáp án thẳng từ kịch bản, nên chúng không thể lệch nhau. */
-  const eh = all.filter(i => ['E', 'H'].includes(i.part));
-  ok(eh.length > 0 && eh.every(i => i.answer === i.script),
-    'Đáp án part E và H lấy thẳng từ kịch bản, không chép tay thành bản thứ hai');
-
-  /* Khoá phải duy nhất trên toàn bộ, kể cả với kho cũ: khoá trùng nghĩa là một
-     câu ghi đè lên câu khác lúc nhập. */
-  const cu = [...require('../server/data/vpet-items.js').rows().map(r => r.key),
-    ...require('../server/data/vpet-scripts.js').allItems().map(i => i.ref)];
-  const refs = all.map(i => i.ref);
-  ok(new Set(refs).size === refs.length, 'Không có khoá trùng nhau giữa các bộ đề mới');
-  ok(!refs.some(r => cu.includes(r)), 'Khoá bộ đề mới không đụng khoá kho cũ');
-
-  /* Độ sâu THEO LEVEL, không theo bậc CEFR.
-     Bộ sinh đề rút từ TẤT CẢ các bậc mà level của đề phủ — Level 1 rút chung
-     A1, A2, A2+, B1, B1+ — nên đó mới là cái bể có thật. Đếm theo từng bậc
-     riêng lẻ sẽ chia nhỏ bể ra và báo thiếu ở chỗ không thiếu. */
-  const EF = require('../server/data/exam-formats.js');
-  const tatCa = [
-    ...require('../server/data/vpet-items.js').rows().map(r => ({ part: r.part, cefr: r.level })),
-    ...require('../server/data/vpet-scripts.js').allItems().map(i => ({ part: i.part, cefr: i.cefr })),
-    ...all.map(i => ({ part: i.part, cefr: i.cefr }))
-  ];
-  const ket = [];
-  for (const [p, n] of Object.entries(bp)) {
-    for (const lv of EF.VPET_LEVELS) {
-      const c = tatCa.filter(x => x.part === p && lv.cefr.includes(x.cefr)).length;
-      /* Nông (ít hơn blueprint) hoặc sâu (gấp đôi trở lên). Ở giữa là chỗ một
-         lượt thi lại rút đúng cùng bộ câu. */
-      if (c >= n && c < n * 2) ket.push(`${p}@${lv.id} ${c}/${n}`);
-    }
-  }
-  ok(ket.length === 0,
-    'Không part nào ở level nào rơi vào khoảng giữa nông và sâu — lượt thi lại rút được đề khác',
-    ket.join(', '));
+  /* Đồng hồ: audio có vừa số phút của part không — đo từ kịch bản thật, ở
+     khối "Kịch bản audio VPET" phía trên. Phép kiểm cũ ở chỗ này chép tay ba
+     con số thời lượng (E 45s, F 35s, G 192s) và hai trong ba đã mục: part F
+     thật ra đọc 130 giây vì nó đọc cả đề lẫn ba phương án. Một hằng số chép
+     tay về dữ liệu ở tệp khác chỉ đúng tới lần sửa dữ liệu kế tiếp. */
 }
 
 /* ---- Hai level của VPET ----
@@ -775,26 +744,29 @@ console.log('\n\x1b[1m== Rubric · ôn tập cá nhân hoá ==\x1b[0m');
   ok(F.vpetLevelOfGse(15) === 'L1',
     'Nhưng điểm dưới A1 vẫn báo được ở Level 1 — đó là một kết quả có thật');
 
-  /* Bộ đề phải khai level của đề, tách khỏi bậc CEFR của câu. */
-  const FORMS = require('../server/data/vpet-forms.js');
-  ok(FORMS.FORMS.every(f => F.vpetLevel(f.level)),
-    'Mỗi bộ đề khai một level VPET hợp lệ', FORMS.FORMS.map(f => f.level).join(','));
-  ok(FORMS.FORMS.every(f => F.vpetLevel(f.level).cefr.includes(f.itemCefr)),
-    'Bậc CEFR của câu nằm trong dải mà level của đề phủ',
-    FORMS.FORMS.map(f => f.level + '/' + f.itemCefr).join(' '));
-  const soL1 = FORMS.FORMS.filter(f => f.level === 'L1').length;
-  ok(soL1 === 3 && FORMS.FORMS.length - soL1 === 2,
-    'Ba bộ Level 1, hai bộ Level 2 — đúng tỉ lệ giữ độ sâu cho cả hai level');
+  /* Đề khai level của đề, câu khai bậc CEFR của câu — hai thứ khác nhau trong
+     hai ô khác nhau. Chúng đã lẫn vào nhau một lần: `tests.level` giữ 'B1' và
+     cổng kiểm nội dung đọc nó như bậc CEFR.
 
-  /* Từng câu mang HAI thứ và chúng không được lẫn vào nhau: `level` là level
-     của đề, `cefr` là bậc của câu. Lẫn một lần rồi: cổng kiểm nội dung đọc
-     nhầm `level` thành bậc CEFR và báo cả 275 câu "bậc không hợp lệ". */
-  const ct = FORMS.allItems();
-  ok(ct.every(i => F.vpetLevel(i.level)), 'Mỗi câu mang level của đề nó thuộc về');
+     Kiểm trên đề thật trong cơ sở dữ liệu, chứ không trên tệp nội dung: năm bộ
+     đề `vpet-forms.js` mà phép kiểm cũ ở đây đọc đã bị xoá cùng kho cũ, và
+     điều cần giữ không phải là tệp ấy mà là bất biến này. */
+  const { q: truyVan } = require('../server/db.js');
+  const deVpet = truyVan.all("SELECT id, level FROM tests WHERE family_id='vpet'");
   const bacHopLe = D.BANDS.map(b => b.band);
-  ok(ct.every(i => bacHopLe.includes(i.cefr)), 'Mỗi câu mang một bậc CEFR có thật');
-  ok(ct.every(i => i.level !== i.cefr),
-    'Hai trường không bao giờ trùng giá trị — nếu trùng thì có chỗ đang gán nhầm');
+  ok(deVpet.length > 0 && deVpet.every(t => F.vpetLevel(t.level)),
+    'Mỗi đề VPET khai một level VPET hợp lệ',
+    deVpet.filter(t => !F.vpetLevel(t.level)).map(t => t.id + ':' + t.level).join(', '));
+  ok(deVpet.every(t => !bacHopLe.includes(t.level)),
+    'Không đề nào khai bậc CEFR vào ô level — đó là hai thứ khác nhau',
+    deVpet.filter(t => bacHopLe.includes(t.level)).map(t => t.id + ':' + t.level).join(', '));
+
+  const cauVpet = require('../server/data/vpet-items.js').rows();
+  ok(cauVpet.every(i => bacHopLe.includes(i.level)),
+    'Mỗi câu mang một bậc CEFR có thật',
+    cauVpet.filter(i => !bacHopLe.includes(i.level)).map(i => i.key + ':' + i.level).join(', '));
+  ok(cauVpet.every(i => !F.vpetLevel(i.level)),
+    'Không câu nào mang id level vào ô bậc — nếu có thì đang gán nhầm chiều');
 
   /* Format khai level bằng id level, không phải bằng bậc CEFR. */
   const fmt = F.FORMATS.find(x => x.id === 'vpet-full');
@@ -1142,17 +1114,24 @@ const MG = require('../server/marking-guide.js');
   /* Cộng trọng số trên thang BẬC, không trên số đã quy đổi: quy đổi không
      tuyến tính (bậc 3→4 cách 16 điểm, bậc 5→6 cách 7), nên trung bình số đã
      quy đổi sẽ lặng lẽ đánh nặng phần giữa thang. */
+  /* Bốn part, không ba: part G thành phần Nói ngày 08/10/2026, theo cột "Nói
+     vào Mic" của bản đặc tả. Phép kiểm cũ chốt ba part và 25% cho part H —
+     thêm một part vào thang là đổi mọi tỉ lệ, nên con số ấy phải đổi theo. */
   const full = MG.skillResult('speaking', {
+    G: { content: 4, pronunciation: 3 },
     H: { accuracy: 4, pronunciation: 3, fluency: 4 },
     I: { task: 4, fluency: 4, pronunciation: 3, vocabulary: 4, grammar: 3, coherence: 4 },
     J: { content: 4, fluency: 4, coherence: 3, pronunciation: 3, vocabulary: 4, grammar: 4 }
   });
-  ok(full.weightCovered === 100, 'Đủ ba part Nói thì phủ trọn 100% trọng số');
+  ok(full.weightCovered === 100, 'Đủ bốn part Nói thì phủ trọn 100% trọng số',
+    String(full.weightCovered));
   ok(full.cefr === 'B1+', 'Kết quả kỹ năng ra đúng bậc', full.cefr);
 
   const partial = MG.skillResult('speaking', { H: { accuracy: 4, pronunciation: 3, fluency: 4 } });
-  ok(partial.weightCovered === 25,
-    'Thiếu part thì báo rõ phủ bao nhiêu trọng số, không giả vờ là kết quả đầy đủ');
+  const trongSoH = require('../server/data/rubrics.js').SPEAKING_PART_WEIGHTS.H;
+  ok(partial.weightCovered === trongSoH,
+    'Thiếu part thì báo rõ phủ bao nhiêu trọng số, không giả vờ là kết quả đầy đủ',
+    partial.weightCovered + '% thay vì ' + trongSoH + '%');
   ok(partial.parts.length === 1, 'Chỉ tính những part thật sự có điểm');
 
   let nem = false;
@@ -1200,7 +1179,13 @@ const MG = require('../server/marking-guide.js');
     'Có điều kiện từ chối cho bản ghi âm hỏng — lỗi thiết bị không phải lỗi thí sinh');
   ok(MG.NEVER.some(n => /accent/i.test(n)), 'Giọng vùng miền nằm trong danh sách không được tính');
   ok(MG.NEVER.some(n => /Recording quality/i.test(n)), 'Chất lượng thu âm nằm trong danh sách không được tính');
-  ok(MG.MARKED_PARTS.length === 5, 'Đúng năm part được AI chấm', MG.MARKED_PARTS.join(','));
+  /* Sáu part, không năm: part G vào danh sách cùng lúc nó thành phần Nói.
+     Đọc từ rubric chứ không chép số vào đây — danh sách part được AI chấm và
+     danh sách part có rubric phải là một, nếu lệch thì có part mang rubric mà
+     không ai chấm, hoặc bị chấm mà không có thang. */
+  const bacThang = Object.keys(require('../server/data/rubrics.js').PART_RUBRICS).sort().join(',');
+  ok([...MG.MARKED_PARTS].sort().join(',') === bacThang,
+    'Part được AI chấm đúng bằng part có rubric', MG.MARKED_PARTS.join(',') + ' | ' + bacThang);
 }
 
 /* ================= 6a. Ôn tập cá nhân hoá ================= */
@@ -1535,8 +1520,16 @@ const gan = (a, b, eps = 1e-9) => a != null && Math.abs(a - b) < eps;
      không ai từng được nhận. */
   ok(IS.sectionKey('listening') === 'listening', 'Khoá phần là kỹ năng');
   ok(IS.sectionKey(null) === 'unknown', 'Câu chưa gắn kỹ năng vẫn gom được, và lộ ra là chưa gắn');
-  ok(IS.vpetLevel({ tags_json: '["ref:E1-L2","part-E","level-2"]' }) === 2, 'Đọc được level từ tag');
-  ok(IS.vpetLevel({ tags_json: '["part-E"]' }) === null, 'Không có tag level thì trả null, không đoán bừa');
+  /* Level của câu suy từ bậc CEFR của nó, không đọc từ thẻ. Trước 08/10/2026 nó
+     đọc thẻ `level-1`/`level-2`, mà thẻ ấy chỉ có một lệnh nhập ghi; lệnh đó bị
+     xoá cùng kho cũ và cả 80 câu trong bảng lặng lẽ báo "không có level". Một
+     sự thật phụ thuộc vào việc ai đó nhớ đóng dấu là sự thật chờ bị mất. */
+  ok(IS.vpetLevel({ family_id: 'vpet', level: 'B2' }) === 2, 'Bậc B2 thuộc Level 2');
+  ok(IS.vpetLevel({ family_id: 'vpet', level: 'A2' }) === 1, 'Bậc A2 thuộc Level 1');
+  ok(IS.vpetLevel({ family_id: 'ielts', level: 'C1' }) === null,
+    'Kỳ thi không thi theo level thì không gán level cho câu');
+  ok(IS.vpetLevel({ family_id: 'vpet', level: '' }) === null,
+    'Câu chưa gắn bậc thì trả null, không đoán bừa');
 
   /* Phân tích đọc thẳng bảng của phần thi, không giữ bản sao riêng. Hai bản
      ghi cho cùng một sự kiện thì sớm muộn sẽ lệch nhau, và lúc đó thống kê

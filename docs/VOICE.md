@@ -84,7 +84,7 @@ to OpenAI. From section 3 onward it is reasoning and technical detail.
 
 ## 1. Allocating speech across the VPET exam
 
-The 55-item blueprint is fixed. The real question is: **within those 55 items,
+The 58-item blueprint is fixed. The real question is: **within those 58 items,
 where does the machine speak to the candidate, where does the candidate speak to
 the machine, and what does each cost?**
 
@@ -94,29 +94,31 @@ the machine, and what does each cost?**
 |---|---|---:|---|:---:|:---:|---|
 | A | Sentence Completion | 10 | writing | – | – | machine, string match |
 | B | Passage Reconstruction | 3 | writing | – | – | AI, text |
-| C | Reading Comprehension | 3 | reading | – | – | machine, multiple choice |
+| C | Reading Comprehension | 6 | reading | – | – | machine, multiple choice |
 | D | E-Mail Writing | 2 | writing | – | – | AI, text |
 | E | Dictation | 8 | listening | **yes** | – | machine, string match |
 | F | Response Selection | 8 | listening | **yes** | – | machine, multiple choice |
-| G | Passage Comprehension | 6 | listening | **yes** | – | machine, multiple choice |
+| G | Passage Comprehension | 6 | **speaking** | **yes** | **yes** | AI, audio-native + key point |
 | H | Repeat | 10 | speaking | **yes** | **yes** | ASR + word match, then AI for pronunciation |
-| I | Speaking Situations | 2 | speaking | optional | **yes** | AI, audio-native |
+| I | Speaking Situations | 2 | speaking | **yes** | **yes** | AI, audio-native |
 | J | Story Retellings | 3 | speaking | **yes** | **yes** | AI, audio-native + source text |
-| | | **55** | | **5–6 parts** | **3 parts** | |
+| | | **58** | | **6 parts** | **4 parts** | |
 
 Three numbers fall out of this:
 
 - **37 audio files** to render for one complete form (E8 + F8 + G6 + H10 + I2 + J3).
-- **15 recorded clips** come back from every candidate (H10 + I2 + J3).
-- **Part H is the only part that both plays and records** — and the only speaking
-  part with a reference answer to match against. It is simultaneously the cheapest
-  part to mark accurately and the easiest part to cheat on (holding a speaker up
-  to the microphone).
+- **21 recorded clips** come back from every candidate (G6 + H10 + I2 + J3).
+- **Four parts both play and record** — G, H, I and J. Of them only H has a
+  reference answer to match against, which makes it simultaneously the cheapest
+  part to mark accurately and the easiest to cheat on (holding a speaker up to
+  the microphone).
 
-Note on part I: the situation can be shown as text only. Reading it aloud with TTS
-is closer to the real exam, but it also smuggles listening into a part that is
-meant to measure speaking. **Recommendation: show the text *and* offer a play
-button, and let the candidate choose.**
+Note on part I, settled by the specification: its stimulus column reads "Vừa
+hiện chữ vừa phát âm (Cả hai)" — text and audio together, not one or the other.
+The earlier recommendation here was to show text and offer a play button; the
+sheet asks for both unconditionally, so that is what the runner does. It does
+smuggle a little listening into a speaking part, which is the owner's trade to
+make and the owner has made it.
 
 ### 1.2 Audio out — the ElevenLabs budget for ONE form
 

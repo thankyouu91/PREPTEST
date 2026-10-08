@@ -749,7 +749,32 @@ function sectionOfPart(familyId, part) {
   return null;
 }
 
+/** The CEFR bands an item may carry to belong in a paper sat at `level`.
+ *
+ * Returns null for an exam whose levels ARE CEFR bands — most of them. A TOEIC
+ * B1 paper topped up with a B2 item is still a TOEIC paper, so there is no
+ * range to enforce and the generator's "prefer the exact band" is the whole
+ * rule.
+ *
+ * VPET is sat at a level that covers a range, which makes the range a real
+ * constraint rather than a preference: an item outside it measures nothing
+ * about the candidate who was given it. Until 08/10/2026 nothing enforced that
+ * — the band was only ever a sort key — so a Level 2 paper short of B2 items
+ * was topped up with A2 ones and reported as complete.
+ *
+ * Accepts either form of level, because both are in use: `tests.level` holds a
+ * level id ('L2') while the generator is called with a band ('B2').
+ */
+function bandsForLevel(familyId, level) {
+  const fmt = FORMATS.find(f => f.familyId === familyId);
+  if (!fmt || !Array.isArray(fmt.levels)) return null;
+  /* A format whose levels are bands has no range to enforce. */
+  if (!fmt.levels.some(l => vpetLevel(l))) return null;
+  const lv = vpetLevel(level) || vpetLevel(vpetLevelOfCefr(level));
+  return lv ? lv.cefr.slice() : null;
+}
+
 module.exports = {
   FORMATS, totalItems, totalMinutes, inconsistencies, partsOf, sectionOfPart,
-  VPET_LEVELS, vpetLevel, vpetLevelOfCefr, vpetLevelOfGse
+  VPET_LEVELS, vpetLevel, vpetLevelOfCefr, vpetLevelOfGse, bandsForLevel
 };

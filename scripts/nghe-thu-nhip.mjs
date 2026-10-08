@@ -1,5 +1,5 @@
 /**
- * Nghe thử NHỊP của một kịch bản, không cần khoá ElevenLabs.
+ * Nghe thử NHỊP của một kịch bản, không cần dựng audio thật.
  *
  * ---------------------------------------------------------------------------
  * ĐÂY KHÔNG PHẢI GIỌNG ĐỌC
@@ -10,15 +10,16 @@
  * ngắt sau dấu phẩy và dấu chấm có nghe ra là dấu câu hay nghe như vấp.
  *
  * Nó không nói được gì về chất giọng, về ngữ điệu, hay về việc máy đọc đúng
- * tên riêng chưa. Những thứ đó phải chờ khoá `sk_` và bản dựng thật.
+ * tên riêng chưa. Những thứ đó phải chờ bản dựng thật.
  *
  * Vì sao vẫn đáng làm: nhịp là phần duy nhất nền tảng quyết định. Giọng là của
- * ElevenLabs, còn khoảng lặng là do `server/script-markup.js` đặt ra — và nếu
- * nhịp sai thì mỗi lần dựng lại là một lần trả tiền cho cùng một lỗi.
+ * Kokoro, còn khoảng lặng là do `server/script-markup.js` đặt ra. Kokoro chạy
+ * nội bộ nên dựng lại không tốn tiền, nhưng vẫn tốn thời gian của người phải
+ * nghe và duyệt từng bản ghi — và nhịp sai thì cả 37 bản ghi phải nghe lại.
  * ---------------------------------------------------------------------------
  *
  *   node scripts/nghe-thu-nhip.mjs                      dựng bộ mẫu 4 tệp
- *   node scripts/nghe-thu-nhip.mjs --ref=E1-L1          dựng đúng một câu trong kho
+ *   node scripts/nghe-thu-nhip.mjs --ref=vpet-e-01      dựng đúng một câu trong kho
  *   node scripts/nghe-thu-nhip.mjs --text="Hello, world."
  *   node scripts/nghe-thu-nhip.mjs --toc-do=1.0         so sánh tốc độ khác
  *
@@ -31,7 +32,10 @@ import { createRequire } from 'node:module';
 
 const require = createRequire(import.meta.url);
 const { parseScript, DEFAULTS } = require('../server/script-markup.js');
-const SCRIPTS = require('../server/data/vpet-scripts.js');
+const ITEMS = require('../server/data/vpet-items.js');
+/* Kịch bản nằm ngay trên câu hỏi kể từ 08/10/2026; `vpet-scripts.js` đã bị xoá
+   cùng kho cũ. Khoá giờ là `key` (`vpet-e-01`) chứ không phải `ref` (`E1-L1`). */
+const coScript = () => ITEMS.rows().filter(i => i.script && i.script.trim());
 
 const args = process.argv.slice(2);
 const val = f => { const a = args.find(x => x.startsWith(f + '=')); return a ? a.slice(f.length + 1) : null; };
@@ -130,12 +134,12 @@ const text = val('--text');
 if (text) {
   jobs = [{ name: 'tuy-chinh', label: 'Kịch bản nhập tay', script: text }];
 } else if (ref) {
-  const it = SCRIPTS.allItems().find(i => i.ref === ref);
-  if (!it) { console.error(`Không có câu nào mang ref "${ref}".`); process.exit(1); }
-  jobs = [{ name: ref.toLowerCase(), label: `${it.ref} · part ${it.part}`, script: it.script }];
+  const it = coScript().find(i => i.key === ref);
+  if (!it) { console.error(`Không có câu nào mang khoá "${ref}".`); process.exit(1); }
+  jobs = [{ name: it.key, label: `${it.key} · part ${it.part}`, script: it.script }];
 } else {
   /* Bộ mẫu: mỗi tệp để nghe một quyết định nhịp khác nhau. */
-  const pick = p => SCRIPTS.allItems().find(i => i.part === p && i.level === 1);
+  const pick = p => coScript().find(i => i.part === p);
   jobs = [
     { name: '1-dan-vao', label: 'Một giây dẫn vào + ngắt câu',
       script: 'Good morning. The meeting has been moved to Thursday, at two o\'clock.' },

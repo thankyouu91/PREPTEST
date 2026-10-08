@@ -4,6 +4,9 @@
  *
  * Chạy: node scripts/test-admin.mjs   (cần server đang chạy)
  */
+import { createRequire } from 'node:module';
+const require = createRequire(import.meta.url);
+
 const BASE = process.env.BASE_URL || 'http://localhost:3000';
 const USER = process.env.ADMIN_USERNAME || 'admin';
 const PASS = process.env.ADMIN_PASSWORD || 'Goodmorning01';
@@ -240,7 +243,43 @@ const run = async () => {
   check('Đề đã phát hành xuất hiện trong catalog công khai',
     r.data.tests.some(t => t.id === testId));
 
-  /* 9. Sinh đề tự động */
+  /* 9. Sinh đề tự động
+     Bộ này tự dựng bể câu cho mình. Trước 08/10/2026 nó mượn bể mà
+     seedQuestions() sinh ra lúc khởi động — 532 câu placeholder tiếng Việt cho
+     mọi họ đề. Hàm đó bị bỏ cùng lúc kho VPET được dựng lại theo bản đặc tả,
+     và phép kiểm này vỡ ngay: không còn câu TOEIC nào, `generate` trả 409, rồi
+     `autoTest.sections` là undefined và cả tệp ném lỗi ở dòng này — mất luôn
+     mọi kết quả phía trên vì bộ này chỉ in ra lúc kết thúc.
+
+     Dữ liệu giả thì nằm trong bộ kiểm thử, không nằm trong bể câu của thí
+     sinh. Chỉ bù phần còn thiếu, nên chạy lại không phình bể ra mỗi lượt. */
+  {
+    const CAN = 24;   // > 10 để phép kiểm bốc lại có chỗ bốc ra bộ khác
+    const sanCo = (await call('GET', '/api/admin/questions/availability?family=toeic&level=B1')).data;
+    const them = [];
+    for (const skill of ['listening', 'reading']) {
+      const co = sanCo && sanCo[skill] ? sanCo[skill].exact : 0;
+      for (let i = co; i < CAN; i++) {
+        them.push({
+          familyId: 'toeic', skill, level: 'B1', type: 'mcq',
+          prompt: `[fixture ${skill} ${i + 1}] Choose the option that completes the sentence.`,
+          options: ['alpha', 'bravo', 'charlie', 'delta'],
+          answer: ['alpha', 'bravo', 'charlie', 'delta'][i % 4],
+          explanation: 'Fixture item created by scripts/test-admin.mjs.',
+          tags: ['fixture']
+        });
+      }
+    }
+    if (them.length) {
+      r = await call('POST', '/api/admin/questions/bulk', { items: them });
+      check('Dựng được bể câu cho phép kiểm sinh đề',
+        r.status === 201 && r.data.inserted === them.length,
+        JSON.stringify(r.data && { inserted: r.data.inserted, errors: r.data.errors }));
+    } else {
+      check('Bể câu cho phép kiểm sinh đề đã có sẵn', true);
+    }
+  }
+
   r = await call('POST', '/api/admin/tests/generate', {
     familyId: 'toeic', level: 'B1',
     title: 'TOEIC sinh tự động (kiểm thử)',
@@ -249,14 +288,19 @@ const run = async () => {
       { name: 'Reading', skill: 'reading', type: 'Trắc nghiệm', items: 10, minutes: 25 }
     ]
   });
-  const autoTest = r.data;
+  /* `sections` có thể không tồn tại — 409 thiếu câu trả về `shortages`. Đọc
+     thẳng vào nó sẽ ném lỗi và cuốn theo cả bộ kiểm thử, nên mọi phép kiểm
+     dưới đây đi qua một mảng rỗng và báo thất bại thay vì làm vỡ tệp. */
+  const autoTest = (r.data && Array.isArray(r.data.sections)) ? r.data : null;
+  const autoSecs = autoTest ? autoTest.sections : [];
   check('Sinh đề tự động từ ngân hàng',
-    r.status === 201 && autoTest.sections.length === 2 && autoTest.totalItems === 20,
-    'items ' + (autoTest && autoTest.totalItems));
+    r.status === 201 && autoSecs.length === 2 && autoTest.totalItems === 20,
+    'status ' + r.status + ' · ' + JSON.stringify(r.data && (r.data.totalItems ?? r.data.shortages ?? r.data.error)));
   check('Đề sinh tự động ở trạng thái nháp', autoTest && autoTest.status === 'draft');
 
-  const dup = new Set(autoTest.sections.flatMap(s => s.items.map(i => i.questionId)));
-  check('Không bốc trùng câu trong cùng một đề', dup.size === autoTest.totalItems);
+  const dup = new Set(autoSecs.flatMap(s => s.items.map(i => i.questionId)));
+  check('Không bốc trùng câu trong cùng một đề',
+    autoTest && dup.size === autoTest.totalItems, dup.size + ' khoá khác nhau');
 
   r = await call('POST', '/api/admin/tests/generate', {
     familyId: 'toeic', level: 'B1',
@@ -266,11 +310,26 @@ const run = async () => {
     r.status === 409 && Array.isArray(r.data.shortages) && r.data.shortages.length === 1,
     'status ' + r.status);
 
-  const firstIds = autoTest.sections[0].items.map(i => i.questionId).join(',');
-  r = await call('POST', '/api/admin/sections/' + autoTest.sections[0].id + '/reshuffle');
-  check('Bốc lại câu cho một phần', r.status === 200 && r.data.count === 10);
-  const after = await call('GET', '/api/admin/tests/' + autoTest.id);
-  check('Bốc lại giữ nguyên số câu', after.data.sections[0].items.length === 10);
+  if (autoTest) {
+    const truoc = autoSecs[0].items.map(i => i.questionId).sort().join(',');
+    r = await call('POST', '/api/admin/sections/' + autoSecs[0].id + '/reshuffle');
+    check('Bốc lại câu cho một phần', r.status === 200 && r.data.count === 10,
+      'status ' + r.status + ' ' + JSON.stringify(r.data));
+
+    const after = await call('GET', '/api/admin/tests/' + autoTest.id);
+    const sauSecs = (after.data && after.data.sections) || [];
+    check('Bốc lại giữ nguyên số câu',
+      sauSecs.length === 2 && sauSecs[0].items.length === 10,
+      sauSecs[0] && sauSecs[0].items.length + ' câu');
+
+    /* Bốc lại phải đổi bộ câu thật. Phép kiểm cũ chỉ đếm 10 — một hàm bốc lại
+       không làm gì cả vẫn qua được. Bể có 24 câu đúng bậc nên xác suất bốc
+       trúng y nguyên bộ cũ là 1/C(24,10), cỡ một phần hai triệu: nếu dòng này
+       đỏ thì gần như chắc chắn là bốc lại hỏng, không phải gặp may. */
+    const sau = (sauSecs[0] ? sauSecs[0].items : []).map(i => i.questionId).sort().join(',');
+    check('Bốc lại thật sự đổi bộ câu, không chỉ giữ nguyên rồi báo thành công',
+      sau !== '' && sau !== truoc);
+  }
 
   /* 10. Cấp code theo lô + thu hồi + xuất CSV */
   r = await call('POST', '/api/admin/codes', {
@@ -390,38 +449,75 @@ const run = async () => {
     secB && secB.bank.total !== bTagged + aTagged && aTagged > 0,
     JSON.stringify({ b: bTagged, a: aTagged, pool: secB && secB.bank.total }));
 
-  /* Sinh đề theo phần B chỉ được bốc câu mang nhãn B */
+  /* Báo cáo format phải trả lời theo level khi được hỏi theo level, và con số
+     ấy phải là con số trình sinh đề thật sự bốc được. Không hỏi level thì báo
+     cáo đếm mọi bậc — ba câu phần B — còn trình sinh đề ở Level 1 chỉ thấy một.
+     Một màn hình hứa ba trong khi bốc ra một là đúng cái hỏng mà khối này sinh
+     ra để chặn. */
+  const vfL1 = (await call('GET', '/api/admin/exam-formats?familyId=vpet&level=L1'))
+    .data.formats.find(f => f.familyId === 'vpet');
+  const secBL1 = vfL1 && vfL1.sections.find(x => x.part === 'B');
+  check('Báo cáo format nhận được id level, không chỉ bậc CEFR',
+    !!secBL1 && secBL1.bank.total < secB.bank.total,
+    'L1 ' + (secBL1 && secBL1.bank.total) + ' vs mọi bậc ' + (secB && secB.bank.total));
+
+  /* Sinh đề theo phần B chỉ được bốc câu mang nhãn B.
+     Đòi đúng số câu mà bể đang có trong dải, không chép cứng số 3 của blueprint:
+     điều đang kiểm là trình sinh đề KHÔNG lấy câu phần khác, chứ không phải bể
+     sâu bao nhiêu. Chép cứng số blueprint thì một bể nông sẽ báo lỗi ở đây,
+     trong khi chỗ phải báo là phép kiểm độ sâu phía dưới. */
+  const soB = secBL1 && secBL1.bank ? secBL1.bank.total : 0;
   r = await call('POST', '/api/admin/tests/generate', {
     familyId: 'vpet', level: 'B1',
-    blueprint: [{ name: 'Part B - Passage Reconstruction', part: 'B', skill: 'writing', type: 'Viết lại', items: 3, minutes: 9, types: ['essay'] }]
+    blueprint: [{ name: 'Part B - Passage Reconstruction', part: 'B', skill: 'writing', type: 'Viết lại', items: Math.max(1, soB), minutes: 9, types: ['essay'] }]
   });
   const genB = (r.data.sections || [])[0];
   check('Sinh đề phần B chỉ bốc câu của phần B',
-    r.status === 201 && genB && genB.items.length === 3 && genB.items.every(i => i.part === 'B'),
-    JSON.stringify({ status: r.status, parts: genB && genB.items.map(i => i.part) }));
+    soB > 0 && r.status === 201 && genB && genB.items.length === soB &&
+    genB.items.every(i => i.part === 'B'),
+    JSON.stringify({ status: r.status, beB: soB, parts: genB && genB.items.map(i => i.part) }));
 
-  /* Độ sâu theo bậc, kiểm bằng chính trình sinh đề chứ không suy từ số câu.
-     Trình sinh đề xếp câu đúng bậc lên trước, nên một phần chỉ có vừa đủ số câu
-     ở bậc của đề sẽ trả về đúng ngần ấy câu ở mọi lượt — đề "mới" mà giống hệt
-     đề cũ. Phần A giữ 20 câu B2 cho một phần cần 10, nên hai lượt bốc không được
-     phép trùng khít; trùng khít 10/10 với 20 câu là xác suất 1/184.756, tức là
-     nếu xảy ra thì lỗi nằm ở ngân hàng chứ không ở may rủi. */
+  /* Bốc câu phải tôn trọng DẢI của level, và phải nói thật khi bể không đủ.
+     VPET thi ở một level phủ một dải bậc, nên bậc là điều kiện cứng chứ không
+     phải thứ tự ưu tiên: một câu A2 trong đề Level 2 không đo được gì về người
+     đang thi Level 2. Trước 08/10/2026 trình sinh đề chỉ xếp câu đúng bậc lên
+     trước rồi độn phần còn lại từ bất cứ bậc nào, và báo đề đã dựng xong.
+
+     Phép kiểm viết theo cả hai chiều để không phải sửa lại mỗi lần bể dày lên:
+     hỏi bể còn bao nhiêu câu trong dải, rồi đòi đúng cái hành vi tương ứng —
+     đủ thì bốc đủ và hai lượt khác nhau, không đủ thì 409 và chỉ tên phần
+     thiếu. Hôm nay bể phần A chỉ có 5 câu trong dải Level 2 cho một phần cần
+     10, nên nhánh dưới là nhánh chạy. */
+  const BAC_L2 = 'B2';
+  const KHOI_A = { name: 'Part A - Sentence Completion', part: 'A', skill: 'writing', type: 'Điền từ', items: 10, minutes: 10, types: ['gap'] };
+  const sanCoA = (await call('GET', '/api/admin/questions/availability?family=vpet&level=' + BAC_L2)).data;
+  const beA = ((sanCoA && sanCoA.parts) || []).find(p => p.part === 'A') || {};
   const drawA = async () => {
     const g = await call('POST', '/api/admin/tests/generate', {
-      familyId: 'vpet', level: 'B2',
-      blueprint: [{ name: 'Part A - Sentence Completion', part: 'A', skill: 'writing', type: 'Điền từ', items: 10, minutes: 10, types: ['gap'] }]
+      familyId: 'vpet', level: BAC_L2, blueprint: [KHOI_A]
     });
-    return ((g.data.sections || [])[0] || {}).items || [];
+    return { status: g.status, data: g.data, items: ((g.data.sections || [])[0] || {}).items || [] };
   };
-  const draw1 = await drawA();
-  const draw2 = await drawA();
-  const sameLevel = draw1.every(i => i.level === 'B2') && draw2.every(i => i.level === 'B2');
-  const overlap = draw1.filter(i => draw2.some(j => j.questionId === i.questionId)).length;
-  check('Đề B2 bốc toàn câu B2, không phải độn từ bậc khác',
-    draw1.length === 10 && draw2.length === 10 && sameLevel,
-    JSON.stringify({ n1: draw1.length, n2: draw2.length, levels: [...new Set(draw1.concat(draw2).map(i => i.level))] }));
-  check('Hai lượt bốc phần A ở cùng bậc B2 không trùng khít',
-    overlap < 10, 'trùng ' + overlap + '/10');
+  const g1 = await drawA();
+
+  if (beA.total >= KHOI_A.items) {
+    const g2 = await drawA();
+    const trongDai = require('../server/data/exam-formats.js').bandsForLevel('vpet', BAC_L2);
+    check('Đề Level 2 chỉ bốc câu trong dải của level, không độn từ ngoài dải',
+      g1.items.length === 10 && g1.items.every(i => trongDai.includes(i.level)),
+      JSON.stringify([...new Set(g1.items.map(i => i.level))]) + ' vs dải ' + JSON.stringify(trongDai));
+    const trung = g1.items.filter(i => g2.items.some(j => j.questionId === i.questionId)).length;
+    check('Hai lượt bốc phần A trong cùng dải không trùng khít',
+      trung < 10, 'trùng ' + trung + '/10 trên bể ' + beA.total + ' câu');
+  } else {
+    check('Bể không đủ câu trong dải thì báo 409 chứ không độn từ ngoài dải',
+      g1.status === 409 && Array.isArray(g1.data.shortages) && g1.data.shortages.length === 1,
+      'status ' + g1.status + ' ' + JSON.stringify(g1.data && (g1.data.shortages || g1.data.error)));
+    check('Báo thiếu chỉ đúng tên phần và đúng số câu còn thiếu',
+      g1.status === 409 && g1.data.shortages[0].part === 'A' &&
+      g1.data.shortages[0].need === 10 && g1.data.shortages[0].have === beA.total,
+      JSON.stringify(g1.data && g1.data.shortages && g1.data.shortages[0]) + ' · bể ' + beA.total);
+  }
 
   /* Báo thiếu vẫn phải theo phần chứ không theo kỹ năng: phần E và phần A đều
      là câu điền từ, nên nếu bộ sinh đề gộp theo kỹ năng thì nó sẽ lấy câu phần
@@ -610,10 +706,22 @@ const run = async () => {
   {
     const list = Array.isArray(r.data) ? r.data : (r.data.items || r.data.formats || []);
     const vpet = list.find(f => f.id === 'vpet-full');
-    check('Format VPET đúng 55 câu, 10 phần', !!vpet && vpet.totalItems === 55 && vpet.sections.length === 10,
-      vpet ? vpet.totalItems + ' câu / ' + vpet.sections.length + ' phần' : 'không thấy format');
+    /* 58 câu và sáu part audio, theo bản đặc tả của chủ dự án ngày 08/10/2026.
+       Trước đó là 55 câu và năm part: part C mỗi đoạn một câu (3 thay vì 6), và
+       part I không phát audio. Đọc số từ chính blueprint chứ không chép tay —
+       hai nguồn số cho cùng một sự thật thì sớm muộn lệch nhau, và lần này lệch
+       đúng vào hôm đặc tả đổi. */
+    const BP = require('../server/data/exam-formats.js');
+    const bpVpet = BP.FORMATS.find(f => f.id === 'vpet-full');
+    const bpItems = BP.totalItems(bpVpet);
+    const bpAudio = bpVpet.sections.filter(s => s.needsAudio).length;
+    check('Format VPET API trả về khớp blueprint về số câu và số phần',
+      !!vpet && vpet.totalItems === bpItems && vpet.sections.length === bpVpet.sections.length,
+      vpet ? vpet.totalItems + ' câu / ' + vpet.sections.length + ' phần (blueprint ' +
+        bpItems + ' / ' + bpVpet.sections.length + ')' : 'không thấy format');
     const audioParts = vpet ? vpet.sections.filter(s => s.needsAudio) : [];
-    check('Năm phần cần audio được đánh dấu', audioParts.length === 5, audioParts.length + ' phần');
+    check('Phần cần audio được đánh dấu đúng bằng số blueprint khai',
+      audioParts.length === bpAudio, audioParts.length + ' phần, blueprint khai ' + bpAudio);
     /* `audioShortBy` phải khớp với chính các số mà API vừa trả về cho từng
        phần, chứ không phải luôn dương. Bản kiểm cũ đòi nó > 0 — đúng khi các
        part audio chưa dựng, nhưng đó là điều kiện tình cờ và nó tắt ngay hôm

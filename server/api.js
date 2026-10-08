@@ -34,10 +34,16 @@ const LEVELS = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
  * Getting this wrong is not a display bug. A Level 1 paper holding a C1 item
  * is a paper whose result cannot be defended, because nothing else on it can
  * tell B2 from C1.
+ *
+ * Resolved against the family, because the same string means different things
+ * in different exams: 'B2' is a band on its own in TOEIC, and in VPET it falls
+ * inside the level covering B2 upward. Until 08/10/2026 this took the level
+ * alone, so a VPET request for 'B2' resolved to the single band B2 and the rest
+ * of the paper was topped up from A2 — which is the failure the paragraph above
+ * describes, present in the code the whole time the paragraph was there.
  */
-function levelBands(level) {
-  const lv = EXAM_FORMATS.vpetLevel(level);
-  return lv ? lv.cefr : [String(level || '').toUpperCase()];
+function levelBands(familyId, level) {
+  return EXAM_FORMATS.bandsForLevel(familyId, level) || [String(level || '').toUpperCase()];
 }
 
 /** Is this a level any family recognises — a CEFR band, or a VPET level id? */
@@ -620,18 +626,31 @@ router.get('/admin/questions/availability', (req, res) => {
    F and G (both listening multiple choice) or H and J (both spoken answers to
    audio), so without the letter those parts share one pool and an exam gets
    built that looks right and asks the wrong things. */
-function poolWhere(familyId, skill, types, part) {
+/** The items a block may be built from.
+ *
+ *  `level` restricts the pool only for an exam sat at a level that covers a
+ *  range of bands — see exam-formats.bandsForLevel. Everywhere else the level
+ *  stays a preference the caller applies by sorting, because topping a paper up
+ *  from the neighbouring band is normal there. Pass it on every call that
+ *  builds or counts a real paper: left out, the pool silently widens to every
+ *  band in the bank. */
+function poolWhere(familyId, skill, types, part, level) {
   const t = Array.isArray(types) && types.length ? types.filter(x => QTYPES.includes(x)) : QTYPES;
   const holes = t.map(() => '?').join(',');
   let sql = `family_id=? AND skill=? AND type IN (${holes}) AND status='active'`;
   const args = [familyId, skill, ...t];
   if (part) { sql += ' AND part=?'; args.push(part); }
+  const bands = level ? EXAM_FORMATS.bandsForLevel(familyId, level) : null;
+  if (bands && bands.length) {
+    sql += ` AND level IN (${bands.map(() => '?').join(',')})`;
+    args.push(...bands);
+  }
   return { sql, args };
 }
 
 /** Count the items usable for one block: right exam, skill, item type and part */
 function bankCount(familyId, skill, types, level, part) {
-  const { sql, args } = poolWhere(familyId, skill, types, part);
+  const { sql, args } = poolWhere(familyId, skill, types, part, level);
   const base = 'SELECT COUNT(*) c FROM questions WHERE ' + sql;
   return {
     total: q.val(base, ...args),
@@ -645,7 +664,7 @@ function bankCount(familyId, skill, types, level, part) {
     voice mangling a proper noun is caught at the approval step, so that is the
     step this gate counts. See docs/VOICE.md 4.6. */
 function audioReadyCount(familyId, skill, types, level, part) {
-  const { sql, args } = poolWhere(familyId, skill, types, part);
+  const { sql, args } = poolWhere(familyId, skill, types, part, level);
   const base = 'SELECT COUNT(*) c FROM questions WHERE ' + sql +
     " AND audio_key IS NOT NULL AND audio_status='approved'";
   return {
@@ -656,7 +675,12 @@ function audioReadyCount(familyId, skill, types, level, part) {
 
 router.get('/admin/exam-formats', (req, res) => {
   const familyId = str(req.query.familyId, 20);
-  const level = LEVELS.includes(str(req.query.level, 5).toUpperCase())
+  /* Accepts a level id as well as a CEFR band, because an exam sat at a level
+     is asked about by that level: "is the bank ready for Level 1" cannot be put
+     to this route if it only understands bands. Left as band-only, a caller
+     sending `L1` got an empty level and a report counting every band — the
+     pool the generator would refuse to draw from. */
+  const level = validLevel(str(req.query.level, 5).toUpperCase())
     ? str(req.query.level, 5).toUpperCase() : '';
   const strict = req.query.strict === '1';
 
@@ -992,13 +1016,19 @@ router.post('/admin/tests/generate', (req, res) => {
        parts is the surest way to build a paper that looks right and asks the wrong things. */
     const part = EXAM_FORMATS.partsOf(familyId).includes(str(sec.part, 2).toUpperCase())
       ? str(sec.part, 2).toUpperCase() : '';
-    const { sql: poolSql, args: poolArgs } = poolWhere(familyId, skill, sec.types, part);
+    /* The level goes into the pool, not just into the sort order. For an exam
+       sat at a level covering a range of bands it is a hard filter — see
+       poolWhere — so a paper short of items in range now reports a shortage
+       instead of topping itself up from outside the range it claims to
+       measure. For every other exam the pool is unchanged and the level stays
+       the preference it always was. */
+    const { sql: poolSql, args: poolArgs } = poolWhere(familyId, skill, sec.types, part, level);
     /* A level covers a set of CEFR bands, not one. Comparing `level` to an
        item's band directly worked only while the two happened to use the same
        vocabulary; a VPET Level 1 paper matches nothing that way, and would
        quietly fill itself from the fallback — that is, entirely with items from
        the wrong level. */
-    const bands = levelBands(level);
+    const bands = levelBands(familyId, level);
     const holes = bands.map(() => '?').join(',');
     const pool = strict
       ? q.all(`SELECT id FROM questions WHERE ${poolSql} AND level IN (${holes})`, ...poolArgs, ...bands)
@@ -1087,7 +1117,7 @@ router.post('/admin/sections/:sid/reshuffle', (req, res) => {
      says which item types that part accepts. */
   const blueprint = s.part ? EXAM_FORMATS.sectionOfPart(t.family_id, s.part) : null;
   const { sql: poolSql, args: poolArgs } = poolWhere(
-    t.family_id, s.skill, blueprint ? blueprint.types : null, s.part || '');
+    t.family_id, s.skill, blueprint ? blueprint.types : null, s.part || '', t.level);
   const pool = q.all(
     `SELECT id, (level=?) exact FROM questions WHERE ${poolSql} ORDER BY exact DESC`,
     t.level, ...poolArgs);

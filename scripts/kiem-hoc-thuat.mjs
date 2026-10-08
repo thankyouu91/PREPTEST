@@ -34,7 +34,6 @@ const GON = process.argv.includes('--gon') || process.argv.includes('--brief');
 
 const D = require('../server/data/descriptors.js');
 const R = require('../server/data/rubrics.js');
-const SCRIPTS = require('../server/data/vpet-scripts.js');
 const ITEMS = require('../server/data/vpet-items.js');
 const FORMATS = require('../server/data/exam-formats.js');
 
@@ -51,14 +50,12 @@ const ok = (dieuKien, ten, chiTiet) => {
   }
 };
 
-/* Hai nguồn nội dung, hai hình dạng khác nhau:
-     vpet-scripts.js  các part có audio, gắn level VPET 1/2 qua `level`
-     vpet-items.js    các part không cần audio, gắn bậc CEFR qua `level`
-   Gộp về một hình dạng chung ở đây, và chỉ giữ những trường vòng kiểm cần. */
-const allItems = [
-  ...SCRIPTS.allItems().map(i => ({ part: i.part, type: i.type, skill: i.skill, cefr: i.cefr })),
-  ...ITEMS.rows().map(i => ({ part: i.part, type: i.type, skill: i.skill, cefr: i.level }))
-];
+/* Một nguồn nội dung kể từ 08/10/2026. Trước đó kho chia hai tệp theo việc
+   part có phát audio hay không, và vòng kiểm này phải gộp hai hình dạng hàng
+   khác nhau lại; `vpet-scripts.js` đã bị xoá cùng kho cũ và kịch bản giờ nằm
+   ngay trên câu hỏi. Chỉ giữ những trường vòng kiểm cần. */
+const allItems = ITEMS.rows()
+  .map(i => ({ part: i.part, type: i.type, skill: i.skill, cefr: i.level }));
 
 /* ================= 1. Blueprint ================= */
 nhom('1 · Ngân hàng đủ dựng được đề');
